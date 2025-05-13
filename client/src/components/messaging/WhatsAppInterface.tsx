@@ -297,10 +297,10 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
             Para usar WhatsApp en tu CRM, escanea el código QR con tu teléfono
           </p>
           
-          {whatsappStatus?.qrNeeded && qrCodeData?.qrCode ? (
+          {whatsappStatus?.qrNeeded && qrCodeData?.data ? (
             <div className="border p-4 rounded-lg mb-6">
               <img 
-                src={`data:image/png;base64,${qrCodeData.qrCode}`}
+                src={qrCodeData.data.startsWith('data:') ? qrCodeData.data : `data:image/png;base64,${qrCodeData.data}`}
                 alt="QR Code para WhatsApp"
                 className="w-64 h-64"
               />
