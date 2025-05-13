@@ -705,8 +705,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!qrCode) {
         // Si no hay código QR disponible, generar uno de demostración solo en desarrollo
         if (process.env.NODE_ENV === 'development') {
-          const demoQR = whatsappService.generateDemoQR();
-          res.json({ data: demoQR?.base64Image || demoQR?.qr });
+          // Esperamos a que se resuelva la promesa
+          const demoQR = await whatsappService.generateDemoQR();
+          res.json({ data: demoQR.base64Image || demoQR.qr });
         } else {
           res.status(404).json({ message: "No hay código QR disponible" });
         }
