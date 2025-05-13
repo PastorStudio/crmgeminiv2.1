@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { AlertCircle, CheckCircle2, DatabaseIcon, RotateCw, Server } from "lucide-react";
+import { AlertCircle, CheckCircle2, Database as DatabaseIcon, RotateCw, Server } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Helmet } from "react-helmet";
 import { Badge } from "@/components/ui/badge";
@@ -149,7 +149,7 @@ export default function Database() {
                     </div>
                   </div>
                   <div className="flex items-center p-4 border rounded-md">
-                    <Database className="h-10 w-10 mr-4 text-primary" />
+                    <DatabaseIcon className="h-10 w-10 mr-4 text-primary" />
                     <div>
                       <h3 className="font-medium">Variable DATABASE_URL</h3>
                       <p className="text-sm text-muted-foreground">
@@ -160,7 +160,7 @@ export default function Database() {
                 </div>
                 
                 {dbStatus?.status !== "connected" && (
-                  <Alert variant="warning">
+                  <Alert className="bg-amber-50 border-amber-200 text-amber-800">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Modo memoria activo</AlertTitle>
                     <AlertDescription>
