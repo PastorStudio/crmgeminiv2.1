@@ -1,225 +1,66 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Helmet } from "react-helmet";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Lead, Message } from "@shared/schema";
-import ChatInterface from "@/components/messaging/ChatInterface";
-import WhatsAppInterface from "@/components/messaging/WhatsAppInterface";
-import ConnectionStatus from "@/components/messaging/ConnectionStatus";
-import { Badge } from "@/components/ui/badge";
-import { formatDistanceToNow } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { WhatsAppInterface } from "@/components/messaging/WhatsAppInterface";
+import { MessageSquare, Smartphone, Send, BrainCircuit } from "lucide-react";
 
 export default function Messages() {
-  const [searchTerm, setSearchTerm] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState<number | undefined>(undefined);
-  
-  // Listen for the backToChats event from the WhatsAppInterface component
-  useEffect(() => {
-    const handleBackToChats = () => {
-      setSelectedLeadId(undefined);
-    };
-    
-    document.addEventListener('backToChats', handleBackToChats);
-    
-    return () => {
-      document.removeEventListener('backToChats', handleBackToChats);
-    };
-  }, []);
-
-  // Fetch all leads
-  const { data: leads, isLoading: leadsLoading } = useQuery<Lead[]>({
-    queryKey: ["/api/leads"],
-  });
-
-  // Fetch recent messages for each lead
-  const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
-    queryKey: ["/api/messages", { recent: true }],
-  });
-
-  // Filter leads based on search term
-  const filteredLeads = leads?.filter(lead => 
-    !searchTerm || 
-    lead.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (lead.company && lead.company.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  // Get the most recent message for a lead
-  const getRecentMessageForLead = (leadId: number) => {
-    if (!messages) return undefined;
-    
-    try {
-      const leadMessages = messages.filter(message => message.leadId === leadId);
-      if (leadMessages.length === 0) return undefined;
-      
-      return leadMessages.sort((a, b) => {
-        const dateA = a.sentAt ? new Date(a.sentAt).getTime() : 0;
-        const dateB = b.sentAt ? new Date(b.sentAt).getTime() : 0;
-        return dateB - dateA;
-      })[0];
-    } catch (error) {
-      console.error("Error getting recent message:", error);
-      return undefined;
-    }
-  };
-
-  // Format message timestamp
-  const formatMessageTime = (timestamp?: Date | string | null) => {
-    if (!timestamp) return "";
-    try {
-      return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
-    } catch (error) {
-      return "";
-    }
-  };
-
-  // Get channel icon and color
-  const getChannelInfo = (channel: string) => {
-    switch (channel) {
-      case "whatsapp":
-        return { icon: "whatsapp", color: "text-green-500" };
-      case "email":
-        return { icon: "email", color: "text-blue-500" };
-      case "chat":
-        return { icon: "chat", color: "text-indigo-500" };
-      case "system":
-        return { icon: "integration_instructions", color: "text-purple-500" };
-      default:
-        return { icon: "message", color: "text-gray-500" };
-    }
-  };
+  const [activeTab, setActiveTab] = useState("whatsapp");
 
   return (
     <>
       <Helmet>
-        <title>WhatsApp Web | GeminiCRM</title>
-        <meta name="description" content="Send and receive WhatsApp messages directly from your CRM" />
+        <title>Sistema de Mensajería | GeminiCRM</title>
+        <meta name="description" content="Comunícate con tus clientes a través de WhatsApp y Telegram directamente desde tu CRM" />
       </Helmet>
 
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-green-600">WhatsApp Web</h1>
-          <p className="text-sm text-gray-500">
-            Send and receive WhatsApp messages directly from your CRM
-          </p>
-        </div>
-        <div>
-          <ConnectionStatus platform="whatsapp" />
-        </div>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
+          Sistema de Mensajería
+        </h1>
+        <p className="text-gray-500 mt-1">
+          Comunícate con tus clientes a través de múltiples canales sin salir del CRM
+        </p>
       </div>
 
-      {/* WhatsApp-style layout with 2 columns: chats and messages */}
-      <div className="flex h-[calc(100vh-14rem)] overflow-hidden">
-        {/* Chats column - Hidden on mobile when a chat is selected */}
-        <div className={`${selectedLeadId ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 bg-white border-r border-gray-200 flex-col overflow-hidden`}>
-          <div className="bg-[#f0f2f5] p-3 flex items-center">
-            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-2">
-              <span className="material-icons text-gray-600">account_circle</span>
-            </div>
-            <div className="flex-1"></div>
-            <div className="flex gap-4 text-gray-600">
-              <span className="material-icons">refresh</span>
-              <span className="material-icons">more_vert</span>
-            </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid grid-cols-2 w-[400px] mb-6">
+          <TabsTrigger value="whatsapp" className="flex items-center gap-2">
+            <Smartphone className="h-4 w-4" /> WhatsApp
+          </TabsTrigger>
+          <TabsTrigger value="telegram" className="flex items-center gap-2">
+            <Send className="h-4 w-4" /> Telegram
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="whatsapp" className="mt-0">
+          <div className="flex flex-col">
+            <WhatsAppInterface selectedLeadId={selectedLeadId} onSelectLead={setSelectedLeadId} />
           </div>
-          
-          <div className="bg-[#f6f6f6] p-2">
-            <div className="bg-white rounded-lg flex items-center px-3 py-1">
-              <span className="material-icons text-gray-400 mr-3">search</span>
-              <Input
-                placeholder="Search contacts..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-              />
+        </TabsContent>
+        
+        <TabsContent value="telegram" className="mt-0">
+          <Card className="border-2 border-dashed p-8">
+            <div className="flex flex-col items-center justify-center text-center space-y-4">
+              <div className="rounded-full bg-primary-50 p-3">
+                <Send className="h-8 w-8 text-primary-600" />
+              </div>
+              <h3 className="text-xl font-medium">Integración con Telegram</h3>
+              <p className="text-gray-500 max-w-md">
+                La integración con Telegram está en desarrollo y estará disponible próximamente.
+                Podrás comunicarte con tus clientes usando el bot oficial de tu negocio.
+              </p>
+              <Button variant="outline" className="mt-4" disabled>
+                <BrainCircuit className="mr-2 h-4 w-4" />
+                Próximamente
+              </Button>
             </div>
-          </div>
-          
-          <ScrollArea className="flex-1 bg-white pr-1">
-            {leadsLoading || messagesLoading ? (
-              <div className="animate-pulse space-y-3 p-2">
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} className="flex items-center space-x-4 py-3 px-2 border-b border-gray-100">
-                    <div className="h-12 w-12 rounded-full bg-gray-100"></div>
-                    <div className="space-y-2 flex-1">
-                      <div className="h-4 bg-gray-100 rounded w-3/4"></div>
-                      <div className="h-3 bg-gray-100 rounded w-full"></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : filteredLeads?.length === 0 ? (
-              <div className="text-center py-10 text-gray-500">
-                <div className="text-lg font-medium mb-2">No contacts found</div>
-                <p className="text-sm">Try adjusting your search criteria</p>
-              </div>
-            ) : (
-              <div>
-                {filteredLeads?.map(lead => {
-                  const recentMessage = getRecentMessageForLead(lead.id);
-                  const hasUnread = recentMessage && recentMessage.direction === "incoming" && !recentMessage.read;
-                  
-                  return (
-                    <div
-                      key={lead.id}
-                      className={`flex items-center px-3 py-3 cursor-pointer border-b border-gray-100 ${
-                        selectedLeadId === lead.id ? "bg-[#f0f2f5]" : "hover:bg-[#f5f5f5]"
-                      }`}
-                      onClick={() => setSelectedLeadId(lead.id)}
-                    >
-                      <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                        <span className="material-icons text-gray-500">person</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline">
-                          <h3 className="text-sm font-medium truncate">
-                            {lead.fullName}
-                          </h3>
-                          {recentMessage?.sentAt && (
-                            <span className="text-xs text-gray-500">
-                              {formatMessageTime(recentMessage.sentAt)}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center">
-                            {recentMessage && recentMessage.direction === "outgoing" && (
-                              <span className="material-icons text-xs text-gray-400 mr-1">done_all</span>
-                            )}
-                            <p className="text-xs text-gray-500 truncate">
-                              {recentMessage ? recentMessage.content : "No messages yet"}
-                            </p>
-                          </div>
-                          {hasUnread && (
-                            <span className="w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs ml-1">
-                              1
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </ScrollArea>
-        </div>
-
-        {/* Messages column - Shown on all devices when a chat is selected */}
-        <div className={`${selectedLeadId ? 'flex' : 'hidden md:flex'} flex-col w-full md:w-2/3 h-full`}>
-          <WhatsAppInterface leadId={selectedLeadId} />
-        </div>
-      </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </>
   );
 }
