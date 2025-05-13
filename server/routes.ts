@@ -646,10 +646,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const result = await taskTagService.manageLead(parseInt(leadId));
       
-      res.json({
-        success: true,
-        ...result
-      });
+      // Evitamos duplicar la propiedad success si ya viene en result
+      if (result && typeof result === 'object' && 'success' in result) {
+        res.json(result);
+      } else {
+        // Aseguramos que result sea un objeto antes de hacer el spread
+        const resultObject = result && typeof result === 'object' ? result : { data: result };
+        res.json({
+          success: true,
+          ...resultObject
+        });
+      }
     } catch (error) {
       console.error("Error en gestión automática:", error);
       res.status(500).json({
@@ -673,14 +680,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Importamos el servicio bajo demanda
-      const { taskTagService } = await import('./services/taskTagService');
+      const taskTagServiceModule = await import('./services/taskTagService');
+      // Obtenemos la instancia del servicio
+      const { geminiService } = await import('./services/geminiService');
+      const taskTagService = new taskTagServiceModule.default(geminiService);
       
-      const tasks = await taskTagService.generateAutomaticTasks(parseInt(leadId));
+      const tasks = await taskTagService.generateTasks(parseInt(leadId));
       
-      res.json({
-        success: true,
-        tasks
-      });
+      // Evitamos duplicar la propiedad success si ya viene en tasks
+      if (tasks && typeof tasks === 'object' && 'success' in tasks) {
+        res.json(tasks);
+      } else if (Array.isArray(tasks)) {
+        res.json({
+          success: true,
+          tasks
+        });
+      } else {
+        // Si no es un array ni un objeto con success, lo manejamos como un valor general
+        const tasksData = tasks && typeof tasks === 'object' ? tasks : { data: tasks };
+        res.json({
+          success: true,
+          ...tasksData
+        });
+      }
     } catch (error) {
       console.error("Error al generar tareas:", error);
       res.status(500).json({
