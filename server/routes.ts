@@ -640,6 +640,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to generate temporary API key" });
     }
   });
+  
+  // Rutas para WhatsApp
+  app.get("/api/integrations/whatsapp/status", async (req: Request, res: Response) => {
+    try {
+      // Importar el servicio de WhatsApp
+      const { whatsappService } = await import('./services/whatsappService');
+      const status = whatsappService.getStatus();
+      res.json(status);
+    } catch (error) {
+      console.error("Error al obtener estado de WhatsApp:", error);
+      res.status(500).json({ message: "Error al obtener estado de WhatsApp" });
+    }
+  });
+  
+  app.get("/api/integrations/whatsapp/qrcode", async (req: Request, res: Response) => {
+    try {
+      // Importar el servicio de WhatsApp
+      const { whatsappService } = await import('./services/whatsappService');
+      const qrCode = whatsappService.getQRCode();
+      
+      if (!qrCode) {
+        // Si no hay código QR disponible, generar uno de demostración solo en desarrollo
+        if (process.env.NODE_ENV === 'development') {
+          const demoQR = whatsappService.generateDemoQR();
+          res.json({ data: demoQR?.base64Image || demoQR?.qr });
+        } else {
+          res.status(404).json({ message: "No hay código QR disponible" });
+        }
+      } else {
+        res.json({ data: qrCode.base64Image || qrCode.qr });
+      }
+    } catch (error) {
+      console.error("Error al obtener código QR de WhatsApp:", error);
+      res.status(500).json({ message: "Error al obtener código QR de WhatsApp" });
+    }
+  });
+  
+  app.post("/api/integrations/whatsapp/restart", async (req: Request, res: Response) => {
+    try {
+      // Importar el servicio de WhatsApp
+      const { whatsappService } = await import('./services/whatsappService');
+      const result = await whatsappService.restart();
+      res.json(result);
+    } catch (error) {
+      console.error("Error al reiniciar WhatsApp:", error);
+      res.status(500).json({ message: "Error al reiniciar WhatsApp" });
+    }
+  });
+  
+  app.post("/api/integrations/whatsapp/logout", async (req: Request, res: Response) => {
+    try {
+      // Importar el servicio de WhatsApp
+      const { whatsappService } = await import('./services/whatsappService');
+      const result = await whatsappService.logout();
+      res.json(result);
+    } catch (error) {
+      console.error("Error al cerrar sesión de WhatsApp:", error);
+      res.status(500).json({ message: "Error al cerrar sesión de WhatsApp" });
+    }
+  });
+  
+  app.post("/api/integrations/whatsapp/send", async (req: Request, res: Response) => {
+    try {
+      const { phone, message, leadId } = req.body;
+      
+      if (!phone || !message) {
+        return res.status(400).json({ message: "Número de teléfono y mensaje son requeridos" });
+      }
+      
+      // Importar el servicio de WhatsApp
+      const { whatsappService } = await import('./services/whatsappService');
+      const result = await whatsappService.sendMessage(phone, message, leadId ? parseInt(leadId) : undefined);
+      res.json(result);
+    } catch (error) {
+      console.error("Error al enviar mensaje de WhatsApp:", error);
+      res.status(500).json({ message: "Error al enviar mensaje de WhatsApp" });
+    }
+  });
+  
+  // Rutas para Telegram
+  app.get("/api/integrations/telegram/status", async (req: Request, res: Response) => {
+    try {
+      // Importar el servicio de Telegram
+      const { telegramService } = await import('./services/telegramService');
+      const status = telegramService.getStatus();
+      res.json(status);
+    } catch (error) {
+      console.error("Error al obtener estado de Telegram:", error);
+      res.status(500).json({ message: "Error al obtener estado de Telegram" });
+    }
+  });
+  
+  app.get("/api/integrations/telegram/authcode", async (req: Request, res: Response) => {
+    try {
+      // Importar el servicio de Telegram
+      const { telegramService } = await import('./services/telegramService');
+      const authCode = telegramService.getAuthCode();
+      
+      if (!authCode) {
+        // Si no hay código de autenticación disponible, generar uno de demostración solo en desarrollo
+        if (process.env.NODE_ENV === 'development') {
+          const demoCode = telegramService.generateDemoAuthCode();
+          // Esperar un poco para que se genere la imagen QR
+          setTimeout(() => {
+            const authCode = telegramService.getAuthCode();
+            if (authCode && authCode.base64Image) {
+              res.json({ 
+                data: authCode.base64Image,
+                expiry: authCode.expiresAt.toISOString()
+              });
+            } else {
+              res.json({ 
+                data: `https://api.qrserver.com/v1/create-qr-code/?data=geminicrm://telegram/auth/${demoCode.code}`,
+                expiry: demoCode.expiresAt.toISOString()
+              });
+            }
+          }, 500);
+        } else {
+          res.status(404).json({ message: "No hay código de autenticación disponible" });
+        }
+      } else {
+        res.json({ 
+          data: authCode.base64Image || `https://api.qrserver.com/v1/create-qr-code/?data=geminicrm://telegram/auth/${authCode.code}`,
+          expiry: authCode.expiresAt.toISOString()
+        });
+      }
+    } catch (error) {
+      console.error("Error al obtener código de autenticación de Telegram:", error);
+      res.status(500).json({ message: "Error al obtener código de autenticación de Telegram" });
+    }
+  });
+  
+  app.post("/api/integrations/telegram/restart", async (req: Request, res: Response) => {
+    try {
+      // Importar el servicio de Telegram
+      const { telegramService } = await import('./services/telegramService');
+      const result = await telegramService.restart();
+      res.json(result);
+    } catch (error) {
+      console.error("Error al reiniciar Telegram:", error);
+      res.status(500).json({ message: "Error al reiniciar Telegram" });
+    }
+  });
+  
+  app.post("/api/integrations/telegram/generate-authcode", async (req: Request, res: Response) => {
+    try {
+      // Importar el servicio de Telegram
+      const { telegramService } = await import('./services/telegramService');
+      telegramService.generateAuthCode();
+      
+      // Dar tiempo para que se genere la imagen QR
+      setTimeout(() => {
+        const authCode = telegramService.getAuthCode();
+        res.json({ 
+          success: true,
+          code: authCode?.code,
+          expiry: authCode?.expiresAt.toISOString()
+        });
+      }, 500);
+    } catch (error) {
+      console.error("Error al generar código de autenticación de Telegram:", error);
+      res.status(500).json({ message: "Error al generar código de autenticación de Telegram" });
+    }
+  });
+  
+  app.post("/api/integrations/telegram/set-token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Token es requerido" });
+      }
+      
+      // Importar el servicio de Telegram
+      const { telegramService } = await import('./services/telegramService');
+      const result = await telegramService.setToken(token);
+      res.json(result);
+    } catch (error) {
+      console.error("Error al configurar token de Telegram:", error);
+      res.status(500).json({ message: "Error al configurar token de Telegram" });
+    }
+  });
+  
+  app.post("/api/integrations/telegram/send", async (req: Request, res: Response) => {
+    try {
+      const { chatId, message, leadId } = req.body;
+      
+      if (!chatId || !message) {
+        return res.status(400).json({ message: "Chat ID y mensaje son requeridos" });
+      }
+      
+      // Importar el servicio de Telegram
+      const { telegramService } = await import('./services/telegramService');
+      const result = await telegramService.sendMessage(chatId, message, leadId ? parseInt(leadId) : undefined);
+      res.json(result);
+    } catch (error) {
+      console.error("Error al enviar mensaje de Telegram:", error);
+      res.status(500).json({ message: "Error al enviar mensaje de Telegram" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

@@ -10,6 +10,7 @@ import Calendar from "@/pages/Calendar";
 import Tasks from "@/pages/Tasks";
 import Analytics from "@/pages/Analytics";
 import Settings from "@/pages/Settings";
+import Integrations from "@/pages/Integrations";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 
@@ -35,6 +36,7 @@ function App() {
                   <Route path="/tasks" component={Tasks} />
                   <Route path="/analytics" component={Analytics} />
                   <Route path="/settings" component={Settings} />
+                  <Route path="/integrations" component={Integrations} />
                   <Route component={NotFound} />
                 </Switch>
               </div>
