@@ -103,7 +103,7 @@ export default function Settings() {
     resolver: zodResolver(apiSettingsSchema),
     defaultValues: {
       enableGeminiAI: true,
-      geminiApiKey: process.env.GEMINI_API_KEY || "",
+      geminiApiKey: import.meta.env.VITE_GEMINI_API_KEY || "",
       autoAnalyzeLeads: true,
       enrichLeadData: true,
       smartLeadScoring: true,

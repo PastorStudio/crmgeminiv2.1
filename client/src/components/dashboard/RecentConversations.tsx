@@ -32,12 +32,13 @@ export default function RecentConversations() {
   });
 
   // Get associated lead for a message
-  const getLeadForMessage = (leadId: number) => {
+  const getLeadForMessage = (leadId: number | null) => {
+    if (leadId === null) return undefined;
     return leads?.find(lead => lead.id === leadId);
   };
 
   // Format the time for display (e.g., "10:23 AM" or "Yesterday")
-  const formatMessageTime = (timestamp?: Date | string) => {
+  const formatMessageTime = (timestamp?: Date | string | null) => {
     if (!timestamp) return "";
     
     const date = new Date(timestamp);
@@ -116,12 +117,6 @@ export default function RecentConversations() {
                             <div className="h-10 w-10 rounded-full mr-4 bg-secondary-100 flex items-center justify-center">
                               <span className="material-icons text-secondary-600">smart_toy</span>
                             </div>
-                          ) : lead?.avatar ? (
-                            <img 
-                              className="h-10 w-10 rounded-full mr-4" 
-                              src={lead.avatar} 
-                              alt={`${lead.fullName} avatar`} 
-                            />
                           ) : (
                             <div className="h-10 w-10 rounded-full mr-4 bg-gray-200 flex items-center justify-center">
                               <span className="material-icons text-gray-500">person</span>
