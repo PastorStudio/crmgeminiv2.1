@@ -90,7 +90,8 @@ export class TelegramService extends EventEmitter {
             if (!ctx.chat || !ctx.from) return;
             
             const chatId = ctx.chat.id;
-            const username = ctx.chat?.username || ctx.from?.username;
+            // Obtenemos el username desde from en lugar de chat, ya que solo PrivateChat y SupergroupChat tienen username
+            const username = ctx.from?.username;
             
             // Registramos el chat
             this.connectedChats.set(chatId, { 
