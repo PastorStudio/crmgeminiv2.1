@@ -4,6 +4,7 @@ import * as qrcode from 'qrcode';
 import { EventEmitter } from 'events';
 import { storage } from '../storage';
 import { Lead } from '@shared/schema';
+import { Client, LocalAuth } from 'whatsapp-web.js';
 
 // Interface para status de conexión
 interface WhatsAppStatus {
@@ -16,12 +17,13 @@ interface WhatsAppStatus {
   errorMessage?: string;
 }
 
-// Clase para simular conexión durante desarrollo
+// Clase para manejar la conexión de WhatsApp usando whatsapp-web.js
 class WhatsAppClient extends EventEmitter {
   private static qrCodePath = path.join(process.cwd(), 'temp', 'whatsapp-qr.png');
   private status: WhatsAppStatus;
-  private simulationMode: boolean = true;
+  private simulationMode: boolean = process.env.WHATSAPP_SIMULATION === 'true';
   private simulatedLeads: Map<string, number> = new Map(); // Mapeo de teléfonos a leadIds
+  private client: Client | null = null;
   
   constructor() {
     super();
@@ -41,40 +43,155 @@ class WhatsAppClient extends EventEmitter {
   // Inicializar el cliente
   async initialize(): Promise<void> {
     try {
-      console.log("Inicializando WhatsApp (modo simulación)...");
-      this.status.initialized = true;
-      this.status.ready = false;
-      this.status.authenticated = false;
-      
-      // Generar un código QR aleatorio para simular
-      const randomQR = Math.random().toString(16).substr(2, 16);
-      console.log(`Generando código QR para WhatsApp (simulado): ${randomQR}`);
-      
-      // Generar el código QR como imagen y como data URL
-      const qrImage = await qrcode.toString(randomQR, { type: 'terminal' });
-      const qrDataURL = await qrcode.toDataURL(randomQR);
-      
-      console.log(qrImage); // Mostrar QR en consola
-      this.status.qrCode = qrDataURL;
-      
-      // Emitir evento de código QR
-      this.emit('qr', qrDataURL);
-      
-      // Simular autenticación después de un tiempo aleatorio
-      const authDelay = Math.floor(Math.random() * 30000) + 5000; // 5-35 segundos
-      setTimeout(() => {
-        console.log("WhatsApp: simulando autenticación del usuario...");
-        this.status.authenticated = true;
-        this.status.ready = true;
-        this.status.qrCode = undefined;
+      if (this.simulationMode) {
+        // Modo simulación para desarrollo
+        console.log("Inicializando WhatsApp (modo simulación)...");
+        this.status.initialized = true;
+        this.status.ready = false;
+        this.status.authenticated = false;
         
-        this.emit('ready');
-        console.log("Cliente de WhatsApp listo! (simulado)");
-      }, authDelay);
-      
-      // Cargar información de leads para simulación
-      this.loadSimulatedLeads();
-      
+        // Generar un código QR aleatorio para simular
+        const randomQR = Math.random().toString(16).substr(2, 16);
+        console.log(`Generando código QR para WhatsApp (simulado): ${randomQR}`);
+        
+        // Generar el código QR como imagen y como data URL
+        const qrImage = await qrcode.toString(randomQR, { type: 'terminal' });
+        const qrDataURL = await qrcode.toDataURL(randomQR);
+        
+        console.log(qrImage); // Mostrar QR en consola
+        this.status.qrCode = qrDataURL;
+        
+        // Emitir evento de código QR
+        this.emit('qr', qrDataURL);
+        
+        // Simular autenticación después de un tiempo aleatorio
+        const authDelay = Math.floor(Math.random() * 30000) + 5000; // 5-35 segundos
+        setTimeout(() => {
+          console.log("WhatsApp: simulando autenticación del usuario...");
+          this.status.authenticated = true;
+          this.status.ready = true;
+          this.status.qrCode = undefined;
+          
+          this.emit('ready');
+          console.log("Cliente de WhatsApp listo! (simulado)");
+        }, authDelay);
+        
+        // Cargar información de leads para simulación
+        this.loadSimulatedLeads();
+      } else {
+        // Modo real usando whatsapp-web.js
+        console.log("Inicializando WhatsApp (modo real)...");
+        this.status.initialized = true;
+        this.status.ready = false;
+        this.status.authenticated = false;
+        
+        // Inicializar cliente de WhatsApp Web
+        this.client = new Client({
+          authStrategy: new LocalAuth({ clientId: 'gemini-crm' }),
+          puppeteer: {
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+          }
+        });
+        
+        // Configurar eventos
+        this.client.on('qr', (qrCode) => {
+          console.log('Recibido código QR de WhatsApp, generando imagen...');
+          
+          // Convertir a data URL para mostrar en la interfaz
+          qrcode.toDataURL(qrCode, (err, dataURL) => {
+            if (err) {
+              console.error('Error al convertir código QR a data URL:', err);
+              return;
+            }
+            
+            this.status.qrCode = dataURL;
+            this.emit('qr', dataURL);
+          });
+        });
+        
+        this.client.on('ready', () => {
+          console.log('Cliente WhatsApp Web está listo!');
+          this.status.ready = true;
+          this.status.authenticated = true;
+          this.status.qrCode = undefined;
+          this.emit('ready');
+        });
+        
+        this.client.on('authenticated', () => {
+          console.log('Autenticación exitosa con WhatsApp!');
+          this.status.authenticated = true;
+        });
+        
+        this.client.on('auth_failure', (msg) => {
+          console.error('Error de autenticación de WhatsApp:', msg);
+          this.status.errorMessage = msg;
+          this.emit('error', new Error(msg));
+        });
+        
+        this.client.on('disconnected', (reason) => {
+          console.log('Cliente WhatsApp desconectado:', reason);
+          this.status.ready = false;
+          this.status.authenticated = false;
+          this.emit('disconnected', reason);
+        });
+        
+        // Configurar manejador de mensajes entrantes
+        this.client.on('message', async (msg) => {
+          try {
+            console.log(`[WhatsApp] Mensaje recibido de ${msg.from}: ${msg.body}`);
+            
+            // Obtener número de teléfono del formato @c.us de WhatsApp
+            const phone = msg.from.split('@')[0];
+            
+            // Buscar lead por número de teléfono o crear uno nuevo
+            let leadId: number;
+            const leads = await storage.getLeadsByPhone(phone);
+            
+            if (leads && leads.length > 0) {
+              // Usar lead existente
+              leadId = leads[0].id;
+              console.log(`[WhatsApp] Lead existente encontrado: ${leadId}`);
+            } else {
+              // Crear nuevo lead
+              const newLead = await storage.createLead({
+                fullName: `Contacto WhatsApp ${phone.substr(-4)}`,
+                email: `whatsapp_${phone}@example.com`,
+                phone: phone,
+                source: "whatsapp",
+                status: "nuevo"
+              });
+              
+              leadId = newLead.id;
+              console.log(`[WhatsApp] Creado nuevo lead ID ${leadId} para ${phone}`);
+            }
+            
+            // Guardar mensaje en la base de datos
+            await storage.createMessage({
+              leadId,
+              content: msg.body,
+              direction: "incoming",
+              channel: "whatsapp",
+              read: false
+            });
+            
+            console.log(`[WhatsApp] Mensaje guardado para leadId ${leadId}`);
+            
+            // Emitir evento para notificar a los suscriptores
+            this.emit('message', {
+              from: phone,
+              body: msg.body,
+              leadId,
+              timestamp: new Date()
+            });
+          } catch (error) {
+            console.error('[WhatsApp] Error procesando mensaje entrante:', error);
+          }
+        });
+        
+        // Iniciar el cliente
+        await this.client.initialize();
+      }
     } catch (error) {
       console.error("Error inicializando WhatsApp:", error);
       this.status.errorMessage = error instanceof Error ? error.message : 'Error desconocido';
@@ -93,32 +210,52 @@ class WhatsAppClient extends EventEmitter {
     
     console.log(`[WhatsApp] Enviando mensaje a ${normalizedPhone}: ${message}`);
     
-    // En modo simulación, simplemente registramos el mensaje y devolvemos un ID simulado
-    if (this.simulationMode) {
-      const messageId = `simulated_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-      
-      // Si tenemos un leadId asociado a este número, guardar el mensaje en la BD
-      const leadId = this.simulatedLeads.get(normalizedPhone);
-      if (leadId) {
-        try {
-          await storage.createMessage({
-            leadId,
-            content: message,
-            direction: "outgoing",
-            channel: "whatsapp",
-            read: false
-          });
-          console.log(`[WhatsApp] Mensaje guardado para leadId ${leadId}`);
-        } catch (error) {
-          console.error(`[WhatsApp] Error guardando mensaje para leadId ${leadId}:`, error);
+    try {
+      // En modo simulación, simplemente registramos el mensaje y devolvemos un ID simulado
+      if (this.simulationMode) {
+        const messageId = `simulated_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+        
+        // Si tenemos un leadId asociado a este número, guardar el mensaje en la BD
+        const leadId = this.simulatedLeads.get(normalizedPhone);
+        if (leadId) {
+          try {
+            await storage.createMessage({
+              leadId,
+              content: message,
+              direction: "outgoing",
+              channel: "whatsapp",
+              read: false
+            });
+            console.log(`[WhatsApp] Mensaje guardado para leadId ${leadId}`);
+          } catch (error) {
+            console.error(`[WhatsApp] Error guardando mensaje para leadId ${leadId}:`, error);
+          }
         }
+        
+        return { id: messageId, status: 'sent' };
+      } else {
+        // Implementación real con la biblioteca whatsapp-web.js
+        if (!this.client) {
+          throw new Error("Cliente de WhatsApp no inicializado");
+        }
+        
+        // Formatear número según formato esperado por whatsapp-web.js
+        const formattedNumber = `${normalizedPhone}@c.us`;
+        
+        // Enviar mensaje
+        const response = await this.client.sendMessage(formattedNumber, message);
+        
+        console.log(`[WhatsApp] Mensaje enviado con ID: ${response.id.id}`);
+        
+        return { 
+          id: response.id.id, 
+          status: 'sent' 
+        };
       }
-      
-      return { id: messageId, status: 'sent' };
+    } catch (error) {
+      console.error(`[WhatsApp] Error enviando mensaje a ${normalizedPhone}:`, error);
+      throw error;
     }
-    
-    // Aquí iría la implementación real con la biblioteca whatsapp-web.js
-    throw new Error("Implementación real de WhatsApp no disponible");
   }
   
   // Obtener estado actual
@@ -133,15 +270,30 @@ class WhatsAppClient extends EventEmitter {
   
   // Cerrar sesión
   async logout(): Promise<void> {
-    if (this.simulationMode) {
-      console.log("[WhatsApp] Cerrando sesión (simulado)");
-      this.status.authenticated = false;
-      this.status.ready = false;
-      return;
+    try {
+      if (this.simulationMode) {
+        console.log("[WhatsApp] Cerrando sesión (simulado)");
+        this.status.authenticated = false;
+        this.status.ready = false;
+        return;
+      } else {
+        // Implementación real
+        if (!this.client) {
+          throw new Error("Cliente de WhatsApp no inicializado");
+        }
+        
+        console.log("[WhatsApp] Cerrando sesión...");
+        await this.client.logout();
+        console.log("[WhatsApp] Sesión cerrada correctamente");
+        
+        this.status.authenticated = false;
+        this.status.ready = false;
+        this.status.qrCode = undefined;
+      }
+    } catch (error) {
+      console.error("[WhatsApp] Error al cerrar sesión:", error);
+      throw error;
     }
-    
-    // Implementación real aquí
-    throw new Error("Implementación real de WhatsApp no disponible");
   }
   
   // Funciones auxiliares

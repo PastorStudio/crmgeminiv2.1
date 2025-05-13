@@ -37,6 +37,7 @@ export interface IStorage {
   getLead(id: number): Promise<Lead | undefined>;
   getLeadsByStatus(status: string): Promise<Lead[]>;
   getLeadsByAssignee(userId: number): Promise<Lead[]>;
+  getLeadsByPhone(phone: string): Promise<Lead[]>;
   getAllLeads(): Promise<Lead[]>;
   createLead(lead: InsertLead): Promise<Lead>;
   updateLead(id: number, lead: Partial<InsertLead>): Promise<Lead | undefined>;

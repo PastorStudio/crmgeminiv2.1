@@ -146,6 +146,16 @@ export class MemStorage implements IStorage {
     return result;
   }
 
+  async getLeadsByPhone(phone: string): Promise<Lead[]> {
+    const result: Lead[] = [];
+    for (const lead of this.leadsData.values()) {
+      if (lead.phone === phone || lead.whatsappPhone === phone) {
+        result.push(lead);
+      }
+    }
+    return result;
+  }
+
   async getAllLeads(): Promise<Lead[]> {
     return Array.from(this.leadsData.values());
   }
