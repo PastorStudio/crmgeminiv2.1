@@ -639,9 +639,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Importamos el servicio bajo demanda
-      const { taskTagService } = await import('./services/taskTagService');
+      const taskTagServiceModule = await import('./services/taskTagService');
+      // Obtenemos la instancia del servicio
+      const { geminiService } = await import('./services/geminiService');
+      const taskTagService = new taskTagServiceModule.default(geminiService);
       
-      const result = await taskTagService.autoManageLead(parseInt(leadId));
+      const result = await taskTagService.manageLead(parseInt(leadId));
       
       res.json({
         success: true,

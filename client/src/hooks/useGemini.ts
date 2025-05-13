@@ -58,9 +58,9 @@ export function useGemini() {
           leadId,
           messageType
         }
-      }) as GenerateMessageResponse;
+      });
       
-      if (!response.success) {
+      if (!response || !response.success) {
         throw new Error("Error generando mensaje");
       }
       
@@ -72,7 +72,7 @@ export function useGemini() {
         description: "No se pudo generar el mensaje. La API de Gemini puede estar configurada incorrectamente.",
         variant: "destructive"
       });
-      throw error;
+      return ""; // Retornamos string vacío en caso de error
     } finally {
       setIsLoading(false);
     }
@@ -91,9 +91,9 @@ export function useGemini() {
         url: "/api/gemini/analyze-lead",
         method: "POST",
         data: { leadId }
-      }) as AnalyzeLeadResponse;
+      });
       
-      if (!response.success) {
+      if (!response || !response.success) {
         throw new Error("Error analizando lead");
       }
       
@@ -105,7 +105,7 @@ export function useGemini() {
         description: "No se pudo analizar el lead. La API de Gemini puede estar configurada incorrectamente.",
         variant: "destructive"
       });
-      throw error;
+      return ""; // Retornamos string vacío en caso de error
     } finally {
       setIsLoading(false);
     }
@@ -124,13 +124,13 @@ export function useGemini() {
         url: "/api/gemini/suggest-action",
         method: "POST",
         data: { leadId }
-      }) as SuggestActionResponse;
+      });
       
       if (!response || !response.success) {
         throw new Error("Error obteniendo sugerencia");
       }
 
-      return response.action;
+      return response.action || {};
     } catch (error) {
       console.error("Error en useGemini.suggestAction:", error);
       toast({
@@ -138,7 +138,12 @@ export function useGemini() {
         description: "No se pudo obtener sugerencias para el lead.",
         variant: "destructive"
       });
-      throw error;
+      return {
+        type: "",
+        description: "",
+        priority: "medium",
+        timeframe: ""
+      };
     } finally {
       setIsLoading(false);
     }
@@ -161,13 +166,16 @@ export function useGemini() {
           message,
           history
         }
-      }) as ChatResponse;
+      });
       
       if (!response || !response.success) {
         throw new Error("Error en chat con Gemini");
       }
       
-      return response.response;
+      return response.response || {
+        role: 'assistant',
+        content: "Lo siento, ha ocurrido un error al obtener respuesta."
+      };
     } catch (error) {
       console.error("Error en useGemini.chat:", error);
       toast({
@@ -215,7 +223,7 @@ export function useGemini() {
         description: "No se pudo actualizar el lead. Intenta nuevamente más tarde.",
         variant: "destructive"
       });
-      throw error;
+      return null; // Retornamos null en caso de error
     } finally {
       setIsLoading(false);
     }
