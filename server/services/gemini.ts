@@ -438,6 +438,14 @@ Puedo asistirte con análisis de leads, generación de contenido personalizado, 
    */
   async suggestNextAction(lead: Lead) {
     try {
+      const apiKey = apiKeyManager.getGeminiKey();
+      
+      // Si no hay clave API disponible o estamos en modo de desarrollo, usar simulación
+      if (!apiKey || process.env.NODE_ENV === 'development') {
+        console.log("Usando respuesta simulada para sugerencia de acción debido a limitaciones de la API");
+        return this.getSimulatedNextAction(lead);
+      }
+      
       const model = await this.getModel(0.4);
       
       const prompt = `
@@ -475,18 +483,130 @@ Provide your response in valid JSON format with the following structure:
         return JSON.parse(jsonString);
       } catch (error) {
         console.error("Error parsing JSON from Gemini response:", error);
-        return {
-          recommendedAction: "Follow up with the lead",
-          actionType: "email",
-          priority: "medium",
-          reasoning: "Regular follow-up is important for lead nurturing",
-          suggestedSchedule: "Within the next 3 business days",
-          talkingPoints: ["Introduce your company's value proposition", "Ask about their current needs"]
-        };
+        return this.getSimulatedNextAction(lead);
       }
     } catch (error) {
       console.error("Error calling Gemini API for next action suggestion:", error);
-      throw error;
+      return this.getSimulatedNextAction(lead);
+    }
+  }
+  
+  /**
+   * Genera una sugerencia simulada para la próxima acción basada en datos del lead
+   * @param lead El lead para el que generar la sugerencia
+   */
+  private getSimulatedNextAction(lead: Lead) {
+    // Determinar acciones basadas en el estado del lead
+    const status = (lead.status || '').toLowerCase();
+    const position = (lead.position || '').toLowerCase();
+    const companyName = lead.company || 'su empresa';
+    
+    // Determinar prioridad basada en información disponible
+    let priority = "medium";
+    if (position.includes('ceo') || position.includes('director') || position.includes('gerente')) {
+      priority = "high"; // Contactos con poder de decisión tienen mayor prioridad
+    }
+    
+    // Sugerir acción según el estado del lead
+    if (status === 'new' || status === '') {
+      return {
+        recommendedAction: "Establecer contacto inicial",
+        actionType: "email",
+        priority: "high",
+        reasoning: "Es un lead nuevo que requiere calificación inmediata",
+        suggestedSchedule: "En las próximas 24 horas",
+        talkingPoints: [
+          `Presentar brevemente los servicios relevantes para ${companyName}`,
+          "Preguntar sobre sus necesidades actuales y desafíos",
+          "Explicar cómo podemos resolver problemas específicos del sector",
+          "Solicitar una llamada inicial de descubrimiento"
+        ]
+      };
+    } else if (status === 'contacted') {
+      return {
+        recommendedAction: "Seguimiento post-contacto inicial",
+        actionType: "call",
+        priority,
+        reasoning: "Ya se ha establecido contacto inicial, es importante mantener el impulso",
+        suggestedSchedule: "En los próximos 2-3 días",
+        talkingPoints: [
+          "Confirmar recepción del correo/información enviada",
+          "Resolver cualquier duda inicial",
+          "Profundizar en necesidades específicas",
+          "Ofrecer una demostración personalizada del producto"
+        ]
+      };
+    } else if (status === 'qualified' || status === 'interested') {
+      return {
+        recommendedAction: "Programar demostración de producto",
+        actionType: "meeting",
+        priority,
+        reasoning: "El lead ha mostrado interés y está calificado para avanzar en el embudo de ventas",
+        suggestedSchedule: "En la próxima semana",
+        talkingPoints: [
+          "Configurar demo específica para necesidades identificadas",
+          "Incluir casos de éxito relevantes para su industria",
+          "Preparar respuestas a posibles objeciones",
+          "Tener lista una propuesta preliminar para enviar después de la reunión"
+        ]
+      };
+    } else if (status === 'negotiation' || status === 'proposal') {
+      return {
+        recommendedAction: "Seguimiento de propuesta enviada",
+        actionType: "call",
+        priority: "high",
+        reasoning: "El lead está en fase avanzada y cerca de la decisión final",
+        suggestedSchedule: "En las próximas 48 horas",
+        talkingPoints: [
+          "Verificar recepción y revisión de la propuesta",
+          "Resolver cualquier duda sobre términos, condiciones o implementación",
+          "Ofrecer incentivos para cierre inmediato si es apropiado",
+          "Establecer un calendario tentativo de implementación"
+        ]
+      };
+    } else if (status === 'closed-won') {
+      return {
+        recommendedAction: "Reunión de inicio de implementación",
+        actionType: "meeting",
+        priority: "medium",
+        reasoning: "Es importante asegurar una correcta implementación e inicio de la relación comercial",
+        suggestedSchedule: "En la próxima semana",
+        talkingPoints: [
+          "Presentar al equipo de implementación/soporte",
+          "Revisar cronograma de implementación",
+          "Establecer expectativas y KPIs",
+          "Discutir oportunidades de expansión futura"
+        ]
+      };
+    } else if (status === 'closed-lost') {
+      return {
+        recommendedAction: "Reevaluación después de periodo de espera",
+        actionType: "email",
+        priority: "low",
+        reasoning: "Mantener la relación para futura reconsideración",
+        suggestedSchedule: "En 2-3 meses",
+        talkingPoints: [
+          "Compartir novedades relevantes del producto/servicio",
+          "Mencionar nuevos casos de éxito en su industria",
+          "Preguntar si han cambiado las circunstancias que llevaron a la decisión negativa",
+          "Ofrecer una nueva evaluación sin compromiso"
+        ]
+      };
+    } else {
+      // Default para estados no reconocidos
+      return {
+        recommendedAction: "Verificar estado actual e interés",
+        actionType: "email",
+        priority: "medium",
+        reasoning: "Es necesario actualizar la información y estado del lead",
+        suggestedSchedule: "En la próxima semana",
+        talkingPoints: [
+          "Recordar brevemente la propuesta de valor",
+          "Preguntar por cambios en sus necesidades o situación",
+          "Ofrecer información actualizada sobre productos/servicios",
+          "Sugerir una breve llamada de seguimiento"
+        ]
+      };
     }
   }
 }
