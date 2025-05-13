@@ -70,6 +70,10 @@ export default function Integrations() {
     error: telegramStatusError 
   } = useQuery<ConnectionStatus>({
     queryKey: ["/api/integrations/telegram/status", lastRefresh],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/integrations/telegram/status");
+      return await response.json();
+    },
     refetchInterval: 10000, // Refrescar cada 10 segundos
   });
 
@@ -80,6 +84,10 @@ export default function Integrations() {
     error: whatsappQRError 
   } = useQuery<QRCodeData>({
     queryKey: ["/api/integrations/whatsapp/qrcode", lastRefresh],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/integrations/whatsapp/qrcode");
+      return await response.json();
+    },
     enabled: !!whatsappStatus && !whatsappStatus.authenticated,
   });
 
@@ -89,6 +97,10 @@ export default function Integrations() {
     error: telegramQRError 
   } = useQuery<QRCodeData>({
     queryKey: ["/api/integrations/telegram/authcode", lastRefresh],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/integrations/telegram/authcode");
+      return await response.json();
+    },
     enabled: !!telegramStatus && !telegramStatus.ready,
   });
 

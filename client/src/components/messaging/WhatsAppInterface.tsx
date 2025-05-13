@@ -123,11 +123,15 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
       const data = await response.json();
       return data;
     },
-    enabled: !!selectedLeadId,
-    onSuccess: (data) => {
-      setSelectedLeadData(data);
-    }
+    enabled: !!selectedLeadId
   });
+  
+  // Usar useEffect para establecer selectedLeadData cuando cambie leadDetails
+  React.useEffect(() => {
+    if (leadDetails) {
+      setSelectedLeadData(leadDetails);
+    }
+  }, [leadDetails]);
 
   // Mutación para enviar un mensaje
   const sendMessageMutation = useMutation({
