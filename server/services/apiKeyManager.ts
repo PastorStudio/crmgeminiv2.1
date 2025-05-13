@@ -1,142 +1,182 @@
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
-
 /**
- * Servicio para gestionar las claves API de Gemini
- * - Genera claves temporales para desarrollo
- * - Almacena las claves de forma segura
- * - Actualiza y rota las claves automáticamente
+ * Servicio para gestionar y almacenar claves API de forma segura
+ * Proporciona funcionalidades para guardar, recuperar y validar claves API
  */
-export class ApiKeyManager {
-  private configPath: string;
-  private apiKeys: {
-    gemini: {
-      key: string;
-      expiry?: Date;
-      isTemporary: boolean;
-    }
-  };
 
-  constructor() {
-    this.configPath = path.join(process.cwd(), '.api-keys.json');
-    this.apiKeys = {
-      gemini: {
-        key: '',
-        isTemporary: false
-      }
-    };
+import * as fs from 'fs';
+import * as path from 'path';
+
+interface ApiKeys {
+  gemini?: string;
+  telegram?: string;
+  tempKeys?: Record<string, { key: string, expiresAt: number }>;
+}
+
+class ApiKeyManager {
+  private static instance: ApiKeyManager;
+  private keys: ApiKeys;
+  private keysFilePath: string;
+  
+  private constructor() {
+    this.keys = {};
+    // Ubicación del archivo de claves (nunca debe exponerse al cliente)
+    this.keysFilePath = path.join(process.cwd(), '.api-keys.json');
     this.loadKeys();
   }
-
+  
   /**
-   * Carga las claves API almacenadas o genera unas nuevas si no existen
+   * Devuelve la instancia única del gestor de claves
+   */
+  public static getInstance(): ApiKeyManager {
+    if (!ApiKeyManager.instance) {
+      ApiKeyManager.instance = new ApiKeyManager();
+    }
+    return ApiKeyManager.instance;
+  }
+  
+  /**
+   * Carga las claves API desde el archivo
    */
   private loadKeys(): void {
     try {
-      if (fs.existsSync(this.configPath)) {
-        const data = fs.readFileSync(this.configPath, 'utf8');
-        const keys = JSON.parse(data);
-        this.apiKeys = keys;
-
-        // Verificar si hay una clave de entorno que tenga prioridad
-        if (process.env.GEMINI_API_KEY) {
-          this.apiKeys.gemini.key = process.env.GEMINI_API_KEY;
-          this.apiKeys.gemini.isTemporary = false;
-        }
+      if (fs.existsSync(this.keysFilePath)) {
+        const keysData = fs.readFileSync(this.keysFilePath, 'utf8');
+        this.keys = JSON.parse(keysData);
+        console.log('Claves API cargadas correctamente');
       } else {
-        // Verificar si hay una clave de entorno
-        if (process.env.GEMINI_API_KEY) {
-          this.apiKeys.gemini.key = process.env.GEMINI_API_KEY;
-          this.apiKeys.gemini.isTemporary = false;
-        } else {
-          // Generar una clave temporal para desarrollo
-          this.generateTemporaryKey();
-        }
+        console.log('No existe archivo de claves API, se creará uno nuevo');
+        this.keys = { tempKeys: {} };
         this.saveKeys();
       }
     } catch (error) {
-      console.error('Error al cargar las claves API:', error);
-      this.generateTemporaryKey();
+      console.error('Error al cargar claves API:', error);
+      this.keys = { tempKeys: {} };
     }
   }
-
+  
   /**
-   * Guarda las claves API en un archivo
+   * Guarda las claves API en el archivo
    */
   private saveKeys(): void {
     try {
-      fs.writeFileSync(this.configPath, JSON.stringify(this.apiKeys, null, 2));
+      fs.writeFileSync(this.keysFilePath, JSON.stringify(this.keys, null, 2), 'utf8');
     } catch (error) {
-      console.error('Error al guardar las claves API:', error);
+      console.error('Error al guardar claves API:', error);
     }
   }
-
+  
   /**
-   * Genera una clave temporal para uso de desarrollo
-   * Nota: En un entorno de producción real, esto se conectaría con el servicio de Google
-   * para obtener una clave válida usando OAuth2 o similar
+   * Obtiene la clave de Gemini
    */
-  private generateTemporaryKey(): void {
-    // En un entorno real, esta función haría una llamada a la API de Google
-    // para solicitar una clave API temporal con los permisos adecuados
+  getGeminiKey(): string | undefined {
+    // Primero intentamos obtener la clave del entorno
+    const envKey = process.env.GEMINI_API_KEY;
+    if (envKey) {
+      return envKey;
+    }
     
-    // Para desarrollo, generamos una clave aleatoria
-    const tempKey = 'DEV-' + crypto.randomBytes(16).toString('hex');
-    
-    // Establecer una fecha de expiración (24 horas desde ahora)
-    const expiry = new Date();
-    expiry.setHours(expiry.getHours() + 24);
-    
-    this.apiKeys.gemini.key = tempKey;
-    this.apiKeys.gemini.expiry = expiry;
-    this.apiKeys.gemini.isTemporary = true;
-    
-    console.log('Se generó una clave API temporal para Gemini. Esta clave solo es para desarrollo.');
+    // Si no hay clave en el entorno, usamos la almacenada
+    return this.keys.gemini;
   }
-
+  
   /**
-   * Actualiza la clave API de Gemini
+   * Establece la clave de Gemini
    */
-  public updateGeminiKey(newKey: string): void {
-    this.apiKeys.gemini.key = newKey;
-    this.apiKeys.gemini.isTemporary = false;
-    delete this.apiKeys.gemini.expiry; // Eliminar fecha de expiración si existe
+  setGeminiKey(key: string): void {
+    this.keys.gemini = key;
     this.saveKeys();
   }
-
+  
   /**
-   * Obtiene la clave API de Gemini
+   * Obtiene la clave de Telegram
    */
-  public getGeminiKey(): string {
-    // Verificar si la clave está expirada (si es temporal)
-    if (this.apiKeys.gemini.isTemporary && this.apiKeys.gemini.expiry) {
-      const now = new Date();
-      if (now > new Date(this.apiKeys.gemini.expiry)) {
-        this.generateTemporaryKey();
-        this.saveKeys();
+  getTelegramKey(): string | undefined {
+    const envKey = process.env.TELEGRAM_API_KEY;
+    if (envKey) {
+      return envKey;
+    }
+    
+    return this.keys.telegram;
+  }
+  
+  /**
+   * Establece la clave de Telegram
+   */
+  setTelegramKey(key: string): void {
+    this.keys.telegram = key;
+    this.saveKeys();
+  }
+  
+  /**
+   * Genera una clave temporal
+   * @param service Nombre del servicio
+   * @param expiresIn Tiempo de expiración en milisegundos
+   */
+  generateTempKey(service: string, expiresIn: number = 3600000): string {
+    const key = `temp_${Math.random().toString(36).substring(2, 15)}`;
+    const expiresAt = Date.now() + expiresIn;
+    
+    if (!this.keys.tempKeys) {
+      this.keys.tempKeys = {};
+    }
+    
+    this.keys.tempKeys[service] = { key, expiresAt };
+    this.saveKeys();
+    
+    return key;
+  }
+  
+  /**
+   * Verifica si una clave temporal es válida
+   */
+  verifyTempKey(service: string, key: string): boolean {
+    if (!this.keys.tempKeys || !this.keys.tempKeys[service]) {
+      return false;
+    }
+    
+    const tempKey = this.keys.tempKeys[service];
+    
+    // Verificar si la clave coincide y no ha expirado
+    if (tempKey.key === key && tempKey.expiresAt > Date.now()) {
+      return true;
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Elimina una clave temporal
+   */
+  removeTempKey(service: string): void {
+    if (this.keys.tempKeys && this.keys.tempKeys[service]) {
+      delete this.keys.tempKeys[service];
+      this.saveKeys();
+    }
+  }
+  
+  /**
+   * Limpia las claves temporales expiradas
+   */
+  cleanupTempKeys(): void {
+    if (!this.keys.tempKeys) {
+      return;
+    }
+    
+    const now = Date.now();
+    let modified = false;
+    
+    for (const service in this.keys.tempKeys) {
+      if (this.keys.tempKeys[service].expiresAt < now) {
+        delete this.keys.tempKeys[service];
+        modified = true;
       }
     }
     
-    return this.apiKeys.gemini.key;
-  }
-
-  /**
-   * Verifica si hay una clave API válida para Gemini
-   */
-  public hasValidGeminiKey(): boolean {
-    return !!this.apiKeys.gemini.key && 
-           (this.apiKeys.gemini.isTemporary !== true || 
-            (this.apiKeys.gemini.expiry && new Date() < new Date(this.apiKeys.gemini.expiry || new Date())));
-  }
-
-  /**
-   * Verifica si estamos usando una clave de desarrollo temporal
-   */
-  public isUsingTemporaryKey(): boolean {
-    return this.apiKeys.gemini.isTemporary === true;
+    if (modified) {
+      this.saveKeys();
+    }
   }
 }
 
-// Exportar una instancia singleton
-export const apiKeyManager = new ApiKeyManager();
+// Exportar la instancia única
+export const apiKeyManager = ApiKeyManager.getInstance();
