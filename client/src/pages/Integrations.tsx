@@ -229,6 +229,16 @@ export default function Integrations() {
               ) : !whatsappStatus?.authenticated ? (
                 <div className="mb-6">
                   <h3 className="text-lg font-medium mb-2">Escanear código QR</h3>
+                  {whatsappStatus?.qrCode?.includes("simulado") && (
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                      <h4 className="text-sm font-medium text-amber-800">Modo de simulación activo</h4>
+                      <p className="text-xs text-amber-700 mt-1">
+                        Este sistema está ejecutándose en modo de simulación. El código QR generado es simulado y no
+                        funcionará con WhatsApp real. Para utilizar la integración completa con WhatsApp, necesitas
+                        ejecutar este servicio en un entorno con soporte completo para navegadores.
+                      </p>
+                    </div>
+                  )}
                   <p className="text-gray-600 text-sm mb-4">
                     Escanee este código QR con su teléfono para iniciar sesión en WhatsApp Web.
                     La sesión se guardará localmente para futuras conexiones.
