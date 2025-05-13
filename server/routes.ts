@@ -19,6 +19,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (req: Request, res: Response) => {
     res.json({ status: "ok" });
   });
+  
+  // Database status endpoint
+  app.get("/api/database/status", (req: Request, res: Response) => {
+    const { isDatabaseAvailable } = require('./db');
+    
+    res.json({
+      status: isDatabaseAvailable ? "connected" : "memory_mode",
+      message: isDatabaseAvailable 
+        ? "Conectado a PostgreSQL" 
+        : "Ejecutando en modo de almacenamiento en memoria",
+      database_url: process.env.DATABASE_URL ? "configured" : "missing"
+    });
+  });
+  
+  // Database initialization endpoint
+  app.post("/api/database/initialize", async (req: Request, res: Response) => {
+    const { isDatabaseAvailable } = require('./db');
+    
+    if (!isDatabaseAvailable) {
+      return res.status(400).json({ 
+        error: true, 
+        message: "No hay conexión a base de datos disponible. Configure DATABASE_URL primero." 
+      });
+    }
+    
+    try {
+      // Usamos require dinámico para que solo se cargue cuando se necesite
+      const { default: dbInit } = await import('./scripts/dbInit');
+      
+      // Inicializar la base de datos
+      await dbInit();
+      
+      return res.json({ 
+        success: true, 
+        message: "Base de datos inicializada correctamente" 
+      });
+    } catch (error) {
+      console.error("Error al inicializar la base de datos:", error);
+      
+      return res.status(500).json({ 
+        error: true, 
+        message: "Error al inicializar la base de datos" 
+      });
+    }
+  });
 
   // Users endpoints
   app.get("/api/users", async (req: Request, res: Response) => {

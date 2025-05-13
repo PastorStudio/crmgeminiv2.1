@@ -12,7 +12,7 @@ import { drizzle } from "drizzle-orm/neon-serverless";
 import { migrate } from "drizzle-orm/neon-serverless/migrator";
 import { storage } from "../storage";
 
-async function main() {
+export default async function initDatabase() {
   if (!isDatabaseAvailable) {
     console.error("ERROR: No hay conexión a la base de datos. Asegúrate de tener DATABASE_URL configurado.");
     process.exit(1);
@@ -126,4 +126,12 @@ async function main() {
   }
 }
 
-main();
+// Si se ejecuta directamente como script
+if (require.main === module) {
+  initDatabase()
+    .then(() => console.log("Inicialización completa"))
+    .catch(error => {
+      console.error("Error en la inicialización:", error);
+      process.exit(1);
+    });
+}
