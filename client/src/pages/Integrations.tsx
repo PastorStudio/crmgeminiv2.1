@@ -43,6 +43,7 @@ interface ConnectionStatus {
   authenticated?: boolean;
   connectedChats?: number[];
   pendingMessages: number;
+  qrCode?: string;
 }
 
 export default function Integrations() {
@@ -77,19 +78,8 @@ export default function Integrations() {
     refetchInterval: 10000, // Refrescar cada 10 segundos
   });
 
-  // Consultas para obtener los códigos QR
-  const { 
-    data: whatsappQR, 
-    isLoading: whatsappQRLoading,
-    error: whatsappQRError 
-  } = useQuery<QRCodeData>({
-    queryKey: ["/api/integrations/whatsapp/qrcode", lastRefresh],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/api/integrations/whatsapp/qrcode");
-      return await response.json();
-    },
-    enabled: !!whatsappStatus && !whatsappStatus.authenticated,
-  });
+  // Ya no necesitamos consultar el código QR por separado
+  // El código QR se obtiene directamente del estado de WhatsApp
 
   const { 
     data: telegramQR, 
@@ -245,14 +235,14 @@ export default function Integrations() {
                   </p>
                   
                   <div className="flex justify-center my-6">
-                    {whatsappQRLoading ? (
+                    {whatsappStatusLoading ? (
                       <div className="h-64 w-64 bg-gray-100 animate-pulse rounded-md flex items-center justify-center">
                         <p className="text-gray-400">Generando código QR...</p>
                       </div>
-                    ) : whatsappQR?.data ? (
+                    ) : whatsappStatus?.qrCode ? (
                       <div className="border p-4 rounded-md bg-white">
                         <img 
-                          src={whatsappQR.data.startsWith('data:') ? whatsappQR.data : `data:image/png;base64,${whatsappQR.data}`} 
+                          src={whatsappStatus.qrCode} 
                           alt="Código QR de WhatsApp" 
                           className="h-64 w-64"
                         />
