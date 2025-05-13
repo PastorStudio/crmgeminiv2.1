@@ -12,9 +12,10 @@ import { Spinner } from "@/components/ui/spinner";
 interface GeminiAssistantProps {
   leadId?: number;
   onMessageGenerated?: (message: string) => void;
+  compact?: boolean;
 }
 
-export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantProps) {
+export function GeminiAssistant({ leadId, onMessageGenerated, compact = false }: GeminiAssistantProps) {
   const [selectedAction, setSelectedAction] = useState<string>('follow-up');
   const [generatedMessage, setGeneratedMessage] = useState<string>('');
   const [leadAnalysis, setLeadAnalysis] = useState<string>('');
