@@ -98,12 +98,20 @@ export default function Settings() {
     },
   });
 
+  // Fetch API key status
+  const { data: keyStatus, isLoading: keyStatusLoading } = useQuery<{
+    hasValidKey: boolean;
+    isTemporary: boolean;
+  }>({
+    queryKey: ["/api/settings/gemini-key-status"],
+  });
+
   // API settings form setup
   const apiSettingsForm = useForm<ApiSettingsValues>({
     resolver: zodResolver(apiSettingsSchema),
     defaultValues: {
       enableGeminiAI: true,
-      geminiApiKey: import.meta.env.VITE_GEMINI_API_KEY || "",
+      geminiApiKey: "",
       autoAnalyzeLeads: true,
       enrichLeadData: true,
       smartLeadScoring: true,
@@ -150,19 +158,54 @@ export default function Settings() {
   // Update API settings mutation
   const { mutate: updateApiSettings, isPending: isUpdatingApiSettings } = useMutation({
     mutationFn: async (values: ApiSettingsValues) => {
-      // In a real app, this would save to user preferences or app settings
-      return new Promise(resolve => setTimeout(resolve, 500));
+      // Actualizar la clave API de Gemini si se proporcionó una nueva
+      if (values.geminiApiKey) {
+        await apiRequest("POST", "/api/settings/update-gemini-key", { apiKey: values.geminiApiKey });
+      }
+      
+      // Simular actualización de otras configuraciones
+      // En una app real, esto se guardaría en la base de datos
+      return Promise.resolve();
     },
     onSuccess: () => {
+      // Invalidar la consulta para obtener el estado actualizado
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/gemini-key-status"] });
+      
       toast({
         title: "API settings updated",
         description: "Your API integration settings have been saved.",
       });
+      
+      // Limpiar el campo después de guardar
+      apiSettingsForm.setValue("geminiApiKey", "");
     },
     onError: (error) => {
       toast({
         title: "Error",
         description: `Failed to update API settings: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Generate temporary API key mutation
+  const { mutate: generateTempKey, isPending: isGeneratingTempKey } = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/settings/generate-temp-key", {});
+    },
+    onSuccess: () => {
+      // Invalidar la consulta para obtener el estado actualizado
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/gemini-key-status"] });
+      
+      toast({
+        title: "Temporary API key generated",
+        description: "A temporary API key has been generated for development purposes.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to generate temporary API key: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -374,6 +417,41 @@ export default function Settings() {
                     )}
                   />
                   
+                  <div className="mb-4">
+                    <h3 className="text-base font-medium">Gemini API Key Status</h3>
+                    <div className="flex items-center mt-2">
+                      <div className={`h-3 w-3 rounded-full mr-2 ${keyStatus?.hasValidKey ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <span className="text-sm">
+                        {keyStatusLoading ? (
+                          "Checking API key status..."
+                        ) : keyStatus?.hasValidKey ? (
+                          keyStatus.isTemporary ? 
+                            "Using temporary API key (development only)" : 
+                            "Valid API key configured"
+                        ) : (
+                          "No valid API key configured"
+                        )}
+                      </span>
+                    </div>
+                    
+                    {!keyStatus?.hasValidKey && (
+                      <div className="mt-2">
+                        <Button 
+                          type="button" 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => generateTempKey()}
+                          disabled={isGeneratingTempKey}
+                        >
+                          {isGeneratingTempKey ? "Generating..." : "Generate Temporary Key"}
+                        </Button>
+                        <p className="text-xs text-gray-500 mt-1">
+                          For development purposes only. This key has limited functionality.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
                   <FormField
                     control={apiSettingsForm.control}
                     name="geminiApiKey"
@@ -388,7 +466,7 @@ export default function Settings() {
                           />
                         </FormControl>
                         <FormDescription>
-                          Your API key will be stored securely. Leave blank to use the system default.
+                          Enter a new API key to update. Your key will be stored securely.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
