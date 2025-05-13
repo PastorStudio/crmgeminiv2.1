@@ -27,7 +27,7 @@ export class GeminiClient {
 
   constructor(config: GeminiConfig = {}) {
     this.config = {
-      apiKey: process.env.GEMINI_API_KEY || "",
+      apiKey: import.meta.env.VITE_GEMINI_API_KEY || "",
       temperature: 0.7,
       maxOutputTokens: 1024,
       topK: 40,
