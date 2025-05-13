@@ -21,7 +21,7 @@ interface WhatsAppStatus {
 class WhatsAppClient extends EventEmitter {
   private static qrCodePath = path.join(process.cwd(), 'temp', 'whatsapp-qr.png');
   private status: WhatsAppStatus;
-  private simulationMode: boolean = process.env.WHATSAPP_SIMULATION === 'true';
+  private simulationMode: boolean = process.env.WHATSAPP_SIMULATION !== 'false'; // Por defecto usar simulación
   private simulatedLeads: Map<string, number> = new Map(); // Mapeo de teléfonos a leadIds
   private client: Client | null = null;
   
@@ -368,6 +368,8 @@ export class WhatsAppService {
   
   private constructor() {
     // Constructor privado para patrón singleton
+    // Por ahora usar simulación debido a problemas con dependencias de sistema para Puppeteer
+    process.env.WHATSAPP_SIMULATION = 'true';
   }
   
   public static getInstance(): WhatsAppService {
