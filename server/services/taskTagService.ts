@@ -195,8 +195,8 @@ class TaskTagService {
           leadId,
           startTime: task.dueDate || new Date(Date.now() + 24 * 60 * 60 * 1000), // Por defecto mañana
           completed: false,
-          priority: task.priority || "medium",
-          source: "ai"
+          aiGenerated: true,
+          aiSummary: task.priority ? `Priority: ${task.priority}` : undefined
         };
         
         await storage.createActivity(newActivity);
