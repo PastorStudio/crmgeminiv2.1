@@ -186,8 +186,8 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
       const response = await apiRequest("GET", '/api/integrations/whatsapp/qrcode');
       return await response.json();
     },
-    enabled: whatsappStatus?.qrNeeded === true,
-    refetchInterval: whatsappStatus?.qrNeeded ? 5000 : false, // Actualizar cada 5 segundos si se necesita QR
+    enabled: whatsappStatus?.initialized === true && whatsappStatus?.authenticated === false,
+    refetchInterval: (whatsappStatus?.initialized && !whatsappStatus?.authenticated) ? 5000 : false, // Actualizar cada 5 segundos si se necesita QR
   });
 
   // Reiniciar WhatsApp
@@ -297,7 +297,7 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
             Para usar WhatsApp en tu CRM, escanea el código QR con tu teléfono
           </p>
           
-          {whatsappStatus?.qrNeeded && qrCodeData?.data ? (
+          {whatsappStatus?.initialized && !whatsappStatus?.authenticated && qrCodeData?.data ? (
             <div className="border p-4 rounded-lg mb-6">
               <img 
                 src={qrCodeData.data.startsWith('data:') ? qrCodeData.data : `data:image/png;base64,${qrCodeData.data}`}
