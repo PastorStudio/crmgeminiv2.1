@@ -224,7 +224,7 @@ export function useGemini() {
         updates
       );
       
-      const data = await response.json();
+      const data = await fetchJson<any>(response);
       
       toast({
         title: "Lead actualizado",
