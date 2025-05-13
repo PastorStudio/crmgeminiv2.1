@@ -357,6 +357,22 @@ export class WhatsAppService {
     
     return (this.client as WhatsAppClient).simulateIncomingMessage(from, message);
   }
+  
+  // Cerrar sesión de WhatsApp
+  async logout(): Promise<any> {
+    if (!this.client) {
+      return { success: true, message: "No hay sesión activa" };
+    }
+    
+    try {
+      await this.client.logout();
+      this.client = null;
+      return { success: true, message: "Sesión cerrada correctamente" };
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+      throw error;
+    }
+  }
 }
 
 // Instancia exportada para uso global
