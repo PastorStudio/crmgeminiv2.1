@@ -467,7 +467,7 @@ export default function Calendar() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {leads?.map((lead) => (
                           <SelectItem key={lead.id} value={lead.id.toString()}>
                             {lead.fullName} {lead.company ? `(${lead.company})` : ""}
