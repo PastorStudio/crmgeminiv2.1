@@ -46,6 +46,9 @@ class WhatsAppClient extends EventEmitter {
       if (this.simulationMode) {
         // Modo simulación para desarrollo
         console.log("Inicializando WhatsApp (modo simulación)...");
+        console.log("ADVERTENCIA: Estás usando un código QR SIMULADO que NO funcionará con la aplicación real de WhatsApp.");
+        console.log("Para un código QR real de WhatsApp, necesitas ejecutar este servicio en un entorno con soporte para navegadores.");
+        
         this.status.initialized = true;
         this.status.ready = false;
         this.status.authenticated = false;
