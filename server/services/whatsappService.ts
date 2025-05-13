@@ -1,4 +1,4 @@
-import { Client, LocalAuth, Message } from 'whatsapp-web.js';
+import { Client, Message } from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal';
 import { EventEmitter } from 'events';
 import { Lead, Message as CRMMessage } from '@shared/schema';
@@ -36,12 +36,8 @@ export class WhatsAppService extends EventEmitter {
         try {
             console.log('Inicializando WhatsApp...');
             
-            // Usar LocalAuth para almacenar la sesión localmente
+            // Crear instancia del cliente
             this.client = new Client({
-                authStrategy: new LocalAuth({
-                    clientId: 'gemini-crm',
-                    dataPath: './whatsapp-sessions'
-                }),
                 puppeteer: {
                     args: [
                         '--no-sandbox',

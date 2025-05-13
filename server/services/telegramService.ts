@@ -159,7 +159,7 @@ Estado de la conexión:
     /**
      * Genera un código de autenticación para la configuración manual del bot
      */
-    private generateAuthCode() {
+    public generateAuthCode() {
         // Generar un código único
         const code = crypto.randomBytes(4).toString('hex');
         
