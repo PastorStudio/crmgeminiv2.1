@@ -249,34 +249,36 @@ ${action.script ? `\nScript sugerido:\n${action.script}` : ''}
   };
 
   return (
-    <Card className="w-full border-teal-500/20 shadow-md">
-      <CardHeader className="bg-gradient-to-r from-teal-500/10 to-transparent">
+    <Card className={`w-full border-teal-500/20 shadow-md ${compact ? 'compact' : ''}`}>
+      <CardHeader className={`bg-gradient-to-r from-teal-500/10 to-transparent ${compact ? 'p-3 pb-2' : ''}`}>
         <CardTitle className="flex items-center gap-2 text-teal-700">
-          <Brain size={20} />
+          <Brain size={compact ? 16 : 20} />
           Asistente Gemini
         </CardTitle>
-        <CardDescription>
-          Utiliza IA para analizar leads, generar mensajes y obtener asistencia
-        </CardDescription>
+        {!compact && (
+          <CardDescription>
+            Utiliza IA para analizar leads, generar mensajes y obtener asistencia
+          </CardDescription>
+        )}
       </CardHeader>
-      <CardContent className="pt-4">
+      <CardContent className={compact ? "p-3 pt-0" : "pt-4"}>
         <Tabs defaultValue="generate">
-          <TabsList className="w-full">
+          <TabsList className={`w-full ${compact ? 'h-8' : ''}`}>
             <TabsTrigger value="generate" className="flex-1">
-              <MessageSquare size={16} className="mr-2" />
-              Generar Mensaje
+              <MessageSquare size={compact ? 14 : 16} className="mr-2" />
+              {compact ? 'Generar' : 'Generar Mensaje'}
             </TabsTrigger>
             <TabsTrigger value="analyze" className="flex-1">
-              <Sparkles size={16} className="mr-2" />
-              Analizar Lead
+              <Sparkles size={compact ? 14 : 16} className="mr-2" />
+              {compact ? 'Analizar' : 'Analizar Lead'}
             </TabsTrigger>
             <TabsTrigger value="chat" className="flex-1">
-              <MessageCircle size={16} className="mr-2" />
+              <MessageCircle size={compact ? 14 : 16} className="mr-2" />
               Chat
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="generate" className="mt-4 space-y-4">
+          <TabsContent value="generate" className={`${compact ? 'mt-2' : 'mt-4'} space-y-${compact ? '2' : '4'}`}>
             <div className="grid grid-cols-2 gap-2">
               {messageTypes.map(type => (
                 <Button
@@ -320,7 +322,7 @@ ${action.script ? `\nScript sugerido:\n${action.script}` : ''}
             )}
           </TabsContent>
           
-          <TabsContent value="analyze" className="mt-4">
+          <TabsContent value="analyze" className={`${compact ? 'mt-2' : 'mt-4'}`}>
             <div className="flex gap-2 mb-4">
               <Button 
                 onClick={handleAnalyzeLead} 
@@ -353,7 +355,7 @@ ${action.script ? `\nScript sugerido:\n${action.script}` : ''}
             )}
           </TabsContent>
           
-          <TabsContent value="chat" className="mt-4">
+          <TabsContent value="chat" className={`${compact ? 'mt-2' : 'mt-4'}`}>
             {leadId ? (
               <div className="text-xs bg-blue-50 p-2 rounded-md mb-3 border border-blue-200">
                 <p className="font-medium text-blue-800">Actualización inteligente:</p>
