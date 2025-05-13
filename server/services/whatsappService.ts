@@ -4,7 +4,7 @@ import * as qrcode from 'qrcode';
 import { EventEmitter } from 'events';
 import { storage } from '../storage';
 import { Lead } from '@shared/schema';
-import { Client, LocalAuth } from 'whatsapp-web.js';
+import { Client } from 'whatsapp-web.js';
 
 // Interface para status de conexión
 interface WhatsAppStatus {
@@ -87,7 +87,6 @@ class WhatsAppClient extends EventEmitter {
         
         // Inicializar cliente de WhatsApp Web
         this.client = new Client({
-          authStrategy: new LocalAuth({ clientId: 'gemini-crm' }),
           puppeteer: {
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox']
