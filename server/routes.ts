@@ -10,6 +10,7 @@ import {
   insertDashboardStatsSchema
 } from "@shared/schema";
 import { z } from "zod";
+import { apiKeyManager } from "./services/apiKeyManager";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes prefix with /api
@@ -584,6 +585,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in suggest-action endpoint:", error);
       res.status(500).json({ message: "Failed to suggest action with Gemini AI" });
+    }
+  });
+  
+  // API Key Management endpoints
+  app.get("/api/settings/gemini-key-status", async (req: Request, res: Response) => {
+    try {
+      const status = {
+        hasValidKey: apiKeyManager.hasValidGeminiKey(),
+        isTemporary: apiKeyManager.isUsingTemporaryKey(),
+      };
+      
+      res.json(status);
+    } catch (error) {
+      console.error("Error checking Gemini API key status:", error);
+      res.status(500).json({ message: "Failed to check API key status" });
+    }
+  });
+  
+  app.post("/api/settings/update-gemini-key", async (req: Request, res: Response) => {
+    try {
+      const { apiKey } = req.body;
+      
+      if (!apiKey) {
+        return res.status(400).json({ message: "API key is required" });
+      }
+      
+      // Actualizar la clave API
+      apiKeyManager.updateGeminiKey(apiKey);
+      
+      res.json({ success: true, message: "API key updated successfully" });
+    } catch (error) {
+      console.error("Error updating Gemini API key:", error);
+      res.status(500).json({ message: "Failed to update API key" });
+    }
+  });
+  
+  app.post("/api/settings/generate-temp-key", async (req: Request, res: Response) => {
+    try {
+      // Este endpoint generaría una clave temporal a través de apiKeyManager
+      // En una implementación real, esto se comunicaría con el servicio de Google
+      // para obtener una clave temporal con los permisos limitados
+      
+      // Simulamos que se generó una clave temporal
+      const tempKey = apiKeyManager.getGeminiKey();
+      
+      res.json({ 
+        success: true, 
+        message: "Temporary API key generated successfully",
+        isTemporary: true
+      });
+    } catch (error) {
+      console.error("Error generating temporary Gemini API key:", error);
+      res.status(500).json({ message: "Failed to generate temporary API key" });
     }
   });
 

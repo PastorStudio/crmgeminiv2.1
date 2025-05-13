@@ -126,15 +126,15 @@ export class ApiKeyManager {
    */
   public hasValidGeminiKey(): boolean {
     return !!this.apiKeys.gemini.key && 
-           (!this.apiKeys.gemini.isTemporary || 
-            (this.apiKeys.gemini.expiry && new Date() < new Date(this.apiKeys.gemini.expiry)));
+           (this.apiKeys.gemini.isTemporary !== true || 
+            (this.apiKeys.gemini.expiry && new Date() < new Date(this.apiKeys.gemini.expiry || new Date())));
   }
 
   /**
    * Verifica si estamos usando una clave de desarrollo temporal
    */
   public isUsingTemporaryKey(): boolean {
-    return this.apiKeys.gemini.isTemporary;
+    return this.apiKeys.gemini.isTemporary === true;
   }
 }
 
