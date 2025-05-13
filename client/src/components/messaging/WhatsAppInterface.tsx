@@ -131,12 +131,9 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
 
   // Mutación para enviar un mensaje
   const sendMessageMutation = useMutation({
-    mutationFn: (newMessage: { leadId: number; content: string; channel: string }) => {
-      return apiRequest({
-        url: '/api/messages',
-        method: 'POST',
-        data: newMessage
-      });
+    mutationFn: async (newMessage: { leadId: number; content: string; channel: string }) => {
+      const response = await apiRequest("POST", '/api/messages', newMessage);
+      return await response.json();
     },
     onSuccess: () => {
       setMessageText('');
@@ -153,11 +150,9 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
 
   // Mutación para marcar mensaje como leído
   const markAsReadMutation = useMutation({
-    mutationFn: (messageId: number) => {
-      return apiRequest({
-        url: `/api/messages/${messageId}/read`,
-        method: 'PATCH'
-      });
+    mutationFn: async (messageId: number) => {
+      const response = await apiRequest("PATCH", `/api/messages/${messageId}/read`);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/messages', { leadId: selectedLeadId }] });
@@ -193,11 +188,9 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
 
   // Reiniciar WhatsApp
   const restartWhatsAppMutation = useMutation({
-    mutationFn: () => {
-      return apiRequest({
-        url: '/api/integrations/whatsapp/restart',
-        method: 'POST'
-      });
+    mutationFn: async () => {
+      const response = await apiRequest("POST", '/api/integrations/whatsapp/restart');
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations/whatsapp/status'] });
