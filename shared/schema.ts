@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -36,6 +36,11 @@ export const leads = pgTable("leads", {
   // Campos para integración con plataformas de mensajería
   whatsappPhone: text("whatsapp_phone"), // Número de WhatsApp normalizado
   telegramChatId: text("telegram_chat_id"), // ID de chat de Telegram
+  // Nuevos campos para IA y automatización avanzada
+  tags: jsonb("tags"), // Etiquetas con porcentajes de probabilidad generadas por IA
+  aiSuggestions: jsonb("ai_suggestions"), // Sugerencias automáticas generadas por IA
+  nextStageConfidence: integer("next_stage_confidence"), // Confianza (%) de avanzar a la siguiente etapa
+  interests: jsonb("interests"), // Intereses detectados del lead con porcentajes
 });
 
 // Activities model - represents meetings, calls, emails, tasks
