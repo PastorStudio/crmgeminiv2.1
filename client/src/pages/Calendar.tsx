@@ -68,7 +68,10 @@ export default function Calendar() {
   const { data: activities, isLoading: activitiesLoading } = useQuery<Activity[]>({
     queryKey: ["/api/activities", { userId }],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/api/activities?userId=${userId}`);
+      const response = await fetch(`/api/activities?userId=${userId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch activities');
+      }
       return response.json();
     },
   });

@@ -15,7 +15,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function RecentConversations() {
   // Fetch recent messages
   const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
-    queryKey: ["/api/messages", { recent: true, limit: 5 }]
+    queryKey: ["/api/messages", { recent: true, limit: 5 }],
+    queryFn: async () => {
+      const response = await fetch(`/api/messages?recent=true&limit=5`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch messages');
+      }
+      return response.json();
+    }
   });
 
   // For each message, fetch the associated lead
