@@ -1,416 +1,328 @@
-import { storage } from "../storage";
-import { InsertActivity } from "@shared/schema";
-import { geminiService } from './geminiService';
-import { addDays, startOfDay, endOfDay } from 'date-fns';
-
 /**
- * Servicio para gestionar la creación automática de tareas y etiquetas utilizando IA
+ * Servicio para gestión de tareas y etiquetas con IA
+ * 
+ * Este servicio se encarga de:
+ * - Analizar leads y generar etiquetas con probabilidades
+ * - Crear tareas automáticas basadas en el análisis de IA
+ * - Mantener un historial de análisis para mejorar la precisión
  */
-export class TaskTagService {
-  private static instance: TaskTagService;
-  
-  private constructor() { }
-  
-  /**
-   * Devuelve la instancia única del servicio
-   */
-  public static getInstance(): TaskTagService {
-    if (!TaskTagService.instance) {
-      TaskTagService.instance = new TaskTagService();
-    }
-    return TaskTagService.instance;
+
+import { storage } from "../storage";
+import GeminiService from "./geminiService";
+import { Lead, Activity, InsertActivity } from "@shared/schema";
+
+interface TagWithProbability {
+  tag: string;
+  probability: number;
+  category: string;
+}
+
+interface AutoTask {
+  title: string;
+  type: string;
+  description?: string;
+  dueDate?: Date;
+  priority?: 'high' | 'medium' | 'low';
+}
+
+interface AIAnalysis {
+  tags: TagWithProbability[];
+  summary: string;
+  nextBestAction: string;
+  confidenceScore: number;
+  timestamp: Date;
+}
+
+class TaskTagService {
+  private geminiService: GeminiService;
+  private analysisCache: Map<number, AIAnalysis>;
+
+  constructor(geminiService: GeminiService) {
+    this.geminiService = geminiService;
+    this.analysisCache = new Map();
   }
-  
-  /**
-   * Gestiona automáticamente un lead usando IA:
-   * - Genera etiquetas con probabilidades
-   * - Crea tareas automáticas basadas en el perfil
-   * - Actualiza el score y otros metadatos del lead
-   * 
-   * @param leadId ID del lead a gestionar
-   * @returns Resultado de la gestión automática
-   */
-  public async autoManageLead(leadId: number): Promise<any> {
+
+  // Analizar un lead y generar etiquetas con probabilidades
+  async analyzeLead(leadId: number): Promise<{ tags: TagWithProbability[], success: boolean }> {
     try {
-      // 1. Obtener datos del lead
+      // Obtener el lead y sus datos relacionados
       const lead = await storage.getLead(leadId);
-      
       if (!lead) {
-        throw new Error(`Lead con ID ${leadId} no encontrado`);
+        throw new Error("Lead no encontrado");
       }
+
+      // Obtener mensajes y actividades relacionadas con el lead para un mejor análisis
+      const messages = await storage.getMessagesByLead(leadId);
+      const activities = await storage.getActivitiesByLead(leadId);
+
+      // Generar análisis usando IA
+      const analysisPrompt = `
+        Analiza el siguiente perfil de lead y genera etiquetas con su probabilidad (0-100):
+        
+        Lead: ${JSON.stringify(lead)}
+        Mensajes recientes: ${JSON.stringify(messages.slice(0, 5))}
+        Actividades: ${JSON.stringify(activities.slice(0, 5))}
+
+        Genera etiquetas específicas para este lead considerando:
+        - Etapas del proceso de venta (prospecto, cualificado, negociación, etc.)
+        - Intereses mostrados en conversaciones
+        - Problemas o necesidades detectadas
+        - Nivel de compromiso basado en interacciones
+        - Comportamiento de compra potencial
+
+        Para cada etiqueta, asigna una probabilidad entre 0 y 100 basada en la confianza.
+      `;
+
+      const response = await this.geminiService.generateContent(analysisPrompt);
       
-      // 2. Analizar lead con Gemini para obtener insights
-      const analysis = await geminiService.analyzeLead(leadId);
+      // Procesar la respuesta para extraer etiquetas y probabilidades
+      const analysisResult = this.parseTagsResponse(response);
       
-      // 3. Generar etiquetas con probabilidades
-      const tagsWithProbability = await geminiService.generateTagsWithProbability(leadId);
-      
-      // 4. Generar tareas automáticas
-      const automaticTasks = await this.generateAutomaticTasks(leadId);
-      
-      // 5. Actualizar datos del lead con la información generada
-      const updatedLead = await storage.updateLead(leadId, {
-        tags: JSON.stringify(tagsWithProbability.tags),
-        aiAnalysis: analysis,
-        score: this.calculateLeadScore(tagsWithProbability.tags),
-        lastAiUpdate: new Date()
+      // Actualizar el lead con el análisis de IA
+      await storage.updateLead(leadId, {
+        aiAnalysis: JSON.stringify(analysisResult)
       });
-      
-      // 6. Devolver resultado completo
+
+      // Guardar el análisis en caché
+      this.analysisCache.set(leadId, {
+        tags: analysisResult,
+        summary: "",
+        nextBestAction: "",
+        confidenceScore: 0,
+        timestamp: new Date()
+      });
+
       return {
-        success: true,
-        lead: updatedLead,
-        tagsWithProbability,
-        automaticTasks,
-        analysis
+        tags: analysisResult,
+        success: true
       };
     } catch (error) {
-      console.error("Error en autoManageLead:", error);
-      throw error;
+      console.error("Error al analizar lead:", error);
+      return {
+        tags: [],
+        success: false
+      };
     }
   }
-  
-  /**
-   * Genera tareas automáticas para un lead basadas en su perfil e historial
-   * 
-   * @param leadId ID del lead
-   * @returns Array de tareas generadas
-   */
-  public async generateAutomaticTasks(leadId: number): Promise<any[]> {
+
+  // Parsear respuesta de IA para extraer etiquetas con probabilidades
+  private parseTagsResponse(response: string): TagWithProbability[] {
     try {
-      // 1. Obtener datos del lead
-      const lead = await storage.getLead(leadId);
+      // Intentar extraer información estructurada del texto de respuesta
+      const tags: TagWithProbability[] = [];
       
-      if (!lead) {
-        throw new Error(`Lead con ID ${leadId} no encontrado`);
-      }
+      // Buscar patrones como "Etiqueta: XX%" o "Etiqueta (XX%)" en el texto
+      const lines = response.split('\n');
       
-      // 2. Obtener actividades existentes para no duplicar
-      const existingActivities = await storage.getActivitiesByLead(leadId);
-      
-      // 3. Determinar perfil y etapa del lead basado en su estado y tags
-      const leadTags = lead.tags ? JSON.parse(lead.tags) : [];
-      const leadProfile = this.determineLeadProfile(lead, leadTags);
-      
-      // 4. Generar tareas según el perfil
-      const tasks = this.generateTasksBasedOnProfile(lead, leadProfile);
-      
-      // 5. Guardar las tareas en la base de datos
-      const createdTasks = [];
-      
-      for (const task of tasks) {
-        // Verificar si ya existe una tarea similar
-        const existingSimilar = existingActivities.find(a => 
-          a.title.toLowerCase().includes(task.title.toLowerCase()) && 
-          !a.completed
-        );
-        
-        if (!existingSimilar) {
-          const newActivity: InsertActivity = {
-            leadId: leadId,
-            title: task.title,
-            description: task.description,
-            type: task.type,
-            priority: task.priority,
-            startTime: task.dueDate ? new Date(task.dueDate) : addDays(new Date(), 1),
-            completed: false,
-            aiGenerated: true,
-            aiSummary: task.aiSummary || "Tarea generada automáticamente por IA"
-          };
+      for (const line of lines) {
+        // Patrones posibles: "Etiqueta: 75%" o "Etiqueta (75%)" o "- Etiqueta: 75%"
+        const tagMatch = line.match(/[-•]?\s*([^:()]+)[:(\s]+(\d+)%/);
+        if (tagMatch && tagMatch.length >= 3) {
+          const tag = tagMatch[1].trim();
+          const probability = parseInt(tagMatch[2], 10);
           
-          const createdActivity = await storage.createActivity(newActivity);
-          createdTasks.push({
-            ...task,
-            id: createdActivity.id,
-            createdAt: createdActivity.createdAt
+          // Determinar categoría basada en la etiqueta
+          let category = 'general';
+          if (tag.toLowerCase().includes('interés') || tag.toLowerCase().includes('interesado')) {
+            category = 'interés';
+          } else if (tag.toLowerCase().includes('etapa') || tag.toLowerCase().includes('fase')) {
+            category = 'etapa';
+          } else if (tag.toLowerCase().includes('probabilidad') || tag.toLowerCase().includes('conversión')) {
+            category = 'conversión';
+          }
+          
+          tags.push({
+            tag,
+            probability,
+            category
           });
         }
       }
       
-      return createdTasks;
+      return tags;
     } catch (error) {
-      console.error("Error en generateAutomaticTasks:", error);
-      throw error;
+      console.error("Error al parsear etiquetas:", error);
+      return [];
     }
   }
-  
-  /**
-   * Determina el perfil de un lead basado en sus características y etiquetas
-   * @param lead Datos del lead
-   * @param tags Etiquetas del lead
-   * @returns Perfil del lead
-   */
-  private determineLeadProfile(lead: any, tags: any[]): string {
-    // Determinar si hay etiquetas de alta prioridad
-    const highPriorityTags = tags.filter(tag => tag.probability >= 80);
-    const interestTags = tags.filter(tag => 
-      tag.category === 'interés' || 
-      tag.category === 'intención' ||
-      tag.category === 'intereses' ||
-      tag.category === 'necesidades'
-    );
-    
-    // Determinar el perfil basado en el estado y etiquetas
-    if (lead.status === 'new') {
-      if (highPriorityTags.length > 0) {
-        return "nuevo_prioritario";
+
+  // Generar tareas automáticas basadas en el análisis de IA
+  async generateTasks(leadId: number): Promise<{ tasks: AutoTask[], success: boolean }> {
+    try {
+      // Obtener el lead
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        throw new Error("Lead no encontrado");
       }
-      return "nuevo_estandar";
-    } else if (lead.status === 'contacted') {
-      if (highPriorityTags.length > 0 && interestTags.length > 0) {
-        return "contactado_interesado";
+      
+      // Obtener mensajes y actividades para contexto
+      const messages = await storage.getMessagesByLead(leadId);
+      const activities = await storage.getActivitiesByLead(leadId);
+      
+      // Obtener análisis previo si existe
+      const cachedAnalysis = this.analysisCache.get(leadId);
+      
+      // Generar prompt para crear tareas
+      const tasksPrompt = `
+        Genera 3 tareas automáticas para este lead basadas en su perfil y actividad reciente:
+        
+        Lead: ${JSON.stringify(lead)}
+        Mensajes recientes: ${JSON.stringify(messages.slice(0, 3))}
+        Actividades previas: ${JSON.stringify(activities.slice(0, 3))}
+        ${cachedAnalysis ? `Análisis previo: ${JSON.stringify(cachedAnalysis)}` : ''}
+        
+        Para cada tarea, especifica:
+        - Título: breve y descriptivo
+        - Tipo: llamada, reunión, email, seguimiento
+        - Descripción: detalle sobre qué hacer exactamente
+        - Fecha recomendada: en formato relativo (ej. "en 3 días")
+        - Prioridad: alta, media o baja
+        
+        Asegúrate que las tareas sean relevantes para el estado actual del lead y ayuden a avanzar en el proceso de venta.
+      `;
+      
+      const response = await this.geminiService.generateContent(tasksPrompt);
+      
+      // Procesar la respuesta para extraer tareas
+      const tasks = this.parseTasksResponse(response);
+      
+      // Crear las tareas en el sistema
+      for (const task of tasks) {
+        const newActivity: InsertActivity = {
+          type: task.type,
+          title: task.title,
+          description: task.description || "",
+          leadId,
+          startTime: task.dueDate || new Date(Date.now() + 24 * 60 * 60 * 1000), // Por defecto mañana
+          completed: false,
+          priority: task.priority || "medium",
+          source: "ai"
+        };
+        
+        await storage.createActivity(newActivity);
       }
-      return "contactado_seguimiento";
-    } else if (lead.status === 'meeting') {
-      return "reunion_programada";
-    } else if (lead.status === 'closed-won') {
-      return "cliente_nuevo";
-    } else if (lead.status === 'closed-lost') {
-      return "recuperacion";
+      
+      return {
+        tasks,
+        success: true
+      };
+    } catch (error) {
+      console.error("Error al generar tareas:", error);
+      return {
+        tasks: [],
+        success: false
+      };
     }
-    
-    return "estandar";
   }
   
-  /**
-   * Genera tareas basadas en el perfil del lead
-   * @param lead Datos del lead
-   * @param profile Perfil determinado del lead
-   * @returns Array de tareas generadas
-   */
-  private generateTasksBasedOnProfile(lead: any, profile: string): any[] {
-    const tasks = [];
-    const today = new Date();
-    
-    switch (profile) {
-      case "nuevo_prioritario":
-        tasks.push({
-          title: `Llamar a ${lead.fullName} para presentación inicial`,
-          description: `Contactar a ${lead.fullName} para presentar nuestros servicios y evaluar sus necesidades. Este lead ha sido identificado como prioritario por la IA.`,
-          type: "llamada",
-          priority: "alta",
-          dueDate: addDays(today, 1).toISOString(),
-          aiSummary: "Lead prioritario que requiere contacto inmediato"
-        });
-        tasks.push({
-          title: `Enviar información personalizada a ${lead.fullName}`,
-          description: `Preparar paquete de información personalizada basada en los intereses detectados y enviar por email.`,
-          type: "email",
-          priority: "media",
-          dueDate: addDays(today, 2).toISOString(),
-          aiSummary: "Seguimiento con información relevante a intereses específicos"
-        });
-        break;
+  // Parsear respuesta de IA para extraer tareas
+  private parseTasksResponse(response: string): AutoTask[] {
+    try {
+      const tasks: AutoTask[] = [];
+      const taskBlocks = response.split(/Tarea\s+\d+:|(?=\n\s*Tarea\s+\d+:)/g).filter(Boolean);
+      
+      for (const block of taskBlocks) {
+        if (!block.trim()) continue;
         
-      case "nuevo_estandar":
-        tasks.push({
-          title: `Enviar email inicial a ${lead.fullName}`,
-          description: `Enviar un email de introducción presentando nuestros servicios y solicitando una llamada de descubrimiento.`,
-          type: "email",
-          priority: "media",
-          dueDate: addDays(today, 2).toISOString(),
-          aiSummary: "Primer contacto con nuevo lead"
-        });
-        break;
+        const title = this.extractValue(block, "Título");
+        const type = this.extractValue(block, "Tipo");
+        const description = this.extractValue(block, "Descripción");
+        const dateText = this.extractValue(block, "Fecha");
+        const priority = this.extractValue(block, "Prioridad")?.toLowerCase();
         
-      case "contactado_interesado":
-        tasks.push({
-          title: `Programar demostración con ${lead.fullName}`,
-          description: `Contactar a ${lead.fullName} para coordinar una demostración personalizada de nuestros servicios/productos.`,
-          type: "llamada",
-          priority: "alta",
-          dueDate: addDays(today, 1).toISOString(),
-          aiSummary: "Lead interesado listo para demostración"
-        });
-        tasks.push({
-          title: `Preparar propuesta para ${lead.fullName}`,
-          description: `Elaborar una propuesta personalizada basada en las necesidades identificadas.`,
-          type: "tarea",
-          priority: "alta",
-          dueDate: addDays(today, 3).toISOString(),
-          aiSummary: "Propuesta personalizada requerida"
-        });
-        break;
-        
-      case "contactado_seguimiento":
-        tasks.push({
-          title: `Seguimiento a ${lead.fullName}`,
-          description: `Realizar seguimiento con ${lead.fullName} para confirmar recepción de información y resolver dudas.`,
-          type: "llamada",
-          priority: "media",
-          dueDate: addDays(today, 3).toISOString(),
-          aiSummary: "Seguimiento estándar de contacto inicial"
-        });
-        break;
-        
-      case "reunion_programada":
-        tasks.push({
-          title: `Preparar material para reunión con ${lead.fullName}`,
-          description: `Preparar presentación y material personalizado para la próxima reunión.`,
-          type: "tarea",
-          priority: "alta",
-          dueDate: addDays(today, 1).toISOString(),
-          aiSummary: "Preparación de material para reunión próxima"
-        });
-        tasks.push({
-          title: `Enviar recordatorio de reunión a ${lead.fullName}`,
-          description: `Enviar email recordatorio 24 horas antes de la reunión programada.`,
-          type: "email",
-          priority: "baja",
-          dueDate: addDays(today, 2).toISOString(),
-          aiSummary: "Recordatorio de reunión programada"
-        });
-        break;
-        
-      case "cliente_nuevo":
-        tasks.push({
-          title: `Llamada de bienvenida a ${lead.fullName}`,
-          description: `Realizar llamada de bienvenida para iniciar el proceso de onboarding.`,
-          type: "llamada",
-          priority: "alta",
-          dueDate: addDays(today, 1).toISOString(),
-          aiSummary: "Inicio de onboarding con nuevo cliente"
-        });
-        tasks.push({
-          title: `Configurar cuenta para ${lead.fullName}`,
-          description: `Iniciar el proceso de configuración de la cuenta para el nuevo cliente.`,
-          type: "tarea",
-          priority: "alta",
-          dueDate: addDays(today, 2).toISOString(),
-          aiSummary: "Configuración de cuenta para cliente nuevo"
-        });
-        break;
-        
-      case "recuperacion":
-        tasks.push({
-          title: `Encuesta de feedback a ${lead.fullName}`,
-          description: `Enviar encuesta para entender por qué no avanzó y cómo podríamos mejorar en el futuro.`,
-          type: "email",
-          priority: "baja",
-          dueDate: addDays(today, 5).toISOString(),
-          aiSummary: "Encuesta para obtener retroalimentación de oportunidad perdida"
-        });
-        break;
-        
-      default: // caso "estandar"
-        tasks.push({
-          title: `Seguimiento general a ${lead.fullName}`,
-          description: `Realizar seguimiento general para avanzar en el proceso de venta.`,
-          type: "llamada",
-          priority: "media",
-          dueDate: addDays(today, 3).toISOString(),
-          aiSummary: "Seguimiento estándar de proceso"
-        });
+        if (title && type) {
+          const task: AutoTask = {
+            title,
+            type,
+            description
+          };
+          
+          // Convertir fecha relativa a Date
+          if (dateText) {
+            task.dueDate = this.parseRelativeDate(dateText);
+          }
+          
+          // Validar prioridad
+          if (priority && ["alta", "media", "baja", "high", "medium", "low"].includes(priority)) {
+            task.priority = this.mapPriority(priority);
+          }
+          
+          tasks.push(task);
+        }
+      }
+      
+      return tasks;
+    } catch (error) {
+      console.error("Error al parsear tareas:", error);
+      return [];
     }
-    
-    // Tarea general que se añade para todos los perfiles excepto clientes y cerrados
-    if (profile !== "cliente_nuevo" && profile !== "recuperacion") {
-      tasks.push({
-        title: `Investigar ${lead.company || 'empresa'} de ${lead.fullName}`,
-        description: `Realizar investigación sobre ${lead.company || 'la empresa'} para entender mejor su contexto y necesidades.`,
-        type: "tarea",
-        priority: "media",
-        dueDate: addDays(today, 2).toISOString(),
-        aiSummary: "Investigación de empresa para contextualizar necesidades"
-      });
-    }
-    
-    return tasks;
   }
   
-  /**
-   * Calcula un score para el lead basado en sus etiquetas con probabilidades
-   * @param tags Etiquetas con probabilidades
-   * @returns Score calculado (0-100)
-   */
-  private calculateLeadScore(tags: any[]): number {
-    if (!tags || tags.length === 0) {
-      return 50; // Valor por defecto si no hay etiquetas
-    }
-    
-    // Factores de puntuación por categoría
-    const categoryWeights: { [key: string]: number } = {
-      'interés': 2.0,
-      'intereses': 2.0,
-      'intención': 2.5,
-      'presupuesto': 1.8,
-      'autoridad': 1.5,
-      'necesidades': 1.7,
-      'etapa': 1.2,
-      'desafíos': 1.0,
-      'demografía': 0.7,
-      'comportamiento': 1.3,
-      'objeciones': -0.5, // Las objeciones reducen el score
-      'riesgos': -0.8     // Los riesgos reducen aún más el score
-    };
-    
-    // Calcular puntuación ponderada
-    let totalScore = 0;
-    let weightSum = 0;
-    
-    tags.forEach(tag => {
-      const category = tag.category.toLowerCase();
-      const weight = categoryWeights[category] || 1.0;
-      
-      totalScore += (tag.probability * weight);
-      weightSum += weight;
-    });
-    
-    // Normalizar a escala 0-100
-    const normalizedScore = weightSum > 0 ? (totalScore / (weightSum * 100)) * 100 : 50;
-    
-    // Asegurar que esté en el rango 0-100
-    return Math.max(0, Math.min(100, Math.round(normalizedScore)));
+  private extractValue(text: string, key: string): string | undefined {
+    const regex = new RegExp(`${key}:?\\s*([^\\n]+)`, 'i');
+    const match = text.match(regex);
+    return match ? match[1].trim() : undefined;
   }
   
-  /**
-   * Predice la fecha óptima para el próximo seguimiento
-   * @param lead Datos del lead
-   * @param activities Actividades asociadas al lead
-   * @returns Fecha recomendada
-   */
-  public predictNextFollowUpDate(lead: any, activities: any[]): Date {
-    // Lógica simple: si es cliente nuevo o contactado_interesado, seguimiento rápido (2-3 días)
-    // Si es estándar o nuevo, seguimiento normal (5-7 días)
-    // Si es lead perdido, seguimiento a largo plazo (30 días)
+  private parseRelativeDate(dateText: string): Date {
+    const now = new Date();
+    const result = new Date(now);
     
-    const today = new Date();
-    let daysToAdd = 5; // valor por defecto
-    
-    // Determinar días según estado
-    if (lead.status === 'closed-won') {
-      daysToAdd = 2; // Cliente nuevo: seguimiento muy rápido
-    } else if (lead.status === 'meeting') {
-      daysToAdd = 1; // Seguimiento al día siguiente de la reunión
-    } else if (lead.status === 'contacted') {
-      daysToAdd = 3; // Seguimiento estándar para contactados
-    } else if (lead.status === 'closed-lost') {
-      daysToAdd = 30; // Seguimiento a largo plazo para recuperación
-    }
-    
-    // Ajustar según última actividad (si existe)
-    const sortedActivities = activities.sort((a, b) => {
-      const dateA = new Date(a.createdAt || 0);
-      const dateB = new Date(b.createdAt || 0);
-      return dateB.getTime() - dateA.getTime();
-    });
-    
-    if (sortedActivities.length > 0) {
-      const lastActivityDate = new Date(sortedActivities[0].createdAt || today);
-      
-      // Si la última actividad es muy reciente (menos de 1 día), extender el plazo
-      const daysSinceLastActivity = Math.floor(
-        (today.getTime() - lastActivityDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      
-      if (daysSinceLastActivity < 1) {
-        daysToAdd += 1; // Dar un día más si hubo actividad reciente
+    // Buscar patrones como "en X días", "mañana", "próxima semana"
+    if (dateText.match(/mañana/i)) {
+      result.setDate(now.getDate() + 1);
+    } else if (dateText.match(/semana/i)) {
+      result.setDate(now.getDate() + 7);
+    } else if (dateText.match(/mes/i)) {
+      result.setMonth(now.getMonth() + 1);
+    } else {
+      // Buscar un número de días
+      const daysMatch = dateText.match(/(\d+)\s*d[ií]as?/i);
+      if (daysMatch && daysMatch[1]) {
+        const days = parseInt(daysMatch[1], 10);
+        result.setDate(now.getDate() + days);
       }
     }
     
-    // Calcular fecha resultado
-    return addDays(today, daysToAdd);
+    return result;
+  }
+  
+  private mapPriority(priority: string): 'high' | 'medium' | 'low' {
+    if (priority === 'alta' || priority === 'high') return 'high';
+    if (priority === 'media' || priority === 'medium') return 'medium';
+    return 'low';
+  }
+  
+  // Gestionar un lead automáticamente con IA
+  async manageLead(leadId: number): Promise<{
+    success: boolean;
+    automaticTasks: AutoTask[];
+    tagsWithProbability: TagWithProbability[];
+    message: string;
+  }> {
+    try {
+      // 1. Analizar lead para generar etiquetas con probabilidades
+      const analysisResult = await this.analyzeLead(leadId);
+      
+      // 2. Generar tareas automáticas
+      const tasksResult = await this.generateTasks(leadId);
+      
+      return {
+        success: true,
+        automaticTasks: tasksResult.tasks,
+        tagsWithProbability: analysisResult.tags,
+        message: "Lead gestionado automáticamente con éxito"
+      };
+    } catch (error) {
+      console.error("Error en gestión automática de lead:", error);
+      return {
+        success: false,
+        automaticTasks: [],
+        tagsWithProbability: [],
+        message: `Error: ${error instanceof Error ? error.message : "Error desconocido"}`
+      };
+    }
   }
 }
 
-export const taskTagService = TaskTagService.getInstance();
+export default TaskTagService;
