@@ -22,6 +22,19 @@ import { formatDistanceToNow } from "date-fns";
 export default function Messages() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState<number | undefined>(undefined);
+  
+  // Listen for the backToChats event from the WhatsAppInterface component
+  useEffect(() => {
+    const handleBackToChats = () => {
+      setSelectedLeadId(undefined);
+    };
+    
+    document.addEventListener('backToChats', handleBackToChats);
+    
+    return () => {
+      document.removeEventListener('backToChats', handleBackToChats);
+    };
+  }, []);
 
   // Fetch all leads
   const { data: leads, isLoading: leadsLoading } = useQuery<Lead[]>({
@@ -105,9 +118,10 @@ export default function Messages() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-14rem)]">
-        {/* Leads list - WhatsApp style */}
-        <div className="lg:col-span-1 bg-white rounded-lg shadow-md overflow-hidden flex flex-col border border-gray-200">
+      {/* WhatsApp-style layout with 2 columns: chats and messages */}
+      <div className="flex h-[calc(100vh-14rem)] overflow-hidden">
+        {/* Chats column - Hidden on mobile when a chat is selected */}
+        <div className={`${selectedLeadId ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 bg-white border-r border-gray-200 flex-col overflow-hidden`}>
           <div className="bg-[#f0f2f5] p-3 flex items-center">
             <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-2">
               <span className="material-icons text-gray-600">account_circle</span>
@@ -201,8 +215,8 @@ export default function Messages() {
           </ScrollArea>
         </div>
 
-        {/* WhatsApp interface */}
-        <div className="lg:col-span-2 h-full">
+        {/* Messages column - Shown on all devices when a chat is selected */}
+        <div className={`${selectedLeadId ? 'flex' : 'hidden md:flex'} flex-col w-full md:w-2/3 h-full`}>
           <WhatsAppInterface leadId={selectedLeadId} />
         </div>
       </div>

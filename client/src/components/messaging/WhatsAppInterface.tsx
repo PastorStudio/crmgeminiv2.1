@@ -224,6 +224,15 @@ export default function WhatsAppInterface({ leadId }: WhatsAppInterfaceProps) {
     );
   }
   
+  // Back to chat list function for mobile
+  const handleBackToList = () => {
+    if (leadId) {
+      // Create a new Event and dispatch it
+      const event = new CustomEvent('backToChats', { bubbles: true });
+      document.dispatchEvent(event);
+    }
+  };
+
   return (
     <Card className="h-full flex flex-col overflow-hidden">
       {/* Header */}
@@ -231,6 +240,12 @@ export default function WhatsAppInterface({ leadId }: WhatsAppInterfaceProps) {
         <div className="flex-1 flex items-center">
           {lead ? (
             <>
+              <button 
+                onClick={handleBackToList}
+                className="md:hidden w-9 h-9 rounded-full flex items-center justify-center mr-1 hover:bg-white/20"
+              >
+                <span className="material-icons text-white">arrow_back</span>
+              </button>
               <div className="w-10 h-10 bg-white/30 rounded-full flex items-center justify-center mr-3">
                 <span className="material-icons text-white">person</span>
               </div>
