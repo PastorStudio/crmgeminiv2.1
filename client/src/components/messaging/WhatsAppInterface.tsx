@@ -198,7 +198,7 @@ export default function WhatsAppInterface({ leadId }: WhatsAppInterfaceProps) {
         ) : qrCode ? (
           <div className="border-8 border-white bg-white rounded-lg shadow-lg p-4">
             <img 
-              src={`data:image/png;base64,${qrCode.data}`} 
+              src={qrCode.data} 
               alt="WhatsApp QR Code" 
               className="w-64 h-64"
             />
