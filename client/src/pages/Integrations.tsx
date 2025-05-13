@@ -42,7 +42,7 @@ interface ConnectionStatus {
   ready: boolean;
   authenticated?: boolean;
   connectedChats?: number[];
-  pendingMessages: number;
+  pendingMessages?: number;
   qrCode?: string;
 }
 
@@ -240,16 +240,28 @@ export default function Integrations() {
                         <p className="text-gray-400">Generando código QR...</p>
                       </div>
                     ) : whatsappStatus?.qrCode ? (
-                      <div className="border p-4 rounded-md bg-white">
+                      <div className="border p-4 rounded-md bg-white flex flex-col items-center">
                         <img 
                           src={whatsappStatus.qrCode} 
                           alt="Código QR de WhatsApp" 
                           className="h-64 w-64"
                         />
+                        {whatsappStatus?.qrCode?.includes("simulado") && (
+                          <div className="mt-2 px-3 py-1 bg-amber-100 text-amber-800 text-xs rounded-md">
+                            Modo de simulación - Este QR no funciona con WhatsApp real
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="h-64 w-64 bg-gray-100 rounded-md flex items-center justify-center">
                         <p className="text-gray-400">No hay código QR disponible</p>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => restartWhatsapp()}
+                          className="mt-4"
+                        >
+                          Generar código QR
+                        </Button>
                       </div>
                     )}
                   </div>
