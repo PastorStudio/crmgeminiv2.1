@@ -77,7 +77,10 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
   // Consulta para obtener leads (contactos)
   const { data: leads = [], isLoading: isLoadingLeads } = useQuery({
     queryKey: ['/api/leads'],
-    queryFn: () => apiRequest({ url: '/api/leads' }),
+    queryFn: async () => {
+      const response = await apiRequest("GET", '/api/leads');
+      return await response.json();
+    },
   });
 
   // Filtrar leads según término de búsqueda
@@ -99,9 +102,13 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     isLoading: isLoadingMessages 
   } = useQuery({
     queryKey: ['/api/messages', { leadId: selectedLeadId }],
-    queryFn: () => apiRequest({ 
-      url: selectedLeadId ? `/api/messages?leadId=${selectedLeadId}` : '/api/messages/recent' 
-    }),
+    queryFn: async () => {
+      const response = await apiRequest(
+        "GET", 
+        selectedLeadId ? `/api/messages?leadId=${selectedLeadId}` : '/api/messages/recent'
+      );
+      return await response.json();
+    },
     enabled: activeTab === 'chats',
   });
 
@@ -111,7 +118,11 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     isLoading: isLoadingLeadDetails 
   } = useQuery({
     queryKey: ['/api/leads', selectedLeadId],
-    queryFn: () => apiRequest({ url: `/api/leads/${selectedLeadId}` }),
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/leads/${selectedLeadId}`);
+      const data = await response.json();
+      return data;
+    },
     enabled: !!selectedLeadId,
     onSuccess: (data) => {
       setSelectedLeadData(data);
@@ -159,7 +170,10 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     isLoading: isLoadingWhatsappStatus 
   } = useQuery({
     queryKey: ['/api/integrations/whatsapp/status'],
-    queryFn: () => apiRequest({ url: '/api/integrations/whatsapp/status' }),
+    queryFn: async () => {
+      const response = await apiRequest("GET", '/api/integrations/whatsapp/status');
+      return await response.json();
+    },
     refetchInterval: 10000, // Verificar cada 10 segundos
   });
 
@@ -169,7 +183,10 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     isLoading: isLoadingQrCode 
   } = useQuery({
     queryKey: ['/api/integrations/whatsapp/qrcode'],
-    queryFn: () => apiRequest({ url: '/api/integrations/whatsapp/qrcode' }),
+    queryFn: async () => {
+      const response = await apiRequest("GET", '/api/integrations/whatsapp/qrcode');
+      return await response.json();
+    },
     enabled: whatsappStatus?.qrNeeded === true,
     refetchInterval: whatsappStatus?.qrNeeded ? 5000 : false, // Actualizar cada 5 segundos si se necesita QR
   });
