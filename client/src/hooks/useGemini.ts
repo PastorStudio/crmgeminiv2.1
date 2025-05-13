@@ -2,16 +2,6 @@ import { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from './use-toast';
 
-interface GenerateMessageResponse {
-  success: boolean;
-  message: string;
-}
-
-interface AnalyzeLeadResponse {
-  success: boolean;
-  analysis: string;
-}
-
 export function useGemini() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -26,7 +16,7 @@ export function useGemini() {
     setIsLoading(true);
     
     try {
-      const response = await apiRequest<GenerateMessageResponse>({
+      const response = await apiRequest({
         url: "/api/gemini/generate-message",
         method: "POST",
         data: {
@@ -39,7 +29,7 @@ export function useGemini() {
         throw new Error("Error generando mensaje");
       }
       
-      return response.message;
+      return response.message || "";
     } catch (error) {
       console.error("Error en useGemini.generateMessage:", error);
       toast({
@@ -62,7 +52,7 @@ export function useGemini() {
     setIsLoading(true);
     
     try {
-      const response = await apiRequest<AnalyzeLeadResponse>({
+      const response = await apiRequest({
         url: "/api/gemini/analyze-lead",
         method: "POST",
         data: { leadId }
@@ -72,7 +62,7 @@ export function useGemini() {
         throw new Error("Error analizando lead");
       }
       
-      return response.analysis;
+      return response.analysis || "";
     } catch (error) {
       console.error("Error en useGemini.analyzeLead:", error);
       toast({
