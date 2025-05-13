@@ -57,6 +57,10 @@ export default function Integrations() {
     error: whatsappStatusError
   } = useQuery<ConnectionStatus>({
     queryKey: ["/api/integrations/whatsapp/status", lastRefresh],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/integrations/whatsapp/status");
+      return await response.json();
+    },
     refetchInterval: 10000, // Refrescar cada 10 segundos
   });
 
