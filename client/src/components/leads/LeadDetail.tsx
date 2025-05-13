@@ -35,7 +35,8 @@ import {
   Briefcase,
   Clock,
   Calendar,
-  MessageSquare
+  MessageSquare,
+  BrainCircuit
 } from 'lucide-react';
 
 interface LeadDetailProps {
@@ -348,7 +349,7 @@ export function LeadDetail({ leadId, open, onClose }: LeadDetailProps) {
               
               {activity.aiGenerated && (
                 <Badge variant="secondary" className="mt-2">
-                  <BrainChart3 className="h-3 w-3 mr-1" />
+                  <BrainCircuit className="h-3 w-3 mr-1" />
                   Generada por IA
                 </Badge>
               )}
@@ -403,7 +404,7 @@ export function LeadDetail({ leadId, open, onClose }: LeadDetailProps) {
               
               {message.aiGenerated && (
                 <Badge variant="secondary" className="mt-2">
-                  <BrainChart3 className="h-3 w-3 mr-1" />
+                  <BrainCircuit className="h-3 w-3 mr-1" />
                   Generado por IA
                 </Badge>
               )}
