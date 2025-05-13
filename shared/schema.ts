@@ -32,6 +32,9 @@ export const leads = pgTable("leads", {
   createdAt: timestamp("created_at").defaultNow(),
   enrichmentData: json("enrichment_data"), // AI-enriched data about the lead
   matchPercentage: integer("match_percentage"), // AI-determined match to ideal customer
+  // Campos para integración con plataformas de mensajería
+  whatsappPhone: text("whatsapp_phone"), // Número de WhatsApp normalizado
+  telegramChatId: text("telegram_chat_id"), // ID de chat de Telegram
 });
 
 // Activities model - represents meetings, calls, emails, tasks
