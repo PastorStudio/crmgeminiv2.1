@@ -229,16 +229,22 @@ export default function Integrations() {
               ) : !whatsappStatus?.authenticated ? (
                 <div className="mb-6">
                   <h3 className="text-lg font-medium mb-2">Escanear código QR</h3>
-                  {whatsappStatus?.qrCode?.includes("simulado") && (
-                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                      <h4 className="text-sm font-medium text-amber-800">Modo de simulación activo</h4>
-                      <p className="text-xs text-amber-700 mt-1">
-                        Este sistema está ejecutándose en modo de simulación. El código QR generado es simulado y no
-                        funcionará con WhatsApp real. Para utilizar la integración completa con WhatsApp, necesitas
-                        ejecutar este servicio en un entorno con soporte completo para navegadores.
-                      </p>
-                    </div>
-                  )}
+                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                    <h4 className="text-sm font-medium text-amber-800">Modo de simulación activo</h4>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Este sistema está ejecutándose en modo de simulación. El código QR generado es simulado y NO
+                      funcionará con WhatsApp real. 
+                    </p>
+                    <p className="text-xs text-amber-700 mt-2">
+                      <strong>Para obtener un código QR real:</strong> Necesitas ejecutar este sistema en un entorno que tenga:
+                    </p>
+                    <ul className="text-xs text-amber-700 mt-1 list-disc list-inside">
+                      <li>Node.js 14 o superior</li>
+                      <li>Chromium o Google Chrome instalado</li>
+                      <li>Puppeteer con todas sus dependencias</li>
+                      <li>Ejecutar fuera de un entorno sandbox como Replit</li>
+                    </ul>
+                  </div>
                   <p className="text-gray-600 text-sm mb-4">
                     Escanee este código QR con su teléfono para iniciar sesión en WhatsApp Web.
                     La sesión se guardará localmente para futuras conexiones.
@@ -251,16 +257,21 @@ export default function Integrations() {
                       </div>
                     ) : whatsappStatus?.qrCode ? (
                       <div className="border p-4 rounded-md bg-white flex flex-col items-center">
-                        <img 
-                          src={whatsappStatus.qrCode} 
-                          alt="Código QR de WhatsApp" 
-                          className="h-64 w-64"
-                        />
-                        {whatsappStatus?.qrCode?.includes("simulado") && (
-                          <div className="mt-2 px-3 py-1 bg-amber-100 text-amber-800 text-xs rounded-md">
-                            Modo de simulación - Este QR no funciona con WhatsApp real
+                        <div className="relative">
+                          <img 
+                            src={whatsappStatus.qrCode} 
+                            alt="Código QR de WhatsApp" 
+                            className="h-64 w-64"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="px-3 py-2 bg-amber-500 bg-opacity-80 text-white font-medium rounded-md transform -rotate-12">
+                              SIMULACIÓN
+                            </div>
                           </div>
-                        )}
+                        </div>
+                        <div className="mt-2 px-3 py-1 bg-amber-100 text-amber-800 text-xs rounded-md">
+                          Este código QR no funciona con WhatsApp real
+                        </div>
                       </div>
                     ) : (
                       <div className="h-64 w-64 bg-gray-100 rounded-md flex items-center justify-center">
