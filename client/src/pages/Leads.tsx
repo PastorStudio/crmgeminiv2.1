@@ -181,13 +181,13 @@ export default function Leads() {
             <div className="flex items-center gap-3">
               <Select 
                 value={selectedStatus || ""}
-                onValueChange={(value) => setSelectedStatus(value || null)}
+                onValueChange={(value) => setSelectedStatus(value === "all" ? null : value)}
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="new">New</SelectItem>
                   <SelectItem value="contacted">Contacted</SelectItem>
                   <SelectItem value="meeting">Meeting</SelectItem>
