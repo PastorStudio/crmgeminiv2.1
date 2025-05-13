@@ -87,8 +87,10 @@ export class TelegramService extends EventEmitter {
         
         // Comando de inicio
         this.bot.start((ctx) => {
+            if (!ctx.chat || !ctx.from) return;
+            
             const chatId = ctx.chat.id;
-            const username = ctx.chat.username || ctx.from.username;
+            const username = ctx.chat?.username || ctx.from?.username;
             
             // Registramos el chat
             this.connectedChats.set(chatId, { 
@@ -173,7 +175,7 @@ Estado de la conexión:
         };
         
         // Generar imagen QR para el código
-        QRCode.toDataURL(`geminicrm://telegram/auth/${code}`, (err, url) => {
+        QRCode.toDataURL(`geminicrm://telegram/auth/${code}`, (err: any, url: string) => {
             if (err) {
                 console.error('Error al generar QR para código de autenticación:', err);
                 return;
@@ -196,7 +198,7 @@ Estado de la conexión:
      */
     private async processIncomingMessage(ctx: Context) {
         try {
-            if (!ctx.message || !('text' in ctx.message)) return;
+            if (!ctx.message || !('text' in ctx.message) || !ctx.chat || !ctx.from) return;
             
             const chatId = ctx.chat.id;
             const messageText = ctx.message.text;
@@ -220,7 +222,6 @@ Estado de la conexión:
                     status: 'new',
                     assignedTo: 1, // ID del usuario por defecto
                     notes: 'Lead generado automáticamente desde Telegram',
-                    // @ts-ignore - Añadimos este campo aunque no esté en el esquema original
                     telegramChatId: chatId.toString()
                 });
             }
@@ -309,11 +310,11 @@ Estado de la conexión:
                 timestamp: new Date()
             };
             
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error al enviar mensaje de Telegram:', error);
             return {
                 success: false,
-                error: error.message
+                error: error.message || 'Error desconocido'
             };
         }
     }
@@ -361,11 +362,11 @@ Estado de la conexión:
             this.initialize();
             
             return { success: true };
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error al configurar token de Telegram:', error);
             return { 
                 success: false,
-                error: error.message
+                error: error.message || 'Error desconocido'
             };
         }
     }
@@ -400,7 +401,7 @@ Estado de la conexión:
         const expiresAt = new Date();
         expiresAt.setHours(expiresAt.getHours() + 24);
         
-        QRCode.toDataURL(`geminicrm://telegram/auth/${code}`, (err, url) => {
+        QRCode.toDataURL(`geminicrm://telegram/auth/${code}`, (err: any, url: string) => {
             if (!err && url) {
                 this.authCode = {
                     code,
