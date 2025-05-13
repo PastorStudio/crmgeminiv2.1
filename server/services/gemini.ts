@@ -1,9 +1,9 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { Lead, User, Message, Activity } from '@shared/schema';
+import { apiKeyManager } from './apiKeyManager';
 
-// Set up the Gemini API client
-const apiKey = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(apiKey);
+// Configurar el cliente de la API de Gemini usando nuestro gestor de claves
+let genAI: GoogleGenerativeAI;
 
 interface ChatHistory {
   role: 'user' | 'assistant';
@@ -21,6 +21,21 @@ export class GeminiService {
    * @param maxOutputTokens Maximum tokens to generate in the response
    */
   async getModel(temperature = 0.7, maxOutputTokens = 1024) {
+    // Obtenemos la clave API desde nuestro gestor
+    const apiKey = apiKeyManager.getGeminiKey();
+    
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is not set');
+    }
+    
+    // Inicializar o actualizar el cliente con la clave más reciente
+    genAI = new GoogleGenerativeAI(apiKey);
+    
+    // Mostrar advertencia si se está usando una clave temporal
+    if (apiKeyManager.isUsingTemporaryKey()) {
+      console.warn('⚠️ Usando una clave API temporal para Gemini. Esto es solo para desarrollo.');
+    }
+    
     const model = genAI.getGenerativeModel({
       model: 'gemini-pro',
       generationConfig: {
@@ -57,10 +72,6 @@ export class GeminiService {
    * @param lead The lead to analyze
    */
   async analyzeLead(lead: Lead) {
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not set');
-    }
-
     try {
       const model = await this.getModel(0.2); // Low temperature for more factual analysis
       
@@ -130,10 +141,6 @@ Provide your response in valid JSON format with the following structure:
    * @param context Additional context for the message
    */
   async generateMessage(lead: Lead, messageType: string, context?: string) {
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not set');
-    }
-
     try {
       const model = await this.getModel(0.7); // Medium temperature for balanced creativity
       
@@ -168,10 +175,6 @@ Generate a professional and personalized message appropriate for a ${messageType
    * @param history Previous chat history
    */
   async chat(message: string, history: ChatHistory[] = []) {
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not set');
-    }
-
     try {
       const model = await this.getModel(0.7);
       const chat = model.startChat({
@@ -220,10 +223,6 @@ Always be professional, concise, and practical in your responses.
    * @param lead The lead to analyze
    */
   async suggestNextAction(lead: Lead) {
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not set');
-    }
-
     try {
       const model = await this.getModel(0.4);
       
