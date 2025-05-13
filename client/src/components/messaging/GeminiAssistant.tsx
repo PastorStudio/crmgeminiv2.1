@@ -30,7 +30,7 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
     { id: 'custom', label: 'Personalizado' }
   ];
 
-  const { generateMessage, analyzeLead, chat, suggestAction, isLoading: isGeminiLoading } = useGemini();
+  const { generateMessage, analyzeLead, chat, suggestAction, updateLeadFromConversation, isLoading: isGeminiLoading } = useGemini();
   
   const handleGenerateMessage = async () => {
     if (!leadId) {
@@ -116,6 +116,12 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
       
       // Actualizar el historial con la respuesta
       setChatHistory(prev => [...prev, response]);
+      
+      // Verificar si el mensaje del usuario podría contener información para actualizar el lead
+      if (leadId && shouldAnalyzeForLeadUpdate(userMessage.content)) {
+        // Analizamos el mensaje para extraer datos relevantes
+        await analyzeConversationAndUpdateLead(userMessage.content, leadId);
+      }
     } catch (error) {
       console.error("Error en chat con Gemini:", error);
       toast({
@@ -123,6 +129,80 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
         description: "No se pudo procesar tu mensaje. Intenta de nuevo más tarde.",
         variant: "destructive"
       });
+    }
+  };
+  
+  // Función para determinar si un mensaje debe ser analizado para actualización de lead
+  const shouldAnalyzeForLeadUpdate = (message: string): boolean => {
+    // Palabras clave que podrían indicar información actualizable del lead
+    const keywords = [
+      'email', 'correo', 'teléfono', 'celular', 'empresa', 'compañía', 
+      'cambió', 'actualizar', 'nuevo', 'nueva', 'diferente', 'modificar',
+      'contacto', 'dirección', 'trabajo', 'posición', 'cargo', 'rol'
+    ];
+    
+    const lowercaseMessage = message.toLowerCase();
+    return keywords.some(keyword => lowercaseMessage.includes(keyword));
+  };
+  
+  // Función para analizar la conversación y actualizar el lead
+  const analyzeConversationAndUpdateLead = async (message: string, leadId: number) => {
+    if (!leadId) return;
+    
+    try {
+      // Extraer información relevante del mensaje
+      // Creamos regex para detectar patrones comunes
+      const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi;
+      const phoneRegex = /(\+?[\d\s]{10,15})/g;
+      const companyRegex = /(empresa|compañía|trabajo en|trabajando para|trabaja para|trabajando en)[\s:]?([A-Za-z0-9\s]+)/i;
+      const positionRegex = /(cargo|puesto|posición|rol|trabajo como)[\s:]?([A-Za-z0-9\s]+)/i;
+      
+      // Intentamos extraer la información
+      const emails = message.match(emailRegex);
+      const phones = message.match(phoneRegex);
+      const companyMatch = message.match(companyRegex);
+      const positionMatch = message.match(positionRegex);
+      
+      // Preparamos objeto con actualizaciones potenciales
+      const updates: Record<string, string> = {};
+      
+      if (emails && emails.length > 0) {
+        updates.email = emails[0];
+      }
+      
+      if (phones && phones.length > 0) {
+        updates.phone = phones[0].replace(/\s/g, ''); // Eliminar espacios
+      }
+      
+      if (companyMatch && companyMatch[2]) {
+        updates.company = companyMatch[2].trim();
+      }
+      
+      if (positionMatch && positionMatch[2]) {
+        updates.position = positionMatch[2].trim();
+      }
+      
+      // Si encontramos algo para actualizar, procedemos
+      if (Object.keys(updates).length > 0) {
+        // Mostrar confirmación al usuario
+        const detectedChanges = Object.entries(updates)
+          .map(([field, value]) => `${field}: ${value}`)
+          .join(', ');
+          
+        // Actualizar el lead con la nueva información
+        await updateLeadFromConversation(leadId, updates);
+        
+        // Añadir mensaje del sistema para informar al usuario
+        const systemMessage: ChatMessage = {
+          role: 'assistant',
+          content: `He detectado nueva información para este lead: ${detectedChanges}. La información ha sido actualizada.`
+        };
+        
+        // Actualizar el historial con el mensaje del sistema
+        setChatHistory(prev => [...prev, systemMessage]);
+      }
+    } catch (error) {
+      console.error("Error al analizar y actualizar lead:", error);
     }
   };
 
@@ -273,6 +353,24 @@ ${action.script ? `\nScript sugerido:\n${action.script}` : ''}
           </TabsContent>
           
           <TabsContent value="chat" className="mt-4">
+            {leadId ? (
+              <div className="text-xs bg-blue-50 p-2 rounded-md mb-3 border border-blue-200">
+                <p className="font-medium text-blue-800">Actualización inteligente:</p>
+                <p className="text-blue-700">
+                  Menciona detalles como correos electrónicos, teléfonos o empresa durante la conversación 
+                  y actualizaré automáticamente la información del lead.
+                </p>
+              </div>
+            ) : (
+              <div className="text-xs bg-amber-50 p-2 rounded-md mb-3 border border-amber-200">
+                <p className="font-medium text-amber-800">Selecciona un lead:</p>
+                <p className="text-amber-700">
+                  Para habilitar la actualización inteligente y análisis personalizado, 
+                  selecciona un lead primero.
+                </p>
+              </div>
+            )}
+            
             <div className="border rounded-md p-3 bg-gray-50 max-h-[300px] overflow-y-auto mb-3">
               {chatHistory.length > 0 ? (
                 <div className="space-y-3">
@@ -305,7 +403,9 @@ ${action.script ? `\nScript sugerido:\n${action.script}` : ''}
               <Input 
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Escribe tu mensaje..."
+                placeholder={leadId 
+                  ? "Escribe tu mensaje (puedo actualizar info del lead automáticamente)..." 
+                  : "Escribe tu mensaje..."}
                 disabled={isGeminiLoading}
                 className="flex-1"
               />
