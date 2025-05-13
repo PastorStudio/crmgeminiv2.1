@@ -1,48 +1,52 @@
-import { useState } from "react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Message } from "@shared/schema";
+import { useState } from 'react';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from './use-toast';
+
+interface GenerateMessageResponse {
+  success: boolean;
+  message: string;
+}
+
+interface AnalyzeLeadResponse {
+  success: boolean;
+  analysis: string;
+}
 
 export function useGemini() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { toast } = useToast();
 
   /**
-   * Analyze a lead with Gemini AI to enrich data and generate insights
+   * Genera un mensaje para un lead específico
+   * @param leadId ID del lead para el cual generar el mensaje
+   * @param messageType Tipo de mensaje a generar (follow-up, welcome, proposal, etc.)
+   * @returns Texto del mensaje generado
    */
-  const analyzeLeadWithGemini = async (leadId: number) => {
+  const generateMessage = async (leadId: number, messageType: string): Promise<string> => {
+    setIsLoading(true);
+    
     try {
-      setIsAnalyzing(true);
-      const response = await apiRequest("POST", "/api/gemini/analyze-lead", { leadId });
-      const data = await response.json();
-      
-      // Invalidate lead queries to refresh with the new AI-enriched data
-      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/leads/${leadId}`] });
-      
-      return data;
-    } catch (error) {
-      console.error("Error analyzing lead with Gemini:", error);
-      throw error;
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  /**
-   * Generate a message template based on lead information
-   */
-  const generateMessage = async (leadId: number, messageType: string, context?: string) => {
-    try {
-      setIsLoading(true);
-      const response = await apiRequest("POST", "/api/gemini/generate-message", { 
-        leadId, 
-        messageType,
-        context 
+      const response = await apiRequest<GenerateMessageResponse>({
+        url: "/api/gemini/generate-message",
+        method: "POST",
+        data: {
+          leadId,
+          messageType
+        }
       });
-      const data = await response.json();
-      return data.content;
+      
+      if (!response.success) {
+        throw new Error("Error generando mensaje");
+      }
+      
+      return response.message;
     } catch (error) {
-      console.error("Error generating message with Gemini:", error);
+      console.error("Error en useGemini.generateMessage:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo generar el mensaje. La API de Gemini puede estar configurada incorrectamente.",
+        variant: "destructive"
+      });
       throw error;
     } finally {
       setIsLoading(false);
@@ -50,18 +54,61 @@ export function useGemini() {
   };
 
   /**
-   * Send a message to the Gemini AI assistant and get a response
+   * Analiza un lead utilizando la API de Gemini
+   * @param leadId ID del lead a analizar
+   * @returns Análisis detallado del lead
    */
-  const sendChatMessage = async (message: string, history: Message[]) => {
+  const analyzeLead = async (leadId: number): Promise<string> => {
+    setIsLoading(true);
+    
     try {
-      setIsLoading(true);
-      const response = await apiRequest("POST", "/api/gemini/chat", { 
-        message,
-        history
+      const response = await apiRequest<AnalyzeLeadResponse>({
+        url: "/api/gemini/analyze-lead",
+        method: "POST",
+        data: { leadId }
       });
-      return await response.json();
+      
+      if (!response.success) {
+        throw new Error("Error analizando lead");
+      }
+      
+      return response.analysis;
     } catch (error) {
-      console.error("Error chatting with Gemini:", error);
+      console.error("Error en useGemini.analyzeLead:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo analizar el lead. La API de Gemini puede estar configurada incorrectamente.",
+        variant: "destructive"
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Obtiene una sugerencia de acción para un lead específico
+   * @param leadId ID del lead para obtener sugerencias
+   * @returns Objeto con la acción sugerida
+   */
+  const suggestAction = async (leadId: number) => {
+    setIsLoading(true);
+    
+    try {
+      const response = await apiRequest({
+        url: "/api/gemini/suggest-action",
+        method: "POST",
+        data: { leadId }
+      });
+      
+      return response;
+    } catch (error) {
+      console.error("Error en useGemini.suggestAction:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo obtener sugerencias para el lead.",
+        variant: "destructive"
+      });
       throw error;
     } finally {
       setIsLoading(false);
@@ -69,10 +116,9 @@ export function useGemini() {
   };
 
   return {
-    analyzeLeadWithGemini,
     generateMessage,
-    sendChatMessage,
-    isLoading,
-    isAnalyzing
+    analyzeLead,
+    suggestAction,
+    isLoading
   };
 }

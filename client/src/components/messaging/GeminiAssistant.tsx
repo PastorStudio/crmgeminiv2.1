@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from '@/lib/queryClient';
-import { MessagingIcon, SendIcon, BrainIcon, RefreshIcon, SparklesIcon } from 'lucide-react';
+import { useGemini } from "@/hooks/useGemini";
+import { MessageSquare, Send, Brain, RotateCw, Sparkles } from 'lucide-react';
 
 interface GeminiAssistantProps {
   leadId?: number;
@@ -15,11 +14,15 @@ interface GeminiAssistantProps {
 }
 
 export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantProps) {
-  const [loading, setLoading] = useState(false);
   const [selectedAction, setSelectedAction] = useState<string>('follow-up');
   const [generatedMessage, setGeneratedMessage] = useState<string>('');
   const [leadAnalysis, setLeadAnalysis] = useState<string>('');
   const { toast } = useToast();
+
+  // Custom spinner component
+  const Spinner = ({ className }: { className?: string }) => (
+    <div className={`animate-spin rounded-full border-2 border-gray-200 border-t-teal-600 w-4 h-4 ${className}`}></div>
+  );
 
   const messageTypes = [
     { id: 'follow-up', label: 'Seguimiento' },
@@ -29,6 +32,8 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
     { id: 'custom', label: 'Personalizado' }
   ];
 
+  const { generateMessage, analyzeLead, isLoading: isGeminiLoading } = useGemini();
+  
   const handleGenerateMessage = async () => {
     if (!leadId) {
       toast({
@@ -39,26 +44,13 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
       return;
     }
 
-    setLoading(true);
     try {
-      const response = await apiRequest<{success: boolean, message: string}>({
-        url: "/api/gemini/generate-message",
-        method: "POST",
-        data: {
-          leadId,
-          messageType: selectedAction
-        }
+      const message = await generateMessage(leadId, selectedAction);
+      setGeneratedMessage(message);
+      toast({
+        title: "Mensaje generado",
+        description: "Se ha generado un mensaje con IA",
       });
-
-      if (response.success) {
-        setGeneratedMessage(response.message);
-        toast({
-          title: "Mensaje generado",
-          description: "Se ha generado un mensaje con IA",
-        });
-      } else {
-        throw new Error("Error al generar mensaje");
-      }
     } catch (error) {
       console.error("Error generando mensaje:", error);
       toast({
@@ -66,8 +58,6 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
         description: "No se pudo generar el mensaje. Intenta de nuevo más tarde.",
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -81,23 +71,13 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
       return;
     }
 
-    setLoading(true);
     try {
-      const response = await apiRequest<{success: boolean, analysis: string}>({
-        url: "/api/gemini/analyze-lead",
-        method: "POST",
-        data: { leadId }
+      const analysis = await analyzeLead(leadId);
+      setLeadAnalysis(analysis);
+      toast({
+        title: "Análisis completado",
+        description: "Se ha realizado el análisis del lead con IA",
       });
-
-      if (response.success) {
-        setLeadAnalysis(response.analysis);
-        toast({
-          title: "Análisis completado",
-          description: "Se ha realizado el análisis del lead con IA",
-        });
-      } else {
-        throw new Error("Error al analizar lead");
-      }
     } catch (error) {
       console.error("Error analizando lead:", error);
       toast({
@@ -105,8 +85,6 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
         description: "No se pudo analizar el lead. Intenta de nuevo más tarde.",
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -124,7 +102,7 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
     <Card className="w-full border-teal-500/20 shadow-md">
       <CardHeader className="bg-gradient-to-r from-teal-500/10 to-transparent">
         <CardTitle className="flex items-center gap-2 text-teal-700">
-          <BrainIcon size={20} />
+          <Brain size={20} />
           Asistente Gemini
         </CardTitle>
         <CardDescription>
@@ -135,11 +113,11 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
         <Tabs defaultValue="generate">
           <TabsList className="w-full">
             <TabsTrigger value="generate" className="flex-1">
-              <MessagingIcon size={16} className="mr-2" />
+              <MessageSquare size={16} className="mr-2" />
               Generar Mensaje
             </TabsTrigger>
             <TabsTrigger value="analyze" className="flex-1">
-              <SparklesIcon size={16} className="mr-2" />
+              <Sparkles size={16} className="mr-2" />
               Analizar Lead
             </TabsTrigger>
           </TabsList>
@@ -161,10 +139,10 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
             <div className="mt-4">
               <Button 
                 onClick={handleGenerateMessage} 
-                disabled={loading || !leadId}
+                disabled={isGeminiLoading || !leadId}
                 className="w-full"
               >
-                {loading ? <Spinner size="sm" className="mr-2" /> : <RefreshIcon size={16} className="mr-2" />}
+                {isGeminiLoading ? <Spinner className="mr-2" /> : <RotateCw size={16} className="mr-2" />}
                 Generar mensaje {selectedAction}
               </Button>
             </div>
@@ -181,7 +159,7 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
                   className="w-full mt-2"
                   variant="outline"
                 >
-                  <SendIcon size={16} className="mr-2" />
+                  <Send size={16} className="mr-2" />
                   Usar este mensaje
                 </Button>
               </div>
@@ -191,10 +169,10 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
           <TabsContent value="analyze" className="mt-4">
             <Button 
               onClick={handleAnalyzeLead} 
-              disabled={loading || !leadId}
+              disabled={isGeminiLoading || !leadId}
               className="w-full mb-4"
             >
-              {loading ? <Spinner size="sm" className="mr-2" /> : <SparklesIcon size={16} className="mr-2" />}
+              {isGeminiLoading ? <Spinner className="mr-2" /> : <Sparkles size={16} className="mr-2" />}
               Analizar lead con IA
             </Button>
 
