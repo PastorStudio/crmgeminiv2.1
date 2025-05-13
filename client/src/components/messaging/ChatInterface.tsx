@@ -45,8 +45,8 @@ export default function ChatInterface({ leadId }: ChatInterfaceProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
   
-  // Send message mutation
-  const { mutate: sendMessage, isPending: isSending } = useMutation({
+  // Mutación para enviar mensaje a través del sistema de mensajería interno
+  const { mutate: sendInternalMessage, isPending: isSendingInternal } = useMutation({
     mutationFn: async (content: string) => {
       if (!leadId) throw new Error("No lead selected");
       
@@ -68,7 +68,7 @@ export default function ChatInterface({ leadId }: ChatInterfaceProps) {
         description: "Your message has been sent successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: `Failed to send message: ${error.message}`,
@@ -77,10 +77,92 @@ export default function ChatInterface({ leadId }: ChatInterfaceProps) {
     },
   });
   
-  // Handle sending a message
+  // Mutación para enviar mensaje por WhatsApp
+  const { mutate: sendWhatsAppMessage, isPending: isSendingWhatsApp } = useMutation({
+    mutationFn: async (content: string) => {
+      if (!leadId || !lead) throw new Error("No lead selected");
+      
+      // Verificar que el lead tenga un número de teléfono para WhatsApp
+      const phone = lead.whatsappPhone || lead.phone;
+      if (!phone) throw new Error("Lead doesn't have a phone number for WhatsApp");
+      
+      const messageData = {
+        phone,
+        message: content,
+        leadId
+      };
+      
+      return apiRequest("POST", "/api/integrations/whatsapp/send", messageData);
+    },
+    onSuccess: () => {
+      setInputValue("");
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      toast({
+        title: "WhatsApp message sent",
+        description: "Your message has been sent via WhatsApp",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: `Failed to send WhatsApp message: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Mutación para enviar mensaje por Telegram
+  const { mutate: sendTelegramMessage, isPending: isSendingTelegram } = useMutation({
+    mutationFn: async (content: string) => {
+      if (!leadId || !lead) throw new Error("No lead selected");
+      
+      // Verificar que el lead tenga un chat ID de Telegram
+      if (!lead.telegramChatId) throw new Error("Lead is not connected to Telegram");
+      
+      const messageData = {
+        chatId: lead.telegramChatId,
+        message: content,
+        leadId
+      };
+      
+      return apiRequest("POST", "/api/integrations/telegram/send", messageData);
+    },
+    onSuccess: () => {
+      setInputValue("");
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      toast({
+        title: "Telegram message sent",
+        description: "Your message has been sent via Telegram",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: `Failed to send Telegram message: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Check if sending is in progress for any channel
+  const isSending = isSendingInternal || isSendingWhatsApp || isSendingTelegram;
+  
+  // Handle sending a message based on selected channel
   const handleSendMessage = () => {
-    if (!inputValue.trim() || isSending) return;
-    sendMessage(inputValue);
+    const content = inputValue.trim();
+    if (!content || isSending) return;
+    
+    switch (selectedChannel) {
+      case 'whatsapp':
+        sendWhatsAppMessage(content);
+        break;
+      case 'telegram':
+        sendTelegramMessage(content);
+        break;
+      default:
+        sendInternalMessage(content);
+        break;
+    }
   };
   
   // Handle pressing Enter in the input field
@@ -97,7 +179,7 @@ export default function ChatInterface({ leadId }: ChatInterfaceProps) {
     try {
       const generatedContent = await generateMessage(leadId, type);
       setInputValue(generatedContent);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
         description: "Failed to generate message",
@@ -110,12 +192,46 @@ export default function ChatInterface({ leadId }: ChatInterfaceProps) {
   const formatMessageTime = (timestamp?: Date | string) => {
     if (!timestamp) return "";
     
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    });
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    } catch (error) {
+      return "";
+    }
+  };
+  
+  // Mostrar instrucciones específicas por canal
+  const getChannelInstructions = () => {
+    if (!lead) return null;
+    
+    switch (selectedChannel) {
+      case 'whatsapp':
+        if (!lead.whatsappPhone && !lead.phone) {
+          return (
+            <div className="p-3 mb-2 bg-yellow-50 border-l-4 border-yellow-500 text-sm text-yellow-700">
+              <p className="font-medium">No phone number available</p>
+              <p>Add a WhatsApp phone number to the lead profile to enable messaging.</p>
+            </div>
+          );
+        }
+        break;
+      case 'telegram':
+        if (!lead.telegramChatId) {
+          return (
+            <div className="p-3 mb-2 bg-yellow-50 border-l-4 border-yellow-500 text-sm text-yellow-700">
+              <p className="font-medium">No Telegram connection</p>
+              <p>This lead is not connected to your Telegram bot. They need to scan your bot QR code first.</p>
+            </div>
+          );
+        }
+        break;
+    }
+    
+    return null;
   };
   
   return (
@@ -147,6 +263,10 @@ export default function ChatInterface({ leadId }: ChatInterfaceProps) {
               <span className="material-icons text-sm mr-1">whatsapp</span>
               WhatsApp
             </TabsTrigger>
+            <TabsTrigger value="telegram" className="flex items-center">
+              <span className="material-icons text-sm mr-1">send</span>
+              Telegram
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -172,25 +292,27 @@ export default function ChatInterface({ leadId }: ChatInterfaceProps) {
           </div>
         ) : messages && messages.length > 0 ? (
           <div className="space-y-4">
-            {messages.map((message) => (
-              <div 
-                key={message.id} 
-                className={`flex ${message.direction === "outgoing" ? "justify-end" : "justify-start"}`}
-              >
+            {messages
+              .filter(msg => !selectedChannel || msg.channel === selectedChannel)
+              .map((message) => (
                 <div 
-                  className={`py-2 px-4 rounded-lg max-w-xs ${
-                    message.direction === "outgoing" 
-                      ? "bg-primary-100" 
-                      : "bg-gray-100"
-                  }`}
+                  key={message.id} 
+                  className={`flex ${message.direction === "outgoing" ? "justify-end" : "justify-start"}`}
                 >
-                  <p className="text-sm text-gray-800">{message.content}</p>
-                  <p className="text-xs text-gray-500 text-right mt-1">
-                    {formatMessageTime(message.sentAt)}
-                  </p>
+                  <div 
+                    className={`py-2 px-4 rounded-lg max-w-xs ${
+                      message.direction === "outgoing" 
+                        ? "bg-primary-100" 
+                        : "bg-gray-100"
+                    }`}
+                  >
+                    <p className="text-sm text-gray-800">{message.content}</p>
+                    <p className="text-xs text-gray-500 text-right mt-1">
+                      {message.sentAt ? formatMessageTime(message.sentAt) : ''}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
             <div ref={messagesEndRef} />
           </div>
         ) : (
@@ -204,6 +326,7 @@ export default function ChatInterface({ leadId }: ChatInterfaceProps) {
         <>
           <Separator />
           <div className="p-4">
+            {getChannelInstructions()}
             <div className="mb-2 flex flex-wrap -mx-1">
               <div className="px-1 py-1">
                 <Button 
