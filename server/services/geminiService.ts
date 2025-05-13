@@ -1,372 +1,547 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { apiKeyManager } from './apiKeyManager';
-import { Lead, Message } from '@shared/schema';
-import { storage } from '../storage';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { storage } from "../storage";
+import { apiKeyManager } from "./apiKeyManager";
 
-interface GeminiConfig {
-  modelName: string;
-  apiKey: string;
-  maxOutputTokens?: number;
-  temperature?: number;
-}
-
-// Clase principal para interactuar con la API de Gemini
+/**
+ * Servicio para manejar interacciones con la API de Google Gemini
+ */
 export class GeminiService {
+  private static instance: GeminiService;
   private genAI: GoogleGenerativeAI | null = null;
   private model: any = null;
-  private config: GeminiConfig;
   private simulationMode: boolean = false;
-
-  constructor() {
-    // Configuración por defecto
-    this.config = {
-      modelName: 'gemini-pro',
-      apiKey: '',
-      maxOutputTokens: 1024,
-      temperature: 0.7
-    };
-    
-    // Inicialización
+  
+  private constructor() {
     this.initialize();
   }
-
-  // Inicializa el servicio con la API key disponible
-  async initialize(): Promise<void> {
+  
+  /**
+   * Devuelve la instancia única del servicio
+   */
+  public static getInstance(): GeminiService {
+    if (!GeminiService.instance) {
+      GeminiService.instance = new GeminiService();
+    }
+    return GeminiService.instance;
+  }
+  
+  /**
+   * Inicializa el servicio con la clave API de Gemini
+   */
+  private initialize(): void {
     try {
-      // Obtener la API key de la configuración
-      const apiKey = process.env.GEMINI_API_KEY || apiKeyManager.getGeminiKey();
+      // Intentar obtener la clave API
+      const apiKey = apiKeyManager.getGeminiKey() || process.env.GEMINI_API_KEY;
       
       if (!apiKey) {
-        console.warn("No se encontró una API key para Gemini. Usando modo de simulación.");
+        console.warn("GeminiService: No API key available, using simulation mode");
         this.simulationMode = true;
         return;
       }
       
-      // Configurar el cliente
-      this.config.apiKey = apiKey;
-      this.genAI = new GoogleGenerativeAI(this.config.apiKey);
-      this.model = this.genAI.getGenerativeModel({
-        model: this.config.modelName,
-        generationConfig: {
-          maxOutputTokens: this.config.maxOutputTokens,
-          temperature: this.config.temperature
-        }
-      });
-      
-      console.log("Servicio Gemini inicializado correctamente.");
+      // Inicializar la API de Gemini
+      this.genAI = new GoogleGenerativeAI(apiKey);
+      this.model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
       this.simulationMode = false;
+      
+      console.log("GeminiService initialized successfully");
     } catch (error) {
-      console.error("Error al inicializar el servicio Gemini:", error);
+      console.error("Error initializing GeminiService:", error);
       this.simulationMode = true;
     }
   }
-
-  // Verifica si el servicio está disponible
-  isAvailable(): boolean {
-    return this.genAI !== null && this.model !== null && !this.simulationMode;
+  
+  /**
+   * Verifica si el servicio está en modo simulación
+   */
+  public isSimulationMode(): boolean {
+    return this.simulationMode;
   }
-
-  // Función para analizar un lead y proporcionar insights
-  async analyzeLead(leadId: number): Promise<string> {
+  
+  /**
+   * Reinicia el servicio para usar una nueva clave API
+   */
+  public reinitialize(): void {
+    this.initialize();
+  }
+  
+  /**
+   * Genera contenido usando la API de Gemini
+   * @param prompt El prompt para generar contenido
+   * @returns El texto generado
+   */
+  public async generateContent(prompt: string): Promise<string> {
     try {
-      const lead = await storage.getLead(leadId);
-      
-      if (!lead) {
-        throw new Error(`No se encontró el lead con ID ${leadId}`);
-      }
-      
-      // Si estamos en modo simulación, devolver una respuesta simulada
       if (this.simulationMode) {
-        return this.simulateAnalysis(lead);
+        return this.simulateResponse(prompt);
       }
-      
-      // Preparar el contexto para Gemini
-      const leadContext = this.prepareLeadContext(lead);
-      
-      // Obtener mensajes recientes para más contexto
-      const recentMessages = await storage.getMessagesByLead(leadId);
-      const messagesContext = this.prepareMessagesContext(recentMessages);
-      
-      // Prompt para Gemini
-      const prompt = `
-      Eres un asistente de ventas experto en CRM. Analiza la siguiente información de un lead:
-      
-      ${leadContext}
-      
-      ${messagesContext ? `Historial de comunicaciones recientes:\n${messagesContext}` : ''}
-      
-      Proporciona:
-      1. Una evaluación del estado actual del lead (interés, probabilidad de conversión)
-      2. Recomendaciones sobre los próximos pasos que deberían tomarse
-      3. Ideas específicas para mensajes o acciones personalizadas que podrían resonar con este lead.
-      4. Cualquier insight adicional sobre sus necesidades o posibles objeciones.
-      
-      Basa tu análisis en datos concretos y proporciona sugerencias accionables.
-      `;
       
       const result = await this.model.generateContent(prompt);
-      const response = result.response;
+      const response = await result.response;
       const text = response.text();
       
       return text;
     } catch (error) {
-      console.error('Error al analizar lead con Gemini:', error);
-      
-      // Si hay un error, también usamos el modo simulación como fallback
-      if (this.simulationMode) {
-        const lead = await storage.getLead(leadId);
-        return lead ? this.simulateAnalysis(lead) : 'No se pudo realizar el análisis.';
-      }
-      
-      throw error;
+      console.error("Error generating content with Gemini:", error);
+      return this.simulateResponse(prompt);
     }
   }
   
-  // Genera un mensaje personalizado para enviar a un lead
-  async generateMessage(leadId: number, messageType: string): Promise<string> {
+  /**
+   * Chatea con Gemini usando un historial de conversación
+   * @param prompt El mensaje del usuario
+   * @param history Historial de mensajes previos (opcional)
+   * @returns La respuesta de Gemini
+   */
+  public async chat(prompt: string, history: any[] = []): Promise<string> {
     try {
-      const lead = await storage.getLead(leadId);
-      
-      if (!lead) {
-        throw new Error(`No se encontró el lead con ID ${leadId}`);
-      }
-      
-      // Si estamos en modo simulación, devolver una respuesta simulada
       if (this.simulationMode) {
-        return this.simulateMessageGeneration(lead, messageType);
+        return this.simulateResponse(prompt);
       }
       
-      // Preparar el contexto para Gemini
-      const leadContext = this.prepareLeadContext(lead);
+      // Convertir el historial al formato esperado por Gemini
+      const chatHistory = history.map(msg => ({
+        role: msg.role === "user" ? "user" : "model",
+        parts: [{ text: msg.content }]
+      }));
       
-      // Obtener mensajes recientes para más contexto
-      const recentMessages = await storage.getMessagesByLead(leadId);
-      const messagesContext = this.prepareMessagesContext(recentMessages);
+      // Crear una instancia de chat
+      const chat = this.model.startChat({
+        history: chatHistory,
+      });
       
-      // Determinar qué tipo de mensaje generar
-      let promptTemplate: string;
-      
-      switch (messageType) {
-        case 'follow-up':
-          promptTemplate = `
-          Genera un mensaje de seguimiento personalizado para enviar por WhatsApp a este lead:
-          
-          ${leadContext}
-          
-          ${messagesContext ? `Historial de comunicaciones recientes:\n${messagesContext}` : ''}
-          
-          El mensaje debe ser:
-          - Breve y conciso (apropiado para WhatsApp)
-          - Personalizado con información específica del lead
-          - Con un tono amigable pero profesional
-          - Con una pregunta abierta o llamada a la acción clara
-          - No más de 3-4 oraciones en total
-          
-          Genera solo el mensaje, sin explicaciones adicionales.
-          `;
-          break;
-          
-        case 'welcome':
-          promptTemplate = `
-          Genera un mensaje de bienvenida personalizado para enviar por WhatsApp a este nuevo lead:
-          
-          ${leadContext}
-          
-          El mensaje debe:
-          - Presentar brevemente a nuestra empresa/servicio
-          - Hacer referencia a cómo obtuvimos su contacto (si se conoce)
-          - Expresar interés en sus necesidades
-          - Terminar con una pregunta sencilla que invite a la conversación
-          - Ser breve (no más de 4 líneas)
-          
-          Genera solo el mensaje, sin explicaciones adicionales.
-          `;
-          break;
-          
-        case 'proposal':
-          promptTemplate = `
-          Genera un mensaje para enviar por WhatsApp que presente una propuesta de valor a este lead:
-          
-          ${leadContext}
-          
-          ${messagesContext ? `Historial de comunicaciones recientes:\n${messagesContext}` : ''}
-          
-          El mensaje debe:
-          - Mencionar un beneficio específico que resuelva un problema del lead
-          - Incluir un dato o estadística que respalde la propuesta (si es relevante)
-          - Tener un tono confiado pero no agresivo
-          - Terminar con una pregunta sobre su interés
-          - Ser breve y directo (3-5 líneas máximo)
-          
-          Genera solo el mensaje, sin explicaciones adicionales.
-          `;
-          break;
-          
-        default:
-          promptTemplate = `
-          Genera un mensaje personalizado para enviar por WhatsApp a este lead:
-          
-          ${leadContext}
-          
-          ${messagesContext ? `Historial de comunicaciones recientes:\n${messagesContext}` : ''}
-          
-          El mensaje debe ser:
-          - Relevante para su industria y posición
-          - Breve y conciso
-          - Con un tono conversacional apropiado para WhatsApp
-          - Con una pregunta o llamada a la acción al final
-          
-          Genera solo el mensaje, sin explicaciones adicionales.
-          `;
-      }
-      
-      const result = await this.model.generateContent(promptTemplate);
-      const response = result.response;
+      // Enviar el mensaje y obtener la respuesta
+      const result = await chat.sendMessage(prompt);
+      const response = await result.response;
       const text = response.text();
       
-      // Limpiamos el texto de comillas si se generaron
-      return text.replace(/^["'](.*)["']$/s, '$1').trim();
+      return text;
     } catch (error) {
-      console.error('Error al generar mensaje con Gemini:', error);
-      
-      // Si hay un error, también usamos el modo simulación como fallback
-      if (this.simulationMode) {
-        const lead = await storage.getLead(leadId);
-        return lead ? this.simulateMessageGeneration(lead, messageType) : 'No se pudo generar el mensaje.';
+      console.error("Error in chat with Gemini:", error);
+      return this.simulateResponse(prompt);
+    }
+  }
+  
+  /**
+   * Genera un mensaje personalizado para un lead
+   * @param leadId ID del lead
+   * @param messageType Tipo de mensaje a generar
+   * @returns Mensaje generado
+   */
+  public async generateMessage(leadId: number, messageType: string): Promise<string> {
+    try {
+      // Obtener datos del lead
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        throw new Error(`Lead with ID ${leadId} not found`);
       }
       
+      // Definir contexto según el tipo de mensaje
+      let contextPrompt = "";
+      switch (messageType) {
+        case "follow-up":
+          contextPrompt = "Es un mensaje de seguimiento después de un primer contacto. Sé cordial pero profesional.";
+          break;
+        case "proposal":
+          contextPrompt = "Es un mensaje para presentar una propuesta. Sé persuasivo destacando el valor para el cliente.";
+          break;
+        case "meeting":
+          contextPrompt = "Es un mensaje para coordinar una reunión. Sé conciso y propón algunas fechas/horarios posibles.";
+          break;
+        default:
+          contextPrompt = "Es un mensaje personalizado. Sé profesional y adaptado al contexto.";
+      }
+      
+      // Construir el prompt para Gemini
+      const prompt = `
+        Eres un asistente de ventas profesional. 
+        Genera un mensaje personalizado para un lead con las siguientes características:
+        
+        - Nombre: ${lead.fullName}
+        - Correo: ${lead.email}
+        - Teléfono: ${lead.phone || 'No disponible'}
+        - Empresa: ${lead.company || 'No disponible'}
+        - Cargo: ${lead.position || 'No disponible'}
+        - Estado: ${lead.status || 'Nuevo lead'}
+        
+        ${contextPrompt}
+        
+        El tono debe ser profesional pero amigable. Incluye el nombre del lead en el saludo.
+        No incluyas líneas de asunto. Limítate a crear el cuerpo del mensaje.
+        Mantén una longitud moderada, entre 100-150 palabras.
+      `;
+      
+      // Generar el mensaje
+      return await this.generateContent(prompt);
+    } catch (error) {
+      console.error("Error generating message:", error);
       throw error;
     }
   }
   
-  // Funciones auxiliares para preparar contexto
-  private prepareLeadContext(lead: Lead): string {
-    return `
-    DATOS DEL LEAD:
-    - Nombre: ${lead.fullName}
-    - Email: ${lead.email}
-    - Teléfono: ${lead.phone || 'No disponible'}
-    - Empresa: ${lead.company || 'No disponible'}
-    - Cargo: ${lead.position || 'No disponible'}
-    - Fuente: ${lead.source || 'No disponible'}
-    - Estado: ${lead.status || 'No disponible'}
-    - Puntuación: ${lead.score || 'No disponible'}
-    - Datos enriquecidos: ${lead.enrichmentData ? 'Disponible' : 'No disponible'}
-    - Porcentaje de coincidencia: ${lead.matchPercentage || 'No disponible'}
-    - Notas: ${lead.notes || 'No disponible'}
-    - Asignado a: ${lead.assignedTo ? `ID: ${lead.assignedTo}` : 'No asignado'}
-    `;
+  /**
+   * Analiza la información de un lead usando Gemini
+   * @param leadId ID del lead a analizar
+   * @returns Análisis del lead
+   */
+  public async analyzeLead(leadId: number): Promise<string> {
+    try {
+      // Obtener datos del lead
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        throw new Error(`Lead with ID ${leadId} not found`);
+      }
+      
+      // Obtener actividades recientes
+      const activities = await storage.getActivitiesByLead(leadId);
+      
+      // Construir el prompt para Gemini
+      const prompt = `
+        Eres un analista de ventas experto. 
+        Analiza el siguiente lead y proporciona insights valiosos para el equipo de ventas:
+        
+        - Nombre: ${lead.fullName}
+        - Correo: ${lead.email}
+        - Teléfono: ${lead.phone || 'No disponible'}
+        - Empresa: ${lead.company || 'No disponible'}
+        - Cargo: ${lead.position || 'No disponible'}
+        - Estado: ${lead.status || 'Nuevo lead'}
+        - Puntaje: ${lead.score !== null ? lead.score : 'No evaluado'}
+        - Origen: ${lead.source || 'No especificado'}
+        
+        Actividades recientes:
+        ${activities.length > 0 
+          ? activities.map(a => `- ${a.type}: ${a.description} (${a.completed ? 'Completada' : 'Pendiente'})`).join('\n')
+          : 'No hay actividades registradas.'
+        }
+        
+        Proporciona un análisis integral que incluya:
+        1. Evaluación del potencial del lead
+        2. Recomendaciones para el seguimiento
+        3. Posibles desafíos o objeciones a anticipar
+        4. Próximos pasos sugeridos
+        
+        Sé específico y proporciona consejos accionables.
+      `;
+      
+      // Generar el análisis
+      return await this.generateContent(prompt);
+    } catch (error) {
+      console.error("Error analyzing lead:", error);
+      throw error;
+    }
   }
   
-  private prepareMessagesContext(messages: Message[] | undefined): string {
-    if (!messages || messages.length === 0) {
-      return '';
+  /**
+   * Sugiere una acción específica para avanzar con un lead
+   * @param leadId ID del lead
+   * @returns Sugerencia de acción
+   */
+  public async suggestAction(leadId: number): Promise<string> {
+    try {
+      // Obtener datos del lead
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        throw new Error(`Lead with ID ${leadId} not found`);
+      }
+      
+      // Obtener actividades y mensajes recientes
+      const activities = await storage.getActivitiesByLead(leadId);
+      const messages = await storage.getMessagesByLead(leadId);
+      
+      // Construir el prompt para Gemini
+      const prompt = `
+        Eres un asesor de ventas estratégico.
+        Sugiere una acción específica y concreta para avanzar con el siguiente lead:
+        
+        - Nombre: ${lead.fullName}
+        - Correo: ${lead.email}
+        - Teléfono: ${lead.phone || 'No disponible'}
+        - Empresa: ${lead.company || 'No disponible'}
+        - Cargo: ${lead.position || 'No disponible'}
+        - Estado: ${lead.status || 'Nuevo lead'}
+        - Puntaje: ${lead.score !== null ? lead.score : 'No evaluado'}
+        - Origen: ${lead.source || 'No especificado'}
+        
+        Actividades recientes:
+        ${activities.length > 0 
+          ? activities.map(a => `- ${a.type}: ${a.description} (${a.completed ? 'Completada' : 'Pendiente'})`).join('\n')
+          : 'No hay actividades registradas.'
+        }
+        
+        Mensajes recientes:
+        ${messages.length > 0
+          ? messages.slice(0, 3).map(m => `- ${m.sentAt}: ${m.content.substring(0, 100)}...`).join('\n')
+          : 'No hay mensajes registrados.'
+        }
+        
+        Proporciona UNA SOLA acción específica, concreta y altamente efectiva que el agente de ventas debería tomar ahora mismo.
+        La acción debe ser:
+        - Específica y accionable hoy mismo
+        - Orientada a resultados
+        - Adaptada al contexto específico del lead
+        - Explicada con los pasos necesarios para implementarla
+        
+        Responde en un párrafo conciso (máximo 120 palabras).
+      `;
+      
+      // Generar la sugerencia de acción
+      return await this.generateContent(prompt);
+    } catch (error) {
+      console.error("Error suggesting action:", error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Extrae y actualiza información de leads basada en una conversación
+   * @param leadId ID del lead
+   * @param conversation Texto de la conversación
+   * @returns Datos actualizados del lead
+   */
+  public async extractLeadInfoFromConversation(leadId: number, conversation: string): Promise<any> {
+    try {
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        throw new Error(`Lead with ID ${leadId} not found`);
+      }
+      
+      // Crear prompt para extraer información
+      const prompt = `
+        Eres un asistente especializado en la extracción de información.
+        Analiza la siguiente conversación con un lead y extrae cualquier información relevante 
+        que podría usarse para actualizar su perfil, como:
+        - Correo electrónico
+        - Número de teléfono
+        - Nombre de empresa
+        - Cargo o posición
+        - Intereses específicos mencionados
+        - Necesidades o problemas expresados
+        - Presupuesto o rango de precios mencionados
+        - Plazos o fechas importantes
+        
+        Conversación:
+        "${conversation}"
+        
+        Información actual del lead:
+        - Nombre: ${lead.fullName}
+        - Correo: ${lead.email}
+        - Teléfono: ${lead.phone || 'No disponible'}
+        - Empresa: ${lead.company || 'No disponible'}
+        - Cargo: ${lead.position || 'No disponible'}
+        
+        Devuelve solo un objeto JSON con los campos actualizables y la información extraída, 
+        sin ningún texto adicional. Incluye solo los campos donde se encontró información nueva 
+        o diferente a la existente. El formato debe ser:
+        {
+          "updates": {
+            "email": "nuevo@email.com",
+            "phone": "123456789",
+            ...
+          },
+          "interests": [
+            {"topic": "tema de interés", "confidence": 85},
+            ...
+          ],
+          "needs": [
+            {"need": "necesidad identificada", "priority": "alta/media/baja"}
+            ...
+          ]
+        }
+      `;
+      
+      // Generar análisis
+      const response = await this.generateContent(prompt);
+      
+      // Intentar extraer el JSON de la respuesta
+      try {
+        const jsonMatch = response.match(/\\{[\\s\\S]*\\}/);
+        if (!jsonMatch) {
+          throw new Error('No se pudo encontrar un objeto JSON en la respuesta');
+        }
+        
+        const jsonStr = jsonMatch[0];
+        const extractedData = JSON.parse(jsonStr);
+        
+        // Si hay actualizaciones, las aplicamos al lead
+        if (extractedData.updates && Object.keys(extractedData.updates).length > 0) {
+          // Actualizar el lead con la información extraída
+          const updatedLead = await storage.updateLead(leadId, extractedData.updates);
+          
+          // Si hay intereses, los agregamos
+          if (extractedData.interests && extractedData.interests.length > 0) {
+            // Asumimos que hay un campo de intereses en el lead (lo añadimos en el schema)
+            const interests = extractedData.interests.map((interest: any) => ({
+              topic: interest.topic,
+              confidence: interest.confidence || 50
+            }));
+            
+            await storage.updateLead(leadId, {
+              interests: JSON.stringify(interests)
+            });
+          }
+          
+          return {
+            success: true,
+            updatedLead,
+            extractedData
+          };
+        }
+        
+        return {
+          success: true,
+          message: "No se encontró información nueva para actualizar",
+          extractedData
+        };
+      } catch (error) {
+        console.error("Error parsing extracted data:", error);
+        return {
+          success: false,
+          message: "Error al analizar la información extraída",
+          error: (error as Error).message
+        };
+      }
+    } catch (error) {
+      console.error("Error extracting lead info from conversation:", error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Genera etiquetas con porcentajes de probabilidad para un lead
+   * @param leadId ID del lead
+   * @returns Etiquetas con probabilidades
+   */
+  public async generateTagsWithProbability(leadId: number): Promise<any> {
+    try {
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        throw new Error(`Lead with ID ${leadId} not found`);
+      }
+      
+      // Obtener actividades y mensajes para contexto
+      const activities = await storage.getActivitiesByLead(leadId);
+      const messages = await storage.getMessagesByLead(leadId);
+      
+      // Construir el prompt para Gemini
+      const prompt = `
+        Eres un analista de datos especializado en CRM y ventas.
+        Basado en la siguiente información de un lead, genera 5-7 etiquetas relevantes con 
+        porcentajes de probabilidad que reflejen características, intereses potenciales, 
+        y la calidad general del lead.
+        
+        - Nombre: ${lead.fullName}
+        - Correo: ${lead.email}
+        - Teléfono: ${lead.phone || 'No disponible'}
+        - Empresa: ${lead.company || 'No disponible'}
+        - Cargo: ${lead.position || 'No disponible'}
+        - Estado: ${lead.status || 'Nuevo lead'}
+        - Puntaje: ${lead.score !== null ? lead.score : 'No evaluado'}
+        - Origen: ${lead.source || 'No especificado'}
+        
+        Actividades recientes:
+        ${activities.length > 0 
+          ? activities.map(a => `- ${a.type}: ${a.description} (${a.completed ? 'Completada' : 'Pendiente'})`).join('\n')
+          : 'No hay actividades registradas.'
+        }
+        
+        Mensajes recientes:
+        ${messages.length > 0
+          ? messages.slice(0, 3).map(m => `- ${m.sentAt}: ${m.content.substring(0, 100)}...`).join('\n')
+          : 'No hay mensajes registrados.'
+        }
+        
+        Devuelve solo un objeto JSON con las etiquetas y sus probabilidades, sin texto adicional.
+        Cada etiqueta debe incluir un nombre descriptivo, un porcentaje de probabilidad (1-100),
+        y una categoría. El formato debe ser:
+        
+        {
+          "tags": [
+            {"name": "nombre de la etiqueta", "probability": 85, "category": "interés/característica/calidad"},
+            ...
+          ]
+        }
+      `;
+      
+      // Generar etiquetas
+      const response = await this.generateContent(prompt);
+      
+      // Intentar extraer el JSON de la respuesta
+      try {
+        const jsonMatch = response.match(/\\{[\\s\\S]*\\}/);
+        if (!jsonMatch) {
+          throw new Error('No se pudo encontrar un objeto JSON en la respuesta');
+        }
+        
+        const jsonStr = jsonMatch[0];
+        const tagsData = JSON.parse(jsonStr);
+        
+        // Actualizar el lead con las etiquetas generadas
+        if (tagsData.tags && tagsData.tags.length > 0) {
+          await storage.updateLead(leadId, {
+            tags: JSON.stringify(tagsData.tags)
+          });
+          
+          return {
+            success: true,
+            tags: tagsData.tags
+          };
+        }
+        
+        return {
+          success: false,
+          message: "No se pudieron generar etiquetas"
+        };
+      } catch (error) {
+        console.error("Error parsing tags data:", error);
+        return {
+          success: false,
+          message: "Error al analizar las etiquetas generadas",
+          error: (error as Error).message
+        };
+      }
+    } catch (error) {
+      console.error("Error generating tags with probability:", error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Simula una respuesta para cuando la API no está disponible
+   * @param prompt El prompt recibido
+   * @returns Una respuesta simulada
+   */
+  private simulateResponse(prompt: string): string {
+    console.log("GeminiService: Using simulation mode for prompt:", prompt.substring(0, 100) + "...");
+    
+    // Respuestas genéricas basadas en palabras clave en el prompt
+    if (prompt.includes("mensaje") || prompt.includes("message")) {
+      return "Estimado cliente, gracias por su interés en nuestros servicios. Nos gustaría concertar una llamada para discutir cómo podemos ayudarle a alcanzar sus objetivos. ¿Tiene disponibilidad esta semana? Estaré encantado de adaptarme a su agenda.";
     }
     
-    // Ordenamos los mensajes del más antiguo al más reciente
-    const sortedMessages = [...messages].sort((a, b) => 
-      new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
-    );
+    if (prompt.includes("analiza") || prompt.includes("analyze")) {
+      return "Este lead muestra un potencial moderado-alto. Trabaja en una empresa relevante del sector y su cargo sugiere capacidad de decisión. Recomendación: programar una demostración personalizada y preparar una propuesta específica para sus necesidades. Próximos pasos: 1) Contactar por teléfono, 2) Enviar información personalizada, 3) Programar demostración.";
+    }
     
-    // Tomamos máximo los últimos 5 mensajes para no sobrecargar el contexto
-    const recentMessages = sortedMessages.slice(-5);
+    if (prompt.includes("acción") || prompt.includes("action") || prompt.includes("suger")) {
+      return "Programar una llamada de descubrimiento de 15 minutos esta semana. Durante la llamada, centrarse en entender sus desafíos específicos con su actual sistema de gestión, y mencionar brevemente cómo nuestra solución ha resuelto problemas similares para empresas del mismo sector.";
+    }
     
-    // Formateamos los mensajes
-    return recentMessages.map(msg => {
-      const date = new Date(msg.sentAt).toLocaleDateString();
-      const direction = msg.direction === 'incoming' ? 'CLIENTE' : 'NOSOTROS';
-      return `[${date}] ${direction}: ${msg.content}`;
-    }).join('\n');
-  }
-  
-  // Simulaciones para cuando no hay API key disponible
-  private simulateAnalysis(lead: Lead): string {
-    const analysisTemplates = [
-      `# Análisis del Lead: ${lead.fullName}
-
-## Evaluación del Estado Actual
-El lead muestra un interés moderado en nuestros servicios. Basado en sus interacciones recientes y su perfil, estimamos una probabilidad de conversión del 60-70%.
-
-## Recomendaciones para Próximos Pasos
-1. Programar una llamada de descubrimiento para entender mejor sus necesidades específicas
-2. Compartir un caso de estudio relevante para su industria
-3. Preparar una propuesta preliminar con opciones de diferentes niveles de servicio
-
-## Ideas para Mensajes Personalizados
-- Enviar un mensaje destacando cómo hemos ayudado a empresas similares a ${lead.company || 'empresas de su sector'}
-- Mencionar específicamente cómo nuestro servicio puede ayudar con ${lead.interests || 'los desafíos comunes en su industria'}
-- Ofrecer una demo personalizada enfocada en sus necesidades particulares
-
-## Insights Adicionales
-El lead parece estar en la fase de evaluación de alternativas. Es probable que esté considerando a la competencia, por lo que es importante destacar nuestros diferenciadores clave. Su presupuesto parece adecuado para nuestros niveles de servicio estándar o premium.`,
-
-      `# Análisis Detallado: ${lead.fullName} de ${lead.company || 'su empresa'}
-
-## Estado del Lead
-Este lead demuestra un alto potencial con una probable tasa de conversión del 75-85%. Su posición como ${lead.position || 'profesional en su campo'} lo convierte en un tomador de decisiones clave.
-
-## Estrategia Recomendada
-1. Realizar un acercamiento personalizado destacando el valor específico para su rol
-2. Ofrecer una sesión de consulta gratuita para demostrar nuestro conocimiento
-3. Seguimiento con material educativo relevante para su industria
-
-## Sugerencias de Comunicación
-- Crear un mensaje que resalte los beneficios específicos para ${lead.company || 'su tipo de empresa'}
-- Compartir un testimonio de un cliente similar que haya obtenido resultados cuantificables
-- Proponer una breve llamada para discutir sus objetivos específicos para este trimestre/año
-
-## Observaciones Adicionales
-El lead ha mostrado interés en aspectos específicos como ${lead.interests || 'características comunes de nuestro producto/servicio'}. Es recomendable preparar demostraciones centradas en estas áreas.`
-    ];
+    if (prompt.includes("chat") || prompt.includes("conversación")) {
+      return "Estoy aquí para ayudarte con tu consulta. Basado en la información proporcionada, te recomendaría considerar nuestro plan Profesional, que incluye todas las funcionalidades que has mencionado. ¿Te gustaría que programáramos una demostración personalizada para mostrarte cómo funcionaría con tu caso específico?";
+    }
     
-    // Seleccionar aleatoriamente una plantilla
-    const randomIndex = Math.floor(Math.random() * analysisTemplates.length);
-    return analysisTemplates[randomIndex];
-  }
-  
-  private simulateMessageGeneration(lead: Lead, messageType: string): string {
-    const messageTemplates: Record<string, string[]> = {
-      'follow-up': [
-        `Hola ${lead.fullName}, espero que estés teniendo un buen día. Solo quería hacer un seguimiento sobre nuestra conversación anterior. ¿Has tenido tiempo de revisar la información que te envié? Estoy disponible para resolver cualquier duda que tengas.`,
-        
-        `Buenos días ${lead.fullName}, ¿cómo va todo? Me preguntaba si habías tenido oportunidad de considerar nuestra propuesta para ${lead.company || 'tu empresa'}. Me encantaría conocer tus impresiones y cómo podríamos ajustarla mejor a tus necesidades.`,
-        
-        `Hola de nuevo ${lead.fullName}, solo quería asegurarme de que hayas recibido mi mensaje anterior. Estamos implementando algunas mejoras que creo que serían perfectas para tus necesidades. ¿Te gustaría que te cuente más al respecto?`
-      ],
-      
-      'welcome': [
-        `¡Hola ${lead.fullName}! Encantado de conectar contigo. Soy [Tu Nombre] de [Tu Empresa]. Nos especializamos en ayudar a ${lead.position ? `profesionales como tú en posiciones de ${lead.position}` : 'profesionales como tú'} a lograr mejores resultados. Me encantaría saber más sobre tus necesidades actuales. ¿Qué desafíos estás enfrentando en este momento?`,
-        
-        `Bienvenido/a, ${lead.fullName}. Es un placer tenerte con nosotros. En [Tu Empresa] nos dedicamos a [breve descripción]. Me gustaría conocer más sobre ${lead.company || 'tu empresa'} y cómo podríamos colaborar. ¿Cuáles son tus principales objetivos para este trimestre?`,
-        
-        `Hola ${lead.fullName}, gracias por tu interés en nuestros servicios. Hemos ayudado a muchas empresas como ${lead.company || 'la tuya'} a [beneficio principal]. ¿Te gustaría que te cuente un poco más sobre cómo podríamos ayudarte específicamente?`
-      ],
-      
-      'proposal': [
-        `Hola ${lead.fullName}, basado en lo que me has comentado sobre tus necesidades, creo que nuestra solución [Nombre del Producto/Servicio] sería ideal para ti. Nuestros clientes han visto un aumento promedio del 30% en resultados. ¿Te interesaría una demostración personalizada esta semana?`,
-        
-        `${lead.fullName}, después de analizar las necesidades de ${lead.company || 'tu empresa'}, he preparado una propuesta que podría ayudarte a [resolver problema específico]. Nuestro enfoque único ha permitido a clientes similares reducir costos en un 25%. ¿Cuándo sería un buen momento para discutirla en detalle?`,
-        
-        `Hola ${lead.fullName}, pensando en los desafíos que mencionaste para ${lead.company || 'tu empresa'}, creo que nuestro [Producto/Servicio] podría ser justo lo que necesitas. Está especialmente diseñado para [beneficio clave]. ¿Te gustaría conocer más sobre cómo implementarlo en tu caso específico?`
-      ],
-      
-      'default': [
-        `Hola ${lead.fullName}, espero que estés teniendo una excelente semana. Quería compartir contigo un artículo reciente sobre [tema relevante para su industria] que creo que te podría interesar. ¿Podríamos agendar una breve llamada para discutir cómo aplicar estas ideas en ${lead.company || 'tu empresa'}?`,
-        
-        `${lead.fullName}, acabo de pensar en ti porque lanzamos una nueva funcionalidad que creo que sería perfecta para ${lead.company || 'tu empresa'}. ¿Te gustaría una demostración rápida?`,
-        
-        `Hola ${lead.fullName}, espero que todo vaya bien. Me preguntaba si has considerado implementar [solución/estrategia] en ${lead.company || 'tu empresa'}. Hemos visto resultados excelentes con empresas similares. ¿Te interesaría conocer más detalles?`
-      ]
-    };
+    if (prompt.includes("etiqueta") || prompt.includes("tag") || prompt.includes("probabilit")) {
+      return '{"tags":[{"name":"Decisor de compra","probability":82,"category":"característica"},{"name":"Interesado en automatización","probability":75,"category":"interés"},{"name":"Presupuesto disponible","probability":68,"category":"calidad"},{"name":"Ciclo de venta corto","probability":45,"category":"característica"},{"name":"Potencial para upsell","probability":70,"category":"calidad"}]}';
+    }
     
-    // Usar el tipo de mensaje solicitado o el predeterminado si no existe
-    const templates = messageTemplates[messageType] || messageTemplates.default;
+    if (prompt.includes("JSON") || prompt.includes("json")) {
+      return '{"success":true,"message":"Respuesta simulada para solicitud JSON"}';
+    }
     
-    // Seleccionar aleatoriamente una plantilla
-    const randomIndex = Math.floor(Math.random() * templates.length);
-    return templates[randomIndex];
+    // Respuesta por defecto
+    return "Como asistente virtual, puedo ayudarte a gestionar tus leads, analizar oportunidades y sugerir acciones para mejorar tus resultados de ventas. ¿En qué puedo ayudarte específicamente hoy?";
   }
 }
 
-// Instancia exportada para uso global
-export const geminiService = new GeminiService();
+export const geminiService = GeminiService.getInstance();
