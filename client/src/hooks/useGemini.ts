@@ -186,11 +186,47 @@ export function useGemini() {
     }
   };
 
+  /**
+   * Actualiza un lead basado en información de la conversación
+   * @param leadId ID del lead a actualizar
+   * @param updates Cambios a realizar al lead
+   * @returns Lead actualizado
+   */
+  const updateLeadFromConversation = async (leadId: number, updates: Partial<any>) => {
+    setIsLoading(true);
+    
+    try {
+      const response = await apiRequest({
+        url: `/api/leads/${leadId}`,
+        method: "PATCH",
+        data: updates
+      });
+      
+      toast({
+        title: "Lead actualizado",
+        description: "Se ha actualizado la información del lead con éxito.",
+      });
+      
+      return response;
+    } catch (error) {
+      console.error("Error en useGemini.updateLeadFromConversation:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el lead. Intenta nuevamente más tarde.",
+        variant: "destructive"
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     generateMessage,
     analyzeLead,
     suggestAction,
     chat,
+    updateLeadFromConversation,
     isLoading
   };
 }
