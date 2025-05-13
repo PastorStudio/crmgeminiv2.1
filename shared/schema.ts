@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -93,6 +94,64 @@ export const dashboardStats = pgTable("dashboard_stats", {
 });
 
 // Insert schemas for each model
+// Definir relaciones
+export const usersRelations = relations(users, ({ many }) => ({
+  assignedLeads: many(leads),
+  activities: many(activities, { relationName: "userActivities" }),
+  createdActivities: many(activities, { relationName: "createdByUser" }),
+  messages: many(messages),
+  createdSurveys: many(surveys)
+}));
+
+export const leadsRelations = relations(leads, ({ one, many }) => ({
+  assignedTo: one(users, {
+    fields: [leads.assignedTo],
+    references: [users.id]
+  }),
+  activities: many(activities),
+  messages: many(messages),
+  surveys: many(surveys)
+}));
+
+export const activitiesRelations = relations(activities, ({ one }) => ({
+  lead: one(leads, {
+    fields: [activities.leadId],
+    references: [leads.id]
+  }),
+  user: one(users, {
+    fields: [activities.userId],
+    references: [users.id],
+    relationName: "userActivities"
+  }),
+  createdBy: one(users, {
+    fields: [activities.createdBy],
+    references: [users.id],
+    relationName: "createdByUser"
+  })
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  lead: one(leads, {
+    fields: [messages.leadId],
+    references: [leads.id]
+  }),
+  user: one(users, {
+    fields: [messages.userId],
+    references: [users.id]
+  })
+}));
+
+export const surveysRelations = relations(surveys, ({ one }) => ({
+  lead: one(leads, {
+    fields: [surveys.leadId],
+    references: [leads.id]
+  }),
+  createdBy: one(users, {
+    fields: [surveys.createdBy],
+    references: [users.id]
+  })
+}));
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true });
 export const insertActivitySchema = createInsertSchema(activities).omit({ id: true, createdAt: true });
