@@ -11,6 +11,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { apiKeyManager } from "./services/apiKeyManager";
+import { isDatabaseAvailable } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes prefix with /api
@@ -22,8 +23,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Database status endpoint
   app.get("/api/database/status", (req: Request, res: Response) => {
-    const { isDatabaseAvailable } = require('./db');
-    
     res.json({
       status: isDatabaseAvailable ? "connected" : "memory_mode",
       message: isDatabaseAvailable 
@@ -35,8 +34,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Database initialization endpoint
   app.post("/api/database/initialize", async (req: Request, res: Response) => {
-    const { isDatabaseAvailable } = require('./db');
-    
     if (!isDatabaseAvailable) {
       return res.status(400).json({ 
         error: true, 
@@ -45,7 +42,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
-      // Usamos require dinámico para que solo se cargue cuando se necesite
+      // Usamos import dinámico para que solo se cargue cuando se necesite
       const { default: dbInit } = await import('./scripts/dbInit');
       
       // Inicializar la base de datos
