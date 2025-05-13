@@ -77,6 +77,10 @@ export default function Settings() {
   // Fetch current user
   const { data: user, isLoading: userLoading } = useQuery<User>({
     queryKey: [`/api/users/${userId}`],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/users/${userId}`);
+      return await response.json();
+    },
   });
 
   // Profile form setup
@@ -104,6 +108,10 @@ export default function Settings() {
     isTemporary: boolean;
   }>({
     queryKey: ["/api/settings/gemini-key-status"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/settings/gemini-key-status");
+      return await response.json();
+    },
   });
 
   // API settings form setup
