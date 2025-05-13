@@ -23,6 +23,9 @@ import { eq, desc } from 'drizzle-orm';
 
 // Interface for storage methods
 export interface IStorage {
+  // Inicialización y utilidades
+  initializeData(): Promise<void>;
+  
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -69,6 +72,57 @@ export interface IStorage {
  * Implementación de almacenamiento que utiliza una base de datos PostgreSQL
  */
 export class DatabaseStorage implements IStorage {
+  /**
+   * Inicializa la base de datos creando datos de ejemplo si es necesario
+   */
+  async initializeData(): Promise<void> {
+    if (!isDatabaseAvailable) {
+      console.log("No se puede inicializar la base de datos porque no hay conexión disponible.");
+      return;
+    }
+    
+    try {
+      // Verificar si ya existen usuarios
+      const existingUsers = await this.getAllUsers();
+      
+      if (existingUsers.length === 0) {
+        console.log("Inicializando base de datos con datos de ejemplo...");
+        
+        // Crear usuario administrador
+        await this.createUser({
+          username: "sarahjohnson",
+          password: "password123", // En una app real, esto estaría hasheado
+          fullName: "Sarah Johnson",
+          email: "sarah.johnson@example.com",
+          role: "admin",
+          avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330"
+        });
+        
+        // Crear estadísticas iniciales del dashboard
+        await this.updateDashboardStats({
+          totalLeads: 1652,
+          conversionRate: 2450, // 24.5%
+          activeConversations: 37,
+          todayMeetings: 5,
+          leadsByStatus: {
+            new: 425,
+            contacted: 312,
+            qualified: 211,
+            proposal: 156,
+            negotiation: 98,
+            "closed-won": 315,
+            "closed-lost": 135
+          }
+        });
+        
+        console.log("Datos de ejemplo inicializados correctamente.");
+      } else {
+        console.log("La base de datos ya contiene datos, omitiendo inicialización.");
+      }
+    } catch (error) {
+      console.error("Error al inicializar datos en la base de datos:", error);
+    }
+  }
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
