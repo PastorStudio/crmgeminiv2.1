@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { AlertCircle, CheckCircle2, Database, RotateCw, Server } from "lucide-react";
+import { AlertCircle, CheckCircle2, DatabaseIcon, RotateCw, Server } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Helmet } from "react-helmet";
 import { Badge } from "@/components/ui/badge";
@@ -60,7 +60,7 @@ export default function Database() {
         description: "Este proceso puede tardar unos segundos",
       });
       
-      const response = await apiRequest('/api/database/initialize', {
+      const response = await fetch('/api/database/initialize', {
         method: 'POST',
       });
       
@@ -131,7 +131,7 @@ export default function Database() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Estado de la Base de Datos</CardTitle>
-                  <Badge variant={dbStatus?.status === "connected" ? "success" : "default"}>
+                  <Badge variant={dbStatus?.status === "connected" ? "outline" : "default"} className={dbStatus?.status === "connected" ? "bg-green-100 text-green-800" : ""}>
                     {dbStatus?.status === "connected" ? "Conectado" : "Modo Memoria"}
                   </Badge>
                 </div>
@@ -160,8 +160,8 @@ export default function Database() {
                 </div>
                 
                 {dbStatus?.status !== "connected" && (
-                  <Alert variant="default" className="bg-amber-50 border-amber-200 text-amber-800">
-                    <AlertCircle className="h-4 w-4 text-amber-800" />
+                  <Alert variant="warning">
+                    <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Modo memoria activo</AlertTitle>
                     <AlertDescription>
                       El sistema está utilizando almacenamiento en memoria. Los datos se perderán cuando se reinicie el servidor.
@@ -171,8 +171,8 @@ export default function Database() {
                 )}
                 
                 {dbStatus?.status === "connected" && (
-                  <Alert variant="default" className="bg-green-50 border-green-200 text-green-800">
-                    <CheckCircle2 className="h-4 w-4 text-green-800" />
+                  <Alert>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
                     <AlertTitle>Base de datos conectada</AlertTitle>
                     <AlertDescription>
                       La conexión a PostgreSQL está activa y funcionando correctamente.
