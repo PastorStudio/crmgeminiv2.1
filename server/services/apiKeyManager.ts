@@ -176,6 +176,41 @@ class ApiKeyManager {
       this.saveKeys();
     }
   }
+
+  /**
+   * Verifica si hay una clave válida de Gemini configurada
+   */
+  hasValidGeminiKey(): boolean {
+    return !!this.getGeminiKey();
+  }
+
+  /**
+   * Verifica si se está usando una clave temporal de Gemini
+   */
+  isUsingTemporaryKey(): boolean {
+    // Si hay una clave en el entorno, no es temporal
+    if (process.env.GEMINI_API_KEY) {
+      return false;
+    }
+    
+    // Verificar si hay una clave temporal activa para Gemini
+    if (this.keys.tempKeys && this.keys.tempKeys['gemini']) {
+      const tempKey = this.keys.tempKeys['gemini'];
+      return tempKey.expiresAt > Date.now();
+    }
+    
+    return false;
+  }
+
+  /**
+   * Actualiza la clave API de Gemini
+   */
+  updateGeminiKey(key: string): void {
+    // Si la clave es válida, la guardamos
+    if (key && key.trim().length > 0) {
+      this.setGeminiKey(key.trim());
+    }
+  }
 }
 
 // Exportar la instancia única
