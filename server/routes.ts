@@ -487,30 +487,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Ruta adicional para chat con Gemini
+  // Ruta para chat con Gemini
   app.post("/api/gemini/chat", async (req: Request, res: Response) => {
     try {
-      const { prompt, context } = req.body;
+      // Acepta tanto el formato {prompt, context} como {message, history}
+      const { prompt, context, message, history } = req.body;
       
-      if (!prompt) {
+      if (!prompt && !message) {
         return res.status(400).json({ 
           success: false, 
-          message: "Se requiere un prompt" 
+          message: "Se requiere un mensaje o prompt" 
         });
       }
       
       // Importar el servicio Gemini
       const { geminiService } = await import('./services/geminiService');
       
-      // Usar un método no implementado aún, para futuro
-      // const response = await geminiService.chat(prompt, context);
+      // Por ahora, simular una respuesta simple ya que esta función está en desarrollo
+      const responseContent = "Soy tu asistente de CRM. Puedo ayudarte con análisis de leads, generación de contenido y proporcionando insights para tu proceso de ventas. ¿En qué tarea específica te gustaría recibir ayuda hoy?";
       
-      // Por ahora, simular una respuesta simple
-      const response = "Esta función de chat está en desarrollo. ¡Pronto estará disponible!";
+      const responseObj = {
+        role: "assistant",
+        content: responseContent
+      };
       
       res.json({ 
         success: true, 
-        response 
+        response: responseObj 
       });
     } catch (error) {
       console.error("Error en chat con Gemini:", error);
@@ -521,7 +524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoint para sugerir acciones basadas en un lead
+  // Endpoint para sugerir acciones para un lead
   app.post("/api/gemini/suggest-action", async (req: Request, res: Response) => {
     try {
       const { leadId } = req.body;
@@ -533,6 +536,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      const lead = await storage.getLead(parseInt(leadId));
+      
+      if (!lead) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Lead no encontrado" 
+        });
+      }
+      
       // Importar el servicio Gemini
       const { geminiService } = await import('./services/geminiService');
       
@@ -541,7 +553,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: "follow-up",
         description: "Programar una llamada de seguimiento",
         priority: "alta",
-        timeframe: "próximos 2 días"
+        timeframe: "próximos 2 días",
+        reasoning: `El lead ${lead.fullName} ha mostrado interés en nuestros servicios. Sería ideal realizar una llamada para resolver dudas pendientes.`,
+        script: `Hola ${lead.fullName}, notamos que estabas interesado en nuestro plan premium. Te llamo para ver si tienes alguna pregunta que pueda responderte y para discutir cómo podríamos adaptar nuestra solución a tus necesidades específicas.`
       };
       
       res.json({ 
@@ -554,91 +568,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false, 
         message: "Error al sugerir acción con Gemini" 
       });
-    }
-  });
-
-  app.post("/api/gemini/chat", async (req: Request, res: Response) => {
-    try {
-      const { message, history } = req.body;
-      
-      if (!message) {
-        return res.status(400).json({ message: "Message is required" });
-      }
-      
-      // Import the Gemini service
-      const { geminiService } = await import('./services/gemini');
-      
-      try {
-        // Call the Gemini API to get a chat response
-        const response = await geminiService.chat(message, history);
-        res.json(response);
-      } catch (error: any) {
-        // Check if error is related to missing API key
-        if (error.message === 'GEMINI_API_KEY is not set') {
-          // Fallback to sample data if API key is missing
-          const response = {
-            role: "assistant" as const,
-            content: "I'm your CRM assistant. I can help with lead analysis, content generation, and providing insights for your sales process. What specific task would you like assistance with today?"
-          };
-          
-          res.json(response);
-        } else {
-          throw error;
-        }
-      }
-    } catch (error) {
-      console.error("Error in chat endpoint:", error);
-      res.status(500).json({ message: "Failed to chat with Gemini AI" });
-    }
-  });
-  
-  // Additional Gemini endpoint for next best action
-  app.post("/api/gemini/suggest-action", async (req: Request, res: Response) => {
-    try {
-      const { leadId } = req.body;
-      
-      if (!leadId) {
-        return res.status(400).json({ message: "Lead ID is required" });
-      }
-      
-      const lead = await storage.getLead(parseInt(leadId));
-      
-      if (!lead) {
-        return res.status(404).json({ message: "Lead not found" });
-      }
-      
-      // Import the Gemini service
-      const { geminiService } = await import('./services/gemini');
-      
-      try {
-        // Call the Gemini API to suggest the next best action
-        const suggestion = await geminiService.suggestNextAction(lead);
-        res.json(suggestion);
-      } catch (error: any) {
-        // Check if error is related to missing API key
-        if (error.message === 'GEMINI_API_KEY is not set') {
-          // Fallback to sample data if API key is missing
-          const suggestion = {
-            recommendedAction: "Schedule a follow-up call",
-            actionType: "call",
-            priority: "medium",
-            reasoning: "It's been a while since the last contact, and a call would help re-establish the relationship",
-            suggestedSchedule: "Next week",
-            talkingPoints: [
-              "Discuss their current needs and challenges",
-              "Introduce new features or solutions",
-              "Gather feedback on previous interactions"
-            ]
-          };
-          
-          res.json(suggestion);
-        } else {
-          throw error;
-        }
-      }
-    } catch (error) {
-      console.error("Error in suggest-action endpoint:", error);
-      res.status(500).json({ message: "Failed to suggest action with Gemini AI" });
     }
   });
   
