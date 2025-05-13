@@ -50,21 +50,24 @@ export function useGemini() {
     setIsLoading(true);
     
     try {
-      // Usamos any para evitar problemas con el tipo genérico
-      const response = await apiRequest({
-        url: "/api/gemini/generate-message",
-        method: "POST",
-        data: {
+      // Usamos los parámetros en el orden correcto: method, url, data
+      const response = await apiRequest(
+        "POST",
+        "/api/gemini/generate-message",
+        {
           leadId,
           messageType
         }
-      });
+      );
       
-      if (!response || !response.success) {
+      // Convertimos la respuesta a JSON
+      const data = await response.json();
+      
+      if (!data || !data.success) {
         throw new Error("Error generando mensaje");
       }
       
-      return response.message || "";
+      return data.message || "";
     } catch (error) {
       console.error("Error en useGemini.generateMessage:", error);
       toast({
@@ -87,17 +90,19 @@ export function useGemini() {
     setIsLoading(true);
     
     try {
-      const response = await apiRequest({
-        url: "/api/gemini/analyze-lead",
-        method: "POST",
-        data: { leadId }
-      });
+      const response = await apiRequest(
+        "POST",
+        "/api/gemini/analyze-lead",
+        { leadId }
+      );
       
-      if (!response || !response.success) {
+      const data = await response.json();
+      
+      if (!data || !data.success) {
         throw new Error("Error analizando lead");
       }
       
-      return response.analysis || "";
+      return data.analysis || "";
     } catch (error) {
       console.error("Error en useGemini.analyzeLead:", error);
       toast({
