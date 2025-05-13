@@ -526,7 +526,7 @@ function ConnectionStatusBadge({
   }
   
   if (status.ready) {
-    return <Badge variant="success" className="bg-green-500">Conectado</Badge>;
+    return <Badge className="bg-green-500 text-white">Conectado</Badge>;
   }
   
   if (status.initialized) {
