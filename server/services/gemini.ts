@@ -37,7 +37,7 @@ export class GeminiService {
     }
     
     const model = genAI.getGenerativeModel({
-      model: 'gemini-pro',
+      model: 'gemini-1.5-pro',
       generationConfig: {
         temperature,
         maxOutputTokens,
@@ -46,19 +46,19 @@ export class GeminiService {
       },
       safetySettings: [
         {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          category: HarmCategory.HARASSMENT,
           threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
         },
         {
-          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          category: HarmCategory.HATE_SPEECH,
           threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
         },
         {
-          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          category: HarmCategory.SEXUALLY_EXPLICIT,
           threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
         },
         {
-          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          category: HarmCategory.DANGEROUS_CONTENT,
           threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
         },
       ],
