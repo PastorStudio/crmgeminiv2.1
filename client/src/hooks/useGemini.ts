@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from './use-toast';
 
+// Añadimos una función auxiliar para simplificar las peticiones
+async function fetchJson<T>(response: Response): Promise<T> {
+  return await response.json() as T;
+}
+
 // Definición de tipos para las respuestas de la API
 interface GenerateMessageResponse {
   success: boolean;
@@ -60,8 +65,8 @@ export function useGemini() {
         }
       );
       
-      // Convertimos la respuesta a JSON
-      const data = await response.json();
+      // Convertimos la respuesta a JSON con tipado
+      const data = await fetchJson<GenerateMessageResponse>(response);
       
       if (!data || !data.success) {
         throw new Error("Error generando mensaje");
@@ -96,7 +101,7 @@ export function useGemini() {
         { leadId }
       );
       
-      const data = await response.json();
+      const data = await fetchJson<AnalyzeLeadResponse>(response);
       
       if (!data || !data.success) {
         throw new Error("Error analizando lead");
@@ -125,17 +130,19 @@ export function useGemini() {
     setIsLoading(true);
     
     try {
-      const response = await apiRequest({
-        url: "/api/gemini/suggest-action",
-        method: "POST",
-        data: { leadId }
-      });
+      const response = await apiRequest(
+        "POST",
+        "/api/gemini/suggest-action",
+        { leadId }
+      );
       
-      if (!response || !response.success) {
+      const data = await fetchJson<SuggestActionResponse>(response);
+      
+      if (!data || !data.success) {
         throw new Error("Error obteniendo sugerencia");
       }
 
-      return response.action || {};
+      return data.action || {};
     } catch (error) {
       console.error("Error en useGemini.suggestAction:", error);
       toast({
@@ -164,20 +171,22 @@ export function useGemini() {
     setIsLoading(true);
     
     try {
-      const response = await apiRequest({
-        url: "/api/gemini/chat",
-        method: "POST",
-        data: {
+      const response = await apiRequest(
+        "POST",
+        "/api/gemini/chat",
+        {
           message,
           history
         }
-      });
+      );
       
-      if (!response || !response.success) {
+      const data = await fetchJson<ChatResponse>(response);
+      
+      if (!data || !data.success) {
         throw new Error("Error en chat con Gemini");
       }
       
-      return response.response || {
+      return data.response || {
         role: 'assistant',
         content: "Lo siento, ha ocurrido un error al obtener respuesta."
       };
@@ -209,18 +218,20 @@ export function useGemini() {
     setIsLoading(true);
     
     try {
-      const response = await apiRequest({
-        url: `/api/leads/${leadId}`,
-        method: "PATCH",
-        data: updates
-      });
+      const response = await apiRequest(
+        "PATCH",
+        `/api/leads/${leadId}`,
+        updates
+      );
+      
+      const data = await response.json();
       
       toast({
         title: "Lead actualizado",
         description: "Se ha actualizado la información del lead con éxito.",
       });
       
-      return response;
+      return data;
     } catch (error) {
       console.error("Error en useGemini.updateLeadFromConversation:", error);
       toast({
