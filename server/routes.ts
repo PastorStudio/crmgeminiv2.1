@@ -438,110 +438,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Lead ID is required" });
       }
       
-      const lead = await storage.getLead(parseInt(leadId));
+      // Import the Gemini service
+      const { geminiService } = await import('./services/geminiService');
       
-      if (!lead) {
-        return res.status(404).json({ message: "Lead not found" });
+      // Call the Gemini API to analyze the lead
+      const analysis = await geminiService.analyzeLead(parseInt(leadId));
+      
+      res.json({ 
+        success: true, 
+        analysis 
+      });
+    } catch (error) {
+      console.error("Error al analizar lead con Gemini:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al analizar lead con Gemini" 
+      });
+    }
+  });
+  
+  app.post("/api/gemini/generate-message", async (req: Request, res: Response) => {
+    try {
+      const { leadId, messageType } = req.body;
+      
+      if (!leadId || !messageType) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Lead ID y tipo de mensaje son requeridos" 
+        });
       }
       
       // Import the Gemini service
-      const { geminiService } = await import('./services/gemini');
+      const { geminiService } = await import('./services/geminiService');
       
-      try {
-        // Call the Gemini API to analyze the lead
-        const aiAnalysis = await geminiService.analyzeLead(lead);
-        
-        // Update the lead with AI analysis
-        const updatedLead = await storage.updateLead(parseInt(leadId), {
-          score: aiAnalysis.score,
-          matchPercentage: aiAnalysis.matchPercentage,
-          enrichmentData: aiAnalysis.enrichmentData
-        });
-        
-        res.json(aiAnalysis);
-      } catch (error: any) {
-        // Check if error is related to missing API key
-        if (error.message === 'GEMINI_API_KEY is not set') {
-          // Fallback to sample data if API key is missing
-          const aiAnalysis = {
-            score: 65,
-            matchPercentage: 78,
-            enrichmentData: {
-              insights: ["Lead appears to be from technology sector", "Decision maker at company"],
-              recommendedActions: ["Schedule a demo", "Send product information"],
-              nextSteps: "Follow up within 3 days",
-              potentialBudget: "Medium",
-              decisionTimeframe: "Next quarter"
-            }
-          };
-          
-          // Update the lead with the fallback analysis
-          const updatedLead = await storage.updateLead(parseInt(leadId), {
-            score: aiAnalysis.score,
-            matchPercentage: aiAnalysis.matchPercentage,
-            enrichmentData: aiAnalysis.enrichmentData
-          });
-          
-          res.json(aiAnalysis);
-        } else {
-          throw error;
-        }
-      }
+      // Generate personalized message
+      const message = await geminiService.generateMessage(parseInt(leadId), messageType);
+      
+      res.json({ 
+        success: true, 
+        message 
+      });
     } catch (error) {
-      console.error("Error in analyze-lead endpoint:", error);
-      res.status(500).json({ message: "Failed to analyze lead with Gemini AI" });
+      console.error("Error al generar mensaje con Gemini:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al generar mensaje con Gemini" 
+      });
+    }
+  });
+  
+  // Ruta adicional para chat con Gemini
+  app.post("/api/gemini/chat", async (req: Request, res: Response) => {
+    try {
+      const { prompt, context } = req.body;
+      
+      if (!prompt) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Se requiere un prompt" 
+        });
+      }
+      
+      // Importar el servicio Gemini
+      const { geminiService } = await import('./services/geminiService');
+      
+      // Usar un método no implementado aún, para futuro
+      // const response = await geminiService.chat(prompt, context);
+      
+      // Por ahora, simular una respuesta simple
+      const response = "Esta función de chat está en desarrollo. ¡Pronto estará disponible!";
+      
+      res.json({ 
+        success: true, 
+        response 
+      });
+    } catch (error) {
+      console.error("Error en chat con Gemini:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al procesar el chat con Gemini" 
+      });
     }
   });
 
-  app.post("/api/gemini/generate-message", async (req: Request, res: Response) => {
+  // Endpoint para sugerir acciones basadas en un lead
+  app.post("/api/gemini/suggest-action", async (req: Request, res: Response) => {
     try {
-      const { leadId, messageType, context } = req.body;
+      const { leadId } = req.body;
       
-      if (!leadId || !messageType) {
-        return res.status(400).json({ message: "Lead ID and message type are required" });
+      if (!leadId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Se requiere un ID de lead" 
+        });
       }
       
-      const lead = await storage.getLead(parseInt(leadId));
+      // Importar el servicio Gemini
+      const { geminiService } = await import('./services/geminiService');
       
-      if (!lead) {
-        return res.status(404).json({ message: "Lead not found" });
-      }
+      // Por ahora, devolver una acción sugerida simple
+      const action = {
+        type: "follow-up",
+        description: "Programar una llamada de seguimiento",
+        priority: "alta",
+        timeframe: "próximos 2 días"
+      };
       
-      // Import the Gemini service
-      const { geminiService } = await import('./services/gemini');
-      
-      try {
-        // Call the Gemini API to generate a message
-        const result = await geminiService.generateMessage(lead, messageType, context);
-        res.json(result);
-      } catch (error: any) {
-        // Check if error is related to missing API key
-        if (error.message === 'GEMINI_API_KEY is not set') {
-          // Fallback to sample data if API key is missing
-          let generatedContent = "";
-          
-          switch (messageType) {
-            case "follow-up":
-              generatedContent = `Hi ${lead.fullName},\n\nThank you for your interest in our services. I wanted to follow up on our previous conversation and see if you have any questions I can help with.\n\nLooking forward to hearing from you,\nThe Sales Team`;
-              break;
-            case "proposal":
-              generatedContent = `Dear ${lead.fullName},\n\nBased on our conversation, I've prepared a custom proposal for ${lead.company || 'your company'}. Our solution will address your specific needs and help you achieve your goals.\n\nLet me know if you'd like to discuss this proposal in more detail.\n\nBest regards,\nThe Sales Team`;
-              break;
-            case "meeting-request":
-              generatedContent = `Hi ${lead.fullName},\n\nI would love to schedule a meeting to discuss how our services can benefit ${lead.company || 'your company'}. Would you be available for a 30-minute call next week?\n\nBest regards,\nThe Sales Team`;
-              break;
-            default:
-              generatedContent = `Hi ${lead.fullName},\n\nThank you for your interest in our services. How can I help you today?\n\nBest regards,\nThe Sales Team`;
-          }
-          
-          res.json({ content: generatedContent });
-        } else {
-          throw error;
-        }
-      }
+      res.json({ 
+        success: true, 
+        action 
+      });
     } catch (error) {
-      console.error("Error in generate-message endpoint:", error);
-      res.status(500).json({ message: "Failed to generate message with Gemini AI" });
+      console.error("Error al sugerir acción con Gemini:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al sugerir acción con Gemini" 
+      });
     }
   });
 
@@ -700,19 +712,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Importar el servicio de WhatsApp
       const { whatsappService } = await import('./services/whatsappService');
-      const qrCode = whatsappService.getQRCode();
+      const qrCode = whatsappService.getQrCode();
       
-      if (!qrCode) {
-        // Si no hay código QR disponible, generar uno de demostración solo en desarrollo
-        if (process.env.NODE_ENV === 'development') {
-          // Esperamos a que se resuelva la promesa
-          const demoQR = await whatsappService.generateDemoQR();
-          res.json({ data: demoQR.base64Image || demoQR.qr });
-        } else {
-          res.status(404).json({ message: "No hay código QR disponible" });
-        }
+      if (qrCode) {
+        res.json({ data: qrCode });
       } else {
-        res.json({ data: qrCode.base64Image || qrCode.qr });
+        res.status(204).json({ message: "No hay código QR disponible" });
       }
     } catch (error) {
       console.error("Error al obtener código QR de WhatsApp:", error);
