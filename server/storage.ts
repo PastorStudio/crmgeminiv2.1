@@ -18,6 +18,8 @@ import {
   type DashboardStats,
   type InsertDashboardStats
 } from "@shared/schema";
+import { db, isDatabaseAvailable } from './db';
+import { eq, desc } from 'drizzle-orm';
 
 // Interface for storage methods
 export interface IStorage {
@@ -63,323 +65,259 @@ export interface IStorage {
   updateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats>;
 }
 
-// In-memory storage implementation
-export class MemStorage implements IStorage {
-  private usersData: Map<number, User>;
-  private leadsData: Map<number, Lead>;
-  private activitiesData: Map<number, Activity>;
-  private messagesData: Map<number, Message>;
-  private surveysData: Map<number, Survey>;
-  private dashboardStatsData: Map<number, DashboardStats>;
-  
-  private userIdCounter: number;
-  private leadIdCounter: number;
-  private activityIdCounter: number;
-  private messageIdCounter: number;
-  private surveyIdCounter: number;
-  private statsIdCounter: number;
-
-  constructor() {
-    this.usersData = new Map();
-    this.leadsData = new Map();
-    this.activitiesData = new Map();
-    this.messagesData = new Map();
-    this.surveysData = new Map();
-    this.dashboardStatsData = new Map();
-    
-    this.userIdCounter = 1;
-    this.leadIdCounter = 1;
-    this.activityIdCounter = 1;
-    this.messageIdCounter = 1;
-    this.surveyIdCounter = 1;
-    this.statsIdCounter = 1;
-
-    // Initialize with sample user
-    this.createUser({
-      username: "sarahjohnson",
-      password: "password123", // In a real app, this would be hashed
-      fullName: "Sarah Johnson",
-      email: "sarah@example.com",
-      role: "Sales Manager",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-    });
-
-    // Initialize with sample dashboard stats
-    this.updateDashboardStats({
-      totalLeads: 1652,
-      conversionRate: 2450, // 24.5%
-      activeConversations: 42,
-      todayMeetings: 8,
-      leadsByStatus: {
-        new: 12,
-        contacted: 8,
-        meeting: 5,
-        "closed-won": 5,
-        "closed-lost": 2
-      }
-    });
-  }
-
-  // User methods
+/**
+ * Implementación de almacenamiento que utiliza una base de datos PostgreSQL
+ */
+export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
-    return this.usersData.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.usersData.values()).find(
-      user => user.username === username
-    );
-  }
-
-  async createUser(user: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const createdAt = new Date();
-    const newUser: User = { ...user, id, createdAt };
-    this.usersData.set(id, newUser);
-    return newUser;
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async getAllUsers(): Promise<User[]> {
-    return Array.from(this.usersData.values());
+    return db.select().from(users);
   }
 
-  // Lead methods
+  async createUser(user: InsertUser): Promise<User> {
+    const [createdUser] = await db.insert(users).values(user).returning();
+    return createdUser;
+  }
+
   async getLead(id: number): Promise<Lead | undefined> {
-    return this.leadsData.get(id);
+    const [lead] = await db.select().from(leads).where(eq(leads.id, id));
+    return lead;
   }
 
   async getLeadsByStatus(status: string): Promise<Lead[]> {
-    return Array.from(this.leadsData.values()).filter(
-      lead => lead.status === status
-    );
+    return db.select().from(leads).where(eq(leads.status, status));
   }
 
   async getLeadsByAssignee(userId: number): Promise<Lead[]> {
-    return Array.from(this.leadsData.values()).filter(
-      lead => lead.assignedTo === userId
-    );
+    return db.select().from(leads).where(eq(leads.assignedTo, userId));
   }
 
   async getAllLeads(): Promise<Lead[]> {
-    return Array.from(this.leadsData.values());
+    return db.select().from(leads);
   }
 
   async createLead(lead: InsertLead): Promise<Lead> {
-    const id = this.leadIdCounter++;
-    const createdAt = new Date();
-    const newLead: Lead = { ...lead, id, createdAt };
-    this.leadsData.set(id, newLead);
-    
-    // Update dashboard stats
-    const stats = await this.getDashboardStats();
-    if (stats) {
-      stats.totalLeads += 1;
-      if (lead.status && stats.leadsByStatus) {
-        const status = lead.status as keyof typeof stats.leadsByStatus;
-        stats.leadsByStatus[status] = (stats.leadsByStatus[status] || 0) + 1;
-      }
-      stats.updatedAt = new Date();
-      this.dashboardStatsData.set(stats.id, stats);
-    }
-    
-    return newLead;
+    const [createdLead] = await db.insert(leads).values(lead).returning();
+    return createdLead;
   }
 
   async updateLead(id: number, lead: Partial<InsertLead>): Promise<Lead | undefined> {
-    const existingLead = this.leadsData.get(id);
-    if (!existingLead) return undefined;
-
-    const updatedLead: Lead = { ...existingLead, ...lead };
-    this.leadsData.set(id, updatedLead);
+    const [updatedLead] = await db
+      .update(leads)
+      .set(lead)
+      .where(eq(leads.id, id))
+      .returning();
     return updatedLead;
   }
 
   async updateLeadStatus(id: number, status: string): Promise<Lead | undefined> {
-    const existingLead = this.leadsData.get(id);
-    if (!existingLead) return undefined;
-
-    // Update dashboard stats
-    const stats = await this.getDashboardStats();
-    if (stats && stats.leadsByStatus) {
-      const oldStatus = existingLead.status as keyof typeof stats.leadsByStatus;
-      const newStatus = status as keyof typeof stats.leadsByStatus;
-      
-      if (oldStatus) {
-        stats.leadsByStatus[oldStatus] = Math.max((stats.leadsByStatus[oldStatus] || 0) - 1, 0);
-      }
-      
-      stats.leadsByStatus[newStatus] = (stats.leadsByStatus[newStatus] || 0) + 1;
-      stats.updatedAt = new Date();
-      this.dashboardStatsData.set(stats.id, stats);
-    }
-
-    const updatedLead: Lead = { ...existingLead, status };
-    this.leadsData.set(id, updatedLead);
+    const [updatedLead] = await db
+      .update(leads)
+      .set({ status })
+      .where(eq(leads.id, id))
+      .returning();
     return updatedLead;
   }
 
-  // Activity methods
   async getActivity(id: number): Promise<Activity | undefined> {
-    return this.activitiesData.get(id);
+    const [activity] = await db.select().from(activities).where(eq(activities.id, id));
+    return activity;
   }
 
   async getActivitiesByLead(leadId: number): Promise<Activity[]> {
-    return Array.from(this.activitiesData.values()).filter(
-      activity => activity.leadId === leadId
-    );
+    return db.select().from(activities).where(eq(activities.leadId, leadId));
   }
 
   async getActivitiesByUser(userId: number): Promise<Activity[]> {
-    return Array.from(this.activitiesData.values()).filter(
-      activity => activity.userId === userId
-    );
+    return db.select().from(activities).where(eq(activities.userId, userId));
   }
 
   async getUpcomingActivities(userId: number, limit: number = 10): Promise<Activity[]> {
-    const now = new Date();
-    return Array.from(this.activitiesData.values())
-      .filter(activity => activity.userId === userId && 
-              activity.startTime && new Date(activity.startTime) >= now &&
-              !activity.completed)
-      .sort((a, b) => {
-        if (!a.startTime || !b.startTime) return 0;
-        return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
-      })
-      .slice(0, limit);
+    return db
+      .select()
+      .from(activities)
+      .where(eq(activities.userId, userId))
+      .orderBy(activities.startTime)
+      .limit(limit);
   }
 
   async createActivity(activity: InsertActivity): Promise<Activity> {
-    const id = this.activityIdCounter++;
-    const createdAt = new Date();
-    const newActivity: Activity = { ...activity, id, createdAt };
-    this.activitiesData.set(id, newActivity);
-    
-    // Update today's meetings count if the activity is a meeting scheduled for today
-    if (activity.type === 'meeting' && activity.startTime) {
-      const today = new Date();
-      const activityDate = new Date(activity.startTime);
-      if (activityDate.getDate() === today.getDate() &&
-          activityDate.getMonth() === today.getMonth() &&
-          activityDate.getFullYear() === today.getFullYear()) {
-        const stats = await this.getDashboardStats();
-        if (stats) {
-          stats.todayMeetings += 1;
-          stats.updatedAt = new Date();
-          this.dashboardStatsData.set(stats.id, stats);
-        }
-      }
-    }
-    
-    return newActivity;
+    const [createdActivity] = await db.insert(activities).values(activity).returning();
+    return createdActivity;
   }
 
   async updateActivity(id: number, activity: Partial<InsertActivity>): Promise<Activity | undefined> {
-    const existingActivity = this.activitiesData.get(id);
-    if (!existingActivity) return undefined;
-
-    const updatedActivity: Activity = { ...existingActivity, ...activity };
-    this.activitiesData.set(id, updatedActivity);
+    const [updatedActivity] = await db
+      .update(activities)
+      .set(activity)
+      .where(eq(activities.id, id))
+      .returning();
     return updatedActivity;
   }
 
   async completeActivity(id: number): Promise<Activity | undefined> {
-    const existingActivity = this.activitiesData.get(id);
-    if (!existingActivity) return undefined;
-
-    const updatedActivity: Activity = { ...existingActivity, completed: true };
-    this.activitiesData.set(id, updatedActivity);
+    const [updatedActivity] = await db
+      .update(activities)
+      .set({ completed: true })
+      .where(eq(activities.id, id))
+      .returning();
     return updatedActivity;
   }
 
-  // Message methods
   async getMessage(id: number): Promise<Message | undefined> {
-    return this.messagesData.get(id);
+    const [message] = await db.select().from(messages).where(eq(messages.id, id));
+    return message;
   }
 
   async getMessagesByLead(leadId: number): Promise<Message[]> {
-    return Array.from(this.messagesData.values())
-      .filter(message => message.leadId === leadId)
-      .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+    return db.select().from(messages).where(eq(messages.leadId, leadId));
   }
 
   async getRecentMessages(limit: number = 10): Promise<Message[]> {
-    return Array.from(this.messagesData.values())
-      .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime())
-      .slice(0, limit);
+    return db
+      .select()
+      .from(messages)
+      .orderBy(desc(messages.sentAt))
+      .limit(limit);
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
-    const id = this.messageIdCounter++;
-    const sentAt = new Date();
-    const newMessage: Message = { ...message, id, sentAt };
-    this.messagesData.set(id, newMessage);
-    
-    // Update active conversations count
-    const stats = await this.getDashboardStats();
-    if (stats) {
-      // Only count as a new conversation if this is the first message with this lead
-      const existingMessages = await this.getMessagesByLead(message.leadId);
-      if (existingMessages.length === 0) {
-        stats.activeConversations += 1;
-        stats.updatedAt = new Date();
-        this.dashboardStatsData.set(stats.id, stats);
-      }
-    }
-    
-    return newMessage;
+    const [createdMessage] = await db.insert(messages).values(message).returning();
+    return createdMessage;
   }
 
   async markMessageAsRead(id: number): Promise<Message | undefined> {
-    const existingMessage = this.messagesData.get(id);
-    if (!existingMessage) return undefined;
-
-    const updatedMessage: Message = { ...existingMessage, read: true };
-    this.messagesData.set(id, updatedMessage);
+    const [updatedMessage] = await db
+      .update(messages)
+      .set({ read: true })
+      .where(eq(messages.id, id))
+      .returning();
     return updatedMessage;
   }
 
-  // Survey methods
   async getSurvey(id: number): Promise<Survey | undefined> {
-    return this.surveysData.get(id);
+    const [survey] = await db.select().from(surveys).where(eq(surveys.id, id));
+    return survey;
   }
 
   async getSurveysByLead(leadId: number): Promise<Survey[]> {
-    return Array.from(this.surveysData.values()).filter(
-      survey => survey.leadId === leadId
-    );
+    return db.select().from(surveys).where(eq(surveys.leadId, leadId));
   }
 
   async createSurvey(survey: InsertSurvey): Promise<Survey> {
-    const id = this.surveyIdCounter++;
-    const sentAt = new Date();
-    const newSurvey: Survey = { ...survey, id, sentAt };
-    this.surveysData.set(id, newSurvey);
-    return newSurvey;
+    const [createdSurvey] = await db.insert(surveys).values(survey).returning();
+    return createdSurvey;
   }
 
   async updateSurveyResponses(id: number, responses: any): Promise<Survey | undefined> {
-    const existingSurvey = this.surveysData.get(id);
-    if (!existingSurvey) return undefined;
-
-    const completedAt = new Date();
-    const updatedSurvey: Survey = { ...existingSurvey, responses, completedAt };
-    this.surveysData.set(id, updatedSurvey);
+    const [updatedSurvey] = await db
+      .update(surveys)
+      .set({ 
+        responses, 
+        completedAt: new Date() 
+      })
+      .where(eq(surveys.id, id))
+      .returning();
     return updatedSurvey;
   }
 
-  // Dashboard stats methods
   async getDashboardStats(): Promise<DashboardStats | undefined> {
-    // Return the first stats object (there should only be one)
-    return Array.from(this.dashboardStatsData.values())[0];
+    const [stats] = await db.select().from(dashboardStats);
+    return stats;
   }
 
   async updateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats> {
-    const id = this.statsIdCounter++;
-    const updatedAt = new Date();
-    const newStats: DashboardStats = { ...stats, id, updatedAt };
-    this.dashboardStatsData.set(id, newStats);
-    return newStats;
+    // Intentamos actualizar el primer registro si existe
+    const existingStats = await this.getDashboardStats();
+    
+    if (existingStats) {
+      const [updatedStats] = await db
+        .update(dashboardStats)
+        .set({ 
+          ...stats, 
+          updatedAt: new Date() 
+        })
+        .where(eq(dashboardStats.id, existingStats.id))
+        .returning();
+      return updatedStats;
+    } else {
+      // Si no existe, creamos uno nuevo
+      const [newStats] = await db
+        .insert(dashboardStats)
+        .values(stats)
+        .returning();
+      return newStats;
+    }
+  }
+
+  // Método para inicializar la base de datos con datos de prueba
+  async initializeData() {
+    // Verificar si ya existe un usuario administrador
+    const adminUser = await this.getUserByUsername("sarahjohnson");
+    
+    if (!adminUser) {
+      // Crear un usuario administrador
+      await this.createUser({
+        username: "sarahjohnson",
+        password: "password123", // En una aplicación real, esto estaría hasheado
+        fullName: "Sarah Johnson",
+        email: "sarah.johnson@example.com",
+        role: "admin",
+        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330"
+      });
+    }
+    
+    // Verificar si ya existen estadísticas del dashboard
+    const stats = await this.getDashboardStats();
+    
+    if (!stats) {
+      // Crear estadísticas iniciales
+      await this.updateDashboardStats({
+        totalLeads: 1652,
+        conversionRate: 2450, // 24.5%
+        activeConversations: 37,
+        todayMeetings: 5,
+        leadsByStatus: {
+          new: 425,
+          contacted: 312,
+          qualified: 211,
+          proposal: 156,
+          negotiation: 98,
+          "closed-won": 315,
+          "closed-lost": 135
+        }
+      });
+    }
   }
 }
 
-export const storage = new MemStorage();
+// Importar el almacenamiento en memoria
+import { MemStorage } from './memStorage';
+
+// Elegir la implementación adecuada según la disponibilidad de la base de datos
+let storage: IStorage;
+
+if (isDatabaseAvailable) {
+  console.log("Usando DatabaseStorage con PostgreSQL");
+  storage = new DatabaseStorage();
+} else {
+  console.log("Usando MemStorage (almacenamiento en memoria)");
+  storage = new MemStorage();
+  
+  // Inicializar con datos de prueba inmediatamente
+  storage.initializeData().catch(err => 
+    console.error("Error al inicializar datos de prueba:", err)
+  );
+}
+
+// Exportar instancia de almacenamiento
+export { storage };
