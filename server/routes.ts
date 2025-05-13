@@ -571,6 +571,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Nuevas rutas para funcionalidades avanzadas de IA
+  app.post("/api/gemini/extract-info", async (req: Request, res: Response) => {
+    try {
+      const { leadId, conversation } = req.body;
+      
+      if (!leadId || !conversation) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere ID del lead y texto de la conversación"
+        });
+      }
+      
+      // Importar el servicio Gemini
+      const { geminiService } = await import('./services/geminiService');
+      
+      const result = await geminiService.extractLeadInfoFromConversation(parseInt(leadId), conversation);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error al extraer información:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al extraer información de la conversación",
+        error: (error as Error).message
+      });
+    }
+  });
+  
+  app.post("/api/gemini/generate-tags", async (req: Request, res: Response) => {
+    try {
+      const { leadId } = req.body;
+      
+      if (!leadId) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere ID del lead"
+        });
+      }
+      
+      // Importar el servicio Gemini
+      const { geminiService } = await import('./services/geminiService');
+      
+      const result = await geminiService.generateTagsWithProbability(parseInt(leadId));
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error al generar etiquetas:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al generar etiquetas con probabilidades",
+        error: (error as Error).message
+      });
+    }
+  });
+  
+  // Rutas para gestión automatizada con IA
+  app.post("/api/auto/manage-lead", async (req: Request, res: Response) => {
+    try {
+      const { leadId } = req.body;
+      
+      if (!leadId) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere ID del lead"
+        });
+      }
+      
+      // Importamos el servicio bajo demanda
+      const { taskTagService } = await import('./services/taskTagService');
+      
+      const result = await taskTagService.autoManageLead(parseInt(leadId));
+      
+      res.json({
+        success: true,
+        ...result
+      });
+    } catch (error) {
+      console.error("Error en gestión automática:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al gestionar automáticamente el lead",
+        error: (error as Error).message
+      });
+    }
+  });
+  
+  // Ruta para generar tareas automáticas
+  app.post("/api/auto/generate-tasks", async (req: Request, res: Response) => {
+    try {
+      const { leadId } = req.body;
+      
+      if (!leadId) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere ID del lead"
+        });
+      }
+      
+      // Importamos el servicio bajo demanda
+      const { taskTagService } = await import('./services/taskTagService');
+      
+      const tasks = await taskTagService.generateAutomaticTasks(parseInt(leadId));
+      
+      res.json({
+        success: true,
+        tasks
+      });
+    } catch (error) {
+      console.error("Error al generar tareas:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al generar tareas automáticas",
+        error: (error as Error).message
+      });
+    }
+  });
+  
   // API Key Management endpoints
   app.get("/api/settings/gemini-key-status", async (req: Request, res: Response) => {
     try {

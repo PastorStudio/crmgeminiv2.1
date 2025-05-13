@@ -33,14 +33,17 @@ import { Lead } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import LeadForm from "@/components/leads/LeadForm";
+import { LeadDetail } from "@/components/leads/LeadDetail";
 import { useGemini } from "@/hooks/useGemini";
+import { Eye, BrainCircuit, Plus, MoreVertical } from "lucide-react";
 
 export default function Leads() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [viewingLeadId, setViewingLeadId] = useState<number | null>(null);
   const { toast } = useToast();
-  const { analyzeLeadWithGemini } = useGemini();
+  const { analyzeLead } = useGemini();
 
   // Fetch all leads
   const { data: allLeads, isLoading } = useQuery<Lead[]>({
