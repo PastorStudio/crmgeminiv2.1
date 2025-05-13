@@ -67,6 +67,10 @@ export default function Calendar() {
   // Fetch all activities for the current user
   const { data: activities, isLoading: activitiesLoading } = useQuery<Activity[]>({
     queryKey: ["/api/activities", { userId }],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/activities?userId=${userId}`);
+      return response.json();
+    },
   });
 
   // Fetch all leads (for the select dropdown)
@@ -218,15 +222,19 @@ export default function Calendar() {
   };
 
   // Format time for display
-  const formatTimeRange = (start?: Date | string, end?: Date | string) => {
+  const formatTimeRange = (start?: Date | string | null, end?: Date | string | null) => {
     if (!start) return "";
     
     const startDate = typeof start === "string" ? new Date(start) : start;
+    if (!startDate) return "";
+    
     const formattedStart = format(startDate, "h:mm a");
     
     if (!end) return formattedStart;
     
     const endDate = typeof end === "string" ? new Date(end) : end;
+    if (!endDate) return formattedStart;
+    
     const formattedEnd = format(endDate, "h:mm a");
     
     return `${formattedStart} - ${formattedEnd}`;
