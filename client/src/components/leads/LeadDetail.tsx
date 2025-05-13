@@ -55,7 +55,10 @@ export function LeadDetail({ leadId, open, onClose }: LeadDetailProps) {
     isError 
   } = useQuery({
     queryKey: [`/api/leads/${leadId}`],
-    queryFn: () => apiRequest({ url: `/api/leads/${leadId}` }),
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/leads/${leadId}`);
+      return await response.json();
+    },
     enabled: !!leadId && open,
   });
   
@@ -65,7 +68,10 @@ export function LeadDetail({ leadId, open, onClose }: LeadDetailProps) {
     isLoading: isLoadingActivities 
   } = useQuery({
     queryKey: ['/api/activities', { leadId }],
-    queryFn: () => apiRequest({ url: `/api/activities?leadId=${leadId}` }),
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/activities?leadId=${leadId}`);
+      return await response.json();
+    },
     enabled: !!leadId && open,
   });
   
@@ -75,7 +81,10 @@ export function LeadDetail({ leadId, open, onClose }: LeadDetailProps) {
     isLoading: isLoadingMessages 
   } = useQuery({
     queryKey: ['/api/messages', { leadId }],
-    queryFn: () => apiRequest({ url: `/api/messages?leadId=${leadId}` }),
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/messages?leadId=${leadId}`);
+      return await response.json();
+    },
     enabled: !!leadId && open,
   });
 
