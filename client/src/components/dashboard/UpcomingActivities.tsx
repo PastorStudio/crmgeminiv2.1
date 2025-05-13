@@ -14,7 +14,14 @@ export default function UpcomingActivities() {
   // Fetch upcoming activities for the current user (using a hardcoded ID for now)
   const userId = 1; // Current user ID
   const { data: activities, isLoading } = useQuery<Activity[]>({
-    queryKey: ["/api/activities", { userId, upcoming: true }]
+    queryKey: ["/api/activities", { userId, upcoming: true }],
+    queryFn: async () => {
+      const response = await fetch(`/api/activities?userId=${userId}&upcoming=true`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch activities');
+      }
+      return response.json();
+    }
   });
 
   // Get activity icon based on type
