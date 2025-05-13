@@ -2,11 +2,6 @@ import { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from './use-toast';
 
-// Añadimos una función auxiliar para simplificar las peticiones
-async function fetchJson<T>(response: Response): Promise<T> {
-  return await response.json() as T;
-}
-
 // Definición de tipos para las respuestas de la API
 interface GenerateMessageResponse {
   success: boolean;
@@ -55,18 +50,12 @@ export function useGemini() {
     setIsLoading(true);
     
     try {
-      // Usamos los parámetros en el orden correcto: method, url, data
-      const response = await apiRequest(
-        "POST",
-        "/api/gemini/generate-message",
-        {
-          leadId,
-          messageType
-        }
-      );
+      const response = await apiRequest("POST", "/api/gemini/generate-message", {
+        leadId,
+        messageType
+      });
       
-      // Convertimos la respuesta a JSON con tipado
-      const data = await fetchJson<GenerateMessageResponse>(response);
+      const data = await response.json();
       
       if (!data || !data.success) {
         throw new Error("Error generando mensaje");
@@ -95,13 +84,9 @@ export function useGemini() {
     setIsLoading(true);
     
     try {
-      const response = await apiRequest(
-        "POST",
-        "/api/gemini/analyze-lead",
-        { leadId }
-      );
+      const response = await apiRequest("POST", "/api/gemini/analyze-lead", { leadId });
       
-      const data = await fetchJson<AnalyzeLeadResponse>(response);
+      const data = await response.json();
       
       if (!data || !data.success) {
         throw new Error("Error analizando lead");
@@ -130,13 +115,9 @@ export function useGemini() {
     setIsLoading(true);
     
     try {
-      const response = await apiRequest(
-        "POST",
-        "/api/gemini/suggest-action",
-        { leadId }
-      );
+      const response = await apiRequest("POST", "/api/gemini/suggest-action", { leadId });
       
-      const data = await fetchJson<SuggestActionResponse>(response);
+      const data = await response.json();
       
       if (!data || !data.success) {
         throw new Error("Error obteniendo sugerencia");
@@ -171,16 +152,12 @@ export function useGemini() {
     setIsLoading(true);
     
     try {
-      const response = await apiRequest(
-        "POST",
-        "/api/gemini/chat",
-        {
-          message,
-          history
-        }
-      );
+      const response = await apiRequest("POST", "/api/gemini/chat", {
+        message,
+        history
+      });
       
-      const data = await fetchJson<ChatResponse>(response);
+      const data = await response.json();
       
       if (!data || !data.success) {
         throw new Error("Error en chat con Gemini");
@@ -218,13 +195,9 @@ export function useGemini() {
     setIsLoading(true);
     
     try {
-      const response = await apiRequest(
-        "PATCH",
-        `/api/leads/${leadId}`,
-        updates
-      );
+      const response = await apiRequest("PATCH", `/api/leads/${leadId}`, updates);
       
-      const data = await fetchJson<any>(response);
+      const data = await response.json();
       
       toast({
         title: "Lead actualizado",
