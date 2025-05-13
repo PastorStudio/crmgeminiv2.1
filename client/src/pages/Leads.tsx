@@ -106,28 +106,31 @@ export default function Leads() {
   // Handle lead analysis with Gemini AI
   const handleAnalyzeWithAI = async (leadId: number) => {
     try {
-      await analyzeLeadWithGemini(leadId);
+      await analyzeLead(leadId);
       
       toast({
-        title: "AI Analysis Complete",
-        description: "Lead has been analyzed and enriched with Gemini AI",
+        title: "Análisis IA completado",
+        description: "El lead ha sido analizado y enriquecido con Gemini AI",
       });
+      
+      // Refrescar la lista de leads
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to analyze lead with AI",
+        description: "No se pudo analizar el lead con IA",
         variant: "destructive",
       });
     }
   };
 
   // Get badge variant based on status
-  const getStatusBadgeVariant = (status?: string) => {
+  const getStatusBadgeVariant = (status?: string): "default" | "destructive" | "secondary" | "outline" => {
     switch (status) {
       case 'new': return 'default';
       case 'contacted': return 'secondary';
-      case 'meeting': return 'warning';
-      case 'closed-won': return 'success';
+      case 'meeting': return 'outline';
+      case 'closed-won': return 'default';
       case 'closed-lost': return 'destructive';
       default: return 'default';
     }
@@ -249,24 +252,46 @@ export default function Leads() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <span className="material-icons">more_vert</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => setEditingLead(lead)}>
-                              <span className="material-icons mr-2 text-sm">edit</span>
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleAnalyzeWithAI(lead.id)}>
-                              <span className="material-icons mr-2 text-sm">psychology</span>
-                              Analyze with AI
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setViewingLeadId(lead.id)}
+                            title="Ver detalles"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleAnalyzeWithAI(lead.id)}
+                            title="Analizar con IA"
+                          >
+                            <BrainCircuit className="h-4 w-4" />
+                          </Button>
+                          
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => setEditingLead(lead)}>
+                                <span className="material-icons mr-2 text-sm">edit</span>
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setViewingLeadId(lead.id)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                Ver detalles
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAnalyzeWithAI(lead.id)}>
+                                <BrainCircuit className="h-4 w-4 mr-2" />
+                                Analizar con IA
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuLabel>Cambiar estado</DropdownMenuLabel>
                             {["new", "contacted", "meeting", "closed-won", "closed-lost"].map((status) => (
                               <DropdownMenuItem
                                 key={status}
@@ -292,6 +317,7 @@ export default function Leads() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -307,6 +333,14 @@ export default function Leads() {
           open={!!editingLead} 
           onClose={() => setEditingLead(null)} 
           initialData={editingLead}
+        />
+      )}
+      
+      {viewingLeadId && (
+        <LeadDetail
+          leadId={viewingLeadId}
+          open={!!viewingLeadId}
+          onClose={() => setViewingLeadId(null)}
         />
       )}
     </>
