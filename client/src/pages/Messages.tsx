@@ -14,6 +14,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Lead, Message } from "@shared/schema";
 import ChatInterface from "@/components/messaging/ChatInterface";
+import ConnectionStatus from "@/components/messaging/ConnectionStatus";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 
@@ -41,14 +42,31 @@ export default function Messages() {
 
   // Get the most recent message for a lead
   const getRecentMessageForLead = (leadId: number) => {
-    return messages?.filter(message => message.leadId === leadId)
-      .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime())[0];
+    if (!messages) return undefined;
+    
+    try {
+      const leadMessages = messages.filter(message => message.leadId === leadId);
+      if (leadMessages.length === 0) return undefined;
+      
+      return leadMessages.sort((a, b) => {
+        const dateA = a.sentAt ? new Date(a.sentAt).getTime() : 0;
+        const dateB = b.sentAt ? new Date(b.sentAt).getTime() : 0;
+        return dateB - dateA;
+      })[0];
+    } catch (error) {
+      console.error("Error getting recent message:", error);
+      return undefined;
+    }
   };
 
   // Format message timestamp
-  const formatMessageTime = (timestamp?: Date | string) => {
+  const formatMessageTime = (timestamp?: Date | string | null) => {
     if (!timestamp) return "";
-    return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+    try {
+      return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+    } catch (error) {
+      return "";
+    }
   };
 
   // Get channel icon and color
@@ -74,12 +92,16 @@ export default function Messages() {
         <meta name="description" content="Manage and view your conversations with leads and customers" />
       </Helmet>
 
-      <div className="mb-6 flex justify-between items-baseline">
+      <div className="mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 md:hidden">Messages</h1>
           <p className="text-sm text-gray-500">
             Communicate with your leads and customers
           </p>
+        </div>
+        <div className="space-y-2">
+          <ConnectionStatus platform="whatsapp" />
+          <ConnectionStatus platform="telegram" />
         </div>
       </div>
 
@@ -127,23 +149,15 @@ export default function Messages() {
                         }`}
                         onClick={() => setSelectedLeadId(lead.id)}
                       >
-                        {lead.avatar ? (
-                          <img
-                            src={lead.avatar}
-                            alt={lead.fullName}
-                            className="h-10 w-10 rounded-full mr-3"
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                            <span className="material-icons text-gray-500">person</span>
-                          </div>
-                        )}
+                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                          <span className="material-icons text-gray-500">person</span>
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-baseline">
                             <h3 className="text-sm font-medium truncate">
                               {lead.fullName}
                             </h3>
-                            {recentMessage && (
+                            {recentMessage?.sentAt && (
                               <span className="text-xs text-gray-500">
                                 {formatMessageTime(recentMessage.sentAt)}
                               </span>
