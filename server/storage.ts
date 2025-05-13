@@ -142,6 +142,15 @@ export class DatabaseStorage implements IStorage {
     const [createdUser] = await db.insert(users).values(user).returning();
     return createdUser;
   }
+  
+  async updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(user)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
 
   async getLead(id: number): Promise<Lead | undefined> {
     const [lead] = await db.select().from(leads).where(eq(leads.id, id));
@@ -314,45 +323,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Método para inicializar la base de datos con datos de prueba
-  async initializeData() {
-    // Verificar si ya existe un usuario administrador
-    const adminUser = await this.getUserByUsername("sarahjohnson");
-    
-    if (!adminUser) {
-      // Crear un usuario administrador
-      await this.createUser({
-        username: "sarahjohnson",
-        password: "password123", // En una aplicación real, esto estaría hasheado
-        fullName: "Sarah Johnson",
-        email: "sarah.johnson@example.com",
-        role: "admin",
-        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330"
-      });
-    }
-    
-    // Verificar si ya existen estadísticas del dashboard
-    const stats = await this.getDashboardStats();
-    
-    if (!stats) {
-      // Crear estadísticas iniciales
-      await this.updateDashboardStats({
-        totalLeads: 1652,
-        conversionRate: 2450, // 24.5%
-        activeConversations: 37,
-        todayMeetings: 5,
-        leadsByStatus: {
-          new: 425,
-          contacted: 312,
-          qualified: 211,
-          proposal: 156,
-          negotiation: 98,
-          "closed-won": 315,
-          "closed-lost": 135
-        }
-      });
-    }
-  }
+
 }
 
 // Importar el almacenamiento en memoria

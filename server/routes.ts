@@ -121,9 +121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Actualizar el usuario
-      // Simulamos la actualización ya que no existe el método updateUser en la interfaz IStorage
-      // En una aplicación real, habría que actualizar la interfaz IStorage
-      const updatedUser = { ...existingUser, ...userData };
+      const updatedUser = await storage.updateUser(userId, userData);
       res.status(200).json(updatedUser);
     } catch (error) {
       if (error instanceof z.ZodError) {
