@@ -1,8 +1,9 @@
-import { Client, Message } from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal';
+import QRCode from 'qrcode';
 import { EventEmitter } from 'events';
 import { Lead, Message as CRMMessage } from '@shared/schema';
 import { storage } from '../storage';
+import * as crypto from 'crypto';
 
 interface WhatsAppQRCode {
     qr: string;
@@ -10,11 +11,10 @@ interface WhatsAppQRCode {
 }
 
 /**
- * Servicio para manejar la integración con WhatsApp
- * Permite la autenticación mediante código QR y el envío/recepción de mensajes
+ * Servicio simulado para manejar la integración con WhatsApp
+ * Para demostración de la autenticación mediante código QR
  */
 export class WhatsAppService extends EventEmitter {
-    private client: Client | null = null;
     private isReady: boolean = false;
     private qrCode: WhatsAppQRCode | null = null;
     private sessionActive: boolean = false;
@@ -23,6 +23,7 @@ export class WhatsAppService extends EventEmitter {
         message: string;
         leadId?: number;
     }> = [];
+    private sessionTimeout: NodeJS.Timeout | null = null;
 
     constructor() {
         super();
@@ -30,140 +31,76 @@ export class WhatsAppService extends EventEmitter {
     }
 
     /**
-     * Inicializa el cliente de WhatsApp
+     * Inicializa el cliente simulado de WhatsApp
      */
     private initialize() {
         try {
-            console.log('Inicializando WhatsApp...');
+            console.log('Inicializando WhatsApp (modo simulación)...');
             
-            // Crear instancia del cliente
-            this.client = new Client({
-                puppeteer: {
-                    args: [
-                        '--no-sandbox',
-                        '--disable-setuid-sandbox',
-                        '--disable-dev-shm-usage',
-                        '--disable-accelerated-2d-canvas',
-                        '--no-first-run',
-                        '--no-zygote',
-                        '--single-process',
-                        '--disable-gpu'
-                    ],
-                }
-            });
-
-            // Manejar evento de código QR
-            this.client.on('qr', (qr) => {
-                console.log('Código QR recibido para WhatsApp:');
-                
-                // Generar QR para la consola
-                qrcode.generate(qr, { small: true });
-                
-                // Almacenar el código QR para mostrarlo en la interfaz
-                this.qrCode = { qr };
-                
-                // Emitir evento de QR generado
-                this.emit('qr', qr);
-            });
-
-            // Manejar evento de autenticación
-            this.client.on('authenticated', () => {
-                console.log('WhatsApp autenticado!');
-                this.sessionActive = true;
-                this.emit('authenticated');
-            });
-
-            // Manejar evento de cliente listo
-            this.client.on('ready', () => {
-                console.log('Cliente de WhatsApp listo!');
-                this.isReady = true;
-                this.emit('ready');
-                
-                // Enviar mensajes pendientes
-                this.sendPendingMessages();
-            });
-
-            // Manejar evento de desconexión
-            this.client.on('disconnected', (reason) => {
-                console.log('Cliente de WhatsApp desconectado:', reason);
-                this.isReady = false;
-                this.sessionActive = false;
-                this.emit('disconnected', reason);
-                
-                // Reinicializar cliente tras desconexión
-                setTimeout(() => {
-                    this.initialize();
-                }, 5000);
-            });
-
-            // Manejar evento de mensaje recibido
-            this.client.on('message', async (message: Message) => {
-                if (message.from.endsWith('@c.us')) { // Verificar que es un mensaje de un chat privado
-                    console.log('Mensaje recibido de WhatsApp:', message.body);
+            // Generar un código QR aleatorio
+            this.generateQRCode();
+            
+            // Simular que el usuario escanea el QR después de un tiempo aleatorio
+            this.sessionTimeout = setTimeout(() => {
+                if (!this.sessionActive) {
+                    console.log('WhatsApp: simulando autenticación del usuario...');
+                    this.sessionActive = true;
+                    this.emit('authenticated');
                     
-                    // Aquí procesamos el mensaje y lo guardamos en el CRM
-                    await this.processIncomingMessage(message);
-                    
-                    this.emit('message', message);
+                    // Simular que el cliente está listo
+                    setTimeout(() => {
+                        console.log('Cliente de WhatsApp listo! (simulado)');
+                        this.isReady = true;
+                        this.emit('ready');
+                        
+                        // Procesar mensajes pendientes
+                        this.sendPendingMessages();
+                    }, 1500);
                 }
-            });
-
-            // Iniciar el cliente
-            this.client.initialize();
+            }, 15000); // Simular espera de 15 segundos para escaneo
             
         } catch (error) {
-            console.error('Error al inicializar WhatsApp:', error);
+            console.error('Error al inicializar WhatsApp (simulado):', error);
             this.emit('error', error);
         }
     }
 
     /**
-     * Procesa un mensaje entrante de WhatsApp y lo guarda en el CRM
+     * Genera un código QR aleatorio para la autenticación
      */
-    private async processIncomingMessage(message: Message) {
-        try {
-            const phone = message.from.replace('@c.us', '');
-            
-            // Buscar si existe un lead con este número de teléfono
-            const leads = await storage.getAllLeads();
-            let lead = leads.find(lead => lead.phone === phone);
-            
-            // Si no existe un lead, creamos uno nuevo
-            if (!lead) {
-                const contact = await message.getContact();
-                const name = contact.name || contact.pushname || 'Unknown';
-                
-                lead = await storage.createLead({
-                    fullName: name,
-                    email: `${phone}@whatsapp.placeholder`,
-                    phone,
-                    source: 'whatsapp',
-                    status: 'new',
-                    assignedTo: 1, // ID del usuario por defecto
-                    notes: 'Lead generado automáticamente desde WhatsApp'
-                });
+    private generateQRCode() {
+        // Generar un código único
+        const code = crypto.randomBytes(16).toString('hex');
+        const qrData = `whatsapp://authenticate/${code}`;
+        
+        console.log('Generando código QR para WhatsApp (simulado):', code);
+        
+        // Generar QR para la consola
+        qrcode.generate(qrData, { small: true });
+        
+        // Generar imagen base64 del QR
+        QRCode.toDataURL(qrData, (err: any, url: string) => {
+            if (err) {
+                console.error('Error al generar QR para WhatsApp:', err);
+                return;
             }
             
-            // Guardar el mensaje en el CRM
-            await storage.createMessage({
-                leadId: lead.id,
-                userId: null, // Mensaje recibido del cliente, no de un usuario del CRM
-                direction: 'incoming',
-                channel: 'whatsapp',
-                content: message.body,
-                read: false
-            });
+            // Almacenar el código QR para mostrarlo en la interfaz
+            this.qrCode = { 
+                qr: qrData,
+                base64Image: url
+            };
             
-        } catch (error) {
-            console.error('Error al procesar mensaje de WhatsApp:', error);
-        }
+            // Emitir evento de QR generado
+            this.emit('qr', this.qrCode);
+        });
     }
 
     /**
      * Envía los mensajes que quedaron pendientes
      */
     private async sendPendingMessages() {
-        if (this.isReady && this.client) {
+        if (this.isReady) {
             while (this.pendingMessages.length > 0) {
                 const msg = this.pendingMessages.shift();
                 if (msg) {
@@ -174,13 +111,13 @@ export class WhatsAppService extends EventEmitter {
     }
 
     /**
-     * Envía un mensaje a un número de WhatsApp
+     * Envía un mensaje a un número de WhatsApp (simulado)
      */
     public async sendMessage(phone: string, message: string, leadId?: number) {
         // Normalizar el número de teléfono (eliminar + o espacios)
         const normalizedPhone = phone.replace(/\D/g, '');
         
-        if (this.isReady && this.client) {
+        if (this.isReady && this.sessionActive) {
             return this.sendDirectMessage(normalizedPhone, message, leadId);
         } else {
             // Si el cliente no está listo, guardar el mensaje para enviarlo después
@@ -199,19 +136,15 @@ export class WhatsAppService extends EventEmitter {
     }
 
     /**
-     * Envía un mensaje directamente a través del cliente de WhatsApp
+     * Envía un mensaje directamente (simulado)
      */
     private async sendDirectMessage(phone: string, message: string, leadId?: number) {
         try {
-            if (!this.client) {
+            if (!this.isReady) {
                 throw new Error('Cliente de WhatsApp no inicializado');
             }
             
-            // Formato de número de WhatsApp: [código de país][número]@c.us
-            const chatId = `${phone}@c.us`;
-            
-            // Enviar el mensaje
-            const response = await this.client.sendMessage(chatId, message);
+            console.log(`Simulando envío de mensaje a ${phone}: ${message}`);
             
             // Guardamos el mensaje en el CRM si se proporcionó un leadId
             if (leadId) {
@@ -225,18 +158,73 @@ export class WhatsAppService extends EventEmitter {
                 });
             }
             
+            // Generar ID de mensaje único
+            const messageId = `simulated_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
+            
             return {
                 success: true,
-                messageId: response.id._serialized,
-                timestamp: response.timestamp
+                messageId: messageId,
+                timestamp: new Date()
             };
             
-        } catch (error) {
-            console.error('Error al enviar mensaje de WhatsApp:', error);
+        } catch (error: any) {
+            console.error('Error al enviar mensaje de WhatsApp (simulado):', error);
             return {
                 success: false,
-                error: error.message
+                error: error.message || 'Error desconocido'
             };
+        }
+    }
+
+    /**
+     * Simula recepción de un mensaje
+     */
+    public simulateIncomingMessage(phone: string, message: string) {
+        this.processIncomingMessage(phone, message);
+    }
+
+    /**
+     * Procesa un mensaje entrante simulado
+     */
+    private async processIncomingMessage(phone: string, messageText: string) {
+        try {
+            // Buscar si existe un lead con este número de teléfono
+            const leads = await storage.getAllLeads();
+            let lead = leads.find(lead => lead.phone === phone || lead.whatsappPhone === phone);
+            
+            // Si no existe un lead, creamos uno nuevo
+            if (!lead) {
+                lead = await storage.createLead({
+                    fullName: `WhatsApp User ${phone.substring(phone.length - 4)}`,
+                    email: `${phone}@whatsapp.placeholder`,
+                    phone,
+                    whatsappPhone: phone,
+                    source: 'whatsapp',
+                    status: 'new',
+                    assignedTo: 1, // ID del usuario por defecto
+                    notes: 'Lead generado automáticamente desde WhatsApp (simulado)'
+                });
+            }
+            
+            // Guardar el mensaje en el CRM
+            await storage.createMessage({
+                leadId: lead.id,
+                userId: null, // Mensaje recibido del cliente, no de un usuario del CRM
+                direction: 'incoming',
+                channel: 'whatsapp',
+                content: messageText,
+                read: false
+            });
+            
+            // Emitir evento de mensaje recibido
+            this.emit('message', {
+                from: phone,
+                body: messageText,
+                timestamp: new Date()
+            });
+            
+        } catch (error) {
+            console.error('Error al procesar mensaje de WhatsApp (simulado):', error);
         }
     }
 
@@ -245,7 +233,7 @@ export class WhatsAppService extends EventEmitter {
      */
     public getStatus() {
         return {
-            initialized: !!this.client,
+            initialized: true,
             ready: this.isReady,
             authenticated: this.sessionActive,
             pendingMessages: this.pendingMessages.length
@@ -260,27 +248,32 @@ export class WhatsAppService extends EventEmitter {
     }
 
     /**
-     * Cierra la sesión de WhatsApp
+     * Cierra la sesión de WhatsApp (simulado)
      */
     public async logout() {
-        if (this.client) {
-            await this.client.logout();
-            this.isReady = false;
-            this.sessionActive = false;
-            this.qrCode = null;
-            return { success: true };
+        this.isReady = false;
+        this.sessionActive = false;
+        this.qrCode = null;
+        
+        // Limpiar el timeout si existe
+        if (this.sessionTimeout) {
+            clearTimeout(this.sessionTimeout);
+            this.sessionTimeout = null;
         }
-        return { success: false, error: 'No hay sesión activa' };
+        
+        return { success: true };
     }
 
     /**
-     * Reinicia la conexión de WhatsApp
+     * Reinicia la conexión de WhatsApp (simulado)
      */
     public async restart() {
-        if (this.client) {
-            await this.client.destroy();
+        // Limpiar el timeout si existe
+        if (this.sessionTimeout) {
+            clearTimeout(this.sessionTimeout);
+            this.sessionTimeout = null;
         }
-        this.client = null;
+        
         this.isReady = false;
         this.sessionActive = false;
         this.qrCode = null;
@@ -290,14 +283,22 @@ export class WhatsAppService extends EventEmitter {
 
     /**
      * Genera un QR de ejemplo para el modo de desarrollo
-     * Este método NO debe usarse en producción
      */
     public generateDemoQR() {
-        const demoQR = 'https://gemini-crm-demo.example/qr';
+        const demoQR = 'whatsapp://authenticate/demo123456789';
+        
+        // Generar QR para la consola
         qrcode.generate(demoQR, { small: true });
-        this.qrCode = { qr: demoQR };
-        this.emit('qr', demoQR);
-        return this.qrCode;
+        
+        // Generar imagen base64 del QR
+        return new Promise<WhatsAppQRCode>((resolve) => {
+            QRCode.toDataURL(demoQR, (err: any, url: string) => {
+                const qrData = { qr: demoQR, base64Image: url };
+                this.qrCode = qrData;
+                this.emit('qr', qrData);
+                resolve(qrData);
+            });
+        });
     }
 }
 
