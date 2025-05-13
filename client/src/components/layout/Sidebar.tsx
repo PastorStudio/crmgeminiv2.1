@@ -60,18 +60,15 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 key={item.href} 
                 href={item.href}
                 onClick={handleLinkClick}
+                className={cn(
+                  "flex items-center px-2 py-2 text-sm font-medium rounded-md group",
+                  location === item.href 
+                    ? "text-white bg-primary-600" 
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                )}
               >
-                <a 
-                  className={cn(
-                    "flex items-center px-2 py-2 text-sm font-medium rounded-md group",
-                    location === item.href 
-                      ? "text-white bg-primary-600" 
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  )}
-                >
-                  <span className="material-icons mr-3 h-6 w-6">{item.icon}</span>
-                  {item.label}
-                </a>
+                <span className="material-icons mr-3 h-6 w-6">{item.icon}</span>
+                {item.label}
               </Link>
             ))}
           </nav>
