@@ -19,7 +19,7 @@ import {
   type InsertDashboardStats
 } from "@shared/schema";
 import { db, isDatabaseAvailable } from './db';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, or } from 'drizzle-orm';
 
 // Interface for storage methods
 export interface IStorage {
@@ -164,6 +164,18 @@ export class DatabaseStorage implements IStorage {
 
   async getLeadsByAssignee(userId: number): Promise<Lead[]> {
     return db.select().from(leads).where(eq(leads.assignedTo, userId));
+  }
+  
+  async getLeadsByPhone(phone: string): Promise<Lead[]> {
+    // Buscar por teléfono principal o teléfono de WhatsApp
+    return db.select()
+      .from(leads)
+      .where(
+        or(
+          eq(leads.phone, phone),
+          eq(leads.whatsappPhone, phone)
+        )
+      );
   }
 
   async getAllLeads(): Promise<Lead[]> {
