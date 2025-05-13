@@ -8,7 +8,7 @@
  */
 
 import { storage } from "../storage";
-import GeminiService from "./geminiService";
+import { GeminiService } from "./geminiService";
 import { Lead, Activity, InsertActivity } from "@shared/schema";
 
 interface TagWithProbability {
@@ -80,7 +80,7 @@ class TaskTagService {
       
       // Actualizar el lead con el análisis de IA
       await storage.updateLead(leadId, {
-        aiAnalysis: JSON.stringify(analysisResult)
+        tags: analysisResult
       });
 
       // Guardar el análisis en caché
