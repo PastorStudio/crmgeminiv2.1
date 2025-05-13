@@ -2,6 +2,40 @@ import { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from './use-toast';
 
+// Definición de tipos para las respuestas de la API
+interface GenerateMessageResponse {
+  success: boolean;
+  message: string;
+}
+
+interface AnalyzeLeadResponse {
+  success: boolean;
+  analysis: string;
+}
+
+interface SuggestActionResponse {
+  success: boolean;
+  action: {
+    type: string;
+    description: string;
+    priority: string;
+    timeframe: string;
+    reasoning?: string;
+    script?: string;
+  };
+}
+
+// Exportamos el tipo para poder usarlo en otros componentes
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+interface ChatResponse {
+  success: boolean;
+  response: ChatMessage;
+}
+
 export function useGemini() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -16,6 +50,7 @@ export function useGemini() {
     setIsLoading(true);
     
     try {
+      // Usamos any para evitar problemas con el tipo genérico
       const response = await apiRequest({
         url: "/api/gemini/generate-message",
         method: "POST",
@@ -23,7 +58,7 @@ export function useGemini() {
           leadId,
           messageType
         }
-      });
+      }) as GenerateMessageResponse;
       
       if (!response.success) {
         throw new Error("Error generando mensaje");
@@ -56,7 +91,7 @@ export function useGemini() {
         url: "/api/gemini/analyze-lead",
         method: "POST",
         data: { leadId }
-      });
+      }) as AnalyzeLeadResponse;
       
       if (!response.success) {
         throw new Error("Error analizando lead");
@@ -89,9 +124,13 @@ export function useGemini() {
         url: "/api/gemini/suggest-action",
         method: "POST",
         data: { leadId }
-      });
+      }) as SuggestActionResponse;
       
-      return response;
+      if (!response || !response.success) {
+        throw new Error("Error obteniendo sugerencia");
+      }
+
+      return response.action;
     } catch (error) {
       console.error("Error en useGemini.suggestAction:", error);
       toast({
@@ -105,10 +144,53 @@ export function useGemini() {
     }
   };
 
+  /**
+   * Realiza una consulta de chat con Gemini
+   * @param message Mensaje del usuario
+   * @param history Historial de conversación anterior (opcional)
+   * @returns Respuesta del asistente
+   */
+  const chat = async (message: string, history?: ChatMessage[]): Promise<ChatMessage> => {
+    setIsLoading(true);
+    
+    try {
+      const response = await apiRequest({
+        url: "/api/gemini/chat",
+        method: "POST",
+        data: {
+          message,
+          history
+        }
+      }) as ChatResponse;
+      
+      if (!response || !response.success) {
+        throw new Error("Error en chat con Gemini");
+      }
+      
+      return response.response;
+    } catch (error) {
+      console.error("Error en useGemini.chat:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo procesar tu mensaje. Por favor, inténtalo más tarde.",
+        variant: "destructive"
+      });
+      
+      // Devolvemos un mensaje de error para que la interfaz pueda mostrar algo
+      return {
+        role: 'assistant',
+        content: "Lo siento, ha ocurrido un error al procesar tu mensaje. Por favor, inténtalo más tarde."
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     generateMessage,
     analyzeLead,
     suggestAction,
+    chat,
     isLoading
   };
 }

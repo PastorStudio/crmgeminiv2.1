@@ -5,8 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useGemini } from "@/hooks/useGemini";
-import { MessageSquare, Send, Brain, RotateCw, Sparkles } from 'lucide-react';
+import { useGemini, ChatMessage } from "@/hooks/useGemini";
+import { MessageSquare, Send, Brain, RotateCw, Sparkles, MessageCircle } from 'lucide-react';
+import { Spinner } from "@/components/ui/spinner";
 
 interface GeminiAssistantProps {
   leadId?: number;
@@ -17,12 +18,9 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
   const [selectedAction, setSelectedAction] = useState<string>('follow-up');
   const [generatedMessage, setGeneratedMessage] = useState<string>('');
   const [leadAnalysis, setLeadAnalysis] = useState<string>('');
+  const [chatInput, setChatInput] = useState<string>('');
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const { toast } = useToast();
-
-  // Custom spinner component
-  const Spinner = ({ className }: { className?: string }) => (
-    <div className={`animate-spin rounded-full border-2 border-gray-200 border-t-teal-600 w-4 h-4 ${className}`}></div>
-  );
 
   const messageTypes = [
     { id: 'follow-up', label: 'Seguimiento' },
@@ -32,7 +30,7 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
     { id: 'custom', label: 'Personalizado' }
   ];
 
-  const { generateMessage, analyzeLead, isLoading: isGeminiLoading } = useGemini();
+  const { generateMessage, analyzeLead, chat, suggestAction, isLoading: isGeminiLoading } = useGemini();
   
   const handleGenerateMessage = async () => {
     if (!leadId) {
@@ -98,6 +96,77 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
     }
   };
 
+  const handleChatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!chatInput.trim()) return;
+    
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content: chatInput
+    };
+    
+    // Actualizar el historial con el mensaje del usuario
+    setChatHistory(prev => [...prev, userMessage]);
+    setChatInput('');
+    
+    try {
+      // Enviar el mensaje y obtener respuesta
+      const response = await chat(userMessage.content, chatHistory);
+      
+      // Actualizar el historial con la respuesta
+      setChatHistory(prev => [...prev, response]);
+    } catch (error) {
+      console.error("Error en chat con Gemini:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo procesar tu mensaje. Intenta de nuevo más tarde.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSuggestAction = async () => {
+    if (!leadId) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar un lead primero",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const action = await suggestAction(leadId);
+      
+      // Formateamos el resultado para mostrarlo en el análisis
+      const formattedAction = `
+📋 ACCIÓN SUGERIDA
+
+Tipo: ${action.type}
+Descripción: ${action.description}
+Prioridad: ${action.priority}
+Plazo: ${action.timeframe}
+${action.reasoning ? `\nJustificación:\n${action.reasoning}` : ''}
+${action.script ? `\nScript sugerido:\n${action.script}` : ''}
+      `;
+      
+      setLeadAnalysis(formattedAction);
+      
+      toast({
+        title: "Sugerencia generada",
+        description: "Se ha generado una sugerencia de acción para este lead",
+      });
+    } catch (error) {
+      console.error("Error obteniendo sugerencia:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo obtener una sugerencia para este lead.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <Card className="w-full border-teal-500/20 shadow-md">
       <CardHeader className="bg-gradient-to-r from-teal-500/10 to-transparent">
@@ -106,7 +175,7 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
           Asistente Gemini
         </CardTitle>
         <CardDescription>
-          Utiliza IA para analizar leads y generar mensajes personalizados
+          Utiliza IA para analizar leads, generar mensajes y obtener asistencia
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-4">
@@ -119,6 +188,10 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
             <TabsTrigger value="analyze" className="flex-1">
               <Sparkles size={16} className="mr-2" />
               Analizar Lead
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="flex-1">
+              <MessageCircle size={16} className="mr-2" />
+              Chat
             </TabsTrigger>
           </TabsList>
           
@@ -142,7 +215,7 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
                 disabled={isGeminiLoading || !leadId}
                 className="w-full"
               >
-                {isGeminiLoading ? <Spinner className="mr-2" /> : <RotateCw size={16} className="mr-2" />}
+                {isGeminiLoading ? <Spinner size="sm" className="mr-2" /> : <RotateCw size={16} className="mr-2" />}
                 Generar mensaje {selectedAction}
               </Button>
             </div>
@@ -167,14 +240,26 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
           </TabsContent>
           
           <TabsContent value="analyze" className="mt-4">
-            <Button 
-              onClick={handleAnalyzeLead} 
-              disabled={isGeminiLoading || !leadId}
-              className="w-full mb-4"
-            >
-              {isGeminiLoading ? <Spinner className="mr-2" /> : <Sparkles size={16} className="mr-2" />}
-              Analizar lead con IA
-            </Button>
+            <div className="flex gap-2 mb-4">
+              <Button 
+                onClick={handleAnalyzeLead} 
+                disabled={isGeminiLoading || !leadId}
+                className="flex-1"
+              >
+                {isGeminiLoading ? <Spinner size="sm" className="mr-2" /> : <Sparkles size={16} className="mr-2" />}
+                Analizar lead
+              </Button>
+              
+              <Button 
+                onClick={handleSuggestAction} 
+                disabled={isGeminiLoading || !leadId}
+                className="flex-1"
+                variant="outline"
+              >
+                {isGeminiLoading ? <Spinner size="sm" className="mr-2" /> : <RotateCw size={16} className="mr-2" />}
+                Sugerir acción
+              </Button>
+            </div>
 
             {leadAnalysis ? (
               <div className="border rounded-md p-4 bg-teal-50/50 max-h-[300px] overflow-y-auto">
@@ -182,9 +267,55 @@ export function GeminiAssistant({ leadId, onMessageGenerated }: GeminiAssistantP
               </div>
             ) : (
               <div className="text-center text-gray-500 py-8">
-                Haz clic en "Analizar lead" para obtener información valiosa basada en IA
+                Utiliza los botones superiores para obtener información valiosa basada en IA
               </div>
             )}
+          </TabsContent>
+          
+          <TabsContent value="chat" className="mt-4">
+            <div className="border rounded-md p-3 bg-gray-50 max-h-[300px] overflow-y-auto mb-3">
+              {chatHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {chatHistory.map((msg, index) => (
+                    <div 
+                      key={index} 
+                      className={`p-3 rounded-lg ${
+                        msg.role === 'user' 
+                          ? 'bg-teal-100 ml-8' 
+                          : 'bg-white border mr-8'
+                      }`}
+                    >
+                      <div className="text-xs font-semibold mb-1">
+                        {msg.role === 'user' ? 'Tú' : 'Asistente IA'}
+                      </div>
+                      <div className="whitespace-pre-wrap">
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  Haz una pregunta para comenzar la conversación con el asistente Gemini AI
+                </div>
+              )}
+            </div>
+            
+            <form onSubmit={handleChatSubmit} className="flex gap-2">
+              <Input 
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Escribe tu mensaje..."
+                disabled={isGeminiLoading}
+                className="flex-1"
+              />
+              <Button 
+                type="submit" 
+                disabled={isGeminiLoading || !chatInput.trim()}
+              >
+                {isGeminiLoading ? <Spinner size="sm" /> : <Send size={16} />}
+              </Button>
+            </form>
           </TabsContent>
         </Tabs>
       </CardContent>
