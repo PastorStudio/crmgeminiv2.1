@@ -370,6 +370,11 @@ export class WhatsAppService {
     // Constructor privado para patrón singleton
     // Por ahora usar simulación debido a problemas con dependencias de sistema para Puppeteer
     process.env.WHATSAPP_SIMULATION = 'true';
+    
+    // Inicializar al crear la instancia
+    this.initialize().catch(err => {
+      console.error("Error al inicializar WhatsApp en constructor:", err);
+    });
   }
   
   public static getInstance(): WhatsAppService {
