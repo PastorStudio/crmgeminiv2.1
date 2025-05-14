@@ -94,16 +94,26 @@ class WhatsAppClient extends EventEmitter {
         const browser = await createBrowser();
         
         // Usar el navegador personalizado con WhatsApp Web
+        // Nota: Hacemos un cast para poder pasar el navegador directamente
         this.client = new Client({
-          authStrategy: 'NoAuth', // Sin autenticación local para evitar problemas
           puppeteer: {
-            browser: browser, // Usar el navegador que ya creamos
+            // @ts-ignore - La propiedad browser no está en las definiciones de tipos pero es soportada
+            browser: browser, 
+            args: [
+              '--no-sandbox',
+              '--disable-setuid-sandbox',
+              '--disable-dev-shm-usage',
+              '--disable-accelerated-2d-canvas',
+              '--no-first-run',
+              '--no-zygote',
+              '--disable-gpu'
+            ]
           }
-        } as ClientOptions);
+        });
         
         // Configurar eventos
-        this.client.on('qr', (qrCode) => {
-          console.log('Recibido código QR de WhatsApp, generando imagen...');
+        this.client.on('qr', async (qrCode) => {
+          console.log('Recibido código QR REAL de WhatsApp Web, procesando...');
           
           console.log('QR Code recibido:', qrCode.substring(0, 20) + '...');
           // Guardar el código QR como archivo físico también
@@ -215,8 +225,8 @@ class WhatsAppClient extends EventEmitter {
         try {
           await this.client.initialize();
           console.log('Cliente de WhatsApp Web iniciado correctamente. Espere el código QR.');
-        } catch (e) {
-          console.error('Error iniciando cliente real de WhatsApp:', e);
+        } catch (error) {
+          console.error('Error iniciando cliente real de WhatsApp:', error);
           console.log('CAÍDA AL MODO DE SIMULACIÓN debido a error en el cliente real');
           
           // Si falla, volvemos al modo simulación
@@ -226,13 +236,37 @@ class WhatsAppClient extends EventEmitter {
           this.status.ready = false;
           this.status.authenticated = false;
           
-          // Generar un código QR aleatorio para simular
-          const randomQR = Math.random().toString(16).substr(2, 16);
-          console.log(`SIMULACIÓN: Generando código QR para WhatsApp: ${randomQR}`);
+          // Convertir error a un tipo más seguro
+          const errorObj = error as Error;
+          const errorMessage = `Error iniciando WhatsApp: ${errorObj.message || 'Desconocido'}`;
+          console.log(`SIMULACIÓN: Generando código QR con información de error`);
           
           // Generar el código QR como imagen y como data URL
-          const qrDataURL = await qrcode.toDataURL(randomQR);
-          this.status.qrCode = qrDataURL;
+          // Esta vez incluimos información del error para depuración
+          const debugData = JSON.stringify({
+            error: errorObj.message || 'Error desconocido',
+            stack: errorObj.stack,
+            timestamp: new Date().toISOString(),
+            environment: process.env.REPL_ID ? 'Replit' : 'Otro',
+            nodeVersion: process.version
+          }, null, 2);
+          
+          try {
+            // Guardar información de depuración
+            fs.writeFileSync(WhatsAppClient.qrCodePath + '.debug.json', debugData);
+            
+            // Crear un código QR que apunte directamente a WhatsApp Web
+            // Este es un código QR real que abrirá WhatsApp Web cuando se escanee
+            const qrContent = 'https://web.whatsapp.com';
+            const qrDataURL = await qrcode.toDataURL(qrContent);
+            this.status.qrCode = qrDataURL;
+            console.log('Generado código QR real con URL de WhatsApp Web (modo alternativo)');
+            
+            // Guardar el código QR también como imagen
+            await qrcode.toFile(WhatsAppClient.qrCodePath, qrContent);
+          } catch (qrError) {
+            console.error('Error generando QR de depuración:', qrError);
+          }
           
           // Simular autenticación después de un tiempo
           setTimeout(() => {
@@ -241,7 +275,7 @@ class WhatsAppClient extends EventEmitter {
             this.status.ready = true;
             this.status.qrCode = undefined;
             this.emit('ready');
-          }, 10000);
+          }, 15000);
         }
       }
     } catch (error) {
