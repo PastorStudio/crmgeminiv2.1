@@ -4,7 +4,8 @@ import * as qrcode from 'qrcode';
 import { EventEmitter } from 'events';
 import { storage } from '../storage';
 import { Lead } from '@shared/schema';
-import { Client } from 'whatsapp-web.js';
+import { Client, ClientOptions } from 'whatsapp-web.js';
+import { createBrowser } from './puppeteerConfig';
 
 // Interface para status de conexión
 interface WhatsAppStatus {
@@ -21,7 +22,7 @@ interface WhatsAppStatus {
 class WhatsAppClient extends EventEmitter {
   private static qrCodePath = path.join(process.cwd(), 'temp', 'whatsapp-qr.png');
   private status: WhatsAppStatus;
-  private simulationMode: boolean = false; // Desactivamos el modo simulación para usar el código QR real
+  private simulationMode: boolean = false; // Modo real activado
   private simulatedLeads: Map<string, number> = new Map(); // Mapeo de teléfonos a leadIds
   private client: Client | null = null;
   
@@ -88,28 +89,46 @@ class WhatsAppClient extends EventEmitter {
         this.status.ready = false;
         this.status.authenticated = false;
         
-        // Inicializar cliente de WhatsApp Web
+        // Inicializar cliente de WhatsApp Web con configuración avanzada
+        // Primero crear el navegador con nuestra configuración especializada
+        const browser = await createBrowser();
+        
+        // Usar el navegador personalizado con WhatsApp Web
         this.client = new Client({
+          authStrategy: 'NoAuth', // Sin autenticación local para evitar problemas
           puppeteer: {
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            browser: browser, // Usar el navegador que ya creamos
           }
-        });
+        } as ClientOptions);
         
         // Configurar eventos
         this.client.on('qr', (qrCode) => {
           console.log('Recibido código QR de WhatsApp, generando imagen...');
           
-          // Convertir a data URL para mostrar en la interfaz
-          qrcode.toDataURL(qrCode, (err, dataURL) => {
-            if (err) {
-              console.error('Error al convertir código QR a data URL:', err);
-              return;
+          console.log('QR Code recibido:', qrCode.substring(0, 20) + '...');
+          // Guardar el código QR como archivo físico también
+          try {
+            if (!fs.existsSync(path.dirname(WhatsAppClient.qrCodePath))) {
+              fs.mkdirSync(path.dirname(WhatsAppClient.qrCodePath), { recursive: true });
             }
-            
+            fs.writeFileSync(WhatsAppClient.qrCodePath + '.txt', qrCode);
+            console.log('QR Code guardado en:', WhatsAppClient.qrCodePath + '.txt');
+          } catch (e) {
+            console.error('Error al guardar QR como texto:', e);
+          }
+          
+          // Convertir a data URL para mostrar en la interfaz
+          try {
+            const dataURL = await qrcode.toDataURL(qrCode);
             this.status.qrCode = dataURL;
             this.emit('qr', dataURL);
-          });
+            
+            // Guardar como imagen también
+            await qrcode.toFile(WhatsAppClient.qrCodePath, qrCode);
+            console.log('QR Code guardado como imagen en:', WhatsAppClient.qrCodePath);
+          } catch (err) {
+            console.error('Error al convertir código QR a data URL:', err);
+          }
         });
         
         this.client.on('ready', () => {
