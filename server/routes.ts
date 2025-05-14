@@ -26,6 +26,9 @@ const profileUpdateSchema = z.object({
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes prefix with /api
   
+  // Registrar rutas específicas de WhatsApp con implementación directa
+  registerWhatsAppRoutes(app);
+  
   // Health check endpoint
   app.get("/api/health", (req: Request, res: Response) => {
     res.json({ status: "ok" });
@@ -798,27 +801,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Rutas para WhatsApp
+  // Rutas para WhatsApp - Usando implementación directa
+  // Estas rutas ahora están gestionadas por el servicio registerWhatsAppRoutes que se llama al inicio
+  /*
   app.get("/api/integrations/whatsapp/status", async (req: Request, res: Response) => {
     try {
-      // Importar el servicio de WhatsApp
-      const { whatsappService } = await import('./services/whatsappService');
-      const status = whatsappService.getStatus();
+      // Importar el servicio directo de WhatsApp
+      const { whatsappDirectService } = await import('./services/whatsappDirectService');
+      // Inicializar si no está inicializado
+      if (!whatsappDirectService.getStatus().initialized) {
+        await whatsappDirectService.initialize().catch(err => {
+          console.error("Error inicializando servicio directo de WhatsApp:", err);
+        });
+      }
+      const status = whatsappDirectService.getStatus();
       res.json(status);
     } catch (error) {
       console.error("Error al obtener estado de WhatsApp:", error);
       res.status(500).json({ message: "Error al obtener estado de WhatsApp" });
     }
   });
+  */
   
+  // Rutas para obtener código QR - Ahora gestionada por whatsappRoutes.ts
+  /*
   app.get("/api/integrations/whatsapp/qrcode", async (req: Request, res: Response) => {
     try {
-      // Importar el servicio de WhatsApp
-      const { whatsappService } = await import('./services/whatsappService');
-      const qrCode = whatsappService.getQrCode();
+      // Usar el servicio directo
+      const { whatsappDirectService } = await import('./services/whatsappDirectService');
+      const status = whatsappDirectService.getStatus();
       
-      if (qrCode) {
-        res.json({ data: qrCode });
+      if (status.qrCode) {
+        res.json({ data: status.qrCode });
       } else {
         res.status(204).json({ message: "No hay código QR disponible" });
       }
@@ -827,30 +841,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error al obtener código QR de WhatsApp" });
     }
   });
+  */
   
+  // Ruta para reiniciar WhatsApp - Ahora gestionada por whatsappRoutes.ts
+  /*
   app.post("/api/integrations/whatsapp/restart", async (req: Request, res: Response) => {
     try {
-      // Importar el servicio de WhatsApp
-      const { whatsappService } = await import('./services/whatsappService');
-      const result = await whatsappService.restart();
-      res.json(result);
+      // Usar el servicio directo
+      const { whatsappDirectService } = await import('./services/whatsappDirectService');
+      await whatsappDirectService.restart();
+      res.json({ success: true });
     } catch (error) {
       console.error("Error al reiniciar WhatsApp:", error);
       res.status(500).json({ message: "Error al reiniciar WhatsApp" });
     }
   });
+  */
   
+  // Ruta para cerrar sesión de WhatsApp - Ahora gestionada por whatsappRoutes.ts
+  /*
   app.post("/api/integrations/whatsapp/logout", async (req: Request, res: Response) => {
     try {
-      // Importar el servicio de WhatsApp
-      const { whatsappService } = await import('./services/whatsappService');
-      const result = await whatsappService.logout();
+      // Usar el servicio directo
+      const { whatsappDirectService } = await import('./services/whatsappDirectService');
+      const result = await whatsappDirectService.logout();
       res.json(result);
     } catch (error) {
       console.error("Error al cerrar sesión de WhatsApp:", error);
       res.status(500).json({ message: "Error al cerrar sesión de WhatsApp" });
     }
   });
+  */
   
   app.post("/api/integrations/whatsapp/send", async (req: Request, res: Response) => {
     try {
