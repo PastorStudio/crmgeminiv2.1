@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 import { apiKeyManager } from "./services/apiKeyManager";
 import { isDatabaseAvailable } from "./db";
+// Importar las rutas de WhatsApp
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 
 // Profile update schema
