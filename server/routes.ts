@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 import { apiKeyManager } from "./services/apiKeyManager";
 import { isDatabaseAvailable } from "./db";
+import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 
 // Profile update schema
 const profileUpdateSchema = z.object({
