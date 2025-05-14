@@ -873,6 +873,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   */
   
+  // Ruta para enviar mensajes de WhatsApp - Ahora gestionada por whatsappRoutes.ts
+  /*
   app.post("/api/integrations/whatsapp/send", async (req: Request, res: Response) => {
     try {
       const { phone, message, leadId } = req.body;
@@ -881,15 +883,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Número de teléfono y mensaje son requeridos" });
       }
       
-      // Importar el servicio de WhatsApp
-      const { whatsappService } = await import('./services/whatsappService');
-      const result = await whatsappService.sendMessage(phone, message, leadId ? parseInt(leadId) : undefined);
+      // Usar el servicio directo
+      const { whatsappDirectService } = await import('./services/whatsappDirectService');
+      const result = await whatsappDirectService.sendMessage(
+        phone, 
+        message, 
+        leadId ? parseInt(leadId) : undefined
+      );
       res.json(result);
     } catch (error) {
       console.error("Error al enviar mensaje de WhatsApp:", error);
       res.status(500).json({ message: "Error al enviar mensaje de WhatsApp" });
     }
   });
+  */
   
   // Rutas para Telegram
   app.get("/api/integrations/telegram/status", async (req: Request, res: Response) => {
