@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, jsonb, doublePrecision } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -18,60 +18,43 @@ export const users = pgTable("users", {
 // Lead model - represents potential customers
 export const leads = pgTable("leads", {
   id: serial("id").primaryKey(),
-  fullName: text("full_name").notNull(),
+  name: text("name").notNull(),
   email: text("email").notNull(),
   phone: text("phone"),
   company: text("company"),
-  position: text("position"),
   source: text("source"), // where the lead came from
   status: text("status").default("new"), // new, contacted, meeting, closed-won, closed-lost
-  score: integer("score"), // AI-generated lead score from 0-100
   notes: text("notes"),
-  assignedTo: integer("assigned_to").references(() => users.id),
-  lastContact: timestamp("last_contact"),
-  nextFollowUp: timestamp("next_follow_up"),
-  createdAt: timestamp("created_at").defaultNow(),
-  enrichmentData: json("enrichment_data"), // AI-enriched data about the lead
-  matchPercentage: integer("match_percentage"), // AI-determined match to ideal customer
-  // Campos para integración con plataformas de mensajería
-  whatsappPhone: text("whatsapp_phone"), // Número de WhatsApp normalizado
-  telegramChatId: text("telegram_chat_id"), // ID de chat de Telegram
-  // Nuevos campos para IA y automatización avanzada
-  tags: jsonb("tags"), // Etiquetas con porcentajes de probabilidad generadas por IA
-  aiSuggestions: jsonb("ai_suggestions"), // Sugerencias automáticas generadas por IA
-  nextStageConfidence: integer("next_stage_confidence"), // Confianza (%) de avanzar a la siguiente etapa
-  interests: jsonb("interests"), // Intereses detectados del lead con porcentajes
+  assigneeId: integer("assigneeId").references(() => users.id),
+  budget: doublePrecision("budget"),
+  priority: text("priority"),
+  tags: text("tags").array(), // tags applied to the lead
+  createdAt: timestamp("createdAt").defaultNow(),
 });
 
 // Activities model - represents meetings, calls, emails, tasks
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
-  leadId: integer("lead_id").references(() => leads.id),
-  userId: integer("user_id").references(() => users.id),
+  leadId: integer("leadId").references(() => leads.id),
+  userId: integer("userId").references(() => users.id),
   type: text("type").notNull(), // meeting, call, email, task, etc.
-  title: text("title").notNull(),
-  description: text("description"),
-  startTime: timestamp("start_time"),
-  endTime: timestamp("end_time"),
+  scheduled: timestamp("scheduled").notNull(),
+  notes: text("notes"),
   completed: boolean("completed").default(false),
-  createdBy: integer("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  aiGenerated: boolean("ai_generated").default(false),
-  aiSummary: text("ai_summary"),
+  priority: text("priority"),
+  reminder: timestamp("reminder"),
+  createdAt: timestamp("createdAt").defaultNow(),
 });
 
 // Messages model - represents conversations with leads
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
-  leadId: integer("lead_id").references(() => leads.id),
-  userId: integer("user_id").references(() => users.id),
+  leadId: integer("leadId").references(() => leads.id),
+  content: text("content").notNull(),
   direction: text("direction").notNull(), // incoming, outgoing
   channel: text("channel").notNull(), // email, whatsapp, chat, system
-  content: text("content").notNull(),
-  sentAt: timestamp("sent_at").defaultNow(),
   read: boolean("read").default(false),
-  aiGenerated: boolean("ai_generated").default(false),
-  aiAnalysis: json("ai_analysis"), // sentiment, intent, etc.
+  sentAt: timestamp("sentAt").defaultNow(),
 });
 
 // Surveys model - represents feedback forms sent to leads/customers
@@ -90,27 +73,31 @@ export const surveys = pgTable("surveys", {
 // Dashboard KPIs model - for dashboard statistics
 export const dashboardStats = pgTable("dashboard_stats", {
   id: serial("id").primaryKey(),
-  totalLeads: integer("total_leads").notNull(),
-  conversionRate: integer("conversion_rate").notNull(), // stored as percentage * 100
-  activeConversations: integer("active_conversations").notNull(),
-  todayMeetings: integer("today_meetings").notNull(),
-  leadsByStatus: json("leads_by_status").notNull(), // object with counts by status
-  updatedAt: timestamp("updated_at").defaultNow(),
+  newLeads: integer("newLeads").notNull(),
+  contactedLeads: integer("contactedLeads").notNull(),
+  qualifiedLeads: integer("qualifiedLeads").notNull(),
+  convertedLeads: integer("convertedLeads").notNull(),
+  totalRevenue: doublePrecision("totalRevenue").notNull(),
+  avgDealSize: doublePrecision("avgDealSize").notNull(),
+  salesCycle: doublePrecision("salesCycle").notNull(),
+  conversionRate: doublePrecision("conversionRate").notNull(),
+  revenueBySource: jsonb("revenueBySource").notNull(),
+  leadsByStatus: jsonb("leadsByStatus").notNull(),
+  performanceByUser: jsonb("performanceByUser").notNull(),
+  topPerformers: jsonb("topPerformers").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
 });
 
 // Insert schemas for each model
 // Definir relaciones
 export const usersRelations = relations(users, ({ many }) => ({
   assignedLeads: many(leads),
-  activities: many(activities, { relationName: "userActivities" }),
-  createdActivities: many(activities, { relationName: "createdByUser" }),
-  messages: many(messages),
-  createdSurveys: many(surveys)
+  activities: many(activities, { relationName: "userActivities" })
 }));
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
-  assignedTo: one(users, {
-    fields: [leads.assignedTo],
+  assignee: one(users, {
+    fields: [leads.assigneeId],
     references: [users.id]
   }),
   activities: many(activities),
@@ -127,11 +114,6 @@ export const activitiesRelations = relations(activities, ({ one }) => ({
     fields: [activities.userId],
     references: [users.id],
     relationName: "userActivities"
-  }),
-  createdBy: one(users, {
-    fields: [activities.createdBy],
-    references: [users.id],
-    relationName: "createdByUser"
   })
 }));
 
@@ -139,10 +121,6 @@ export const messagesRelations = relations(messages, ({ one }) => ({
   lead: one(leads, {
     fields: [messages.leadId],
     references: [leads.id]
-  }),
-  user: one(users, {
-    fields: [messages.userId],
-    references: [users.id]
   })
 }));
 
