@@ -25,6 +25,32 @@ export function registerWhatsAppRoutes(app: Express): void {
     }
   });
 
+  // QR Code endpoint
+  app.get("/api/integrations/whatsapp/qrcode", async (req: Request, res: Response) => {
+    try {
+      // Inicializar si no está inicializado
+      if (!whatsappDirectService.getStatus().initialized) {
+        await whatsappDirectService.initialize().catch(err => {
+          console.error("Error inicializando servicio directo de WhatsApp:", err);
+        });
+      }
+      
+      const status = whatsappDirectService.getStatus();
+      
+      if (status.qrCode) {
+        res.json({ data: status.qrCode });
+      } else {
+        res.status(204).json({ message: "No hay código QR disponible" });
+      }
+    } catch (error) {
+      console.error("Error obteniendo código QR de WhatsApp:", error);
+      res.status(500).json({ 
+        message: "Error obteniendo código QR de WhatsApp", 
+        error: error instanceof Error ? error.message : "Error desconocido" 
+      });
+    }
+  });
+
   // Restart endpoint - genera un nuevo código QR
   app.post("/api/integrations/whatsapp/restart", async (req: Request, res: Response) => {
     try {
