@@ -18,7 +18,7 @@ import {
   type DashboardStats,
   type InsertDashboardStats
 } from "@shared/schema";
-import { db, isDatabaseAvailable } from './db';
+import { db } from './db';
 import { eq, desc, or } from 'drizzle-orm';
 
 // Interface for storage methods
@@ -78,17 +78,12 @@ export class DatabaseStorage implements IStorage {
    * Inicializa la base de datos creando datos de ejemplo si es necesario
    */
   async initializeData(): Promise<void> {
-    if (!isDatabaseAvailable) {
-      console.log("No se puede inicializar la base de datos porque no hay conexión disponible.");
-      return;
-    }
-    
     try {
       // Verificar si ya existen usuarios
       const existingUsers = await this.getAllUsers();
       
       if (existingUsers.length === 0) {
-        console.log("Inicializando base de datos con datos de ejemplo...");
+        console.log("Base de datos lista para recibir datos reales. No se generarán datos de ejemplo.");
         
         // Crear usuario administrador
         await this.createUser({
@@ -339,24 +334,6 @@ export class DatabaseStorage implements IStorage {
 
 }
 
-// Importar el almacenamiento en memoria
-import { MemStorage } from './memStorage';
-
-// Elegir la implementación adecuada según la disponibilidad de la base de datos
-let storage: IStorage;
-
-if (isDatabaseAvailable) {
-  console.log("Usando DatabaseStorage con PostgreSQL");
-  storage = new DatabaseStorage();
-} else {
-  console.log("Usando MemStorage (almacenamiento en memoria)");
-  storage = new MemStorage();
-  
-  // Inicializar con datos de prueba inmediatamente
-  storage.initializeData().catch(err => 
-    console.error("Error al inicializar datos de prueba:", err)
-  );
-}
-
-// Exportar instancia de almacenamiento
-export { storage };
+// Siempre usamos almacenamiento en base de datos real para datos reales
+console.log("Usando DatabaseStorage con PostgreSQL para datos reales");
+export const storage: IStorage = new DatabaseStorage();

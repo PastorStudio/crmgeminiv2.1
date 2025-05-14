@@ -11,7 +11,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { apiKeyManager } from "./services/apiKeyManager";
-import { isDatabaseAvailable } from "./db";
+import { db } from "./db";
 // Importar las rutas de WhatsApp
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 
@@ -38,23 +38,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Database status endpoint
   app.get("/api/database/status", (req: Request, res: Response) => {
     res.json({
-      status: isDatabaseAvailable ? "connected" : "memory_mode",
-      message: isDatabaseAvailable 
-        ? "Conectado a PostgreSQL" 
-        : "Ejecutando en modo de almacenamiento en memoria",
-      database_url: process.env.DATABASE_URL ? "configured" : "missing"
+      status: "connected",
+      message: "Conectado a PostgreSQL con datos reales",
+      database_url: "configured"
     });
   });
   
   // Database initialization endpoint
   app.post("/api/database/initialize", async (req: Request, res: Response) => {
-    if (!isDatabaseAvailable) {
-      return res.status(400).json({ 
-        error: true, 
-        message: "No hay conexión a base de datos disponible. Configure DATABASE_URL primero." 
-      });
-    }
-    
+    // Con la nueva configuración, siempre tenemos una base de datos real
     try {
       // Usamos import dinámico para que solo se cargue cuando se necesite
       const { default: dbInit } = await import('./scripts/dbInit');

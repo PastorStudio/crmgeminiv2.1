@@ -5,17 +5,11 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
-// Variable para indicar si estamos usando una base de datos real o no
-export const isDatabaseAvailable = !!process.env.DATABASE_URL;
-
-// Exporta las variables solo si la base de datos está disponible
-export let pool: Pool | null = null;
-export let db: any = null;
-
-if (isDatabaseAvailable) {
-  console.log("Conectando a la base de datos PostgreSQL...");
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  db = drizzle({ client: pool, schema });
-} else {
-  console.log("ADVERTENCIA: DATABASE_URL no está configurada. Usando almacenamiento en memoria.");
+// Siempre usamos la base de datos PostgreSQL para datos reales
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL no está configurada. Se requiere una base de datos PostgreSQL para datos reales.");
 }
+
+console.log("Conectando a la base de datos PostgreSQL...");
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const db = drizzle({ client: pool, schema });
