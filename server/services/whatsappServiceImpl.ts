@@ -1,120 +1,425 @@
 /**
- * Implementación del servicio de WhatsApp que genera un QR code simulado
+ * Implementación real del servicio de WhatsApp que usa la biblioteca whatsapp-web.js
+ * Esta implementación conecta directamente con la API oficial de WhatsApp Web
  */
 
+import * as path from 'path';
+import * as fs from 'fs';
 import { IWhatsAppService, WhatsAppStatus } from "./whatsappInterface";
 import { storage } from "../storage";
+import { createBrowser } from './puppeteerConfig';
+import { EventEmitter } from 'events';
+import child_process from 'child_process';
+import util from 'util';
 
-// Implementación del servicio de WhatsApp
-class WhatsAppService implements IWhatsAppService {
-  private status: WhatsAppStatus = {
-    initialized: false,
-    ready: false,
-    authenticated: false
-  };
-  
-  private eventListeners: Map<string, Set<Function>> = new Map();
-  private static instance: WhatsAppService | null = null;
-  
-  // Patrón singleton
-  static getInstance(): WhatsAppService {
-    if (!WhatsAppService.instance) {
-      WhatsAppService.instance = new WhatsAppService();
-    }
-    return WhatsAppService.instance;
-  }
-  
-  async initialize(): Promise<void> {
-    if (this.status.initialized) {
-      console.log("WhatsApp ya está inicializado");
-      return;
-    }
+// Importaciones específicas para whatsapp-web.js (deben estar instaladas)
+let Client: any;
+let LocalAuth: any;
+let qrcode: any;
+
+// Instalamos las dependencias necesarias
+const exec = util.promisify(child_process.exec);
+
+async function ensureDependencies() {
+  try {
+    // Intentamos importar whatsapp-web.js
+    const wwjs = await import('whatsapp-web.js');
+    Client = wwjs.Client;
+    LocalAuth = wwjs.LocalAuth;
     
-    console.log("Inicializando servicio simulado de WhatsApp...");
+    // Intentamos importar qrcode
+    qrcode = await import('qrcode');
+    
+    return true;
+  } catch (error) {
+    console.error("Error importando dependencias:", error);
+    console.log("Instalando dependencias faltantes...");
     
     try {
-      // En una implementación real, aquí se inicializaría WhatsApp-Web.js
-      // Simulamos el proceso de autenticación
+      await exec('npm install --save whatsapp-web.js qrcode puppeteer puppeteer-extra puppeteer-extra-plugin-stealth');
       
-      // Establecer el estado como inicializado
-      this.status.initialized = true;
+      // Intentamos importar de nuevo
+      const wwjs = await import('whatsapp-web.js');
+      Client = wwjs.Client;
+      LocalAuth = wwjs.LocalAuth;
       
-      // Generar un código QR simulado
-      this.status.qrCode = this.generateQrCode();
+      qrcode = await import('qrcode');
       
-      // Notificar a los listeners
-      this.notifyListeners('qr', this.status.qrCode);
-      
-      console.log("Servicio de WhatsApp inicializado correctamente (modo simulado)");
-      
-    } catch (error) {
-      console.error("Error al inicializar servicio de WhatsApp:", error);
-      this.status.errorMessage = error instanceof Error ? error.message : "Error desconocido";
-      this.notifyListeners('error', error);
-      throw error;
+      console.log("Dependencias instaladas correctamente");
+      return true;
+    } catch (installError) {
+      console.error("Error instalando dependencias:", installError);
+      return false;
     }
   }
+}
+
+// Directorio temporal para archivos de WhatsApp
+const TEMP_DIR = path.join(process.cwd(), 'temp');
+if (!fs.existsSync(TEMP_DIR)) {
+  fs.mkdirSync(TEMP_DIR, { recursive: true });
+}
+
+// Directorio para sesión de WhatsApp
+const SESSION_DIR = path.join(TEMP_DIR, '.wwebjs_auth');
+if (!fs.existsSync(SESSION_DIR)) {
+  fs.mkdirSync(SESSION_DIR, { recursive: true });
+}
+
+// Cliente de WhatsApp con WhatsApp-Web.js
+class WhatsAppClient extends EventEmitter {
+  private qrCodePath: string;
+  private status: WhatsAppStatus;
+  private client: any;
   
-  async restart(): Promise<void> {
-    console.log("Reiniciando servicio de WhatsApp...");
-    
-    // Resetear el estado
+  constructor() {
+    super();
+    this.qrCodePath = path.join(TEMP_DIR, 'whatsapp-qr.png');
     this.status = {
       initialized: false,
       ready: false,
       authenticated: false
     };
-    
-    // Reinicializar
-    await this.initialize();
-    
-    // Generar un nuevo código QR
-    this.status.qrCode = this.generateQrCode();
-    this.notifyListeners('qr', this.status.qrCode);
-    
-    return Promise.resolve();
+    this.client = null;
   }
   
-  async sendMessage(to: string, message: string, leadId?: number): Promise<any> {
-    console.log(`[Simulado] Enviando mensaje a ${to}: ${message} (leadId: ${leadId || 'N/A'})`);
-    
-    // Normalizar número
-    const normalizedPhone = to.replace(/[^0-9]/g, '');
-    
-    // Simular envío exitoso
-    const result = {
-      id: `msg_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-      timestamp: new Date(),
-      status: 'sent',
-      to: normalizedPhone,
-      simulated: true
-    };
-    
-    // Guardar mensaje en la base de datos
-    if (leadId) {
-      await storage.createMessage({
-        leadId,
-        content: message,
-        direction: 'outgoing',
-        channel: 'whatsapp',
-        read: true
-      });
+  // Inicializar cliente
+  async initialize() {
+    if (!await ensureDependencies()) {
+      throw new Error("No se pudieron instalar las dependencias necesarias para WhatsApp");
     }
     
-    // Actualizar estado
-    this.status.lastMessageAt = new Date();
+    try {
+      console.log('Iniciando servicio de WhatsApp con Chromium...');
+      
+      // Obtener navegador configurado
+      const browser = await createBrowser();
+      
+      // Inicializar cliente de WhatsApp-Web.js
+      this.client = new Client({
+        authStrategy: new LocalAuth({
+          dataPath: SESSION_DIR
+        }),
+        // Configurar opciones de Puppeteer
+        puppeteer: {
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--disable-gpu',
+          ],
+          headless: true
+        }
+      });
+      
+      // Configurar eventos
+      this.client.on('qr', async (qr: string) => {
+        console.log('Código QR recibido de WhatsApp Web');
+        
+        // Generar imagen QR y guardarla
+        try {
+          // Convertir QR a imagen
+          const qrDataURL = await qrcode.toDataURL(qr, {
+            errorCorrectionLevel: 'H',
+            margin: 1,
+            scale: 8,
+            color: {
+              dark: '#122e31',  // Color oscuro del QR
+              light: '#ffffff'  // Color claro del QR
+            }
+          });
+          
+          // Actualizar estado
+          this.status.qrCode = qrDataURL;
+          this.emit('qr', qrDataURL);
+          
+          // Guardar la imagen del QR para depuración
+          await qrcode.toFile(this.qrCodePath, qr);
+          
+          console.log('Código QR de WhatsApp Web generado y guardado');
+        } catch (error) {
+          console.error('Error al generar código QR:', error);
+        }
+      });
+      
+      this.client.on('ready', () => {
+        console.log('Cliente de WhatsApp listo');
+        this.status.ready = true;
+        this.status.authenticated = true;
+        this.status.qrCode = undefined; // Limpiar QR al estar autenticado
+        this.emit('ready');
+      });
+      
+      this.client.on('authenticated', () => {
+        console.log('Autenticado en WhatsApp Web');
+        this.status.authenticated = true;
+      });
+      
+      this.client.on('auth_failure', (err: any) => {
+        console.error('Error de autenticación:', err);
+        this.status.authenticated = false;
+        this.status.errorMessage = 'Error de autenticación en WhatsApp';
+        this.emit('auth_failure', err);
+      });
+      
+      this.client.on('disconnected', (reason: string) => {
+        console.log('Desconectado de WhatsApp:', reason);
+        this.status.ready = false;
+        this.status.authenticated = false;
+        this.emit('disconnected', reason);
+      });
+      
+      this.client.on('message', (message: any) => {
+        console.log('Mensaje recibido:', message.body);
+        this.status.lastMessageAt = new Date();
+        this.emit('message', message);
+      });
+      
+      // Iniciar el cliente
+      await this.client.initialize();
+      this.status.initialized = true;
+      
+    } catch (error) {
+      console.error('Error inicializando cliente real de WhatsApp:', error);
+      this.status.errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      this.emit('error', error);
+      throw error;
+    }
+  }
+  
+  // Enviar mensaje
+  async sendMessage(to: string, message: string) {
+    if (!this.client || !this.status.ready) {
+      throw new Error('Cliente de WhatsApp no está listo');
+    }
     
-    return result;
+    try {
+      // Normalizar número
+      const normalizedPhone = to.replace(/[^0-9]/g, '');
+      const chatId = normalizedPhone + '@c.us';
+      
+      console.log(`Enviando mensaje a ${chatId}: ${message}`);
+      
+      // Enviar mensaje
+      const result = await this.client.sendMessage(chatId, message);
+      
+      return {
+        id: result.id.id,
+        timestamp: new Date(),
+        status: 'sent',
+        to: chatId
+      };
+    } catch (error) {
+      console.error('Error al enviar mensaje:', error);
+      throw error;
+    }
   }
   
-  getQrCode(): string | undefined {
-    return this.status.qrCode;
+  // Obtener información del cliente
+  getClientInfo() {
+    if (!this.client || !this.status.ready) {
+      return null;
+    }
+    
+    return {
+      info: this.client.info
+    };
   }
   
-  getStatus(): WhatsAppStatus {
+  // Obtener estado actual
+  getStatus() {
+    if (this.client && this.status.initialized) {
+      // Actualizar información del cliente si está disponible
+      const clientInfo = this.getClientInfo();
+      if (clientInfo) {
+        this.status.clientInfo = clientInfo;
+      }
+    }
+    
     return { ...this.status };
   }
   
+  // Cerrar cliente
+  async logout() {
+    try {
+      if (this.client) {
+        console.log('Cerrando sesión de WhatsApp...');
+        await this.client.logout();
+        await this.client.destroy();
+      }
+      
+      this.client = null;
+      this.status = {
+        initialized: false,
+        ready: false,
+        authenticated: false
+      };
+      
+      this.emit('disconnected', 'Logout');
+      
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+      throw error;
+    }
+  }
+}
+
+// Servicio de WhatsApp (Singleton)
+class WhatsAppRealService implements IWhatsAppService {
+  private client: WhatsAppClient | null = null;
+  private eventListeners: Map<string, Set<Function>> = new Map();
+  private static instance: WhatsAppRealService | null = null;
+  
+  // Patrón singleton
+  static getInstance(): WhatsAppRealService {
+    if (!WhatsAppRealService.instance) {
+      WhatsAppRealService.instance = new WhatsAppRealService();
+    }
+    return WhatsAppRealService.instance;
+  }
+  
+  // Inicializar servicio
+  async initialize(): Promise<void> {
+    if (this.client) {
+      console.log('WhatsApp ya está inicializado');
+      return;
+    }
+    
+    try {
+      this.client = new WhatsAppClient();
+      
+      // Configurar listeners
+      this.client.on('qr', (qr) => {
+        this.notifyListeners('qr', qr);
+      });
+      
+      this.client.on('ready', () => {
+        this.notifyListeners('ready');
+      });
+      
+      this.client.on('message', (msg) => {
+        this.notifyListeners('message', msg);
+        
+        // Intentar encontrar un lead que coincida con este número
+        this.handleIncomingMessage(msg).catch(err => 
+          console.error("Error procesando mensaje entrante:", err)
+        );
+      });
+      
+      this.client.on('disconnected', (reason) => {
+        this.notifyListeners('disconnected', reason);
+      });
+      
+      this.client.on('auth_failure', (err) => {
+        this.notifyListeners('auth_failure', err);
+      });
+      
+      // Inicializar el cliente
+      await this.client.initialize();
+      
+    } catch (error) {
+      console.error('Error inicializando servicio real de WhatsApp:', error);
+      this.client = null;
+      throw error;
+    }
+  }
+  
+  // Reiniciar servicio
+  async restart(): Promise<void> {
+    if (this.client) {
+      await this.client.logout().catch(err => console.error('Error al cerrar sesión:', err));
+      this.client = null;
+    }
+    
+    await this.initialize();
+  }
+  
+  // Enviar mensaje
+  async sendMessage(to: string, message: string, leadId?: number): Promise<any> {
+    if (!this.client) {
+      throw new Error('Cliente de WhatsApp no inicializado');
+    }
+    
+    try {
+      // Normalizar número
+      const normalizedPhone = to.replace(/[^0-9]/g, '');
+      
+      // Enviar mensaje
+      const result = await this.client.sendMessage(normalizedPhone, message);
+      
+      // Guardar mensaje en la base de datos
+      if (leadId) {
+        await storage.createMessage({
+          leadId,
+          content: message,
+          direction: 'outgoing',
+          channel: 'whatsapp',
+          read: true
+        });
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error al enviar mensaje WhatsApp:', error);
+      throw error;
+    }
+  }
+  
+  // Procesar mensaje entrante
+  private async handleIncomingMessage(message: any): Promise<void> {
+    try {
+      // Extraer número de teléfono del remitente (formato: 1234567890@c.us)
+      const from = message.from;
+      const phone = from.split('@')[0];
+      
+      // Buscar leads con este número de teléfono
+      const leads = await storage.getLeadsByPhone(phone);
+      
+      if (leads && leads.length > 0) {
+        // Si encontramos un lead, guardamos el mensaje
+        const lead = leads[0];
+        
+        await storage.createMessage({
+          leadId: lead.id,
+          content: message.body,
+          direction: 'incoming',
+          channel: 'whatsapp',
+          read: false
+        });
+        
+        console.log(`Mensaje guardado para el lead ${lead.id}`);
+      } else {
+        console.log(`No se encontró ningún lead para el número ${phone}`);
+      }
+    } catch (error) {
+      console.error("Error procesando mensaje entrante:", error);
+    }
+  }
+  
+  // Obtener QR Code
+  getQrCode(): string | undefined {
+    if (!this.client) {
+      return undefined;
+    }
+    
+    return this.client.getStatus().qrCode;
+  }
+  
+  // Obtener estado actual
+  getStatus(): WhatsAppStatus {
+    if (!this.client) {
+      return {
+        initialized: false,
+        ready: false,
+        authenticated: false
+      };
+    }
+    
+    return this.client.getStatus();
+  }
+  
+  // Añadir listener de eventos
   addEventListener(event: string, callback: Function): void {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, new Set());
@@ -123,28 +428,14 @@ class WhatsAppService implements IWhatsAppService {
     this.eventListeners.get(event)?.add(callback);
   }
   
+  // Quitar listener de eventos
   removeEventListener(event: string, callback: Function): void {
     if (this.eventListeners.has(event)) {
       this.eventListeners.get(event)?.delete(callback);
     }
   }
   
-  async logout(): Promise<any> {
-    console.log("Cerrando sesión de WhatsApp (simulado)...");
-    
-    // Resetear el estado
-    this.status = {
-      initialized: false,
-      ready: false,
-      authenticated: false
-    };
-    
-    this.notifyListeners('disconnected', 'Logout');
-    
-    return { success: true, message: 'Sesión cerrada correctamente' };
-  }
-  
-  // Método privado para notificar a los listeners
+  // Notificar a todos los listeners de un evento
   private notifyListeners(event: string, ...args: any[]): void {
     if (this.eventListeners.has(event)) {
       this.eventListeners.get(event)?.forEach(callback => {
@@ -157,61 +448,21 @@ class WhatsAppService implements IWhatsAppService {
     }
   }
   
-  // Método privado para generar QR Code simulado
-  private generateQrCode(): string {
-    // En una implementación real, esto usaría la librería qrcode para generar un código QR
-    // que apuntara a web.whatsapp.com
-    
-    // Devolvemos un código QR simulado como data URL
-    const qrDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOQAAADkCAYAAACIV4iNAAAAAklEQVR4AewaftIAAAxOSURBVO3BQW4ERxLAQLKh/3+ZO8c8FSCo6qFZESbYH6xSLoeVyuWwUrkcViqXw0rlclipXA4rlcthpXI5rFQuh5XK5bBSuRxWKpfDSuVyWKlcDiuVy+GHl6A/qTJBf1Llgqak8kkqE/QnVZ4cViqXw0rlclipXA5/+DKVb1J5QuUJlW9SeULlG1W+SeWbDiuVy2Glcjms";
-    
-    return qrDataUrl;
-  }
-  
-  // Método público para simular recepción de mensaje
-  public simulateIncomingMessage(from: string, message: string, leadId?: number): void {
-    console.log(`[Simulado] Mensaje recibido de ${from}: ${message}`);
-    
-    // Crear objeto de mensaje simulado
-    const simMessage = {
-      from,
-      body: message,
-      timestamp: new Date(),
-      isStatus: false,
-      simulated: true
-    };
-    
-    // Actualizar estado
-    this.status.lastMessageAt = new Date();
-    
-    // Notificar a los listeners
-    this.notifyListeners('message', simMessage);
-    
-    // Guardar en la base de datos si tenemos un leadId
-    if (leadId) {
-      storage.createMessage({
-        leadId,
-        content: message,
-        direction: 'incoming',
-        channel: 'whatsapp',
-        read: false
-      }).catch(err => console.error("Error guardando mensaje:", err));
+  // Cerrar sesión
+  async logout(): Promise<any> {
+    if (!this.client) {
+      return { success: true, message: 'No hay sesión activa' };
     }
-  }
-  
-  // Método para simular autenticación completa (para pruebas)
-  public simulateAuthenticated(): void {
-    this.status.ready = true;
-    this.status.authenticated = true;
-    this.status.qrCode = undefined; // Eliminar QR cuando ya está autenticado
     
-    // Notificar a los listeners
-    this.notifyListeners('authenticated');
-    this.notifyListeners('ready');
-    
-    console.log("Simulando autenticación completa en WhatsApp");
+    try {
+      await this.client.logout();
+      return { success: true, message: 'Sesión cerrada correctamente' };
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+      return { success: false, message: 'Error al cerrar sesión', error };
+    }
   }
 }
 
-// Exportar la instancia del servicio
-export const whatsappService: IWhatsAppService = WhatsAppService.getInstance();
+// Exportar la instancia del servicio real
+export const whatsappService: IWhatsAppService = WhatsAppRealService.getInstance();
