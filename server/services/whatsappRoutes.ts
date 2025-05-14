@@ -3,20 +3,20 @@
  */
 import type { Express, Request, Response } from "express";
 
-// Importar el servicio real
-import { whatsappRealService } from './whatsappRealService';
+// Importar el servicio simplificado
+import { whatsappService } from './whatsappServiceImpl';
 
 export function registerWhatsAppRoutes(app: Express): void {
   // Status endpoint
   app.get("/api/integrations/whatsapp/status", async (req: Request, res: Response) => {
     try {
       // Inicializar si no está inicializado
-      if (!whatsappRealService.getStatus().initialized) {
-        await whatsappRealService.initialize().catch((err: any) => {
-          console.error("Error inicializando servicio real de WhatsApp:", err);
+      if (!whatsappService.getStatus().initialized) {
+        await whatsappService.initialize().catch((err: any) => {
+          console.error("Error inicializando servicio de WhatsApp:", err);
         });
       }
-      const status = whatsappRealService.getStatus();
+      const status = whatsappService.getStatus();
       res.json(status);
     } catch (error) {
       console.error("Error obteniendo estado de WhatsApp:", error);
@@ -31,13 +31,13 @@ export function registerWhatsAppRoutes(app: Express): void {
   app.get("/api/integrations/whatsapp/qrcode", async (req: Request, res: Response) => {
     try {
       // Inicializar si no está inicializado
-      if (!whatsappRealService.getStatus().initialized) {
-        await whatsappRealService.initialize().catch((err: any) => {
-          console.error("Error inicializando servicio real de WhatsApp:", err);
+      if (!whatsappService.getStatus().initialized) {
+        await whatsappService.initialize().catch((err: any) => {
+          console.error("Error inicializando servicio de WhatsApp:", err);
         });
       }
       
-      const status = whatsappRealService.getStatus();
+      const status = whatsappService.getStatus();
       
       if (status.qrCode) {
         res.json({ data: status.qrCode });
@@ -56,8 +56,8 @@ export function registerWhatsAppRoutes(app: Express): void {
   // Restart endpoint - genera un nuevo código QR
   app.post("/api/integrations/whatsapp/restart", async (req: Request, res: Response) => {
     try {
-      console.log("Reiniciando servicio de WhatsApp (modo real)...");
-      await whatsappRealService.restart();
+      console.log("Reiniciando servicio de WhatsApp...");
+      await whatsappService.restart();
       res.json({ success: true });
     } catch (error) {
       console.error("Error reiniciando servicio de WhatsApp:", error);
@@ -72,7 +72,7 @@ export function registerWhatsAppRoutes(app: Express): void {
   app.post("/api/integrations/whatsapp/logout", async (req: Request, res: Response) => {
     try {
       console.log("Cerrando sesión de WhatsApp...");
-      const result = await whatsappRealService.logout();
+      const result = await whatsappService.logout();
       res.json(result);
     } catch (error) {
       console.error("Error cerrando sesión de WhatsApp:", error);
@@ -93,7 +93,7 @@ export function registerWhatsAppRoutes(app: Express): void {
       }
       
       console.log(`Enviando mensaje a ${to}: ${message} (leadId: ${leadId || 'N/A'})`);
-      const result = await whatsappRealService.sendMessage(
+      const result = await whatsappService.sendMessage(
         to, 
         message, 
         leadId ? parseInt(leadId) : undefined
