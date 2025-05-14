@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { 
   insertUserSchema, 
@@ -1013,6 +1014,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Crear servidor HTTP
   const httpServer = createServer(app);
+  
+  // Configurar el servidor WebSocket para notificaciones en tiempo real
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Lista de clientes conectados
+  const clients = new Set<WebSocket>();
+  
+  // Evento cuando un cliente se conecta
+  wss.on('connection', (ws: WebSocket) => {
+    console.log('Cliente WebSocket conectado');
+    
+    // Añadir a la lista de clientes
+    clients.add(ws);
+    
+    // Enviar un mensaje de bienvenida
+    ws.send(JSON.stringify({
+      type: 'connection',
+      message: 'Conectado al servidor de notificaciones en tiempo real'
+    }));
+    
+    // Evento cuando se recibe un mensaje del cliente
+    ws.on('message', (message: string) => {
+      try {
+        const parsedMessage = JSON.parse(message.toString());
+        console.log('Mensaje recibido:', parsedMessage);
+        
+        // Aquí puedes manejar diferentes tipos de mensajes del cliente
+        if (parsedMessage.type === 'ping') {
+          ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+        }
+      } catch (error) {
+        console.error('Error procesando mensaje WebSocket:', error);
+      }
+    });
+    
+    // Evento cuando el cliente se desconecta
+    ws.on('close', () => {
+      console.log('Cliente WebSocket desconectado');
+      clients.delete(ws);
+    });
+  });
+  
+  // Función global para enviar notificaciones a todos los clientes
+  (global as any).sendNotification = (data: any) => {
+    const message = JSON.stringify({
+      type: 'notification',
+      timestamp: Date.now(),
+      data
+    });
+    
+    clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  };
+  
   return httpServer;
 }
