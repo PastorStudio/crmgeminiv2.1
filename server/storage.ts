@@ -218,7 +218,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(activities)
       .where(eq(activities.userId, userId))
-      .orderBy(activities.startTime)
+      .orderBy(activities.scheduled)
       .limit(limit);
   }
 
