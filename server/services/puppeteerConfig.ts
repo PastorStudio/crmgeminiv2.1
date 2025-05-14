@@ -15,13 +15,16 @@ const exec = util.promisify(execCallback);
 
 // Importar Playwright solo si está disponible
 let chromium: any;
-try {
-  const playwright = await import('playwright');
-  chromium = playwright.chromium;
-} catch (error: any) {
-  console.log("Playwright no está disponible:", error.message);
-  chromium = null;
-}
+// Usamos una función asíncrona autoinvocada para permitir top-level await
+(async () => {
+  try {
+    const playwright = await import('playwright');
+    chromium = playwright.chromium;
+  } catch (error: any) {
+    console.log("Playwright no está disponible:", error.message);
+    chromium = null;
+  }
+})();
 
 // Añadir plugins de Puppeteer
 puppeteerExtra.use(StealthPlugin());
@@ -176,9 +179,9 @@ async function createPlaywrightBrowser() {
     const puppeteerBrowser = {
       pages: async () => {
         const pwPages = browser.contexts()[0].pages();
-        return pwPages.map(pwPage => ({
+        return pwPages.map((pwPage: any) => ({
           goto: async (url: string) => pwPage.goto(url),
-          evaluate: async (fn: Function) => pwPage.evaluate(fn),
+          evaluate: async (fn: Function) => pwPage.evaluate(fn as any),
           // Agregar más métodos según sea necesario
         }));
       },
@@ -186,7 +189,7 @@ async function createPlaywrightBrowser() {
         const pwPage = await browser.newPage();
         return {
           goto: async (url: string) => pwPage.goto(url),
-          evaluate: async (fn: Function) => pwPage.evaluate(fn),
+          evaluate: async (fn: Function) => pwPage.evaluate(fn as any),
           // Agregar más métodos según sea necesario
         };
       },
@@ -202,7 +205,7 @@ async function createPlaywrightBrowser() {
 }
 
 // Función principal para crear un navegador
-export async function createBrowser(): Promise<Browser> {
+export async function createBrowser(): Promise<any> {
   try {
     // Primero intentamos con Puppeteer
     const puppeteerBrowser = await createPuppeteerBrowser();
