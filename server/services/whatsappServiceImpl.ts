@@ -14,7 +14,7 @@ import util from 'util';
 
 // Importaciones específicas para whatsapp-web.js (deben estar instaladas)
 let Client: any;
-let LocalAuth: any;
+// Ya no usamos LocalAuth para evitar problemas de compatibilidad
 let qrcode: any;
 
 // Instalamos las dependencias necesarias
@@ -25,7 +25,7 @@ async function ensureDependencies() {
     // Intentamos importar whatsapp-web.js
     const wwjs = await import('whatsapp-web.js');
     Client = wwjs.Client;
-    LocalAuth = wwjs.LocalAuth;
+    // No usamos LocalAuth debido a problemas de compatibilidad
     
     // Intentamos importar qrcode
     qrcode = await import('qrcode');
@@ -41,7 +41,7 @@ async function ensureDependencies() {
       // Intentamos importar de nuevo
       const wwjs = await import('whatsapp-web.js');
       Client = wwjs.Client;
-      LocalAuth = wwjs.LocalAuth;
+      // No usamos LocalAuth por compatibilidad
       
       qrcode = await import('qrcode');
       
@@ -95,12 +95,10 @@ class WhatsAppClient extends EventEmitter {
       // Obtener navegador configurado
       const browser = await createBrowser();
       
-      // Inicializar cliente de WhatsApp-Web.js
+      // Inicializar cliente de WhatsApp-Web.js con una configuración básica
+      // sin usar LocalAuth que puede dar problemas en algunos entornos
       this.client = new Client({
-        authStrategy: new LocalAuth({
-          dataPath: SESSION_DIR
-        }),
-        // Configurar opciones de Puppeteer
+        // No usamos authStrategy personalizada
         puppeteer: {
           args: [
             '--no-sandbox',
