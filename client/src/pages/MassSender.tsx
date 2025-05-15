@@ -164,11 +164,11 @@ export default function MassSender() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [excelColumns, setExcelColumns] = useState<string[]>([]);
   const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({
-    phoneNumber: '',
-    name: '',
-    company: '',
-    email: '',
-    tags: ''
+    phoneNumber: 'none',
+    name: 'none',
+    company: 'none',
+    email: 'none',
+    tags: 'none'
   });
   const [importedData, setImportedData] = useState<any>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
