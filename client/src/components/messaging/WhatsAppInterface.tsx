@@ -205,14 +205,24 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
   // Mutación para enviar un mensaje
   const sendMessageMutation = useMutation({
     mutationFn: async (messageData: { content: string }) => {
-      return await apiRequest('/api/messages', {
+      // Usar apiRequest porque es más compatible con la API normal
+      return await fetch('/api/messages', {
         method: 'POST',
-        data: {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
           leadId: selectedLeadId,
           content: messageData.content,
           direction: 'outgoing',
           channel: 'whatsapp'
+        })
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
         }
+        return response.json();
       });
     },
     onSuccess: () => {
@@ -276,7 +286,9 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
   };
 
   // Obtener iniciales para avatar
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | undefined) => {
+    if (!name) return 'UN'; // Unknown/Usuario No identificado
+    
     return name
       .split(' ')
       .map(n => n[0])
@@ -689,8 +701,8 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
               {showAiAssistant && (
                 <div className="w-1/3 border-l flex flex-col">
                   <GeminiAssistant 
-                    selectedLeadId={selectedLeadId} 
-                    onSendMessage={(message) => {
+                    leadId={selectedLeadId} 
+                    onMessageGenerated={(message) => {
                       setMessageText(message);
                     }}
                   />
