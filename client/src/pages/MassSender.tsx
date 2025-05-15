@@ -172,13 +172,13 @@ export default function MassSender() {
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   
   // Consulta para obtener los grupos de contactos
-  const { data: contactGroups = [], isLoading: loadingGroups } = useQuery({
+  const { data: contactGroups = [], isLoading: loadingGroups } = useQuery<ContactGroup[]>({
     queryKey: ['/api/whatsapp/contact-groups'],
     retry: false
   });
   
   // Consulta para obtener las etiquetas disponibles
-  const { data: contactTags = [], isLoading: loadingTags } = useQuery({
+  const { data: contactTags = [], isLoading: loadingTags } = useQuery<any[]>({
     queryKey: ['/api/whatsapp/contact-tags'],
     retry: false
   });
@@ -188,7 +188,7 @@ export default function MassSender() {
     data: campaigns = [], 
     isLoading: loadingCampaigns,
     refetch: refetchCampaigns
-  } = useQuery({
+  } = useQuery<Campaign[]>({
     queryKey: ['/api/mass-sender/campaigns'],
     retry: false
   });
@@ -695,9 +695,9 @@ export default function MassSender() {
                         <div className="flex items-center justify-center h-full">
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
-                      ) : contactGroups && contactGroups.length > 0 ? (
+                      ) : Array.isArray(contactGroups) && contactGroups.length > 0 ? (
                         <div className="space-y-2">
-                          {(contactGroups || []).map((group: ContactGroup) => (
+                          {contactGroups.map((group: ContactGroup) => (
                             <div key={group.id} className="flex items-center space-x-2">
                               <input 
                                 type="checkbox"
@@ -733,9 +733,9 @@ export default function MassSender() {
                         <div className="flex items-center justify-center h-full">
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
-                      ) : contactTags && contactTags.length > 0 ? (
+                      ) : Array.isArray(contactTags) && contactTags.length > 0 ? (
                         <div className="space-y-2">
-                          {(contactTags || []).map((tag: any) => (
+                          {contactTags.map((tag: any) => (
                             <div key={tag.id} className="flex items-center space-x-2">
                               <input 
                                 type="checkbox"
@@ -1079,7 +1079,7 @@ export default function MassSender() {
                   <div className="flex items-center justify-center h-64">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
-                ) : campaigns && campaigns.length > 0 ? (
+                ) : Array.isArray(campaigns) && campaigns.length > 0 ? (
                   <Table>
                     <TableHeader>
                       <TableRow>
