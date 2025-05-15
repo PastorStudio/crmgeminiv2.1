@@ -88,6 +88,13 @@ export class ExcelImportService {
     originalname: string, 
     fieldMapping: Record<string, string>
   ): Promise<ImportResult> {
+    // Log detallado para diagnóstico
+    console.log("=== INICIO IMPORTACIÓN DE EXCEL ===");
+    console.log(`Archivo a importar: ${filename}`);
+    console.log(`Nombre original: ${originalname}`);
+    console.log(`Directorio de subidas: ${this.uploadsDir}`);
+    console.log(`Mapeo de campos: ${JSON.stringify(fieldMapping)}`);
+    
     console.log(`Iniciando importación de Excel. Archivo: ${filename}, Mapeo:`, JSON.stringify(fieldMapping));
     
     // Validar que el campo phoneNumber esté presente y no sea 'none'
