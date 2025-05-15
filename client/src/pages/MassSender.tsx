@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { toast } from "@/hooks/use-toast";
+import { TemplateSelector, TemplatePreview } from "@/components/message-templates";
 import { 
   Card, 
   CardContent, 

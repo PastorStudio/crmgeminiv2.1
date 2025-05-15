@@ -14,6 +14,7 @@ import Integrations from "@/pages/Integrations";
 import Database from "@/pages/Database";
 import GeminiDemo from "@/pages/GeminiDemo";
 import MassSender from "@/pages/MassSender";
+import MessageTemplates from "@/pages/MessageTemplates";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 
@@ -43,6 +44,7 @@ function App() {
                   <Route path="/database" component={Database} />
                   <Route path="/gemini-demo" component={GeminiDemo} />
                   <Route path="/mass-sender" component={MassSender} />
+                  <Route path="/message-templates" component={MessageTemplates} />
                   <Route component={NotFound} />
                 </Switch>
               </div>
