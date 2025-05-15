@@ -42,15 +42,7 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
    * Obtiene la ruta al ejecutable de Chromium en Replit
    */
   private getChromiumExecutablePath(): string {
-    // En Replit, Chromium se instala aquí
-    const replitChromiumPath = '/nix/store/x205pbkd5xh5g5iack1dxfcms3cz2549-chromium-108.0.5359.94/bin/chromium';
-    
-    if (fs.existsSync(replitChromiumPath)) {
-      console.log('Usando Chromium de Replit:', replitChromiumPath);
-      return replitChromiumPath;
-    }
-    
-    // Intentar ubicación alternativa
+    // Primero intentar el comando 'which' para encontrar el Chromium instalado
     try {
       const whichChromium = require('child_process').execSync('which chromium').toString().trim();
       if (whichChromium && fs.existsSync(whichChromium)) {
@@ -59,6 +51,22 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       }
     } catch (error) {
       console.warn('No se pudo determinar la ubicación de Chromium mediante "which"');
+    }
+    
+    // Rutas comunes de Chromium en Replit (orden del más reciente al más antiguo)
+    const possiblePaths = [
+      '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
+      '/nix/store/x205pbkd5xh5g5iack1dxfcms3cz2549-chromium-108.0.5359.94/bin/chromium',
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser',
+      '/nix/store/chromium/bin/chromium'
+    ];
+    
+    for (const path of possiblePaths) {
+      if (fs.existsSync(path)) {
+        console.log('Usando Chromium encontrado en:', path);
+        return path;
+      }
     }
     
     throw new Error('No se pudo encontrar el ejecutable de Chromium');
