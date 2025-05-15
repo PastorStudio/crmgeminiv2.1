@@ -40,8 +40,8 @@ export async function registerWhatsAppRoutes(app: Express) {
   // Asignamos el servicio elegido
   const whatsappService = serviceToUse;
   
-  // Status endpoint
-  app.get("/api/integrations/whatsapp/status", async (req: Request, res: Response) => {
+  // Status endpoint - Añadido uno especial para evitar intercepción de Vite
+  app.get("/api/direct/whatsapp/status", async (req: Request, res: Response) => {
     try {
       // IMPORTANTE: Establecer cabeceras CORS y tipo de contenido
       res.header('Access-Control-Allow-Origin', '*');
@@ -115,8 +115,8 @@ export async function registerWhatsAppRoutes(app: Express) {
     }
   });
 
-  // QR Image endpoint (devuelve directamente la imagen)
-  app.get("/api/integrations/whatsapp/qr-image", async (req: Request, res: Response) => {
+  // QR Image endpoint (devuelve directamente la imagen) - Añadido uno especial para evitar intercepción de Vite
+  app.get("/api/direct/whatsapp/qr-image", async (req: Request, res: Response) => {
     try {
       // IMPORTANTE: Establecer cabeceras para prevenir caché e interceptación
       res.header('Access-Control-Allow-Origin', '*');
