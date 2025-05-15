@@ -9,6 +9,7 @@
 
 import { Express, Request, Response } from 'express';
 import { whatsappService } from './whatsappServiceImpl';
+import { getAllWhatsAppContacts, getContactsByCategory, searchWhatsAppContacts, getWhatsAppGroups } from './whatsappContactsService';
 import * as qrcode from 'qrcode';
 
 /**
@@ -203,6 +204,67 @@ export function registerDirectRoutes(app: Express): void {
       console.error('Error cerrando sesión de WhatsApp (directo):', error);
       res.status(500).json({ 
         error: 'Error cerrando sesión de WhatsApp',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  // Endpoint directo para obtener todos los contactos de WhatsApp
+  app.get('/api/direct/whatsapp/contacts', async (req: Request, res: Response) => {
+    try {
+      const contacts = await getAllWhatsAppContacts();
+      res.json(contacts);
+    } catch (error) {
+      console.error('Error obteniendo contactos de WhatsApp (directo):', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo contactos de WhatsApp',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+  
+  // Endpoint directo para obtener contactos por categoría
+  app.get('/api/direct/whatsapp/contacts/categories', async (req: Request, res: Response) => {
+    try {
+      const categorizedContacts = await getContactsByCategory();
+      res.json(categorizedContacts);
+    } catch (error) {
+      console.error('Error obteniendo contactos por categoría (directo):', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo contactos por categoría',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+  
+  // Endpoint directo para buscar contactos
+  app.get('/api/direct/whatsapp/contacts/search', async (req: Request, res: Response) => {
+    try {
+      const { query } = req.query;
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ error: 'Se requiere término de búsqueda' });
+      }
+      
+      const searchResults = await searchWhatsAppContacts(query);
+      res.json(searchResults);
+    } catch (error) {
+      console.error('Error buscando contactos de WhatsApp (directo):', error);
+      res.status(500).json({ 
+        error: 'Error buscando contactos de WhatsApp',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+  
+  // Endpoint directo para obtener grupos
+  app.get('/api/direct/whatsapp/groups', async (req: Request, res: Response) => {
+    try {
+      const groups = await getWhatsAppGroups();
+      res.json(groups);
+    } catch (error) {
+      console.error('Error obteniendo grupos de WhatsApp (directo):', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo grupos de WhatsApp',
         message: error instanceof Error ? error.message : 'Error desconocido'
       });
     }
