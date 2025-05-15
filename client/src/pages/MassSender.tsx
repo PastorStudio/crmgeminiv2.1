@@ -39,7 +39,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle, Upload, Database, FileText, FileSpreadsheet, CheckCircle, Phone, Clock, AlertCircle } from "lucide-react";
+import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle, Upload, Database, FileText, FileSpreadsheet, CheckCircle, Phone, Clock, AlertCircle, Check, Circle, Plus } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -2128,6 +2128,114 @@ export default function MassSender() {
             >
               Importar Contactos
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Diálogo para añadir etiquetas a contactos */}
+      <Dialog open={isTaggingDialogOpen} onOpenChange={setIsTaggingDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Añadir etiquetas a contactos</DialogTitle>
+            <DialogDescription>
+              Seleccione las etiquetas que desea aplicar a todos los contactos importados.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="tags">Etiquetas disponibles</Label>
+              
+              {loadingTags ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : contactTags && contactTags.length > 0 ? (
+                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 border rounded-md">
+                  {contactTags.map((tag: any) => (
+                    <div 
+                      key={tag.id}
+                      onClick={() => {
+                        // Toggle la selección de la etiqueta
+                        if (selectedTagsToAdd.includes(tag.id)) {
+                          setSelectedTagsToAdd(selectedTagsToAdd.filter(id => id !== tag.id));
+                        } else {
+                          setSelectedTagsToAdd([...selectedTagsToAdd, tag.id]);
+                        }
+                      }}
+                      className={`flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer transition-colors ${
+                        selectedTagsToAdd.includes(tag.id) 
+                          ? 'bg-primary/20 border-primary/30' 
+                          : 'bg-muted/50 hover:bg-muted'
+                      } border`}
+                    >
+                      {selectedTagsToAdd.includes(tag.id) ? (
+                        <Check className="h-3.5 w-3.5 text-primary" />
+                      ) : (
+                        <Circle className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                      <span className="text-sm">{tag.name}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground text-sm">
+                  No hay etiquetas disponibles. Cree una nueva etiqueta.
+                </div>
+              )}
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="new-tag">Crear nueva etiqueta</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="new-tag"
+                  placeholder="Nombre de la etiqueta"
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  disabled={!newTagName.trim() || createTagMutation.isPending}
+                  onClick={() => {
+                    if (newTagName.trim()) {
+                      createTagMutation.mutate({ 
+                        name: newTagName.trim(),
+                        color: "#3b82f6" // Color predeterminado azul
+                      });
+                    }
+                  }}
+                >
+                  {createTagMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="sm:justify-between">
+            <div>
+              {selectedTagsToAdd.length > 0 && (
+                <span className="text-sm text-muted-foreground">
+                  {selectedTagsToAdd.length} etiqueta{selectedTagsToAdd.length !== 1 ? 's' : ''} seleccionada{selectedTagsToAdd.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsTaggingDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={applyTagsToContacts}
+                disabled={selectedTagsToAdd.length === 0}
+              >
+                Aplicar etiquetas
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
