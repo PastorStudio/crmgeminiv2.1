@@ -74,31 +74,28 @@ class MediaGalleryService {
       // Guardar el archivo en el sistema de archivos
       await fs.promises.writeFile(filePath, file.buffer);
       
-      // Utilizamos una consulta SQL simple y segura con parámetros
-      const query = `
-        INSERT INTO media_gallery 
-        (filename, original_filename, mime_type, size, path, type, tags, title, description, uploaded_by, use_count, uploaded_at) 
-        VALUES 
-        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
-        RETURNING *;
-      `;
+      // Usamos el método insert de Drizzle ORM correctamente 
+      const result = await db.insert(mediaGallery).values({
+        filename: filename,
+        originalFilename: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+        path: filePath,
+        type: options.type,
+        tags: options.tags || [],
+        title: options.title || null,
+        description: options.description || null,
+        uploadedBy: options.uploadedBy || null,
+        useCount: 0,
+        uploadedAt: new Date()
+      }).returning();
       
-      const values = [
-        filename,
-        file.originalname,
-        file.mimetype,
-        file.size,
-        filePath,
-        options.type,
-        options.tags || [],
-        options.title || null,
-        options.description || null,
-        options.uploadedBy || null,
-        0
-      ];
+      // Para mayor seguridad, usamos el operador || para proporcionar un valor por defecto
+      const mediaItem = (result && result[0]) || null;
       
-      const result = await db.query(query, values);
-      const mediaItem = result.rows[0];
+      if (!mediaItem) {
+        throw new Error('No se pudo obtener el resultado de la inserción');
+      }
       
       return this.formatMediaItem(mediaItem);
     } catch (error) {
