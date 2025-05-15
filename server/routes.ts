@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import path from "path";
+import * as fs from "fs";
 import { storage } from "./storage";
 import { 
   insertUserSchema, 
@@ -1320,7 +1321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Se requiere el parámetro fieldMapping con el mapeo de campos" });
       }
       
-      console.log(`Parámetros de importación: filename=${filename}, fieldMapping=`, fieldMapping);
+      console.log(`Parámetros de importación: filename=${filename}, fieldMapping=`, JSON.stringify(fieldMapping));
       
       if (!fieldMapping.phoneNumber || fieldMapping.phoneNumber === 'none') {
         console.error("El mapeo de campos no incluye el campo phoneNumber o está marcado como 'none'");
@@ -1330,6 +1331,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       try {
+        // Verificar que el directorio temporal existe
+        const tempDir = path.join(process.cwd(), 'temp', 'uploads');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+          console.log(`Directorio creado: ${tempDir}`);
+        }
+        
+        // Verificar que el archivo existe
+        const filePath = path.join(tempDir, filename);
+        const fileExists = fs.existsSync(filePath);
+        console.log(`Verificando archivo ${filePath}: ${fileExists ? 'EXISTE' : 'NO EXISTE'}`);
+        
+        if (!fileExists) {
+          return res.status(404).json({ 
+            error: "Archivo no encontrado", 
+            details: `El archivo ${filename} no existe en el servidor` 
+          });
+        }
+        
         const importResult = await excelImportService.importFromExcel(
           filename,
           originalname || filename,
