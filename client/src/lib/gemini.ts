@@ -9,6 +9,7 @@ interface GeminiConfig {
   maxOutputTokens?: number;
   topK?: number;
   topP?: number;
+  professionLevel?: ProfessionLevel;
 }
 
 /**
@@ -17,6 +18,44 @@ interface GeminiConfig {
 export interface GeminiMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+/**
+ * Niveles de profesionalismo para la comunicación de Gemini
+ */
+export enum ProfessionLevel {
+  CASUAL = "casual",           // Informal y amigable
+  PROFESSIONAL = "professional", // Formal y profesional
+  TECHNICAL = "technical",      // Técnico y detallado
+  EXECUTIVE = "executive"       // Ejecutivo y conciso
+}
+
+/**
+ * Categoría de chat según análisis de Gemini
+ */
+export interface ChatCategory {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  probability: number;
+}
+
+/**
+ * Información extraída de mensajes por Gemini
+ */
+export interface MessageAnalysis {
+  intent: string;
+  sentiment: "positive" | "neutral" | "negative";
+  urgency: "low" | "medium" | "high";
+  topics: string[];
+  entities: {
+    name: string;
+    type: string;
+    value: string;
+  }[];
+  suggestedNextAction?: string;
+  suggestedResponseTemplate?: string;
 }
 
 /**
@@ -32,8 +71,23 @@ export class GeminiClient {
       maxOutputTokens: 1024,
       topK: 40,
       topP: 0.95,
+      professionLevel: ProfessionLevel.PROFESSIONAL,
       ...config
     };
+  }
+
+  /**
+   * Actualiza el nivel de profesionalismo para las comunicaciones
+   */
+  setProfessionLevel(level: ProfessionLevel) {
+    this.config.professionLevel = level;
+  }
+
+  /**
+   * Obtiene el nivel de profesionalismo actual
+   */
+  getProfessionLevel(): ProfessionLevel {
+    return this.config.professionLevel || ProfessionLevel.PROFESSIONAL;
   }
 
   /**
@@ -41,8 +95,14 @@ export class GeminiClient {
    */
   async analyzeLead(leadId: number) {
     try {
-      const response = await apiRequest("POST", "/api/gemini/analyze-lead", { leadId });
-      return await response.json();
+      const response = await apiRequest("/api/gemini/analyze-lead", {
+        method: "POST",
+        body: { 
+          leadId,
+          professionLevel: this.config.professionLevel 
+        }
+      });
+      return response;
     } catch (error) {
       console.error("Error analyzing lead with Gemini:", error);
       throw error;
@@ -54,12 +114,16 @@ export class GeminiClient {
    */
   async generateMessage(leadId: number, messageType: string, context?: string) {
     try {
-      const response = await apiRequest("POST", "/api/gemini/generate-message", {
-        leadId,
-        messageType,
-        context
+      const response = await apiRequest("/api/gemini/generate-message", {
+        method: "POST",
+        body: {
+          leadId,
+          messageType,
+          context,
+          professionLevel: this.config.professionLevel
+        }
       });
-      return await response.json();
+      return response;
     } catch (error) {
       console.error("Error generating message with Gemini:", error);
       throw error;
@@ -71,11 +135,15 @@ export class GeminiClient {
    */
   async chat(message: string, history: GeminiMessage[] = []) {
     try {
-      const response = await apiRequest("POST", "/api/gemini/chat", {
-        message,
-        history
+      const response = await apiRequest("/api/gemini/chat", {
+        method: "POST",
+        body: {
+          message,
+          history,
+          professionLevel: this.config.professionLevel
+        }
       });
-      return await response.json();
+      return response;
     } catch (error) {
       console.error("Error chatting with Gemini:", error);
       throw error;
@@ -101,6 +169,57 @@ export class GeminiClient {
    */
   async generateMeetingRequest(leadId: number) {
     return this.generateMessage(leadId, "meeting-request");
+  }
+
+  /**
+   * Analiza un mensaje o conversación para extraer información relevante
+   */
+  async analyzeMessage(message: string, context?: string) {
+    try {
+      const response = await apiRequest("POST", "/api/gemini/extract-info", {
+        text: message,
+        context,
+        professionLevel: this.config.professionLevel
+      });
+      return await response.json() as MessageAnalysis;
+    } catch (error) {
+      console.error("Error analyzing message with Gemini:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Categoriza un chat basado en sus mensajes
+   */
+  async categorizeChat(chatId: string, messageCount: number = 10) {
+    try {
+      const response = await apiRequest("POST", "/api/gemini/generate-tags", {
+        chatId,
+        messageCount,
+        professionLevel: this.config.professionLevel
+      });
+      return await response.json() as ChatCategory[];
+    } catch (error) {
+      console.error("Error categorizing chat with Gemini:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sugiere la próxima acción recomendada para un chat o lead
+   */
+  async suggestAction(chatId: string, leadId?: number) {
+    try {
+      const response = await apiRequest("POST", "/api/gemini/suggest-action", {
+        chatId,
+        leadId,
+        professionLevel: this.config.professionLevel
+      });
+      return await response.json();
+    } catch (error) {
+      console.error("Error getting action suggestion with Gemini:", error);
+      throw error;
+    }
   }
 }
 
