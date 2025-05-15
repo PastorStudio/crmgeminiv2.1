@@ -229,18 +229,36 @@ export class ExcelImportService {
         try {
           // Verificar si existe el número de teléfono (campo obligatorio)
           const phoneField = filteredMapping.phoneNumber;
-          if (!phoneField || row[phoneField] === undefined || row[phoneField] === null || row[phoneField] === '') {
-            const rowDesc = JSON.stringify(row).substring(0, 100) + '...';
+          console.log(`Procesando fila, campo telefónico es: ${phoneField}`);
+          
+          // Buscar el número de teléfono prioritariamente en los campos 'telefono' o 'phoneNumber'
+          let phoneValue: any = row[phoneField];
+          
+          // Si estamos mapeando a una columna Excel (A, B, C...) pero hay una columna "telefono"
+          // en los datos, usémosla como respaldo
+          if ((phoneField.length === 1 || /^[A-Z]$/.test(phoneField)) && 
+              (row['telefono'] !== undefined || row['phoneNumber'] !== undefined || row['phone'] !== undefined)) {
+            // Intentar usar campo telefono existente en datos si no se encuentra en la columna mapeada
+            if (phoneValue === undefined || phoneValue === null || phoneValue === '') {
+              phoneValue = row['telefono'] || row['phoneNumber'] || row['phone'];
+              console.log(`Campo telefónico no encontrado en columna ${phoneField}, usando campo alternativo: ${phoneValue}`);
+            }
+          }
+          
+          if (phoneValue === undefined || phoneValue === null || phoneValue === '') {
+            const rowDesc = JSON.stringify(row).substring(0, 200) + '...';
             console.log(`Fila sin número de teléfono: ${rowDesc}`);
             errors.push(`Fila sin número de teléfono: ${rowDesc}`);
             invalidRows++;
             continue;
           }
           
-          // Formatear número de teléfono
-          const phoneRaw = typeof row[phoneField] === 'number' ? 
-            String(row[phoneField]) : 
-            String(row[phoneField]).trim();
+          console.log(`Valor telefónico encontrado: ${phoneValue} (tipo: ${typeof phoneValue})`);
+          
+          // Formatear número de teléfono - Asegurar que es una cadena de texto
+          const phoneRaw = typeof phoneValue === 'number' ? 
+            String(phoneValue) : 
+            String(phoneValue).trim();
             
           const phone = this.formatPhoneNumber(phoneRaw);
           
@@ -350,11 +368,16 @@ export class ExcelImportService {
 
   // Formatear número de teléfono al formato de WhatsApp
   private formatPhoneNumber(phone: string): string | null {
+    console.log(`Formateando número de teléfono: "${phone}" (tipo: ${typeof phone})`);
+    
     // Eliminar caracteres no numéricos
     const digits = phone.replace(/\D/g, '');
     
+    console.log(`Dígitos extraídos: "${digits}", longitud: ${digits.length}`);
+    
     // Debe tener al menos 8 dígitos
     if (digits.length < 8) {
+      console.log(`Número rechazado por tener menos de 8 dígitos: ${digits}`);
       return null;
     }
     
@@ -362,11 +385,26 @@ export class ExcelImportService {
     // Si no tiene código de país (asumiendo números de 8-10 dígitos sin código),
     // agregaremos un código por defecto (puede ser configurado según el país)
     let formattedPhone = digits;
-    if (digits.length <= 10 && !digits.startsWith('1') && !digits.startsWith('52') && !digits.startsWith('57')) {
-      // Añadir código por defecto (ejemplo: 1 para USA)
-      formattedPhone = '1' + digits;
+    
+    // Detectar códigos de país comunes en Latinoamérica
+    if (digits.length <= 10) {
+      // Si no comienza con códigos de países comunes
+      if (!digits.startsWith('1') && !digits.startsWith('52') && 
+          !digits.startsWith('57') && !digits.startsWith('507')) {
+        
+        // Si tiene 8 dígitos y es un número de Panamá, agregar código 507
+        if (digits.length === 8) {
+          formattedPhone = '507' + digits;
+          console.log(`Número de 8 dígitos detectado como panameño: 507${digits}`);
+        } else {
+          // Para otros casos usar código por defecto 507 (Panamá)
+          formattedPhone = '507' + digits;
+          console.log(`Agregando código de país 507 a: ${digits}`);
+        }
+      }
     }
     
+    console.log(`Número formateado final: ${formattedPhone}`);
     return formattedPhone;
   }
 
