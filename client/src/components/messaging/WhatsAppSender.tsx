@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,14 @@ import { Loader2, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 
+interface Lead {
+  id: number;
+  name: string;
+  phone?: string;
+  email?: string;
+  [key: string]: any;
+}
+
 export function WhatsAppSender({ leadId }: { leadId?: number }) {
   const [message, setMessage] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -16,17 +24,17 @@ export function WhatsAppSender({ leadId }: { leadId?: number }) {
   const { toast } = useToast();
 
   // Si tenemos un ID de lead, obtener sus datos para autocompletar el teléfono
-  const { data: lead } = useQuery({
+  const { data: lead } = useQuery<Lead>({
     queryKey: leadId ? [`/api/leads/${leadId}`] : [],
     enabled: !!leadId
   });
 
   // Poner el teléfono del lead si existe
-  useState(() => {
+  useEffect(() => {
     if (lead?.phone) {
       setPhoneNumber(lead.phone);
     }
-  });
+  }, [lead]);
 
   const handleSend = async () => {
     if (!message || !phoneNumber) {

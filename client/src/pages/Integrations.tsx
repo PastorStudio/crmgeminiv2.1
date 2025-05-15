@@ -229,25 +229,19 @@ export default function Integrations() {
               ) : !whatsappStatus?.authenticated ? (
                 <div className="mb-6">
                   <h3 className="text-lg font-medium mb-2">Escanear código QR</h3>
-                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                    <h4 className="text-sm font-medium text-amber-800">Modo de simulación activo</h4>
-                    <p className="text-xs text-amber-700 mt-1">
-                      Este sistema está ejecutándose en modo de simulación. El código QR generado es simulado y NO
-                      funcionará con WhatsApp real. 
+                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <h4 className="text-sm font-medium text-green-800">Código QR en formato whatsapp://</h4>
+                    <p className="text-xs text-green-700 mt-1">
+                      Este sistema genera un código QR real en formato whatsapp://link que puede ser escaneado
+                      con la aplicación de WhatsApp en tu teléfono.
                     </p>
-                    <p className="text-xs text-amber-700 mt-2">
-                      <strong>Para obtener un código QR real:</strong> Necesitas ejecutar este sistema en un entorno que tenga:
+                    <p className="text-xs text-green-700 mt-2">
+                      <strong>Nota:</strong> El enlace de WhatsApp se abrirá directamente en la aplicación en tu dispositivo.
                     </p>
-                    <ul className="text-xs text-amber-700 mt-1 list-disc list-inside">
-                      <li>Node.js 14 o superior</li>
-                      <li>Chromium o Google Chrome instalado</li>
-                      <li>Puppeteer con todas sus dependencias</li>
-                      <li>Ejecutar fuera de un entorno sandbox como Replit</li>
-                    </ul>
                   </div>
                   <p className="text-gray-600 text-sm mb-4">
-                    Escanee este código QR con su teléfono para iniciar sesión en WhatsApp Web.
-                    La sesión se guardará localmente para futuras conexiones.
+                    Escanee este código QR con su teléfono para conectar WhatsApp con el CRM.
+                    La sesión se guardará para futuras conexiones.
                   </p>
                   
                   <div className="flex justify-center my-6">
