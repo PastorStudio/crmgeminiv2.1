@@ -14,6 +14,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { href: "/", icon: "dashboard", label: "Dashboard" },
     { href: "/leads", icon: "people", label: "Leads" },
     { href: "/messages", icon: "forum", label: "Messages" },
+    { href: "/mass-sender", icon: "send", label: "Envío Masivo" },
     { href: "/calendar", icon: "event", label: "Calendar" },
     { href: "/tasks", icon: "assignment", label: "Tasks" },
     { href: "/analytics", icon: "leaderboard", label: "Analytics" },

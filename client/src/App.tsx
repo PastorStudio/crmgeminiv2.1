@@ -42,6 +42,7 @@ function App() {
                   <Route path="/integrations" component={Integrations} />
                   <Route path="/database" component={Database} />
                   <Route path="/gemini-demo" component={GeminiDemo} />
+                  <Route path="/mass-sender" component={MassSender} />
                   <Route component={NotFound} />
                 </Switch>
               </div>
