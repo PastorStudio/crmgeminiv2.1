@@ -326,7 +326,7 @@ export default function MassSender() {
                       onChange={(e) => setMessageTemplate(e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Usa {{nombre}} para personalizar el mensaje con el nombre del contacto.
+                      Usa {"{{"+"nombre"+"}}"} para personalizar el mensaje con el nombre del contacto.
                     </p>
                   </div>
                   
@@ -648,7 +648,7 @@ export default function MassSender() {
                     </div>
                     <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm text-sm">
                       {messageTemplate ? (
-                        messageTemplate.replace(/{{nombre}}/g, "Juan")
+                        messageTemplate.replace(new RegExp(`{{nombre}}`, 'g'), "Juan")
                       ) : (
                         <span className="text-muted-foreground italic">
                           La vista previa del mensaje aparecerá aquí...
