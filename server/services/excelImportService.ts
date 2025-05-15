@@ -233,6 +233,64 @@ export class ExcelImportService {
       throw new Error(`Error analyzing Excel file: ${error.message}`);
     }
   }
+  
+  // Preparar un lote de contactos con sus variables para usar con una plantilla
+  prepareTemplateContactBatch(
+    importId: string, 
+    templateId: number, 
+    variableMapping: Record<string, string>
+  ): TemplateContactBatch | null {
+    const importResult = this.getImportResult(importId);
+    if (!importResult) return null;
+    
+    const contactIds: string[] = [];
+    const variables: Record<string, any>[] = [];
+    
+    // Para cada contacto en la importación, extraer sus variables
+    for (const contact of importResult.contacts) {
+      contactIds.push(contact.id);
+      
+      // Mapear las variables del contacto según el mapeo proporcionado
+      const contactVariables: Record<string, any> = {};
+      
+      for (const [templateVar, contactField] of Object.entries(variableMapping)) {
+        // Si el campo es un valor constante (empieza con @), usar el valor literal sin @
+        if (contactField.startsWith('@')) {
+          contactVariables[templateVar] = contactField.substring(1);
+        } 
+        // Si no, obtener el valor del contacto
+        else if (contact[contactField] !== undefined) {
+          contactVariables[templateVar] = contact[contactField];
+        }
+      }
+      
+      variables.push(contactVariables);
+    }
+    
+    return {
+      templateId,
+      contactIds,
+      variables
+    };
+  }
+  
+  // Generar mensaje personalizado usando una plantilla y variables
+  generatePersonalizedMessage(
+    templateContent: string,
+    variables: Record<string, any>
+  ): string {
+    let result = templateContent;
+    
+    // Reemplazar variables en el formato {{variable}}
+    for (const [key, value] of Object.entries(variables)) {
+      if (value !== undefined && value !== null) {
+        const regex = new RegExp(`{{${key}}}`, 'g');
+        result = result.replace(regex, String(value));
+      }
+    }
+    
+    return result;
+  }
 }
 
 export const excelImportService = new ExcelImportService();
