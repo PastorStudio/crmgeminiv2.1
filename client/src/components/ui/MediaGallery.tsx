@@ -79,7 +79,7 @@ export const MediaGallery = ({
 
   // Consulta para obtener la lista de archivos
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['/api/media-gallery', selectedType, searchTerm],
+    queryKey: ['/api/media-gallery/list', selectedType, searchTerm],
     queryFn: async () => {
       const params = new URLSearchParams();
       
@@ -92,7 +92,7 @@ export const MediaGallery = ({
       }
       
       // Añadir filtros adicionales si existen
-      if (filter.type) {
+      if (filter && filter.type) {
         if (Array.isArray(filter.type)) {
           filter.type.forEach(type => params.append('type', type));
         } else {
@@ -100,16 +100,16 @@ export const MediaGallery = ({
         }
       }
       
-      if (filter.tags && filter.tags.length > 0) {
+      if (filter && filter.tags && filter.tags.length > 0) {
         filter.tags.forEach(tag => params.append('tags', tag));
       }
       
-      if (filter.search) {
+      if (filter && filter.search) {
         params.append('search', filter.search);
       }
       
-      const url = `/api/media-gallery?${params.toString()}`;
-      const response = await apiRequest<{ items: MediaItem[], total: number }>(url);
+      const url = `/api/media-gallery/list?${params.toString()}`;
+      const response = await apiRequest<{ success: boolean, items: MediaItem[], total: number }>(url);
       return response;
     }
   });
@@ -117,7 +117,7 @@ export const MediaGallery = ({
   // Mutación para subir un archivo
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await apiRequest<MediaItem>('/api/media-gallery', {
+      const response = await apiRequest<MediaItem>('/api/media-gallery/upload', {
         method: 'POST',
         body: formData,
         headers: {
