@@ -106,6 +106,7 @@ export default function MassSender() {
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [currentConfig, setCurrentConfig] = useState<Partial<MassSendConfig>>({});
   const [previewContact, setPreviewContact] = useState<any>({
@@ -536,6 +537,15 @@ export default function MassSender() {
   
   return (
     <div className="container mx-auto py-6">
+      {/* Input oculto para cargar archivo Excel */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept=".xlsx,.xls,.csv" 
+        onChange={handleFileUpload} 
+      />
+      
       <div className="flex flex-col space-y-6">
         <div className="flex justify-between items-center">
           <div>
@@ -543,6 +553,16 @@ export default function MassSender() {
             <p className="text-muted-foreground mt-1">
               Envía mensajes a múltiples contactos de forma segura y efectiva
             </p>
+          </div>
+          <div className="flex space-x-3">
+            <Button onClick={handleSelectFile} variant="outline">
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Importar Excel
+            </Button>
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Nueva Campaña
+            </Button>
           </div>
         </div>
         
@@ -1242,6 +1262,204 @@ export default function MassSender() {
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Diálogo para importar Excel */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Importar Contactos desde Excel</DialogTitle>
+            <DialogDescription>
+              Seleccione un archivo Excel para importar contactos a la campaña.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col gap-4 py-4">
+            {selectedFile ? (
+              <div className="flex items-center p-3 border rounded-md">
+                <FileSpreadsheet className="h-8 w-8 mr-2 text-green-500" />
+                <div className="flex-1">
+                  <p className="font-medium">{selectedFile.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {(selectedFile.size / 1024).toFixed(2)} KB
+                  </p>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => {
+                    setSelectedFile(null);
+                    setExcelColumns([]);
+                  }}
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div 
+                className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={handleSelectFile}
+              >
+                <Upload className="h-8 w-8 mb-2 text-muted-foreground" />
+                <p className="text-sm font-medium">Haga clic para seleccionar un archivo</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  O arrastre y suelte un archivo Excel aquí
+                </p>
+              </div>
+            )}
+            
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsImportDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                disabled={!selectedFile}
+                onClick={handleSelectFile}
+              >
+                {selectedFile ? "Seleccionar otro archivo" : "Seleccionar archivo"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Diálogo para mapeo de campos */}
+      <Dialog open={isFieldMappingOpen} onOpenChange={setIsFieldMappingOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Mapeo de Campos</DialogTitle>
+            <DialogDescription>
+              Seleccione qué columnas del archivo Excel corresponden a cada campo requerido.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-4">
+              <FormItem>
+                <FormLabel>Número de Teléfono (requerido)</FormLabel>
+                <Select 
+                  value={fieldMapping.phoneNumber} 
+                  onValueChange={(value) => handleFieldMappingChange('phoneNumber', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccione la columna" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {excelColumns.map((column) => (
+                      <SelectItem key={column} value={column}>
+                        {column}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  Debe incluir código de país, ej: +521234567890
+                </FormDescription>
+              </FormItem>
+              
+              <FormItem>
+                <FormLabel>Nombre</FormLabel>
+                <Select 
+                  value={fieldMapping.name} 
+                  onValueChange={(value) => handleFieldMappingChange('name', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccione la columna" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No mapear</SelectItem>
+                    {excelColumns.map((column) => (
+                      <SelectItem key={column} value={column}>
+                        {column}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+              
+              <FormItem>
+                <FormLabel>Empresa</FormLabel>
+                <Select 
+                  value={fieldMapping.company} 
+                  onValueChange={(value) => handleFieldMappingChange('company', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccione la columna" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No mapear</SelectItem>
+                    {excelColumns.map((column) => (
+                      <SelectItem key={column} value={column}>
+                        {column}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            </div>
+            
+            <div className="space-y-4">
+              <FormItem>
+                <FormLabel>Correo Electrónico</FormLabel>
+                <Select 
+                  value={fieldMapping.email} 
+                  onValueChange={(value) => handleFieldMappingChange('email', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccione la columna" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No mapear</SelectItem>
+                    {excelColumns.map((column) => (
+                      <SelectItem key={column} value={column}>
+                        {column}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+              
+              <FormItem>
+                <FormLabel>Etiquetas</FormLabel>
+                <Select 
+                  value={fieldMapping.tags} 
+                  onValueChange={(value) => handleFieldMappingChange('tags', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccione la columna" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No mapear</SelectItem>
+                    {excelColumns.map((column) => (
+                      <SelectItem key={column} value={column}>
+                        {column}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  Etiquetas separadas por comas (ej: cliente,importante,pendiente)
+                </FormDescription>
+              </FormItem>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsFieldMappingOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleProcessImport}
+              disabled={!fieldMapping.phoneNumber}
+            >
+              Importar Contactos
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
     </div>
   );
 }
