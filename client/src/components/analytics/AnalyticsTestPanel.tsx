@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, CheckCircle, TagIcon, TrendingUp, Users, Brain } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface TagResult {
   tag: string;
@@ -33,19 +34,37 @@ const AnalyticsTestPanel = () => {
   const [inputText, setInputText] = useState<string>("");
   const [metric, setMetric] = useState<string>("leads");
   const [result, setResult] = useState<TestResult | null>(null);
+  const { toast } = useToast();
 
   // Mutación para test de tags
   const tagsMutation = useMutation({
     mutationFn: async (text: string) => {
-      return await apiRequest("/api/analytics/demo/generate-tags", {
-        method: "POST", 
-        body: { text }
-      });
+      try {
+        return await fetch("/api/analytics/demo/generate-tags", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text })
+        }).then(res => {
+          if (!res.ok) throw new Error(`Error: ${res.status}`);
+          return res.json();
+        });
+      } catch (error) {
+        console.error("Error generando tags:", error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       setResult(data);
     },
     onError: (error) => {
+      console.error("Error en mutación de tags:", error);
+      toast({
+        title: "Error al generar tags",
+        description: error instanceof Error ? error.message : "Error desconocido",
+        variant: "destructive"
+      });
       setResult({
         success: false,
         message: `Error: ${error instanceof Error ? error.message : 'Desconocido'}`
@@ -56,12 +75,25 @@ const AnalyticsTestPanel = () => {
   // Mutación para test de predicción
   const predictionMutation = useMutation({
     mutationFn: async (metricName: string) => {
-      return await apiRequest(`/api/analytics/demo/predict?metric=${metricName}`);
+      try {
+        return await fetch(`/api/analytics/demo/predict?metric=${metricName}`).then(res => {
+          if (!res.ok) throw new Error(`Error: ${res.status}`);
+          return res.json();
+        });
+      } catch (error) {
+        console.error("Error en predicción:", error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       setResult(data);
     },
     onError: (error) => {
+      toast({
+        title: "Error en predicción",
+        description: error instanceof Error ? error.message : "Error desconocido",
+        variant: "destructive"
+      });
       setResult({
         success: false,
         message: `Error: ${error instanceof Error ? error.message : 'Desconocido'}`
@@ -72,12 +104,25 @@ const AnalyticsTestPanel = () => {
   // Mutación para test de segmentación
   const segmentationMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/analytics/demo/segment");
+      try {
+        return await fetch("/api/analytics/demo/segment").then(res => {
+          if (!res.ok) throw new Error(`Error: ${res.status}`);
+          return res.json();
+        });
+      } catch (error) {
+        console.error("Error en segmentación:", error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       setResult(data);
     },
     onError: (error) => {
+      toast({
+        title: "Error en segmentación",
+        description: error instanceof Error ? error.message : "Error desconocido",
+        variant: "destructive"
+      });
       setResult({
         success: false,
         message: `Error: ${error instanceof Error ? error.message : 'Desconocido'}`
@@ -88,7 +133,15 @@ const AnalyticsTestPanel = () => {
   // Verificación del estado del servicio Gemini
   const geminiStatusMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/analytics/status");
+      try {
+        return await fetch("/api/analytics/status").then(res => {
+          if (!res.ok) throw new Error(`Error: ${res.status}`);
+          return res.json();
+        });
+      } catch (error) {
+        console.error("Error verificando estado:", error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       if (!data.success || !data.status?.available) {
