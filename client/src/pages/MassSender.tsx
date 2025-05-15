@@ -497,7 +497,7 @@ export default function MassSender() {
       return;
     }
     
-    if (selectedGroups.length === 0 && selectedTags.length === 0) {
+    if ((selectedGroups || []).length === 0 && (selectedTags || []).length === 0) {
       toast({
         title: "Destinatarios requeridos",
         description: "Debes seleccionar al menos un grupo o etiqueta de destinatarios.",
@@ -695,7 +695,7 @@ export default function MassSender() {
                         <div className="flex items-center justify-center h-full">
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
-                      ) : Array.isArray(contactGroups) && contactGroups.length > 0 ? (
+                      ) : Array.isArray(contactGroups) && contactGroups && contactGroups.length > 0 ? (
                         <div className="space-y-2">
                           {contactGroups.map((group: ContactGroup) => (
                             <div key={group.id} className="flex items-center space-x-2">
@@ -733,7 +733,7 @@ export default function MassSender() {
                         <div className="flex items-center justify-center h-full">
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
-                      ) : Array.isArray(contactTags) && contactTags.length > 0 ? (
+                      ) : Array.isArray(contactTags) && contactTags && contactTags.length > 0 ? (
                         <div className="space-y-2">
                           {contactTags.map((tag: any) => (
                             <div key={tag.id} className="flex items-center space-x-2">
@@ -1079,7 +1079,7 @@ export default function MassSender() {
                   <div className="flex items-center justify-center h-64">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
-                ) : Array.isArray(campaigns) && campaigns.length > 0 ? (
+                ) : Array.isArray(campaigns) && campaigns && campaigns.length > 0 ? (
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1279,7 +1279,7 @@ export default function MassSender() {
                                       </div>
                                       
                                       <h3 className="text-sm font-medium mt-4 mb-2">Destinatarios</h3>
-                                      {campaign.targetGroups.length > 0 && (
+                                      {campaign.targetGroups && campaign.targetGroups.length > 0 && (
                                         <div className="mb-2">
                                           <p className="text-xs text-muted-foreground mb-1">Grupos:</p>
                                           <div className="flex flex-wrap gap-1">
@@ -1290,7 +1290,7 @@ export default function MassSender() {
                                         </div>
                                       )}
                                       
-                                      {campaign.targetTags.length > 0 && (
+                                      {campaign.targetTags && campaign.targetTags.length > 0 && (
                                         <div>
                                           <p className="text-xs text-muted-foreground mb-1">Etiquetas:</p>
                                           <div className="flex flex-wrap gap-1">
