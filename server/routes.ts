@@ -1230,9 +1230,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/excel/analyze/:filename", async (req: Request, res: Response) => {
     try {
       const filename = req.params.filename;
-      const columns = await excelImportService.analyzeExcelFile(filename);
+      const result = await excelImportService.analyzeExcelFile(filename);
       
-      res.json({ columns });
+      res.json(result);
     } catch (error) {
       console.error("Error al analizar archivo Excel:", error);
       res.status(500).json({ error: "Error al analizar archivo Excel" });
