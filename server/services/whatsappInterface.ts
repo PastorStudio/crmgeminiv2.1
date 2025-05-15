@@ -121,4 +121,17 @@ export interface IWhatsAppService {
    * @param chatId ID del chat a marcar como leído
    */
   markChatAsRead(chatId: string): Promise<void>;
+  
+  /**
+   * Obtiene las etiquetas personalizadas para contactos
+   * @returns Lista de etiquetas personalizadas
+   */
+  getCustomTags(): Promise<any[]>;
+  
+  /**
+   * Guarda una nueva etiqueta personalizada
+   * @param tag Datos de la etiqueta a guardar
+   * @returns Etiqueta guardada con su ID
+   */
+  saveCustomTag(tag: any): Promise<any>;
 }
