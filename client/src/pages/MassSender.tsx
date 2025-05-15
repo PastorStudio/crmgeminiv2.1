@@ -1611,7 +1611,7 @@ export default function MassSender() {
                     <SelectValue placeholder="Seleccione la columna" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No mapear</SelectItem>
+                    <SelectItem value="none">No mapear</SelectItem>
                     {excelColumns.map((column) => (
                       <SelectItem key={column} value={column}>
                         {column}
@@ -1631,7 +1631,7 @@ export default function MassSender() {
                     <SelectValue placeholder="Seleccione la columna" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No mapear</SelectItem>
+                    <SelectItem value="none">No mapear</SelectItem>
                     {excelColumns.map((column) => (
                       <SelectItem key={column} value={column}>
                         {column}
@@ -1653,7 +1653,7 @@ export default function MassSender() {
                     <SelectValue placeholder="Seleccione la columna" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No mapear</SelectItem>
+                    <SelectItem value="none">No mapear</SelectItem>
                     {excelColumns.map((column) => (
                       <SelectItem key={column} value={column}>
                         {column}
@@ -1673,7 +1673,7 @@ export default function MassSender() {
                     <SelectValue placeholder="Seleccione la columna" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No mapear</SelectItem>
+                    <SelectItem value="none">No mapear</SelectItem>
                     {excelColumns.map((column) => (
                       <SelectItem key={column} value={column}>
                         {column}
