@@ -20,7 +20,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
+import { RefreshCw, Loader2 } from "lucide-react";
+import { WhatsAppQRDisplay } from "@/components/messaging/WhatsAppQRDisplay";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -264,49 +265,12 @@ export default function Integrations() {
                   </p>
                   
                   <div className="flex justify-center my-6">
-                    {whatsappStatusLoading ? (
-                      <div className="h-64 w-64 bg-gray-100 animate-pulse rounded-md flex items-center justify-center">
-                        <p className="text-gray-400">Generando código QR...</p>
-                      </div>
-                    ) : whatsappStatus?.initialized && !whatsappStatus?.authenticated ? (
-                      <div className="border p-4 rounded-md bg-white flex flex-col items-center">
-                        <div className="relative">
-                          {/* Utilizar URL específica para imagen en lugar de data URL */}
-                          <img 
-                            src={`/api/integrations/whatsapp/qr-image?t=${new Date().getTime()}`}
-                            alt="Código QR de WhatsApp" 
-                            className="h-64 w-64"
-                          />
-                          {/* Mostrar un indicador de código QR real */}
-                          <div className="absolute top-2 right-2">
-                            <div className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-md">
-                              QR OFICIAL
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-2 px-3 py-1 bg-green-100 text-green-800 text-xs rounded-md">
-                          Escanea este código QR con la aplicación de WhatsApp en tu teléfono
-                        </div>
-                      </div>
-                    ) : whatsappStatus?.authenticated ? (
-                      <div className="h-64 w-64 bg-green-50 border-2 border-green-500 rounded-md flex flex-col items-center justify-center p-4">
-                        <CheckCircle className="w-16 h-16 text-green-500 mb-3" />
-                        <p className="font-medium text-green-800 text-center">¡WhatsApp conectado correctamente!</p>
-                        <p className="text-sm text-green-600 text-center mt-2">La sesión está activa y lista para usarse</p>
-                      </div>
-                    ) : (
-                      <div className="h-64 w-64 bg-gray-100 rounded-md flex flex-col items-center justify-center p-4">
-                        <AlertCircle className="w-12 h-12 text-amber-500 mb-3" />
-                        <p className="text-gray-600 text-center">No hay código QR disponible</p>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => restartWhatsapp()}
-                          className="mt-4"
-                        >
-                          Generar código QR
-                        </Button>
-                      </div>
-                    )}
+                    {/* Importar y utilizar el componente independiente para mejor mantenimiento */}
+                    <WhatsAppQRDisplay 
+                      status={whatsappStatus || {}}
+                      isLoading={whatsappStatusLoading}
+                      onRefresh={restartWhatsapp}
+                    />
                   </div>
                   
                   <div className="mt-4">
