@@ -267,7 +267,7 @@ export function TemplateManager() {
             <DialogHeader>
               <DialogTitle>Crear Nueva Plantilla</DialogTitle>
               <DialogDescription>
-                Crea una plantilla para reutilizarla en tus mensajes. Usa {{variable}} para valores dinámicos.
+                Crea una plantilla para reutilizarla en tus mensajes. Usa {`{{variable}}`} para valores dinámicos.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -352,7 +352,7 @@ export function TemplateManager() {
                   onChange={(e) => setNewTemplate({ ...newTemplate, content: e.target.value })}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Usa {{nombre}}, {{empresa}}, etc. para personalizar el mensaje.
+                  Usa {`{{nombre}}`}, {`{{empresa}}`}, etc. para personalizar el mensaje.
                 </p>
               </div>
             </div>
@@ -471,7 +471,7 @@ export function TemplateManager() {
           <DialogHeader>
             <DialogTitle>Editar Plantilla</DialogTitle>
             <DialogDescription>
-              Modifica los detalles de la plantilla. Usa {{variable}} para valores dinámicos.
+              Modifica los detalles de la plantilla. Usa {`{{variable}}`} para valores dinámicos.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -556,7 +556,7 @@ export function TemplateManager() {
                 onChange={(e) => setEditTemplate({ ...editTemplate, content: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">
-                Usa {{nombre}}, {{empresa}}, etc. para personalizar el mensaje.
+                Usa {`{{nombre}}`}, {`{{empresa}}`}, etc. para personalizar el mensaje.
               </p>
             </div>
           </div>
