@@ -29,6 +29,13 @@ export interface ImportResult {
 }
 
 // Service para importar datos desde Excel
+// Interface para manejar datos de envío con plantillas
+export interface TemplateContactBatch {
+  templateId: number;
+  contactIds: string[];
+  variables: Record<string, any>[];
+}
+
 export class ExcelImportService {
   private imports: Map<string, ImportResult> = new Map();
   private uploadsDir: string;
