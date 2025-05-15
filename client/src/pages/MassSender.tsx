@@ -182,6 +182,19 @@ export default function MassSender() {
   const [selectedTagsToAdd, setSelectedTagsToAdd] = useState<string[]>([]);
   const [newTagName, setNewTagName] = useState<string>("");
   
+  // Estados para envío inmediato
+  const [showImmediateMessaging, setShowImmediateMessaging] = useState<boolean>(false);
+  const [messageText, setMessageText] = useState<string>("");
+  const [isSendingMessages, setIsSendingMessages] = useState<boolean>(false);
+  const [selectedImportedContactIds, setSelectedImportedContactIds] = useState<string[]>([]);
+  const [selectAllImported, setSelectAllImported] = useState<boolean>(false);
+  
+  // Estados para asistente Gemini
+  const [isGeminiAssistantOpen, setIsGeminiAssistantOpen] = useState<boolean>(false);
+  const [geminiResult, setGeminiResult] = useState<string>("");
+  const [geminiPrompt, setGeminiPrompt] = useState<string>("");
+  const [isGeneratingWithGemini, setIsGeneratingWithGemini] = useState<boolean>(false);
+  
   // Consulta para obtener los grupos de contactos
   const { data: contactGroups = [], isLoading: loadingGroups } = useQuery<ContactGroup[]>({
     queryKey: ['/api/whatsapp/contact-groups'],
@@ -913,6 +926,149 @@ export default function MassSender() {
     
     // Ejecutar la importación
     importExcelMutation.mutate(importData);
+  };
+  
+
+  
+  // Mutación para generar mensaje con Gemini
+  const generateWithGeminiMutation = useMutation({
+    mutationFn: async (data: { prompt: string }) => {
+      const response = await fetch('/api/gemini/generate-message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          prompt: data.prompt,
+          type: "whatsapp" 
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al generar mensaje con Gemini');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.content) {
+        setGeminiResult(data.content);
+        // Actualizar el campo de mensaje en el formulario
+        setMessageText(data.content);
+      }
+      setIsGeneratingWithGemini(false);
+    },
+    onError: (error) => {
+      console.error("Error generating with Gemini:", error);
+      toast({
+        title: "Error con Gemini",
+        description: error instanceof Error ? error.message : "No se pudo generar el mensaje con Gemini.",
+        variant: "destructive",
+      });
+      setIsGeneratingWithGemini(false);
+    }
+  });
+  
+  // Mutación para envío inmediato de mensajes
+  const sendImmediateMessagesMutation = useMutation({
+    mutationFn: async (data: { contactIds: string[], message: string }) => {
+      const response = await fetch('/api/mass-sender/send-immediate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al enviar mensajes');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Mensajes enviados",
+        description: `Se han enviado ${data.sentCount} mensajes exitosamente.`,
+      });
+      setIsSendingMessages(false);
+    },
+    onError: (error) => {
+      console.error("Error sending messages:", error);
+      toast({
+        title: "Error al enviar mensajes",
+        description: error instanceof Error ? error.message : "No se pudieron enviar los mensajes.",
+        variant: "destructive",
+      });
+      setIsSendingMessages(false);
+    }
+  });
+  
+  // Función para enviar mensajes inmediatamente
+  const sendImmediateMessages = () => {
+    if (!messageText || messageText.trim() === "") {
+      toast({
+        title: "Mensaje vacío",
+        description: "Por favor ingrese un mensaje para enviar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (selectedImportedContactIds.length === 0) {
+      toast({
+        title: "Sin destinatarios",
+        description: "Por favor seleccione al menos un contacto para enviar el mensaje.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsSendingMessages(true);
+    sendImmediateMessagesMutation.mutate({
+      contactIds: selectedImportedContactIds,
+      message: messageText
+    });
+  };
+  
+  // Manejar la selección de todos los contactos importados
+  const handleSelectAllImportedContacts = (checked: boolean) => {
+    setSelectAllImported(checked);
+    if (checked && importedData && importedData.contacts) {
+      setSelectedImportedContactIds(importedData.contacts.map((c: any) => c.id));
+    } else {
+      setSelectedImportedContactIds([]);
+    }
+  };
+  
+  // Manejar la selección individual de contactos
+  const handleToggleContactSelection = (contactId: string) => {
+    if (selectedImportedContactIds.includes(contactId)) {
+      setSelectedImportedContactIds(selectedImportedContactIds.filter(id => id !== contactId));
+      setSelectAllImported(false);
+    } else {
+      setSelectedImportedContactIds([...selectedImportedContactIds, contactId]);
+      // Comprobar si todos están seleccionados ahora
+      if (importedData && importedData.contacts && 
+          selectedImportedContactIds.length + 1 === importedData.contacts.length) {
+        setSelectAllImported(true);
+      }
+    }
+  };
+  
+  // Función para generar mensaje con Gemini
+  const handleGenerateWithGemini = () => {
+    if (!geminiPrompt || geminiPrompt.trim() === "") {
+      toast({
+        title: "Instrucción vacía",
+        description: "Por favor ingrese una instrucción para Gemini.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsGeneratingWithGemini(true);
+    generateWithGeminiMutation.mutate({ prompt: geminiPrompt });
   };
   
   // Función para aplicar etiquetas a los contactos importados
@@ -2234,6 +2390,191 @@ export default function MassSender() {
                 disabled={selectedTagsToAdd.length === 0}
               >
                 Aplicar etiquetas
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Diálogo para el asistente de Gemini */}
+      <Dialog open={isGeminiAssistantOpen} onOpenChange={setIsGeminiAssistantOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Asistente de Gemini</DialogTitle>
+            <DialogDescription>
+              Utiliza la IA de Gemini para generar mensajes personalizados
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="gemini-prompt">¿Qué tipo de mensaje quieres crear?</Label>
+              <Textarea
+                id="gemini-prompt"
+                placeholder="Ej: Crea un mensaje de seguimiento para un cliente interesado en nuestros servicios de marketing digital"
+                value={geminiPrompt}
+                onChange={(e) => setGeminiPrompt(e.target.value)}
+                className="min-h-[80px]"
+              />
+              <div className="flex justify-end">
+                <Button 
+                  size="sm"
+                  onClick={handleGenerateWithGemini}
+                  disabled={isGeneratingWithGemini || !geminiPrompt.trim()}
+                >
+                  {isGeneratingWithGemini ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generando</>
+                  ) : (
+                    <><span className="mr-2">✨</span> Generar con Gemini</>
+                  )}
+                </Button>
+              </div>
+            </div>
+            
+            {geminiResult && (
+              <div className="grid gap-2 mt-2">
+                <Label>Mensaje generado</Label>
+                <div className="border rounded-md p-4 bg-muted/30 whitespace-pre-wrap">
+                  {geminiResult}
+                </div>
+                <div className="flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      // Usar el mensaje y cerrar
+                      setMessageText(geminiResult);
+                      setIsGeminiAssistantOpen(false);
+                      toast({
+                        title: "Mensaje aplicado",
+                        description: "El mensaje generado por Gemini ha sido aplicado."
+                      });
+                    }}
+                  >
+                    Usar este mensaje
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsGeminiAssistantOpen(false)}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Panel de envío inmediato de mensajes */}
+      <Dialog open={showImmediateMessaging} onOpenChange={setShowImmediateMessaging}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Envío Inmediato de Mensajes</DialogTitle>
+            <DialogDescription>
+              Envía mensajes directamente a los contactos importados
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            {/* Selección de contactos */}
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="contacts" className="text-base">Contactos seleccionados</Label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="select-all" className="text-xs">Seleccionar todos</Label>
+                  <Switch
+                    id="select-all"
+                    checked={selectAllImported}
+                    onCheckedChange={handleSelectAllImportedContacts}
+                  />
+                </div>
+              </div>
+              
+              <div className="border rounded-md max-h-[200px] overflow-y-auto">
+                {importedData && importedData.contacts && importedData.contacts.length > 0 ? (
+                  <Table className="text-xs">
+                    <TableHeader>
+                      <TableRow className="h-8">
+                        <TableHead className="py-1 px-2 w-10"></TableHead>
+                        <TableHead className="py-1 px-2">Teléfono</TableHead>
+                        <TableHead className="py-1 px-2">Nombre</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {importedData.contacts.map((contact: any, index: number) => (
+                        <TableRow 
+                          key={contact.id || index} 
+                          className="h-7 cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleToggleContactSelection(contact.id)}
+                        >
+                          <TableCell className="py-1 px-2">
+                            <div className="flex items-center justify-center">
+                              {selectedImportedContactIds.includes(contact.id) ? (
+                                <CheckCircle className="h-4 w-4 text-primary" />
+                              ) : (
+                                <Circle className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-1 px-2 font-mono">{contact.phoneNumber}</TableCell>
+                          <TableCell className="py-1 px-2 truncate max-w-[120px]">{contact.name || "Sin nombre"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground text-sm">
+                    No hay contactos importados. Importe contactos primero.
+                  </div>
+                )}
+              </div>
+              
+              <div className="text-sm text-muted-foreground mt-1">
+                {selectedImportedContactIds.length} de {importedData?.contacts?.length || 0} contactos seleccionados
+              </div>
+            </div>
+            
+            {/* Edición del mensaje */}
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="message" className="text-base">Mensaje a enviar</Label>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setIsGeminiAssistantOpen(true)}
+                  className="h-7 px-2"
+                >
+                  <span className="mr-1">✨</span> Ayuda de Gemini
+                </Button>
+              </div>
+              <Textarea
+                id="message"
+                placeholder="Escribe aquí el mensaje que deseas enviar..."
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                className="min-h-[120px]"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter className="flex justify-between sm:justify-between">
+            <div className="text-xs text-muted-foreground">
+              {messageText ? `${messageText.length} caracteres` : "0 caracteres"}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowImmediateMessaging(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={sendImmediateMessages}
+                disabled={isSendingMessages || selectedImportedContactIds.length === 0 || !messageText.trim()}
+              >
+                {isSendingMessages ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Enviando...</>
+                ) : (
+                  <><Send className="h-4 w-4 mr-2" /> Enviar ahora</>
+                )}
               </Button>
             </div>
           </DialogFooter>

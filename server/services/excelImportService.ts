@@ -345,6 +345,19 @@ export class ExcelImportService {
   listImports(): ImportResult[] {
     return Array.from(this.imports.values());
   }
+  
+  getAllImportedContacts(): ContactData[] {
+    // Recolectar todos los contactos de todas las importaciones
+    const allContacts: ContactData[] = [];
+    
+    this.imports.forEach(importResult => {
+      if (importResult.contacts && importResult.contacts.length > 0) {
+        allContacts.push(...importResult.contacts);
+      }
+    });
+    
+    return allContacts;
+  }
 
   // Eliminar una importación
   deleteImport(id: string): boolean {
