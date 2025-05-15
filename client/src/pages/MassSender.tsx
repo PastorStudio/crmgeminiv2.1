@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { toast } from "@/hooks/use-toast";
@@ -39,7 +39,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle } from "lucide-react";
+import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle, Upload, Database, FileText, FileSpreadsheet } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -112,6 +112,22 @@ export default function MassSender() {
     name: "Juan Pérez",
     company: "Empresa Ejemplo S.A."
   });
+  
+  // Estados para la importación de Excel
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isFieldMappingOpen, setIsFieldMappingOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [excelColumns, setExcelColumns] = useState<string[]>([]);
+  const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({
+    phoneNumber: '',
+    name: '',
+    company: '',
+    email: '',
+    tags: ''
+  });
+  const [importedData, setImportedData] = useState<any>(null);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   
   // Consulta para obtener los grupos de contactos
   const { data: contactGroups, isLoading: loadingGroups } = useQuery({
