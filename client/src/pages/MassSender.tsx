@@ -322,18 +322,38 @@ export default function MassSender() {
                     />
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="message-template">Plantilla de Mensaje</Label>
-                    <Textarea 
-                      id="message-template" 
-                      placeholder={"Hola " + "{{"+"nombre"+"}}" + ", tenemos una oferta especial para ti..."} 
-                      className="min-h-32"
-                      value={messageTemplate}
-                      onChange={(e) => setMessageTemplate(e.target.value)}
+                  <div className="space-y-4">
+                    <TemplateSelector 
+                      onChange={(template) => {
+                        setSelectedTemplate(template);
+                        if (template) {
+                          setMessageTemplate(template.content);
+                        }
+                      }}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Usa {"{{"+"nombre"+"}}"} para personalizar el mensaje con el nombre del contacto.
-                    </p>
+                    
+                    {!selectedTemplate && (
+                      <div className="space-y-2 mt-4">
+                        <Label htmlFor="message-template">Mensaje Personalizado</Label>
+                        <Textarea 
+                          id="message-template" 
+                          placeholder={"Hola " + "{{"+"nombre"+"}}" + ", tenemos una oferta especial para ti..."} 
+                          className="min-h-32"
+                          value={messageTemplate}
+                          onChange={(e) => setMessageTemplate(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Usa {"{{"+"nombre"+"}}"} para personalizar el mensaje con el nombre del contacto.
+                        </p>
+                      </div>
+                    )}
+                    
+                    {selectedTemplate && (
+                      <TemplatePreview 
+                        template={selectedTemplate}
+                        contactData={previewContact}
+                      />
+                    )}
                   </div>
                   
                   <div className="space-y-2">
