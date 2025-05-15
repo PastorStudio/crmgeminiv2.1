@@ -28,61 +28,138 @@ interface AnalyticsInsight {
   actions?: string[];
 }
 
-const GEMINI_MODEL = "gemini-1.5-pro-latest";
+// Interfaces para segmentación de clientes
+interface CustomerSegment {
+  name: string;
+  description: string;
+  characteristics: string[];
+  size: number;
+  percentageOfTotal: number;
+}
+
+interface SegmentationResponse {
+  segments: CustomerSegment[];
+  categories: {
+    category: string;
+    values: number[];
+  }[];
+}
+
+// Interfaces para análisis de sentimiento
+interface SentimentCategory {
+  name: string;
+  value: number;
+  percentage: number;
+}
+
+interface Topic {
+  name: string;
+  count: number;
+  sentimentScore: number;
+  keywords: string[];
+}
+
+interface FeedbackAnalysisResponse {
+  sentiment: SentimentCategory[];
+  topics: Topic[];
+  commonPhrases: {
+    positive: string[];
+    negative: string[];
+    neutral: string[];
+  };
+  trends: {
+    description: string;
+    change: number;
+    period: string;
+  }[];
+}
 
 export class AnalyticsService {
   private genAI: GoogleGenerativeAI;
-  
+  private model: any;
+
   constructor() {
     if (!process.env.GEMINI_API_KEY) {
-      console.error('GEMINI_API_KEY no está configurada. El servicio de análisis avanzado no funcionará correctamente.');
+      console.log('Servicio de Analytics inicializado sin API key de Gemini, funcionalidad limitada');
+      return;
     }
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+    try {
+      this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+      this.model = this.genAI.getGenerativeModel({
+        model: "gemini-1.5-pro-latest"
+      });
+      console.log('Servicio de Analytics inicializado con Gemini API');
+    } catch (error) {
+      console.error('Error al inicializar Gemini API para Analytics:', error);
+    }
   }
 
   /**
    * Predice métricas futuras basadas en datos históricos usando modelos de ML
    */
   async predictMetrics(metric: string, params: AnalyticsParams): Promise<AnalyticsPrediction> {
-    // Obtener datos históricos
-    const historicalData = await this.getHistoricalData(metric, params);
-    
-    if (!historicalData || historicalData.length === 0) {
-      throw new Error('No hay suficientes datos históricos para generar una predicción');
-    }
-
     try {
-      // Usar Gemini para analizar y predecir basado en los datos
-      const model = this.genAI.getGenerativeModel({ model: GEMINI_MODEL });
+      // Obtener datos históricos dependiendo del tipo de métrica
+      const historicalData = await this.getHistoricalData(metric, params);
       
+      if (!this.model) {
+        return this.generatePlaceholderPrediction(metric);
+      }
+
+      // Construir prompt para Gemini
       const prompt = `
-Actúa como un modelo de pronóstico con machine learning. Analiza los siguientes datos históricos para la métrica "${metric}" y genera una predicción para el próximo período.
+      Analiza estos datos históricos para la métrica "${metric}" y predice su valor futuro:
+      
+      Datos históricos:
+      ${JSON.stringify(historicalData, null, 2)}
+      
+      Basándote en estos datos, predice:
+      1. El valor esperado para esta métrica en las próximas 4 semanas
+      2. La probabilidad de alcanzar este valor (porcentaje)
+      3. El nivel de confianza de esta predicción (porcentaje)
+      4. La tendencia general (increasing, decreasing, stable)
+      5. Los principales factores que influyen en esta predicción
+      
+      Responde en formato JSON con las siguientes propiedades exactas:
+      {
+        "value": number,
+        "probability": number,
+        "confidence": number,
+        "trend": "increasing"|"decreasing"|"stable",
+        "factors": string[]
+      }
+      
+      Sólo proporciona el objeto JSON, sin texto adicional.
+      `;
 
-DATOS HISTÓRICOS:
-${JSON.stringify(historicalData, null, 2)}
-
-Genera una predicción en formato JSON con los siguientes campos:
-- value: número predicho para el próximo período
-- probability: probabilidad entre 0 y 1 de que esta predicción sea precisa
-- confidence: nivel de confianza entre 0 y 1
-- trend: "increasing", "decreasing", o "stable"
-- factors: array de factores que influyen en esta predicción
-
-Responde SOLO con el objeto JSON, sin texto adicional.
-`;
-
-      const result = await model.generateContent(prompt);
+      const result = await this.model.generateContent(prompt);
       const response = result.response;
       const text = response.text();
       
-      // Limpiar respuesta y convertir a JSON
-      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const prediction = JSON.parse(jsonStr) as AnalyticsPrediction;
+      // Extraer el JSON de la respuesta
+      let jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || 
+                      text.match(/```\s*([\s\S]*?)\s*```/) || 
+                      text.match(/(\{[\s\S]*\})/);
+                      
+      const jsonText = jsonMatch ? jsonMatch[1] : text;
       
-      return prediction;
+      try {
+        const prediction = JSON.parse(jsonText);
+        return {
+          value: Math.round(prediction.value),
+          probability: Math.min(100, Math.max(0, Math.round(prediction.probability))),
+          confidence: Math.min(100, Math.max(0, Math.round(prediction.confidence))),
+          trend: prediction.trend || 'stable',
+          factors: prediction.factors || []
+        };
+      } catch (parseError) {
+        console.error("Error parsing prediction JSON:", parseError);
+        return this.generatePlaceholderPrediction(metric);
+      }
     } catch (error) {
-      console.error('Error al generar predicción de ML:', error);
-      throw new Error('No se pudo generar la predicción con el modelo de ML');
+      console.error(`Error al predecir métricas para ${metric}:`, error);
+      return this.generatePlaceholderPrediction(metric);
     }
   }
 
@@ -91,321 +168,499 @@ Responde SOLO con el objeto JSON, sin texto adicional.
    */
   async generateInsights(params: AnalyticsParams): Promise<AnalyticsInsight[]> {
     try {
-      // Obtener datos relevantes
+      // Obtener datos de diferentes fuentes
       const leadsData = await this.getLeadsData(params);
       const messagesData = await this.getMessagesData(params);
-      const campaignData = await this.getCampaignData(params);
-      const activityData = await this.getActivityData(params);
+      const activitiesData = await this.getActivityData(params);
       
-      // Preparar contexto para Gemini
-      const dataContext = {
-        leads: leadsData,
-        messages: messagesData,
-        campaigns: campaignData,
-        activities: activityData
-      };
-      
-      // Usar Gemini para generar insights
-      const model = this.genAI.getGenerativeModel({ model: GEMINI_MODEL });
-      
+      if (!this.model) {
+        return this.generatePlaceholderInsights();
+      }
+
+      // Construir prompt para Gemini
       const prompt = `
-Actúa como un analista de datos experto en CRM con conocimiento en análisis avanzado. Analiza los siguientes datos de CRM y genera insights valiosos que puedan ayudar al negocio.
+      Analiza estos datos de CRM y genera insights valiosos:
+      
+      Datos de leads:
+      ${JSON.stringify(leadsData.slice(0, 10), null, 2)}
+      
+      Datos de mensajes:
+      ${JSON.stringify(messagesData.slice(0, 10), null, 2)}
+      
+      Datos de actividades:
+      ${JSON.stringify(activitiesData.slice(0, 10), null, 2)}
+      
+      Genera 5 insights basados en estos datos, identificando:
+      - Oportunidades de negocio
+      - Riesgos potenciales
+      - Tendencias emergentes
+      - Recomendaciones accionables
+      
+      Cada insight debe incluir:
+      1. Un tipo (opportunity, risk, trend, recommendation)
+      2. Un título conciso
+      3. Una descripción detallada
+      4. Nivel de impacto (high, medium, low)
+      5. Nivel de confianza (%)
+      6. Datos relacionados (si aplica)
+      7. Acciones recomendadas (2-3 por insight)
+      
+      Responde en formato JSON con un array de objetos con estas propiedades exactas:
+      {
+        "insights": [
+          {
+            "type": string,
+            "title": string,
+            "description": string,
+            "impact": string,
+            "confidence": number,
+            "relatedData": object (optional),
+            "actions": string[]
+          }
+        ]
+      }
+      
+      Sólo proporciona el objeto JSON, sin texto adicional.
+      `;
 
-DATOS DEL CRM:
-${JSON.stringify(dataContext, null, 2)}
-
-Genera entre 3-5 insights detallados en formato JSON con los siguientes campos para cada uno:
-- type: "opportunity" (oportunidad de negocio), "risk" (riesgo identificado), "trend" (tendencia detectada), o "recommendation" (recomendación estratégica)
-- title: título breve y descriptivo del insight
-- description: explicación detallada del insight y por qué es importante
-- impact: "high", "medium", o "low" basado en el impacto potencial para el negocio
-- confidence: valor entre 0 y 1 que indica tu nivel de confianza en este insight
-- actions: array de acciones recomendadas basadas en este insight
-
-Responde con un array JSON de insights en español, sin texto adicional.
-`;
-
-      const result = await model.generateContent(prompt);
+      const result = await this.model.generateContent(prompt);
       const response = result.response;
       const text = response.text();
       
-      // Limpiar respuesta y convertir a JSON
-      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const insights = JSON.parse(jsonStr) as AnalyticsInsight[];
+      // Extraer el JSON de la respuesta
+      let jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || 
+                      text.match(/```\s*([\s\S]*?)\s*```/) || 
+                      text.match(/(\{[\s\S]*\})/);
+                      
+      const jsonText = jsonMatch ? jsonMatch[1] : text;
       
-      return insights;
+      try {
+        const parsed = JSON.parse(jsonText);
+        return Array.isArray(parsed.insights) ? parsed.insights : this.generatePlaceholderInsights();
+      } catch (parseError) {
+        console.error("Error parsing insights JSON:", parseError);
+        return this.generatePlaceholderInsights();
+      }
     } catch (error) {
-      console.error('Error al generar insights:', error);
-      throw new Error('No se pudieron generar insights con el modelo de ML');
+      console.error("Error al generar insights:", error);
+      return this.generatePlaceholderInsights();
     }
   }
 
   /**
    * Analiza sentimiento y temas de los mensajes del cliente
    */
-  async analyzeCustomerFeedback(params: AnalyticsParams): Promise<any> {
+  async analyzeCustomerFeedback(params: AnalyticsParams): Promise<FeedbackAnalysisResponse> {
     try {
-      // Obtener mensajes para analizar
-      const messages = await this.getMessagesData(params);
+      // Obtener mensajes para análisis
+      const messagesData = await this.getMessagesData(params);
       
-      if (!messages || messages.length === 0) {
-        throw new Error('No hay mensajes disponibles para analizar');
+      if (!this.model || messagesData.length === 0) {
+        return this.generatePlaceholderFeedbackAnalysis();
+      }
+
+      // Construir prompt para Gemini
+      const prompt = `
+      Analiza estos mensajes de clientes para identificar sentimientos, temas comunes y tendencias:
+      
+      Mensajes:
+      ${JSON.stringify(messagesData.slice(0, 20), null, 2)}
+      
+      Realiza un análisis completo que incluya:
+      1. Distribución de sentimiento (positivo, neutro, negativo) con porcentajes
+      2. Temas principales mencionados en los mensajes, con puntuación de sentimiento para cada tema
+      3. Frases comunes por categoría de sentimiento
+      4. Tendencias identificadas en el período analizado
+      
+      Responde en formato JSON exactamente con esta estructura:
+      {
+        "sentiment": [
+          {"name": "Positivo", "value": number, "percentage": number},
+          {"name": "Neutro", "value": number, "percentage": number},
+          {"name": "Negativo", "value": number, "percentage": number}
+        ],
+        "topics": [
+          {
+            "name": string,
+            "count": number,
+            "sentimentScore": number,
+            "keywords": string[]
+          }
+        ],
+        "commonPhrases": {
+          "positive": string[],
+          "negative": string[],
+          "neutral": string[]
+        },
+        "trends": [
+          {
+            "description": string,
+            "change": number,
+            "period": string
+          }
+        ]
       }
       
-      // Usar Gemini para analizar sentimiento y temas
-      const model = this.genAI.getGenerativeModel({ model: GEMINI_MODEL });
-      
-      const prompt = `
-Actúa como un analista experto en procesamiento de lenguaje natural. Analiza los siguientes mensajes de clientes y genera un análisis de sentimiento y temas principales.
+      Sólo proporciona el objeto JSON, sin texto adicional.
+      `;
 
-MENSAJES:
-${JSON.stringify(messages, null, 2)}
-
-Genera un análisis en formato JSON con:
-1. Una distribución de sentimiento (positivo, negativo, neutro) con porcentajes
-2. Los temas principales identificados con su frecuencia
-3. Palabras clave más utilizadas
-4. Recomendaciones basadas en este análisis
-
-Responde SOLO con el objeto JSON, sin texto adicional.
-`;
-
-      const result = await model.generateContent(prompt);
+      const result = await this.model.generateContent(prompt);
       const response = result.response;
       const text = response.text();
       
-      // Limpiar respuesta y convertir a JSON
-      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const analysis = JSON.parse(jsonStr);
+      // Extraer el JSON de la respuesta
+      let jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || 
+                      text.match(/```\s*([\s\S]*?)\s*```/) || 
+                      text.match(/(\{[\s\S]*\})/);
+                      
+      const jsonText = jsonMatch ? jsonMatch[1] : text;
       
-      return analysis;
+      try {
+        return JSON.parse(jsonText);
+      } catch (parseError) {
+        console.error("Error parsing feedback analysis JSON:", parseError);
+        return this.generatePlaceholderFeedbackAnalysis();
+      }
     } catch (error) {
-      console.error('Error al analizar feedback de clientes:', error);
-      throw new Error('No se pudo analizar el feedback de clientes');
+      console.error("Error al analizar feedback de clientes:", error);
+      return this.generatePlaceholderFeedbackAnalysis();
     }
   }
 
   /**
    * Segmenta clientes basado en comportamiento y características
    */
-  async segmentCustomers(): Promise<any> {
+  async segmentCustomers(): Promise<SegmentationResponse> {
     try {
-      // Obtener todos los leads con sus interacciones
+      // Obtener datos completos de leads
       const leads = await storage.getAllLeads();
       
-      // Para cada lead, obtener mensajes y actividades
-      const enrichedLeads = await Promise.all(
-        leads.map(async (lead) => {
-          const messages = await storage.getMessagesByLead(lead.id);
-          const activities = await storage.getActivitiesByLead(lead.id);
-          
-          return {
-            ...lead,
-            messages,
-            activities,
-          };
-        })
-      );
-      
-      // Usar Gemini para segmentar
-      const model = this.genAI.getGenerativeModel({ model: GEMINI_MODEL });
-      
+      if (!this.model || !leads || leads.length === 0) {
+        return this.generatePlaceholderSegmentation();
+      }
+
+      // Construir prompt para Gemini
       const prompt = `
-Actúa como un especialista en segmentación de clientes. Analiza los siguientes datos de clientes y segméntalos en grupos significativos basados en su comportamiento, interacciones y características.
+      Segmenta estos clientes basándote en sus características y comportamiento:
+      
+      Datos de clientes:
+      ${JSON.stringify(leads.slice(0, 15), null, 2)}
+      
+      Identifica entre 3-5 segmentos distintos de clientes, basados en patrones como:
+      - Fuente de adquisición
+      - Estado en el pipeline
+      - Nivel de interacción
+      - Valor potencial
+      - Industria o tipo de empresa
+      - Cualquier otro patrón relevante
+      
+      Para cada segmento, proporciona:
+      1. Un nombre descriptivo
+      2. Una descripción detallada
+      3. Características principales
+      4. Tamaño (número de clientes)
+      5. Porcentaje del total
+      
+      Además, genera una tabla de categorías para visualizar en un gráfico radar, donde cada segmento tenga una puntuación en cada categoría.
+      
+      Responde en formato JSON con esta estructura exacta:
+      {
+        "segments": [
+          {
+            "name": string,
+            "description": string,
+            "characteristics": string[],
+            "size": number,
+            "percentageOfTotal": number
+          }
+        ],
+        "categories": [
+          {
+            "category": string,
+            "values": number[]
+          }
+        ]
+      }
+      
+      Donde "values" en categories contiene un array de valores (0-10) para cada segmento, en el mismo orden que aparecen en "segments".
+      Sólo proporciona el objeto JSON, sin texto adicional.
+      `;
 
-DATOS DE CLIENTES:
-${JSON.stringify(enrichedLeads, null, 2)}
-
-Identifica entre 3-5 segmentos claros y proporciona:
-1. Nombre y descripción de cada segmento
-2. Características principales de cada segmento
-3. Estrategias recomendadas para cada segmento
-4. Asignación de cada cliente a un segmento específico
-
-Responde con un objeto JSON que contenga los segmentos y la asignación de clientes.
-`;
-
-      const result = await model.generateContent(prompt);
+      const result = await this.model.generateContent(prompt);
       const response = result.response;
       const text = response.text();
       
-      // Limpiar respuesta y convertir a JSON
-      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const segmentation = JSON.parse(jsonStr);
+      // Extraer el JSON de la respuesta
+      let jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || 
+                      text.match(/```\s*([\s\S]*?)\s*```/) || 
+                      text.match(/(\{[\s\S]*\})/);
+                      
+      const jsonText = jsonMatch ? jsonMatch[1] : text;
       
-      return segmentation;
+      try {
+        const segmentation = JSON.parse(jsonText);
+        
+        // Verificar y arreglar posibles problemas en los datos
+        if (!segmentation.segments || !Array.isArray(segmentation.segments)) {
+          segmentation.segments = [];
+        }
+        
+        if (!segmentation.categories || !Array.isArray(segmentation.categories)) {
+          segmentation.categories = [];
+        }
+        
+        return segmentation;
+      } catch (parseError) {
+        console.error("Error parsing segmentation JSON:", parseError);
+        return this.generatePlaceholderSegmentation();
+      }
     } catch (error) {
-      console.error('Error al segmentar clientes:', error);
-      throw new Error('No se pudieron segmentar los clientes con el modelo de ML');
+      console.error("Error al segmentar clientes:", error);
+      return this.generatePlaceholderSegmentation();
     }
   }
 
   /**
    * Predice la probabilidad de conversión de leads
    */
-  async predictLeadConversion(leadId?: number): Promise<any> {
+  async predictLeadConversion(leadId?: number): Promise<{ predictions: any[] }> {
     try {
+      // Obtener leads para predicción
       let leads;
-      
       if (leadId) {
         const lead = await storage.getLead(leadId);
-        if (!lead) {
-          throw new Error(`Lead con ID ${leadId} no encontrado`);
-        }
-        leads = [lead];
+        leads = lead ? [lead] : [];
       } else {
         leads = await storage.getAllLeads();
       }
       
-      // Enriquecer leads con sus interacciones
-      const enrichedLeads = await Promise.all(
-        leads.map(async (lead) => {
-          const messages = await storage.getMessagesByLead(lead.id);
-          const activities = await storage.getActivitiesByLead(lead.id);
-          
-          return {
-            ...lead,
-            messages,
-            activities,
-          };
-        })
-      );
-      
-      // Usar Gemini para predecir conversión
-      const model = this.genAI.getGenerativeModel({ model: GEMINI_MODEL });
-      
+      if (!this.model || !leads || leads.length === 0) {
+        return { predictions: this.generatePlaceholderLeadPredictions(leads) };
+      }
+
+      // Construir prompt para Gemini
       const prompt = `
-Actúa como un modelo predictivo de calificación de leads. Analiza los siguientes datos de leads y predice la probabilidad de conversión para cada uno.
+      Analiza estos leads y predice su probabilidad de conversión:
+      
+      Leads:
+      ${JSON.stringify(leads.slice(0, 15), null, 2)}
+      
+      Para cada lead, calcula:
+      1. Probabilidad de conversión (%)
+      2. Valor potencial ($K)
+      3. Nivel de confianza en la predicción (%)
+      4. Factores clave que influyen en la conversión
+      5. Tiempo estimado hasta la conversión (días)
+      
+      Responde en formato JSON con un array de objetos:
+      {
+        "predictions": [
+          {
+            "leadId": number,
+            "name": string,
+            "probability": number,
+            "value": number,
+            "confidence": number,
+            "factors": string[],
+            "estimatedDays": number
+          }
+        ]
+      }
+      
+      Sólo proporciona el objeto JSON, sin texto adicional.
+      `;
 
-DATOS DE LEADS:
-${JSON.stringify(enrichedLeads, null, 2)}
-
-Para cada lead, proporciona:
-1. ID del lead
-2. Probabilidad de conversión (valor entre 0 y 1)
-3. Tiempo estimado hasta la conversión (en días)
-4. Factores que influyen en esta predicción
-5. Acciones recomendadas para incrementar la probabilidad de conversión
-
-Responde con un array JSON con estas predicciones, sin texto adicional.
-`;
-
-      const result = await model.generateContent(prompt);
+      const result = await this.model.generateContent(prompt);
       const response = result.response;
       const text = response.text();
       
-      // Limpiar respuesta y convertir a JSON
-      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const predictions = JSON.parse(jsonStr);
+      // Extraer el JSON de la respuesta
+      let jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || 
+                      text.match(/```\s*([\s\S]*?)\s*```/) || 
+                      text.match(/(\{[\s\S]*\})/);
+                      
+      const jsonText = jsonMatch ? jsonMatch[1] : text;
       
-      return predictions;
+      try {
+        const predictions = JSON.parse(jsonText);
+        return predictions;
+      } catch (parseError) {
+        console.error("Error parsing lead conversion JSON:", parseError);
+        return { predictions: this.generatePlaceholderLeadPredictions(leads) };
+      }
     } catch (error) {
-      console.error('Error al predecir conversión de leads:', error);
-      throw new Error('No se pudo predecir la conversión de leads');
+      console.error("Error al predecir conversión de leads:", error);
+      return { predictions: [] };
     }
   }
 
-  // Métodos auxiliares para obtener datos
+  // Métodos privados para obtener datos
+
   private async getHistoricalData(metric: string, params: AnalyticsParams): Promise<any[]> {
-    // Implementación simplificada - En un caso real esto consultaría datos históricos de la BD
-    let data: any[] = [];
-    
-    switch (metric) {
-      case 'new_leads':
-        // Ejemplo de datos para testing
-        data = [
-          { date: '2023-01-01', value: 15 },
-          { date: '2023-02-01', value: 18 },
-          { date: '2023-03-01', value: 22 },
-          { date: '2023-04-01', value: 20 },
-          { date: '2023-05-01', value: 25 },
-          { date: '2023-06-01', value: 30 },
-        ];
-        break;
-      case 'conversion_rate':
-        data = [
-          { date: '2023-01-01', value: 0.12 },
-          { date: '2023-02-01', value: 0.14 },
-          { date: '2023-03-01', value: 0.13 },
-          { date: '2023-04-01', value: 0.15 },
-          { date: '2023-05-01', value: 0.18 },
-          { date: '2023-06-01', value: 0.20 },
-        ];
-        break;
-      case 'message_response_time':
-        data = [
-          { date: '2023-01-01', value: 120 },  // minutes
-          { date: '2023-02-01', value: 110 },
-          { date: '2023-03-01', value: 95 },
-          { date: '2023-04-01', value: 85 },
-          { date: '2023-05-01', value: 75 },
-          { date: '2023-06-01', value: 60 },
-        ];
-        break;
-      default:
-        // Consultar datos de la base de datos en base al parámetro metric
-        try {
-          // Aquí se implementaría la consulta real a la base de datos
-          // El formato debe ser compatible con el modelo: [{date: 'YYYY-MM-DD', value: number}, ...]
-        } catch (error) {
-          console.error(`Error al obtener datos históricos para ${metric}:`, error);
-        }
+    try {
+      const { startDate, endDate } = params;
+      
+      // Definir fuente de datos según la métrica
+      switch (metric) {
+        case 'leads':
+          return this.getLeadsData(params);
+        case 'conversions':
+          return this.getLeadsData({ ...params, status: 'closed-won' });
+        case 'messages':
+          return this.getMessagesData(params);
+        case 'activities':
+          return this.getActivityData(params);
+        case 'sales':
+          // Aquí se implementaría la lógica para obtener datos de ventas
+          return [];
+        default:
+          return [];
+      }
+    } catch (error) {
+      console.error("Error al obtener datos históricos:", error);
+      return [];
     }
-    
-    return data;
   }
 
   private async getLeadsData(params: AnalyticsParams): Promise<any[]> {
     try {
-      if (params.leadId) {
-        const lead = await storage.getLead(params.leadId);
-        return lead ? [lead] : [];
-      } else {
-        return await storage.getAllLeads();
+      // Obtener todos los leads
+      const allLeads = await storage.getAllLeads();
+      
+      // Filtrar por fecha si es necesario
+      let filteredLeads = allLeads;
+      if (params.startDate || params.endDate) {
+        filteredLeads = allLeads.filter(lead => {
+          const leadDate = new Date(lead.createdAt!);
+          
+          if (params.startDate && params.endDate) {
+            return leadDate >= new Date(params.startDate) && leadDate <= new Date(params.endDate);
+          } else if (params.startDate) {
+            return leadDate >= new Date(params.startDate);
+          } else if (params.endDate) {
+            return leadDate <= new Date(params.endDate);
+          }
+          
+          return true;
+        });
       }
+      
+      // Filtrar por status si es necesario
+      if (params.status) {
+        filteredLeads = filteredLeads.filter(lead => lead.status === params.status);
+      }
+      
+      // Devolver resultados
+      return filteredLeads;
     } catch (error) {
-      console.error('Error al obtener datos de leads:', error);
+      console.error("Error al obtener datos de leads:", error);
       return [];
     }
   }
 
   private async getMessagesData(params: AnalyticsParams): Promise<any[]> {
     try {
+      // Obtener mensajes según los parámetros
+      const messages = await storage.getRecentMessages(100);
+      
+      // Filtrar por leadId si es necesario
+      let filteredMessages = messages;
       if (params.leadId) {
-        return await storage.getMessagesByLead(params.leadId);
-      } else {
-        // Implementar lógica para obtener mensajes filtrados por fecha
-        return await storage.getRecentMessages(100);
+        filteredMessages = messages.filter(message => message.leadId === params.leadId);
       }
+      
+      // Filtrar por fecha si es necesario
+      if (params.startDate || params.endDate) {
+        filteredMessages = filteredMessages.filter(message => {
+          const messageDate = new Date(message.sentAt!);
+          
+          if (params.startDate && params.endDate) {
+            return messageDate >= new Date(params.startDate) && messageDate <= new Date(params.endDate);
+          } else if (params.startDate) {
+            return messageDate >= new Date(params.startDate);
+          } else if (params.endDate) {
+            return messageDate <= new Date(params.endDate);
+          }
+          
+          return true;
+        });
+      }
+      
+      return filteredMessages;
     } catch (error) {
-      console.error('Error al obtener datos de mensajes:', error);
-      return [];
-    }
-  }
-
-  private async getCampaignData(params: AnalyticsParams): Promise<any[]> {
-    try {
-      // Implementar lógica para obtener datos de campañas
-      // Por ahora devolvemos un array vacío como placeholder
-      return [];
-    } catch (error) {
-      console.error('Error al obtener datos de campañas:', error);
+      console.error("Error al obtener datos de mensajes:", error);
       return [];
     }
   }
 
   private async getActivityData(params: AnalyticsParams): Promise<any[]> {
     try {
-      if (params.leadId) {
-        return await storage.getActivitiesByLead(params.leadId);
-      } else {
-        // Implementar lógica para obtener actividades filtradas
-        return [];
-      }
+      // Aquí implementaríamos la lógica para obtener actividades
+      // con filtrado por fechas, leadId, etc.
+      return [];
     } catch (error) {
-      console.error('Error al obtener datos de actividades:', error);
+      console.error("Error al obtener datos de actividades:", error);
       return [];
     }
+  }
+
+  // Métodos para generar datos placeholder cuando no hay API key o hay errores
+
+  private generatePlaceholderPrediction(metric: string): AnalyticsPrediction {
+    return {
+      value: 0,
+      probability: 0,
+      confidence: 0,
+      trend: 'stable',
+      factors: [`Se requiere configurar la API key de Gemini para predicciones de ${metric}`]
+    };
+  }
+
+  private generatePlaceholderInsights(): AnalyticsInsight[] {
+    return [{
+      type: 'recommendation',
+      title: 'Configurar API key de Gemini',
+      description: 'Para acceder a insights basados en ML, es necesario configurar la API key de Gemini en los ajustes.',
+      impact: 'high',
+      confidence: 100,
+      actions: ['Ir a Ajustes', 'Configurar API key de Gemini']
+    }];
+  }
+
+  private generatePlaceholderFeedbackAnalysis(): FeedbackAnalysisResponse {
+    return {
+      sentiment: [
+        { name: 'Positivo', value: 0, percentage: 0 },
+        { name: 'Neutro', value: 0, percentage: 0 },
+        { name: 'Negativo', value: 0, percentage: 0 }
+      ],
+      topics: [],
+      commonPhrases: {
+        positive: [],
+        negative: [],
+        neutral: []
+      },
+      trends: []
+    };
+  }
+
+  private generatePlaceholderSegmentation(): SegmentationResponse {
+    return {
+      segments: [],
+      categories: []
+    };
+  }
+
+  private generatePlaceholderLeadPredictions(leads: any[]): any[] {
+    return leads.map(lead => ({
+      leadId: lead.id,
+      name: lead.name,
+      probability: 0,
+      value: 0,
+      confidence: 0,
+      factors: ['Se requiere configurar API key de Gemini para predicciones'],
+      estimatedDays: 0
+    }));
   }
 }
 
