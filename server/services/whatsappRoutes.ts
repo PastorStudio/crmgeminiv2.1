@@ -43,8 +43,11 @@ export async function registerWhatsAppRoutes(app: Express) {
   // Status endpoint
   app.get("/api/integrations/whatsapp/status", async (req: Request, res: Response) => {
     try {
-      // Asegurarnos de que respondemos con JSON
-      res.setHeader('Content-Type', 'application/json');
+      // IMPORTANTE: Establecer cabeceras CORS y tipo de contenido
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
+      res.header('Content-Type', 'application/json');
       
       if (!whatsappService.getStatus().initialized) {
         await whatsappService.initialize().catch(err => {
@@ -54,18 +57,24 @@ export async function registerWhatsAppRoutes(app: Express) {
       
       const status = whatsappService.getStatus();
       
-      // Asegurarnos de que la respuesta es JSON válido
+      // Log para depuración
       console.log("Enviando estado de WhatsApp:", JSON.stringify(status));
       
-      // Usando .json() que establece el Content-Type correcto
-      res.json(status);
+      // Verificar que el objeto es serializable correctamente
+      let safeStatus = { ...status };
+      
+      // Asegurarse de que el response no sea interceptado o transformado
+      return res.status(200).json(safeStatus);
     } catch (error) {
       console.error("Error obteniendo estado de WhatsApp:", error);
-      res.status(500).json({ 
+      
+      // En caso de error, devolver un objeto de estado mínimo pero válido
+      return res.status(500).json({ 
         message: "Error obteniendo estado de WhatsApp", 
         error: error instanceof Error ? error.message : "Error desconocido",
         initialized: true, 
-        ready: false
+        ready: false,
+        authenticated: false
       });
     }
   });

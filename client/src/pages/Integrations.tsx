@@ -62,17 +62,42 @@ export default function Integrations() {
     queryKey: ["/api/integrations/whatsapp/status", lastRefresh],
     queryFn: async () => {
       try {
-        // Intentamos hacer la solicitud y verificar que sea una respuesta válida
-        const response = await apiRequest("/api/integrations/whatsapp/status");
-        console.log("Estado WhatsApp:", response);
-        return response;
+        // Log para depuración
+        console.log("Solicitando estado de WhatsApp...");
+        
+        // Usar fetch directamente con más control sobre los encabezados
+        const response = await fetch("/api/integrations/whatsapp/status", {
+          headers: {
+            'Accept': 'application/json'
+          },
+          credentials: "include"
+        });
+        
+        // Verificar que la respuesta sea válida
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
+        
+        // Verificar el tipo de contenido
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error("Respuesta no válida, tipo de contenido:", contentType);
+          throw new Error("La respuesta no es JSON válido");
+        }
+        
+        // Parsear la respuesta JSON
+        const data = await response.json();
+        console.log("Estado WhatsApp recibido:", data);
+        
+        return data;
       } catch (error) {
         console.error("Error obteniendo estado de WhatsApp:", error);
         // Devolvemos un estado mínimo para evitar errores
         return {
           initialized: true,
           ready: false,
-          authenticated: false
+          authenticated: false,
+          error: error instanceof Error ? error.message : "Error desconocido"
         };
       }
     },

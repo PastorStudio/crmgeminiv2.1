@@ -92,10 +92,28 @@ export function WhatsAppQRDisplay({ status, isLoading, onRefresh }: WhatsAppQRDi
     );
   }
 
+  // Estado de conexión para depuración
+  console.log("WhatsAppQRDisplay - estado actual:", status);
+  
   return (
     <div className="h-64 w-64 bg-gray-100 rounded-md flex flex-col items-center justify-center p-4">
       <AlertCircle className="w-12 h-12 text-amber-500 mb-3" />
-      <p className="text-gray-600 text-center">No hay código QR disponible</p>
+      <p className="text-gray-600 text-center mb-2">
+        {imgError 
+          ? "Error cargando la imagen del código QR" 
+          : (status?.error 
+              ? `Error: ${status.error}` 
+              : "No hay código QR disponible")
+        }
+      </p>
+      
+      {/* Mostrar información de estado para depuración */}
+      <div className="mt-1 text-xs text-gray-400 text-center">
+        <p>Estado: {status?.initialized ? "Inicializado" : "No inicializado"}</p>
+        <p>Listo: {status?.ready ? "Sí" : "No"}</p>
+        {status?.error && <p>Error: {status.error}</p>}
+      </div>
+      
       <Button 
         variant="outline" 
         onClick={refreshQR}
