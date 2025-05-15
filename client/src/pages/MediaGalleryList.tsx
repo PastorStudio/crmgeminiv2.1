@@ -5,10 +5,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, RefreshCw, Image, FileText, FileAudio, FileVideo, File } from 'lucide-react';
+import { Search, RefreshCw, Image, FileText, FileAudio, FileVideo, File, X, Download, Link, Copy } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Badge } from "@/components/ui/badge";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogClose
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 // Tipo para los archivos de la galería
 interface MediaItem {
@@ -32,6 +41,9 @@ interface MediaItem {
 export default function MediaGalleryList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
+  const { toast } = useToast();
 
   // Consulta para obtener la lista de archivos
   const { data, isLoading, isError, refetch } = useQuery({
@@ -69,12 +81,83 @@ export default function MediaGalleryList() {
     }
   };
 
+  // Función para abrir el modal con vista previa
+  const openPreview = (media: MediaItem) => {
+    setSelectedMedia(media);
+    setPreviewOpen(true);
+  };
+  
   // Formatear tamaño del archivo
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+  };
+  
+  // Renderizar contenido de la vista previa según el tipo de archivo
+  const renderPreviewContent = () => {
+    if (!selectedMedia) return null;
+    
+    switch (selectedMedia.type) {
+      case 'image':
+        return (
+          <div className="flex justify-center">
+            <img 
+              src={selectedMedia.url} 
+              alt={selectedMedia.title || selectedMedia.originalFilename}
+              className="max-w-full max-h-[70vh] object-contain rounded-md"
+            />
+          </div>
+        );
+      case 'video':
+        return (
+          <div className="flex justify-center">
+            <video 
+              src={selectedMedia.url} 
+              controls 
+              className="max-w-full max-h-[70vh] rounded-md"
+            >
+              Tu navegador no soporta la reproducción de video.
+            </video>
+          </div>
+        );
+      case 'audio':
+        return (
+          <div className="flex justify-center p-6 bg-gray-50 rounded-md">
+            <audio 
+              src={selectedMedia.url} 
+              controls
+              className="w-full"
+            >
+              Tu navegador no soporta la reproducción de audio.
+            </audio>
+          </div>
+        );
+      case 'document':
+        // Para documentos, intentamos usar un iframe para mostrar el documento
+        return (
+          <div className="w-full h-[70vh] rounded-md overflow-hidden border border-gray-200">
+            <iframe 
+              src={selectedMedia.url} 
+              className="w-full h-full"
+              title={selectedMedia.title || selectedMedia.originalFilename}
+            />
+          </div>
+        );
+      default:
+        return (
+          <div className="p-8 text-center bg-gray-50 rounded-md">
+            <div className="text-6xl mb-4">📄</div>
+            <p className="text-gray-700">
+              Vista previa no disponible para este tipo de archivo.
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              Descarga el archivo para visualizarlo.
+            </p>
+          </div>
+        );
+    }
   };
 
   return (
@@ -216,9 +299,20 @@ export default function MediaGalleryList() {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline" asChild>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => openPreview(item)}
+                            >
+                              Ver
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              asChild
+                            >
                               <a href={item.url} target="_blank" rel="noopener noreferrer">
-                                Ver
+                                Descargar
                               </a>
                             </Button>
                           </div>
@@ -232,6 +326,82 @@ export default function MediaGalleryList() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal para vista previa */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl">
+                {selectedMedia?.title || selectedMedia?.originalFilename || 'Vista Previa'}
+              </DialogTitle>
+              <DialogClose className="h-6 w-6 rounded-full opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                <X className="h-4 w-4" />
+                <span className="sr-only">Cerrar</span>
+              </DialogClose>
+            </div>
+            {selectedMedia && (
+              <DialogDescription>
+                {selectedMedia.type === 'image' && 'Imagen'}
+                {selectedMedia.type === 'video' && 'Video'}
+                {selectedMedia.type === 'audio' && 'Archivo de audio'}
+                {selectedMedia.type === 'document' && 'Documento'}
+                {!['image', 'video', 'audio', 'document'].includes(selectedMedia.type) && 'Archivo'} 
+                • {formatFileSize(selectedMedia.size)} • {new Date(selectedMedia.uploadedAt).toLocaleDateString()}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          
+          <div className="mt-4">
+            {renderPreviewContent()}
+          </div>
+          
+          {selectedMedia && (
+            <div className="flex justify-between items-center mt-6">
+              <div className="text-sm text-gray-500">
+                {selectedMedia.description && (
+                  <p className="mb-2">{selectedMedia.description}</p>
+                )}
+                <p className="text-xs text-gray-400">
+                  MIME: {selectedMedia.mimeType} • Usado {selectedMedia.useCount} veces
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  asChild
+                >
+                  <a 
+                    href={selectedMedia.url} 
+                    download={selectedMedia.originalFilename}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Descargar
+                  </a>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(selectedMedia.url);
+                    toast({
+                      title: "URL copiada",
+                      description: "La URL del archivo ha sido copiada al portapapeles",
+                      variant: "success"
+                    });
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-1" />
+                  Copiar URL
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
