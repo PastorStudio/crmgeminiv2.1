@@ -61,15 +61,14 @@ export default function Integrations() {
     isLoading: whatsappStatusLoading,
     error: whatsappStatusError
   } = useQuery<ConnectionStatus>({
-    queryKey: ["/api/integrations/whatsapp/status", lastRefresh],
+    queryKey: ["/api/direct/whatsapp/status", lastRefresh],
     queryFn: async () => {
       try {
         // Log para depuración
         console.log("Solicitando estado de WhatsApp...");
         
-        // Agregamos un parámetro para evitar la interceptación de Vite
-        // y asegurarnos que el servidor devuelva JSON
-        const url = `/api/integrations/whatsapp/status?_=${Date.now()}`;
+        // Usar endpoint directo con timestamp para evitar caché
+        const url = `/api/direct/whatsapp/status?t=${Date.now()}`;
         
         // Usar el XMLHttpRequest para tener más control que con fetch
         return new Promise<ConnectionStatus>((resolve, reject) => {
