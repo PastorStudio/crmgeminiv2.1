@@ -8,7 +8,7 @@ import * as path from 'path';
 import { nanoid } from 'nanoid';
 import { db } from '../db';
 import { mediaGallery } from '@shared/schema';
-import { eq, desc, asc, and, like, or, inArray } from 'drizzle-orm';
+import { eq, desc, asc, and, like, or, inArray, sql } from 'drizzle-orm';
 
 // Ruta para almacenar archivos multimedia
 const MEDIA_DIR = path.join(process.cwd(), 'temp', 'media');
@@ -74,36 +74,30 @@ class MediaGalleryService {
       // Guardar el archivo en el sistema de archivos
       await fs.promises.writeFile(filePath, file.buffer);
       
-      // Preparar etiquetas para PostgreSQL
-      let tagsValue = '{}'; // Array vacío por defecto en PostgreSQL
-      if (options.tags && options.tags.length > 0) {
-        const escapedTags = options.tags.map(tag => `"${tag}"`).join(',');
-        tagsValue = `ARRAY[${escapedTags}]`;
-      }
-      
-      // Registrar en la base de datos usando SQL
+      // Utilizamos una consulta SQL simple y segura con parámetros
       const query = `
         INSERT INTO media_gallery 
         (filename, original_filename, mime_type, size, path, type, tags, title, description, uploaded_by, use_count, uploaded_at) 
         VALUES 
-        (
-          '${filename}',
-          '${file.originalname.replace(/'/g, "''")}', 
-          '${file.mimetype}', 
-          ${file.size}, 
-          '${filePath.replace(/'/g, "''")}', 
-          '${options.type}', 
-          ${tagsValue},
-          ${options.title ? `'${options.title.replace(/'/g, "''")}'` : 'NULL'}, 
-          ${options.description ? `'${options.description.replace(/'/g, "''")}'` : 'NULL'}, 
-          ${options.uploadedBy || 'NULL'}, 
-          0, 
-          NOW()
-        ) 
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
         RETURNING *;
       `;
       
-      const result = await db.execute(query);
+      const values = [
+        filename,
+        file.originalname,
+        file.mimetype,
+        file.size,
+        filePath,
+        options.type,
+        options.tags || [],
+        options.title || null,
+        options.description || null,
+        options.uploadedBy || null,
+        0
+      ];
+      
+      const result = await db.query(query, values);
       const mediaItem = result.rows[0];
       
       return this.formatMediaItem(mediaItem);
@@ -118,14 +112,13 @@ class MediaGalleryService {
    */
   async getMediaById(id: number): Promise<MediaItem | null> {
     try {
-      const query = `SELECT * FROM media_gallery WHERE id = ${id} LIMIT 1`;
-      const result = await db.execute(query);
+      const result = await db.select().from(mediaGallery).where(eq(mediaGallery.id, id)).limit(1);
       
-      if (!result.rows.length) {
+      if (!result.length) {
         return null;
       }
       
-      return this.formatMediaItem(result.rows[0]);
+      return this.formatMediaItem(result[0]);
     } catch (error) {
       console.error('Error en getMediaById:', error);
       return null;
@@ -148,77 +141,66 @@ class MediaGalleryService {
     } = options;
     
     try {
-      // Construir filtros SQL
-      let conditions = [];
+      // Construir consulta con filtros y claúsulas
+      let query = db.select().from(mediaGallery);
+      const whereConditions = [];
       
       // Filtrar por tipo
       if (type) {
         if (Array.isArray(type)) {
-          conditions.push(`type IN (${type.map(t => `'${t}'`).join(',')})`);
+          query = query.where(inArray(mediaGallery.type, type));
         } else {
-          conditions.push(`type = '${type}'`);
+          query = query.where(eq(mediaGallery.type, type));
         }
       }
       
-      // Filtrar por etiquetas (esto requiere SQL específico para Postgres arrays)
+      // Filtrar por tags - necesitamos hacerlo como una cláusula separada debido a la forma en que PostgreSQL maneja arrays
       if (tags) {
-        if (Array.isArray(tags)) {
-          // Al menos una de las etiquetas debe existir en el array
-          const tagList = tags.map(t => `'${t}'`).join(',');
-          conditions.push(`tags && ARRAY[${tagList}]`);
-        } else {
-          conditions.push(`'${tags}' = ANY(tags)`);
+        if (Array.isArray(tags) && tags.length > 0) {
+          // Usamos SQL raw para la intersección de arrays
+          query = query.where(sql`${mediaGallery.tags} && ${tags}`);
+        } else if (typeof tags === 'string') {
+          // Búsqueda de un solo tag
+          query = query.where(sql`${tags} = ANY(${mediaGallery.tags})`);
         }
       }
       
       // Búsqueda por texto
       if (search) {
         const searchPattern = `%${search}%`;
-        conditions.push(`(
-          (title IS NOT NULL AND title LIKE '${searchPattern}') OR
-          (description IS NOT NULL AND description LIKE '${searchPattern}') OR
-          original_filename LIKE '${searchPattern}'
-        )`);
+        query = query.where(
+          or(
+            sql`${mediaGallery.title} LIKE ${searchPattern}`,
+            sql`${mediaGallery.description} LIKE ${searchPattern}`,
+            sql`${mediaGallery.originalFilename} LIKE ${searchPattern}`
+          )
+        );
       }
       
-      // Construir la cláusula WHERE
-      const whereClause = conditions.length > 0 
-        ? `WHERE ${conditions.join(' AND ')}` 
-        : '';
+      // Consulta para contar resultados
+      const countQuery = query.select({ count: sql`count(*)` });
+      const countResult = await countQuery;
+      const total = Number(countResult[0]?.count || 0);
       
-      // Contar total de resultados primero
-      const countQuery = `SELECT COUNT(*) as count FROM media_gallery ${whereClause}`;
-      const countResult = await db.execute(countQuery);
-      const total = Number(countResult.rows[0]?.count || 0);
-      
-      // Construir orden
-      let orderClause = '';
+      // Ordenar resultados
       if (orderBy === 'uploadedAt') {
-        orderClause = `ORDER BY uploaded_at ${order === 'desc' ? 'DESC' : 'ASC'}`;
+        query = query.orderBy(order === 'desc' ? desc(mediaGallery.uploadedAt) : asc(mediaGallery.uploadedAt));
       } else if (orderBy === 'useCount') {
-        orderClause = `ORDER BY use_count ${order === 'desc' ? 'DESC' : 'ASC'}`;
+        query = query.orderBy(order === 'desc' ? desc(mediaGallery.useCount) : asc(mediaGallery.useCount));
       } else if (orderBy === 'lastUsedAt') {
-        orderClause = `ORDER BY last_used_at ${order === 'desc' ? 'DESC' : 'ASC'}`;
+        query = query.orderBy(order === 'desc' ? desc(mediaGallery.lastUsedAt) : asc(mediaGallery.lastUsedAt));
       }
       
       // Paginación
       const offset = (page - 1) * limit;
-      const paginationClause = `LIMIT ${limit} OFFSET ${offset}`;
+      query = query.limit(limit).offset(offset);
       
       // Ejecutar consulta principal
-      const query = `
-        SELECT * FROM media_gallery 
-        ${whereClause} 
-        ${orderClause} 
-        ${paginationClause}
-      `;
-      
-      const result = await db.execute(query);
-      const items = result.rows;
+      const result = await query;
       
       // Formatear resultados
       return {
-        items: items.map(item => this.formatMediaItem(item)),
+        items: result.map(item => this.formatMediaItem(item)),
         total
       };
     } catch (error) {
