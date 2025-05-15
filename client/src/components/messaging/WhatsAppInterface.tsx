@@ -177,7 +177,10 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
       }
     },
     enabled: whatsappStatus?.authenticated === true,
-    refetchInterval: whatsappStatus?.authenticated ? 10000 : false, // Refrescar cada 10 segundos si está autenticado
+    refetchInterval: whatsappStatus?.authenticated ? 5000 : false, // Refrescar cada 5 segundos si está autenticado
+    refetchOnWindowFocus: true, // Refrescar cuando la ventana recupere el foco
+    refetchOnMount: true, // Refrescar cuando el componente se monte
+    retry: 3, // Reintentar 3 veces si hay error
   });
   
   // Consulta para obtener mensajes de un chat específico
@@ -235,18 +238,32 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     );
   });
 
-  // Filtrar chats según término de búsqueda
+  // Filtrar chats según término de búsqueda - Asegurar que sea un array y que cada chat tenga los campos necesarios
   const filteredChats = Array.isArray(whatsappChats) 
     ? whatsappChats.filter((chat: WhatsAppChat) => {
+        if (!chat) return false; // Ignorar chats nulos o indefinidos
+        
         if (!searchTerm) return true;
         
         const searchLower = searchTerm.toLowerCase();
         return (
-          chat.name?.toLowerCase().includes(searchLower) ||
-          chat.lastMessage?.toLowerCase().includes(searchLower)
+          (chat.name && chat.name.toLowerCase().includes(searchLower)) ||
+          (chat.lastMessage && chat.lastMessage.toLowerCase().includes(searchLower))
         );
       })
     : [];
+    
+  // Asegurarnos de que cada chat tiene un ID numérico para compatibilidad
+  if (Array.isArray(whatsappChats)) {
+    whatsappChats.forEach((chat, index) => {
+      if (chat && !chat.numericId) {
+        chat.numericId = index + 1;
+      }
+    });
+  }
+  
+  // Registro para depuración
+  console.log('Chats de WhatsApp disponibles:', Array.isArray(whatsappChats) ? whatsappChats.length : 0);
 
   // Consulta para obtener mensajes del lead seleccionado (modo fallback)
   const { 
