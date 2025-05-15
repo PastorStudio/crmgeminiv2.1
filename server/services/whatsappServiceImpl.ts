@@ -319,8 +319,12 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       console.log('Cliente WhatsApp listo para usar');
       this.status.ready = true;
       this.status.authenticated = true;
-      this.status.qrCode = undefined;
+      this.status.connectionState = 'CONNECTED';
       this.status.error = undefined;
+      this.status.qrCode = undefined;
+      
+      // Actualizar el archivo de sesión para marcar autenticación
+      this.updateSessionStatusFile();
       
       // Activar la conexión permanente
       this.activatePermanentConnection()
@@ -582,17 +586,50 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   
   /**
    * Actualiza el archivo de estado de la sesión 
-   * para indicar que seguimos activos
+   * para indicar que seguimos activos y registrar eventos importantes
    */
   private updateSessionStatusFile(): void {
     try {
       const sessionStatusFile = path.join(SESSION_PATH, 'session_active.json');
+      let currentStatus: Record<string, any> = {
+        lastCheckedAt: new Date().toISOString(),
+        connectionState: this.status.connectionState
+      };
+      
+      // Cargar estado actual o crear nuevo
       if (fs.existsSync(sessionStatusFile)) {
-        const currentStatus = JSON.parse(fs.readFileSync(sessionStatusFile, 'utf8'));
-        currentStatus.lastCheckedAt = new Date().toISOString();
-        currentStatus.connectionState = this.status.connectionState;
-        fs.writeFileSync(sessionStatusFile, JSON.stringify(currentStatus, null, 2));
+        try {
+          const existingData = JSON.parse(fs.readFileSync(sessionStatusFile, 'utf8'));
+          // Combinar datos existentes con los actuales
+          currentStatus = { ...existingData, ...currentStatus };
+        } catch (parseError) {
+          console.error('Error al parsear archivo de sesión, creando nuevo:', parseError);
+        }
+      } else {
+        currentStatus.createdAt = new Date().toISOString();
+        currentStatus.activatedAt = new Date().toISOString();
+        console.log('Archivo de estado de sesión creado en:', sessionStatusFile);
       }
+      
+      // Registrar eventos de autenticación si es necesario
+      if (this.status.authenticated && !currentStatus.authenticated) {
+        currentStatus.authenticated = true;
+        currentStatus.authenticatedAt = new Date().toISOString();
+        console.log('Sesión autenticada correctamente');
+      }
+      
+      // Si pasamos de autenticado a no autenticado, registramos desconexión
+      if (!this.status.authenticated && currentStatus.authenticated) {
+        currentStatus.authenticated = false;
+        currentStatus.disconnectedAt = new Date().toISOString();
+        if (currentStatus.authenticatedAt) {
+          currentStatus.previousAuthenticatedAt = currentStatus.authenticatedAt;
+        }
+        console.log('Sesión desconectada');
+      }
+      
+      // Guardar el archivo
+      fs.writeFileSync(sessionStatusFile, JSON.stringify(currentStatus, null, 2));
     } catch (err) {
       // No lanzar error, solo registrar
       console.error('Error actualizando archivo de estado:', err);
@@ -637,6 +674,26 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
    * Implementa una estrategia robusta de reconexión con múltiples intentos
    */
   async checkConnection(): Promise<boolean> {
+    // Variable para rastrear el último intento de reconexión
+    const lastReconnectAttemptFile = path.join(SESSION_PATH, 'last_reconnect_attempt.txt');
+    const now = Date.now();
+    
+    // Verificar si hemos intentado reconectar recientemente (evitar bucles de reconexiones)
+    try {
+      if (fs.existsSync(lastReconnectAttemptFile)) {
+        const lastAttemptTime = parseInt(fs.readFileSync(lastReconnectAttemptFile, 'utf8'));
+        // Si han pasado menos de 2 minutos desde el último intento, no intentar de nuevo
+        if (now - lastAttemptTime < 2 * 60 * 1000) {
+          console.log('Último intento de reconexión hace menos de 2 minutos, esperando...');
+          return false;
+        }
+      }
+      // Registrar este intento
+      fs.writeFileSync(lastReconnectAttemptFile, now.toString());
+    } catch (err) {
+      console.error('Error verificando tiempo desde último intento:', err);
+    }
+    
     if (!this.client) {
       console.log('Cliente de WhatsApp no inicializado, inicializando...');
       try {
@@ -659,9 +716,17 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       this.status.lastConnectionCheck = new Date();
       this.status.connectionState = state;
       
-      // Si está conectado, no hay nada más que hacer
+      // Si está conectado, registrarlo en el archivo de estado
       if (state === 'CONNECTED') {
+        this.updateSessionStatusFile();
         return true;
+      }
+      
+      // Verificar si estamos esperando autenticación (QR code scan)
+      if (state === null && this.status.qrCode) {
+        console.log('Esperando autenticación mediante escaneo de código QR...');
+        // No iniciar reconexiones si estamos esperando que se escanee el QR
+        return false;
       }
       
       // Estrategia de reconexión en cascada (desde opciones ligeras a más invasivas)
@@ -687,6 +752,7 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
           const newState = await this.client.getState();
           if (newState === 'CONNECTED') {
             console.log('Reconexión suave exitosa');
+            this.updateSessionStatusFile(); // Actualizar estado de sesión
             return true;
           }
         }
@@ -717,6 +783,7 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
             const newState = await this.client.getState();
             if (newState === 'CONNECTED') {
               console.log('Reconexión mediante reenfoque exitosa');
+              this.updateSessionStatusFile(); // Actualizar estado de sesión
               return true;
             }
           }
@@ -725,13 +792,37 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
         }
       }
       
-      // PASO 3: Reinicio completo como último recurso
+      // Verificar si la última autenticación fue hace más de 24 horas
+      // Si es así, es mejor esperar a un nuevo escaneo de QR en lugar de reiniciar constantemente
+      const sessionStatusFile = path.join(SESSION_PATH, 'session_active.json');
+      try {
+        if (fs.existsSync(sessionStatusFile)) {
+          const sessionData = JSON.parse(fs.readFileSync(sessionStatusFile, 'utf8'));
+          if (sessionData.authenticated) {
+            const lastAuthTime = new Date(sessionData.authenticatedAt || sessionData.activatedAt);
+            const timeSinceAuth = Date.now() - lastAuthTime.getTime();
+            
+            // Si la autenticación es muy antigua, esperar nuevo QR en lugar de reiniciar
+            if (timeSinceAuth > 24 * 60 * 60 * 1000) {
+              console.log('Autenticación antigua, esperando nuevo escaneo de QR...');
+              return false;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error verificando tiempo de autenticación:', err);
+      }
+      
+      // PASO 3: Reinicio completo como último recurso, pero solo si la última reconexión fue hace tiempo
       console.log('Intento final: Reinicio completo del cliente...');
       await this.restart();
       
       // Verificar si el reinicio completo funcionó
       try {
         const finalState = await this.client.getState();
+        if (finalState === 'CONNECTED') {
+          this.updateSessionStatusFile(); // Actualizar estado de sesión
+        }
         return finalState === 'CONNECTED';
       } catch (error) {
         console.error('Error verificando estado tras reinicio completo:', error);
@@ -741,6 +832,7 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       console.error('Error verificando conexión de WhatsApp:', error);
       
       // Si hay error en la verificación, intentar reiniciar el cliente
+      // pero solo si no lo hemos intentado recientemente
       try {
         console.log('Intentando reiniciar cliente de WhatsApp tras error...');
         await this.restart();
