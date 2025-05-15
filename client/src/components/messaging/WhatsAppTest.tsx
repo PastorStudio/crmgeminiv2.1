@@ -156,7 +156,17 @@ export function WhatsAppTest() {
             <ul className="space-y-1">
               <li><span className="font-medium">Inicializado:</span> {status.initialized ? 'Sí' : 'No'}</li>
               <li><span className="font-medium">Listo:</span> {status.ready ? 'Sí' : 'No'}</li>
-              <li><span className="font-medium">Autenticado:</span> {status.authenticated ? 'Sí' : 'No'}</li>
+              <li>
+                <span className="font-medium">Autenticado:</span> 
+                <span className={status.authenticated ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                  {status.authenticated ? 'Sí' : 'No'}
+                </span>
+                {!status.authenticated && (
+                  <span className="text-orange-500 ml-2">
+                    (Necesita escanear código QR para ver chats reales)
+                  </span>
+                )}
+              </li>
               {status.connectionState && (
                 <li><span className="font-medium">Estado de conexión:</span> {status.connectionState}</li>
               )}
@@ -168,6 +178,15 @@ export function WhatsAppTest() {
                     alt="QR Code para WhatsApp" 
                     className="w-48 h-48 border"
                   />
+                  <div className="mt-2 text-xs text-gray-600">
+                    Escanea este código con WhatsApp en tu teléfono para autenticarte
+                    y poder ver los chats reales. Una vez autenticado, haz clic en "Obtener Chats Reales".
+                  </div>
+                </li>
+              )}
+              {status.authenticated && (
+                <li className="pt-2 text-green-600">
+                  ¡Autenticación exitosa! Ahora puedes ver los chats reales haciendo clic en el botón "Obtener Chats Reales"
                 </li>
               )}
             </ul>
