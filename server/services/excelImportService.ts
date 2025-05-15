@@ -75,13 +75,36 @@ export class ExcelImportService {
     try {
       const filepath = this.getFilePath(filename);
       
-      // Leer el archivo
-      const workbook = XLSX.readFile(filepath);
+      // Leer el archivo con opciones para manejar archivos con macros (.xlsm)
+      const workbook = XLSX.readFile(filepath, {
+        cellFormula: false, // Deshabilitar evaluación de fórmulas
+        bookVBA: true, // Preservar VBA/macros
+        cellStyles: false, // Ignorar estilos para mejorar rendimiento
+        cellNF: false, // Ignorar formato de números
+        cellDates: true, // Mantener fechas como fechas
+      });
+      
+      // Verificar que el workbook tenga hojas
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        throw new Error('No sheets found in the Excel file');
+      }
+      
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       
-      // Convertir a JSON
-      const data = XLSX.utils.sheet_to_json<any>(worksheet);
+      if (!worksheet) {
+        throw new Error('Worksheet is undefined');
+      }
+      
+      // Convertir a JSON con manejo de errores mejorado
+      const data = XLSX.utils.sheet_to_json<any>(worksheet, {
+        defval: "", // Valor predeterminado para celdas vacías
+        blankrows: false // Ignorar filas en blanco
+      });
+      
+      if (!Array.isArray(data)) {
+        throw new Error('Failed to convert Excel data to JSON');
+      }
       
       // Procesar los datos según el mapeo de campos
       const contacts: ContactData[] = [];
@@ -214,20 +237,44 @@ export class ExcelImportService {
     try {
       const filepath = this.getFilePath(filename);
       
-      // Leer el archivo
-      const workbook = XLSX.readFile(filepath);
+      // Leer el archivo con opciones para manejar archivos con macros (.xlsm)
+      const workbook = XLSX.readFile(filepath, {
+        cellFormula: false, // Deshabilitar evaluación de fórmulas
+        bookVBA: true, // Preservar VBA/macros
+        cellStyles: false, // Ignorar estilos para mejorar rendimiento
+        cellNF: false, // Ignorar formato de números
+        cellDates: true, // Mantener fechas como fechas
+      });
+      
+      // Si no hay hojas, devolver array vacío
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        console.error('No sheets found in the Excel file');
+        return [];
+      }
+
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       
-      // Obtener la primera fila (encabezados)
-      const data = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1 });
-      
-      if (data.length === 0 || !Array.isArray(data[0])) {
+      if (!worksheet) {
+        console.error('Worksheet is undefined');
         return [];
       }
       
-      // Devolver los nombres de las columnas
-      return data[0].map(String);
+      // Obtener la primera fila (encabezados) con manejo de errores mejorado
+      try {
+        const data = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1 });
+        
+        if (data.length === 0 || !Array.isArray(data[0])) {
+          console.log('No data found or first row is not an array');
+          return [];
+        }
+        
+        // Devolver los nombres de las columnas, filtrando valores undefined o null
+        return data[0].filter(col => col !== undefined && col !== null).map(String);
+      } catch (innerError) {
+        console.error('Error converting worksheet to JSON:', innerError);
+        return [];
+      }
     } catch (error) {
       console.error('Error analyzing Excel file:', error);
       throw new Error(`Error analyzing Excel file: ${error.message}`);
