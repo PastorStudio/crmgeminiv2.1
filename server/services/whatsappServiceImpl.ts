@@ -1,13 +1,14 @@
 /**
  * Implementación real del servicio de WhatsApp utilizando whatsapp-web.js y Chromium
  * Genera códigos QR auténticos para conexión con WhatsApp Web
+ * Mantiene la conexión activa de forma permanente hasta desconexión explícita
  */
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { Client } from 'whatsapp-web.js';
+import { Client, Message, MessageMedia } from 'whatsapp-web.js';
 import * as qrcode from 'qrcode';
-import { IWhatsAppService, WhatsAppStatus } from './whatsappInterface';
+import { IWhatsAppService, WhatsAppStatus, WhatsAppMessage, WhatsAppChat } from './whatsappInterface';
 import { EventEmitter } from 'events';
 
 // Directorio temporal para archivos
@@ -25,8 +26,13 @@ if (!fs.existsSync(SESSION_PATH)) {
 // Archivo para guardar el QR en texto
 const QR_TEXT_FILE = path.join(TEMP_DIR, 'whatsapp-qr.txt');
 
+// Intervalos para mantener la conexión
+const CONNECTION_CHECK_INTERVAL = 15 * 60 * 1000; // 15 minutos
+const KEEP_ALIVE_INTERVAL = 45 * 1000; // 45 segundos
+
 /**
  * Clase que implementa el servicio de WhatsApp usando whatsapp-web.js
+ * Mantiene la conexión activa permanentemente 
  */
 class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   private client: Client | null = null;
@@ -37,6 +43,10 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
     error: undefined,
     qrCode: undefined
   };
+  private connectionCheckTimer: NodeJS.Timeout | null = null;
+  private keepAliveTimer: NodeJS.Timeout | null = null;
+  private chatCache: Map<string, WhatsAppChat> = new Map();
+  private messageCache: Map<string, WhatsAppMessage[]> = new Map();
 
   /**
    * Obtiene la ruta al ejecutable de Chromium en Replit
