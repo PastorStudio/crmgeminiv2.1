@@ -4,14 +4,19 @@
  */
 
 import { Express, Request, Response } from 'express';
-// Importamos el servicio de demostración por defecto
+// Importamos el servicio real de WhatsApp
+import { whatsappService } from './whatsappServiceImpl';
+// Servicio de demostración como fallback
 import { whatsappDemoService } from './whatsappDemoService';
 // Interfaz común para WhatsApp
 import { IWhatsAppService } from './whatsappInterface';
 
 export async function registerWhatsAppRoutes(app: Express) {
-  // Definir servicio a utilizar
+  // Por defecto, usamos el servicio de demostración para evitar problemas de dependencias
   let whatsappService: IWhatsAppService = whatsappDemoService;
+  
+  // Mensaje de log
+  console.log("Usando servicio demo de WhatsApp con códigos QR en formato whatsapp://");
   
   // Status endpoint
   app.get("/api/integrations/whatsapp/status", async (req: Request, res: Response) => {
