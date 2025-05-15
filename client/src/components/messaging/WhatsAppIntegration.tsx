@@ -43,7 +43,7 @@ export default function WhatsAppIntegration() {
         throw error;
       }
     },
-    refetchInterval: status?.authenticated ? 30000 : refreshInterval, // Actualizar más rápido si no está autenticado
+    refetchInterval: (data) => data?.authenticated ? 30000 : refreshInterval, // Usar el callback para evitar referencia circular
     initialData: { initialized: false, ready: false } // Datos iniciales para evitar errores de tipo
   });
 
