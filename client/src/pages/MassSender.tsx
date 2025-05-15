@@ -117,7 +117,26 @@ export default function MassSender() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
-  const [currentConfig, setCurrentConfig] = useState<Partial<MassSendConfig>>({});
+  const [currentConfig, setCurrentConfig] = useState<MassSendConfig>({
+    delayBetweenMessages: 8000,
+    pauseBetweenChunks: 180000,
+    chunkSize: 15,
+    markAsRead: true,
+    simulateTyping: true,
+    typingTime: 3000,
+    randomFactor: 0.3,
+    personalizeMessages: true,
+    useAIPersonalization: false,
+    messageVariations: true,
+    splitLongMessages: true,
+    restrictRepeatedRecipients: true,
+    restrictionPeriod: 24,
+    maxMessagesPerPeriod: 100,
+    respectBusinessHours: true,
+    businessHoursStart: 9,
+    businessHoursEnd: 18,
+    businessDays: [1, 2, 3, 4, 5]
+  });
   const [previewContact, setPreviewContact] = useState<any>({
     name: "Juan Pérez",
     company: "Empresa Ejemplo S.A."
@@ -1193,11 +1212,11 @@ export default function MassSender() {
                                       <div className="space-y-2 text-sm">
                                         <div className="flex justify-between">
                                           <span className="text-muted-foreground">Intervalo entre mensajes:</span>
-                                          <span>{campaign.config.delayBetweenMessages / 1000}s</span>
+                                          <span>{campaign.sendingConfig && campaign.sendingConfig.minIntervalMs ? campaign.sendingConfig.minIntervalMs / 1000 : 5}s</span>
                                         </div>
                                         <div className="flex justify-between">
                                           <span className="text-muted-foreground">Tamaño de lote:</span>
-                                          <span>{campaign.config.chunkSize} mensajes</span>
+                                          <span>{campaign.sendingConfig && campaign.sendingConfig.batchSize ? campaign.sendingConfig.batchSize : 10} mensajes</span>
                                         </div>
                                         <div className="flex justify-between">
                                           <span className="text-muted-foreground">Pausa entre lotes:</span>
