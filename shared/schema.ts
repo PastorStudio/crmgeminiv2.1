@@ -85,6 +85,39 @@ export const dashboardStats = pgTable("dashboard_stats", {
   updatedAt: timestamp("updatedAt").defaultNow(),
 });
 
+// Plantillas de mensajes - para reutilizar contenido en campañas
+export const messageTemplates = pgTable("message_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  content: text("content").notNull(),
+  category: text("category"), // ventas, soporte, bienvenida, etc.
+  tags: text("tags").array(),
+  variables: jsonb("variables"), // JSON con variables disponibles y ejemplos
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
+  createdBy: integer("createdBy").references(() => users.id),
+  isActive: boolean("isActive").default(true),
+});
+
+// Campañas de marketing - para envío masivo de mensajes
+export const marketingCampaigns = pgTable("marketing_campaigns", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  templateId: integer("templateId").references(() => messageTemplates.id),
+  status: text("status").default("draft"), // draft, scheduled, running, paused, completed
+  scheduledStart: timestamp("scheduledStart"),
+  scheduledEnd: timestamp("scheduledEnd"),
+  recipientList: jsonb("recipientList"), // JSON con información de destinatarios o criterios
+  importedContacts: jsonb("importedContacts"), // JSON con contactos importados desde Excel
+  sendingConfig: jsonb("sendingConfig"), // JSON con configuración de envío (velocidad, pausas, etc.)
+  stats: jsonb("stats").default('{"total": 0, "sent": 0, "delivered": 0, "read": 0, "responses": 0, "failed": 0}'),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
+  createdBy: integer("createdBy").references(() => users.id),
+});
+
 // Insert schemas for each model
 // Definir relaciones
 export const usersRelations = relations(users, ({ many }) => ({
@@ -132,12 +165,35 @@ export const surveysRelations = relations(surveys, ({ one }) => ({
   })
 }));
 
+// Relaciones para plantillas de mensajes
+export const messageTemplatesRelations = relations(messageTemplates, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [messageTemplates.createdBy],
+    references: [users.id]
+  }),
+  campaigns: many(marketingCampaigns)
+}));
+
+// Relaciones para campañas de marketing
+export const marketingCampaignsRelations = relations(marketingCampaigns, ({ one }) => ({
+  template: one(messageTemplates, {
+    fields: [marketingCampaigns.templateId],
+    references: [messageTemplates.id]
+  }),
+  creator: one(users, {
+    fields: [marketingCampaigns.createdBy],
+    references: [users.id]
+  })
+}));
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true });
 export const insertActivitySchema = createInsertSchema(activities).omit({ id: true, createdAt: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, sentAt: true });
 export const insertSurveySchema = createInsertSchema(surveys).omit({ id: true, sentAt: true, completedAt: true });
 export const insertDashboardStatsSchema = createInsertSchema(dashboardStats).omit({ id: true, updatedAt: true });
+export const insertMessageTemplateSchema = createInsertSchema(messageTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertMarketingCampaignSchema = createInsertSchema(marketingCampaigns).omit({ id: true, createdAt: true, updatedAt: true, stats: true });
 
 // Types for insert and select operations
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -146,6 +202,8 @@ export type InsertActivity = z.infer<typeof insertActivitySchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type InsertSurvey = z.infer<typeof insertSurveySchema>;
 export type InsertDashboardStats = z.infer<typeof insertDashboardStatsSchema>;
+export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
+export type InsertMarketingCampaign = z.infer<typeof insertMarketingCampaignSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Lead = typeof leads.$inferSelect;
@@ -153,3 +211,5 @@ export type Activity = typeof activities.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type Survey = typeof surveys.$inferSelect;
 export type DashboardStats = typeof dashboardStats.$inferSelect;
+export type MessageTemplate = typeof messageTemplates.$inferSelect;
+export type MarketingCampaign = typeof marketingCampaigns.$inferSelect;
