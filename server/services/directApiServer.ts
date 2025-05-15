@@ -156,58 +156,6 @@ export function registerDirectRoutes(app: Express): void {
         return res.status(404).json({ error: 'Código QR no disponible' });
       }
       
-      // Generar data URL del código QR
-      const qrDataUrl = await qrcode.toDataURL(status.qrCode);
-      
-      res.json({ qrDataUrl });
-    } catch (error) {
-      console.error('Error generando QR:', error);
-      res.status(500).json({ 
-        error: 'Error generando código QR',
-        message: error instanceof Error ? error.message : 'Error desconocido'
-      });
-    }
-  });
-  
-  // Endpoint directo para reiniciar WhatsApp
-  app.post('/api/direct/whatsapp/restart', async (req: Request, res: Response) => {
-    try {
-      await whatsappService.restart();
-      res.json({ 
-        success: true, 
-        message: 'WhatsApp reiniciado correctamente'
-      });
-    } catch (error) {
-      console.error('Error reiniciando WhatsApp:', error);
-      res.status(500).json({ 
-        error: 'Error reiniciando WhatsApp',
-        message: error instanceof Error ? error.message : 'Error desconocido'
-      });
-    }
-  });
-  
-  // Endpoint directo para cerrar sesión de WhatsApp
-  app.post('/api/direct/whatsapp/logout', async (req: Request, res: Response) => {
-    try {
-      await whatsappService.logout();
-      res.json({ 
-        success: true, 
-        message: 'Sesión de WhatsApp cerrada correctamente'
-      });
-    } catch (error) {
-      console.error('Error cerrando sesión de WhatsApp:', error);
-      res.status(500).json({ 
-        error: 'Error cerrando sesión de WhatsApp',
-        message: error instanceof Error ? error.message : 'Error desconocido'
-      });
-    }
-  });
-      const status = whatsappService.getStatus();
-      
-      if (!status.qrCode) {
-        return res.status(404).json({ error: 'Código QR no disponible' });
-      }
-      
       // Generar data URL para el código QR
       const dataUrl = await qrcode.toDataURL(status.qrCode, {
         errorCorrectionLevel: 'H',
