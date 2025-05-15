@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import AiAssistant from "@/components/assistant/AiAssistant";
 import LeadForm from "@/components/leads/LeadForm";
-import { NotificationCenter } from "@/components/ui/notification-center";
+import { NotificationCenter } from "@/components/ui/notification-center.jsx";
 
 interface HeaderProps {
   onMenuButtonClick: () => void;
