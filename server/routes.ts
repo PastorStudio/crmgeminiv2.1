@@ -15,6 +15,7 @@ import { apiKeyManager } from "./services/apiKeyManager";
 import { db } from "./db";
 // Importar las rutas de WhatsApp
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
+import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
 import { autoResponseService } from "./services/autoResponseService";
 import multer from "multer";
 import { messageTemplateService } from "./services/messageTemplateService";
@@ -39,6 +40,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Registrar rutas específicas de WhatsApp con implementación directa
   registerWhatsAppRoutes(app);
+  
+  // Registrar rutas de analytics avanzado
+  registerAnalyticsRoutes(app);
   
   // Health check endpoint
   app.get("/api/health", (req: Request, res: Response) => {

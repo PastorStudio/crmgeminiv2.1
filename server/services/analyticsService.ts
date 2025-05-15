@@ -1,7 +1,6 @@
 import { db } from '../db';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { storage } from '../storage';
-import { formatDate } from '../utils/dateUtils';
 
 interface AnalyticsParams {
   startDate?: string;

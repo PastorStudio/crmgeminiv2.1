@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { useQuery } from "@tanstack/react-query";
 import { 
@@ -6,7 +6,8 @@ import {
   CardContent, 
   CardHeader, 
   CardTitle, 
-  CardDescription 
+  CardDescription,
+  CardFooter
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,8 +26,29 @@ import {
   Tooltip, 
   Legend, 
   ResponsiveContainer, 
-  Cell 
+  Cell,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  ScatterChart,
+  Scatter,
+  ZAxis
 } from "recharts";
+import { 
+  AlertCircle, 
+  TrendingUp, 
+  TrendingDown, 
+  AlertTriangle, 
+  Lightbulb, 
+  BarChart as BarChartIcon,
+  PieChart as PieChartIcon,
+  LineChart as LineChartIcon
+} from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Analytics() {
   const [timeframe, setTimeframe] = useState("30days");
