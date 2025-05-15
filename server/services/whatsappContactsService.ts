@@ -6,14 +6,21 @@ import { whatsappService } from './whatsappServiceImpl';
  */
 export async function getAllWhatsAppContacts() {
   try {
-    if (!isInitialized() || !isReady()) {
-      throw new Error('Cliente de WhatsApp no inicializado o no listo');
+    const status = whatsappService.getStatus();
+    if (!status.initialized || !status.ready || !status.authenticated) {
+      console.warn('Cliente de WhatsApp no inicializado, listo o autenticado');
+      return [];
     }
-
-    await checkConnection();
+    
+    // Obtenemos el cliente
+    const client = whatsappService.getClient();
+    if (!client) {
+      console.warn('Cliente de WhatsApp no disponible');
+      return [];
+    }
     
     // Obtenemos todos los contactos
-    const contacts = await whatsappClient.getContacts();
+    const contacts = await client.getContacts();
     
     if (!contacts || !Array.isArray(contacts)) {
       console.warn('No se pudieron obtener contactos de WhatsApp o el resultado no es un array');
@@ -59,14 +66,29 @@ export async function getAllWhatsAppContacts() {
  */
 export async function getContactsByCategory() {
   try {
-    if (!isInitialized() || !isReady()) {
-      throw new Error('Cliente de WhatsApp no inicializado o no listo');
+    const status = whatsappService.getStatus();
+    if (!status.initialized || !status.ready || !status.authenticated) {
+      console.warn('Cliente de WhatsApp no inicializado, listo o autenticado');
+      return {
+        personal: [],
+        groups: [],
+        labeled: {} // Etiquetas personalizadas cuando se implementen
+      };
     }
-
-    await checkConnection();
+    
+    // Obtenemos el cliente
+    const client = whatsappService.getClient();
+    if (!client) {
+      console.warn('Cliente de WhatsApp no disponible');
+      return {
+        personal: [],
+        groups: [],
+        labeled: {} // Etiquetas personalizadas cuando se implementen
+      };
+    }
     
     // Obtenemos todos los contactos
-    const contacts = await whatsappClient.getContacts();
+    const contacts = await client.getContacts();
     
     if (!contacts || !Array.isArray(contacts)) {
       console.warn('No se pudieron obtener contactos de WhatsApp o el resultado no es un array');

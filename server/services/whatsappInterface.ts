@@ -73,6 +73,11 @@ export interface IWhatsAppService {
   getStatus(): WhatsAppStatus;
   
   /**
+   * Obtiene el cliente de WhatsApp para operaciones avanzadas
+   */
+  getClient(): any;
+  
+  /**
    * Reinicia el servicio de WhatsApp
    */
   restart(): Promise<void>;
