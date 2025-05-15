@@ -90,6 +90,18 @@ interface MassSendConfig {
   businessDays: number[];
 }
 
+interface SendingConfig {
+  minIntervalMs: number;
+  maxIntervalMs: number;
+  batchSize: number;
+  pauseBetweenBatchesMs: number;
+  simulateTyping: boolean;
+  typingDurationMs: number;
+  respectBusinessHours: boolean;
+  businessHoursStart: number;
+  businessHoursEnd: number;
+}
+
 interface Campaign {
   id: string;
   name: string;
@@ -102,7 +114,8 @@ interface Campaign {
   successfulSends: number;
   failedSends: number;
   messageTemplate: string;
-  config: MassSendConfig;
+  config?: MassSendConfig;
+  sendingConfig?: SendingConfig;
   targetGroups: string[];
   targetTags: string[];
   excludedContacts: string[];
@@ -182,7 +195,7 @@ export default function MassSender() {
   
   // Mutación para crear una nueva campaña
   const createCampaignMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("/api/mass-sender/campaigns", "POST", data),
+    mutationFn: (data: any) => apiRequest("/api/mass-sender/campaigns", { method: "POST", body: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/mass-sender/campaigns'] });
       toast({
@@ -194,7 +207,26 @@ export default function MassSender() {
       setMessageTemplate("");
       setSelectedGroups([]);
       setSelectedTags([]);
-      setCurrentConfig({});
+      setCurrentConfig({
+        delayBetweenMessages: 8000,
+        pauseBetweenChunks: 180000,
+        chunkSize: 15,
+        markAsRead: true,
+        simulateTyping: true,
+        typingTime: 3000,
+        randomFactor: 0.3,
+        personalizeMessages: true,
+        useAIPersonalization: false,
+        messageVariations: true,
+        splitLongMessages: true,
+        restrictRepeatedRecipients: true,
+        restrictionPeriod: 24,
+        maxMessagesPerPeriod: 100,
+        respectBusinessHours: true,
+        businessHoursStart: 9,
+        businessHoursEnd: 18,
+        businessDays: [1, 2, 3, 4, 5]
+      });
       // Cambiar a la pestaña de campañas
       setTab("campaigns");
     },
@@ -1220,28 +1252,28 @@ export default function MassSender() {
                                         </div>
                                         <div className="flex justify-between">
                                           <span className="text-muted-foreground">Pausa entre lotes:</span>
-                                          <span>{campaign.config.pauseBetweenChunks / 60000}min</span>
+                                          <span>{campaign.sendingConfig && campaign.sendingConfig.pauseBetweenBatchesMs ? campaign.sendingConfig.pauseBetweenBatchesMs / 60000 : 1}min</span>
                                         </div>
                                         <div className="flex justify-between">
                                           <span className="text-muted-foreground">Simular escritura:</span>
-                                          <span>{campaign.config.simulateTyping ? "Sí" : "No"}</span>
+                                          <span>{campaign.sendingConfig && campaign.sendingConfig.simulateTyping ? "Sí" : "No"}</span>
                                         </div>
                                         <div className="flex justify-between">
                                           <span className="text-muted-foreground">Personalización:</span>
-                                          <span>{campaign.config.personalizeMessages ? "Sí" : "No"}</span>
+                                          <span>{campaign.config && campaign.config.personalizeMessages ? "Sí" : "No"}</span>
                                         </div>
                                         <div className="flex justify-between">
                                           <span className="text-muted-foreground">Variaciones de mensaje:</span>
-                                          <span>{campaign.config.messageVariations ? "Sí" : "No"}</span>
+                                          <span>{campaign.config && campaign.config.messageVariations ? "Sí" : "No"}</span>
                                         </div>
                                         <div className="flex justify-between">
                                           <span className="text-muted-foreground">Respeta horario:</span>
-                                          <span>{campaign.config.respectBusinessHours ? "Sí" : "No"}</span>
+                                          <span>{campaign.sendingConfig && campaign.sendingConfig.respectBusinessHours ? "Sí" : "No"}</span>
                                         </div>
-                                        {campaign.config.respectBusinessHours && (
+                                        {campaign.sendingConfig && campaign.sendingConfig.respectBusinessHours && (
                                           <div className="flex justify-between">
                                             <span className="text-muted-foreground">Horario:</span>
-                                            <span>{campaign.config.businessHoursStart}:00 - {campaign.config.businessHoursEnd}:00</span>
+                                            <span>{campaign.sendingConfig.businessHoursStart}:00 - {campaign.sendingConfig.businessHoursEnd}:00</span>
                                           </div>
                                         )}
                                       </div>
