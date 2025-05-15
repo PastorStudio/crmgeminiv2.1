@@ -1114,8 +1114,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Obtener todas las campañas
   app.get("/api/mass-sender/campaigns", async (req: Request, res: Response) => {
     try {
-      const { massSenderService } = await import('./services/massSenderService');
-      const campaigns = massSenderService.getAllCampaigns();
+      const { massSenderService } = await import('./services/massSenderService.js');
+      const campaigns = await massSenderService.getAllCampaigns();
       res.json(campaigns);
     } catch (error) {
       console.error("Error al obtener campañas:", error);
@@ -1227,20 +1227,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Obtener grupos de contactos de WhatsApp
   app.get("/api/whatsapp/contact-groups", async (req: Request, res: Response) => {
     try {
-      // Importar el servicio de WhatsApp bajo demanda
-      const { whatsappServiceImpl } = await import('./services/whatsappServiceImpl');
-      
-      // Obtener los chats y filtrar grupos
-      const chats = await whatsappServiceImpl.getChats();
-      const groups = chats
-        .filter(chat => chat.isGroup)
-        .map(chat => ({
-          id: chat.id._serialized,
-          name: chat.name || 'Grupo sin nombre',
-          count: chat.participants ? chat.participants.length : 0
-        }));
-      
-      res.json(groups);
+      import('./services/whatsappServiceImpl').then(async ({ default: whatsappService }) => {
+        // Obtener los chats y filtrar grupos
+        const chats = await whatsappService.getChats();
+        const groups = chats
+          .filter(chat => chat.isGroup)
+          .map(chat => ({
+            id: chat.id._serialized,
+            name: chat.name || 'Grupo sin nombre',
+            count: chat.participants ? chat.participants.length : 0
+          }));
+        
+        res.json(groups);
+      }).catch(error => {
+        console.error("Error al importar servicio WhatsApp:", error);
+        res.status(500).json({ error: String(error) });
+      });
     } catch (error) {
       console.error("Error al obtener grupos de contactos:", error);
       res.status(500).json({ error: String(error) });
