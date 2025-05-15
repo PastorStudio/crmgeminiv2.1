@@ -46,6 +46,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Registrar rutas de analytics avanzado
   registerAnalyticsRoutes(app);
   
+  // Registrar rutas para la galería de medios
+  app.use("/api/media-gallery", mediaGalleryRouter);
+  app.use("/api/media", mediaServeRouter);
+  
   // Health check endpoint
   app.get("/api/health", (req: Request, res: Response) => {
     res.json({ status: "ok" });

@@ -46,7 +46,8 @@ mediaGalleryRouter.get('/:id', async (req: Request, res: Response) => {
     
     res.status(200).json(media);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    res.status(500).json({ error: errorMessage });
   }
 });
 
@@ -91,7 +92,8 @@ mediaGalleryRouter.patch('/:id', async (req: Request, res: Response) => {
     
     res.status(200).json(updated);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const errorMessage = error instanceof Error ? error.message : 'Error al actualizar el archivo';
+    res.status(500).json({ error: errorMessage });
   }
 });
 
@@ -107,7 +109,8 @@ mediaGalleryRouter.delete('/:id', async (req: Request, res: Response) => {
     
     res.status(200).json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const errorMessage = error instanceof Error ? error.message : 'Error al eliminar el archivo';
+    res.status(500).json({ error: errorMessage });
   }
 });
 
@@ -118,7 +121,8 @@ mediaGalleryRouter.post('/:id/track-usage', async (req: Request, res: Response) 
     await mediaGalleryService.trackMediaUsage(id);
     res.status(200).json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const errorMessage = error instanceof Error ? error.message : 'Error al registrar uso del archivo';
+    res.status(500).json({ error: errorMessage });
   }
 });
 
