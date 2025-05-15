@@ -61,14 +61,14 @@ export default function Integrations() {
     isLoading: whatsappStatusLoading,
     error: whatsappStatusError
   } = useQuery<ConnectionStatus>({
-    queryKey: ["/api/direct/whatsapp/status", lastRefresh],
+    queryKey: ["/api/integrations/whatsapp/status", lastRefresh],
     queryFn: async () => {
       try {
         // Log para depuración
         console.log("Solicitando estado de WhatsApp...");
         
-        // Usar endpoint directo con timestamp para evitar caché
-        const url = `/api/direct/whatsapp/status?t=${Date.now()}`;
+        // Usar endpoint con timestamp para evitar caché
+        const url = `/api/integrations/whatsapp/status?t=${Date.now()}`;
         
         // Usar el XMLHttpRequest para tener más control que con fetch
         return new Promise<ConnectionStatus>((resolve, reject) => {
@@ -88,7 +88,7 @@ export default function Integrations() {
                   initialized: true,
                   ready: false,
                   authenticated: false,
-                  error: "Interceptado por Vite - Usar endpoint directo"
+                  error: "Interceptado por Vite - intenta recargar la página"
                 });
                 return;
               }

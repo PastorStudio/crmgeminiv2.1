@@ -47,6 +47,19 @@ app.use((req, res, next) => {
     throw err;
   });
 
+  // Middleware específico para rutas directas de API
+  app.use("/api/direct/", (req: Request, res: Response, next: NextFunction) => {
+    // Asegurarnos de que la respuesta sea JSON o imagen, no HTML
+    res.header('Content-Type', req.path.includes('qr-image') ? 'image/png' : 'application/json');
+    res.header('X-Content-Type-Options', 'nosniff');
+    res.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.header('Pragma', 'no-cache');
+    res.header('Expires', '0');
+    
+    log(`Procesando ruta directa API: ${req.path}`);
+    next();
+  });
+
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
