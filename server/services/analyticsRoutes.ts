@@ -165,4 +165,103 @@ export function registerAnalyticsRoutes(app: Express) {
       });
     }
   });
+  
+  /**
+   * Endpoint para demos rápidas de predicción
+   * @route GET /api/analytics/demo/predict
+   */
+  app.get("/api/analytics/demo/predict", async (req: Request, res: Response) => {
+    try {
+      const metric = (req.query.metric as string) || 'leads';
+      const startDate = (req.query.startDate as string) || getLastMonthDate();
+      const endDate = (req.query.endDate as string) || getCurrentDate();
+      
+      const params = {
+        startDate,
+        endDate,
+        leadId: req.query.leadId ? parseInt(req.query.leadId as string) : undefined
+      };
+      
+      const prediction = await analyticsService.predictMetrics(metric, params);
+      
+      return res.json({
+        success: true,
+        metric,
+        timeframe: `${startDate} to ${endDate}`,
+        prediction
+      });
+    } catch (error: any) {
+      console.error("Error en demo de predicción:", error);
+      
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Error al ejecutar demo de predicción"
+      });
+    }
+  });
+  
+  /**
+   * Endpoint para demos rápidas de segmentación
+   * @route GET /api/analytics/demo/segment
+   */
+  app.get("/api/analytics/demo/segment", async (req: Request, res: Response) => {
+    try {
+      const segmentation = await analyticsService.segmentCustomers();
+      
+      return res.json({
+        success: true,
+        segmentation
+      });
+    } catch (error: any) {
+      console.error("Error en demo de segmentación:", error);
+      
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Error al ejecutar demo de segmentación"
+      });
+    }
+  });
+  
+  /**
+   * Endpoint para demo de generación de tags
+   * @route POST /api/analytics/demo/generate-tags
+   */
+  app.post("/api/analytics/demo/generate-tags", async (req: Request, res: Response) => {
+    try {
+      const { text } = req.body;
+      
+      if (!text) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere un texto para generar tags"
+        });
+      }
+      
+      const tags = await analyticsService.generateTags(text);
+      
+      return res.json({
+        success: true,
+        text: text.substring(0, 50) + (text.length > 50 ? "..." : ""),
+        tags
+      });
+    } catch (error: any) {
+      console.error("Error en demo de generación de tags:", error);
+      
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Error al generar tags"
+      });
+    }
+  });
+}
+
+// Funciones helper para fechas
+function getCurrentDate(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+function getLastMonthDate(): string {
+  const date = new Date();
+  date.setMonth(date.getMonth() - 1);
+  return date.toISOString().split('T')[0];
 }
