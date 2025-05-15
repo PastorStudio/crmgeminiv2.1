@@ -1436,6 +1436,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/mass-sender/campaigns/:id/import-with-template", async (req: Request, res: Response) => {
+    try {
+      const campaignId = parseInt(req.params.id);
+      const { batch } = req.body;
+      
+      if (!batch || !batch.templateId || !batch.contactIds || !batch.variables) {
+        return res.status(400).json({ 
+          error: "Se requiere batch con templateId, contactIds y variables" 
+        });
+      }
+      
+      const success = await massSenderService.importContactsWithTemplate(campaignId, batch);
+      
+      if (!success) {
+        return res.status(404).json({ error: "Campaña o plantilla no encontrada" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error al importar contactos con plantilla:", error);
+      res.status(500).json({ error: "Error al importar contactos con plantilla" });
+    }
+  });
+
   app.post("/api/mass-sender/campaigns/:id/start", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
