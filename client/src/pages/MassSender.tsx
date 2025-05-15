@@ -446,10 +446,11 @@ export default function MassSender() {
       setExcelColumns(data.columns || []);
       
       // Si hay un mapeo sugerido, establecerlo automáticamente
-      if (data.suggestedMapping) {
+      if (data.suggestedMapping && typeof data.suggestedMapping === 'object') {
         console.log('Usando mapeo sugerido:', data.suggestedMapping);
         // Convertir cualquier valor vacío a 'none' en el mapeo sugerido
-        const sanitizedMapping = Object.entries(data.suggestedMapping).reduce((acc, [key, value]) => {
+        const mapping = data.suggestedMapping as Record<string, any>;
+        const sanitizedMapping = Object.entries(mapping).reduce((acc, [key, value]) => {
           acc[key] = value === '' ? 'none' : String(value);
           return acc;
         }, {} as Record<string, string>);
@@ -687,8 +688,8 @@ export default function MassSender() {
       return;
     }
     
-    // Verificar que los campos obligatorios estén mapeados
-    if (!fieldMapping.phoneNumber || fieldMapping.phoneNumber === 'none') {
+    // Verificar que los campos obligatorios estén mapeados y no sean 'none'
+    if (!fieldMapping.phoneNumber || fieldMapping.phoneNumber === 'none' || fieldMapping.phoneNumber === '') {
       toast({
         title: "Campo requerido",
         description: "Debe seleccionar la columna que contiene los números de teléfono.",
@@ -1612,6 +1613,7 @@ export default function MassSender() {
                     <SelectValue placeholder="Seleccione la columna" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">No mapear</SelectItem>
                     {excelColumns.map((column) => (
                       <SelectItem key={column} value={column}>
                         {column}
@@ -1717,7 +1719,7 @@ export default function MassSender() {
             </Button>
             <Button 
               onClick={handleProcessImport}
-              disabled={!fieldMapping.phoneNumber}
+              disabled={!fieldMapping.phoneNumber || fieldMapping.phoneNumber === 'none'}
             >
               Importar Contactos
             </Button>
