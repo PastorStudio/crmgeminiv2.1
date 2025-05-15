@@ -1107,6 +1107,16 @@ export default function MassSender() {
                                 )}
                               </Button>
                               
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleImportExcel(campaign.id)}
+                                disabled={campaign.status === 'running' || campaign.status === 'completed'}
+                              >
+                                <FileSpreadsheet className="h-4 w-4 mr-1" />
+                                Importar
+                              </Button>
+                              
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <Button size="sm" variant="outline">
