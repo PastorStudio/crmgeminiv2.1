@@ -60,7 +60,7 @@ export async function registerWhatsAppRoutes(app: Express) {
     }
   });
 
-  // QR Code endpoint
+  // QR Code endpoint para JSON
   app.get("/api/integrations/whatsapp/qrcode", async (req: Request, res: Response) => {
     try {
       if (!whatsappService.getStatus().initialized) {
@@ -82,6 +82,41 @@ export async function registerWhatsAppRoutes(app: Express) {
         message: "Error obteniendo código QR de WhatsApp", 
         error: error instanceof Error ? error.message : "Error desconocido" 
       });
+    }
+  });
+
+  // QR Image endpoint (devuelve directamente la imagen)
+  app.get("/api/integrations/whatsapp/qr-image", async (req: Request, res: Response) => {
+    try {
+      if (!whatsappService.getStatus().initialized) {
+        await whatsappService.initialize().catch(err => {
+          console.error("Error inicializando servicio de WhatsApp:", err);
+        });
+      }
+      
+      const status = whatsappService.getStatus();
+      
+      if (status.qrCode) {
+        // Extraer el tipo de contenido y los datos base64
+        if (status.qrCode.startsWith('data:')) {
+          const parts = status.qrCode.split(',');
+          const contentType = parts[0].split(':')[1].split(';')[0];
+          const base64Data = parts[1];
+          
+          const imgBuffer = Buffer.from(base64Data, 'base64');
+          
+          res.set('Content-Type', contentType);
+          res.send(imgBuffer);
+        } else {
+          // Si no es data URL, enviar como JSON
+          res.json({ data: status.qrCode });
+        }
+      } else {
+        res.status(204).send("No hay código QR disponible");
+      }
+    } catch (error) {
+      console.error("Error obteniendo imagen QR de WhatsApp:", error);
+      res.status(500).send("Error obteniendo imagen QR");
     }
   });
 

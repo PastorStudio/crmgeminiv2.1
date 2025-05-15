@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { CheckCircle, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,9 +60,22 @@ export default function Integrations() {
   } = useQuery<ConnectionStatus>({
     queryKey: ["/api/integrations/whatsapp/status", lastRefresh],
     queryFn: async () => {
-      return await apiRequest("/api/integrations/whatsapp/status");
+      try {
+        // Intentamos hacer la solicitud y verificar que sea una respuesta válida
+        const response = await apiRequest("/api/integrations/whatsapp/status");
+        console.log("Estado WhatsApp:", response);
+        return response;
+      } catch (error) {
+        console.error("Error obteniendo estado de WhatsApp:", error);
+        // Devolvemos un estado mínimo para evitar errores
+        return {
+          initialized: true,
+          ready: false,
+          authenticated: false
+        };
+      }
     },
-    refetchInterval: 10000, // Refrescar cada 10 segundos
+    refetchInterval: 5000, // Refrescar cada 5 segundos para mejor respuesta
   });
 
   const { 
@@ -254,11 +268,12 @@ export default function Integrations() {
                       <div className="h-64 w-64 bg-gray-100 animate-pulse rounded-md flex items-center justify-center">
                         <p className="text-gray-400">Generando código QR...</p>
                       </div>
-                    ) : whatsappStatus?.qrCode ? (
+                    ) : whatsappStatus?.initialized && !whatsappStatus?.authenticated ? (
                       <div className="border p-4 rounded-md bg-white flex flex-col items-center">
                         <div className="relative">
+                          {/* Utilizar URL específica para imagen en lugar de data URL */}
                           <img 
-                            src={whatsappStatus.qrCode} 
+                            src={`/api/integrations/whatsapp/qr-image?t=${new Date().getTime()}`}
                             alt="Código QR de WhatsApp" 
                             className="h-64 w-64"
                           />
@@ -273,9 +288,16 @@ export default function Integrations() {
                           Escanea este código QR con la aplicación de WhatsApp en tu teléfono
                         </div>
                       </div>
+                    ) : whatsappStatus?.authenticated ? (
+                      <div className="h-64 w-64 bg-green-50 border-2 border-green-500 rounded-md flex flex-col items-center justify-center p-4">
+                        <CheckCircle className="w-16 h-16 text-green-500 mb-3" />
+                        <p className="font-medium text-green-800 text-center">¡WhatsApp conectado correctamente!</p>
+                        <p className="text-sm text-green-600 text-center mt-2">La sesión está activa y lista para usarse</p>
+                      </div>
                     ) : (
-                      <div className="h-64 w-64 bg-gray-100 rounded-md flex items-center justify-center">
-                        <p className="text-gray-400">No hay código QR disponible</p>
+                      <div className="h-64 w-64 bg-gray-100 rounded-md flex flex-col items-center justify-center p-4">
+                        <AlertCircle className="w-12 h-12 text-amber-500 mb-3" />
+                        <p className="text-gray-600 text-center">No hay código QR disponible</p>
                         <Button 
                           variant="outline" 
                           onClick={() => restartWhatsapp()}
