@@ -146,11 +146,10 @@ export class GeminiService {
         Eres un asistente de ventas profesional. 
         Genera un mensaje personalizado para un lead con las siguientes características:
         
-        - Nombre: ${lead.fullName}
+        - Nombre: ${lead.name}
         - Correo: ${lead.email}
         - Teléfono: ${lead.phone || 'No disponible'}
         - Empresa: ${lead.company || 'No disponible'}
-        - Cargo: ${lead.position || 'No disponible'}
         - Estado: ${lead.status || 'Nuevo lead'}
         
         ${contextPrompt}
@@ -189,18 +188,17 @@ export class GeminiService {
         Eres un analista de ventas experto. 
         Analiza el siguiente lead y proporciona insights valiosos para el equipo de ventas:
         
-        - Nombre: ${lead.fullName}
+        - Nombre: ${lead.name}
         - Correo: ${lead.email}
         - Teléfono: ${lead.phone || 'No disponible'}
         - Empresa: ${lead.company || 'No disponible'}
-        - Cargo: ${lead.position || 'No disponible'}
         - Estado: ${lead.status || 'Nuevo lead'}
-        - Puntaje: ${lead.score !== null ? lead.score : 'No evaluado'}
+        - Prioridad: ${lead.priority || 'No establecida'}
         - Origen: ${lead.source || 'No especificado'}
         
         Actividades recientes:
         ${activities.length > 0 
-          ? activities.map(a => `- ${a.type}: ${a.description} (${a.completed ? 'Completada' : 'Pendiente'})`).join('\n')
+          ? activities.map(a => `- ${a.type}: ${a.notes || 'Sin descripción'} (${a.completed ? 'Completada' : 'Pendiente'})`).join('\n')
           : 'No hay actividades registradas.'
         }
         
@@ -243,18 +241,17 @@ export class GeminiService {
         Eres un asesor de ventas estratégico.
         Sugiere una acción específica y concreta para avanzar con el siguiente lead:
         
-        - Nombre: ${lead.fullName}
+        - Nombre: ${lead.name}
         - Correo: ${lead.email}
         - Teléfono: ${lead.phone || 'No disponible'}
         - Empresa: ${lead.company || 'No disponible'}
-        - Cargo: ${lead.position || 'No disponible'}
         - Estado: ${lead.status || 'Nuevo lead'}
-        - Puntaje: ${lead.score !== null ? lead.score : 'No evaluado'}
+        - Prioridad: ${lead.priority || 'No establecida'}
         - Origen: ${lead.source || 'No especificado'}
         
         Actividades recientes:
         ${activities.length > 0 
-          ? activities.map(a => `- ${a.type}: ${a.description} (${a.completed ? 'Completada' : 'Pendiente'})`).join('\n')
+          ? activities.map(a => `- ${a.type}: ${a.notes || 'Sin descripción'} (${a.completed ? 'Completada' : 'Pendiente'})`).join('\n')
           : 'No hay actividades registradas.'
         }
         
@@ -303,7 +300,6 @@ export class GeminiService {
         - Correo electrónico
         - Número de teléfono
         - Nombre de empresa
-        - Cargo o posición
         - Intereses específicos mencionados
         - Necesidades o problemas expresados
         - Presupuesto o rango de precios mencionados
@@ -313,11 +309,10 @@ export class GeminiService {
         "${conversation}"
         
         Información actual del lead:
-        - Nombre: ${lead.fullName}
+        - Nombre: ${lead.name}
         - Correo: ${lead.email}
         - Teléfono: ${lead.phone || 'No disponible'}
         - Empresa: ${lead.company || 'No disponible'}
-        - Cargo: ${lead.position || 'No disponible'}
         
         Devuelve solo un objeto JSON con los campos actualizables y la información extraída, 
         sin ningún texto adicional. Incluye solo los campos donde se encontró información nueva 
@@ -328,10 +323,6 @@ export class GeminiService {
             "phone": "123456789",
             ...
           },
-          "interests": [
-            {"topic": "tema de interés", "confidence": 85},
-            ...
-          ],
           "needs": [
             {"need": "necesidad identificada", "priority": "alta/media/baja"}
             ...
@@ -356,19 +347,6 @@ export class GeminiService {
         if (extractedData.updates && Object.keys(extractedData.updates).length > 0) {
           // Actualizar el lead con la información extraída
           const updatedLead = await storage.updateLead(leadId, extractedData.updates);
-          
-          // Si hay intereses, los agregamos
-          if (extractedData.interests && extractedData.interests.length > 0) {
-            // Asumimos que hay un campo de intereses en el lead (lo añadimos en el schema)
-            const interests = extractedData.interests.map((interest: any) => ({
-              topic: interest.topic,
-              confidence: interest.confidence || 50
-            }));
-            
-            await storage.updateLead(leadId, {
-              interests: JSON.stringify(interests)
-            });
-          }
           
           return {
             success: true,
