@@ -238,6 +238,184 @@ export default function MassSender() {
     }
   });
   
+  // Mutación para cargar archivo Excel
+  const uploadExcelMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/excel/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al cargar el archivo Excel');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Archivo cargado",
+        description: "El archivo Excel ha sido cargado correctamente.",
+      });
+      
+      // Obtener las columnas del archivo
+      analyzeExcelMutation.mutate(data.filename);
+    },
+    onError: (error) => {
+      console.error("Error uploading Excel file:", error);
+      toast({
+        title: "Error al cargar archivo",
+        description: "No se pudo cargar el archivo Excel. Intente nuevamente.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Mutación para analizar archivo Excel
+  const analyzeExcelMutation = useMutation({
+    mutationFn: async (filename: string) => {
+      const response = await fetch(`/api/excel/analyze/${filename}`);
+      
+      if (!response.ok) {
+        throw new Error('Error al analizar el archivo Excel');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setExcelColumns(data);
+      setIsFieldMappingOpen(true);
+    },
+    onError: (error) => {
+      console.error("Error analyzing Excel file:", error);
+      toast({
+        title: "Error al analizar archivo",
+        description: "No se pudo analizar el archivo Excel. Intente nuevamente.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Mutación para importar datos de Excel
+  const importExcelMutation = useMutation({
+    mutationFn: async (data: { filename: string, fieldMapping: Record<string, string>}) => {
+      const response = await fetch('/api/excel/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al importar datos de Excel');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setImportedData(data);
+      toast({
+        title: "Datos importados",
+        description: `Se importaron ${data.validRows} contactos correctamente.`,
+      });
+      
+      // Si hay una campaña seleccionada, continuar con la importación
+      if (selectedCampaignId) {
+        importContactsToCampaignMutation.mutate({
+          campaignId: selectedCampaignId,
+          importId: data.id
+        });
+      } else {
+        setIsFieldMappingOpen(false);
+        setIsImportDialogOpen(false);
+      }
+    },
+    onError: (error) => {
+      console.error("Error importing Excel data:", error);
+      toast({
+        title: "Error al importar datos",
+        description: "No se pudieron importar los datos de Excel. Intente nuevamente.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Mutación para importar contactos a una campaña
+  const importContactsToCampaignMutation = useMutation({
+    mutationFn: async ({campaignId, importId}: {campaignId: string, importId: string}) => {
+      const response = await fetch(`/api/mass-sender/campaigns/${campaignId}/import`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ importId })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al importar contactos a la campaña');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/mass-sender/campaigns'] });
+      toast({
+        title: "Contactos importados",
+        description: "Los contactos han sido importados a la campaña correctamente.",
+      });
+      setIsImportDialogOpen(false);
+      setIsFieldMappingOpen(false);
+    },
+    onError: (error) => {
+      console.error("Error importing contacts to campaign:", error);
+      toast({
+        title: "Error al importar contactos",
+        description: "No se pudieron importar los contactos a la campaña. Intente nuevamente.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Mutación para importar contactos usando plantilla de mensaje
+  const importWithTemplateMutation = useMutation({
+    mutationFn: async ({campaignId, data}: {campaignId: string, data: any}) => {
+      const response = await fetch(`/api/mass-sender/campaigns/${campaignId}/import-with-template`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al importar contactos con plantilla');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/mass-sender/campaigns'] });
+      toast({
+        title: "Plantilla aplicada",
+        description: "Los contactos se han importado con la plantilla seleccionada.",
+      });
+      setIsImportDialogOpen(false);
+      setIsFieldMappingOpen(false);
+    },
+    onError: (error) => {
+      console.error("Error importing with template:", error);
+      toast({
+        title: "Error al aplicar plantilla",
+        description: "No se pudo aplicar la plantilla a los contactos importados.",
+        variant: "destructive",
+      });
+    }
+  });
+  
   // Función para manejar el envío del formulario de nueva campaña
   const handleCreateCampaign = () => {
     if (!campaignName.trim()) {
@@ -285,6 +463,64 @@ export default function MassSender() {
     } else if (campaign.status === 'paused') {
       resumeCampaignMutation.mutate(campaign.id);
     }
+  };
+  
+  // Función para manejar la carga de un archivo Excel
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      uploadExcelMutation.mutate(file);
+    }
+  };
+  
+  // Función para abrir el selector de archivos
+  const handleSelectFile = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+  
+  // Función para importar contactos desde Excel a una campaña
+  const handleImportExcel = (campaignId: string) => {
+    setSelectedCampaignId(campaignId);
+    setIsImportDialogOpen(true);
+  };
+  
+  // Función para manejar el cambio en el mapeo de campos
+  const handleFieldMappingChange = (field: string, value: string) => {
+    setFieldMapping(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  // Función para procesar la importación de datos
+  const handleProcessImport = () => {
+    if (!selectedFile) {
+      toast({
+        title: "Error",
+        description: "No hay ningún archivo seleccionado.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Verificar que los campos obligatorios estén mapeados
+    if (!fieldMapping.phoneNumber) {
+      toast({
+        title: "Campo requerido",
+        description: "Debe seleccionar la columna que contiene los números de teléfono.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Importar los datos de Excel
+    importExcelMutation.mutate({
+      filename: selectedFile.name,
+      fieldMapping
+    });
   };
   
   // Actualizar automáticamente el estado de las campañas
