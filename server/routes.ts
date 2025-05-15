@@ -1221,54 +1221,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rutas para importación de Excel
   app.post("/api/excel/upload", upload.single('file'), async (req: Request, res: Response) => {
     try {
+      console.log("Recibida solicitud para subir archivo Excel");
+      
       const file = req.file;
       if (!file) {
+        console.error("No se proporcionó ningún archivo en la solicitud");
         return res.status(400).json({ error: "No se ha proporcionado ningún archivo" });
       }
       
-      const filename = await excelImportService.saveUploadedFile(file);
+      console.log(`Archivo recibido: ${file.originalname}, tamaño: ${file.size} bytes, tipo: ${file.mimetype}`);
       
-      res.json({ 
-        success: true, 
-        filename,
-        originalname: file.originalname
-      });
+      // Verificar tipo de archivo
+      const validMimeTypes = ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv'];
+      if (!validMimeTypes.includes(file.mimetype) && !file.originalname.match(/\.(xlsx|xls|csv)$/i)) {
+        console.error(`Tipo de archivo no válido: ${file.mimetype}`);
+        return res.status(400).json({ 
+          error: "Formato de archivo no válido. Por favor, suba un archivo Excel (.xlsx, .xls) o CSV (.csv)" 
+        });
+      }
+      
+      try {
+        const filename = await excelImportService.saveUploadedFile(file);
+        
+        console.log(`Archivo guardado exitosamente como: ${filename}`);
+        res.json({ 
+          success: true, 
+          filename,
+          originalname: file.originalname
+        });
+      } catch (saveError) {
+        console.error("Error al guardar el archivo Excel:", saveError);
+        res.status(500).json({ 
+          error: "Error al guardar el archivo Excel en el servidor",
+          details: saveError instanceof Error ? saveError.message : String(saveError)
+        });
+      }
     } catch (error) {
-      console.error("Error al subir archivo Excel:", error);
-      res.status(500).json({ error: "Error al subir archivo Excel" });
+      console.error("Error inesperado al procesar la carga del archivo Excel:", error);
+      res.status(500).json({ 
+        error: "Error al procesar el archivo Excel",
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
   app.get("/api/excel/analyze/:filename", async (req: Request, res: Response) => {
     try {
       const filename = req.params.filename;
-      const result = await excelImportService.analyzeExcelFile(filename);
+      console.log(`Recibida solicitud para analizar archivo Excel: ${filename}`);
       
-      res.json(result);
+      if (!filename) {
+        return res.status(400).json({ error: "Nombre de archivo no proporcionado" });
+      }
+      
+      try {
+        const result = await excelImportService.analyzeExcelFile(filename);
+        
+        if (!result.columns || result.columns.length === 0) {
+          console.log(`No se encontraron columnas en el archivo ${filename}`);
+          // Enviar una respuesta con columnas vacías pero sin error para que el frontend pueda manejar esta situación
+          return res.json({ 
+            columns: [], 
+            suggestedMapping: {},
+            message: "No se pudieron detectar columnas en el archivo. El archivo podría estar vacío o tener un formato no compatible."
+          });
+        }
+        
+        console.log(`Análisis exitoso. Se encontraron ${result.columns.length} columnas`);
+        res.json(result);
+      } catch (analyzeError) {
+        console.error("Error específico al analizar archivo Excel:", analyzeError);
+        res.status(500).json({ 
+          error: "Error al analizar el archivo Excel", 
+          details: analyzeError instanceof Error ? analyzeError.message : String(analyzeError)
+        });
+      }
     } catch (error) {
-      console.error("Error al analizar archivo Excel:", error);
-      res.status(500).json({ error: "Error al analizar archivo Excel" });
+      console.error("Error inesperado al procesar solicitud de análisis:", error);
+      res.status(500).json({ 
+        error: "Error inesperado al analizar archivo Excel",
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
   app.post("/api/excel/import", async (req: Request, res: Response) => {
     try {
+      console.log("Recibida solicitud para importar datos desde Excel");
       const { filename, originalname, fieldMapping } = req.body;
       
-      if (!filename || !fieldMapping) {
-        return res.status(400).json({ error: "Se requiere filename y fieldMapping" });
+      if (!filename) {
+        console.error("Falta parámetro filename en la solicitud");
+        return res.status(400).json({ error: "Se requiere el parámetro filename" });
       }
       
-      const importResult = await excelImportService.importFromExcel(
-        filename,
-        originalname || filename,
-        fieldMapping
-      );
+      if (!fieldMapping) {
+        console.error("Falta parámetro fieldMapping en la solicitud");
+        return res.status(400).json({ error: "Se requiere el parámetro fieldMapping con el mapeo de campos" });
+      }
       
-      res.json(importResult);
+      console.log(`Parámetros de importación: filename=${filename}, fieldMapping=`, fieldMapping);
+      
+      if (!fieldMapping.phoneNumber) {
+        console.error("El mapeo de campos no incluye el campo phoneNumber");
+        return res.status(400).json({ 
+          error: "El mapeo de campos debe incluir al menos el campo phoneNumber" 
+        });
+      }
+      
+      try {
+        const importResult = await excelImportService.importFromExcel(
+          filename,
+          originalname || filename,
+          fieldMapping
+        );
+        
+        console.log(`Importación completada: ${importResult.validRows} filas válidas, ${importResult.invalidRows} filas inválidas`);
+        
+        res.json(importResult);
+      } catch (importError) {
+        console.error("Error específico al importar datos desde Excel:", importError);
+        res.status(500).json({ 
+          error: "Error al importar datos desde Excel", 
+          details: importError instanceof Error ? importError.message : String(importError)
+        });
+      }
     } catch (error) {
-      console.error("Error al importar datos desde Excel:", error);
-      res.status(500).json({ error: "Error al importar datos desde Excel" });
+      console.error("Error inesperado al procesar solicitud de importación:", error);
+      res.status(500).json({ 
+        error: "Error inesperado al importar datos desde Excel",
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 

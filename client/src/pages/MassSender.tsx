@@ -336,21 +336,56 @@ export default function MassSender() {
   // Mutación para cargar archivo Excel
   const uploadExcelMutation = useMutation({
     mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
+      console.log(`Subiendo archivo Excel: ${file.name}, tamaño: ${file.size} bytes, tipo: ${file.type}`);
       
-      const response = await fetch('/api/excel/upload', {
-        method: 'POST',
-        body: formData
-      });
+      // Verificar tipo de archivo
+      const allowedTypes = [
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/csv',
+        'application/octet-stream' // Algunos navegadores usan este tipo para .xlsx
+      ];
       
-      if (!response.ok) {
-        throw new Error('Error al cargar el archivo Excel');
+      const allowedExtensions = ['.xlsx', '.xls', '.csv'];
+      const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+      
+      if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+        throw new Error(
+          `Tipo de archivo no soportado: ${file.type}. Por favor, use archivos Excel (.xlsx, .xls) o CSV (.csv)`
+        );
       }
       
-      return response.json();
+      // Verificar tamaño del archivo (máximo 10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        throw new Error(
+          `El archivo es demasiado grande (${(file.size / (1024 * 1024)).toFixed(2)}MB). El tamaño máximo permitido es 10MB.`
+        );
+      }
+      
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch('/api/excel/upload', {
+          method: 'POST',
+          body: formData
+        });
+        
+        // Manejar errores de respuesta HTTP
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || errorData.details || `Error al cargar el archivo (${response.status})`);
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error('Error en la carga del archivo Excel:', error);
+        throw error; // Re-lanzar para que onError lo maneje
+      }
     },
     onSuccess: (data) => {
+      console.log('Archivo Excel subido exitosamente:', data);
       toast({
         title: "Archivo cargado",
         description: "El archivo Excel ha sido cargado correctamente.",
@@ -363,24 +398,50 @@ export default function MassSender() {
       console.error("Error uploading Excel file:", error);
       toast({
         title: "Error al cargar archivo",
-        description: "No se pudo cargar el archivo Excel. Intente nuevamente.",
+        description: error instanceof Error ? error.message : "No se pudo cargar el archivo Excel. Intente nuevamente.",
         variant: "destructive",
       });
+      
+      // Resetear el archivo seleccionado para permitir un nuevo intento
+      setSelectedFile(null);
     }
   });
   
   // Mutación para analizar archivo Excel
   const analyzeExcelMutation = useMutation({
     mutationFn: async (filename: string) => {
-      const response = await fetch(`/api/excel/analyze/${filename}`);
-      
-      if (!response.ok) {
-        throw new Error('Error al analizar el archivo Excel');
+      console.log(`Analizando archivo Excel: ${filename}`);
+      try {
+        const response = await fetch(`/api/excel/analyze/${filename}`);
+        
+        // Capturar y manejar respuestas no exitosas
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || errorData.details || `Error al analizar el archivo Excel (${response.status})`);
+        }
+        
+        const data = await response.json();
+        console.log('Respuesta del análisis de Excel:', data);
+        return data;
+      } catch (error) {
+        console.error('Error en la mutación de análisis de Excel:', error);
+        throw error; // Re-lanzar para que onError lo maneje
       }
-      
-      return response.json();
     },
     onSuccess: (data) => {
+      // Verificar si hay columnas
+      if (!data.columns || data.columns.length === 0) {
+        toast({
+          title: "Archivo Excel incompleto",
+          description: data.message || "No se detectaron columnas en el archivo. Verifique que el archivo tenga encabezados y datos.",
+          variant: "destructive",
+        });
+        // Aunque no haya columnas, abrimos el diálogo para que el usuario pueda intentar de nuevo
+        setExcelColumns([]);
+        setIsFieldMappingOpen(true);
+        return;
+      }
+      
       // Establecer las columnas detectadas
       setExcelColumns(data.columns || []);
       
@@ -393,15 +454,23 @@ export default function MassSender() {
         }));
       }
       
+      toast({
+        title: "Archivo analizado correctamente",
+        description: `Se detectaron ${data.columns.length} columnas en el archivo.`,
+      });
+      
       setIsFieldMappingOpen(true);
     },
     onError: (error) => {
       console.error("Error analyzing Excel file:", error);
       toast({
         title: "Error al analizar archivo",
-        description: "No se pudo analizar el archivo Excel. Intente nuevamente.",
+        description: error instanceof Error ? error.message : "No se pudo analizar el archivo Excel. Intente nuevamente con otro formato o contacte a soporte.",
         variant: "destructive",
       });
+      
+      // Resetear el archivo seleccionado para permitir un nuevo intento
+      setSelectedFile(null);
     }
   });
   
