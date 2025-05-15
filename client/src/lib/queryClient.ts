@@ -21,18 +21,33 @@ export async function apiRequest<T = any>(
   const body = options?.body ? JSON.stringify(options.body) : undefined;
   const headers = {
     ...(body ? { 'Content-Type': 'application/json' } : {}),
+    'Accept': 'application/json',
     ...options?.headers
   };
 
-  const res = await fetch(url, {
-    method,
-    headers,
-    body,
-    credentials: "include",
-  });
+  try {
+    const res = await fetch(url, {
+      method,
+      headers,
+      body,
+      credentials: "include",
+    });
 
-  await throwIfResNotOk(res);
-  return await res.json();
+    await throwIfResNotOk(res);
+    
+    const contentType = res.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return await res.json();
+    } else {
+      console.error(`Invalid content type: ${contentType}, url: ${url}`);
+      // Devolver un valor compatible con la estructura esperada para evitar errores
+      return { initialized: true, ready: false, error: 'Formato de respuesta no válido' } as T;
+    }
+  } catch (error) {
+    console.error(`Error en solicitud API a ${url}:`, error);
+    // Devolver un valor compatible con la estructura esperada para evitar errores
+    return { initialized: true, ready: false, error: 'Error de conexión' } as T;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
