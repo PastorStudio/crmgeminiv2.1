@@ -13,6 +13,7 @@ import Settings from "@/pages/Settings";
 import Integrations from "@/pages/Integrations";
 import Database from "@/pages/Database";
 import GeminiDemo from "@/pages/GeminiDemo";
+import GeminiTest from "@/pages/GeminiTest";
 import MassSender from "@/pages/MassSender";
 import MessageTemplates from "@/pages/MessageTemplates";
 import Sidebar from "@/components/layout/Sidebar";
@@ -43,6 +44,7 @@ function App() {
                   <Route path="/integrations" component={Integrations} />
                   <Route path="/database" component={Database} />
                   <Route path="/gemini-demo" component={GeminiDemo} />
+                  <Route path="/gemini-test" component={GeminiTest} />
                   <Route path="/mass-sender" component={MassSender} />
                   <Route path="/message-templates" component={MessageTemplates} />
                   <Route component={NotFound} />

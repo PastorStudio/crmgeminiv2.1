@@ -110,8 +110,21 @@ export default function Analytics() {
   
   // Extraer propiedades del status con seguridad
   const analyticsStatus = {
-    available: analyticsStatusData?.success && analyticsStatusData?.status?.available === true,
-    message: analyticsStatusData?.status?.message || 'Estado del servicio de análisis desconocido'
+    available: analyticsStatusData && 
+               typeof analyticsStatusData === 'object' && 
+               'success' in analyticsStatusData && 
+               analyticsStatusData.success === true && 
+               'status' in analyticsStatusData && 
+               analyticsStatusData.status && 
+               'available' in analyticsStatusData.status && 
+               analyticsStatusData.status.available === true,
+    message: analyticsStatusData && 
+             typeof analyticsStatusData === 'object' && 
+             'status' in analyticsStatusData && 
+             analyticsStatusData.status && 
+             'message' in analyticsStatusData.status ? 
+             analyticsStatusData.status.message : 
+             'Estado del servicio de análisis desconocido'
   };
   
   // Combined loading state for main data
@@ -170,7 +183,19 @@ export default function Analytics() {
     ];
     
     leads.forEach(lead => {
-      const score = lead.score || 0;
+      // Utilizamos un valor default de 0 si score no existe
+      // o asignamos un puntaje basado en la prioridad si existe
+      let score = 0;
+      if ('score' in lead) {
+        score = (lead as any).score || 0;
+      } else if (lead.priority) {
+        switch (lead.priority.toLowerCase()) {
+          case 'high': score = 80; break;
+          case 'medium': score = 50; break;
+          case 'low': score = 20; break;
+          default: score = 0;
+        }
+      }
       
       if (score <= 20) ranges[0].count++;
       else if (score <= 40) ranges[1].count++;
