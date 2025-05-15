@@ -235,13 +235,13 @@ export default function Integrations() {
                 <div className="mb-6">
                   <h3 className="text-lg font-medium mb-2">Escanear código QR</h3>
                   <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                    <h4 className="text-sm font-medium text-green-800">Código QR en formato whatsapp://</h4>
+                    <h4 className="text-sm font-medium text-green-800">Código QR oficial de WhatsApp Web</h4>
                     <p className="text-xs text-green-700 mt-1">
-                      Este sistema genera un código QR real en formato whatsapp://link que puede ser escaneado
-                      con la aplicación de WhatsApp en tu teléfono.
+                      Este sistema genera un código QR oficial compatible con WhatsApp Web que puede ser escaneado
+                      desde la aplicación de WhatsApp en tu teléfono.
                     </p>
                     <p className="text-xs text-green-700 mt-2">
-                      <strong>Nota:</strong> El enlace de WhatsApp se abrirá directamente en la aplicación en tu dispositivo.
+                      <strong>Nota:</strong> Escanea el código QR desde la sección "Dispositivos vinculados" en WhatsApp.
                     </p>
                   </div>
                   <p className="text-gray-600 text-sm mb-4">
@@ -262,26 +262,15 @@ export default function Integrations() {
                             alt="Código QR de WhatsApp" 
                             className="h-64 w-64"
                           />
-                          {/* Mostrar un indicador según si el QR es real o simulado */}
-                          {whatsappStatus.qrCode?.includes('web.whatsapp.com') ? (
-                            <div className="absolute top-2 right-2">
-                              <div className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-md">
-                                QR REAL
-                              </div>
+                          {/* Mostrar un indicador de código QR real */}
+                          <div className="absolute top-2 right-2">
+                            <div className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-md">
+                              QR OFICIAL
                             </div>
-                          ) : (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="px-3 py-2 bg-amber-500 bg-opacity-80 text-white font-medium rounded-md transform -rotate-12">
-                                SIMULACIÓN
-                              </div>
-                            </div>
-                          )}
+                          </div>
+                        <div className="mt-2 px-3 py-1 bg-green-100 text-green-800 text-xs rounded-md">
+                          Escanea este código QR con la aplicación de WhatsApp en tu teléfono
                         </div>
-                        <div className="mt-2 px-3 py-1 bg-amber-100 text-amber-800 text-xs rounded-md">
-                          {whatsappStatus.qrCode?.includes('web.whatsapp.com') 
-                            ? "Escanea este código QR con la aplicación de WhatsApp en tu teléfono" 
-                            : "Este código QR es simulado y no funciona con WhatsApp real"
-                          }
                         </div>
                       </div>
                     ) : (

@@ -175,29 +175,48 @@ class WhatsAppServiceImpl implements IWhatsAppService {
             '--disable-gpu'
           ]
         },
-        // Directorio donde se guardarán los datos de la sesión
-        sessionDir: SESSION_PATH
+        // Directorio donde se guardarán los datos de la sesión (usa session en lugar de sessionDir)
+        session: {
+          path: SESSION_PATH
+        }
       });
       
       // Evento: Código QR generado
-      this.client.on('qr', (qr) => {
+      this.client.on('qr', async (qr) => {
         console.log('Código QR de WhatsApp Web generado');
-        this.status.qrCode = qr;
         
-        // Mostrar QR en consola para el desarrollador
-        qrcode.generate(qr, { small: true });
-        
-        // Guardar QR en archivo para debug
-        const qrFilePath = path.join(TEMP_DIR, 'whatsapp-qr.txt');
         try {
+          // Mostrar QR en consola para el desarrollador
+          qrcode.generate(qr, { small: true });
+          
+          // Guardar QR en archivo para debug
+          const qrFilePath = path.join(TEMP_DIR, 'whatsapp-qr.txt');
           fs.writeFileSync(qrFilePath, qr);
           console.log(`Código QR guardado en archivo: ${qrFilePath}`);
+          
+          // Convertir el texto del QR a una imagen (data URL)
+          // Esto permite que el frontend lo muestre como una imagen
+          const qrDataURL = await qrcode.toDataURL(qr, {
+            errorCorrectionLevel: 'H',
+            margin: 1,
+            scale: 8,
+            color: {
+              dark: '#128C7E',  // Color verde WhatsApp
+              light: '#FFFFFF'  // Fondo blanco
+            }
+          });
+          
+          // Actualizar el estado con la imagen del QR
+          this.status.qrCode = qrDataURL;
+          
+          // Notificar a los listeners
+          this.notifyListeners('qr', qrDataURL);
         } catch (err) {
-          console.error('Error guardando código QR en archivo:', err);
+          console.error('Error procesando código QR:', err);
+          // Guardar el código QR en texto plano como fallback
+          this.status.qrCode = qr;
+          this.notifyListeners('qr', qr);
         }
-        
-        // Notificar a los listeners
-        this.notifyListeners('qr', qr);
       });
       
       // Evento: Cliente listo
