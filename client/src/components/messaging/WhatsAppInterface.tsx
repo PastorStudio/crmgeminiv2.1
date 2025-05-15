@@ -25,6 +25,7 @@ interface WhatsAppChat {
   lastMessage?: string;
   profilePicUrl?: string;
   participants?: string[];
+  numericId?: number; // ID numérico temporal para compatibilidad
 }
 
 // Interfaz para los mensajes de WhatsApp
@@ -102,17 +103,11 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
   const [activeTab, setActiveTab] = useState('chats');
   const [showAiAssistant, setShowAiAssistant] = useState(false);
   const [selectedLeadData, setSelectedLeadData] = useState<Lead | null>(null);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Estado para guardar el estado de WhatsApp
-  const [whatsappState, setWhatsappState] = useState<any>({
-    initialized: false,
-    ready: false,
-    authenticated: false
-  });
-  
   // Consulta para obtener estado de WhatsApp (usando endpoint directo)
   const { data: whatsappStatus, isLoading: isLoadingWhatsappStatus } = useQuery({
     queryKey: ['whatsapp-status-direct'],
@@ -133,7 +128,6 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
         
         const data = await response.json();
         console.log('Estado WhatsApp recibido (endpoint directo):', data);
-        setWhatsappState(data);
         return data;
       } catch (error) {
         console.error('Error obteniendo estado de WhatsApp:', error);
@@ -146,6 +140,78 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
       }
     },
     refetchInterval: 5000 // Refrescar cada 5 segundos
+  });
+  
+  // Consulta para obtener chats de WhatsApp reales
+  const { data: whatsappChats = [], isLoading: isLoadingChats } = useQuery({
+    queryKey: ['whatsapp-chats-direct'],
+    queryFn: async () => {
+      try {
+        const timestamp = Date.now();
+        const response = await fetch(`/api/direct/whatsapp/chats?t=${timestamp}`, {
+          headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Chats de WhatsApp recibidos:', data);
+        
+        // Convertir chat IDs en leadIds para compatibilidad
+        if (Array.isArray(data)) {
+          data.forEach((chat, index) => {
+            // Usar el índice + 1 como ID numérico temporal
+            chat.numericId = index + 1;
+          });
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error obteniendo chats de WhatsApp:', error);
+        return [];
+      }
+    },
+    enabled: whatsappStatus?.authenticated === true,
+    refetchInterval: whatsappStatus?.authenticated ? 10000 : false, // Refrescar cada 10 segundos si está autenticado
+  });
+  
+  // Consulta para obtener mensajes de un chat específico
+  const {
+    data: whatsappMessages = [],
+    isLoading: isLoadingWhatsappMessages
+  } = useQuery({
+    queryKey: ['whatsapp-messages-direct', selectedChatId],
+    queryFn: async () => {
+      if (!selectedChatId) return [];
+      
+      try {
+        const timestamp = Date.now();
+        const response = await fetch(`/api/direct/whatsapp/messages/${selectedChatId}?t=${timestamp}&limit=50`, {
+          headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log(`Mensajes de WhatsApp para ${selectedChatId} recibidos:`, data);
+        return data;
+      } catch (error) {
+        console.error(`Error obteniendo mensajes de WhatsApp para ${selectedChatId}:`, error);
+        return [];
+      }
+    },
+    enabled: !!selectedChatId && whatsappStatus?.authenticated === true,
+    refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 5000 : false,
   });
   
   // Consulta para obtener leads (contactos)
@@ -169,7 +235,20 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     );
   });
 
-  // Consulta para obtener mensajes del lead seleccionado
+  // Filtrar chats según término de búsqueda
+  const filteredChats = Array.isArray(whatsappChats) 
+    ? whatsappChats.filter((chat: WhatsAppChat) => {
+        if (!searchTerm) return true;
+        
+        const searchLower = searchTerm.toLowerCase();
+        return (
+          chat.name?.toLowerCase().includes(searchLower) ||
+          chat.lastMessage?.toLowerCase().includes(searchLower)
+        );
+      })
+    : [];
+
+  // Consulta para obtener mensajes del lead seleccionado (modo fallback)
   const { 
     data: messages = [], 
     isLoading: isLoadingMessages 
@@ -180,7 +259,7 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
         selectedLeadId ? `/api/messages?leadId=${selectedLeadId}` : '/api/messages/recent'
       );
     },
-    enabled: activeTab === 'chats',
+    enabled: activeTab === 'chats' && !whatsappStatus?.authenticated,
   });
 
   // Consulta para obtener detalles del lead seleccionado
@@ -192,7 +271,7 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     queryFn: async () => {
       return await apiRequest(`/api/leads/${selectedLeadId}`);
     },
-    enabled: !!selectedLeadId
+    enabled: !!selectedLeadId && !whatsappStatus?.authenticated
   });
   
   // Usar useEffect para establecer selectedLeadData cuando cambie leadDetails
@@ -205,25 +284,47 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
   // Mutación para enviar un mensaje
   const sendMessageMutation = useMutation({
     mutationFn: async (messageData: { content: string }) => {
-      // Usar apiRequest porque es más compatible con la API normal
-      return await fetch('/api/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          leadId: selectedLeadId,
-          content: messageData.content,
-          direction: 'outgoing',
-          channel: 'whatsapp'
-        })
-      }).then(response => {
+      // Si WhatsApp está autenticado y hay un chat seleccionado, enviar por WhatsApp directo
+      if (whatsappStatus?.authenticated && selectedChatId) {
+        const timestamp = Date.now();
+        const response = await fetch(`/api/direct/whatsapp/send-message?t=${timestamp}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            to: selectedChatId,
+            message: messageData.content
+          })
+        });
+        
         if (!response.ok) {
           throw new Error(`Error HTTP: ${response.status}`);
         }
+        
         return response.json();
-      });
+      } else {
+        // Modo fallback para CRM tradicional
+        return await fetch('/api/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            leadId: selectedLeadId,
+            content: messageData.content,
+            direction: 'outgoing',
+            channel: 'whatsapp'
+          })
+        }).then(response => {
+          if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+          }
+          return response.json();
+        });
+      }
     },
     onSuccess: () => {
       setMessageText('');
@@ -232,7 +333,11 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
         description: "El mensaje ha sido enviado correctamente."
       });
       
-      queryClient.invalidateQueries({ queryKey: ['/api/messages', { leadId: selectedLeadId }] });
+      if (whatsappStatus?.authenticated && selectedChatId) {
+        queryClient.invalidateQueries({ queryKey: ['whatsapp-messages-direct', selectedChatId] });
+      } else if (selectedLeadId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/messages', { leadId: selectedLeadId }] });
+      }
     }
   });
 
@@ -247,8 +352,6 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     },
     refetchInterval: 10000, // Verificar cada 10 segundos
   });
-
-  // El código QR ahora viene directamente con el estado de WhatsApp
 
   // Reiniciar WhatsApp
   const restartWhatsAppMutation = useMutation({
@@ -278,7 +381,15 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     });
   };
 
-  // Manejar click en lead
+  // Manejar click en chat de WhatsApp
+  const handleChatSelect = (chat: WhatsAppChat) => {
+    setSelectedChatId(chat.id);
+    if (onSelectLead && chat.numericId) {
+      onSelectLead(chat.numericId);
+    }
+  };
+  
+  // Manejar click en lead (modo tradicional)
   const handleLeadSelect = (leadId: number) => {
     if (onSelectLead) {
       onSelectLead(leadId);
@@ -345,10 +456,10 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [whatsappMessages, messages]);
   
-  // Mostrar el QR de WhatsApp y pantalla de configuración si no está autenticado
-  if (whatsappStatus && !whatsappStatus.authenticated) {
+  // Mostrar el QR de WhatsApp y pantalla de configuración si no está autenticado y tenemos el estado
+  if (whatsappStatus && whatsappStatus.initialized && !whatsappStatus.authenticated) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
         <div className="mb-6 p-3 bg-green-100 rounded-full">
@@ -416,6 +527,7 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     );
   }
 
+  // Modo WhatsApp autenticado o modo fallback
   return (
     <div className="bg-white rounded-lg shadow-sm border h-[calc(100vh-12rem)] flex overflow-hidden">
       {/* Panel de chats/contactos */}
@@ -444,55 +556,112 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
           
           <TabsContent value="chats" className="flex-1 overflow-hidden">
             <ScrollArea className="h-full">
-              {isLoadingLeads ? (
-                <div className="flex justify-center p-4">
-                  <Spinner />
-                </div>
-              ) : filteredLeads.length > 0 ? (
-                <div className="space-y-0.5">
-                  {filteredLeads.map((lead: Lead) => (
-                    <div
-                      key={lead.id}
-                      className={`p-3 hover:bg-gray-100 cursor-pointer flex items-start gap-3 ${
-                        selectedLeadId === lead.id ? 'bg-gray-100' : ''
-                      }`}
-                      onClick={() => handleLeadSelect(lead.id)}
-                    >
-                      <Avatar className="h-12 w-12">
-                        {lead.avatar ? (
-                          <AvatarImage src={lead.avatar} alt={lead.fullName} />
-                        ) : null}
-                        <AvatarFallback className="bg-green-500 text-white">
-                          {getInitials(lead.fullName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between">
-                          <div className="font-medium text-sm truncate">{lead.fullName}</div>
-                          <div className="text-xs text-gray-500">
-                            {lead.lastActive ? formatDistanceToNow(new Date(lead.lastActive), { 
-                              addSuffix: true,
-                              locale: es
-                            }) : 'Nunca'}
+              {whatsappStatus?.authenticated ? (
+                // Modo WhatsApp autenticado - Mostrar chats reales de WhatsApp
+                isLoadingChats ? (
+                  <div className="flex justify-center p-4">
+                    <Spinner />
+                  </div>
+                ) : filteredChats.length > 0 ? (
+                  <div className="space-y-0.5">
+                    {filteredChats.map((chat: WhatsAppChat) => (
+                      <div
+                        key={chat.id}
+                        className={`p-3 hover:bg-gray-100 cursor-pointer flex items-start gap-3 ${
+                          selectedChatId === chat.id ? 'bg-gray-100' : ''
+                        }`}
+                        onClick={() => handleChatSelect(chat)}
+                      >
+                        <Avatar className="h-12 w-12">
+                          {chat.profilePicUrl ? (
+                            <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
+                          ) : null}
+                          <AvatarFallback className="bg-green-500 text-white">
+                            {getInitials(chat.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between">
+                            <div className="font-medium text-sm truncate">{chat.name}</div>
+                            <div className="text-xs text-gray-500">
+                              {formatDistanceToNow(new Date(chat.timestamp), { 
+                                addSuffix: true,
+                                locale: es
+                              })}
+                            </div>
+                          </div>
+                          
+                          <div className="text-xs text-gray-500 truncate mt-1">{chat.lastMessage}</div>
+                          
+                          <div className="flex mt-1 gap-1">
+                            {chat.unreadCount > 0 && (
+                              <Badge variant="default" className="rounded-full bg-green-500 text-[10px] h-5 min-w-5 flex items-center justify-center px-1.5">
+                                {chat.unreadCount}
+                              </Badge>
+                            )}
                           </div>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-gray-500 text-sm">
+                    No hay chats disponibles
+                  </div>
+                )
+              ) : (
+                // Modo fallback para leads del CRM
+                isLoadingLeads ? (
+                  <div className="flex justify-center p-4">
+                    <Spinner />
+                  </div>
+                ) : filteredLeads.length > 0 ? (
+                  <div className="space-y-0.5">
+                    {filteredLeads.map((lead: Lead) => (
+                      <div
+                        key={lead.id}
+                        className={`p-3 hover:bg-gray-100 cursor-pointer flex items-start gap-3 ${
+                          selectedLeadId === lead.id ? 'bg-gray-100' : ''
+                        }`}
+                        onClick={() => handleLeadSelect(lead.id)}
+                      >
+                        <Avatar className="h-12 w-12">
+                          {lead.avatar ? (
+                            <AvatarImage src={lead.avatar} alt={lead.fullName} />
+                          ) : null}
+                          <AvatarFallback className="bg-green-500 text-white">
+                            {getInitials(lead.fullName)}
+                          </AvatarFallback>
+                        </Avatar>
                         
-                        <div className="text-xs text-gray-500 truncate mt-1">{lead.phone || lead.email}</div>
-                        
-                        <div className="flex mt-1 gap-1">
-                          {lead.status === 'prospect' && <Badge variant="outline" className="rounded-full text-[10px] border-yellow-500 text-yellow-700">Prospecto</Badge>}
-                          {lead.status === 'qualified' && <Badge variant="outline" className="rounded-full text-[10px] border-blue-500 text-blue-700">Calificado</Badge>}
-                          {lead.status === 'customer' && <Badge variant="outline" className="rounded-full text-[10px] border-green-500 text-green-700">Cliente</Badge>}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between">
+                            <div className="font-medium text-sm truncate">{lead.fullName}</div>
+                            <div className="text-xs text-gray-500">
+                              {lead.lastActive ? formatDistanceToNow(new Date(lead.lastActive), { 
+                                addSuffix: true,
+                                locale: es
+                              }) : 'Nunca'}
+                            </div>
+                          </div>
+                          
+                          <div className="text-xs text-gray-500 truncate mt-1">{lead.phone || lead.email}</div>
+                          
+                          <div className="flex mt-1 gap-1">
+                            {lead.status === 'prospect' && <Badge variant="outline" className="rounded-full text-[10px] border-yellow-500 text-yellow-700">Prospecto</Badge>}
+                            {lead.status === 'qualified' && <Badge variant="outline" className="rounded-full text-[10px] border-blue-500 text-blue-700">Calificado</Badge>}
+                            {lead.status === 'customer' && <Badge variant="outline" className="rounded-full text-[10px] border-green-500 text-green-700">Cliente</Badge>}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 text-center text-gray-500 text-sm">
-                  No hay chats disponibles
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-gray-500 text-sm">
+                    No hay contactos disponibles
+                  </div>
+                )
               )}
             </ScrollArea>
           </TabsContent>
@@ -556,22 +725,36 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
       
       {/* Área de chat */}
       <div className="flex-1 flex flex-col">
-        {selectedLeadData ? (
+        {(selectedChatId || selectedLeadData) ? (
           <>
             <div className="p-3 border-b flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
-                  {selectedLeadData.avatar ? (
+                  {selectedLeadData?.avatar ? (
                     <AvatarImage src={selectedLeadData.avatar} alt={selectedLeadData.fullName} />
                   ) : null}
                   <AvatarFallback className="bg-green-500 text-white">
-                    {getInitials(selectedLeadData.fullName)}
+                    {whatsappStatus?.authenticated && selectedChatId
+                      ? getInitials((filteredChats.find((c: WhatsAppChat) => c.id === selectedChatId) || {}).name)
+                      : selectedLeadData 
+                        ? getInitials(selectedLeadData.fullName)
+                        : 'UN'
+                    }
                   </AvatarFallback>
                 </Avatar>
                 
                 <div>
-                  <div className="font-medium text-sm">{selectedLeadData.fullName}</div>
-                  <div className="text-xs text-gray-500">{selectedLeadData.phone || selectedLeadData.email}</div>
+                  <div className="font-medium text-sm">
+                    {whatsappStatus?.authenticated && selectedChatId
+                      ? (filteredChats.find((c: WhatsAppChat) => c.id === selectedChatId) || {}).name || 'Chat'
+                      : selectedLeadData 
+                        ? selectedLeadData.fullName
+                        : 'Contacto'
+                    }
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {selectedLeadData?.phone || selectedChatId || ''}
+                  </div>
                 </div>
               </div>
               
@@ -599,48 +782,87 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
               <div className={`flex-1 flex flex-col ${showAiAssistant ? 'w-2/3' : 'w-full'}`}>
                 <ScrollArea className="flex-1 p-4 bg-gray-50">
                   <div className="space-y-3 pb-4">
-                    {isLoadingMessages ? (
-                      <div className="flex justify-center py-8">
-                        <Spinner size="lg" />
-                      </div>
-                    ) : messages.length > 0 ? (
-                      messages.map((message: Message, index: number) => (
-                        <div 
-                          key={message.id}
-                          className={`flex ${message.direction === 'outgoing' ? 'justify-end' : 'justify-start'}`}
-                        >
+                    {whatsappStatus?.authenticated && selectedChatId ? (
+                      // Mostrar mensajes de WhatsApp reales
+                      isLoadingWhatsappMessages ? (
+                        <div className="flex justify-center py-8">
+                          <Spinner size="lg" />
+                        </div>
+                      ) : Array.isArray(whatsappMessages) && whatsappMessages.length > 0 ? (
+                        whatsappMessages.map((msg: WhatsAppMessage) => (
                           <div 
-                            className={`max-w-[70%] rounded-lg p-3 ${
-                              message.direction === 'outgoing' 
-                                ? 'bg-green-100 text-gray-800' 
-                                : 'bg-white border text-gray-800'
-                            }`}
+                            key={msg.id}
+                            className={`flex ${msg.fromMe ? 'justify-end' : 'justify-start'}`}
                           >
-                            <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                            <div className="flex justify-end items-center mt-1">
-                              {message.direction === 'outgoing' && renderMessageStatus(message.status, message.timestamp)}
-                              {message.direction === 'incoming' && (
-                                <div className="text-xs text-gray-500">
-                                  {new Date(message.timestamp).toLocaleTimeString([], { 
-                                    hour: '2-digit', 
-                                    minute: '2-digit' 
-                                  })}
+                            <div 
+                              className={`max-w-[70%] rounded-lg p-3 ${
+                                msg.fromMe 
+                                  ? 'bg-green-100 text-gray-800' 
+                                  : 'bg-white border text-gray-800'
+                              }`}
+                            >
+                              <div className="text-sm whitespace-pre-wrap">{msg.body}</div>
+                              <div className="flex justify-end items-center mt-1 text-xs text-gray-500">
+                                {format(new Date(msg.timestamp), 'HH:mm')}
+                                {msg.fromMe && (
+                                  <div className="ml-1">
+                                    <CheckCheck size={14} className="text-green-500" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          No hay mensajes para mostrar
+                        </div>
+                      )
+                    ) : (
+                      // Modo fallback para mensajes del CRM
+                      isLoadingMessages ? (
+                        <div className="flex justify-center py-8">
+                          <Spinner size="lg" />
+                        </div>
+                      ) : messages.length > 0 ? (
+                        messages.map((message: Message) => (
+                          <div 
+                            key={message.id}
+                            className={`flex ${message.direction === 'outgoing' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div 
+                              className={`max-w-[70%] rounded-lg p-3 ${
+                                message.direction === 'outgoing' 
+                                  ? 'bg-green-100 text-gray-800' 
+                                  : 'bg-white border text-gray-800'
+                              }`}
+                            >
+                              <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                              <div className="flex justify-end items-center mt-1">
+                                {message.direction === 'outgoing' && renderMessageStatus(message.status, message.timestamp)}
+                                {message.direction === 'incoming' && (
+                                  <div className="text-xs text-gray-500">
+                                    {new Date(message.timestamp).toLocaleTimeString([], { 
+                                      hour: '2-digit', 
+                                      minute: '2-digit' 
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                              {message.aiGenerated && (
+                                <div className="text-xs text-right mt-1 text-primary-500 flex items-center justify-end gap-1">
+                                  <BrainCircuit size={12} />
+                                  <span>IA</span>
                                 </div>
                               )}
                             </div>
-                            {message.aiGenerated && (
-                              <div className="text-xs text-right mt-1 text-primary-500 flex items-center justify-end gap-1">
-                                <BrainCircuit size={12} />
-                                <span>IA</span>
-                              </div>
-                            )}
                           </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          No hay mensajes para mostrar
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        No hay mensajes para mostrar
-                      </div>
+                      )
                     )}
                   </div>
                   <div ref={messagesEndRef} />

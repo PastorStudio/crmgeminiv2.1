@@ -4,7 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { WhatsAppInterface } from "@/components/messaging/WhatsAppInterface";
-import { MessageSquare, Smartphone, Send, BrainCircuit } from "lucide-react";
+import { WhatsAppTest } from "@/components/messaging/WhatsAppTest";
+import { MessageSquare, Smartphone, Send, BrainCircuit, Wrench } from "lucide-react";
 
 export default function Messages() {
   const [selectedLeadId, setSelectedLeadId] = useState<number | undefined>(undefined);
@@ -27,18 +28,27 @@ export default function Messages() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2 w-[400px] mb-6">
+        <TabsList className="grid grid-cols-3 w-[600px] mb-6">
           <TabsTrigger value="whatsapp" className="flex items-center gap-2">
             <Smartphone className="h-4 w-4" /> WhatsApp
           </TabsTrigger>
           <TabsTrigger value="telegram" className="flex items-center gap-2">
             <Send className="h-4 w-4" /> Telegram
           </TabsTrigger>
+          <TabsTrigger value="test" className="flex items-center gap-2">
+            <Wrench className="h-4 w-4" /> Diagnóstico
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="whatsapp" className="mt-0">
           <div className="flex flex-col">
             <WhatsAppInterface selectedLeadId={selectedLeadId} onSelectLead={setSelectedLeadId} />
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="test" className="mt-0">
+          <div className="flex flex-col">
+            <WhatsAppTest />
           </div>
         </TabsContent>
         
