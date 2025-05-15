@@ -172,20 +172,20 @@ export default function MassSender() {
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   
   // Consulta para obtener los grupos de contactos
-  const { data: contactGroups, isLoading: loadingGroups } = useQuery({
+  const { data: contactGroups = [], isLoading: loadingGroups } = useQuery({
     queryKey: ['/api/whatsapp/contact-groups'],
     retry: false
   });
   
   // Consulta para obtener las etiquetas disponibles
-  const { data: contactTags, isLoading: loadingTags } = useQuery({
+  const { data: contactTags = [], isLoading: loadingTags } = useQuery({
     queryKey: ['/api/whatsapp/contact-tags'],
     retry: false
   });
   
   // Consulta para obtener todas las campañas
   const { 
-    data: campaigns, 
+    data: campaigns = [], 
     isLoading: loadingCampaigns,
     refetch: refetchCampaigns
   } = useQuery({
@@ -242,7 +242,7 @@ export default function MassSender() {
   // Mutación para iniciar una campaña
   const startCampaignMutation = useMutation({
     mutationFn: (campaignId: string) => 
-      apiRequest(`/api/mass-sender/campaigns/${campaignId}/start`, "POST"),
+      apiRequest(`/api/mass-sender/campaigns/${campaignId}/start`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/mass-sender/campaigns'] });
       toast({
@@ -262,7 +262,7 @@ export default function MassSender() {
   // Mutación para pausar una campaña
   const pauseCampaignMutation = useMutation({
     mutationFn: (campaignId: string) => 
-      apiRequest(`/api/mass-sender/campaigns/${campaignId}/pause`, "POST"),
+      apiRequest(`/api/mass-sender/campaigns/${campaignId}/pause`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/mass-sender/campaigns'] });
       toast({
@@ -282,7 +282,7 @@ export default function MassSender() {
   // Mutación para reanudar una campaña
   const resumeCampaignMutation = useMutation({
     mutationFn: (campaignId: string) => 
-      apiRequest(`/api/mass-sender/campaigns/${campaignId}/resume`, "POST"),
+      apiRequest(`/api/mass-sender/campaigns/${campaignId}/resume`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/mass-sender/campaigns'] });
       toast({
