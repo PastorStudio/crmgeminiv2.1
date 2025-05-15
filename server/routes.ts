@@ -1788,6 +1788,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Obtener etiquetas de contactos (simulación - WhatsApp no soporta etiquetas oficialmente)
   app.get("/api/whatsapp/contact-tags", async (req: Request, res: Response) => {
     try {
+      // Importar el servicio de WhatsApp
+      const { whatsappService } = await import('./services/whatsappServiceImpl');
+      
       // Como WhatsApp no tiene etiquetas nativas, usamos categorías definidas en nuestra app
       // Datos iniciales para etiquetas
       const baseTags = [
@@ -1832,6 +1835,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Crear nueva etiqueta para contactos
   app.post("/api/whatsapp/contact-tags", async (req: Request, res: Response) => {
     try {
+      // Importar el servicio de WhatsApp
+      const { whatsappService } = await import('./services/whatsappServiceImpl');
+      
       const { name, color } = req.body;
       
       if (!name) {

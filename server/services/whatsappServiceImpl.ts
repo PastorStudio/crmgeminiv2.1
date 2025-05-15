@@ -48,6 +48,8 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   private keepAliveTimer: NodeJS.Timeout | null = null;
   private chatCache: Map<string, WhatsAppChat> = new Map();
   private messageCache: Map<string, WhatsAppMessage[]> = new Map();
+  private customTags: any[] = [];
+  private customTagsFile: string = path.join(TEMP_DIR, 'custom-tags.json');
   
   /**
    * Método para actualizar información del chat
@@ -941,6 +943,72 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       console.log(`Chat ${chatId} marcado como leído`);
     } catch (error) {
       console.error(`Error marcando chat ${chatId} como leído:`, error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Obtiene las etiquetas personalizadas para contactos
+   * @returns Lista de etiquetas personalizadas
+   */
+  async getCustomTags(): Promise<any[]> {
+    try {
+      // Cargar etiquetas desde el archivo si existen
+      if (fs.existsSync(this.customTagsFile)) {
+        const data = fs.readFileSync(this.customTagsFile, 'utf8');
+        try {
+          this.customTags = JSON.parse(data);
+        } catch (err) {
+          console.error("Error al parsear etiquetas:", err);
+          this.customTags = [];
+        }
+      }
+      
+      return this.customTags;
+    } catch (error) {
+      console.error("Error al obtener etiquetas personalizadas:", error);
+      return [];
+    }
+  }
+  
+  /**
+   * Guarda una nueva etiqueta personalizada
+   * @param tag Datos de la etiqueta a guardar
+   * @returns Etiqueta guardada con su ID
+   */
+  async saveCustomTag(tag: any): Promise<any> {
+    try {
+      // Cargar etiquetas existentes
+      await this.getCustomTags();
+      
+      // Verificar si ya existe una etiqueta con el mismo ID
+      const existingIndex = this.customTags.findIndex(t => t.id === tag.id);
+      
+      if (existingIndex >= 0) {
+        // Actualizar etiqueta existente
+        this.customTags[existingIndex] = { 
+          ...this.customTags[existingIndex],
+          ...tag,
+          updatedAt: new Date().toISOString()
+        };
+      } else {
+        // Agregar nueva etiqueta
+        this.customTags.push({
+          ...tag,
+          createdAt: new Date().toISOString()
+        });
+      }
+      
+      // Guardar las etiquetas en el archivo
+      fs.writeFileSync(
+        this.customTagsFile, 
+        JSON.stringify(this.customTags, null, 2),
+        'utf8'
+      );
+      
+      return tag;
+    } catch (error) {
+      console.error("Error al guardar etiqueta personalizada:", error);
       throw error;
     }
   }
