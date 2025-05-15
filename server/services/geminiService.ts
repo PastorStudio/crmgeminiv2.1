@@ -397,18 +397,17 @@ export class GeminiService {
         porcentajes de probabilidad que reflejen características, intereses potenciales, 
         y la calidad general del lead.
         
-        - Nombre: ${lead.fullName}
+        - Nombre: ${lead.name}
         - Correo: ${lead.email}
         - Teléfono: ${lead.phone || 'No disponible'}
         - Empresa: ${lead.company || 'No disponible'}
-        - Cargo: ${lead.position || 'No disponible'}
         - Estado: ${lead.status || 'Nuevo lead'}
-        - Puntaje: ${lead.score !== null ? lead.score : 'No evaluado'}
+        - Prioridad: ${lead.priority || 'No establecida'}
         - Origen: ${lead.source || 'No especificado'}
         
         Actividades recientes:
         ${activities.length > 0 
-          ? activities.map(a => `- ${a.type}: ${a.description} (${a.completed ? 'Completada' : 'Pendiente'})`).join('\n')
+          ? activities.map(a => `- ${a.type}: ${a.notes || 'Sin descripción'} (${a.completed ? 'Completada' : 'Pendiente'})`).join('\n')
           : 'No hay actividades registradas.'
         }
         
@@ -445,8 +444,10 @@ export class GeminiService {
         
         // Actualizar el lead con las etiquetas generadas
         if (tagsData.tags && tagsData.tags.length > 0) {
+          // Extraer los nombres de las etiquetas como array para cumplir con el tipo esperado
+          const tagNames = tagsData.tags.map((tag: any) => tag.name);
           await storage.updateLead(leadId, {
-            tags: JSON.stringify(tagsData.tags)
+            tags: tagNames
           });
           
           return {

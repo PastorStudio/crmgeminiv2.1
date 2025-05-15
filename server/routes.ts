@@ -481,7 +481,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error al analizar lead con Gemini:", error);
       res.status(500).json({ 
         success: false, 
-        message: "Error al analizar lead con Gemini" 
+        message: "Error al analizar lead con Gemini",
+        error: (error as Error).message 
+      });
+    }
+  });
+  
+  // API de prueba para verificar el estado de Gemini
+  app.get("/api/gemini/status", async (req: Request, res: Response) => {
+    try {
+      // Importar el servicio Gemini
+      const { geminiService } = await import('./services/geminiService');
+      
+      // Generar una pregunta simple para verificar que Gemini está funcionando
+      const testQuery = "Genera una respuesta corta a la pregunta: ¿Qué aporta la IA a un CRM?";
+      const testResponse = await geminiService.generateContent(testQuery);
+      
+      // Si llegamos aquí, Gemini está funcionando correctamente
+      res.json({
+        success: true,
+        status: "Gemini API está funcionando correctamente",
+        test_response: testResponse.substring(0, 300) + (testResponse.length > 300 ? "..." : "")
+      });
+    } catch (error) {
+      console.error("Error al verificar estado de Gemini:", error);
+      res.status(500).json({
+        success: false,
+        status: "Gemini API no está disponible",
+        error: (error as Error).message
       });
     }
   });
