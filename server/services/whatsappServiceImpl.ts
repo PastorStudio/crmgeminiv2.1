@@ -664,3 +664,5 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
 
 // Exportamos una instancia del servicio
 export const whatsappService = new WhatsAppServiceImpl();
+export const whatsappServiceImpl = whatsappService;
+export default whatsappService;
