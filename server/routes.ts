@@ -1493,6 +1493,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Error al previsualizar mensaje con plantilla" });
     }
   });
+  
+  // Endpoint para formatear números de teléfono con código de país específico
+  app.post("/api/excel/format-phone-numbers", async (req: Request, res: Response) => {
+    try {
+      const { phoneNumbers, countryCode } = req.body;
+      
+      if (!Array.isArray(phoneNumbers) || !phoneNumbers.length) {
+        return res.status(400).json({ 
+          error: "Se requiere un array de números de teléfono" 
+        });
+      }
+      
+      if (!countryCode || typeof countryCode !== 'string') {
+        return res.status(400).json({ 
+          error: "Se requiere un código de país válido" 
+        });
+      }
+      
+      const formattedNumbers = excelImportService.formatPhoneNumberWithCountryCode(
+        phoneNumbers,
+        countryCode
+      );
+      
+      res.json({
+        success: true,
+        totalProcessed: phoneNumbers.length,
+        formattedNumbers
+      });
+    } catch (error) {
+      console.error("Error formateando números de teléfono:", error);
+      res.status(500).json({ 
+        error: "Error al formatear números de teléfono",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // Endpoint para agregar etiquetas a contactos
+  app.post("/api/contacts/tags", async (req: Request, res: Response) => {
+    try {
+      const { importId, tag } = req.body;
+      
+      if (!importId || !tag) {
+        return res.status(400).json({ 
+          error: "Se requiere un ID de importación y una etiqueta" 
+        });
+      }
+      
+      // Obtener la importación
+      const importResult = excelImportService.getImportResult(importId);
+      
+      if (!importResult) {
+        return res.status(404).json({ error: "Importación no encontrada" });
+      }
+      
+      // Agregar la etiqueta a todos los contactos que no la tengan
+      let updatedCount = 0;
+      importResult.contacts.forEach(contact => {
+        if (!contact.tags) {
+          contact.tags = [tag];
+          updatedCount++;
+        } else if (!contact.tags.includes(tag)) {
+          contact.tags.push(tag);
+          updatedCount++;
+        }
+      });
+      
+      res.json({
+        success: true,
+        importId,
+        tag,
+        updatedCount,
+        totalContacts: importResult.contacts.length
+      });
+    } catch (error) {
+      console.error("Error agregando etiquetas a contactos:", error);
+      res.status(500).json({ 
+        error: "Error al agregar etiquetas a contactos",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
 
   // Rutas para campañas de marketing
   app.get("/api/mass-sender/campaigns", async (req: Request, res: Response) => {
@@ -1707,20 +1789,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/whatsapp/contact-tags", async (req: Request, res: Response) => {
     try {
       // Como WhatsApp no tiene etiquetas nativas, usamos categorías definidas en nuestra app
-      // En una implementación completa, estas serían almacenadas en la base de datos
-      const tags = [
+      // Datos iniciales para etiquetas
+      const baseTags = [
         { id: "cliente_potencial", name: "Cliente potencial", count: 12 },
         { id: "cliente_nuevo", name: "Cliente nuevo", count: 8 },
         { id: "cliente_recurrente", name: "Cliente recurrente", count: 15 },
         { id: "promocion_mayo", name: "Promoción Mayo", count: 24 },
         { id: "interesado_producto_a", name: "Interesado Producto A", count: 10 },
-        { id: "interesado_producto_b", name: "Interesado Producto B", count: 7 }
+        { id: "interesado_producto_b", name: "Interesado Producto B", count: 7 },
+        { id: "importado_excel", name: "Importado Excel", count: 0 } 
       ];
       
-      res.json(tags);
+      // Obtener etiquetas desde el servicio de WhatsApp si existiera
+      try {
+        // Si hay etiquetas personalizadas, agregadas por importaciones
+        const customTags = await whatsappService.getCustomTags();
+        if (customTags && customTags.length > 0) {
+          // Combinar y devolver sin duplicados
+          const allTags = [...baseTags];
+          
+          // Agregar tags personalizados evitando duplicados por ID
+          for (const tag of customTags) {
+            if (!allTags.some(t => t.id === tag.id)) {
+              allTags.push(tag);
+            }
+          }
+          
+          return res.json(allTags);
+        }
+      } catch (err) {
+        console.log("No se pudieron obtener etiquetas personalizadas:", err);
+        // Continuar con las etiquetas base
+      }
+      
+      res.json(baseTags);
     } catch (error) {
       console.error("Error al obtener etiquetas de contactos:", error);
       res.status(500).json({ error: String(error) });
+    }
+  });
+  
+  // Crear nueva etiqueta para contactos
+  app.post("/api/whatsapp/contact-tags", async (req: Request, res: Response) => {
+    try {
+      const { name, color } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ 
+          error: "Se requiere un nombre para la etiqueta" 
+        });
+      }
+      
+      // Crear una nueva etiqueta con ID basado en el nombre
+      const id = name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      
+      // Crear la nueva etiqueta
+      const newTag = {
+        id,
+        name, 
+        color: color || "default",
+        count: 0,
+        custom: true,
+        createdAt: new Date().toISOString()
+      };
+      
+      // Guardar la etiqueta
+      await whatsappService.saveCustomTag(newTag);
+      
+      res.status(201).json({
+        success: true,
+        tag: newTag
+      });
+    } catch (error) {
+      console.error("Error creando etiqueta:", error);
+      res.status(500).json({ 
+        error: "Error al crear etiqueta",
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
