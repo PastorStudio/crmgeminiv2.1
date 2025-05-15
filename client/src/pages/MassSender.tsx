@@ -39,7 +39,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle, Upload, Database, FileText, FileSpreadsheet, CheckCircle, Phone } from "lucide-react";
+import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle, Upload, Database, FileText, FileSpreadsheet, CheckCircle, Phone, Clock } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -1306,7 +1306,7 @@ export default function MassSender() {
                                                     </TableCell>
                                                     <TableCell>
                                                       {contact.status === 'verified' ? (
-                                                        <Badge variant="success" className="bg-green-100 text-green-800">
+                                                        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
                                                           <CheckCircle className="h-3 w-3 mr-1" /> Verificado
                                                         </Badge>
                                                       ) : contact.status === 'sent' ? (

@@ -301,8 +301,12 @@ export class ExcelImportService {
         // Crear mapeo sugerido basado en heurísticas
         const suggestedMapping: Record<string, string> = {};
         
+        // Para facilitar referencia posicional (B=1, C=2, etc)
+        const positionIndex: number[] = [];
+        
         // Intentar identificar columnas por nombre
         columns.forEach((col, index) => {
+          positionIndex[index] = index;
           const colLower = String(col).toLowerCase();
           
           // Intentar identificar columna de teléfono
@@ -325,6 +329,15 @@ export class ExcelImportService {
             suggestedMapping.email = col;
           }
         });
+        
+        // Si no se encontraron columnas específicas, usar B para nombre y C para teléfono
+        if (!suggestedMapping.name && columns.length > 1) { // B = índice 1
+          suggestedMapping.name = columns[1];
+        }
+        
+        if (!suggestedMapping.phoneNumber && columns.length > 2) { // C = índice 2
+          suggestedMapping.phoneNumber = columns[2];
+        }
         
         // Si no se identificaron por nombre, usar columnas B y C por defecto
         if (!suggestedMapping.name && columns.length >= 2) {
