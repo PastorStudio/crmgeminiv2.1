@@ -1,4 +1,4 @@
-import { GenAIInstance } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import fs from 'fs';
 import path from 'path';
 import * as googleai from '@google/generative-ai';
@@ -22,6 +22,12 @@ interface AutoResponseConfig {
   enabledForGroups: boolean;
   enabledForBroadcast: boolean;
   excludedContacts: string[];
+  customPrompts: {
+    enabled: boolean;
+    system: string;
+    temperature: number;
+    maxTokens: number;
+  };
 }
 
 // Configuración predeterminada
@@ -47,7 +53,13 @@ const defaultConfig: AutoResponseConfig = {
   enabledForGroups: false,
   enabledForBroadcast: false,
   defaultTemplate: "default",
-  excludedContacts: []
+  excludedContacts: [],
+  customPrompts: {
+    enabled: false,
+    system: "Eres un asistente virtual amable y profesional que responde preguntas de clientes. Tu objetivo es proporcionar información clara y útil, resolver dudas específicas, y derivar a un agente humano cuando sea necesario. Nunca inventes información y siempre mantén un tono respetuoso y amigable.",
+    temperature: 0.7,
+    maxTokens: 500
+  }
 };
 
 // Mapa para almacenar temporizadores de respuesta por contacto
@@ -61,7 +73,7 @@ const responseSent: Map<string, boolean> = new Map();
  */
 export class AutoResponseService {
   private config: AutoResponseConfig;
-  private geminiClient: GenAIInstance | null = null;
+  private geminiClient: GoogleGenerativeAI | null = null;
   private configPath: string;
 
   constructor() {
@@ -316,6 +328,7 @@ export class AutoResponseService {
     try {
       // Obtener el nombre del contacto si está disponible
       let contactName = 'cliente';
+      let previousMessages = [];
       if (message.from) {
         try {
           // Importar el servicio de almacenamiento bajo demanda
@@ -326,29 +339,115 @@ export class AutoResponseService {
           if (contact && contact.name) {
             contactName = contact.name.split(' ')[0]; // Primer nombre
           }
+          
+          // Intentar obtener mensajes previos si están disponibles
+          try {
+            const chat = await storage.getWhatsAppChat(message.from);
+            if (chat && chat.messages) {
+              // Obtener los últimos 5 mensajes para contexto
+              previousMessages = chat.messages.slice(-5).map(m => ({
+                role: m.fromMe ? 'assistant' : 'user',
+                content: m.body
+              }));
+            }
+          } catch (err) {
+            // Ignora errores al recuperar mensajes
+            console.error('Error al recuperar historial de mensajes:', err);
+          }
         } catch (err) {
           // En caso de error, usar el número como nombre
           contactName = message.from.split('@')[0];
         }
       }
       
-      // Procesar la plantilla
-      let responseText = template.template;
+      let responseText = '';
       
-      // Reemplazar variables en la plantilla
-      responseText = responseText.replace(/{{nombre}}/g, contactName);
-      
-      // Si se usa nivel de profesionalidad, ajustar el tono con Gemini
-      if (this.config.useProfessionLevel && this.geminiClient) {
+      // Decidir si usar IA generativa basada en prompts personalizados o la plantilla tradicional
+      if (this.config.customPrompts.enabled && this.geminiClient) {
         try {
-          // Importar el servicio de almacenamiento bajo demanda
-          const { storage } = await import('../storage');
+          // Usar Gemini con prompt personalizado para generar la respuesta
+          const model = this.geminiClient.getGenerativeModel({
+            model: "gemini-pro",
+            generationConfig: {
+              temperature: this.config.customPrompts.temperature,
+              maxOutputTokens: this.config.customPrompts.maxTokens,
+              topP: 0.8,
+              topK: 40
+            }
+          });
           
-          // Obtener nivel de profesionalidad
-          const settings = await storage.getGeminiSettings();
-          responseText = await this.adjustToneWithGemini(responseText, settings?.professionLevel || 'professional');
+          // Preparar el mensaje del sistema con el prompt personalizado
+          const systemPrompt = this.config.customPrompts.system
+            .replace(/{{nombre}}/g, contactName);
+          
+          // Preparar contexto con mensajes previos (si hay)
+          let chat;
+          if (previousMessages.length > 0) {
+            // Iniciar chat con historial y el mensaje del sistema
+            chat = model.startChat({
+              history: [
+                { role: "user", parts: "Hola" },
+                { role: "model", parts: `Hola ${contactName}, ¿en qué puedo ayudarte hoy?` },
+                ...previousMessages
+              ],
+              generationConfig: {
+                temperature: this.config.customPrompts.temperature,
+                maxOutputTokens: this.config.customPrompts.maxTokens
+              }
+            });
+          } else {
+            // Iniciar chat nuevo solo con el mensaje del sistema
+            chat = model.startChat({
+              history: [
+                { role: "user", parts: "Instrucciones para asistente" },
+                { role: "model", parts: systemPrompt }
+              ],
+              generationConfig: {
+                temperature: this.config.customPrompts.temperature,
+                maxOutputTokens: this.config.customPrompts.maxTokens
+              }
+            });
+          }
+          
+          // Enviar el mensaje actual
+          const result = await chat.sendMessage(message.body || "");
+          responseText = result.response.text();
+          
+          // Aplicar nivel de profesionalidad si está habilitado
+          if (this.config.useProfessionLevel) {
+            try {
+              const { storage } = await import('../storage');
+              const settings = await storage.getGeminiSettings();
+              responseText = await this.adjustToneWithGemini(responseText, settings?.professionLevel || 'professional');
+            } catch (err) {
+              console.error('Error al ajustar tono con Gemini:', err);
+            }
+          }
+          
         } catch (err) {
-          console.error('Error al ajustar tono con Gemini:', err);
+          console.error('Error al generar respuesta con IA:', err);
+          // Si falla, caer en el método tradicional
+          responseText = template.template.replace(/{{nombre}}/g, contactName);
+        }
+      } else {
+        // Método tradicional: usar plantilla predefinida
+        responseText = template.template;
+        
+        // Reemplazar variables en la plantilla
+        responseText = responseText.replace(/{{nombre}}/g, contactName);
+        
+        // Si se usa nivel de profesionalidad, ajustar el tono con Gemini
+        if (this.config.useProfessionLevel && this.geminiClient) {
+          try {
+            // Importar el servicio de almacenamiento bajo demanda
+            const { storage } = await import('../storage');
+            
+            // Obtener nivel de profesionalidad
+            const settings = await storage.getGeminiSettings();
+            responseText = await this.adjustToneWithGemini(responseText, settings?.professionLevel || 'professional');
+          } catch (err) {
+            console.error('Error al ajustar tono con Gemini:', err);
+          }
         }
       }
       

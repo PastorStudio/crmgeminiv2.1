@@ -13,6 +13,7 @@ import Settings from "@/pages/Settings";
 import Integrations from "@/pages/Integrations";
 import Database from "@/pages/Database";
 import GeminiDemo from "@/pages/GeminiDemo";
+import MassSender from "@/pages/MassSender";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 

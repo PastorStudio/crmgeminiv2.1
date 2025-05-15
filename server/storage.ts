@@ -71,6 +71,7 @@ export interface IStorage {
   
   // WhatsApp methods
   getWhatsAppContact(contactId: string): Promise<any>;
+  getWhatsAppChat(chatId: string): Promise<any>;
   sendWhatsAppMessage(to: string, message: string): Promise<any>;
   logAutoResponse(data: any): Promise<void>;
   
@@ -350,6 +351,39 @@ export class DatabaseStorage implements IStorage {
       return contact;
     } catch (error) {
       console.error(`Error al obtener contacto de WhatsApp ${contactId}:`, error);
+      throw error;
+    }
+  }
+  
+  async getWhatsAppChat(chatId: string): Promise<any> {
+    try {
+      // Importar el servicio de WhatsApp bajo demanda
+      const { whatsappServiceImpl } = await import('./services/whatsappServiceImpl');
+      
+      // Obtener los mensajes del chat
+      const chat = await whatsappServiceImpl.getChat(chatId);
+      if (!chat) {
+        throw new Error(`Chat no encontrado: ${chatId}`);
+      }
+      
+      // Obtener los mensajes del chat
+      const messages = await chat.fetchMessages({ limit: 20 });
+      
+      return {
+        id: chat.id._serialized,
+        name: chat.name,
+        isGroup: chat.isGroup,
+        timestamp: chat.timestamp,
+        messages: messages.map(msg => ({
+          id: msg.id._serialized,
+          body: msg.body,
+          fromMe: msg.fromMe,
+          timestamp: msg.timestamp,
+          type: msg.type
+        }))
+      };
+    } catch (error) {
+      console.error(`Error al obtener chat de WhatsApp ${chatId}:`, error);
       throw error;
     }
   }
