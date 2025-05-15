@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { WhatsAppQRDisplay } from './WhatsAppQRDisplay';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
 import { Smartphone, RefreshCw, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -21,7 +20,7 @@ export default function WhatsAppIntegration() {
   const queryClient = useQueryClient();
   const [refreshInterval, setRefreshInterval] = useState(5000); // 5 segundos
 
-  // Consulta para obtener el estado actual de WhatsApp
+  // Consulta para obtener el estado actual de WhatsApp usando endpoint directo
   const { data: status, isLoading, isError, error } = useQuery<WhatsAppStatus>({
     queryKey: ['/api/direct/whatsapp/status'],
     queryFn: async () => {
@@ -60,66 +59,27 @@ export default function WhatsAppIntegration() {
   // Función para reiniciar el servicio de WhatsApp (genera un nuevo QR)
   const handleRefresh = async () => {
     try {
-      // Intentamos diferentes enfoques para evitar la intercepción de Vite
-      // 1. Fetch normal con timestamp
+      // Usar la ruta directa con timestamp para evitar la intercepción de Vite
       const timestamp = Date.now();
-      const response = await fetch(`/api/integrations/whatsapp/restart?_t=${timestamp}`, {
+      const response = await fetch(`/api/direct/whatsapp/restart?_t=${timestamp}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
       });
-
-      // Si la respuesta no es JSON, probablemente Vite la interceptó
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        console.error('Respuesta HTML detectada (interceptada por Vite):', '/api/integrations/whatsapp/restart');
-        
-        // Intentar con XMLHttpRequest como fallback
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', `/api/integrations/whatsapp/restart?_t=${Date.now()}`);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = () => {
-          if (xhr.status === 200) {
-            // Verificar si es HTML (intercepción de Vite)
-            if (xhr.responseText.includes('<!DOCTYPE html>')) {
-              console.error('XHR también devolvió HTML:', `/api/integrations/whatsapp/restart?_t=${timestamp}`);
-              toast({
-                title: 'Error de servidor',
-                description: 'No se pudo reiniciar WhatsApp. Intenta recargar la página.',
-                variant: 'destructive'
-              });
-            } else {
-              // Aquí podríamos tener éxito, pero es improbable en este punto
-              queryClient.invalidateQueries({ queryKey: ['/api/integrations/whatsapp/status'] });
-              toast({
-                title: 'WhatsApp reiniciado',
-                description: 'Servicio reiniciado. Escanea el nuevo código QR.',
-              });
-            }
-          } else {
-            toast({
-              title: 'Error al reiniciar',
-              description: 'No se pudo reiniciar el servicio de WhatsApp.',
-              variant: 'destructive'
-            });
-          }
-        };
-        xhr.onerror = () => {
-          toast({
-            title: 'Error de conexión',
-            description: 'No se pudo conectar al servidor.',
-            variant: 'destructive'
-          });
-        };
-        xhr.send();
-        
-        // Forzar una actualización de la consulta independientemente
-        queryClient.invalidateQueries({ queryKey: ['/api/integrations/whatsapp/status'] });
-        return;
+      
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
       }
-
-      // Si llegamos aquí, la respuesta fue JSON
-      await response.json();
-      queryClient.invalidateQueries({ queryKey: ['/api/integrations/whatsapp/status'] });
+      
+      const data = await response.json();
+      console.log('Respuesta reinicio WhatsApp:', data);
+      
+      // Actualizar la consulta de estado
+      queryClient.invalidateQueries({ queryKey: ['/api/direct/whatsapp/status'] });
+      
       toast({
         title: 'WhatsApp reiniciado',
         description: 'Servicio reiniciado. Escanea el nuevo código QR.',
@@ -137,10 +97,24 @@ export default function WhatsAppIntegration() {
   // Función para cerrar sesión de WhatsApp
   const handleLogout = async () => {
     try {
-      await apiRequest('/api/integrations/whatsapp/logout', {
-        method: 'POST'
+      // Usar la ruta directa
+      const timestamp = Date.now();
+      const response = await fetch(`/api/direct/whatsapp/logout?_t=${timestamp}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/integrations/whatsapp/status'] });
+      
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+      
+      await response.json();
+      queryClient.invalidateQueries({ queryKey: ['/api/direct/whatsapp/status'] });
+      
       toast({
         title: 'Sesión cerrada',
         description: 'Has cerrado sesión en WhatsApp.',
