@@ -1516,6 +1516,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Verificar mensaje como entregado
+  app.post("/api/mass-sender/campaigns/:id/verify-message", async (req: Request, res: Response) => {
+    try {
+      const campaignId = parseInt(req.params.id);
+      const { contactId, messageId } = req.body;
+      
+      if (!contactId) {
+        return res.status(400).json({ error: "Se requiere el ID del contacto" });
+      }
+      
+      const success = await massSenderService.verifyMessageSent(campaignId, contactId, messageId);
+      
+      if (!success) {
+        return res.status(404).json({ error: "Campaña o contacto no encontrado" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error al verificar mensaje:", error);
+      res.status(500).json({ error: "Error al verificar mensaje como entregado" });
+    }
+  });
+  
   // Obtener grupos de contactos de WhatsApp
   app.get("/api/whatsapp/contact-groups", async (req: Request, res: Response) => {
     try {
