@@ -52,6 +52,15 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from "@/components/ui/form";
 
 // Tipos para las campañas de envío masivo
 interface ContactGroup {
@@ -347,7 +356,7 @@ export default function MassSender() {
   
   // Mutación para importar contactos a una campaña
   const importContactsToCampaignMutation = useMutation({
-    mutationFn: async ({campaignId, importId}: {campaignId: string, importId: string}) => {
+    mutationFn: async ({campaignId, importId}: {campaignId: number, importId: string}) => {
       const response = await fetch(`/api/mass-sender/campaigns/${campaignId}/import`, {
         method: 'POST',
         headers: {
@@ -383,7 +392,7 @@ export default function MassSender() {
   
   // Mutación para importar contactos usando plantilla de mensaje
   const importWithTemplateMutation = useMutation({
-    mutationFn: async ({campaignId, data}: {campaignId: string, data: any}) => {
+    mutationFn: async ({campaignId, data}: {campaignId: number, data: any}) => {
       const response = await fetch(`/api/mass-sender/campaigns/${campaignId}/import-with-template`, {
         method: 'POST',
         headers: {
@@ -484,7 +493,7 @@ export default function MassSender() {
   
   // Función para importar contactos desde Excel a una campaña
   const handleImportExcel = (campaignId: string) => {
-    setSelectedCampaignId(campaignId);
+    setSelectedCampaignId(parseInt(campaignId, 10));
     setIsImportDialogOpen(true);
   };
   
