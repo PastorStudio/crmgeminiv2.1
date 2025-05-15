@@ -108,12 +108,11 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Consulta para obtener estado de WhatsApp (usando endpoint directo)
+  // Consulta para obtener estado de WhatsApp
   const { data: whatsappStatus, isLoading: isLoadingWhatsappStatus } = useQuery({
     queryKey: ['whatsapp-status-direct'],
     queryFn: async () => {
       try {
-        // Usar directamente fetch para evitar interceptación
         const timestamp = Date.now();
         const response = await fetch(`/api/direct/whatsapp/status?t=${timestamp}`, {
           headers: {
@@ -127,7 +126,7 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
         }
         
         const data = await response.json();
-        console.log('Estado WhatsApp recibido (endpoint directo):', data);
+        console.log('Estado de WhatsApp recibido:', data);
         return data;
       } catch (error) {
         console.error('Error obteniendo estado de WhatsApp:', error);
@@ -139,10 +138,11 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
         };
       }
     },
-    refetchInterval: 5000 // Refrescar cada 5 segundos
+    refetchInterval: 5000, // Refrescar cada 5 segundos
+    refetchOnWindowFocus: true
   });
   
-  // Consulta para obtener chats de WhatsApp reales
+  // Consulta para obtener chats reales de WhatsApp
   const { data: whatsappChats = [], isLoading: isLoadingChats } = useQuery({
     queryKey: ['whatsapp-chats-direct'],
     queryFn: async () => {
@@ -162,10 +162,9 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
         const data = await response.json();
         console.log('Chats de WhatsApp recibidos:', data);
         
-        // Convertir chat IDs en leadIds para compatibilidad
+        // Asignar IDs numéricos a cada chat para compatibilidad con el sistema existente
         if (Array.isArray(data)) {
           data.forEach((chat, index) => {
-            // Usar el índice + 1 como ID numérico temporal
             chat.numericId = index + 1;
           });
         }
@@ -177,16 +176,14 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
       }
     },
     enabled: whatsappStatus?.authenticated === true,
-    refetchInterval: whatsappStatus?.authenticated ? 5000 : false, // Refrescar cada 5 segundos si está autenticado
-    refetchOnWindowFocus: true, // Refrescar cuando la ventana recupere el foco
-    refetchOnMount: true, // Refrescar cuando el componente se monte
-    retry: 3, // Reintentar 3 veces si hay error
+    refetchInterval: whatsappStatus?.authenticated ? 5000 : false,
+    refetchOnWindowFocus: true
   });
   
-  // Consulta para obtener mensajes de un chat específico
-  const {
-    data: whatsappMessages = [],
-    isLoading: isLoadingWhatsappMessages
+  // Consulta para obtener mensajes de un chat específico de WhatsApp
+  const { 
+    data: whatsappMessages = [], 
+    isLoading: isLoadingWhatsappMessages 
   } = useQuery({
     queryKey: ['whatsapp-messages-direct', selectedChatId],
     queryFn: async () => {
@@ -214,15 +211,15 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
       }
     },
     enabled: !!selectedChatId && whatsappStatus?.authenticated === true,
-    refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 5000 : false,
+    refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 5000 : false
   });
   
-  // Consulta para obtener leads (contactos)
+  // Consulta para obtener leads (contactos) del CRM - Modo fallback
   const { data: leads = [], isLoading: isLoadingLeads } = useQuery({
     queryKey: ['/api/leads'],
     queryFn: async () => {
       return await apiRequest('/api/leads');
-    },
+    }
   });
 
   // Filtrar leads según término de búsqueda
@@ -238,10 +235,10 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     );
   });
 
-  // Filtrar chats según término de búsqueda - Asegurar que sea un array y que cada chat tenga los campos necesarios
+  // Filtrar chats según término de búsqueda
   const filteredChats = Array.isArray(whatsappChats) 
     ? whatsappChats.filter((chat: WhatsAppChat) => {
-        if (!chat) return false; // Ignorar chats nulos o indefinidos
+        if (!chat) return false;
         
         if (!searchTerm) return true;
         
@@ -252,23 +249,11 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
         );
       })
     : [];
-    
-  // Asegurarnos de que cada chat tiene un ID numérico para compatibilidad
-  if (Array.isArray(whatsappChats)) {
-    whatsappChats.forEach((chat, index) => {
-      if (chat && !chat.numericId) {
-        chat.numericId = index + 1;
-      }
-    });
-  }
   
-  // Registro para depuración
-  console.log('Chats de WhatsApp disponibles:', Array.isArray(whatsappChats) ? whatsappChats.length : 0);
-
-  // Consulta para obtener mensajes del lead seleccionado (modo fallback)
+  // Consulta para obtener mensajes del CRM (modo fallback)
   const { 
-    data: messages = [], 
-    isLoading: isLoadingMessages 
+    data: crmMessages = [], 
+    isLoading: isLoadingCrmMessages 
   } = useQuery({
     queryKey: ['/api/messages', { leadId: selectedLeadId }],
     queryFn: async () => {
@@ -356,18 +341,6 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
         queryClient.invalidateQueries({ queryKey: ['/api/messages', { leadId: selectedLeadId }] });
       }
     }
-  });
-
-  // Verificar estado de integración con WhatsApp (endpoint estándar como respaldo)
-  const { 
-    data: whatsappStatusAPI, 
-    isLoading: isLoadingWhatsappStatusAPI 
-  } = useQuery({
-    queryKey: ['/api/integrations/whatsapp/status'],
-    queryFn: async () => {
-      return await apiRequest('/api/integrations/whatsapp/status');
-    },
-    refetchInterval: 10000, // Verificar cada 10 segundos
   });
 
   // Reiniciar WhatsApp
@@ -473,9 +446,9 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [whatsappMessages, messages]);
+  }, [whatsappMessages, crmMessages]);
   
-  // Mostrar el QR de WhatsApp y pantalla de configuración si no está autenticado y tenemos el estado
+  // Mostrar el QR de WhatsApp y pantalla de configuración si no está autenticado
   if (whatsappStatus && whatsappStatus.initialized && !whatsappStatus.authenticated) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
@@ -579,9 +552,9 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                   <div className="flex justify-center p-4">
                     <Spinner />
                   </div>
-                ) : filteredChats.length > 0 ? (
+                ) : Array.isArray(whatsappChats) && whatsappChats.length > 0 ? (
                   <div className="space-y-0.5">
-                    {filteredChats.map((chat: WhatsAppChat) => (
+                    {whatsappChats.map((chat: WhatsAppChat) => (
                       <div
                         key={chat.id}
                         className={`p-3 hover:bg-gray-100 cursor-pointer flex items-start gap-3 ${
@@ -602,19 +575,24 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                           <div className="flex justify-between">
                             <div className="font-medium text-sm truncate">{chat.name}</div>
                             <div className="text-xs text-gray-500">
-                              {formatDistanceToNow(new Date(chat.timestamp), { 
+                              {chat.timestamp ? formatDistanceToNow(new Date(chat.timestamp), { 
                                 addSuffix: true,
                                 locale: es
-                              })}
+                              }) : ''}
                             </div>
                           </div>
                           
-                          <div className="text-xs text-gray-500 truncate mt-1">{chat.lastMessage}</div>
+                          <div className="text-xs text-gray-500 truncate mt-1">{chat.lastMessage || ''}</div>
                           
                           <div className="flex mt-1 gap-1">
                             {chat.unreadCount > 0 && (
                               <Badge variant="default" className="rounded-full bg-green-500 text-[10px] h-5 min-w-5 flex items-center justify-center px-1.5">
                                 {chat.unreadCount}
+                              </Badge>
+                            )}
+                            {chat.isGroup && (
+                              <Badge variant="outline" className="rounded-full text-[10px] border-blue-500 text-blue-700">
+                                Grupo
                               </Badge>
                             )}
                           </div>
@@ -624,7 +602,11 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                   </div>
                 ) : (
                   <div className="p-4 text-center text-gray-500 text-sm">
-                    No hay chats disponibles
+                    <div className="mb-2">No hay chats disponibles</div>
+                    <div className="text-xs">
+                      Se ha establecido conexión con WhatsApp, pero no se encontraron chats.
+                      Por favor, asegúrate de tener conversaciones activas en tu WhatsApp.
+                    </div>
                   </div>
                 )
               ) : (
@@ -752,7 +734,7 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                   ) : null}
                   <AvatarFallback className="bg-green-500 text-white">
                     {whatsappStatus?.authenticated && selectedChatId
-                      ? getInitials((filteredChats.find((c: WhatsAppChat) => c.id === selectedChatId) || {}).name)
+                      ? getInitials((whatsappChats.find((c: WhatsAppChat) => c.id === selectedChatId) || {}).name)
                       : selectedLeadData 
                         ? getInitials(selectedLeadData.fullName)
                         : 'UN'
@@ -763,7 +745,7 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                 <div>
                   <div className="font-medium text-sm">
                     {whatsappStatus?.authenticated && selectedChatId
-                      ? (filteredChats.find((c: WhatsAppChat) => c.id === selectedChatId) || {}).name || 'Chat'
+                      ? (whatsappChats.find((c: WhatsAppChat) => c.id === selectedChatId) || {}).name || 'Chat'
                       : selectedLeadData 
                         ? selectedLeadData.fullName
                         : 'Contacto'
@@ -837,12 +819,12 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                       )
                     ) : (
                       // Modo fallback para mensajes del CRM
-                      isLoadingMessages ? (
+                      isLoadingCrmMessages ? (
                         <div className="flex justify-center py-8">
                           <Spinner size="lg" />
                         </div>
-                      ) : messages.length > 0 ? (
-                        messages.map((message: Message) => (
+                      ) : crmMessages.length > 0 ? (
+                        crmMessages.map((message: Message) => (
                           <div 
                             key={message.id}
                             className={`flex ${message.direction === 'outgoing' ? 'justify-end' : 'justify-start'}`}
