@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
+import path from "path";
 import { storage } from "./storage";
 import { 
   insertUserSchema, 
@@ -49,6 +50,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Registrar rutas para la galería de medios
   app.use("/api/media-gallery", mediaGalleryRouter);
   app.use("/api/media", mediaServeRouter);
+  
+  // Ruta para la página de prueba de la galería de medios
+  app.get("/media-gallery-test", (req: Request, res: Response) => {
+    res.sendFile(path.join(process.cwd(), "temp", "upload-test.html"));
+  });
   
   // Health check endpoint
   app.get("/api/health", (req: Request, res: Response) => {

@@ -139,6 +139,11 @@ mediaServeRouter.get('/:id/:filename', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Archivo no encontrado' });
     }
     
+    // Verificar que el camino del archivo sea válido
+    if (!media.path || typeof media.path !== 'string') {
+      return res.status(500).json({ error: 'Error en la ruta del archivo' });
+    }
+    
     // Registrar el uso del archivo
     await mediaGalleryService.trackMediaUsage(id);
     
@@ -146,6 +151,7 @@ mediaServeRouter.get('/:id/:filename', async (req: Request, res: Response) => {
     res.sendFile(media.path);
   } catch (error) {
     console.error('Error sirviendo archivo:', error);
-    res.status(500).json({ error: 'Error al servir el archivo multimedia' });
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    res.status(500).json({ error: 'Error al servir el archivo multimedia: ' + errorMessage });
   }
 });
