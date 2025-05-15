@@ -12,6 +12,7 @@ import Analytics from "@/pages/Analytics";
 import Settings from "@/pages/Settings";
 import Integrations from "@/pages/Integrations";
 import Database from "@/pages/Database";
+import GeminiDemo from "@/pages/GeminiDemo";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 
@@ -39,6 +40,7 @@ function App() {
                   <Route path="/settings" component={Settings} />
                   <Route path="/integrations" component={Integrations} />
                   <Route path="/database" component={Database} />
+                  <Route path="/gemini-demo" component={GeminiDemo} />
                   <Route component={NotFound} />
                 </Switch>
               </div>

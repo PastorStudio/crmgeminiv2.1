@@ -68,6 +68,15 @@ export interface IStorage {
   // Dashboard stats methods
   getDashboardStats(): Promise<DashboardStats | undefined>;
   updateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats>;
+  
+  // WhatsApp methods
+  getWhatsAppContact(contactId: string): Promise<any>;
+  sendWhatsAppMessage(to: string, message: string): Promise<any>;
+  logAutoResponse(data: any): Promise<void>;
+  
+  // Gemini settings
+  getGeminiSettings(): Promise<any>;
+  updateGeminiSettings(settings: any): Promise<any>;
 }
 
 /**
@@ -331,7 +340,83 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-
+  // WhatsApp methods
+  async getWhatsAppContact(contactId: string): Promise<any> {
+    try {
+      // Importar el servicio de WhatsApp bajo demanda
+      const { whatsappServiceImpl } = await import('./services/whatsappServiceImpl');
+      // Buscar el contacto usando el servicio
+      const contact = await whatsappServiceImpl.getContact(contactId);
+      return contact;
+    } catch (error) {
+      console.error(`Error al obtener contacto de WhatsApp ${contactId}:`, error);
+      throw error;
+    }
+  }
+  
+  async sendWhatsAppMessage(to: string, message: string): Promise<any> {
+    try {
+      // Importar el servicio de WhatsApp bajo demanda
+      const { whatsappServiceImpl } = await import('./services/whatsappServiceImpl');
+      // Enviar mensaje usando el servicio
+      const result = await whatsappServiceImpl.sendMessage(to, message);
+      return result;
+    } catch (error) {
+      console.error(`Error al enviar mensaje de WhatsApp a ${to}:`, error);
+      throw error;
+    }
+  }
+  
+  async logAutoResponse(data: any): Promise<void> {
+    try {
+      // En un sistema real, esto se registraría en una tabla de la base de datos
+      // Por ahora, simplemente lo registramos en la consola
+      console.log("Auto-respuesta registrada:", data);
+      // Crear una actividad para esta auto-respuesta
+      await this.createActivity({
+        title: "Auto-respuesta enviada",
+        description: `Mensaje automático enviado a ${data.contactId}: "${data.responseText.substring(0, 50)}${data.responseText.length > 50 ? '...' : ''}"`,
+        type: "message",
+        dueDate: new Date(),
+        completed: true,
+        leadId: null, // Tendríamos que encontrar el lead asociado al número
+        assignedTo: 1, // Asignado al usuario administrador
+        priority: "low"
+      });
+    } catch (error) {
+      console.error("Error al registrar auto-respuesta:", error);
+      // No lanzamos el error para evitar interrupciones, solo lo registramos
+    }
+  }
+  
+  // Gemini settings
+  async getGeminiSettings(): Promise<any> {
+    try {
+      // Buscar en una tabla "settings" si existiera
+      // Por ahora devolvemos valores predeterminados
+      return {
+        professionLevel: "professional", // casual, professional, technical, executive
+        model: "gemini-pro",
+        temperature: 0.7,
+        maxOutputTokens: 1024
+      };
+    } catch (error) {
+      console.error("Error al obtener configuración de Gemini:", error);
+      throw error;
+    }
+  }
+  
+  async updateGeminiSettings(settings: any): Promise<any> {
+    try {
+      // En un sistema real, actualizaríamos una tabla "settings"
+      // Por ahora simplemente registramos el cambio y devolvemos los mismos valores
+      console.log("Configuración de Gemini actualizada:", settings);
+      return settings;
+    } catch (error) {
+      console.error("Error al actualizar configuración de Gemini:", error);
+      throw error;
+    }
+  }
 }
 
 // Siempre usamos almacenamiento en base de datos real para datos reales

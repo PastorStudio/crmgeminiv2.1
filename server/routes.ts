@@ -15,6 +15,7 @@ import { apiKeyManager } from "./services/apiKeyManager";
 import { db } from "./db";
 // Importar las rutas de WhatsApp
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
+import { autoResponseService } from "./services/autoResponseService";
 
 // Profile update schema
 const profileUpdateSchema = z.object({
@@ -765,6 +766,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         message: "Error al generar tareas automáticas",
         error: (error as Error).message
+      });
+    }
+  });
+  
+  // Auto-response endpoints
+  app.get("/api/auto-response/config", async (req: Request, res: Response) => {
+    try {
+      const config = autoResponseService.getConfig();
+      res.json(config);
+    } catch (error) {
+      console.error("Error al obtener configuración de respuestas automáticas:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al obtener configuración de respuestas automáticas" 
+      });
+    }
+  });
+
+  app.post("/api/auto-response/config", async (req: Request, res: Response) => {
+    try {
+      const config = req.body;
+      
+      if (!config) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere configuración"
+        });
+      }
+      
+      const updatedConfig = autoResponseService.updateConfig(config);
+      res.json({ 
+        success: true, 
+        config: updatedConfig 
+      });
+    } catch (error) {
+      console.error("Error al actualizar configuración de respuestas automáticas:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al actualizar configuración de respuestas automáticas" 
+      });
+    }
+  });
+
+  app.post("/api/auto-response/cancel", async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.body;
+      
+      if (!contactId) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere ID del contacto"
+        });
+      }
+      
+      const cancelled = autoResponseService.cancelPendingResponse(contactId);
+      res.json({ 
+        success: true, 
+        cancelled 
+      });
+    } catch (error) {
+      console.error("Error al cancelar respuesta automática:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al cancelar respuesta automática" 
       });
     }
   });
