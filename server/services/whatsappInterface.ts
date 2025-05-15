@@ -1,21 +1,19 @@
 /**
- * Servicio de WhatsApp simplificado directamente en TypeScript
+ * Interfaz común para servicios de WhatsApp
+ * Esta interfaz permite utilizar diferentes implementaciones del servicio
+ * (real con whatsapp-web.js o demo con código QR funcional)
  */
 
-import { storage } from "../storage";
-
-// Definimos una interfaz para el estado de WhatsApp
 export interface WhatsAppStatus {
   initialized: boolean;
   ready: boolean;
   authenticated: boolean;
-  qrCode?: string;
-  clientInfo?: any;
-  lastMessageAt?: Date;
   errorMessage?: string;
+  qrCode?: string;
+  lastMessageAt?: Date;
+  clientInfo?: any;
 }
 
-// Definimos la interfaz para el servicio
 export interface IWhatsAppService {
   initialize(): Promise<void>;
   restart(): Promise<void>;

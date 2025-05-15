@@ -1,21 +1,27 @@
 /**
- * Rutas dedicadas para la integración de WhatsApp que generan un código QR real
+ * Rutas para la integración de WhatsApp
+ * Estas rutas manejan la generación de códigos QR, envío de mensajes y estado de la conexión
  */
-import type { Express, Request, Response } from "express";
 
-// Importar el servicio simplificado
-import { whatsappService } from './whatsappServiceImpl';
+import { Express, Request, Response } from 'express';
+// Importamos el servicio de demostración por defecto
+import { whatsappDemoService } from './whatsappDemoService';
+// Interfaz común para WhatsApp
+import { IWhatsAppService } from './whatsappInterface';
 
-export function registerWhatsAppRoutes(app: Express): void {
+export async function registerWhatsAppRoutes(app: Express) {
+  // Definir servicio a utilizar
+  let whatsappService: IWhatsAppService = whatsappDemoService;
+  
   // Status endpoint
   app.get("/api/integrations/whatsapp/status", async (req: Request, res: Response) => {
     try {
-      // Inicializar si no está inicializado
       if (!whatsappService.getStatus().initialized) {
-        await whatsappService.initialize().catch((err: any) => {
+        await whatsappService.initialize().catch(err => {
           console.error("Error inicializando servicio de WhatsApp:", err);
         });
       }
+      
       const status = whatsappService.getStatus();
       res.json(status);
     } catch (error) {
@@ -30,9 +36,8 @@ export function registerWhatsAppRoutes(app: Express): void {
   // QR Code endpoint
   app.get("/api/integrations/whatsapp/qrcode", async (req: Request, res: Response) => {
     try {
-      // Inicializar si no está inicializado
       if (!whatsappService.getStatus().initialized) {
-        await whatsappService.initialize().catch((err: any) => {
+        await whatsappService.initialize().catch(err => {
           console.error("Error inicializando servicio de WhatsApp:", err);
         });
       }
@@ -89,27 +94,21 @@ export function registerWhatsAppRoutes(app: Express): void {
       const { to, message, leadId } = req.body;
       
       if (!to || !message) {
-        return res.status(400).json({ message: "Se requiere número de teléfono y mensaje" });
+        return res.status(400).json({ message: "Se requieren los parámetros 'to' y 'message'" });
       }
       
-      console.log(`Enviando mensaje a ${to}: ${message} (leadId: ${leadId || 'N/A'})`);
-      const result = await whatsappService.sendMessage(
-        to, 
-        message, 
-        leadId ? parseInt(leadId) : undefined
-      );
+      console.log(`Enviando mensaje a ${to}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`);
       
-      res.json({
-        success: true,
-        message: "Mensaje enviado correctamente",
-        result
-      });
+      const result = await whatsappService.sendMessage(to, message, leadId);
+      res.json({ success: true, result });
     } catch (error) {
       console.error("Error enviando mensaje de WhatsApp:", error);
       res.status(500).json({ 
         message: "Error enviando mensaje de WhatsApp", 
-        error: error instanceof Error ? error.message : "Error desconocido"
+        error: error instanceof Error ? error.message : "Error desconocido" 
       });
     }
   });
+  
+  console.log("Rutas de WhatsApp registradas");
 }
