@@ -90,6 +90,11 @@ export class ExcelImportService {
   ): Promise<ImportResult> {
     console.log(`Iniciando importación de Excel. Archivo: ${filename}, Mapeo:`, JSON.stringify(fieldMapping));
     
+    // Validar que el campo phoneNumber esté presente y no sea 'none'
+    if (!fieldMapping.phoneNumber || fieldMapping.phoneNumber === 'none') {
+      throw new Error("El número de teléfono es obligatorio para la importación");
+    }
+    
     // Filtrar campos 'none' del mapeo
     const filteredMapping = Object.entries(fieldMapping).reduce((acc, [key, value]) => {
       if (value !== 'none') {
@@ -103,11 +108,31 @@ export class ExcelImportService {
     console.log('Mapeo filtrado (sin valores "none"):', JSON.stringify(filteredMapping));
     
     try {
-      const filepath = this.getFilePath(filename);
+      // Verificar que el directorio existe
+      if (!fs.existsSync(this.uploadsDir)) {
+        fs.mkdirSync(this.uploadsDir, { recursive: true });
+        console.log(`Creado directorio ${this.uploadsDir}`);
+      }
+      
+      // Listar archivos en el directorio para encontrar el correcto
+      console.log("Buscando archivos en directorio:", this.uploadsDir);
+      const files = fs.readdirSync(this.uploadsDir);
+      console.log("Archivos encontrados:", files);
+      
+      // Buscar archivo con coincidencia aproximada si es necesario
+      let realFilename = filename;
+      const matchingFile = files.find(file => file.toLowerCase() === filename.toLowerCase());
+      if (matchingFile && matchingFile !== filename) {
+        console.log(`Se encontró un archivo con nombre similar: ${matchingFile} (original: ${filename})`);
+        realFilename = matchingFile;
+      }
+      
+      const filepath = this.getFilePath(realFilename);
       
       // Verificar que el archivo existe
       if (!fs.existsSync(filepath)) {
         console.error(`Archivo no encontrado: ${filepath}`);
+        console.error(`Archivos disponibles en ${this.uploadsDir}:`, files.join(', '));
         throw new Error(`El archivo ${filename} no existe en el servidor`);
       }
       

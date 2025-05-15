@@ -1338,21 +1338,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Directorio creado: ${tempDir}`);
         }
         
+        // Lista todos los archivos en el directorio temp/uploads para depuración
+        console.log("Archivos en directorio temp/uploads:");
+        const files = fs.readdirSync(tempDir);
+        files.forEach(file => {
+          console.log(`- ${file}`);
+        });
+        
+        // Intenta buscar el archivo correcto incluso si hay diferencias de capitalización
+        let realFilename = filename;
+        const matchingFile = files.find(file => file.toLowerCase() === filename.toLowerCase());
+        if (matchingFile && matchingFile !== filename) {
+          console.log(`Se encontró un archivo con nombre similar: ${matchingFile} (original: ${filename})`);
+          realFilename = matchingFile;
+        }
+        
         // Verificar que el archivo existe
-        const filePath = path.join(tempDir, filename);
+        const filePath = path.join(tempDir, realFilename);
         const fileExists = fs.existsSync(filePath);
         console.log(`Verificando archivo ${filePath}: ${fileExists ? 'EXISTE' : 'NO EXISTE'}`);
         
         if (!fileExists) {
           return res.status(404).json({ 
             error: "Archivo no encontrado", 
-            details: `El archivo ${filename} no existe en el servidor` 
+            details: `El archivo ${filename} no existe en el servidor. Archivos disponibles: ${files.join(', ')}` 
           });
         }
         
         const importResult = await excelImportService.importFromExcel(
-          filename,
-          originalname || filename,
+          realFilename,
+          originalname || realFilename,
           fieldMapping
         );
         
