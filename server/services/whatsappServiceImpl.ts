@@ -318,6 +318,14 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   getStatus(): WhatsAppStatus {
     return this.status;
   }
+  
+  /**
+   * Obtiene el cliente de WhatsApp Web.js para operaciones avanzadas
+   * @returns El cliente de WhatsApp Web o null si no está inicializado
+   */
+  getClient(): Client | null {
+    return this.client;
+  }
 
   /**
    * Reinicia el servicio de WhatsApp
