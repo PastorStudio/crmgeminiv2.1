@@ -1,6 +1,7 @@
 /**
  * Interfaz común para el servicio de WhatsApp
  * Define los métodos y tipos necesarios para la integración con WhatsApp
+ * Incluye soporte para chats, mensajes y mantenimiento de conexión permanente
  */
 
 /**
@@ -13,6 +14,48 @@ export interface WhatsAppStatus {
   error?: string;
   qrCode?: string;
   qrDataUrl?: string;  // URL de datos para mostrar directamente en frontend
+  lastConnectionCheck?: Date;
+  connectionState?: string;
+}
+
+/**
+ * Mensaje de WhatsApp
+ */
+export interface WhatsAppMessage {
+  id: string;
+  body: string;
+  from: string;
+  to: string;
+  fromMe: boolean;
+  timestamp: number;
+  hasMedia: boolean;
+  type: string;
+  isStatus: boolean;
+  isForwarded: boolean;
+  isStarred: boolean;
+  mediaUrl?: string;
+  caption?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    description?: string;
+  };
+  vcard?: string;
+  containsEmoji: boolean;
+}
+
+/**
+ * Chat de WhatsApp
+ */
+export interface WhatsAppChat {
+  id: string;
+  name: string;
+  isGroup: boolean;
+  timestamp: number;  // Última actividad
+  unreadCount: number;
+  lastMessage?: string;
+  profilePicUrl?: string;
+  participants?: string[];
 }
 
 /**
@@ -45,4 +88,32 @@ export interface IWhatsAppService {
    * @param message Mensaje a enviar
    */
   sendMessage(phoneNumber: string, message: string): Promise<any>;
+  
+  /**
+   * Obtiene los chats disponibles (contactos y grupos)
+   */
+  getChats(): Promise<WhatsAppChat[]>;
+  
+  /**
+   * Obtiene los mensajes de un chat específico
+   * @param chatId ID del chat del cual obtener mensajes
+   * @param limit Número máximo de mensajes a obtener (opcional)
+   */
+  getMessages(chatId: string, limit?: number): Promise<WhatsAppMessage[]>;
+  
+  /**
+   * Activa la conexión permanente y configura los mecanismos para mantenerla activa
+   */
+  activatePermanentConnection(): Promise<void>;
+  
+  /**
+   * Verifica el estado de la conexión y la reactiva si es necesario
+   */
+  checkConnection(): Promise<boolean>;
+  
+  /**
+   * Marca los mensajes de un chat como leídos
+   * @param chatId ID del chat a marcar como leído
+   */
+  markChatAsRead(chatId: string): Promise<void>;
 }
