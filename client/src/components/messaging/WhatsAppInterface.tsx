@@ -557,24 +557,24 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                     {whatsappChats.map((chat: WhatsAppChat) => (
                       <div
                         key={chat.id}
-                        className={`p-3 hover:bg-gray-100 cursor-pointer flex items-start gap-3 ${
+                        className={`p-2 hover:bg-gray-100 cursor-pointer flex items-start gap-2 ${
                           selectedChatId === chat.id ? 'bg-gray-100' : ''
                         }`}
                         onClick={() => handleChatSelect(chat)}
                       >
-                        <Avatar className="h-12 w-12">
+                        <Avatar className="h-10 w-10 flex-shrink-0">
                           {chat.profilePicUrl ? (
                             <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
                           ) : null}
-                          <AvatarFallback className="bg-green-500 text-white">
+                          <AvatarFallback className="bg-green-500 text-white text-xs">
                             {getInitials(chat.name)}
                           </AvatarFallback>
                         </Avatar>
                         
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between">
-                            <div className="font-medium text-sm truncate">{chat.name}</div>
-                            <div className="text-xs text-gray-500">
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex justify-between w-full">
+                            <div className="font-medium text-xs truncate max-w-[70%]">{chat.name}</div>
+                            <div className="text-[10px] text-gray-500 shrink-0">
                               {chat.timestamp ? formatDistanceToNow(new Date(chat.timestamp), { 
                                 addSuffix: true,
                                 locale: es
@@ -582,16 +582,16 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                             </div>
                           </div>
                           
-                          <div className="text-xs text-gray-500 truncate mt-1">{chat.lastMessage || ''}</div>
+                          <div className="text-[11px] text-gray-500 truncate">{chat.lastMessage || ''}</div>
                           
-                          <div className="flex mt-1 gap-1">
+                          <div className="flex gap-1">
                             {chat.unreadCount > 0 && (
-                              <Badge variant="default" className="rounded-full bg-green-500 text-[10px] h-5 min-w-5 flex items-center justify-center px-1.5">
+                              <Badge variant="default" className="rounded-full bg-green-500 text-[9px] h-4 min-w-4 flex items-center justify-center px-1">
                                 {chat.unreadCount}
                               </Badge>
                             )}
                             {chat.isGroup && (
-                              <Badge variant="outline" className="rounded-full text-[10px] border-blue-500 text-blue-700">
+                              <Badge variant="outline" className="rounded-full text-[9px] border-blue-500 text-blue-700 px-1 h-4">
                                 Grupo
                               </Badge>
                             )}
@@ -620,24 +620,24 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                     {filteredLeads.map((lead: Lead) => (
                       <div
                         key={lead.id}
-                        className={`p-3 hover:bg-gray-100 cursor-pointer flex items-start gap-3 ${
+                        className={`p-2 hover:bg-gray-100 cursor-pointer flex items-start gap-2 ${
                           selectedLeadId === lead.id ? 'bg-gray-100' : ''
                         }`}
                         onClick={() => handleLeadSelect(lead.id)}
                       >
-                        <Avatar className="h-12 w-12">
+                        <Avatar className="h-10 w-10 flex-shrink-0">
                           {lead.avatar ? (
                             <AvatarImage src={lead.avatar} alt={lead.fullName} />
                           ) : null}
-                          <AvatarFallback className="bg-green-500 text-white">
+                          <AvatarFallback className="bg-green-500 text-white text-xs">
                             {getInitials(lead.fullName)}
                           </AvatarFallback>
                         </Avatar>
                         
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between">
-                            <div className="font-medium text-sm truncate">{lead.fullName}</div>
-                            <div className="text-xs text-gray-500">
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex justify-between w-full">
+                            <div className="font-medium text-xs truncate max-w-[70%]">{lead.fullName}</div>
+                            <div className="text-[10px] text-gray-500 shrink-0">
                               {lead.lastActive ? formatDistanceToNow(new Date(lead.lastActive), { 
                                 addSuffix: true,
                                 locale: es
@@ -645,12 +645,12 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                             </div>
                           </div>
                           
-                          <div className="text-xs text-gray-500 truncate mt-1">{lead.phone || lead.email}</div>
+                          <div className="text-[11px] text-gray-500 truncate">{lead.phone || lead.email}</div>
                           
-                          <div className="flex mt-1 gap-1">
-                            {lead.status === 'prospect' && <Badge variant="outline" className="rounded-full text-[10px] border-yellow-500 text-yellow-700">Prospecto</Badge>}
-                            {lead.status === 'qualified' && <Badge variant="outline" className="rounded-full text-[10px] border-blue-500 text-blue-700">Calificado</Badge>}
-                            {lead.status === 'customer' && <Badge variant="outline" className="rounded-full text-[10px] border-green-500 text-green-700">Cliente</Badge>}
+                          <div className="flex gap-1">
+                            {lead.status === 'prospect' && <Badge variant="outline" className="rounded-full text-[9px] border-yellow-500 text-yellow-700 px-1 h-4">Prospecto</Badge>}
+                            {lead.status === 'qualified' && <Badge variant="outline" className="rounded-full text-[9px] border-blue-500 text-blue-700 px-1 h-4">Calificado</Badge>}
+                            {lead.status === 'customer' && <Badge variant="outline" className="rounded-full text-[9px] border-green-500 text-green-700 px-1 h-4">Cliente</Badge>}
                           </div>
                         </div>
                       </div>
@@ -676,24 +676,24 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                   {filteredLeads.map((lead: Lead) => (
                     <div
                       key={lead.id}
-                      className={`p-3 hover:bg-gray-100 cursor-pointer flex items-start gap-3 ${
+                      className={`p-2 hover:bg-gray-100 cursor-pointer flex items-start gap-2 ${
                         selectedLeadId === lead.id ? 'bg-gray-100' : ''
                       }`}
                       onClick={() => handleLeadSelect(lead.id)}
                     >
-                      <Avatar className="h-12 w-12">
+                      <Avatar className="h-10 w-10 flex-shrink-0">
                         {lead.avatar ? (
                           <AvatarImage src={lead.avatar} alt={lead.fullName} />
                         ) : null}
-                        <AvatarFallback className="bg-blue-500 text-white">
+                        <AvatarFallback className="bg-blue-500 text-white text-xs">
                           {getInitials(lead.fullName)}
                         </AvatarFallback>
                       </Avatar>
                       
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between">
-                          <div className="font-medium text-sm truncate">{lead.fullName}</div>
-                          <div className="text-xs text-gray-500">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex justify-between w-full">
+                          <div className="font-medium text-xs truncate max-w-[70%]">{lead.fullName}</div>
+                          <div className="text-[10px] text-gray-500 shrink-0">
                             {lead.lastActive ? formatDistanceToNow(new Date(lead.lastActive), { 
                               addSuffix: true,
                               locale: es
@@ -701,12 +701,12 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                           </div>
                         </div>
                         
-                        <div className="text-xs text-gray-500 truncate mt-1">{lead.company || lead.email}</div>
+                        <div className="text-[11px] text-gray-500 truncate">{lead.company || lead.email}</div>
                         
-                        <div className="flex mt-1 gap-1">
-                          {lead.status === 'prospect' && <Badge variant="outline" className="rounded-full text-[10px] border-yellow-500 text-yellow-700">Prospecto</Badge>}
-                          {lead.status === 'qualified' && <Badge variant="outline" className="rounded-full text-[10px] border-blue-500 text-blue-700">Calificado</Badge>}
-                          {lead.status === 'customer' && <Badge variant="outline" className="rounded-full text-[10px] border-green-500 text-green-700">Cliente</Badge>}
+                        <div className="flex gap-1">
+                          {lead.status === 'prospect' && <Badge variant="outline" className="rounded-full text-[9px] border-yellow-500 text-yellow-700 px-1 h-4">Prospecto</Badge>}
+                          {lead.status === 'qualified' && <Badge variant="outline" className="rounded-full text-[9px] border-blue-500 text-blue-700 px-1 h-4">Calificado</Badge>}
+                          {lead.status === 'customer' && <Badge variant="outline" className="rounded-full text-[9px] border-green-500 text-green-700 px-1 h-4">Cliente</Badge>}
                         </div>
                       </div>
                     </div>
@@ -726,13 +726,13 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
       <div className="flex-1 flex flex-col">
         {(selectedChatId || selectedLeadData) ? (
           <>
-            <div className="p-3 border-b flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
+            <div className="p-2 border-b flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8 flex-shrink-0">
                   {selectedLeadData?.avatar ? (
                     <AvatarImage src={selectedLeadData.avatar} alt={selectedLeadData.fullName} />
                   ) : null}
-                  <AvatarFallback className="bg-green-500 text-white">
+                  <AvatarFallback className="bg-green-500 text-white text-xs">
                     {whatsappStatus?.authenticated && selectedChatId
                       ? getInitials((whatsappChats.find((c: WhatsAppChat) => c.id === selectedChatId) || {}).name)
                       : selectedLeadData 
@@ -742,8 +742,8 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                   </AvatarFallback>
                 </Avatar>
                 
-                <div>
-                  <div className="font-medium text-sm">
+                <div className="min-w-0 overflow-hidden">
+                  <div className="font-medium text-xs truncate">
                     {whatsappStatus?.authenticated && selectedChatId
                       ? (whatsappChats.find((c: WhatsAppChat) => c.id === selectedChatId) || {}).name || 'Chat'
                       : selectedLeadData 
@@ -751,28 +751,28 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                         : 'Contacto'
                     }
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-[10px] text-gray-500 truncate">
                     {selectedLeadData?.phone || selectedChatId || ''}
                   </div>
                 </div>
               </div>
               
-              <div className="flex gap-3">
-                <button className="h-9 w-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500" aria-label="Llamar">
-                  <Phone size={20} />
+              <div className="flex gap-1">
+                <button className="h-7 w-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500" aria-label="Llamar">
+                  <Phone size={15} />
                 </button>
-                <button className="h-9 w-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500" aria-label="Videollamada">
-                  <Video size={20} />
+                <button className="h-7 w-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500" aria-label="Videollamada">
+                  <Video size={15} />
                 </button>
                 <button 
-                  className={`h-9 w-9 rounded-full hover:bg-gray-100 flex items-center justify-center ${showAiAssistant ? 'text-primary-600' : 'text-gray-500'}`} 
+                  className={`h-7 w-7 rounded-full hover:bg-gray-100 flex items-center justify-center ${showAiAssistant ? 'text-primary-600' : 'text-gray-500'}`} 
                   aria-label="Asistente IA"
                   onClick={() => setShowAiAssistant(!showAiAssistant)}
                 >
-                  <BrainCircuit size={20} />
+                  <BrainCircuit size={15} />
                 </button>
-                <button className="h-9 w-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500" aria-label="Más opciones">
-                  <MoreVertical size={20} />
+                <button className="h-7 w-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500" aria-label="Más opciones">
+                  <MoreVertical size={15} />
                 </button>
               </div>
             </div>
