@@ -1322,10 +1322,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Parámetros de importación: filename=${filename}, fieldMapping=`, fieldMapping);
       
-      if (!fieldMapping.phoneNumber) {
-        console.error("El mapeo de campos no incluye el campo phoneNumber");
+      if (!fieldMapping.phoneNumber || fieldMapping.phoneNumber === 'none') {
+        console.error("El mapeo de campos no incluye el campo phoneNumber o está marcado como 'none'");
         return res.status(400).json({ 
-          error: "El mapeo de campos debe incluir al menos el campo phoneNumber" 
+          error: "El mapeo de campos debe incluir una columna válida para el campo phoneNumber" 
         });
       }
       
