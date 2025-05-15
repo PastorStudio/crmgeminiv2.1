@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import AiAssistant from "@/components/assistant/AiAssistant";
 import LeadForm from "@/components/leads/LeadForm";
-import { NotificationCenter } from "@/components/ui/notification-center.jsx";
 
 interface HeaderProps {
   onMenuButtonClick: () => void;
@@ -59,8 +58,7 @@ export default function Header({ onMenuButtonClick }: HeaderProps) {
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-semibold text-gray-900">{getPageTitle()}</h1>
             <div className="flex items-center space-x-2">
-              {/* Centro de notificaciones */}
-              <NotificationCenter />
+              {/* Espacio para futuras notificaciones */}
               
               {/* Botones de acción */}
               {(location === "/" || location === "/leads") && (
