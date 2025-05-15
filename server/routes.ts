@@ -1271,14 +1271,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configurar el servidor WebSocket para notificaciones en tiempo real
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
-  // Lista de clientes conectados
+  // Importar y registrar el servicio de notificaciones
+  const { notificationService } = await import('./services/notificationService');
+  
+  // Lista de clientes conectados (para compatibilidad con código existente)
   const clients = new Set<WebSocket>();
   
   // Evento cuando un cliente se conecta
   wss.on('connection', (ws: WebSocket) => {
     console.log('Cliente WebSocket conectado');
     
-    // Añadir a la lista de clientes
+    // Registrar cliente en el servicio de notificaciones avanzado
+    notificationService.registerClient(ws);
+    
+    // También añadir a la lista simple para compatibilidad
     clients.add(ws);
     
     // Enviar un mensaje de bienvenida
@@ -1287,10 +1293,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       message: 'Conectado al servidor de notificaciones en tiempo real'
     }));
     
-    // Evento cuando se recibe un mensaje del cliente
-    ws.on('message', (message: string) => {
+    // Simular autenticación del cliente (en producción usaríamos tokens)
+    setTimeout(() => {
       try {
-        const parsedMessage = JSON.parse(message.toString());
+        // Autenticar al cliente en el servicio de notificaciones
+        notificationService.authenticateClient(ws, 1, 'admin');
+        
+        // Enviar una notificación de sistema de prueba
+        notificationService.sendSystemNotification(
+          "Sistema inicializado", 
+          "El sistema de notificaciones en tiempo real está funcionando",
+          "low"
+        );
+      } catch (error) {
+        console.error('Error al autenticar cliente WebSocket:', error);
+      }
+    }, 1000);
+    
+    // Evento cuando se recibe un mensaje del cliente
+    ws.on('message', (message: any) => {
+      try {
+        let parsedMessage: any;
+        
+        if (typeof message === 'string') {
+          parsedMessage = JSON.parse(message);
+        } else if (message instanceof Buffer) {
+          parsedMessage = JSON.parse(message.toString('utf8'));
+        } else {
+          throw new Error('Formato de mensaje no soportado');
+        }
+        
         console.log('Mensaje recibido:', parsedMessage);
         
         // Aquí puedes manejar diferentes tipos de mensajes del cliente
