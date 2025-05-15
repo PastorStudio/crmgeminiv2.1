@@ -39,7 +39,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle, Upload, Database, FileText, FileSpreadsheet, CheckCircle, Phone, Clock } from "lucide-react";
+import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle, Upload, Database, FileText, FileSpreadsheet, CheckCircle, Phone, Clock, AlertCircle } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -542,11 +542,22 @@ export default function MassSender() {
       return response.json();
     },
     onSuccess: (data) => {
+      // Guardar los datos importados para mostrarlos en la tabla
       setImportedData(data);
-      toast({
-        title: "Datos importados",
-        description: `Se importaron ${data.validRows} contactos correctamente.`,
-      });
+      
+      // Mostrar un toast con el resumen de la importación
+      if (data.validRows > 0) {
+        toast({
+          title: "Datos importados correctamente",
+          description: `Se importaron ${data.validRows} contactos correctamente de ${data.totalRows} filas procesadas.`,
+        });
+      } else {
+        toast({
+          title: "No se importaron contactos",
+          description: `Se procesaron ${data.totalRows} filas pero no se pudo importar ningún contacto. Verifique el mapeo de campos.`,
+          variant: "destructive",
+        });
+      }
       
       // Si hay una campaña seleccionada, continuar con la importación
       if (selectedCampaignId) {
@@ -1268,6 +1279,77 @@ export default function MassSender() {
                       <li>Evitar URLs sospechosas o acortadas</li>
                       <li>Usar una cuenta con historial (más de 6 meses)</li>
                     </ul>
+                    {/* Tabla de Resultados de Importación */}
+                    <div className="mt-6 border rounded-md overflow-hidden">
+                      <h3 className="text-sm font-semibold bg-muted px-4 py-2 border-b">Resultados de Importación</h3>
+                      <div className="p-4">
+                        {importedData ? (
+                          <>
+                            <div className="grid grid-cols-4 gap-4 mb-4 text-sm font-medium">
+                              <div className="bg-green-100 dark:bg-green-900 p-3 rounded-md text-center">
+                                <p className="text-xl font-bold text-green-700 dark:text-green-300">{importedData?.validRows || 0}</p>
+                                <p className="text-green-800 dark:text-green-200">Contactos Válidos</p>
+                              </div>
+                              <div className="bg-red-100 dark:bg-red-900 p-3 rounded-md text-center">
+                                <p className="text-xl font-bold text-red-700 dark:text-red-300">{importedData?.invalidRows || 0}</p>
+                                <p className="text-red-800 dark:text-red-200">Contactos Inválidos</p>
+                              </div>
+                              <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-md text-center">
+                                <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{importedData?.totalRows || 0}</p>
+                                <p className="text-blue-800 dark:text-blue-200">Total Filas</p>
+                              </div>
+                              <div className="bg-amber-100 dark:bg-amber-900 p-3 rounded-md text-center">
+                                <p className="text-xl font-bold text-amber-700 dark:text-amber-300">{importedData?.contacts?.length || 0}</p>
+                                <p className="text-amber-800 dark:text-amber-200">Contactos Importados</p>
+                              </div>
+                            </div>
+
+                            {importedData.contacts && importedData.contacts.length > 0 ? (
+                              <div className="border rounded-md overflow-hidden">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>#</TableHead>
+                                      <TableHead>Teléfono</TableHead>
+                                      <TableHead>Nombre</TableHead>
+                                      <TableHead>Estado</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {importedData.contacts.slice(0, 10).map((contact: any, index: number) => (
+                                      <TableRow key={contact.id || index}>
+                                        <TableCell>{index + 1}</TableCell>
+                                        <TableCell>{contact.phoneNumber}</TableCell>
+                                        <TableCell>{contact.name || "Sin nombre"}</TableCell>
+                                        <TableCell>
+                                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                                            Importado
+                                          </Badge>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                                {importedData.contacts.length > 10 && (
+                                  <div className="p-2 text-center text-sm text-muted-foreground">
+                                    Mostrando 10 de {importedData.contacts.length} contactos
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-center py-6 text-muted-foreground">
+                                <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+                                <p>No se importó ningún contacto. Verifique el mapeo de campos.</p>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-center py-10 text-muted-foreground">
+                            <p>Importe datos de Excel para ver los resultados aquí</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
