@@ -116,13 +116,14 @@ export default function Analytics() {
                analyticsStatusData.success === true && 
                'status' in analyticsStatusData && 
                analyticsStatusData.status && 
+               typeof analyticsStatusData.status === 'object' &&
                'available' in analyticsStatusData.status && 
                analyticsStatusData.status.available === true,
     message: analyticsStatusData && 
              typeof analyticsStatusData === 'object' && 
              'status' in analyticsStatusData && 
              analyticsStatusData.status && 
-             'message' in analyticsStatusData.status ? 
+             typeof analyticsStatusData.status === 'object' && 'message' in analyticsStatusData.status ? 
              analyticsStatusData.status.message : 
              'Estado del servicio de análisis desconocido'
   };

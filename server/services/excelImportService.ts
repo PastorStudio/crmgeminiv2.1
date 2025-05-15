@@ -174,9 +174,9 @@ export class ExcelImportService {
       this.imports.set(importResult.id, importResult);
       
       return importResult;
-    } catch (error) {
-      console.error('Error importing Excel file:', error);
-      throw new Error(`Error importing Excel file: ${error.message}`);
+    } catch (err: any) {
+      console.error('Error importing Excel file:', err);
+      throw new Error(`Error importing Excel file: ${err?.message || String(err)}`);
     }
   }
 

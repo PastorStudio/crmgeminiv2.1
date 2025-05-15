@@ -1551,7 +1551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Manejar diferentes formatos del ID
             const chatId = typeof chat.id === 'string' 
               ? chat.id 
-              : (chat.id && typeof chat.id === 'object' && chat.id.hasOwnProperty('_serialized') 
+              : (chat.id && typeof chat.id === 'object' && Object.prototype.hasOwnProperty.call(chat.id, '_serialized') 
                 ? (chat.id as any)._serialized 
                 : String(chat.id));
                 
