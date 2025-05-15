@@ -105,7 +105,7 @@ interface SendingConfig {
 
 // Interfaz extendida para manejar archivos con nombre de servidor
 interface ExcelFile extends File {
-  serverFilename?: string;
+  serverFilename?: string; // Nombre del archivo en el servidor después de la carga
 }
 
 interface Campaign {
@@ -397,9 +397,17 @@ export default function MassSender() {
       });
       
       // Obtener las columnas del archivo
-      // Guardar el archivo seleccionado con el nombre devuelto por el servidor
-      setSelectedFile({...file, filename: data.filename});
-      analyzeExcelMutation.mutate(data.filename);
+      // Crear un objeto que combine la información del archivo y los datos del servidor
+      const currentInputFile = fileInputRef.current?.files?.[0];
+      if (currentInputFile) {
+        // Creamos un objeto que simula ser un archivo con la propiedad adicional serverFilename
+        const serverFile: ExcelFile = Object.assign(
+          currentInputFile, 
+          { serverFilename: data.filename }
+        );
+        setSelectedFile(serverFile);
+        analyzeExcelMutation.mutate(data.filename);
+      }
     },
     onError: (error) => {
       console.error("Error uploading Excel file:", error);
@@ -490,7 +498,7 @@ export default function MassSender() {
   
   // Mutación para importar datos de Excel
   const importExcelMutation = useMutation({
-    mutationFn: async (data: { filename: string, fieldMapping: Record<string, string>}) => {
+    mutationFn: async (data: { filename: string, originalname?: string, fieldMapping: Record<string, string>}) => {
       const response = await fetch('/api/excel/import', {
         method: 'POST',
         headers: {
@@ -715,7 +723,8 @@ export default function MassSender() {
     
     // Importar los datos de Excel
     importExcelMutation.mutate({
-      filename: selectedFile.filename, // Usamos el filename devuelto por el servidor
+      filename: selectedFile.serverFilename || selectedFile.name, // Usamos el nombre del servidor si existe
+      originalname: selectedFile.name, // Nombre original para referencia
       fieldMapping: filteredMapping
     });
   };
