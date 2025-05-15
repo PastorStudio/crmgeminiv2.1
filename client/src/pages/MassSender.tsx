@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { toast } from "@/hooks/use-toast";
-import { TemplateSelector, TemplatePreview } from "@/components/message-templates";
+import { TemplateSelector } from "@/components/message-templates/TemplateSelector";
+import { TemplatePreview } from "@/components/message-templates/TemplatePreview";
 import { 
   Card, 
   CardContent, 
@@ -102,11 +103,15 @@ export default function MassSender() {
   const [tab, setTab] = useState("new-campaign");
   const [campaignName, setCampaignName] = useState("");
   const [messageTemplate, setMessageTemplate] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [configOpen, setConfigOpen] = useState(false);
   const [currentConfig, setCurrentConfig] = useState<Partial<MassSendConfig>>({});
-  const [previewContact, setPreviewContact] = useState<any>(null);
+  const [previewContact, setPreviewContact] = useState<any>({
+    name: "Juan Pérez",
+    company: "Empresa Ejemplo S.A."
+  });
   
   // Consulta para obtener los grupos de contactos
   const { data: contactGroups, isLoading: loadingGroups } = useQuery({
