@@ -346,7 +346,7 @@ export function TemplateManager() {
                 </label>
                 <Textarea
                   id="content"
-                  placeholder="Ej: Hola {{nombre}}, gracias por contactarnos..."
+                  placeholder="Ej: Hola {nombre}, gracias por contactarnos..."
                   className="h-32"
                   value={newTemplate.content}
                   onChange={(e) => setNewTemplate({ ...newTemplate, content: e.target.value })}
@@ -550,7 +550,7 @@ export function TemplateManager() {
               </label>
               <Textarea
                 id="edit-content"
-                placeholder="Ej: Hola {{nombre}}, gracias por contactarnos..."
+                placeholder="Ej: Hola {nombre}, gracias por contactarnos..."
                 className="h-32"
                 value={editTemplate.content}
                 onChange={(e) => setEditTemplate({ ...editTemplate, content: e.target.value })}
