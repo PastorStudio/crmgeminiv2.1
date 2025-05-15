@@ -293,7 +293,9 @@ class MediaGalleryService {
       
       // Eliminar el archivo físico
       try {
-        await fs.promises.unlink(mediaItem.path.toString());
+        if (typeof mediaItem.path === 'string') {
+          await fs.promises.unlink(mediaItem.path);
+        }
       } catch (error) {
         console.error('Error al eliminar archivo físico:', error);
       }
