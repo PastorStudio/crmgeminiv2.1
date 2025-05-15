@@ -126,7 +126,7 @@ export default function RecentConversations() {
                             <p className="text-sm font-medium text-gray-900">
                               {isAI ? "AI Assistant" : lead?.fullName || `Lead #${message.leadId}`}
                             </p>
-                            <p className="text-sm text-gray-500 truncate">
+                            <p className="text-sm text-gray-500 truncate max-w-[95%] overflow-hidden text-ellipsis">
                               {message.content}
                             </p>
                           </div>
@@ -143,7 +143,7 @@ export default function RecentConversations() {
                       <div className="mt-2 flex justify-between">
                         <div className="flex items-center">
                           <span className="material-icons text-gray-400 text-sm mr-1">business</span>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 truncate max-w-[95%] overflow-hidden text-ellipsis">
                             {lead?.company || "Unknown Company"}
                           </p>
                         </div>
