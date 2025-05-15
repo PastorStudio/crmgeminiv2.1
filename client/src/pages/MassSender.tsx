@@ -103,6 +103,11 @@ interface SendingConfig {
   businessHoursEnd: number;
 }
 
+// Interfaz extendida para manejar archivos con nombre de servidor
+interface ExcelFile extends File {
+  serverFilename?: string;
+}
+
 interface Campaign {
   id: string;
   name: string;
@@ -161,7 +166,7 @@ export default function MassSender() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isFieldMappingOpen, setIsFieldMappingOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFile, setSelectedFile] = useState<ExcelFile | null>(null);
   const [excelColumns, setExcelColumns] = useState<string[]>([]);
   const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({
     phoneNumber: 'none',
