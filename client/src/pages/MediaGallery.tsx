@@ -32,13 +32,22 @@ export default function MediaGalleryPage() {
       <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Galería de Medios</h1>
-          <Button 
-            className="flex items-center gap-2" 
-            onClick={() => document.getElementById('upload-media-button')?.click()}
-          >
-            <UploadCloud className="h-4 w-4" />
-            Subir Archivo
-          </Button>
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={() => window.location.href = '/media-gallery/list'}
+            >
+              Ver Lista Completa
+            </Button>
+            <Button 
+              className="flex items-center gap-2" 
+              onClick={() => document.getElementById('upload-media-button')?.click()}
+            >
+              <UploadCloud className="h-4 w-4" />
+              Subir Archivo
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
