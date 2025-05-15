@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Galería de Medios</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f9;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-top: 0;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #34495e;
+        }
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="file"] {
+            padding: 10px 0;
+        }
+        .file-input-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .upload-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .upload-btn:hover {
+            background-color: #2980b9;
+        }
+        .tag-input {
+            display: flex;
+            flex-wrap: wrap;
+            border: 1px solid #ddd;
+            padding: 5px;
+            border-radius: 4px;
+            min-height: 44px;
+        }
+        .tag {
+            background-color: #e1f0fa;
+            border: 1px solid #3498db;
+            margin: 3px;
+            padding: 5px 10px;
+            border-radius: 15px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .tag-close {
+            margin-left: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .tag-input input {
+            flex: 1;
+            border: none;
+            outline: none;
+            padding: 5px;
+            min-width: 100px;
+        }
+        .gallery {
+            margin-top: 40px;
+        }
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        .media-item {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+        .media-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+        .media-item .media-info {
+            padding: 8px;
+            font-size: 12px;
+        }
+        .media-item .media-title {
+            font-weight: bold;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .status-message {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            display: none;
+        }
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Prueba de Galería de Medios</h1>
+        
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="file">Seleccionar Archivo:</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="file" name="file" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="type">Tipo de Archivo:</label>
+                <select id="type" name="type" required>
+                    <option value="image">Imagen</option>
+                    <option value="document">Documento</option>
+                    <option value="audio">Audio</option>
+                    <option value="video">Video</option>
+                    <option value="other">Otro</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="title">Título:</label>
+                <input type="text" id="title" name="title" placeholder="Ingrese un título para el archivo">
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Descripción:</label>
+                <textarea id="description" name="description" rows="3" placeholder="Ingrese una descripción"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Etiquetas:</label>
+                <div class="tag-input" id="tagContainer">
+                    <input type="text" id="tagInput" placeholder="Añadir etiqueta (Enter)">
+                </div>
+                <input type="hidden" id="tags" name="tags">
+            </div>
+            
+            <button type="submit" class="upload-btn">Subir Archivo</button>
+        </form>
+        
+        <div id="statusMessage" class="status-message"></div>
+        
+        <div class="gallery">
+            <h2>Archivos Recientes</h2>
+            <div class="media-grid" id="mediaGrid"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Manejo de etiquetas
+            const tagContainer = document.getElementById('tagContainer');
+            const tagInput = document.getElementById('tagInput');
+            const tagsHidden = document.getElementById('tags');
+            const tags = [];
+            
+            tagInput.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' && this.value.trim() !== '') {
+                    event.preventDefault();
+                    addTag(this.value.trim());
+                    this.value = '';
+                    updateTagsInput();
+                }
+            });
+            
+            function addTag(text) {
+                const tag = document.createElement('div');
+                tag.className = 'tag';
+                tag.innerHTML = text + '<span class="tag-close">×</span>';
+                
+                tag.querySelector('.tag-close').addEventListener('click', function() {
+                    const index = tags.indexOf(text);
+                    if (index !== -1) {
+                        tags.splice(index, 1);
+                    }
+                    tagContainer.removeChild(tag);
+                    updateTagsInput();
+                });
+                
+                tagContainer.insertBefore(tag, tagInput);
+                tags.push(text);
+            }
+            
+            function updateTagsInput() {
+                tagsHidden.value = JSON.stringify(tags);
+            }
+            
+            // Subida de archivos
+            const uploadForm = document.getElementById('uploadForm');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            uploadForm.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                
+                const formData = new FormData();
+                
+                // Añadir archivo
+                const fileInput = document.getElementById('file');
+                if (fileInput.files.length > 0) {
+                    formData.append('file', fileInput.files[0]);
+                } else {
+                    showStatus('Por favor seleccione un archivo', false);
+                    return;
+                }
+                
+                // Añadir tipo
+                formData.append('type', document.getElementById('type').value);
+                
+                // Añadir título y descripción si están presentes
+                const title = document.getElementById('title').value;
+                if (title) formData.append('title', title);
+                
+                const description = document.getElementById('description').value;
+                if (description) formData.append('description', description);
+                
+                // Añadir etiquetas si existen
+                if (tags.length > 0) {
+                    formData.append('tags', JSON.stringify(tags));
+                }
+                
+                try {
+                    const response = await fetch('/api/media-gallery/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        showStatus('¡Archivo subido correctamente!', true);
+                        uploadForm.reset();
+                        clearTags();
+                        loadMediaItems();
+                    } else {
+                        showStatus(`Error: ${result.message || 'No se pudo subir el archivo'}`, false);
+                    }
+                } catch (error) {
+                    showStatus(`Error de conexión: ${error.message}`, false);
+                }
+            });
+            
+            function showStatus(message, isSuccess) {
+                statusMessage.textContent = message;
+                statusMessage.className = 'status-message ' + (isSuccess ? 'status-success' : 'status-error');
+                statusMessage.style.display = 'block';
+                
+                setTimeout(() => {
+                    statusMessage.style.display = 'none';
+                }, 5000);
+            }
+            
+            function clearTags() {
+                const tagElements = document.querySelectorAll('.tag');
+                tagElements.forEach(tag => tag.remove());
+                tags.length = 0;
+                updateTagsInput();
+            }
+            
+            // Cargar elementos de media
+            async function loadMediaItems() {
+                try {
+                    const response = await fetch('/api/media-gallery/list?limit=12');
+                    const data = await response.json();
+                    
+                    if (data.success && data.items) {
+                        renderMediaItems(data.items);
+                    }
+                } catch (error) {
+                    console.error('Error cargando archivos:', error);
+                }
+            }
+            
+            function renderMediaItems(items) {
+                const mediaGrid = document.getElementById('mediaGrid');
+                mediaGrid.innerHTML = '';
+                
+                if (items.length === 0) {
+                    mediaGrid.innerHTML = '<p>No hay archivos disponibles</p>';
+                    return;
+                }
+                
+                items.forEach(item => {
+                    const mediaItem = document.createElement('div');
+                    mediaItem.className = 'media-item';
+                    
+                    let content = '';
+                    if (item.type === 'image') {
+                        content = `<img src="/api/media/${item.id}" alt="${item.title || 'Imagen'}">`;
+                    } else {
+                        content = `
+                            <div style="height: 150px; display: flex; align-items: center; justify-content: center; background-color: #f1f1f1;">
+                                <span>${getFileTypeIcon(item.type)}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    mediaItem.innerHTML = `
+                        ${content}
+                        <div class="media-info">
+                            <div class="media-title">${item.title || item.originalFilename || 'Sin título'}</div>
+                            <div>${formatFileSize(item.size)}</div>
+                        </div>
+                    `;
+                    
+                    mediaGrid.appendChild(mediaItem);
+                });
+            }
+            
+            function getFileTypeIcon(type) {
+                const icons = {
+                    document: '📄',
+                    audio: '🎵',
+                    video: '🎬',
+                    other: '📎'
+                };
+                
+                return icons[type] || '📎';
+            }
+            
+            function formatFileSize(bytes) {
+                if (bytes < 1024) {
+                    return bytes + ' B';
+                } else if (bytes < 1024 * 1024) {
+                    return (bytes / 1024).toFixed(1) + ' KB';
+                } else {
+                    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+                }
+            }
+            
+            // Inicializar
+            loadMediaItems();
+        });
+    </script>
+</body>
+</html>
