@@ -69,6 +69,16 @@ interface ContactGroup {
   count: number;
 }
 
+interface ContactStatus {
+  id: string;
+  phoneNumber: string;
+  name?: string;
+  status: 'pending' | 'processing' | 'sent' | 'failed' | 'verified';
+  sentAt?: string;
+  verifiedAt?: string;
+  errorMessage?: string;
+}
+
 interface MassSendConfig {
   delayBetweenMessages: number;
   pauseBetweenChunks: number;
@@ -119,6 +129,7 @@ interface Campaign {
   targetGroups: string[] | [];
   targetTags: string[] | [];
   excludedContacts: string[] | [];
+  contacts?: ContactStatus[];
 }
 
 export default function MassSender() {

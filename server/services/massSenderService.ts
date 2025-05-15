@@ -472,6 +472,42 @@ export class MassSenderService extends EventEmitter {
   private getRandomInterval(min: number, max: number): number {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
+  
+  // Verificar que un mensaje ha sido entregado correctamente
+  async verifyMessageSent(campaignId: number, contactId: string, messageId?: string): Promise<boolean> {
+    // Obtener la campaña
+    const campaign = await this.getCampaignById(campaignId);
+    if (!campaign) return false;
+    
+    // Obtener lista de destinatarios
+    const recipientList = (campaign.recipientList || []) as MessageRecipient[];
+    
+    // Buscar el contacto específico
+    const contactIndex = recipientList.findIndex(contact => contact.id === contactId);
+    if (contactIndex === -1) return false;
+    
+    // Actualizar el estado del contacto a verificado
+    recipientList[contactIndex].status = 'delivered';
+    recipientList[contactIndex].deliveredAt = new Date();
+    
+    // Actualizar las estadísticas
+    const stats = campaign.stats as CampaignStats;
+    stats.delivered = (stats.delivered || 0) + 1;
+    
+    // Guardar los cambios en la base de datos
+    await db.update(marketingCampaigns)
+      .set({
+        recipientList,
+        stats,
+        updatedAt: new Date()
+      })
+      .where(eq(marketingCampaigns.id, campaignId));
+    
+    // Actualizar la lista en memoria
+    this.campaignRecipients.set(campaignId, recipientList);
+    
+    return true;
+  }
 }
 
 export const massSenderService = new MassSenderService();
