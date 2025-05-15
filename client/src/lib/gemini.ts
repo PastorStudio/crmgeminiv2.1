@@ -176,12 +176,15 @@ export class GeminiClient {
    */
   async analyzeMessage(message: string, context?: string) {
     try {
-      const response = await apiRequest("POST", "/api/gemini/extract-info", {
-        text: message,
-        context,
-        professionLevel: this.config.professionLevel
+      const response = await apiRequest("/api/gemini/extract-info", {
+        method: "POST",
+        body: {
+          text: message,
+          context,
+          professionLevel: this.config.professionLevel
+        }
       });
-      return await response.json() as MessageAnalysis;
+      return response as MessageAnalysis;
     } catch (error) {
       console.error("Error analyzing message with Gemini:", error);
       throw error;
@@ -193,12 +196,15 @@ export class GeminiClient {
    */
   async categorizeChat(chatId: string, messageCount: number = 10) {
     try {
-      const response = await apiRequest("POST", "/api/gemini/generate-tags", {
-        chatId,
-        messageCount,
-        professionLevel: this.config.professionLevel
+      const response = await apiRequest("/api/gemini/generate-tags", {
+        method: "POST",
+        body: {
+          chatId,
+          messageCount,
+          professionLevel: this.config.professionLevel
+        }
       });
-      return await response.json() as ChatCategory[];
+      return response as ChatCategory[];
     } catch (error) {
       console.error("Error categorizing chat with Gemini:", error);
       throw error;
@@ -210,12 +216,15 @@ export class GeminiClient {
    */
   async suggestAction(chatId: string, leadId?: number) {
     try {
-      const response = await apiRequest("POST", "/api/gemini/suggest-action", {
-        chatId,
-        leadId,
-        professionLevel: this.config.professionLevel
+      const response = await apiRequest("/api/gemini/suggest-action", {
+        method: "POST",
+        body: {
+          chatId,
+          leadId,
+          professionLevel: this.config.professionLevel
+        }
       });
-      return await response.json();
+      return response;
     } catch (error) {
       console.error("Error getting action suggestion with Gemini:", error);
       throw error;
