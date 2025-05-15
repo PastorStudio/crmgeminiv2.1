@@ -16,6 +16,13 @@ import { db } from "./db";
 // Importar las rutas de WhatsApp
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 import { autoResponseService } from "./services/autoResponseService";
+import multer from "multer";
+import { messageTemplateService } from "./services/messageTemplateService";
+import { excelImportService } from "./services/excelImportService";
+import { massSenderService } from "./services/massSenderService";
+
+// Configurar middleware para upload de archivos
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Profile update schema
 const profileUpdateSchema = z.object({
@@ -1109,52 +1116,213 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Crear servidor HTTP
   const httpServer = createServer(app);
   
-  // Rutas para Envío Masivo de WhatsApp
-  
-  // Obtener todas las campañas
+  // Rutas para plantillas de mensajes
+  app.get("/api/message-templates", async (req: Request, res: Response) => {
+    try {
+      const templates = await messageTemplateService.getAllTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error("Error al obtener plantillas:", error);
+      res.status(500).json({ error: "Error al obtener plantillas" });
+    }
+  });
+
+  app.get("/api/message-templates/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const template = await messageTemplateService.getTemplateById(id);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Plantilla no encontrada" });
+      }
+      
+      res.json(template);
+    } catch (error) {
+      console.error("Error al obtener plantilla:", error);
+      res.status(500).json({ error: "Error al obtener plantilla" });
+    }
+  });
+
+  app.post("/api/message-templates", async (req: Request, res: Response) => {
+    try {
+      const templateData = req.body;
+      const template = await messageTemplateService.createTemplate(templateData);
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Error al crear plantilla:", error);
+      res.status(500).json({ error: "Error al crear plantilla" });
+    }
+  });
+
+  app.patch("/api/message-templates/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const templateData = req.body;
+      const template = await messageTemplateService.updateTemplate(id, templateData);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Plantilla no encontrada" });
+      }
+      
+      res.json(template);
+    } catch (error) {
+      console.error("Error al actualizar plantilla:", error);
+      res.status(500).json({ error: "Error al actualizar plantilla" });
+    }
+  });
+
+  app.delete("/api/message-templates/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await messageTemplateService.deleteTemplate(id);
+      
+      if (!success) {
+        return res.status(404).json({ error: "Plantilla no encontrada" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error al eliminar plantilla:", error);
+      res.status(500).json({ error: "Error al eliminar plantilla" });
+    }
+  });
+
+  app.get("/api/message-templates/:id/variables", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const variables = await messageTemplateService.analyzeTemplateVariables(id);
+      
+      res.json({ variables });
+    } catch (error) {
+      console.error("Error al analizar variables de plantilla:", error);
+      res.status(500).json({ error: "Error al analizar variables de plantilla" });
+    }
+  });
+
+  // No hay configuración adicional para el middleware de upload de archivos
+
+  // Rutas para importación de Excel
+  app.post("/api/excel/upload", upload.single('file'), async (req: Request, res: Response) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: "No se ha proporcionado ningún archivo" });
+      }
+      
+      const filename = await excelImportService.saveUploadedFile(file);
+      
+      res.json({ 
+        success: true, 
+        filename,
+        originalname: file.originalname
+      });
+    } catch (error) {
+      console.error("Error al subir archivo Excel:", error);
+      res.status(500).json({ error: "Error al subir archivo Excel" });
+    }
+  });
+
+  app.get("/api/excel/analyze/:filename", async (req: Request, res: Response) => {
+    try {
+      const filename = req.params.filename;
+      const columns = await excelImportService.analyzeExcelFile(filename);
+      
+      res.json({ columns });
+    } catch (error) {
+      console.error("Error al analizar archivo Excel:", error);
+      res.status(500).json({ error: "Error al analizar archivo Excel" });
+    }
+  });
+
+  app.post("/api/excel/import", async (req: Request, res: Response) => {
+    try {
+      const { filename, originalname, fieldMapping } = req.body;
+      
+      if (!filename || !fieldMapping) {
+        return res.status(400).json({ error: "Se requiere filename y fieldMapping" });
+      }
+      
+      const importResult = await excelImportService.importFromExcel(
+        filename,
+        originalname || filename,
+        fieldMapping
+      );
+      
+      res.json(importResult);
+    } catch (error) {
+      console.error("Error al importar datos desde Excel:", error);
+      res.status(500).json({ error: "Error al importar datos desde Excel" });
+    }
+  });
+
+  app.get("/api/excel/imports", async (req: Request, res: Response) => {
+    try {
+      const imports = excelImportService.listImports();
+      res.json(imports);
+    } catch (error) {
+      console.error("Error al obtener lista de importaciones:", error);
+      res.status(500).json({ error: "Error al obtener lista de importaciones" });
+    }
+  });
+
+  app.get("/api/excel/imports/:id", async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id;
+      const importResult = excelImportService.getImportResult(id);
+      
+      if (!importResult) {
+        return res.status(404).json({ error: "Importación no encontrada" });
+      }
+      
+      res.json(importResult);
+    } catch (error) {
+      console.error("Error al obtener importación:", error);
+      res.status(500).json({ error: "Error al obtener importación" });
+    }
+  });
+
+  app.delete("/api/excel/imports/:id", async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id;
+      const success = excelImportService.deleteImport(id);
+      
+      if (!success) {
+        return res.status(404).json({ error: "Importación no encontrada" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error al eliminar importación:", error);
+      res.status(500).json({ error: "Error al eliminar importación" });
+    }
+  });
+
+  // Rutas para campañas de marketing
   app.get("/api/mass-sender/campaigns", async (req: Request, res: Response) => {
     try {
-      const { massSenderService } = await import('./services/massSenderService.js');
-      const campaigns = await massSenderService.getAllCampaigns();
+      const campaigns = await massSenderService.getCampaigns();
       res.json(campaigns);
     } catch (error) {
       console.error("Error al obtener campañas:", error);
-      res.status(500).json({ error: String(error) });
+      res.status(500).json({ error: "Error al obtener campañas" });
     }
   });
-  
-  // Crear nueva campaña
+
   app.post("/api/mass-sender/campaigns", async (req: Request, res: Response) => {
     try {
-      const { name, messageTemplate, targetGroups, targetTags, config } = req.body;
-      
-      if (!name || !messageTemplate) {
-        return res.status(400).json({ error: "Nombre y plantilla de mensaje son requeridos" });
-      }
-      
-      const { massSenderService } = await import('./services/massSenderService');
-      const campaign = await massSenderService.createCampaign(
-        name, 
-        messageTemplate, 
-        targetGroups || [], 
-        targetTags || [], 
-        config || {}
-      );
-      
+      const campaignData = req.body;
+      const campaign = await massSenderService.createCampaign(campaignData);
       res.status(201).json(campaign);
     } catch (error) {
       console.error("Error al crear campaña:", error);
-      res.status(500).json({ error: String(error) });
+      res.status(500).json({ error: "Error al crear campaña" });
     }
   });
-  
-  // Obtener detalles de una campaña
+
   app.get("/api/mass-sender/campaigns/:id", async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
-      const { massSenderService } = await import('./services/massSenderService');
-      
-      const campaign = massSenderService.getCampaignStatus(id);
+      const id = parseInt(req.params.id);
+      const campaign = await massSenderService.getCampaignById(id);
       
       if (!campaign) {
         return res.status(404).json({ error: "Campaña no encontrada" });
@@ -1162,65 +1330,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(campaign);
     } catch (error) {
-      console.error(`Error al obtener campaña ${req.params.id}:`, error);
-      res.status(500).json({ error: String(error) });
+      console.error("Error al obtener campaña:", error);
+      res.status(500).json({ error: "Error al obtener campaña" });
     }
   });
-  
-  // Iniciar una campaña
+
+  app.patch("/api/mass-sender/campaigns/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const campaignData = req.body;
+      const campaign = await massSenderService.updateCampaign(id, campaignData);
+      
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaña no encontrada" });
+      }
+      
+      res.json(campaign);
+    } catch (error) {
+      console.error("Error al actualizar campaña:", error);
+      res.status(500).json({ error: "Error al actualizar campaña" });
+    }
+  });
+
+  app.post("/api/mass-sender/campaigns/:id/import", async (req: Request, res: Response) => {
+    try {
+      const campaignId = parseInt(req.params.id);
+      const { importId } = req.body;
+      
+      if (!importId) {
+        return res.status(400).json({ error: "Se requiere el ID de importación" });
+      }
+      
+      const success = await massSenderService.importContactsFromExcel(campaignId, importId);
+      
+      if (!success) {
+        return res.status(404).json({ error: "Campaña o importación no encontrada" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error al importar contactos a la campaña:", error);
+      res.status(500).json({ error: "Error al importar contactos a la campaña" });
+    }
+  });
+
   app.post("/api/mass-sender/campaigns/:id/start", async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
-      const { massSenderService } = await import('./services/massSenderService');
+      const id = parseInt(req.params.id);
+      const success = await massSenderService.startCampaign(id);
       
-      const result = await massSenderService.startCampaign(id);
-      
-      if (!result) {
-        return res.status(400).json({ error: "No se pudo iniciar la campaña" });
+      if (!success) {
+        return res.status(400).json({ 
+          error: "No se pudo iniciar la campaña",
+          details: "Verifique que WhatsApp esté conectado y que la campaña contenga destinatarios"
+        });
       }
       
       res.json({ success: true });
     } catch (error) {
-      console.error(`Error al iniciar campaña ${req.params.id}:`, error);
-      res.status(500).json({ error: String(error) });
+      console.error("Error al iniciar campaña:", error);
+      res.status(500).json({ error: "Error al iniciar campaña" });
     }
   });
-  
-  // Pausar una campaña
+
   app.post("/api/mass-sender/campaigns/:id/pause", async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
-      const { massSenderService } = await import('./services/massSenderService');
+      const id = parseInt(req.params.id);
+      const success = await massSenderService.pauseCampaign(id);
       
-      const result = await massSenderService.pauseCampaign(id);
-      
-      if (!result) {
-        return res.status(400).json({ error: "No se pudo pausar la campaña" });
+      if (!success) {
+        return res.status(404).json({ error: "Campaña no encontrada" });
       }
       
       res.json({ success: true });
     } catch (error) {
-      console.error(`Error al pausar campaña ${req.params.id}:`, error);
-      res.status(500).json({ error: String(error) });
+      console.error("Error al pausar campaña:", error);
+      res.status(500).json({ error: "Error al pausar campaña" });
     }
   });
-  
-  // Reanudar una campaña
+
   app.post("/api/mass-sender/campaigns/:id/resume", async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
-      const { massSenderService } = await import('./services/massSenderService');
+      const id = parseInt(req.params.id);
+      const success = await massSenderService.resumeCampaign(id);
       
-      const result = await massSenderService.resumeCampaign(id);
-      
-      if (!result) {
-        return res.status(400).json({ error: "No se pudo reanudar la campaña" });
+      if (!success) {
+        return res.status(404).json({ error: "Campaña no encontrada o no está pausada" });
       }
       
       res.json({ success: true });
     } catch (error) {
-      console.error(`Error al reanudar campaña ${req.params.id}:`, error);
-      res.status(500).json({ error: String(error) });
+      console.error("Error al reanudar campaña:", error);
+      res.status(500).json({ error: "Error al reanudar campaña" });
     }
   });
   
