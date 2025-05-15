@@ -610,8 +610,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: "Programar una llamada de seguimiento",
         priority: "alta",
         timeframe: "próximos 2 días",
-        reasoning: `El lead ${lead.fullName} ha mostrado interés en nuestros servicios. Sería ideal realizar una llamada para resolver dudas pendientes.`,
-        script: `Hola ${lead.fullName}, notamos que estabas interesado en nuestro plan premium. Te llamo para ver si tienes alguna pregunta que pueda responderte y para discutir cómo podríamos adaptar nuestra solución a tus necesidades específicas.`
+        reasoning: `El lead ${lead.name} ha mostrado interés en nuestros servicios. Sería ideal realizar una llamada para resolver dudas pendientes.`,
+        script: `Hola ${lead.name}, notamos que estabas interesado en nuestro plan premium. Te llamo para ver si tienes alguna pregunta que pueda responderte y para discutir cómo podríamos adaptar nuestra solución a tus necesidades específicas.`
       };
       
       res.json({ 
