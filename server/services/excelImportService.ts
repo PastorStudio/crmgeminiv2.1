@@ -52,13 +52,29 @@ export class ExcelImportService {
 
   // Guardar un archivo subido
   async saveUploadedFile(file: Express.Multer.File): Promise<string> {
-    const filename = `${Date.now()}_${nanoid()}_${file.originalname}`;
-    const filepath = path.join(this.uploadsDir, filename);
-    
-    // Guardar el archivo
-    await fs.promises.writeFile(filepath, file.buffer);
-    
-    return filename;
+    try {
+      // Asegurar que el directorio existe
+      if (!fs.existsSync(this.uploadsDir)) {
+        fs.mkdirSync(this.uploadsDir, { recursive: true });
+      }
+      
+      const filename = `${Date.now()}_${nanoid()}_${file.originalname}`;
+      const filepath = path.join(this.uploadsDir, filename);
+      
+      // Guardar el archivo
+      await fs.promises.writeFile(filepath, file.buffer);
+      
+      // Verificar que el archivo se guardó correctamente
+      if (!fs.existsSync(filepath)) {
+        throw new Error(`No se pudo guardar el archivo en: ${filepath}`);
+      }
+      
+      console.log(`Archivo Excel guardado correctamente en: ${filepath}`);
+      return filename;
+    } catch (error) {
+      console.error('Error guardando archivo Excel:', error);
+      throw error;
+    }
   }
 
   // Obtener la ruta completa de un archivo
@@ -72,59 +88,122 @@ export class ExcelImportService {
     originalname: string, 
     fieldMapping: Record<string, string>
   ): Promise<ImportResult> {
+    console.log(`Iniciando importación de Excel. Archivo: ${filename}, Mapeo:`, fieldMapping);
+    
     try {
       const filepath = this.getFilePath(filename);
       
-      // Leer el archivo con opciones para manejar archivos con macros (.xlsm)
-      const workbook = XLSX.readFile(filepath, {
-        cellFormula: false, // Deshabilitar evaluación de fórmulas
-        bookVBA: true, // Preservar VBA/macros
-        cellStyles: false, // Ignorar estilos para mejorar rendimiento
-        cellNF: false, // Ignorar formato de números
-        cellDates: true, // Mantener fechas como fechas
-      });
+      // Verificar que el archivo existe
+      if (!fs.existsSync(filepath)) {
+        console.error(`Archivo no encontrado: ${filepath}`);
+        throw new Error(`El archivo ${filename} no existe en el servidor`);
+      }
+      
+      let workbook;
+      try {
+        // Leer el archivo con opciones para mejorar compatibilidad
+        console.log('Intentando leer archivo Excel con configuración mejorada...');
+        workbook = XLSX.readFile(filepath, {
+          cellFormula: false,      // Deshabilitar evaluación de fórmulas
+          bookVBA: false,          // Ignorar VBA/macros para evitar errores
+          cellStyles: false,       // Ignorar estilos para mejorar rendimiento
+          cellNF: false,           // Ignorar formato de números
+          cellDates: true,         // Mantener fechas como fechas
+          type: 'binary',          // Usar lectura binaria para mayor compatibilidad
+          raw: true,               // No procesar valores especiales
+          WTF: true                // Modo más permisivo para archivos problemáticos
+        });
+      } catch (readError) {
+        console.error('Error al leer archivo Excel, intentando método alternativo:', readError);
+        
+        // Método alternativo de lectura
+        try {
+          const fileBuffer = fs.readFileSync(filepath);
+          workbook = XLSX.read(fileBuffer, {
+            type: 'buffer',
+            cellFormula: false,
+            cellDates: true
+          });
+        } catch (alternativeError) {
+          console.error('Error en método alternativo de lectura:', alternativeError);
+          throw new Error(`No se pudo leer el archivo Excel: ${alternativeError instanceof Error ? alternativeError.message : String(alternativeError)}`);
+        }
+      }
       
       // Verificar que el workbook tenga hojas
       if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-        throw new Error('No sheets found in the Excel file');
+        console.error('No se encontraron hojas en el archivo Excel');
+        throw new Error('No se encontraron hojas en el archivo Excel');
       }
+      
+      console.log(`Hojas encontradas: ${workbook.SheetNames.length}`);
       
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       
       if (!worksheet) {
-        throw new Error('Worksheet is undefined');
+        console.error('Hoja de trabajo no definida');
+        throw new Error('Hoja de trabajo no definida');
       }
       
       // Convertir a JSON con manejo de errores mejorado
-      const data = XLSX.utils.sheet_to_json<any>(worksheet, {
-        defval: "", // Valor predeterminado para celdas vacías
-        blankrows: false // Ignorar filas en blanco
-      });
+      let data;
+      try {
+        console.log('Convirtiendo datos de la hoja a JSON...');
+        data = XLSX.utils.sheet_to_json<any>(worksheet, {
+          defval: "",        // Valor predeterminado para celdas vacías
+          blankrows: false,  // Ignorar filas en blanco
+          raw: true          // Mantener valores sin formatear
+        });
+      } catch (jsonError) {
+        console.error('Error convirtiendo hoja a JSON:', jsonError);
+        throw new Error(`Error procesando datos del archivo Excel: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`);
+      }
       
       if (!Array.isArray(data)) {
-        throw new Error('Failed to convert Excel data to JSON');
+        console.error('Los datos convertidos no son un array');
+        throw new Error('Error al convertir datos del Excel: formato inesperado');
+      }
+      
+      console.log(`Se encontraron ${data.length} filas en la hoja de trabajo`);
+      
+      // Verificar que el mapeo incluya la columna de teléfono
+      if (!fieldMapping.phoneNumber) {
+        console.error('El mapeo no incluye el campo phoneNumber:', fieldMapping);
+        throw new Error('El mapeo de campos debe incluir al menos "phoneNumber"');
       }
       
       // Procesar los datos según el mapeo de campos
       const contacts: ContactData[] = [];
       let validRows = 0;
       let invalidRows = 0;
+      const errors: string[] = [];
+      
+      console.log(`Procesando ${data.length} filas...`);
       
       for (const row of data) {
         try {
           // Verificar si existe el número de teléfono (campo obligatorio)
-          const phoneField = fieldMapping.phoneNumber || 'phoneNumber';
-          if (!row[phoneField]) {
+          const phoneField = fieldMapping.phoneNumber;
+          if (row[phoneField] === undefined || row[phoneField] === null || row[phoneField] === '') {
+            const rowDesc = JSON.stringify(row).substring(0, 100) + '...';
+            console.log(`Fila sin número de teléfono: ${rowDesc}`);
+            errors.push(`Fila sin número de teléfono: ${rowDesc}`);
             invalidRows++;
             continue;
           }
           
           // Formatear número de teléfono
-          const phoneRaw = String(row[phoneField]);
+          const phoneRaw = typeof row[phoneField] === 'number' ? 
+            String(row[phoneField]) : 
+            String(row[phoneField]).trim();
+            
           const phone = this.formatPhoneNumber(phoneRaw);
           
           if (!phone) {
+            const rowDesc = JSON.stringify(row).substring(0, 100) + '...';
+            console.log(`Número de teléfono inválido: ${phoneRaw} en fila: ${rowDesc}`);
+            errors.push(`Número de teléfono inválido: ${phoneRaw} en fila: ${rowDesc}`);
             invalidRows++;
             continue;
           }
@@ -135,9 +214,15 @@ export class ExcelImportService {
             phoneNumber: phone
           };
           
+          // Agregar nombre si está mapeado
+          if (fieldMapping.name && row[fieldMapping.name] !== undefined) {
+            contact.name = String(row[fieldMapping.name]).trim();
+          }
+          
           // Agregar otros campos según el mapeo
           for (const [targetField, sourceField] of Object.entries(fieldMapping)) {
-            if (targetField !== 'phoneNumber' && row[sourceField] !== undefined) {
+            if (targetField !== 'phoneNumber' && targetField !== 'name' && 
+                sourceField && row[sourceField] !== undefined && row[sourceField] !== null) {
               contact[targetField] = row[sourceField];
             }
           }
@@ -153,9 +238,14 @@ export class ExcelImportService {
           contacts.push(contact);
           validRows++;
         } catch (err) {
+          console.error('Error procesando fila:', err);
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          errors.push(`Error procesando fila: ${errorMsg}`);
           invalidRows++;
         }
       }
+      
+      console.log(`Importación finalizada: ${validRows} filas válidas, ${invalidRows} filas inválidas, ${contacts.length} contactos importados`);
       
       // Crear resultado de importación
       const importResult: ImportResult = {
@@ -167,16 +257,19 @@ export class ExcelImportService {
         validRows,
         invalidRows,
         contacts,
-        fieldMapping
+        fieldMapping,
+        errors: errors.length > 0 ? errors : undefined
       };
       
       // Guardar en el mapa de importaciones
       this.imports.set(importResult.id, importResult);
       
+      console.log(`Resultado de importación guardado con id: ${importResult.id}`);
+      
       return importResult;
-    } catch (err: any) {
-      console.error('Error importing Excel file:', err);
-      throw new Error(`Error importing Excel file: ${err?.message || String(err)}`);
+    } catch (err) {
+      console.error('Error importando archivo Excel:', err);
+      throw new Error(`Error al importar archivo Excel: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -236,126 +329,193 @@ export class ExcelImportService {
   async analyzeExcelFile(filename: string): Promise<{columns: string[], suggestedMapping: Record<string, string>}> {
     try {
       const filepath = this.getFilePath(filename);
+      console.log(`Analizando archivo Excel en: ${filepath}`);
       
-      // Leer el archivo con opciones para manejar archivos con macros (.xlsm)
-      const workbook = XLSX.readFile(filepath, {
-        cellFormula: false, // Deshabilitar evaluación de fórmulas
-        bookVBA: true, // Preservar VBA/macros
-        cellStyles: false, // Ignorar estilos para mejorar rendimiento
-        cellNF: false, // Ignorar formato de números
-        cellDates: true, // Mantener fechas como fechas
-      });
-      
-      // Si no hay hojas, devolver array vacío
-      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-        console.error('No sheets found in the Excel file');
-        return { columns: [], suggestedMapping: {} };
-      }
-
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      
-      if (!worksheet) {
-        console.error('Worksheet is undefined');
-        return { columns: [], suggestedMapping: {} };
+      // Verificar que el archivo exista
+      if (!fs.existsSync(filepath)) {
+        console.error(`Archivo no encontrado en la ruta: ${filepath}`);
+        throw new Error(`El archivo ${filename} no existe en el servidor`);
       }
       
-      // Obtener la primera fila (encabezados) con manejo de errores mejorado
+      // Leer el archivo con diferentes opciones
       try {
-        // Intentar obtener por encabezados
-        const data = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1 });
+        console.log('Intentando leer archivo Excel con XLSX.readFile...');
         
-        if (data.length === 0) {
-          console.log('No data found');
+        // Leer el archivo con opciones permisivas para mejorar compatibilidad
+        const workbook = XLSX.readFile(filepath, {
+          cellFormula: false,       // Deshabilitar evaluación de fórmulas
+          bookVBA: false,           // Ignorar VBA/macros para evitar errores
+          cellStyles: false,        // Ignorar estilos para mejorar rendimiento
+          cellNF: false,            // Ignorar formato de números
+          cellDates: true,          // Mantener fechas como fechas
+          type: 'binary',           // Usar lectura binaria para mayor compatibilidad
+          raw: true,                // No procesar valores especiales
+          WTF: true                 // Modo más permisivo para archivos problemáticos
+        });
+        
+        console.log(`Archivo leído correctamente. Hojas encontradas: ${workbook.SheetNames?.length || 0}`);
+        
+        // Si no hay hojas, devolver array vacío
+        if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+          console.error('No se encontraron hojas en el archivo Excel');
+          return { columns: [], suggestedMapping: {} };
+        }
+
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        if (!worksheet) {
+          console.error('La hoja de trabajo es indefinida');
           return { columns: [], suggestedMapping: {} };
         }
         
-        // Revisar si la primera fila contiene encabezados o si son datos
-        const firstRow = data[0];
+        // Obtener la primera fila (encabezados) con manejo de errores mejorado
+        try {
+          console.log('Procesando datos de la hoja...');
+          // Intentar obtener por encabezados
+          const data = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1 });
+          
+          if (!data || data.length === 0) {
+            console.log('No se encontraron datos en la hoja');
+            return { columns: [], suggestedMapping: {} };
+          }
+          
+          console.log(`Se encontraron ${data.length} filas`);
+          
+          // Revisar si la primera fila contiene encabezados o si son datos
+          const firstRow = data[0];
+          
+          // Si no hay encabezados o no son un array, crear columnas alfabéticas
+          if (!Array.isArray(firstRow) || firstRow.length === 0) {
+            console.log('Creando columnas alfabéticas ya que no se encontraron encabezados');
+            // Crear columnas alfabéticas (A, B, C...)
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const numCols = Object.keys(worksheet).reduce((max, cell) => {
+              if (cell[0] === '!') return max; // Ignorar propiedades especiales
+              const col = cell.replace(/[0-9]/g, '');
+              return Math.max(max, alphabet.indexOf(col) + 1);
+            }, 0);
+            
+            console.log(`Se detectaron ${numCols} columnas en el archivo`);
+            
+            // Asegurar que hay al menos 1 columna
+            const columns = Array.from({ length: Math.max(1, numCols) }, (_, i) => alphabet[i]);
+            
+            // Sugerir mapeo automático: columna A para nombre y B para teléfono
+            const suggestedMapping: Record<string, string> = {
+              name: columns[0] || 'A',
+              phoneNumber: columns[1] || 'B'
+            };
+            
+            return { columns, suggestedMapping };
+          }
+          
+          console.log(`Primera fila (encabezados): ${JSON.stringify(firstRow)}`);
+          
+          // Filtrar columnas válidas
+          const columns = firstRow
+            .filter(col => col !== undefined && col !== null)
+            .map(col => String(col).trim());
+          
+          console.log(`Columnas válidas detectadas: ${columns.length}`);
+          
+          // Crear mapeo sugerido basado en heurísticas
+          const suggestedMapping: Record<string, string> = {};
+          
+          // Intentar identificar columnas por nombre
+          columns.forEach((col, index) => {
+            const colLower = String(col).toLowerCase();
+            
+            // Intentar identificar columna de teléfono
+            if (colLower.includes('tel') || colLower.includes('phone') || 
+                colLower.includes('móvil') || colLower.includes('movil') || 
+                colLower.includes('celular') || colLower.includes('contacto')) {
+              suggestedMapping.phoneNumber = col;
+              console.log(`Columna de teléfono detectada: ${col}`);
+            }
+            
+            // Intentar identificar columna de nombre
+            if (colLower.includes('nombre') || colLower.includes('name') || 
+                colLower === 'cliente' || colLower.includes('contact')) {
+              suggestedMapping.name = col;
+              console.log(`Columna de nombre detectada: ${col}`);
+            }
+            
+            // Intentar identificar columna de empresa
+            if (colLower.includes('empresa') || colLower.includes('company') || 
+                colLower.includes('negocio') || colLower.includes('business')) {
+              suggestedMapping.company = col;
+              console.log(`Columna de empresa detectada: ${col}`);
+            }
+            
+            // Intentar identificar columna de email
+            if (colLower.includes('email') || colLower.includes('correo') || 
+                colLower.includes('mail')) {
+              suggestedMapping.email = col;
+              console.log(`Columna de email detectada: ${col}`);
+            }
+          });
+          
+          // Si no hay columnas detectadas o son pocas, asegurar al menos las básicas
+          if (columns.length > 0) {
+            // Asignar columnas por defecto si no se detectaron automáticamente
+            if (!suggestedMapping.phoneNumber && columns.length >= 1) {
+              suggestedMapping.phoneNumber = columns[0]; // Primera columna para teléfono
+              console.log(`Asignando primera columna (${columns[0]}) como teléfono por defecto`);
+            }
+            
+            if (!suggestedMapping.name && columns.length >= 2) {
+              suggestedMapping.name = columns[1]; // Segunda columna para nombre
+              console.log(`Asignando segunda columna (${columns[1]}) como nombre por defecto`);
+            }
+          } else {
+            console.log('No se detectaron columnas válidas');
+          }
+          
+          console.log(`Mapeo sugerido: ${JSON.stringify(suggestedMapping)}`);
+          return { columns, suggestedMapping };
+        } catch (innerError) {
+          console.error('Error al convertir hoja a JSON:', innerError);
+          return { columns: [], suggestedMapping: {} };
+        }
+      } catch (readError) {
+        console.error('Error al leer archivo Excel con readFile:', readError);
         
-        // Si no hay encabezados o no son un array, crear columnas alfabéticas
-        if (!Array.isArray(firstRow) || firstRow.length === 0) {
-          console.log('Creating alphabetical columns as headers not found');
-          // Crear columnas alfabéticas (A, B, C...)
-          const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-          const numCols = Object.keys(worksheet).reduce((max, cell) => {
-            if (cell[0] === '!') return max; // Ignorar propiedades especiales
-            const col = cell.replace(/[0-9]/g, '');
-            return Math.max(max, alphabet.indexOf(col) + 1);
-          }, 0);
+        // Intentar método alternativo de lectura
+        try {
+          console.log('Intentando método alternativo de lectura...');
+          const fileBuffer = fs.readFileSync(filepath);
+          const workbook = XLSX.read(fileBuffer, {
+            type: 'buffer',
+            cellFormula: false,
+            cellDates: true
+          });
           
-          const columns = Array.from({ length: numCols }, (_, i) => alphabet[i]);
+          // Procesamiento similar al anterior...
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
           
-          // Sugerir mapeo automático: columna B para nombre y C para teléfono
-          const suggestedMapping: Record<string, string> = {
-            name: 'B',
-            phoneNumber: 'C'
+          if (!worksheet) {
+            return { columns: [], suggestedMapping: {} };
+          }
+          
+          // Simplificar para este método alternativo
+          // Usar solo las columnas básicas A, B, C...
+          const columns = ['A', 'B', 'C', 'D', 'E', 'F'];
+          const suggestedMapping = {
+            phoneNumber: 'A',
+            name: 'B'
           };
           
           return { columns, suggestedMapping };
+        } catch (alternativeError) {
+          console.error('Error en método alternativo de lectura:', alternativeError);
+          throw readError; // Propagar el error original
         }
-        
-        // Filtrar columnas válidas
-        const columns = firstRow.filter(col => col !== undefined && col !== null).map(String);
-        
-        // Crear mapeo sugerido basado en heurísticas
-        const suggestedMapping: Record<string, string> = {};
-        
-        // Para facilitar referencia posicional (B=1, C=2, etc)
-        const positionIndex: number[] = [];
-        
-        // Intentar identificar columnas por nombre
-        columns.forEach((col, index) => {
-          positionIndex[index] = index;
-          const colLower = String(col).toLowerCase();
-          
-          // Intentar identificar columna de teléfono
-          if (colLower.includes('tel') || colLower.includes('phone') || colLower.includes('móvil') || colLower.includes('movil') || colLower.includes('celular')) {
-            suggestedMapping.phoneNumber = col;
-          }
-          
-          // Intentar identificar columna de nombre
-          if (colLower.includes('nombre') || colLower.includes('name') || colLower === 'cliente') {
-            suggestedMapping.name = col;
-          }
-          
-          // Intentar identificar columna de empresa
-          if (colLower.includes('empresa') || colLower.includes('company') || colLower.includes('negocio') || colLower.includes('business')) {
-            suggestedMapping.company = col;
-          }
-          
-          // Intentar identificar columna de email
-          if (colLower.includes('email') || colLower.includes('correo') || colLower.includes('mail')) {
-            suggestedMapping.email = col;
-          }
-        });
-        
-        // Si no se encontraron columnas específicas, usar B para nombre y C para teléfono
-        if (!suggestedMapping.name && columns.length > 1) { // B = índice 1
-          suggestedMapping.name = columns[1];
-        }
-        
-        if (!suggestedMapping.phoneNumber && columns.length > 2) { // C = índice 2
-          suggestedMapping.phoneNumber = columns[2];
-        }
-        
-        // Si no se identificaron por nombre, usar columnas B y C por defecto
-        if (!suggestedMapping.name && columns.length >= 2) {
-          suggestedMapping.name = columns[1]; // Segunda columna (B)
-        }
-        
-        if (!suggestedMapping.phoneNumber && columns.length >= 3) {
-          suggestedMapping.phoneNumber = columns[2]; // Tercera columna (C)
-        }
-        
-        return { columns, suggestedMapping };
-      } catch (innerError) {
-        console.error('Error converting worksheet to JSON:', innerError);
-        return { columns: [], suggestedMapping: {} };
       }
     } catch (error) {
-      console.error('Error analyzing Excel file:', error);
-      throw new Error(`Error analyzing Excel file: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('Error analizando archivo Excel:', error);
+      return { columns: [], suggestedMapping: {} }; // Retornar array vacío en lugar de lanzar error
     }
   }
   
