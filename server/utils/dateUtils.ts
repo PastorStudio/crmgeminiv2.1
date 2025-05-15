@@ -2,11 +2,11 @@
  * Formatea una fecha en formato ISO a formato legible
  */
 export function formatDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('es-ES', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+  const d = new Date(date);
+  return d.toLocaleDateString('es-ES', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
   });
 }
 
@@ -32,9 +32,9 @@ export function getMonthsAgo(months: number): Date {
  * Comprueba si una fecha está dentro de un rango especificado
  */
 export function isDateInRange(date: Date | string, startDate: Date | string, endDate: Date | string): boolean {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  const start = typeof startDate === 'string' ? new Date(startDate) : startDate;
-  const end = typeof endDate === 'string' ? new Date(endDate) : endDate;
+  const d = new Date(date);
+  const start = new Date(startDate);
+  const end = new Date(endDate);
   
   return d >= start && d <= end;
 }
@@ -43,8 +43,12 @@ export function isDateInRange(date: Date | string, startDate: Date | string, end
  * Calcula la diferencia en días entre dos fechas
  */
 export function daysBetween(startDate: Date | string, endDate: Date | string): number {
-  const start = typeof startDate === 'string' ? new Date(startDate) : startDate;
-  const end = typeof endDate === 'string' ? new Date(endDate) : endDate;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // Reset hours to compare only dates
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
   
   const diffTime = Math.abs(end.getTime() - start.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -73,8 +77,8 @@ export function getFirstDayOfMonth(): Date {
  */
 export function getLastDayOfMonth(): Date {
   const date = new Date();
-  date.setMonth(date.getMonth() + 1);
-  date.setDate(0);
+  // Ir al próximo mes, día 0 (que es el último día del mes actual)
+  date.setMonth(date.getMonth() + 1, 0);
   return date;
 }
 
@@ -82,25 +86,27 @@ export function getLastDayOfMonth(): Date {
  * Agrupa una lista de elementos por año y mes
  */
 export function groupByMonth<T>(items: T[], dateAccessor: (item: T) => Date | string): Record<string, T[]> {
-  return items.reduce((acc, item) => {
-    const date = dateAccessor(item);
-    const d = typeof date === 'string' ? new Date(date) : date;
-    const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+  const grouped: Record<string, T[]> = {};
+  
+  items.forEach(item => {
+    const date = new Date(dateAccessor(item));
+    const key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
     
-    if (!acc[key]) {
-      acc[key] = [];
+    if (!grouped[key]) {
+      grouped[key] = [];
     }
     
-    acc[key].push(item);
-    return acc;
-  }, {} as Record<string, T[]>);
+    grouped[key].push(item);
+  });
+  
+  return grouped;
 }
 
 /**
  * Obtiene el nombre del día de la semana 
  */
 export function getDayName(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
+  const d = new Date(date);
   return d.toLocaleDateString('es-ES', { weekday: 'long' });
 }
 
@@ -108,6 +114,6 @@ export function getDayName(date: Date | string): string {
  * Obtiene el nombre del mes
  */
 export function getMonthName(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
+  const d = new Date(date);
   return d.toLocaleDateString('es-ES', { month: 'long' });
 }
