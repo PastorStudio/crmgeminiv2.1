@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Smartphone, RefreshCw, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+// Define la interfaz para el estado de WhatsApp
 interface WhatsAppStatus {
   initialized?: boolean;
   ready?: boolean;
@@ -20,40 +21,43 @@ export default function WhatsAppIntegration() {
   const queryClient = useQueryClient();
   const [refreshInterval, setRefreshInterval] = useState(5000); // 5 segundos
 
-  // Consulta para obtener el estado actual de WhatsApp usando endpoint directo
-  const { data: status, isLoading, isError, error } = useQuery<WhatsAppStatus>({
-    queryKey: ['/api/direct/whatsapp/status'],
-    queryFn: async () => {
-      console.log('Solicitando estado de WhatsApp (endpoint directo)...');
-      try {
-        // Añadir timestamp para evitar caché
-        const timestamp = Date.now();
-        const response = await fetch(`/api/direct/whatsapp/status?t=${timestamp}`, {
-          headers: {
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache'
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Error HTTP: ${response.status}`);
+  // Consulta directa para obtener el estado de WhatsApp
+  const fetchStatus = async (): Promise<WhatsAppStatus> => {
+    console.log('Solicitando estado de WhatsApp (endpoint directo)...');
+    try {
+      // Añadir timestamp para evitar caché
+      const timestamp = Date.now();
+      const response = await fetch(`/api/direct/whatsapp/status?t=${timestamp}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
         }
-        
-        const data = await response.json();
-        console.log('Estado WhatsApp recibido (endpoint directo):', data);
-        return data;
-      } catch (error) {
-        console.error('Error obteniendo estado de WhatsApp:', error);
-        return {
-          initialized: true,
-          ready: false,
-          authenticated: false,
-          error: 'Error de conexión'
-        };
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
       }
-    },
-    refetchInterval: (data) => data?.authenticated ? 30000 : refreshInterval, // Usar el callback para evitar referencia circular
-    initialData: { initialized: false, ready: false } // Datos iniciales para evitar errores de tipo
+      
+      const data = await response.json();
+      console.log('Estado WhatsApp recibido (endpoint directo):', data);
+      return data;
+    } catch (error) {
+      console.error('Error obteniendo estado de WhatsApp:', error);
+      return {
+        initialized: true,
+        ready: false,
+        authenticated: false,
+        error: 'Error de conexión'
+      };
+    }
+  };
+
+  // Consulta para obtener el estado actual de WhatsApp
+  const { data: status, isLoading } = useQuery({
+    queryKey: ['whatsapp-status'],
+    queryFn: fetchStatus,
+    refetchInterval: refreshInterval,
+    initialData: { initialized: false, ready: false } 
   });
 
   // Función para reiniciar el servicio de WhatsApp (genera un nuevo QR)
@@ -61,7 +65,7 @@ export default function WhatsAppIntegration() {
     try {
       // Usar la ruta directa con timestamp para evitar la intercepción de Vite
       const timestamp = Date.now();
-      const response = await fetch(`/api/direct/whatsapp/restart?_t=${timestamp}`, {
+      const response = await fetch(`/api/direct/whatsapp/restart?t=${timestamp}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -78,7 +82,7 @@ export default function WhatsAppIntegration() {
       console.log('Respuesta reinicio WhatsApp:', data);
       
       // Actualizar la consulta de estado
-      queryClient.invalidateQueries({ queryKey: ['/api/direct/whatsapp/status'] });
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] });
       
       toast({
         title: 'WhatsApp reiniciado',
@@ -99,7 +103,7 @@ export default function WhatsAppIntegration() {
     try {
       // Usar la ruta directa
       const timestamp = Date.now();
-      const response = await fetch(`/api/direct/whatsapp/logout?_t=${timestamp}`, {
+      const response = await fetch(`/api/direct/whatsapp/logout?t=${timestamp}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +117,7 @@ export default function WhatsAppIntegration() {
       }
       
       await response.json();
-      queryClient.invalidateQueries({ queryKey: ['/api/direct/whatsapp/status'] });
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] });
       
       toast({
         title: 'Sesión cerrada',
@@ -131,7 +135,9 @@ export default function WhatsAppIntegration() {
 
   // Cuando el estado cambia a autenticado, mostrar notificación
   useEffect(() => {
-    if (status?.authenticated) {
+    const isAuthenticated = status?.authenticated === true;
+    
+    if (isAuthenticated) {
       // Si acaba de autenticar, mostrar notificación
       toast({
         title: 'WhatsApp conectado',
@@ -145,7 +151,7 @@ export default function WhatsAppIntegration() {
       // Mayor frecuencia cuando no está autenticado
       setRefreshInterval(5000); // 5 segundos
     }
-  }, [status?.authenticated, toast]);
+  }, [status, toast]);
 
   return (
     <Card className="mb-8">
@@ -156,7 +162,7 @@ export default function WhatsAppIntegration() {
         </CardTitle>
         <CardDescription>
           Escanea el código QR con tu teléfono para conectar tu cuenta de WhatsApp al CRM.
-          {status?.authenticated && (
+          {status && status.authenticated === true && (
             <span className="text-green-600 font-medium block mt-1">
               ¡Conexión establecida! Tu cuenta de WhatsApp está conectada.
             </span>
@@ -174,7 +180,7 @@ export default function WhatsAppIntegration() {
           />
           
           {/* Mostrar botones adicionales cuando está autenticado */}
-          {status?.authenticated && (
+          {status && status.authenticated === true && (
             <div className="mt-4 w-full flex flex-col gap-2">
               <Button 
                 variant="outline" 
