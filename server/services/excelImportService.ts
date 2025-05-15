@@ -214,21 +214,22 @@ export class ExcelImportService {
             phoneNumber: phone
           };
           
-          // Agregar nombre si está mapeado
-          if (fieldMapping.name && row[fieldMapping.name] !== undefined) {
+          // Agregar nombre si está mapeado y no es 'none'
+          if (fieldMapping.name && fieldMapping.name !== 'none' && row[fieldMapping.name] !== undefined) {
             contact.name = String(row[fieldMapping.name]).trim();
           }
           
           // Agregar otros campos según el mapeo
           for (const [targetField, sourceField] of Object.entries(fieldMapping)) {
             if (targetField !== 'phoneNumber' && targetField !== 'name' && 
-                sourceField && row[sourceField] !== undefined && row[sourceField] !== null) {
+                sourceField && sourceField !== 'none' && 
+                row[sourceField] !== undefined && row[sourceField] !== null) {
               contact[targetField] = row[sourceField];
             }
           }
           
           // Si hay un campo para tags, convertirlo a array
-          if (fieldMapping.tags && row[fieldMapping.tags]) {
+          if (fieldMapping.tags && fieldMapping.tags !== 'none' && row[fieldMapping.tags]) {
             contact.tags = String(row[fieldMapping.tags])
               .split(',')
               .map(tag => tag.trim())
