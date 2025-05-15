@@ -16,6 +16,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { href: "/messages", icon: "forum", label: "Messages" },
     { href: "/mass-sender", icon: "send", label: "Envío Masivo" },
     { href: "/message-templates", icon: "description", label: "Plantillas" },
+    { href: "/media-gallery", icon: "perm_media", label: "Galería" },
     { href: "/calendar", icon: "event", label: "Calendar" },
     { href: "/tasks", icon: "assignment", label: "Tasks" },
     { href: "/analytics", icon: "leaderboard", label: "Analytics" },

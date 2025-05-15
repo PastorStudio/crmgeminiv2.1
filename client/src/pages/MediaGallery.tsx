@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import MediaGallery, { MediaItem } from '@/components/ui/MediaGallery';
+import { MediaGallery, MediaItem } from '@/components/ui/MediaGallery';
 
 export default function MediaGalleryPage() {
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);

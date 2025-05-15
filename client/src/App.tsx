@@ -16,6 +16,7 @@ import GeminiDemo from "@/pages/GeminiDemo";
 import GeminiTest from "@/pages/GeminiTest";
 import MassSender from "@/pages/MassSender";
 import MessageTemplates from "@/pages/MessageTemplates";
+import MediaGallery from "@/pages/MediaGallery";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 
@@ -47,6 +48,7 @@ function App() {
                   <Route path="/gemini-test" component={GeminiTest} />
                   <Route path="/mass-sender" component={MassSender} />
                   <Route path="/message-templates" component={MessageTemplates} />
+                  <Route path="/media-gallery" component={MediaGallery} />
                   <Route component={NotFound} />
                 </Switch>
               </div>

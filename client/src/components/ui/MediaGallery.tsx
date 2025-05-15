@@ -54,7 +54,7 @@ interface MediaGalleryProps {
   showButton?: boolean;
 }
 
-export const MediaGallery: React.FC<MediaGalleryProps> = ({
+export const MediaGallery = ({
   onSelect,
   selectedMediaId,
   filter = {},
@@ -644,5 +644,3 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({
     </>
   );
 };
-
-export default MediaGallery;
