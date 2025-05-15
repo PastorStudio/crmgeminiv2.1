@@ -310,6 +310,29 @@ export default function MassSender() {
     }
   });
   
+  // Mutación para verificar un mensaje como entregado
+  const verifyMessageMutation = useMutation({
+    mutationFn: ({campaignId, contactId, messageId}: {campaignId: string, contactId: string, messageId?: string}) => 
+      apiRequest(`/api/mass-sender/campaigns/${campaignId}/verify-message`, { 
+        method: "POST",
+        body: { contactId, messageId }
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/mass-sender/campaigns'] });
+      toast({
+        title: "Mensaje verificado",
+        description: "El mensaje ha sido marcado como verificado correctamente.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "No se pudo verificar el mensaje.",
+        variant: "destructive",
+      });
+    }
+  });
+  
   // Mutación para cargar archivo Excel
   const uploadExcelMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -1259,6 +1282,73 @@ export default function MassSender() {
                                       <div className="bg-muted p-3 rounded-md text-sm">
                                         {campaign.messageTemplate}
                                       </div>
+                                      
+                                      {campaign.contacts && campaign.contacts.length > 0 && (
+                                        <>
+                                          <h3 className="text-sm font-medium mt-4 mb-2">Contactos de la campaña</h3>
+                                          <div className="border rounded-md overflow-hidden">
+                                            <Table>
+                                              <TableHeader>
+                                                <TableRow>
+                                                  <TableHead>Contacto</TableHead>
+                                                  <TableHead>Estado</TableHead>
+                                                  <TableHead>Acciones</TableHead>
+                                                </TableRow>
+                                              </TableHeader>
+                                              <TableBody>
+                                                {campaign.contacts.slice(0, 5).map((contact) => (
+                                                  <TableRow key={contact.id}>
+                                                    <TableCell>
+                                                      <div className="flex flex-col">
+                                                        <span>{contact.name || 'Sin nombre'}</span>
+                                                        <span className="text-xs text-muted-foreground">{contact.phoneNumber}</span>
+                                                      </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                      {contact.status === 'verified' ? (
+                                                        <Badge variant="success" className="bg-green-100 text-green-800">
+                                                          <CheckCircle className="h-3 w-3 mr-1" /> Verificado
+                                                        </Badge>
+                                                      ) : contact.status === 'sent' ? (
+                                                        <Badge variant="outline">
+                                                          <Send className="h-3 w-3 mr-1" /> Enviado
+                                                        </Badge>
+                                                      ) : contact.status === 'failed' ? (
+                                                        <Badge variant="destructive">
+                                                          <XCircle className="h-3 w-3 mr-1" /> Fallido
+                                                        </Badge>
+                                                      ) : (
+                                                        <Badge variant="secondary">
+                                                          <Clock className="h-3 w-3 mr-1" /> Pendiente
+                                                        </Badge>
+                                                      )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                      <Button 
+                                                        size="sm" 
+                                                        variant="ghost"
+                                                        disabled={contact.status === 'verified'}
+                                                        onClick={() => verifyMessageMutation.mutate({
+                                                          campaignId: campaign.id,
+                                                          contactId: contact.id
+                                                        })}
+                                                      >
+                                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                                        Verificar
+                                                      </Button>
+                                                    </TableCell>
+                                                  </TableRow>
+                                                ))}
+                                              </TableBody>
+                                            </Table>
+                                            {campaign.contacts.length > 5 && (
+                                              <div className="p-2 text-center text-sm text-muted-foreground">
+                                                Mostrando 5 de {campaign.contacts.length} contactos
+                                              </div>
+                                            )}
+                                          </div>
+                                        </>
+                                      )}
                                     </div>
                                     
                                     <div>
