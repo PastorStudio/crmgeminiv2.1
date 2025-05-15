@@ -88,7 +88,19 @@ export class ExcelImportService {
     originalname: string, 
     fieldMapping: Record<string, string>
   ): Promise<ImportResult> {
-    console.log(`Iniciando importación de Excel. Archivo: ${filename}, Mapeo:`, fieldMapping);
+    console.log(`Iniciando importación de Excel. Archivo: ${filename}, Mapeo:`, JSON.stringify(fieldMapping));
+    
+    // Filtrar campos 'none' del mapeo
+    const filteredMapping = Object.entries(fieldMapping).reduce((acc, [key, value]) => {
+      if (value !== 'none') {
+        acc[key] = value;
+      } else {
+        console.log(`Campo ignorado en el mapeo: ${key}='none'`);
+      }
+      return acc;
+    }, {} as Record<string, string>);
+    
+    console.log('Mapeo filtrado (sin valores "none"):', JSON.stringify(filteredMapping));
     
     try {
       const filepath = this.getFilePath(filename);
@@ -184,8 +196,8 @@ export class ExcelImportService {
       for (const row of data) {
         try {
           // Verificar si existe el número de teléfono (campo obligatorio)
-          const phoneField = fieldMapping.phoneNumber;
-          if (row[phoneField] === undefined || row[phoneField] === null || row[phoneField] === '') {
+          const phoneField = filteredMapping.phoneNumber;
+          if (!phoneField || row[phoneField] === undefined || row[phoneField] === null || row[phoneField] === '') {
             const rowDesc = JSON.stringify(row).substring(0, 100) + '...';
             console.log(`Fila sin número de teléfono: ${rowDesc}`);
             errors.push(`Fila sin número de teléfono: ${rowDesc}`);
@@ -214,23 +226,23 @@ export class ExcelImportService {
             phoneNumber: phone
           };
           
-          // Agregar nombre si está mapeado y no es 'none'
-          if (fieldMapping.name && fieldMapping.name !== 'none' && row[fieldMapping.name] !== undefined) {
-            contact.name = String(row[fieldMapping.name]).trim();
+          // Usamos el mapeo filtrado para procesar los campos
+          // Agregar nombre si está mapeado
+          if (filteredMapping.name && row[filteredMapping.name] !== undefined) {
+            contact.name = String(row[filteredMapping.name]).trim();
           }
           
-          // Agregar otros campos según el mapeo
-          for (const [targetField, sourceField] of Object.entries(fieldMapping)) {
+          // Agregar otros campos según el mapeo filtrado
+          for (const [targetField, sourceField] of Object.entries(filteredMapping)) {
             if (targetField !== 'phoneNumber' && targetField !== 'name' && 
-                sourceField && sourceField !== 'none' && 
-                row[sourceField] !== undefined && row[sourceField] !== null) {
+                sourceField && row[sourceField] !== undefined && row[sourceField] !== null) {
               contact[targetField] = row[sourceField];
             }
           }
           
           // Si hay un campo para tags, convertirlo a array
-          if (fieldMapping.tags && fieldMapping.tags !== 'none' && row[fieldMapping.tags]) {
-            contact.tags = String(row[fieldMapping.tags])
+          if (filteredMapping.tags && row[filteredMapping.tags]) {
+            contact.tags = String(row[filteredMapping.tags])
               .split(',')
               .map(tag => tag.trim())
               .filter(tag => tag.length > 0);
