@@ -397,16 +397,44 @@ export default function MassSender() {
       });
       
       // Obtener las columnas del archivo
-      // Crear un objeto que combine la información del archivo y los datos del servidor
+      // Obtener el archivo subido y mantener una referencia con el nombre del servidor
       const currentInputFile = fileInputRef.current?.files?.[0];
       if (currentInputFile) {
-        // Creamos un objeto que simula ser un archivo con la propiedad adicional serverFilename
-        const serverFile: ExcelFile = Object.assign(
-          currentInputFile, 
-          { serverFilename: data.filename }
-        );
-        setSelectedFile(serverFile);
-        analyzeExcelMutation.mutate(data.filename);
+        try {
+          // Crear un nuevo objeto tipo ExcelFile con propiedades adicionales
+          const newFileObject = new File(
+            [currentInputFile], 
+            currentInputFile.name, 
+            { type: currentInputFile.type }
+          ) as ExcelFile;
+          
+          // Añadir propiedad de nombre en servidor
+          newFileObject.serverFilename = data.filename;
+          
+          console.log("Archivo con nombre del servidor:", {
+            originalName: newFileObject.name,
+            serverFilename: newFileObject.serverFilename,
+            size: newFileObject.size,
+            type: newFileObject.type
+          });
+          
+          // Actualizar estado con el nuevo objeto
+          setSelectedFile(newFileObject);
+          
+          // Continuar con el análisis del archivo
+          analyzeExcelMutation.mutate(data.filename);
+        } catch (err) {
+          console.error("Error al crear objeto de archivo:", err);
+          // Fallback: usar Object.assign si falla el método anterior
+          const serverFile = Object.assign(
+            Object.create(Object.getPrototypeOf(currentInputFile)),
+            currentInputFile,
+            { serverFilename: data.filename }
+          ) as ExcelFile;
+          
+          setSelectedFile(serverFile);
+          analyzeExcelMutation.mutate(data.filename);
+        }
       }
     },
     onError: (error) => {
@@ -533,11 +561,41 @@ export default function MassSender() {
     },
     onError: (error) => {
       console.error("Error importing Excel data:", error);
-      toast({
-        title: "Error al importar datos",
-        description: "No se pudieron importar los datos de Excel. Intente nuevamente.",
-        variant: "destructive",
-      });
+      
+      // Extraer el mensaje de error de la respuesta si está disponible
+      let errorMessage = "No se pudieron importar los datos de Excel.";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message || errorMessage;
+      }
+      
+      // Si contiene información sobre archivos disponibles, mostrarla de forma más limpia
+      if (errorMessage.includes("Archivos disponibles:")) {
+        const [baseMessage, filesList] = errorMessage.split("Archivos disponibles:");
+        
+        toast({
+          title: "Error al importar datos",
+          description: (
+            <div>
+              <p>{baseMessage.trim()}</p>
+              <p>Archivos disponibles en el servidor:</p>
+              <ul className="text-xs mt-1 list-disc list-inside">
+                {filesList.split(",").map((file, index) => (
+                  <li key={index}>{file.trim()}</li>
+                ))}
+              </ul>
+              <p className="mt-2">Por favor, intente cargar el archivo nuevamente.</p>
+            </div>
+          ),
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error al importar datos",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     }
   });
   
@@ -722,11 +780,17 @@ export default function MassSender() {
     }, {} as Record<string, string>);
     
     // Importar los datos de Excel
-    importExcelMutation.mutate({
-      filename: selectedFile.serverFilename || selectedFile.name, // Usamos el nombre del servidor si existe
+    // Construir objeto para la mutación
+    const importData = {
+      filename: selectedFile.serverFilename || selectedFile.name, // Usar nombre del servidor si existe
       originalname: selectedFile.name, // Nombre original para referencia
       fieldMapping: filteredMapping
-    });
+    };
+    
+    console.log("Datos para importación:", JSON.stringify(importData));
+    
+    // Ejecutar la importación
+    importExcelMutation.mutate(importData);
   };
   
   // Actualizar automáticamente el estado de las campañas
