@@ -22,6 +22,7 @@ import { messageTemplateService } from "./services/messageTemplateService";
 import { analyticsService } from "./services/analyticsService";
 import { excelImportService } from "./services/excelImportService";
 import { massSenderService } from "./services/massSenderService";
+import { mediaGalleryRouter, mediaServeRouter } from "./services/mediaGalleryRoutes";
 import { mediaGalleryService } from "./services/mediaGalleryService";
 
 // Configurar middleware para upload de archivos
