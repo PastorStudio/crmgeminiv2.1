@@ -1,6 +1,6 @@
 import { whatsappService } from './whatsappServiceImpl';
 import { messageTemplateService } from './messageTemplateService';
-import { excelImportService, type ContactData } from './excelImportService';
+import { excelImportService, type ContactData, type TemplateContactBatch } from './excelImportService';
 import { db } from '../db';
 import { marketingCampaigns, type MarketingCampaign } from '@shared/schema';
 import { eq } from 'drizzle-orm';
@@ -184,6 +184,58 @@ export class MassSenderService extends EventEmitter {
     // Guardar los destinatarios en memoria
     this.campaignRecipients.set(campaignId, recipients);
 
+    return true;
+  }
+  
+  // Importar contactos y aplicar una plantilla usando un mapeo de variables
+  async importContactsWithTemplate(
+    campaignId: number,
+    batch: TemplateContactBatch
+  ): Promise<boolean> {
+    const campaign = await this.getCampaignById(campaignId);
+    if (!campaign) return false;
+    
+    // Verificar si la plantilla existe
+    const template = await messageTemplateService.getTemplateById(batch.templateId);
+    if (!template) return false;
+    
+    // Actualizar la campaña con el ID de la plantilla
+    await this.updateCampaign(campaignId, { templateId: batch.templateId });
+    
+    // Preparar los destinatarios con sus variables
+    const recipients: MessageRecipient[] = [];
+    
+    for (let i = 0; i < batch.contactIds.length; i++) {
+      const contactId = batch.contactIds[i];
+      const variables = batch.variables[i] || {};
+      
+      // Aquí asumimos que tenemos contactos con estos IDs en algún lugar
+      // Por ahora vamos a crear objetos simples
+      recipients.push({
+        id: contactId,
+        phoneNumber: variables.phoneNumber as string, // Asumimos que hay un número de teléfono en las variables
+        name: variables.nombre as string,
+        company: variables.empresa as string,
+        variables,
+        status: 'pending'
+      });
+    }
+    
+    // Actualizar la campaña con los contactos importados
+    await db.update(marketingCampaigns)
+      .set({
+        recipientList: recipients,
+        stats: {
+          ...campaign.stats as CampaignStats,
+          total: recipients.length
+        },
+        updatedAt: new Date()
+      })
+      .where(eq(marketingCampaigns.id, campaignId));
+    
+    // Guardar los destinatarios en memoria
+    this.campaignRecipients.set(campaignId, recipients);
+    
     return true;
   }
 

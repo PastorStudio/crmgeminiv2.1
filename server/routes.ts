@@ -1296,6 +1296,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Error al eliminar importación" });
     }
   });
+  
+  // Rutas para integración de Excel con plantillas de mensajes
+  app.post("/api/excel/prepare-template-batch", async (req: Request, res: Response) => {
+    try {
+      const { importId, templateId, variableMapping } = req.body;
+      
+      if (!importId || !templateId || !variableMapping) {
+        return res.status(400).json({ 
+          error: "Se requiere importId, templateId y variableMapping" 
+        });
+      }
+      
+      const batch = excelImportService.prepareTemplateContactBatch(
+        importId,
+        parseInt(templateId),
+        variableMapping
+      );
+      
+      if (!batch) {
+        return res.status(404).json({ error: "Importación no encontrada" });
+      }
+      
+      res.json(batch);
+    } catch (error) {
+      console.error("Error al preparar lote de contactos:", error);
+      res.status(500).json({ error: "Error al preparar lote de contactos para plantilla" });
+    }
+  });
+  
+  app.post("/api/excel/preview-template-message", async (req: Request, res: Response) => {
+    try {
+      const { templateId, variables } = req.body;
+      
+      if (!templateId || !variables) {
+        return res.status(400).json({ 
+          error: "Se requiere templateId y variables" 
+        });
+      }
+      
+      // Obtener la plantilla
+      const template = await messageTemplateService.getTemplateById(parseInt(templateId));
+      
+      if (!template) {
+        return res.status(404).json({ error: "Plantilla no encontrada" });
+      }
+      
+      // Aplicar variables a la plantilla
+      const message = excelImportService.generatePersonalizedMessage(
+        template.content,
+        variables
+      );
+      
+      res.json({ 
+        templateId,
+        templateName: template.name,
+        message 
+      });
+    } catch (error) {
+      console.error("Error al previsualizar mensaje con plantilla:", error);
+      res.status(500).json({ error: "Error al previsualizar mensaje con plantilla" });
+    }
+  });
 
   // Rutas para campañas de marketing
   app.get("/api/mass-sender/campaigns", async (req: Request, res: Response) => {
