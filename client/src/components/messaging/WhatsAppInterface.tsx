@@ -15,6 +15,36 @@ import { GeminiAssistant } from './GeminiAssistant';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+// Interfaz para los chats de WhatsApp
+interface WhatsAppChat {
+  id: string;
+  name: string;
+  isGroup: boolean;
+  timestamp: number;
+  unreadCount: number;
+  lastMessage?: string;
+  profilePicUrl?: string;
+  participants?: string[];
+}
+
+// Interfaz para los mensajes de WhatsApp
+interface WhatsAppMessage {
+  id: string;
+  body: string;
+  from: string;
+  to: string;
+  fromMe: boolean;
+  timestamp: number;
+  hasMedia: boolean;
+  type: string;
+  isStatus: boolean;
+  isForwarded: boolean;
+  isStarred: boolean;
+  mediaUrl?: string;
+  caption?: string;
+  containsEmoji: boolean;
+}
+
 import {
   Search,
   Send,

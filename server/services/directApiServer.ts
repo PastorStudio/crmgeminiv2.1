@@ -2,6 +2,9 @@
  * Servicio que crea endpoints directos para evitar la interceptación de Vite
  * Esta es una solución para el problema donde Vite intercepta las llamadas API
  * y devuelve HTML en lugar de JSON.
+ * 
+ * Además, proporciona endpoints específicos para interactuar con WhatsApp de forma directa
+ * usando chats y mensajes reales.
  */
 
 import { Express, Request, Response } from 'express';
@@ -27,6 +30,118 @@ export function registerDirectRoutes(app: Express): void {
       console.error('Error obteniendo estado de WhatsApp (directo):', error);
       res.status(500).json({ 
         error: 'Error interno al obtener estado',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+  
+  // Endpoint directo para activar la conexión permanente
+  app.post('/api/direct/whatsapp/activate-permanent-connection', async (req: Request, res: Response) => {
+    try {
+      await whatsappService.activatePermanentConnection();
+      res.json({ 
+        success: true, 
+        message: 'Conexión permanente activada correctamente'
+      });
+    } catch (error) {
+      console.error('Error activando conexión permanente:', error);
+      res.status(500).json({ 
+        error: 'Error interno al activar conexión permanente',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+  
+  // Endpoint directo para verificar la conexión
+  app.post('/api/direct/whatsapp/check-connection', async (req: Request, res: Response) => {
+    try {
+      const result = await whatsappService.checkConnection();
+      res.json({ 
+        success: result, 
+        status: whatsappService.getStatus()
+      });
+    } catch (error) {
+      console.error('Error verificando conexión:', error);
+      res.status(500).json({ 
+        error: 'Error verificando conexión',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+  
+  // Endpoint directo para obtener todos los chats
+  app.get('/api/direct/whatsapp/chats', async (req: Request, res: Response) => {
+    try {
+      const chats = await whatsappService.getChats();
+      res.json(chats);
+    } catch (error) {
+      console.error('Error obteniendo chats:', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo chats',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+  
+  // Endpoint directo para obtener mensajes de un chat específico
+  app.get('/api/direct/whatsapp/messages/:chatId', async (req: Request, res: Response) => {
+    try {
+      const { chatId } = req.params;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      
+      if (!chatId) {
+        return res.status(400).json({ error: 'Se requiere el ID del chat' });
+      }
+      
+      const messages = await whatsappService.getMessages(chatId, limit);
+      res.json(messages);
+    } catch (error) {
+      console.error('Error obteniendo mensajes:', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo mensajes',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+  
+  // Endpoint directo para enviar un mensaje
+  app.post('/api/direct/whatsapp/send-message', async (req: Request, res: Response) => {
+    try {
+      const { to, message } = req.body;
+      
+      if (!to || !message) {
+        return res.status(400).json({ error: 'Se requieren los campos "to" y "message"' });
+      }
+      
+      const result = await whatsappService.sendMessage(to, message);
+      res.json(result);
+    } catch (error) {
+      console.error('Error enviando mensaje:', error);
+      res.status(500).json({ 
+        error: 'Error enviando mensaje',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+  
+  // Endpoint directo para marcar un chat como leído
+  app.post('/api/direct/whatsapp/mark-read/:chatId', async (req: Request, res: Response) => {
+    try {
+      const { chatId } = req.params;
+      
+      if (!chatId) {
+        return res.status(400).json({ error: 'Se requiere el ID del chat' });
+      }
+      
+      await whatsappService.markChatAsRead(chatId);
+      res.json({ 
+        success: true, 
+        message: `Chat ${chatId} marcado como leído correctamente`
+      });
+    } catch (error) {
+      console.error('Error marcando chat como leído:', error);
+      res.status(500).json({ 
+        error: 'Error marcando chat como leído',
         message: error instanceof Error ? error.message : 'Error desconocido'
       });
     }
