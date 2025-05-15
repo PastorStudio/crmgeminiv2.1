@@ -8,6 +8,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as qrcode from 'qrcode';
 import { whatsappService } from './whatsappServiceImpl';
+import { getAllWhatsAppContacts, getContactsByCategory, searchWhatsAppContacts, getWhatsAppGroups } from './whatsappContactsService';
 import { Server } from 'http';
 
 // Ruta del archivo temporal para el QR
