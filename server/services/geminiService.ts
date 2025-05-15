@@ -9,7 +9,6 @@ export class GeminiService {
   private static instance: GeminiService;
   private genAI: GoogleGenerativeAI | null = null;
   private model: any = null;
-  private simulationMode: boolean = false;
   
   private constructor() {
     this.initialize();
@@ -30,32 +29,22 @@ export class GeminiService {
    */
   private initialize(): void {
     try {
-      // Intentar obtener la clave API
+      // Obtener la clave API
       const apiKey = apiKeyManager.getGeminiKey() || process.env.GEMINI_API_KEY;
       
       if (!apiKey) {
-        console.warn("GeminiService: No API key available, using simulation mode");
-        this.simulationMode = true;
-        return;
+        throw new Error("No API key available for Gemini");
       }
       
       // Inicializar la API de Gemini
       this.genAI = new GoogleGenerativeAI(apiKey);
       this.model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
-      this.simulationMode = false;
       
       console.log("GeminiService initialized successfully");
     } catch (error) {
       console.error("Error initializing GeminiService:", error);
-      this.simulationMode = true;
+      throw error;
     }
-  }
-  
-  /**
-   * Verifica si el servicio está en modo simulación
-   */
-  public isSimulationMode(): boolean {
-    return this.simulationMode;
   }
   
   /**
@@ -72,8 +61,8 @@ export class GeminiService {
    */
   public async generateContent(prompt: string): Promise<string> {
     try {
-      if (this.simulationMode) {
-        return this.simulateResponse(prompt);
+      if (!this.model) {
+        this.initialize();
       }
       
       const result = await this.model.generateContent(prompt);
@@ -83,7 +72,7 @@ export class GeminiService {
       return text;
     } catch (error) {
       console.error("Error generating content with Gemini:", error);
-      return this.simulateResponse(prompt);
+      throw error;
     }
   }
   
@@ -95,8 +84,8 @@ export class GeminiService {
    */
   public async chat(prompt: string, history: any[] = []): Promise<string> {
     try {
-      if (this.simulationMode) {
-        return this.simulateResponse(prompt);
+      if (!this.model) {
+        this.initialize();
       }
       
       // Convertir el historial al formato esperado por Gemini
@@ -118,7 +107,7 @@ export class GeminiService {
       return text;
     } catch (error) {
       console.error("Error in chat with Gemini:", error);
-      return this.simulateResponse(prompt);
+      throw error;
     }
   }
   
@@ -506,42 +495,7 @@ export class GeminiService {
     }
   }
   
-  /**
-   * Simula una respuesta para cuando la API no está disponible
-   * @param prompt El prompt recibido
-   * @returns Una respuesta simulada
-   */
-  private simulateResponse(prompt: string): string {
-    console.log("GeminiService: Using simulation mode for prompt:", prompt.substring(0, 100) + "...");
-    
-    // Respuestas genéricas basadas en palabras clave en el prompt
-    if (prompt.includes("mensaje") || prompt.includes("message")) {
-      return "Estimado cliente, gracias por su interés en nuestros servicios. Nos gustaría concertar una llamada para discutir cómo podemos ayudarle a alcanzar sus objetivos. ¿Tiene disponibilidad esta semana? Estaré encantado de adaptarme a su agenda.";
-    }
-    
-    if (prompt.includes("analiza") || prompt.includes("analyze")) {
-      return "Este lead muestra un potencial moderado-alto. Trabaja en una empresa relevante del sector y su cargo sugiere capacidad de decisión. Recomendación: programar una demostración personalizada y preparar una propuesta específica para sus necesidades. Próximos pasos: 1) Contactar por teléfono, 2) Enviar información personalizada, 3) Programar demostración.";
-    }
-    
-    if (prompt.includes("acción") || prompt.includes("action") || prompt.includes("suger")) {
-      return "Programar una llamada de descubrimiento de 15 minutos esta semana. Durante la llamada, centrarse en entender sus desafíos específicos con su actual sistema de gestión, y mencionar brevemente cómo nuestra solución ha resuelto problemas similares para empresas del mismo sector.";
-    }
-    
-    if (prompt.includes("chat") || prompt.includes("conversación")) {
-      return "Estoy aquí para ayudarte con tu consulta. Basado en la información proporcionada, te recomendaría considerar nuestro plan Profesional, que incluye todas las funcionalidades que has mencionado. ¿Te gustaría que programáramos una demostración personalizada para mostrarte cómo funcionaría con tu caso específico?";
-    }
-    
-    if (prompt.includes("etiqueta") || prompt.includes("tag") || prompt.includes("probabilit")) {
-      return '{"tags":[{"name":"Decisor de compra","probability":82,"category":"característica"},{"name":"Interesado en automatización","probability":75,"category":"interés"},{"name":"Presupuesto disponible","probability":68,"category":"calidad"},{"name":"Ciclo de venta corto","probability":45,"category":"característica"},{"name":"Potencial para upsell","probability":70,"category":"calidad"}]}';
-    }
-    
-    if (prompt.includes("JSON") || prompt.includes("json")) {
-      return '{"success":true,"message":"Respuesta simulada para solicitud JSON"}';
-    }
-    
-    // Respuesta por defecto
-    return "Como asistente virtual, puedo ayudarte a gestionar tus leads, analizar oportunidades y sugerir acciones para mejorar tus resultados de ventas. ¿En qué puedo ayudarte específicamente hoy?";
-  }
+// No simulation mode - using real API only
 }
 
 export const geminiService = GeminiService.getInstance();
