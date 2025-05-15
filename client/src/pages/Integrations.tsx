@@ -59,8 +59,7 @@ export default function Integrations() {
   } = useQuery<ConnectionStatus>({
     queryKey: ["/api/integrations/whatsapp/status", lastRefresh],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/integrations/whatsapp/status");
-      return await response.json();
+      return await apiRequest("/api/integrations/whatsapp/status");
     },
     refetchInterval: 10000, // Refrescar cada 10 segundos
   });
@@ -72,8 +71,7 @@ export default function Integrations() {
   } = useQuery<ConnectionStatus>({
     queryKey: ["/api/integrations/telegram/status", lastRefresh],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/integrations/telegram/status");
-      return await response.json();
+      return await apiRequest("/api/integrations/telegram/status");
     },
     refetchInterval: 10000, // Refrescar cada 10 segundos
   });
@@ -88,8 +86,7 @@ export default function Integrations() {
   } = useQuery<QRCodeData>({
     queryKey: ["/api/integrations/telegram/authcode", lastRefresh],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/integrations/telegram/authcode");
-      return await response.json();
+      return await apiRequest("/api/integrations/telegram/authcode");
     },
     enabled: !!telegramStatus && !telegramStatus.ready,
   });
@@ -97,7 +94,9 @@ export default function Integrations() {
   // Mutaciones para interactuar con los servicios
   const { mutate: restartWhatsapp, isPending: isRestartingWhatsapp } = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/integrations/whatsapp/restart");
+      return apiRequest("/api/integrations/whatsapp/restart", {
+        method: "POST"
+      });
     },
     onSuccess: () => {
       toast({
@@ -119,7 +118,9 @@ export default function Integrations() {
 
   const { mutate: logoutWhatsapp, isPending: isLoggingOutWhatsapp } = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/integrations/whatsapp/logout");
+      return apiRequest("/api/integrations/whatsapp/logout", {
+        method: "POST"
+      });
     },
     onSuccess: () => {
       toast({
@@ -140,7 +141,9 @@ export default function Integrations() {
 
   const { mutate: restartTelegram, isPending: isRestartingTelegram } = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/integrations/telegram/restart");
+      return apiRequest("/api/integrations/telegram/restart", {
+        method: "POST"
+      });
     },
     onSuccess: () => {
       toast({
@@ -162,7 +165,9 @@ export default function Integrations() {
 
   const { mutate: generateTelegramCode, isPending: isGeneratingTelegramCode } = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/integrations/telegram/generate-authcode");
+      return apiRequest("/api/integrations/telegram/generate-authcode", {
+        method: "POST"
+      });
     },
     onSuccess: () => {
       toast({
