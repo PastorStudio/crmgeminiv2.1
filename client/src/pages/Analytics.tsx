@@ -26,15 +26,7 @@ import {
   Tooltip, 
   Legend, 
   ResponsiveContainer, 
-  Cell,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
-  ScatterChart,
-  Scatter,
-  ZAxis
+  Cell
 } from "recharts";
 import { 
   AlertCircle, 
@@ -49,28 +41,38 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import AnalyticsTestPanel from "@/components/analytics/AnalyticsTestPanel";
 
 // Helper function to get start date from timeframe
 function getStartDateFromTimeframe(timeframe: string): string {
   const now = new Date();
-  let date = new Date(now);
+  let startDate = new Date();
   
   switch (timeframe) {
-    case '7days':
-      date.setDate(date.getDate() - 7);
+    case "7days":
+      startDate.setDate(now.getDate() - 7);
       break;
-    case '30days':
-      date.setDate(date.getDate() - 30);
+    case "30days":
+      startDate.setDate(now.getDate() - 30);
       break;
-    case '90days':
-      date.setDate(date.getDate() - 90);
+    case "90days":
+      startDate.setDate(now.getDate() - 90);
+      break;
+    case "lastYear":
+      startDate.setFullYear(now.getFullYear() - 1);
       break;
     default:
-      date.setDate(date.getDate() - 30);
+      // "all" - just use a far past date
+      startDate = new Date(2000, 0, 1);
   }
   
-  return date.toISOString().split('T')[0];
+  return startDate.toISOString().split('T')[0];
 }
+
+const COLORS = [
+  "#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8", 
+  "#82CA9D", "#A4DE6C", "#D0ED57", "#83A6E0", "#8DD1E1"
+];
 
 export default function Analytics() {
   const [timeframe, setTimeframe] = useState("30days");
@@ -81,18 +83,18 @@ export default function Analytics() {
   const endDate = new Date().toISOString().split('T')[0];
   
   // Fetch all leads
-  const { data: leads, isLoading: leadsLoading } = useQuery<Lead[]>({
+  const { data: leads = [], isLoading: leadsLoading } = useQuery<Lead[]>({
     queryKey: ["/api/leads"],
   });
   
   // Fetch all activities
-  const { data: activities, isLoading: activitiesLoading } = useQuery<Activity[]>({
+  const { data: activities = [], isLoading: activitiesLoading } = useQuery<Activity[]>({
     queryKey: ["/api/activities"],
   });
   
   // Fetch all messages
-  const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
-    queryKey: ["/api/messages", { recent: true, limit: 1000 }],
+  const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
+    queryKey: ["/api/messages"],
   });
   
   // Fetch dashboard stats
@@ -112,162 +114,97 @@ export default function Analytics() {
     message: analyticsStatusData?.status?.message || 'Estado del servicio de análisis desconocido'
   };
   
-  // Fetch insights
-  const { data: insights, isLoading: insightsLoading } = useQuery({
-    queryKey: ["/api/analytics/insights", { startDate, endDate }],
-    enabled: analyticsStatus.available,
-    refetchOnWindowFocus: false
-  });
-  
-  // Fetch lead conversion predictions
-  const { data: leadConversions, isLoading: leadConversionsLoading } = useQuery({
-    queryKey: ["/api/analytics/leads/conversion"],
-    enabled: analyticsStatus.available,
-    refetchOnWindowFocus: false
-  });
-  
-  // Fetch customer feedback analysis
-  const { data: customerFeedback, isLoading: feedbackLoading } = useQuery({
-    queryKey: ["/api/analytics/feedback", { startDate, endDate }],
-    enabled: analyticsStatus.available && activeTab === "advanced",
-    refetchOnWindowFocus: false
-  });
-  
-  // Fetch customer segmentation
-  const { data: customerSegments, isLoading: segmentsLoading } = useQuery({
-    queryKey: ["/api/analytics/segments"],
-    enabled: analyticsStatus.available && activeTab === "advanced",
-    refetchOnWindowFocus: false
-  });
-  
+  // Combined loading state for main data
   const isLoading = leadsLoading || activitiesLoading || messagesLoading || statsLoading;
-  const isAdvancedLoading = insightsLoading || leadConversionsLoading || feedbackLoading || segmentsLoading;
-
-  // Calculate leads by source
-  const leadsBySource = leads ? calculateLeadsBySource(leads) : [];
   
-  // Calculate leads by status 
-  const leadsByStatus = 
-    (dashboardStats && 'leadsByStatus' in dashboardStats && dashboardStats.leadsByStatus) ? 
-      Object.entries(dashboardStats.leadsByStatus as Record<string, number>).map(([status, count]) => ({
-        name: formatStatus(status),
-        value: count,
-      })) 
-    : 
-      // Generar datos de ejemplo basados en leads disponibles si leadsByStatus no existe
-      leads ? 
-        Array.from(new Set(leads.map(lead => lead.status || 'unknown')))
-          .map(status => ({
-            name: formatStatus(status),
-            value: leads.filter(lead => (lead.status || 'unknown') === status).length
-          }))
-      : [];
+  // Mock data for analytics visualizations
+  const [leadsBySource, setLeadsBySource] = useState<any[]>([]);
+  const [leadScoreDistribution, setLeadScoreDistribution] = useState<any[]>([]);
+  const [messageEngagement, setMessageEngagement] = useState<any[]>([]);
+  const [salesPerformance, setSalesPerformance] = useState<any[]>([]);
   
-  // Calculate sales performance over time (mock data for now)
-  const salesPerformance = generateSalesPerformanceData(timeframe);
+  useEffect(() => {
+    if (!isLoading && leads && messages) {
+      setLeadsBySource(calculateLeadsBySource(leads));
+      setLeadScoreDistribution(calculateLeadScoreDistribution(leads));
+      setMessageEngagement(calculateMessageEngagement(messages));
+      setSalesPerformance(generateSalesPerformanceData(timeframe));
+    }
+  }, [leads, messages, timeframe, isLoading]);
   
-  // Calculate lead score distribution
-  const leadScoreDistribution = leads ? calculateLeadScoreDistribution(leads) : [];
-  
-  // Calculate message engagement
-  const messageEngagement = messages ? calculateMessageEngagement(messages) : [];
-
-  // Chart colors
-  const COLORS = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'];
-
-  // Helper function to format status
   function formatStatus(status: string): string {
-    if (!status) return 'Unknown';
-    
     switch (status) {
-      case 'new': return 'New';
-      case 'contacted': return 'Contacted';
-      case 'meeting': return 'Meeting';
-      case 'closed-won': return 'Won';
-      case 'closed-lost': return 'Lost';
-      default: return status.charAt(0).toUpperCase() + status.slice(1);
+      case "new": return "Nuevo";
+      case "contacted": return "Contactado";
+      case "qualified": return "Calificado";
+      case "proposal": return "Propuesta";
+      case "negotiation": return "Negociación";
+      case "won": return "Ganado";
+      case "lost": return "Perdido";
+      default: return status;
     }
   }
-
-  // Calculate leads by source
+  
   function calculateLeadsBySource(leads: Lead[]) {
-    const sourceMap = new Map<string, number>();
+    const sources: Record<string, number> = {};
     
     leads.forEach(lead => {
-      const source = lead.source || 'Unknown';
-      sourceMap.set(source, (sourceMap.get(source) || 0) + 1);
+      const source = lead.source || "Unknown";
+      sources[source] = (sources[source] || 0) + 1;
     });
     
-    const totalLeads = leads.length;
-    
-    return Array.from(sourceMap.entries())
-      .map(([source, count]) => ({
-        name: source.charAt(0).toUpperCase() + source.slice(1),
-        value: count,
-        percentage: Math.round((count / totalLeads) * 100),
-      }))
-      .sort((a, b) => b.value - a.value);
+    return Object.keys(sources).map(source => ({
+      name: source,
+      value: sources[source]
+    }));
   }
-
-  // Calculate lead score distribution
+  
   function calculateLeadScoreDistribution(leads: Lead[]) {
+    // Categorize leads by score ranges
     const ranges = [
-      { range: '0-20', min: 0, max: 20, count: 0 },
-      { range: '21-40', min: 21, max: 40, count: 0 },
-      { range: '41-60', min: 41, max: 60, count: 0 },
-      { range: '61-80', min: 61, max: 80, count: 0 },
-      { range: '81-100', min: 81, max: 100, count: 0 },
+      { name: "0-20", count: 0 },
+      { name: "21-40", count: 0 },
+      { name: "41-60", count: 0 },
+      { name: "61-80", count: 0 },
+      { name: "81-100", count: 0 }
     ];
     
-    // En lugar de usar lead.score (que no existe en la interfaz Lead),
-    // vamos a calcular una puntuación simulada basada en otros datos
     leads.forEach(lead => {
-      let score = 0;
+      const score = lead.score || 0;
       
-      // Factores para calcular score
-      if (lead.status === 'meeting') score += 40;
-      else if (lead.status === 'contacted') score += 20;
-      else if (lead.status === 'closed-won') score += 100;
-      else if (lead.status === 'closed-lost') score += 5;
-      else score += 10;
-      
-      // La prioridad afecta la puntuación
-      if (lead.priority === 'high') score += 20;
-      else if (lead.priority === 'medium') score += 10;
-      
-      // Normalizar score a 0-100
-      score = Math.min(100, Math.max(0, score));
-      
-      const range = ranges.find(r => score >= r.min && score <= r.max);
-      if (range) {
-        range.count++;
+      if (score <= 20) ranges[0].count++;
+      else if (score <= 40) ranges[1].count++;
+      else if (score <= 60) ranges[2].count++;
+      else if (score <= 80) ranges[3].count++;
+      else ranges[4].count++;
+    });
+    
+    return ranges;
+  }
+  
+  function calculateMessageEngagement(messages: Message[]) {
+    const engagement = [
+      { name: "Abiertos", value: 0 },
+      { name: "No abiertos", value: 0 },
+      { name: "Respondidos", value: 0 }
+    ];
+    
+    messages.forEach(message => {
+      if (message.read) {
+        engagement[0].value++;
+        
+        // Asumimos un 40% de respuesta para los mensajes leídos
+        if (Math.random() > 0.6) {
+          engagement[2].value++;
+        }
+      } else {
+        engagement[1].value++;
       }
     });
     
-    return ranges.map(r => ({
-      name: r.range,
-      value: r.count,
-    }));
+    return engagement;
   }
-
-  // Calculate message engagement
-  function calculateMessageEngagement(messages: Message[]) {
-    const channelMap = new Map<string, number>();
-    
-    messages.forEach(message => {
-      const channel = message.channel || 'Unknown';
-      channelMap.set(channel, (channelMap.get(channel) || 0) + 1);
-    });
-    
-    return Array.from(channelMap.entries())
-      .map(([channel, count]) => ({
-        name: channel.charAt(0).toUpperCase() + channel.slice(1),
-        value: count,
-      }))
-      .sort((a, b) => b.value - a.value);
-  }
-
-  // Generate mock sales performance data
+  
   function generateSalesPerformanceData(timeframe: string) {
     const data = [];
     const now = new Date();
@@ -317,7 +254,7 @@ export default function Analytics() {
 
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 md:hidden">Analytics</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Analytics</h1>
           <p className="text-sm text-gray-500">
             Analyze your CRM performance and customer engagement
           </p>
@@ -338,454 +275,191 @@ export default function Analytics() {
             </SelectContent>
           </Select>
           <Button variant="outline">
-            <span className="material-icons mr-1 text-sm">download</span>
+            <BarChartIcon className="h-4 w-4 mr-2" />
             Export
           </Button>
         </div>
       </div>
       
+      {/* Test Analytics Panel */}
+      <AnalyticsTestPanel />
+      
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
         <TabsList>
-          <TabsTrigger value="overview">Visión General</TabsTrigger>
-          <TabsTrigger value="advanced">
-            Analytics Avanzado
-            {!analyticsStatus.available && (
-              <Badge variant="outline" className="ml-2 text-amber-500 border-amber-200 bg-amber-50">
-                Requiere API
-              </Badge>
-            )}
-          </TabsTrigger>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="leads">Leads Analytics</TabsTrigger>
+          <TabsTrigger value="messaging">Messaging</TabsTrigger>
         </TabsList>
       </Tabs>
 
       {activeTab === "overview" ? (
-        // VISIÓN GENERAL
-        isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <Card key={i}>
-                <CardHeader>
-                  <div className="animate-pulse h-6 bg-gray-200 rounded w-1/3 mb-1"></div>
-                  <div className="animate-pulse h-4 bg-gray-200 rounded w-1/2"></div>
-                </CardHeader>
-                <CardContent>
-                  <div className="animate-pulse h-60 bg-gray-200 rounded"></div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* Leads by Source */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Leads by Source</CardTitle>
-                  <CardDescription>
-                    Distribution of leads by acquisition channel
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={leadsBySource}
-                          innerRadius={60}
-                          outerRadius={90}
-                          paddingAngle={5}
-                          dataKey="value"
-                          nameKey="name"
-                          label={({ name, percentage }) => `${name}: ${percentage}%`}
-                        >
-                          {leadsBySource.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => [`${value} leads`, 'Count']} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Leads by Status */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Pipeline Status</CardTitle>
-                  <CardDescription>
-                    Distribution of leads by sales pipeline stage
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={leadsByStatus}
-                        layout="vertical"
-                        margin={{ top: 20, right: 30, left: 60, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" />
-                        <YAxis type="category" dataKey="name" />
-                        <Tooltip formatter={(value) => [`${value} leads`, 'Count']} />
-                        <Legend />
-                        <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 mb-6">
-              {/* Sales Performance */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Sales Performance</CardTitle>
-                  <CardDescription>
-                    Lead acquisition and conversion metrics over time
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={salesPerformance}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Line type="monotone" dataKey="leads" stroke="#3b82f6" activeDot={{ r: 8 }} />
-                        <Line type="monotone" dataKey="conversions" stroke="#10b981" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
+        // OVERVIEW TAB CONTENT
+        <>
+          {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Lead Score Distribution */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Lead Quality</CardTitle>
-                  <CardDescription>
-                    Distribution of lead scores (AI-generated)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={leadScoreDistribution}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`${value} leads`, 'Count']} />
-                        <Legend />
-                        <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Message Engagement */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Communication Channels</CardTitle>
-                  <CardDescription>
-                    Engagement across different messaging channels
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={messageEngagement}
-                          innerRadius={0}
-                          outerRadius={90}
-                          paddingAngle={0}
-                          dataKey="value"
-                          nameKey="name"
-                          label
-                        >
-                          {messageEngagement.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => [`${value} messages`, 'Count']} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
+              {[...Array(4)].map((_, i) => (
+                <Card key={i}>
+                  <CardHeader>
+                    <div className="animate-pulse h-6 bg-gray-200 rounded w-1/3 mb-1"></div>
+                    <div className="animate-pulse h-4 bg-gray-200 rounded w-1/2"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="animate-pulse h-60 bg-gray-200 rounded"></div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          </>
-        )
-      ) : (
-        // ANALYTICS AVANZADO
-        !analyticsStatus.available ? (
-          <Card className="mb-6">
+          ) : (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Leads by Source */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Leads by Source</CardTitle>
+                    <CardDescription>
+                      Distribution of leads by acquisition channel
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={leadsBySource}
+                            innerRadius={60}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            paddingAngle={5}
+                            dataKey="value"
+                            label
+                          >
+                            {leadsBySource.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Lead Score Distribution */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Lead Score Distribution</CardTitle>
+                    <CardDescription>
+                      Number of leads by quality score ranges
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={leadScoreDistribution}
+                          margin={{
+                            top: 5,
+                            right: 30,
+                            left: 20,
+                            bottom: 5,
+                          }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="count" fill="#8884d8" name="Leads">
+                            {leadScoreDistribution.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+                {/* Sales Performance */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Sales Performance</CardTitle>
+                    <CardDescription>
+                      Lead generation and conversion trends over time
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                          data={salesPerformance}
+                          margin={{
+                            top: 5,
+                            right: 30,
+                            left: 20,
+                            bottom: 5,
+                          }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Line
+                            type="monotone"
+                            dataKey="leads"
+                            name="New Leads"
+                            stroke="#8884d8"
+                            activeDot={{ r: 8 }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="conversions" 
+                            name="Conversions"
+                            stroke="#82ca9d" 
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+        </>
+      ) : activeTab === "leads" ? (
+        // LEADS ANALYTICS
+        <div className="space-y-6">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-amber-500" />
-                Configuración requerida
-              </CardTitle>
+              <CardTitle>Lead Analytics</CardTitle>
+              <CardDescription>
+                Detailed analysis of lead performance and conversion rates
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm mb-4">
-                El análisis avanzado con inteligencia artificial requiere configurar una clave API de Gemini. 
-                Esta característica permite análisis predictivo, segmentación de clientes, y obtener insights basados en ML.
-              </p>
-              <Button>
-                Configurar API en Ajustes
-              </Button>
+              <p>Lead analytics content coming soon</p>
             </CardContent>
           </Card>
-        ) : isAdvancedLoading ? (
-          <div className="grid grid-cols-1 gap-6">
-            {[...Array(3)].map((_, i) => (
-              <Card key={i} className="mb-4">
-                <CardHeader>
-                  <div className="animate-pulse h-6 bg-gray-200 rounded w-1/3 mb-1"></div>
-                </CardHeader>
-                <CardContent>
-                  <div className="animate-pulse h-20 bg-gray-200 rounded mb-2"></div>
-                  <div className="animate-pulse h-20 bg-gray-200 rounded"></div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <>
-            {/* Insights y Recomendaciones */}
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lightbulb className="h-5 w-5 text-yellow-500" />
-                  Insights y Oportunidades
-                </CardTitle>
-                <CardDescription>
-                  Descubre oportunidades basadas en análisis de IA de datos de tu CRM
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {insights?.insights?.slice(0, 5).map((insight, idx) => (
-                    <Alert key={idx} className={
-                      insight.impact === 'high' ? 'border-red-200 bg-red-50' :
-                      insight.impact === 'medium' ? 'border-amber-200 bg-amber-50' :
-                      'border-blue-200 bg-blue-50'
-                    }>
-                      <div className="flex items-start">
-                        {insight.type === 'opportunity' && <TrendingUp className="h-4 w-4 mr-2 text-green-500" />}
-                        {insight.type === 'risk' && <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />}
-                        {insight.type === 'trend' && <BarChartIcon className="h-4 w-4 mr-2 text-blue-500" />}
-                        {insight.type === 'recommendation' && <Lightbulb className="h-4 w-4 mr-2 text-yellow-500" />}
-                        <div>
-                          <AlertTitle className="text-sm font-semibold">
-                            {insight.title}
-                            <Badge variant="outline" className="ml-2 text-xs" 
-                              style={{ 
-                                color: insight.impact === 'high' ? 'rgb(220 38 38)' : 
-                                       insight.impact === 'medium' ? 'rgb(217 119 6)' : 
-                                       'rgb(37 99 235)',
-                                borderColor: insight.impact === 'high' ? 'rgb(254 202 202)' : 
-                                             insight.impact === 'medium' ? 'rgb(254 215 170)' : 
-                                             'rgb(219 234 254)',
-                                backgroundColor: insight.impact === 'high' ? 'rgb(254 242 242)' : 
-                                                 insight.impact === 'medium' ? 'rgb(255 247 237)' : 
-                                                 'rgb(239 246 255)',
-                              }}>
-                              {insight.impact === 'high' ? 'Alto impacto' : 
-                               insight.impact === 'medium' ? 'Impacto medio' : 
-                               'Bajo impacto'}
-                            </Badge>
-                          </AlertTitle>
-                          <AlertDescription className="text-xs mt-1">
-                            {insight.description}
-                          </AlertDescription>
-                        </div>
-                      </div>
-                      {insight.actions && insight.actions.length > 0 && (
-                        <div className="mt-2 pl-6">
-                          <span className="text-xs font-semibold block mb-1">Acciones recomendadas:</span>
-                          <ul className="text-xs list-disc pl-4 space-y-1">
-                            {insight.actions.map((action, i) => (
-                              <li key={i}>{action}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </Alert>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Predicción de Conversión de Leads */}
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <LineChartIcon className="h-5 w-5 text-green-500" />
-                  Predicción de Conversión de Leads
-                </CardTitle>
-                <CardDescription>
-                  Probabilidades de conversión basadas en análisis ML
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ScatterChart
-                      margin={{ top: 20, right: 30, bottom: 20, left: 30 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        type="number" 
-                        dataKey="value" 
-                        name="Valor potencial" 
-                        unit="k"
-                        domain={[0, 100]}
-                      />
-                      <YAxis 
-                        type="number" 
-                        dataKey="probability" 
-                        name="Probabilidad" 
-                        unit="%" 
-                        domain={[0, 100]}
-                      />
-                      <ZAxis 
-                        type="number" 
-                        dataKey="size" 
-                        range={[50, 400]} 
-                      />
-                      <Tooltip 
-                        cursor={{ strokeDasharray: '3 3' }}
-                        formatter={(value, name) => {
-                          if (name === 'Valor potencial') return [`${value}k`, name];
-                          if (name === 'Probabilidad') return [`${value}%`, name];
-                          return [value, name];
-                        }}
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            const data = payload[0].payload;
-                            return (
-                              <div className="bg-white p-2 border rounded shadow-sm">
-                                <p className="font-semibold">{data.name}</p>
-                                <p>Probabilidad: {data.probability}%</p>
-                                <p>Valor potencial: ${data.value}k</p>
-                                <p>Confianza: {data.confidence}%</p>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Legend />
-                      <Scatter 
-                        name="Leads" 
-                        data={leadConversions?.predictions?.map(lead => ({
-                          ...lead,
-                          size: 20 + lead.probability / 2
-                        })) || []} 
-                        fill="#8884d8"
-                      />
-                    </ScatterChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-              <CardFooter className="text-sm text-gray-500 pt-0">
-                El tamaño de cada punto representa la probabilidad de conversión combinada con el valor potencial.
-              </CardFooter>
-            </Card>
-
-            {/* Análisis de Sentimiento y Segmentación de Clientes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* Análisis de Sentimiento */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Análisis de Sentimiento</CardTitle>
-                  <CardDescription>
-                    Sentimiento de los mensajes de clientes
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={customerFeedback?.analysis?.sentiment || [
-                            { name: 'Positivo', value: 0 },
-                            { name: 'Neutro', value: 0 },
-                            { name: 'Negativo', value: 0 }
-                          ]}
-                          innerRadius={60}
-                          outerRadius={90}
-                          dataKey="value"
-                          nameKey="name"
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        >
-                          <Cell fill="#4ade80" /> {/* Positivo - verde */}
-                          <Cell fill="#a3a3a3" /> {/* Neutro - gris */}
-                          <Cell fill="#f87171" /> {/* Negativo - rojo */}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Segmentación de Clientes */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Segmentación de Clientes</CardTitle>
-                  <CardDescription>
-                    Perfiles de clientes basados en comportamiento
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart 
-                        outerRadius={90} 
-                        data={customerSegments?.segmentation?.categories || []}
-                      >
-                        <PolarGrid />
-                        <PolarAngleAxis dataKey="category" />
-                        <PolarRadiusAxis angle={30} domain={[0, 10]} />
-                        {customerSegments?.segmentation?.segments?.map((segment, index) => (
-                          <Radar 
-                            key={segment.name}
-                            name={segment.name} 
-                            dataKey={`values[${index}]`} 
-                            stroke={COLORS[index % COLORS.length]} 
-                            fill={COLORS[index % COLORS.length]} 
-                            fillOpacity={0.3} 
-                          />
-                        ))}
-                        <Legend />
-                        <Tooltip />
-                      </RadarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </>
-        )
+        </div>
+      ) : (
+        // MESSAGING ANALYTICS
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Messaging Analytics</CardTitle>
+              <CardDescription>
+                Analysis of messaging performance and engagement metrics
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>Messaging analytics content coming soon</p>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </>
   );
