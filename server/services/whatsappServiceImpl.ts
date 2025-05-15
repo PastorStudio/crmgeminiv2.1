@@ -17,8 +17,9 @@ if (!fs.existsSync(TEMP_DIR)) {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
 }
 
-// Directorio para sesiones de WhatsApp
-const SESSION_PATH = path.join(TEMP_DIR, 'whatsapp-sessions');
+// Constantes para manejo de reconexión y persistencia
+const RECONNECT_ATTEMPTS_MAX = 5; // Número máximo de intentos de reconexión
+const SESSION_PATH = path.join(TEMP_DIR, 'whatsapp-sessions'); // Directorio para sesión
 if (!fs.existsSync(SESSION_PATH)) {
   fs.mkdirSync(SESSION_PATH, { recursive: true });
 }
@@ -27,8 +28,8 @@ if (!fs.existsSync(SESSION_PATH)) {
 const QR_TEXT_FILE = path.join(TEMP_DIR, 'whatsapp-qr.txt');
 
 // Intervalos para mantener la conexión
-const CONNECTION_CHECK_INTERVAL = 15 * 60 * 1000; // 15 minutos
-const KEEP_ALIVE_INTERVAL = 45 * 1000; // 45 segundos
+const CONNECTION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutos
+const KEEP_ALIVE_INTERVAL = 30 * 1000; // 30 segundos
 
 /**
  * Clase que implementa el servicio de WhatsApp usando whatsapp-web.js
@@ -203,23 +204,34 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
           '--no-first-run',
           '--no-zygote',
           '--single-process',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-web-security',
+          '--ignore-certificate-errors'
         ]
       };
 
-      // Inicializamos el cliente con la configuración de puppeteer
+      // Inicializamos el cliente con configuración optimizada para persistencia
       this.client = new Client({
-        puppeteer: puppeteerOptions
+        puppeteer: puppeteerOptions,
+        qrMaxRetries: 5,
+        restartOnAuthFail: true, // Reintentar automáticamente si falla la autenticación
+        takeoverOnConflict: true, // Tomar el control en caso de conflicto de sesión
+        takeoverTimeoutMs: 10000 // Tiempo de espera para tomar el control de la sesión
       });
 
       // Configuramos los eventos del cliente
       this.setupClientEvents();
 
+      console.log('Iniciando cliente WhatsApp con sesión persistente en:', SESSION_PATH);
+      
       // Iniciamos el cliente
       await this.client.initialize();
       
       this.status.initialized = true;
       console.log('Cliente de WhatsApp Web inicializado exitosamente');
+      
+      // Activar la conexión permanente inmediatamente
+      this.activatePermanentConnection();
       
     } catch (error) {
       console.error('Error al inicializar WhatsApp:', error);
@@ -296,13 +308,65 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       this.emit('auth_failure', error);
     });
 
-    // Evento cuando se desconecta
-    this.client.on('disconnected', (reason) => {
+    // Evento cuando se desconecta - implementa reconexión automática
+    this.client.on('disconnected', async (reason) => {
       console.log('Cliente WhatsApp desconectado:', reason);
       this.status.authenticated = false;
       this.status.ready = false;
       this.status.error = `Desconectado: ${reason}`;
       this.emit('disconnected', reason);
+      
+      // Estrategia de reconexión automática con retraso progresivo
+      console.log('Iniciando proceso de reconexión automática...');
+      
+      // Definir los intentos de reconexión con espera incremental
+      const reconnectionDelays = [3000, 6000, 10000, 15000, 30000];
+      
+      for (let i = 0; i < reconnectionDelays.length; i++) {
+        console.log(`Intento de reconexión ${i+1}/${reconnectionDelays.length} en ${reconnectionDelays[i]/1000} segundos...`);
+        
+        // Esperar antes de intentar la reconexión
+        await new Promise(resolve => setTimeout(resolve, reconnectionDelays[i]));
+        
+        try {
+          // Verificar si ya ha sido reconectado por otro proceso
+          if (this.client) {
+            try {
+              const state = await this.client.getState().catch(() => null);
+              if (state === 'CONNECTED') {
+                console.log('Cliente ya reconectado por otro proceso');
+                return;
+              }
+            } catch (err) {
+              // Continuar con el proceso de reconexión
+            }
+          }
+          
+          // Intentar reconectar usando nuestra estrategia robusta
+          const reconnected = await this.checkConnection();
+          
+          if (reconnected) {
+            console.log(`Reconexión automática exitosa en intento ${i+1}`);
+            // Asegurar que la conexión permanente está activa
+            this.activatePermanentConnection();
+            return;
+          }
+        } catch (error) {
+          console.error(`Error en intento de reconexión ${i+1}:`, error);
+        }
+      }
+      
+      // Si llegamos aquí, todos los intentos fallaron
+      console.error('Todos los intentos de reconexión automática fallaron');
+      // Programar un reinicio completo como último recurso
+      setTimeout(async () => {
+        try {
+          console.log('Ejecutando reinicio completo como último recurso');
+          await this.restart();
+        } catch (err) {
+          console.error('Error en reinicio final:', err);
+        }
+      }, 60000); // Esperar 1 minuto antes del reinicio final
     });
 
     // Evento para mensajes entrantes
@@ -501,6 +565,7 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   
   /**
    * Verifica el estado de la conexión y la reactiva si es necesario
+   * Implementa una estrategia robusta de reconexión con múltiples intentos
    */
   async checkConnection(): Promise<boolean> {
     if (!this.client) {
@@ -514,6 +579,8 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       }
     }
     
+    let reconnectAttempts = 0;
+    
     try {
       // Verificar el estado actual de la conexión
       const state = await this.client.getState();
@@ -523,28 +590,84 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       this.status.lastConnectionCheck = new Date();
       this.status.connectionState = state;
       
-      // Si no está conectado, intentar reconectar
-      if (state !== 'CONNECTED') {
-        console.log('WhatsApp no está conectado, intentando reconexión...');
-        
-        // Usar forceRefocus para intentar reconectar sin reiniciar todo
-        try {
+      // Si está conectado, no hay nada más que hacer
+      if (state === 'CONNECTED') {
+        return true;
+      }
+      
+      // Estrategia de reconexión en cascada (desde opciones ligeras a más invasivas)
+      console.log('WhatsApp no está conectado (estado: ' + state + '), intentando reconexión...');
+      
+      // PASO 1: Intentar reconexión suave usando la API interna de WhatsApp Web
+      try {
+        if (this.client.pupPage) {
+          console.log('Intento #1: Reconexión suave mediante API interna');
           await this.client.pupPage.evaluate(() => {
-            return window.Store.AppState.checkState();
+            // @ts-ignore - Store es parte de la API interna de WhatsApp Web
+            if (window.Store && window.Store.AppState) {
+              return window.Store.AppState.checkState();
+            }
+            // @ts-ignore
+            if (window.Store && window.Store.State) {
+              return window.Store.State.default.checkState();
+            }
+            return null;
           });
-          console.log('Reconexión de WhatsApp iniciada');
-          return true;
-        } catch (err) {
-          console.error('Error en reconexión suave:', err);
           
-          // Si no funciona, intentar restart completo
-          console.log('Intentando reinicio completo del cliente...');
-          await this.restart();
-          return true;
+          // Verificar si la reconexión suave funcionó
+          const newState = await this.client.getState();
+          if (newState === 'CONNECTED') {
+            console.log('Reconexión suave exitosa');
+            return true;
+          }
+        }
+      } catch (err) {
+        console.error('Reconexión suave falló:', err);
+      }
+      
+      // PASO 2: Intentar mantener la sesión pero con reinicialización parcial
+      reconnectAttempts++;
+      if (reconnectAttempts <= RECONNECT_ATTEMPTS_MAX) {
+        try {
+          console.log(`Intento #${reconnectAttempts+1}: Reconexión mediante reenfoque de página`);
+          
+          // Recargar la página de WhatsApp Web sin perder la sesión
+          if (this.client.pupPage) {
+            await this.client.pupPage.evaluate(() => {
+              // @ts-ignore - API interna de WhatsApp Web
+              if (window.Store && window.Store.ServiceWorker) {
+                return window.Store.ServiceWorker.default.registerUpdates();
+              }
+              return null;
+            });
+            
+            // Esperar un momento para la reconexión
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            
+            // Verificar si la reconexión funcionó
+            const newState = await this.client.getState();
+            if (newState === 'CONNECTED') {
+              console.log('Reconexión mediante reenfoque exitosa');
+              return true;
+            }
+          }
+        } catch (err) {
+          console.error('Reconexión mediante reenfoque falló:', err);
         }
       }
       
-      return state === 'CONNECTED';
+      // PASO 3: Reinicio completo como último recurso
+      console.log('Intento final: Reinicio completo del cliente...');
+      await this.restart();
+      
+      // Verificar si el reinicio completo funcionó
+      try {
+        const finalState = await this.client.getState();
+        return finalState === 'CONNECTED';
+      } catch (error) {
+        console.error('Error verificando estado tras reinicio completo:', error);
+        return false;
+      }
     } catch (error) {
       console.error('Error verificando conexión de WhatsApp:', error);
       

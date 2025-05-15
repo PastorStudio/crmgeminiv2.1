@@ -180,13 +180,15 @@ class MediaGalleryService {
       let finalQuery = baseQuery;
       if (conditions.length > 0) {
         finalQuery = baseQuery.where(and(...conditions));
+      } else {
+        finalQuery = baseQuery.where(sql`1=1`); // Condición siempre verdadera para mantener consistencia de tipos
       }
       
       // Consulta para contar resultados (usar una nueva consulta para evitar problemas de tipado)
       const countResult = await db.select({ 
         count: sql<number>`count(*)` 
       }).from(mediaGallery)
-        .where(conditions.length > 0 ? and(...conditions) : undefined);
+        .where(conditions.length > 0 ? and(...conditions) : sql`1=1`);
       
       const total = Number(countResult[0]?.count || 0);
       
