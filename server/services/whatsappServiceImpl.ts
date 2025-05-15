@@ -550,7 +550,8 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
         clientId: 'crm-client',
         active: true,
         lastCheckedAt: new Date().toISOString(),
-        connectionState: this.status.connectionState
+        connectionState: this.status.connectionState,
+        permanentConnection: true
       };
       fs.writeFileSync(sessionStatusFile, JSON.stringify(sessionStatus, null, 2));
       console.log('Archivo de estado de sesión creado en:', sessionStatusFile);
@@ -565,6 +566,11 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       
       this.checkConnection().catch(err => {
         console.error('Error verificando conexión de WhatsApp:', err);
+        
+        // Si hay un error, intentar reiniciar automáticamente
+        this.handleConnectionError(err).catch(handleErr => {
+          console.error('Error en manejo de error de conexión:', handleErr);
+        });
       });
     }, CONNECTION_CHECK_INTERVAL);
     
@@ -584,6 +590,49 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
     this.refreshChats().catch(err => {
       console.error('Error cargando chats iniciales:', err);
     });
+  }
+  
+  /**
+   * Maneja errores de conexión de forma robusta
+   * @param error Error original que causó el problema de conexión
+   */
+  private async handleConnectionError(error: any): Promise<void> {
+    console.log('Manejando error de conexión:', error);
+    
+    // Esperar un tiempo antes de intentar reiniciar (evita bucles de reinicio)
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
+    try {
+      // Verificar si el cliente actual está en buen estado
+      if (this.client) {
+        try {
+          // Intentar obtener el estado primero
+          const state = await this.client.getState();
+          console.log('Estado actual después de error:', state);
+          
+          // Si el estado es null o indica desconexión, reiniciar
+          if (!state || state === 'DISCONNECTED' || String(state).toUpperCase() === 'DISCONNECTED') {
+            console.log('Estado indica desconexión, reiniciando cliente...');
+            await this.restart();
+          }
+        } catch (stateError) {
+          // Si no se puede obtener el estado, reiniciar
+          console.error('Error obteniendo estado, reiniciando cliente:', stateError);
+          await this.restart();
+        }
+      } else {
+        // Si no hay cliente, inicializarlo de nuevo
+        await this.initialize();
+      }
+    } catch (recoveryError) {
+      console.error('Error en recuperación de conexión:', recoveryError);
+      // Último recurso: reiniciar completamente
+      try {
+        await this.restart();
+      } catch (finalError) {
+        console.error('Error en reinicio final:', finalError);
+      }
+    }
   }
   
   /**
@@ -650,6 +699,105 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
     if (this.keepAliveTimer) {
       clearInterval(this.keepAliveTimer);
       this.keepAliveTimer = null;
+    }
+  }
+  
+  /**
+   * Activa el modo de conexión ultra-persistente con WhatsApp
+   * Esta función configura opciones adicionales para garantizar que la conexión se mantenga
+   * activa incluso en situaciones adversas como mala conectividad o reinicio del navegador
+   */
+  async activateUnbreakableConnection(): Promise<boolean> {
+    try {
+      console.log('Activando modo de conexión ultra-persistente con WhatsApp...');
+      
+      // Primero, activamos la conexión permanente estándar
+      await this.activatePermanentConnection();
+      
+      // Guardar configuración de conexión ultra-persistente
+      const connectionConfigFile = path.join(SESSION_PATH, 'permanent_connection.json');
+      const connectionConfig = {
+        activatedAt: new Date().toISOString(),
+        mode: 'unbreakable',
+        keepAliveInterval: KEEP_ALIVE_INTERVAL,
+        checkInterval: CONNECTION_CHECK_INTERVAL,
+        active: true,
+        autoReconnect: true,
+        lastKeepAlive: new Date().toISOString()
+      };
+      
+      fs.writeFileSync(connectionConfigFile, JSON.stringify(connectionConfig, null, 2));
+      console.log('Configuración de conexión ultra-persistente guardada en:', connectionConfigFile);
+      
+      // Configurar un intervalo más frecuente para el keep-alive
+      if (this.keepAliveTimer) {
+        clearInterval(this.keepAliveTimer);
+      }
+      
+      // Realizar keep-alive más frecuente (cada 20 segundos)
+      this.keepAliveTimer = setInterval(() => {
+        this.performKeepAlive()
+          .then(() => {
+            // Actualizar el archivo de configuración cada vez que se realiza un keep-alive exitoso
+            try {
+              if (fs.existsSync(connectionConfigFile)) {
+                const currentConfig = JSON.parse(fs.readFileSync(connectionConfigFile, 'utf8'));
+                currentConfig.lastKeepAlive = new Date().toISOString();
+                currentConfig.successfulKeepAlives = (currentConfig.successfulKeepAlives || 0) + 1;
+                fs.writeFileSync(connectionConfigFile, JSON.stringify(currentConfig, null, 2));
+              }
+            } catch (updateErr) {
+              console.error('Error actualizando archivo de configuración:', updateErr);
+            }
+          })
+          .catch(err => {
+            console.error('Error en keep-alive (modo ultra-persistente):', err);
+            
+            // Intentar recuperar inmediatamente la conexión
+            this.handleConnectionError(err).catch(handleErr => {
+              console.error('Error en recuperación de conexión ultra-persistente:', handleErr);
+            });
+          });
+      }, 20000); // Cada 20 segundos
+      
+      console.log('Modo de conexión ultra-persistente activado exitosamente');
+      return true;
+    } catch (error) {
+      console.error('Error activando modo de conexión ultra-persistente:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Desactiva el modo de conexión ultra-persistente
+   * Vuelve al modo de conexión estándar o lo desactiva completamente
+   */
+  deactivateUnbreakableConnection(): boolean {
+    try {
+      console.log('Desactivando modo de conexión ultra-persistente...');
+      
+      // Detener los timers existentes
+      this.stopConnectionTimers();
+      
+      // Actualizar el archivo de configuración
+      const connectionConfigFile = path.join(SESSION_PATH, 'permanent_connection.json');
+      if (fs.existsSync(connectionConfigFile)) {
+        const connectionConfig = JSON.parse(fs.readFileSync(connectionConfigFile, 'utf8'));
+        connectionConfig.active = false;
+        connectionConfig.deactivatedAt = new Date().toISOString();
+        fs.writeFileSync(connectionConfigFile, JSON.stringify(connectionConfig, null, 2));
+      }
+      
+      // Volver a activar los timers estándar
+      this.activatePermanentConnection().catch(err => {
+        console.error('Error restableciendo conexión estándar:', err);
+      });
+      
+      console.log('Modo de conexión ultra-persistente desactivado');
+      return true;
+    } catch (error) {
+      console.error('Error desactivando modo ultra-persistente:', error);
+      return false;
     }
   }
   
