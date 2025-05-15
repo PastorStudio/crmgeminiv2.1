@@ -1010,6 +1010,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
   */
   
   // Rutas para Telegram
+  // Endpoints para mantenimiento de conexión de WhatsApp
+  app.post("/api/whatsapp/permanent-connection/activate", async (req: Request, res: Response) => {
+    try {
+      const { whatsappService } = await import('./services/whatsappServiceImpl');
+      
+      // Verificar si el cliente ya está en estado avanzado
+      const status = whatsappService.getStatus();
+      
+      // Activar modo de conexión permanente avanzado
+      const success = await whatsappService.activateUnbreakableConnection();
+      
+      if (success) {
+        res.json({
+          success: true,
+          message: "Modo de conexión permanente activado exitosamente",
+          status: whatsappService.getStatus()
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "Error activando modo de conexión permanente",
+          status: whatsappService.getStatus()
+        });
+      }
+    } catch (error) {
+      console.error("Error en activación de conexión permanente:", error);
+      res.status(500).json({
+        success: false,
+        error: "Error activando conexión permanente",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  app.post("/api/whatsapp/permanent-connection/deactivate", async (req: Request, res: Response) => {
+    try {
+      const { whatsappService } = await import('./services/whatsappServiceImpl');
+      
+      // Desactivar modo de conexión permanente avanzado
+      const success = whatsappService.deactivateUnbreakableConnection();
+      
+      if (success) {
+        res.json({
+          success: true,
+          message: "Modo de conexión permanente desactivado exitosamente",
+          status: whatsappService.getStatus()
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "Error desactivando modo de conexión permanente",
+          status: whatsappService.getStatus()
+        });
+      }
+    } catch (error) {
+      console.error("Error en desactivación de conexión permanente:", error);
+      res.status(500).json({
+        success: false,
+        error: "Error desactivando conexión permanente",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  app.get("/api/whatsapp/permanent-connection/status", async (req: Request, res: Response) => {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      // Buscar archivos de estado de conexión permanente
+      const tempDir = path.join(process.cwd(), 'temp');
+      const sessionPath = path.join(tempDir, 'whatsapp-sessions');
+      const permanentConnectionFile = path.join(sessionPath, 'permanent_connection.json');
+      const sessionStatusFile = path.join(sessionPath, 'session_active.json');
+      
+      let permanentConnectionStatus = null;
+      let sessionStatus = null;
+      
+      if (fs.existsSync(permanentConnectionFile)) {
+        try {
+          permanentConnectionStatus = JSON.parse(fs.readFileSync(permanentConnectionFile, 'utf8'));
+        } catch (parseErr) {
+          console.error("Error parseando archivo de conexión permanente:", parseErr);
+        }
+      }
+      
+      if (fs.existsSync(sessionStatusFile)) {
+        try {
+          sessionStatus = JSON.parse(fs.readFileSync(sessionStatusFile, 'utf8'));
+        } catch (parseErr) {
+          console.error("Error parseando archivo de estado de sesión:", parseErr);
+        }
+      }
+      
+      const { whatsappService } = await import('./services/whatsappServiceImpl');
+      const currentStatus = whatsappService.getStatus();
+      
+      res.json({
+        success: true,
+        currentStatus,
+        permanentConnection: permanentConnectionStatus || false,
+        sessionStatus: sessionStatus || false,
+        mode: permanentConnectionStatus ? 
+              (permanentConnectionStatus.mode || "standard") : 
+              (sessionStatus && sessionStatus.permanentConnection ? "standard" : "disabled")
+      });
+    } catch (error) {
+      console.error("Error obteniendo estado de conexión permanente:", error);
+      res.status(500).json({
+        success: false,
+        error: "Error obteniendo estado de conexión permanente",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   app.get("/api/integrations/telegram/status", async (req: Request, res: Response) => {
     try {
       // Importar el servicio de Telegram

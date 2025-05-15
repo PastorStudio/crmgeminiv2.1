@@ -112,6 +112,18 @@ export interface IWhatsAppService {
   activatePermanentConnection(): Promise<void>;
   
   /**
+   * Activa el modo de conexión ultra-persistente con WhatsApp
+   * Esta función configura opciones adicionales para garantizar que la conexión se mantenga
+   * activa incluso en situaciones adversas
+   */
+  activateUnbreakableConnection(): Promise<boolean>;
+  
+  /**
+   * Desactiva el modo de conexión ultra-persistente
+   */
+  deactivateUnbreakableConnection(): boolean;
+  
+  /**
    * Verifica el estado de la conexión y la reactiva si es necesario
    */
   checkConnection(): Promise<boolean>;
