@@ -177,6 +177,7 @@ export default function MassSender() {
   });
   const [importedData, setImportedData] = useState<any>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
+  const [countryCode, setCountryCode] = useState<string>("507"); // Panamá por defecto
   
   // Consulta para obtener los grupos de contactos
   const { data: contactGroups = [], isLoading: loadingGroups } = useQuery<ContactGroup[]>({
@@ -607,6 +608,69 @@ export default function MassSender() {
           variant: "destructive",
         });
       }
+    }
+  });
+  
+  // Mutación para formatear números de teléfono
+  const formatPhoneNumbersMutation = useMutation({
+    mutationFn: async ({phoneNumbers, countryCode}: {phoneNumbers: string[], countryCode: string}) => {
+      const response = await fetch('/api/excel/format-phone-numbers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ phoneNumbers, countryCode })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al formatear números de teléfono');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Actualizar los números de teléfono en los datos importados
+      if (importedData && importedData.contacts) {
+        // Crear un mapeo de los números formateados
+        const formattedMap = new Map();
+        data.formattedNumbers.forEach((item: any) => {
+          if (item.formatted) {
+            formattedMap.set(item.original, item.formatted);
+          }
+        });
+        
+        // Actualizar números de teléfono en los contactos
+        const updatedContacts = importedData.contacts.map((contact: any) => {
+          const formatted = formattedMap.get(contact.phoneNumber);
+          if (formatted) {
+            return {
+              ...contact,
+              phoneNumber: formatted,
+              _wasFormatted: true
+            };
+          }
+          return contact;
+        });
+        
+        // Actualizar los datos importados
+        setImportedData({
+          ...importedData,
+          contacts: updatedContacts
+        });
+        
+        toast({
+          title: "Números formateados",
+          description: `Se formatearon ${data.formattedNumbers.filter((n: any) => n.formatted).length} números de teléfono con el código +${countryCode}.`,
+        });
+      }
+    },
+    onError: (error) => {
+      console.error("Error formatting phone numbers:", error);
+      toast({
+        title: "Error al formatear números",
+        description: error instanceof Error ? error.message : "No se pudieron formatear los números de teléfono.",
+        variant: "destructive",
+      });
     }
   });
   
@@ -1312,6 +1376,7 @@ export default function MassSender() {
                                       <TableHead className="py-1 px-2">#</TableHead>
                                       <TableHead className="py-1 px-2">Teléfono</TableHead>
                                       <TableHead className="py-1 px-2">Nombre</TableHead>
+                                      <TableHead className="py-1 px-2">Etiquetas</TableHead>
                                       <TableHead className="py-1 px-2">Estado</TableHead>
                                     </TableRow>
                                   </TableHeader>
@@ -1321,6 +1386,24 @@ export default function MassSender() {
                                         <TableCell className="py-1 px-2">{index + 1}</TableCell>
                                         <TableCell className="py-1 px-2 font-mono">{contact.phoneNumber}</TableCell>
                                         <TableCell className="py-1 px-2 truncate max-w-[120px]">{contact.name || "Sin nombre"}</TableCell>
+                                        <TableCell className="py-1 px-2">
+                                          {contact.tags && contact.tags.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1">
+                                              {contact.tags.slice(0, 2).map((tag: string, tagIndex: number) => (
+                                                <Badge key={tagIndex} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs py-0 px-1.5 h-5">
+                                                  {tag}
+                                                </Badge>
+                                              ))}
+                                              {contact.tags.length > 2 && (
+                                                <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-xs py-0 px-1.5 h-5">
+                                                  +{contact.tags.length - 2}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            <span className="text-xs text-muted-foreground">Sin etiquetas</span>
+                                          )}
+                                        </TableCell>
                                         <TableCell className="py-1 px-2">
                                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs py-0 px-1.5 h-5">
                                             Importado
