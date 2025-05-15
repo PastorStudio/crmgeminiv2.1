@@ -39,7 +39,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle, Upload, Database, FileText, FileSpreadsheet } from "lucide-react";
+import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle, Upload, Database, FileText, FileSpreadsheet, CheckCircle, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -347,7 +347,18 @@ export default function MassSender() {
       return response.json();
     },
     onSuccess: (data) => {
-      setExcelColumns(data);
+      // Establecer las columnas detectadas
+      setExcelColumns(data.columns || []);
+      
+      // Si hay un mapeo sugerido, establecerlo automáticamente
+      if (data.suggestedMapping) {
+        console.log('Usando mapeo sugerido:', data.suggestedMapping);
+        setFieldMapping(prev => ({
+          ...prev,
+          ...data.suggestedMapping
+        }));
+      }
+      
       setIsFieldMappingOpen(true);
     },
     onError: (error) => {
