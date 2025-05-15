@@ -17,6 +17,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { href: "/calendar", icon: "event", label: "Calendar" },
     { href: "/tasks", icon: "assignment", label: "Tasks" },
     { href: "/analytics", icon: "leaderboard", label: "Analytics" },
+    { href: "/gemini-demo", icon: "smart_toy", label: "Gemini AI" },
     { href: "/integrations", icon: "link", label: "Integraciones" },
     { href: "/database", icon: "storage", label: "Base de Datos" },
     { href: "/settings", icon: "settings", label: "Settings" },
