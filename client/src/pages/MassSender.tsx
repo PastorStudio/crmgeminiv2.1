@@ -382,6 +382,15 @@ export default function MassSender() {
         description: "El archivo Excel ha sido cargado correctamente.",
       });
       
+      // Reiniciar el mapeo de campos con valores 'none'
+      setFieldMapping({
+        phoneNumber: 'none',
+        name: 'none',
+        company: 'none',
+        email: 'none',
+        tags: 'none'
+      });
+      
       // Obtener las columnas del archivo
       analyzeExcelMutation.mutate(data.filename);
     },
@@ -439,9 +448,15 @@ export default function MassSender() {
       // Si hay un mapeo sugerido, establecerlo automáticamente
       if (data.suggestedMapping) {
         console.log('Usando mapeo sugerido:', data.suggestedMapping);
+        // Convertir cualquier valor vacío a 'none' en el mapeo sugerido
+        const sanitizedMapping = Object.entries(data.suggestedMapping).reduce((acc, [key, value]) => {
+          acc[key] = value === '' ? 'none' : String(value);
+          return acc;
+        }, {} as Record<string, string>);
+        
         setFieldMapping(prev => ({
           ...prev,
-          ...data.suggestedMapping
+          ...sanitizedMapping
         }));
       }
       
@@ -673,7 +688,7 @@ export default function MassSender() {
     }
     
     // Verificar que los campos obligatorios estén mapeados
-    if (!fieldMapping.phoneNumber) {
+    if (!fieldMapping.phoneNumber || fieldMapping.phoneNumber === 'none') {
       toast({
         title: "Campo requerido",
         description: "Debe seleccionar la columna que contiene los números de teléfono.",
@@ -682,10 +697,18 @@ export default function MassSender() {
       return;
     }
     
+    // Filtrar campos marcados como 'none' antes de enviar
+    const filteredMapping = Object.entries(fieldMapping).reduce((acc, [key, value]) => {
+      if (value !== 'none') {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Record<string, string>);
+    
     // Importar los datos de Excel
     importExcelMutation.mutate({
       filename: selectedFile.name,
-      fieldMapping
+      fieldMapping: filteredMapping
     });
   };
   
