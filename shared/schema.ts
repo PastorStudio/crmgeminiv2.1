@@ -73,18 +73,15 @@ export const surveys = pgTable("surveys", {
 // Dashboard KPIs model - for dashboard statistics
 export const dashboardStats = pgTable("dashboard_stats", {
   id: serial("id").primaryKey(),
-  newLeads: integer("newLeads").notNull(),
-  contactedLeads: integer("contactedLeads").notNull(),
-  qualifiedLeads: integer("qualifiedLeads").notNull(),
-  convertedLeads: integer("convertedLeads").notNull(),
-  totalRevenue: doublePrecision("totalRevenue").notNull(),
-  avgDealSize: doublePrecision("avgDealSize").notNull(),
-  salesCycle: doublePrecision("salesCycle").notNull(),
-  conversionRate: doublePrecision("conversionRate").notNull(),
-  revenueBySource: jsonb("revenueBySource").notNull(),
-  leadsByStatus: jsonb("leadsByStatus").notNull(),
-  performanceByUser: jsonb("performanceByUser").notNull(),
-  topPerformers: jsonb("topPerformers").notNull(),
+  totalLeads: integer("totalLeads").default(0),
+  newLeadsThisMonth: integer("newLeadsThisMonth").default(0),
+  activeLeads: integer("activeLeads").default(0),
+  convertedLeads: integer("convertedLeads").default(0),
+  totalSales: doublePrecision("totalSales").default(0),
+  salesThisMonth: doublePrecision("salesThisMonth").default(0),
+  pendingActivities: integer("pendingActivities").default(0),
+  completedActivities: integer("completedActivities").default(0),
+  performanceMetrics: jsonb("performanceMetrics").default('{"responseTime": 0, "conversionRate": 0, "customerSatisfaction": 0}'),
   updatedAt: timestamp("updatedAt").defaultNow(),
 });
 
