@@ -23,24 +23,34 @@ export default function WhatsAppIntegration() {
 
   // Consulta para obtener el estado actual de WhatsApp
   const { data: status, isLoading, isError, error } = useQuery<WhatsAppStatus>({
-    queryKey: ['/api/integrations/whatsapp/status'],
+    queryKey: ['/api/direct/whatsapp/status'],
     queryFn: async () => {
-      console.log('Solicitando estado de WhatsApp...');
+      console.log('Solicitando estado de WhatsApp (endpoint directo)...');
       try {
-        return await apiRequest('/api/integrations/whatsapp/status');
-      } catch (error) {
-        // Si hay un error de tipo "DOCTYPE is not valid JSON", probablemente es Vite interceptando
-        if (error instanceof Error && error.message.includes('DOCTYPE')) {
-          console.error('La respuesta parece ser HTML en lugar de JSON');
-          // Devolvemos un estado con error para que el frontend pueda manejarlo
-          return {
-            initialized: true,
-            ready: false,
-            authenticated: false,
-            error: 'Interceptado por Vite - intenta recargar la página'
-          };
+        // Añadir timestamp para evitar caché
+        const timestamp = Date.now();
+        const response = await fetch(`/api/direct/whatsapp/status?t=${timestamp}`, {
+          headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
         }
-        throw error;
+        
+        const data = await response.json();
+        console.log('Estado WhatsApp recibido (endpoint directo):', data);
+        return data;
+      } catch (error) {
+        console.error('Error obteniendo estado de WhatsApp:', error);
+        return {
+          initialized: true,
+          ready: false,
+          authenticated: false,
+          error: 'Error de conexión'
+        };
       }
     },
     refetchInterval: (data) => data?.authenticated ? 30000 : refreshInterval, // Usar el callback para evitar referencia circular
