@@ -1271,8 +1271,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configurar el servidor WebSocket para notificaciones en tiempo real
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
-  // Importar y registrar el servicio de notificaciones
-  const { notificationService } = await import('./services/notificationService');
+  // Intentaremos importar el servicio de notificaciones si está disponible
+  let notificationService: any;
+  try {
+    const notificationModule = await import('./services/notificationService');
+    notificationService = notificationModule.notificationService;
+  } catch (error) {
+    console.warn('Servicio de notificaciones no disponible:', error);
+    notificationService = null;
+  }
   
   // Lista de clientes conectados (para compatibilidad con código existente)
   const clients = new Set<WebSocket>();
@@ -1281,10 +1288,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   wss.on('connection', (ws: WebSocket) => {
     console.log('Cliente WebSocket conectado');
     
-    // Registrar cliente en el servicio de notificaciones avanzado
-    notificationService.registerClient(ws);
+    // Registrar cliente en el servicio de notificaciones si está disponible
+    if (notificationService) {
+      try {
+        notificationService.registerClient(ws);
+      } catch (error) {
+        console.warn('Error al registrar cliente en servicio de notificaciones:', error);
+      }
+    }
     
-    // También añadir a la lista simple para compatibilidad
+    // Añadir a la lista simple de clientes (siempre activo)
     clients.add(ws);
     
     // Enviar un mensaje de bienvenida
@@ -1293,18 +1306,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       message: 'Conectado al servidor de notificaciones en tiempo real'
     }));
     
-    // Simular autenticación del cliente (en producción usaríamos tokens)
+    // Autenticación simulada
     setTimeout(() => {
       try {
-        // Autenticar al cliente en el servicio de notificaciones
-        notificationService.authenticateClient(ws, 1, 'admin');
-        
-        // Enviar una notificación de sistema de prueba
-        notificationService.sendSystemNotification(
-          "Sistema inicializado", 
-          "El sistema de notificaciones en tiempo real está funcionando",
-          "low"
-        );
+        // Si el servicio de notificaciones avanzado está disponible
+        if (notificationService) {
+          // Autenticar al cliente
+          notificationService.authenticateClient(ws, 1, 'admin');
+          
+          // Enviar una notificación de sistema de prueba
+          notificationService.sendSystemNotification(
+            "Sistema inicializado", 
+            "El sistema de notificaciones en tiempo real está funcionando",
+            "low"
+          );
+        } else {
+          // Fallback a notificación simple
+          ws.send(JSON.stringify({
+            type: 'notification',
+            title: 'Sistema inicializado',
+            message: 'Las notificaciones básicas están funcionando',
+            timestamp: new Date()
+          }));
+        }
       } catch (error) {
         console.error('Error al autenticar cliente WebSocket:', error);
       }

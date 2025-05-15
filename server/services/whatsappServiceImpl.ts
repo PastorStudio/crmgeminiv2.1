@@ -306,9 +306,31 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
     });
 
     // Evento para mensajes entrantes
-    this.client.on('message', (message) => {
+    this.client.on('message', async (message) => {
       console.log('Mensaje recibido:', message.body);
-      this.emit('message', message);
+      
+      try {
+        // Enviar a través del sistema de eventos del servicio
+        this.emit('message', message);
+        
+        // Obtener información del chat y contacto para posibles acciones adicionales
+        const chat = await message.getChat();
+        const contactName = chat.name || 'Contacto';
+        const contactId = message.from || '';
+        const chatId = chat.id._serialized || chat.id;
+        
+        // Enviar notificación global vía WebSocket (usando función global)
+        if (global.sendNotification) {
+          (global as any).sendNotification({
+            type: 'new_message',
+            contactName,
+            messageText: message.body,
+            timestamp: new Date()
+          });
+        }
+      } catch (error) {
+        console.error('Error al procesar notificación de mensaje:', error);
+      }
     });
   }
 
