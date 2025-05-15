@@ -13,7 +13,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 export const mediaGalleryRouter = Router();
 
 // Obtener archivos de la galería (con filtros y paginación)
-mediaGalleryRouter.get('/', async (req: Request, res: Response) => {
+mediaGalleryRouter.get('/list', async (req: Request, res: Response) => {
   try {
     const { type, tags, search, orderBy, order, page, limit } = req.query;
     
@@ -27,7 +27,11 @@ mediaGalleryRouter.get('/', async (req: Request, res: Response) => {
     if (limit) options.limit = parseInt(limit as string);
     
     const result = await mediaGalleryService.searchMedia(options);
-    res.status(200).json(result);
+    res.status(200).json({
+      success: true,
+      items: result.items,
+      total: result.total
+    });
   } catch (error) {
     console.error('Error buscando medios:', error);
     res.status(500).json({ error: 'Error al buscar archivos multimedia' });
@@ -52,7 +56,7 @@ mediaGalleryRouter.get('/:id', async (req: Request, res: Response) => {
 });
 
 // Subir un nuevo archivo a la galería
-mediaGalleryRouter.post('/', upload.single('file'), async (req: Request, res: Response) => {
+mediaGalleryRouter.post('/upload', upload.single('file'), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No se ha proporcionado ningún archivo' });
@@ -130,7 +134,7 @@ mediaGalleryRouter.post('/:id/track-usage', async (req: Request, res: Response) 
 export const mediaServeRouter = Router();
 
 // Servir los archivos de la galería
-mediaServeRouter.get('/:id/:filename', async (req: Request, res: Response) => {
+mediaServeRouter.get('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const media = await mediaGalleryService.getMediaById(id);
