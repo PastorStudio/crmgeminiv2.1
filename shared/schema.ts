@@ -213,3 +213,33 @@ export type Survey = typeof surveys.$inferSelect;
 export type DashboardStats = typeof dashboardStats.$inferSelect;
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
 export type MarketingCampaign = typeof marketingCampaigns.$inferSelect;
+
+// Tabla para galería de archivos
+export const mediaGallery = pgTable("media_gallery", {
+  id: serial("id").primaryKey(),
+  filename: text("filename").notNull(),
+  originalFilename: text("original_filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  size: integer("size").notNull(),
+  path: text("path").notNull(),
+  type: text("type").notNull(), // image, document, audio, video
+  tags: text("tags").array(),
+  title: text("title"),
+  description: text("description"),
+  uploadedBy: integer("uploaded_by").references(() => users.id),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  lastUsedAt: timestamp("last_used_at"),
+  useCount: integer("use_count").default(0),
+});
+
+// Relaciones para galería de medios
+export const mediaGalleryRelations = relations(mediaGallery, ({ one }) => ({
+  uploader: one(users, {
+    fields: [mediaGallery.uploadedBy],
+    references: [users.id]
+  })
+}));
+
+export const insertMediaGallerySchema = createInsertSchema(mediaGallery).omit({ id: true, uploadedAt: true, lastUsedAt: true, useCount: true });
+export type InsertMediaGallery = z.infer<typeof insertMediaGallerySchema>;
+export type MediaGallery = typeof mediaGallery.$inferSelect;
