@@ -392,6 +392,8 @@ export default function MassSender() {
       });
       
       // Obtener las columnas del archivo
+      // Guardar el archivo seleccionado con el nombre devuelto por el servidor
+      setSelectedFile({...file, filename: data.filename});
       analyzeExcelMutation.mutate(data.filename);
     },
     onError: (error) => {
@@ -708,7 +710,7 @@ export default function MassSender() {
     
     // Importar los datos de Excel
     importExcelMutation.mutate({
-      filename: selectedFile.name,
+      filename: selectedFile.filename, // Usamos el filename devuelto por el servidor
       fieldMapping: filteredMapping
     });
   };
