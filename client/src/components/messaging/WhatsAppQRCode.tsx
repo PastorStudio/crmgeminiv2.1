@@ -13,6 +13,10 @@ interface WhatsAppStatus {
   qrCode?: string;
 }
 
+interface QRCodeResponse {
+  data: string;
+}
+
 export function WhatsAppQRCode() {
   const [status, setStatus] = useState<WhatsAppStatus | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
@@ -23,12 +27,12 @@ export function WhatsAppQRCode() {
   const fetchStatus = async () => {
     try {
       setLoading(true);
-      const response = await apiRequest('/api/integrations/whatsapp/status');
+      const response = await apiRequest<WhatsAppStatus>('/api/integrations/whatsapp/status');
       setStatus(response);
       
-      if (response.qrCode) {
+      if (response?.qrCode) {
         setQrCode(response.qrCode);
-      } else if (!response.authenticated) {
+      } else if (response && !response.authenticated) {
         fetchQRCode();
       }
     } catch (error) {
@@ -45,8 +49,8 @@ export function WhatsAppQRCode() {
 
   const fetchQRCode = async () => {
     try {
-      const response = await apiRequest('/api/integrations/whatsapp/qrcode');
-      if (response.data) {
+      const response = await apiRequest<QRCodeResponse>('/api/integrations/whatsapp/qrcode');
+      if (response?.data) {
         setQrCode(response.data);
       }
     } catch (error) {
@@ -58,7 +62,8 @@ export function WhatsAppQRCode() {
     try {
       setRefreshing(true);
       await apiRequest('/api/integrations/whatsapp/restart', {
-        method: 'POST'
+        method: 'POST',
+        body: {}
       });
       
       // Esperar un momento para que se genere el nuevo código QR
