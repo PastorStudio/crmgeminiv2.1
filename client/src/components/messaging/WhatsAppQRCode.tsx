@@ -122,25 +122,25 @@ export function WhatsAppQRCode() {
               />
             </div>
             <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-3 text-xs text-green-800">
-              Este código QR abrirá WhatsApp directamente en tu dispositivo móvil
+              Código QR oficial de WhatsApp Web
             </div>
             
             <p className="text-sm text-muted-foreground mb-2">
               {status?.authenticated 
                 ? '¡WhatsApp conectado exitosamente!' 
-                : '1. Abre la cámara en tu teléfono'
+                : '1. Abre WhatsApp en tu teléfono'
               }
             </p>
             {!status?.authenticated && (
               <>
                 <p className="text-sm text-muted-foreground mb-2">
-                  2. Enfoca el código QR para escanearlo
+                  2. Toca Ajustes ⚙️ o Menú ⋮
                 </p>
                 <p className="text-sm text-muted-foreground mb-2">
-                  3. Se abrirá WhatsApp automáticamente
+                  3. Selecciona Dispositivos vinculados
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  4. Confirma la conexión en la app
+                  4. Escanea este código QR
                 </p>
               </>
             )}

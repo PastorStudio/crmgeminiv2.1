@@ -12,11 +12,33 @@ import { whatsappDemoService } from './whatsappDemoService';
 import { IWhatsAppService } from './whatsappInterface';
 
 export async function registerWhatsAppRoutes(app: Express) {
-  // Por defecto, usamos el servicio de demostración para evitar problemas de dependencias
-  let whatsappService: IWhatsAppService = whatsappDemoService;
+  // Intentamos usar el servicio real con whatsapp-web.js
+  let serviceToUse: IWhatsAppService;
   
-  // Mensaje de log
-  console.log("Usando servicio demo de WhatsApp con códigos QR en formato whatsapp://");
+  try {
+    // Importamos dinámicamente el servicio real
+    const { whatsappService: realService } = await import('./whatsappServiceImpl');
+    serviceToUse = realService;
+    console.log("Usando servicio REAL de WhatsApp con códigos QR oficiales de WhatsApp Web");
+    
+    // Inicializamos el servicio
+    try {
+      await serviceToUse.initialize();
+    } catch (error) {
+      console.error("Error inicializando servicio real de WhatsApp:", error);
+      console.log("Cambiando a servicio de demostración debido a error de inicialización");
+      serviceToUse = whatsappDemoService;
+      await serviceToUse.initialize();
+    }
+  } catch (error) {
+    console.error("Error cargando servicio real de WhatsApp:", error);
+    console.log("Usando servicio demo de WhatsApp con códigos QR en formato whatsapp://");
+    serviceToUse = whatsappDemoService;
+    await serviceToUse.initialize();
+  }
+  
+  // Asignamos el servicio elegido
+  const whatsappService = serviceToUse;
   
   // Status endpoint
   app.get("/api/integrations/whatsapp/status", async (req: Request, res: Response) => {
