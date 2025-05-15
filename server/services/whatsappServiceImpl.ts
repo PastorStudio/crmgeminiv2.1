@@ -5,10 +5,12 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { Client, LocalAuth } from 'whatsapp-web.js';
+import { Client } from 'whatsapp-web.js';
 import { IWhatsAppService, WhatsAppStatus } from "./whatsappInterface";
 import { storage } from "../storage";
+import * as qrcode from 'qrcode-terminal';
 import puppeteer from 'puppeteer-core';
+import * as child_process from 'child_process';
 
 // Directorio temporal para archivos
 const TEMP_DIR = path.join(process.cwd(), 'temp');
@@ -50,6 +52,65 @@ class WhatsAppServiceImpl implements IWhatsAppService {
   }
   
   /**
+   * Encuentra la ruta de Chromium en el sistema
+   */
+  private async findChromiumPath(): Promise<string | null> {
+    // Intentar encontrar chromium o chrome con el comando 'which'
+    try {
+      // Buscar chromium
+      const chromiumPath = child_process.execSync('which chromium').toString().trim();
+      if (chromiumPath && fs.existsSync(chromiumPath)) {
+        console.log(`Chromium encontrado en: ${chromiumPath}`);
+        return chromiumPath;
+      }
+    } catch (error) {
+      // Ignorar errores
+    }
+    
+    try {
+      // Buscar chrome
+      const chromePath = child_process.execSync('which chrome').toString().trim();
+      if (chromePath && fs.existsSync(chromePath)) {
+        console.log(`Chrome encontrado en: ${chromePath}`);
+        return chromePath;
+      }
+    } catch (error) {
+      // Ignorar errores
+    }
+    
+    // Buscar en rutas comunes
+    const possiblePaths = [
+      '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
+      '/bin/chromium',
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/google-chrome',
+      '/nix/store/*/chromium*/bin/chromium'
+    ];
+    
+    for (const pathPattern of possiblePaths) {
+      if (pathPattern.includes('*')) {
+        try {
+          // Usar find para buscar en patrones con comodines
+          const found = child_process.execSync(`find ${pathPattern.split('*')[0]} -name "${pathPattern.split('*').pop()}" -type f 2>/dev/null | head -n 1`).toString().trim();
+          if (found && fs.existsSync(found)) {
+            console.log(`Chromium encontrado en: ${found}`);
+            return found;
+          }
+        } catch (error) {
+          // Ignorar errores
+        }
+      } else if (fs.existsSync(pathPattern)) {
+        console.log(`Chromium encontrado en: ${pathPattern}`);
+        return pathPattern;
+      }
+    }
+    
+    console.error("No se encontró Chromium en el sistema");
+    return null;
+  }
+
+  /**
    * Inicializa el cliente de WhatsApp Web con configuración para usar el chromium instalado
    */
   async initialize(): Promise<void> {
@@ -62,11 +123,18 @@ class WhatsAppServiceImpl implements IWhatsAppService {
       console.log('Iniciando servicio de WhatsApp con Chromium...');
       
       // Encontrar el ejecutable de Chromium
-      console.log('Intentando crear navegador con Puppeteer...');
-      let executablePath = '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium';
+      console.log('Buscando instalación de Chromium...');
+      const executablePath = await this.findChromiumPath();
+      
+      if (!executablePath) {
+        throw new Error("No se encontró Chromium instalado. Por favor instala Chromium para usar WhatsApp Web.");
+      }
+      
+      console.log(`Usando Chromium en: ${executablePath}`);
       
       // Verificar si podemos lanzar el navegador directamente
       try {
+        console.log('Verificando si podemos inicializar Puppeteer...');
         const browser = await puppeteer.launch({
           executablePath,
           headless: true,
@@ -91,9 +159,8 @@ class WhatsAppServiceImpl implements IWhatsAppService {
       
       // Configurar el cliente de WhatsApp Web
       this.client = new Client({
-        authStrategy: new LocalAuth({
-          dataPath: SESSION_PATH
-        }),
+        // Usar la estrategia de autenticación predeterminada sin LocalAuth
+        // que parece no estar disponible en esta versión
         puppeteer: {
           executablePath,
           headless: true,
@@ -107,13 +174,29 @@ class WhatsAppServiceImpl implements IWhatsAppService {
             '--single-process',
             '--disable-gpu'
           ]
-        }
+        },
+        // Directorio donde se guardarán los datos de la sesión
+        sessionDir: SESSION_PATH
       });
       
       // Evento: Código QR generado
       this.client.on('qr', (qr) => {
         console.log('Código QR de WhatsApp Web generado');
         this.status.qrCode = qr;
+        
+        // Mostrar QR en consola para el desarrollador
+        qrcode.generate(qr, { small: true });
+        
+        // Guardar QR en archivo para debug
+        const qrFilePath = path.join(TEMP_DIR, 'whatsapp-qr.txt');
+        try {
+          fs.writeFileSync(qrFilePath, qr);
+          console.log(`Código QR guardado en archivo: ${qrFilePath}`);
+        } catch (err) {
+          console.error('Error guardando código QR en archivo:', err);
+        }
+        
+        // Notificar a los listeners
         this.notifyListeners('qr', qr);
       });
       
