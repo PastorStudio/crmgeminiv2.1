@@ -46,8 +46,19 @@ export async function registerWhatsAppRoutes(app: Express) {
       // IMPORTANTE: Establecer cabeceras CORS y tipo de contenido
       res.header('Access-Control-Allow-Origin', '*');
       res.header('Access-Control-Allow-Methods', 'GET');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Cache-Control');
       res.header('Content-Type', 'application/json');
+      res.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.header('Pragma', 'no-cache');
+      res.header('Expires', '0');
+      
+      // Verificar si la solicitud proviene de un fetch del cliente
+      // o si Vite está intentando interceptar la respuesta
+      const isDirectApiCall = req.query._ || req.headers.accept === 'application/json';
+      
+      if (!isDirectApiCall) {
+        console.warn("Posible interceptación de Vite detectada");
+      }
       
       if (!whatsappService.getStatus().initialized) {
         await whatsappService.initialize().catch(err => {
@@ -107,6 +118,15 @@ export async function registerWhatsAppRoutes(app: Express) {
   // QR Image endpoint (devuelve directamente la imagen)
   app.get("/api/integrations/whatsapp/qr-image", async (req: Request, res: Response) => {
     try {
+      // IMPORTANTE: Establecer cabeceras para prevenir caché e interceptación
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Cache-Control');
+      res.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.header('Pragma', 'no-cache');
+      res.header('Expires', '0');
+      res.header('Surrogate-Control', 'no-store');
+      
       if (!whatsappService.getStatus().initialized) {
         await whatsappService.initialize().catch(err => {
           console.error("Error inicializando servicio de WhatsApp:", err);
@@ -130,13 +150,11 @@ export async function registerWhatsAppRoutes(app: Express) {
           try {
             const imgBuffer = Buffer.from(base64Data, 'base64');
             
-            // Prevenir que Vite intercepte la respuesta
-            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-            res.setHeader('Pragma', 'no-cache');
-            res.setHeader('Expires', '0');
-            res.setHeader('Surrogate-Control', 'no-store');
-            res.setHeader('Content-Type', contentType);
+            // Establecer tipo de contenido explícitamente
+            res.header('Content-Type', contentType);
+            res.header('X-Content-Type-Options', 'nosniff'); // Prevenir que el navegador detecte otro tipo
             
+            // Enviar la imagen como buffer binario para evitar que Vite la procese
             return res.send(imgBuffer);
           } catch (err) {
             console.error("Error decodificando base64:", err);
@@ -161,7 +179,9 @@ export async function registerWhatsAppRoutes(app: Express) {
           
           const imgBuffer = Buffer.from(base64Data, 'base64');
           
-          res.setHeader('Content-Type', contentType);
+          // Cabeceras adicionales para asegurar que se trata como imagen
+          res.header('Content-Type', contentType);
+          res.header('X-Content-Type-Options', 'nosniff');
           return res.send(imgBuffer);
         }
       } else {
@@ -178,12 +198,28 @@ export async function registerWhatsAppRoutes(app: Express) {
         ctx.textAlign = 'center';
         ctx.fillText('No hay código QR disponible', 150, 150);
         
-        res.setHeader('Content-Type', 'image/png');
+        res.header('Content-Type', 'image/png');
+        res.header('X-Content-Type-Options', 'nosniff');
         return res.send(canvas.toBuffer());
       }
     } catch (error) {
       console.error("Error obteniendo imagen QR de WhatsApp:", error);
-      res.status(500).send("Error obteniendo imagen QR");
+      // En caso de error, generar una imagen de error
+      const { createCanvas } = require('canvas');
+      const canvas = createCanvas(300, 300);
+      const ctx = canvas.getContext('2d');
+      
+      ctx.fillStyle = '#fff0f0';
+      ctx.fillRect(0, 0, 300, 300);
+      
+      ctx.font = '16px Arial';
+      ctx.fillStyle = '#cc0000';
+      ctx.textAlign = 'center';
+      ctx.fillText('Error al generar código QR', 150, 150);
+      
+      res.header('Content-Type', 'image/png');
+      res.header('X-Content-Type-Options', 'nosniff');
+      return res.status(500).send(canvas.toBuffer());
     }
   });
 
