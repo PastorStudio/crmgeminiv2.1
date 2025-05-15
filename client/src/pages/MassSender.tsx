@@ -312,7 +312,7 @@ export default function MassSender() {
   
   // Mutación para verificar un mensaje como entregado
   const verifyMessageMutation = useMutation({
-    mutationFn: ({campaignId, contactId, messageId}: {campaignId: string, contactId: string, messageId?: string}) => 
+    mutationFn: ({campaignId, contactId, messageId}: {campaignId: number, contactId: string, messageId?: string}) => 
       apiRequest(`/api/mass-sender/campaigns/${campaignId}/verify-message`, { 
         method: "POST",
         body: { contactId, messageId }
@@ -1329,7 +1329,7 @@ export default function MassSender() {
                                                         variant="ghost"
                                                         disabled={contact.status === 'verified'}
                                                         onClick={() => verifyMessageMutation.mutate({
-                                                          campaignId: campaign.id,
+                                                          campaignId: parseInt(campaign.id),
                                                           contactId: contact.id
                                                         })}
                                                       >

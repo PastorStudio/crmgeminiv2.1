@@ -1547,11 +1547,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const chats = await whatsappService.getChats();
         const groups = chats
           .filter(chat => chat.isGroup)
-          .map(chat => ({
-            id: chat.id._serialized,
-            name: chat.name || 'Grupo sin nombre',
-            count: chat.participants ? chat.participants.length : 0
-          }));
+          .map(chat => {
+            // Manejar diferentes formatos del ID
+            const chatId = typeof chat.id === 'string' 
+              ? chat.id 
+              : (chat.id && typeof chat.id === 'object' && chat.id.hasOwnProperty('_serialized') 
+                ? (chat.id as any)._serialized 
+                : String(chat.id));
+                
+            return {
+              id: chatId,
+              name: chat.name || 'Grupo sin nombre',
+              count: chat.participants ? chat.participants.length : 0
+            };
+          });
         
         res.json(groups);
       }).catch(error => {
