@@ -22,7 +22,34 @@ export function WhatsAppQRDisplay({ status, isLoading, onRefresh }: WhatsAppQRDi
   const [timestamp, setTimestamp] = useState(Date.now());
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   
-  // Cargar QR desde endpoint directo o usar el qrCode directamente
+  // Generar el código QR a partir del código proporcionado
+  const generateQRFromCode = async (qrCode: string) => {
+    try {
+      console.log("Generando QR en el cliente");
+      // Importamos dinámicamente la librería qrcode
+      const QRCode = await import('qrcode');
+      const url = await QRCode.toDataURL(qrCode, {
+        errorCorrectionLevel: 'H',
+        margin: 1,
+        scale: 8,
+        color: {
+          dark: '#128C7E',  // Color verde WhatsApp
+          light: '#FFFFFF'  // Fondo blanco
+        }
+      });
+      
+      console.log("QR generado correctamente en el cliente");
+      setQrDataUrl(url);
+      setImgError(false);
+      return true;
+    } catch (err) {
+      console.error("Error generando QR en el cliente:", err);
+      setImgError(true);
+      return false;
+    }
+  };
+  
+  // Obtener imagen del QR, primero intentando endpoint directo y luego generación local
   const fetchQRImage = async () => {
     // Si ya tenemos una URL de datos para el QR en el estado, úsala directamente
     if (status?.qrDataUrl) {
@@ -32,36 +59,16 @@ export function WhatsAppQRDisplay({ status, isLoading, onRefresh }: WhatsAppQRDi
       return;
     }
     
-    // Si tenemos el código QR pero no una URL de datos, generémosla en el cliente
+    // Si tenemos el código QR, generarlo directamente en el cliente
     if (status?.qrCode) {
-      try {
-        console.log("Generando QR en el cliente");
-        // Importamos dinámicamente la librería qrcode
-        const QRCode = await import('qrcode');
-        const url = await QRCode.toDataURL(status.qrCode, {
-          errorCorrectionLevel: 'H',
-          margin: 1,
-          scale: 8,
-          color: {
-            dark: '#128C7E',  // Color verde WhatsApp
-            light: '#FFFFFF'  // Fondo blanco
-          }
-        });
-        
-        console.log("QR generado correctamente en el cliente");
-        setQrDataUrl(url);
-        setImgError(false);
-      } catch (err) {
-        console.error("Error generando QR en el cliente:", err);
-        setImgError(true);
-      }
+      await generateQRFromCode(status.qrCode);
     } else {
       console.error('No hay código QR disponible para mostrar');
       setImgError(true);
     }
   };
   
-  // Reiniciar el error de imagen cuando cambie el estado y generamos nuevo QR si es necesario
+  // Generar imagen del código QR cuando cambie el status
   useEffect(() => {
     setTimestamp(Date.now());
     
@@ -71,10 +78,18 @@ export function WhatsAppQRDisplay({ status, isLoading, onRefresh }: WhatsAppQRDi
     if (status?.error) {
       console.warn("Estado con error:", status.error);
       setImgError(false);
-    } else if (status?.qrCode) {
-      fetchQRImage();
+      setQrDataUrl(null);
     } else if (status?.qrDataUrl) {
+      // Si ya tenemos una URL de datos en el estado, usarla directamente
+      console.log("Usando QR data URL del estado");
       setQrDataUrl(status.qrDataUrl);
+      setImgError(false);
+    } else if (status?.qrCode) {
+      // Si tenemos el código QR, intentar generar la imagen
+      fetchQRImage();
+    } else {
+      // No hay código QR disponible
+      setQrDataUrl(null);
       setImgError(false);
     }
   }, [status]);
