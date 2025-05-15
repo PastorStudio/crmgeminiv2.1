@@ -1577,6 +1577,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Rutas para campañas de marketing
+  // Endpoint para envío inmediato de mensajes (sin programación)
+  app.post("/api/mass-sender/send-immediate", async (req: Request, res: Response) => {
+    try {
+      const { contactIds, message } = req.body;
+      
+      if (!Array.isArray(contactIds) || contactIds.length === 0) {
+        return res.status(400).json({
+          error: "Se requiere al menos un contacto para enviar mensajes"
+        });
+      }
+      
+      if (!message || typeof message !== 'string' || message.trim() === '') {
+        return res.status(400).json({
+          error: "El mensaje no puede estar vacío"
+        });
+      }
+      
+      // Importar el servicio de WhatsApp
+      const { whatsappService } = await import('./services/whatsappServiceImpl');
+      
+      // Verificar estado de WhatsApp
+      const status = whatsappService.getStatus();
+      if (!status.ready || !status.authenticated) {
+        return res.status(400).json({
+          error: "El servicio de WhatsApp no está listo para enviar mensajes"
+        });
+      }
+      
+      // Enviar mensajes a cada contacto
+      const results = [];
+      let sentCount = 0;
+      
+      for (const contactId of contactIds) {
+        try {
+          // Buscar el contacto en las importaciones
+          let phoneNumber = contactId;
+          
+          // Si el contactId es un ID de importación, obtener el número de teléfono
+          if (!contactId.includes('+') && !(/^\d+$/.test(contactId))) {
+            // Buscar en las importaciones por ID
+            const importedContacts = await excelImportService.getAllImportedContacts();
+            const contact = importedContacts.find(c => c.id === contactId);
+            
+            if (contact) {
+              phoneNumber = contact.phoneNumber;
+            }
+          }
+          
+          // Asegurarse de que sea un número de teléfono válido
+          if (!phoneNumber || (typeof phoneNumber === 'string' && !phoneNumber.match(/\d/))) {
+            results.push({
+              contactId,
+              success: false,
+              error: "Número de teléfono inválido"
+            });
+            continue;
+          }
+          
+          // Enviar mensaje
+          await whatsappService.sendMessage(phoneNumber, message);
+          
+          results.push({
+            contactId,
+            success: true
+          });
+          
+          sentCount++;
+          
+          // Esperar un breve período para evitar el anti-spam de WhatsApp
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+        } catch (error) {
+          console.error(`Error enviando mensaje a ${contactId}:`, error);
+          results.push({
+            contactId,
+            success: false,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+      
+      res.json({
+        success: true,
+        totalContacts: contactIds.length,
+        sentCount,
+        failedCount: contactIds.length - sentCount,
+        results
+      });
+      
+    } catch (error) {
+      console.error("Error en envío inmediato de mensajes:", error);
+      res.status(500).json({
+        error: "Error en el envío de mensajes",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   app.get("/api/mass-sender/campaigns", async (req: Request, res: Response) => {
     try {
       const campaigns = await massSenderService.getCampaigns();
