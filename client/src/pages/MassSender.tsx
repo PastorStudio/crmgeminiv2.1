@@ -116,9 +116,9 @@ interface Campaign {
   messageTemplate: string;
   config?: MassSendConfig;
   sendingConfig?: SendingConfig;
-  targetGroups: string[];
-  targetTags: string[];
-  excludedContacts: string[];
+  targetGroups: string[] | [];
+  targetTags: string[] | [];
+  excludedContacts: string[] | [];
 }
 
 export default function MassSender() {
@@ -1098,7 +1098,7 @@ export default function MassSender() {
                             <Badge 
                               variant={
                                 campaign.status === 'running' ? "default" :
-                                campaign.status === 'completed' ? "success" :
+                                campaign.status === 'completed' ? "secondary" :
                                 campaign.status === 'paused' ? "outline" :
                                 campaign.status === 'failed' ? "destructive" : "secondary"
                               }
@@ -1191,7 +1191,7 @@ export default function MassSender() {
                                           <Badge 
                                             variant={
                                               campaign.status === 'running' ? "default" :
-                                              campaign.status === 'completed' ? "success" :
+                                              campaign.status === 'completed' ? "secondary" :
                                               campaign.status === 'paused' ? "outline" :
                                               campaign.status === 'failed' ? "destructive" : "secondary"
                                             }
