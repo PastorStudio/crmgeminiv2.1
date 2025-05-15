@@ -279,6 +279,7 @@ export const MediaGallery = ({
     <>
       {showButton && (
         <Button
+          id="upload-media-button"
           onClick={() => setIsOpen(true)}
           variant="outline"
           className="flex items-center gap-2"
