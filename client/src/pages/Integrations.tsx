@@ -46,6 +46,8 @@ interface ConnectionStatus {
   connectedChats?: number[];
   pendingMessages?: number;
   qrCode?: string;
+  error?: string;
+  message?: string;
 }
 
 export default function Integrations() {
@@ -65,31 +67,52 @@ export default function Integrations() {
         // Log para depuración
         console.log("Solicitando estado de WhatsApp...");
         
-        // Usar fetch directamente con más control sobre los encabezados
-        const response = await fetch("/api/integrations/whatsapp/status", {
-          headers: {
-            'Accept': 'application/json'
-          },
-          credentials: "include"
+        // Agregamos un parámetro para evitar la interceptación de Vite
+        // y asegurarnos que el servidor devuelva JSON
+        const url = `/api/integrations/whatsapp/status?_=${Date.now()}`;
+        
+        // Usar el XMLHttpRequest para tener más control que con fetch
+        return new Promise<ConnectionStatus>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', url, true);
+          xhr.setRequestHeader('Accept', 'application/json');
+          xhr.setRequestHeader('Cache-Control', 'no-cache, no-store');
+          
+          xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              // Verificar si la respuesta parece HTML (contiene DOCTYPE)
+              if (xhr.responseText.includes('<!DOCTYPE html>')) {
+                console.error("La respuesta parece ser HTML en lugar de JSON");
+                
+                // Devolvemos un estado por defecto para evitar errores
+                resolve({
+                  initialized: true,
+                  ready: false,
+                  authenticated: false,
+                  error: "Interceptado por Vite - Usar endpoint directo"
+                });
+                return;
+              }
+              
+              try {
+                const data = JSON.parse(xhr.responseText);
+                console.log("Estado WhatsApp recibido:", data);
+                resolve(data);
+              } catch (e) {
+                console.error("Error al parsear JSON:", e);
+                reject(new Error("Error al parsear la respuesta como JSON"));
+              }
+            } else {
+              reject(new Error(`Error HTTP: ${xhr.status}`));
+            }
+          };
+          
+          xhr.onerror = function() {
+            reject(new Error("Error de red al obtener estado de WhatsApp"));
+          };
+          
+          xhr.send();
         });
-        
-        // Verificar que la respuesta sea válida
-        if (!response.ok) {
-          throw new Error(`Error HTTP: ${response.status}`);
-        }
-        
-        // Verificar el tipo de contenido
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          console.error("Respuesta no válida, tipo de contenido:", contentType);
-          throw new Error("La respuesta no es JSON válido");
-        }
-        
-        // Parsear la respuesta JSON
-        const data = await response.json();
-        console.log("Estado WhatsApp recibido:", data);
-        
-        return data;
       } catch (error) {
         console.error("Error obteniendo estado de WhatsApp:", error);
         // Devolvemos un estado mínimo para evitar errores

@@ -8,6 +8,8 @@ interface WhatsAppQRDisplayProps {
     initialized?: boolean;
     ready?: boolean;
     authenticated?: boolean;
+    qrCode?: string;
+    error?: string;
   };
   isLoading: boolean;
   onRefresh: () => void;
@@ -66,18 +68,26 @@ export function WhatsAppQRDisplay({ status, isLoading, onRefresh }: WhatsAppQRDi
     // Para depuración
     console.log("Intentando mostrar código QR, estado:", status);
     
-    // URL directa para la imagen del QR
-    const qrImageUrl = `/api/integrations/whatsapp/qr-image?t=${timestamp}`;
+    // Usar una URL con un timestamp para evitar caché y 
+    // agregar parámetro _= para evitar interceptación de Vite
+    const qrImageUrl = `/api/integrations/whatsapp/qr-image?t=${timestamp}&_=${Date.now()}`;
+    
+    // Verificar si tenemos información de error
+    if (status?.error) {
+      console.warn("Estado con error:", status.error);
+    }
     
     return (
       <div className="border p-4 rounded-md bg-white flex flex-col items-center">
         <div className="relative">
-          {/* Añadir manejo de errores */}
+          {/* Control de errores mejorado con retry */}
           <img 
             src={qrImageUrl}
             alt="Código QR de WhatsApp" 
             className="h-64 w-64"
             onError={handleImageError}
+            key={`qr-img-${timestamp}`} // Forzar recreación del componente img
+            crossOrigin="anonymous" // Para evitar problemas CORS
           />
           <div className="absolute top-2 right-2">
             <div className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-md">
