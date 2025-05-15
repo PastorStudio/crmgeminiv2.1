@@ -178,6 +178,9 @@ export default function MassSender() {
   const [importedData, setImportedData] = useState<any>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   const [countryCode, setCountryCode] = useState<string>("507"); // Panamá por defecto
+  const [isTaggingDialogOpen, setIsTaggingDialogOpen] = useState<boolean>(false);
+  const [selectedTagsToAdd, setSelectedTagsToAdd] = useState<string[]>([]);
+  const [newTagName, setNewTagName] = useState<string>("");
   
   // Consulta para obtener los grupos de contactos
   const { data: contactGroups = [], isLoading: loadingGroups } = useQuery<ContactGroup[]>({
@@ -185,7 +188,7 @@ export default function MassSender() {
     retry: false
   });
   
-  // Consulta para obtener las etiquetas disponibles
+  // Consulta para obtener las etiquetas de contactos
   const { data: contactTags = [], isLoading: loadingTags } = useQuery<any[]>({
     queryKey: ['/api/whatsapp/contact-tags'],
     retry: false
@@ -302,6 +305,50 @@ export default function MassSender() {
       toast({
         title: "Error",
         description: "No se pudo reanudar la campaña de mensajes.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Mutación para crear una nueva etiqueta
+  const createTagMutation = useMutation({
+    mutationFn: async (data: { name: string, color?: string }) => {
+      const response = await fetch('/api/whatsapp/contact-tags', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al crear etiqueta');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Actualizar la lista de etiquetas
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/contact-tags'] });
+      
+      // Agregar la nueva etiqueta a las seleccionadas
+      if (data.tag && data.tag.id) {
+        setSelectedTagsToAdd([...selectedTagsToAdd, data.tag.id]);
+      }
+      
+      // Limpiar el campo de nuevo nombre
+      setNewTagName("");
+      
+      toast({
+        title: "Etiqueta creada",
+        description: `Se ha creado la etiqueta "${data.tag.name}" correctamente.`,
+      });
+    },
+    onError: (error) => {
+      console.error("Error creating tag:", error);
+      toast({
+        title: "Error al crear etiqueta",
+        description: error instanceof Error ? error.message : "No se pudo crear la etiqueta.",
         variant: "destructive",
       });
     }
@@ -868,6 +915,52 @@ export default function MassSender() {
     importExcelMutation.mutate(importData);
   };
   
+  // Función para aplicar etiquetas a los contactos importados
+  const applyTagsToContacts = () => {
+    if (!importedData || !importedData.contacts || importedData.contacts.length === 0 || selectedTagsToAdd.length === 0) {
+      return;
+    }
+    
+    // Obtener las etiquetas seleccionadas como objetos completos
+    const selectedTags = contactTags?.filter((tag: any) => selectedTagsToAdd.includes(tag.id)) || [];
+    
+    // Aplicar etiquetas a cada contacto
+    const updatedContacts = importedData.contacts.map((contact: any) => {
+      // Obtener etiquetas actuales o inicializar como array vacío
+      const currentTags = contact.tags || [];
+      
+      // Agregar nuevas etiquetas evitando duplicados
+      const newTags = [...currentTags];
+      
+      selectedTags.forEach((tag: any) => {
+        if (!newTags.includes(tag.id)) {
+          newTags.push(tag.id);
+        }
+      });
+      
+      // Devolver contacto actualizado
+      return {
+        ...contact,
+        tags: newTags
+      };
+    });
+    
+    // Actualizar los datos importados
+    setImportedData({
+      ...importedData,
+      contacts: updatedContacts
+    });
+    
+    // Cerrar el diálogo
+    setIsTaggingDialogOpen(false);
+    
+    // Mostrar mensaje de éxito
+    toast({
+      title: "Etiquetas aplicadas",
+      description: `Se han aplicado ${selectedTags.length} etiquetas a ${updatedContacts.length} contactos.`,
+    });
+  };
+  
   // Actualizar automáticamente el estado de las campañas
   useEffect(() => {
     const interval = setInterval(() => {
@@ -1365,6 +1458,73 @@ export default function MassSender() {
                               <div className="bg-amber-100 dark:bg-amber-900 p-2 rounded-md text-center">
                                 <p className="text-lg font-bold text-amber-700 dark:text-amber-300">{importedData?.contacts?.length || 0}</p>
                                 <p className="text-amber-800 dark:text-amber-200 text-xs truncate">Contactos Importados</p>
+                              </div>
+                            </div>
+                            
+                            {/* Herramientas para manejar contactos importados */}
+                            <div className="flex flex-wrap gap-2 mb-3">
+                              <div className="flex items-center gap-2">
+                                <Select
+                                  value={countryCode}
+                                  onValueChange={setCountryCode}
+                                >
+                                  <SelectTrigger className="h-8 w-[120px]">
+                                    <SelectValue placeholder="Código" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="507">🇵🇦 Panamá (+507)</SelectItem>
+                                    <SelectItem value="1">🇺🇸 EEUU (+1)</SelectItem>
+                                    <SelectItem value="52">🇲🇽 México (+52)</SelectItem>
+                                    <SelectItem value="57">🇨🇴 Colombia (+57)</SelectItem>
+                                    <SelectItem value="54">🇦🇷 Argentina (+54)</SelectItem>
+                                    <SelectItem value="56">🇨🇱 Chile (+56)</SelectItem>
+                                    <SelectItem value="51">🇵🇪 Perú (+51)</SelectItem>
+                                    <SelectItem value="593">🇪🇨 Ecuador (+593)</SelectItem>
+                                    <SelectItem value="58">🇻🇪 Venezuela (+58)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="h-8"
+                                  onClick={() => {
+                                    if (importedData && importedData.contacts && importedData.contacts.length > 0) {
+                                      const phoneNumbers = importedData.contacts.map((c: any) => c.phoneNumber);
+                                      formatPhoneNumbersMutation.mutate({
+                                        phoneNumbers,
+                                        countryCode
+                                      });
+                                    }
+                                  }}
+                                  disabled={formatPhoneNumbersMutation.isPending}
+                                >
+                                  {formatPhoneNumbersMutation.isPending ? (
+                                    <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Formateando</>
+                                  ) : (
+                                    <><Phone className="h-4 w-4 mr-1" /> Formatear números</>
+                                  )}
+                                </Button>
+                                
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8"
+                                  onClick={() => {
+                                    // Abrir el diálogo para añadir etiquetas
+                                    setSelectedTagsToAdd([]);
+                                    setIsTaggingDialogOpen(true);
+                                  }}
+                                >
+                                  <span className="flex items-center">
+                                    <svg className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M9 5H7C5.89543 5 5 5.89543 5 7V19C5 20.1046 5.89543 21 7 21H17C18.1046 21 19 20.1046 19 19V7C19 5.89543 18.1046 5 17 5H15"></path>
+                                      <path d="M12 12H12.01"></path>
+                                      <rect x="9" y="3" width="6" height="4" rx="2"></rect>
+                                    </svg>
+                                    Añadir etiquetas
+                                  </span>
+                                </Button>
                               </div>
                             </div>
 
