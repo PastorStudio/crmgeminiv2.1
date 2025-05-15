@@ -18,6 +18,7 @@ import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 import { autoResponseService } from "./services/autoResponseService";
 import multer from "multer";
 import { messageTemplateService } from "./services/messageTemplateService";
+import { analyticsService } from "./services/analyticsService";
 import { excelImportService } from "./services/excelImportService";
 import { massSenderService } from "./services/massSenderService";
 
