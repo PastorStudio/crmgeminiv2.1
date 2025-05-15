@@ -52,15 +52,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage
-} from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 
 // Tipos para las campañas de envío masivo
 interface ContactGroup {
@@ -1588,13 +1580,13 @@ export default function MassSender() {
           
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-4">
-              <FormItem>
-                <FormLabel>Número de Teléfono (requerido)</FormLabel>
+              <div className="space-y-2">
+                <Label htmlFor="phone-mapping">Número de Teléfono (requerido)</Label>
                 <Select 
                   value={fieldMapping.phoneNumber} 
                   onValueChange={(value) => handleFieldMappingChange('phoneNumber', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="phone-mapping">
                     <SelectValue placeholder="Seleccione la columna" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1605,18 +1597,18 @@ export default function MassSender() {
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription>
+                <p className="text-sm text-muted-foreground">
                   Debe incluir código de país, ej: +521234567890
-                </FormDescription>
-              </FormItem>
+                </p>
+              </div>
               
-              <FormItem>
-                <FormLabel>Nombre</FormLabel>
+              <div className="space-y-2">
+                <Label htmlFor="name-mapping">Nombre</Label>
                 <Select 
                   value={fieldMapping.name} 
                   onValueChange={(value) => handleFieldMappingChange('name', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="name-mapping">
                     <SelectValue placeholder="Seleccione la columna" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1628,15 +1620,15 @@ export default function MassSender() {
                     ))}
                   </SelectContent>
                 </Select>
-              </FormItem>
+              </div>
               
-              <FormItem>
-                <FormLabel>Empresa</FormLabel>
+              <div className="space-y-2">
+                <Label htmlFor="company-mapping">Empresa</Label>
                 <Select 
                   value={fieldMapping.company} 
                   onValueChange={(value) => handleFieldMappingChange('company', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="company-mapping">
                     <SelectValue placeholder="Seleccione la columna" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1648,17 +1640,17 @@ export default function MassSender() {
                     ))}
                   </SelectContent>
                 </Select>
-              </FormItem>
+              </div>
             </div>
             
             <div className="space-y-4">
-              <FormItem>
-                <FormLabel>Correo Electrónico</FormLabel>
+              <div className="space-y-2">
+                <Label htmlFor="email-mapping">Correo Electrónico</Label>
                 <Select 
                   value={fieldMapping.email} 
                   onValueChange={(value) => handleFieldMappingChange('email', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="email-mapping">
                     <SelectValue placeholder="Seleccione la columna" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1670,15 +1662,15 @@ export default function MassSender() {
                     ))}
                   </SelectContent>
                 </Select>
-              </FormItem>
+              </div>
               
-              <FormItem>
-                <FormLabel>Etiquetas</FormLabel>
+              <div className="space-y-2">
+                <Label htmlFor="tags-mapping">Etiquetas</Label>
                 <Select 
                   value={fieldMapping.tags} 
                   onValueChange={(value) => handleFieldMappingChange('tags', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="tags-mapping">
                     <SelectValue placeholder="Seleccione la columna" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1690,10 +1682,10 @@ export default function MassSender() {
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription>
+                <p className="text-sm text-muted-foreground">
                   Etiquetas separadas por comas (ej: cliente,importante,pendiente)
-                </FormDescription>
-              </FormItem>
+                </p>
+              </div>
             </div>
           </div>
           
