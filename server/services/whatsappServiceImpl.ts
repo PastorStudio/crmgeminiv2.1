@@ -8,7 +8,8 @@ import * as fs from 'fs';
 import { Client } from 'whatsapp-web.js';
 import { IWhatsAppService, WhatsAppStatus } from "./whatsappInterface";
 import { storage } from "../storage";
-import * as qrcode from 'qrcode-terminal';
+import qrcodeTerminal from 'qrcode-terminal';
+import * as qrcode from 'qrcode';
 import puppeteer from 'puppeteer-core';
 import * as child_process from 'child_process';
 
@@ -159,8 +160,7 @@ class WhatsAppServiceImpl implements IWhatsAppService {
       
       // Configurar el cliente de WhatsApp Web
       this.client = new Client({
-        // Usar la estrategia de autenticación predeterminada sin LocalAuth
-        // que parece no estar disponible en esta versión
+        // Usar la estrategia de autenticación predeterminada
         puppeteer: {
           executablePath,
           headless: true,
@@ -174,10 +174,6 @@ class WhatsAppServiceImpl implements IWhatsAppService {
             '--single-process',
             '--disable-gpu'
           ]
-        },
-        // Directorio donde se guardarán los datos de la sesión (usa session en lugar de sessionDir)
-        session: {
-          path: SESSION_PATH
         }
       });
       
@@ -187,7 +183,7 @@ class WhatsAppServiceImpl implements IWhatsAppService {
         
         try {
           // Mostrar QR en consola para el desarrollador
-          qrcode.generate(qr, { small: true });
+          qrcodeTerminal.generate(qr, { small: true });
           
           // Guardar QR en archivo para debug
           const qrFilePath = path.join(TEMP_DIR, 'whatsapp-qr.txt');

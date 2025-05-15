@@ -268,9 +268,9 @@ export default function Integrations() {
                               QR OFICIAL
                             </div>
                           </div>
+                        </div>
                         <div className="mt-2 px-3 py-1 bg-green-100 text-green-800 text-xs rounded-md">
                           Escanea este código QR con la aplicación de WhatsApp en tu teléfono
-                        </div>
                         </div>
                       </div>
                     ) : (
