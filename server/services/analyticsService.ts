@@ -8,6 +8,7 @@ interface AnalyticsParams {
   leadId?: number;
   campaignId?: string;
   category?: string;
+  status?: string; // Añadido para filtrar por status
 }
 
 interface AnalyticsPrediction {
@@ -75,10 +76,14 @@ interface FeedbackAnalysisResponse {
 }
 
 export class AnalyticsService {
-  private genAI: GoogleGenerativeAI;
-  private model: any;
+  // Declaramos la variable sin inicialización
+  private genAI!: GoogleGenerativeAI | null;
+  private model: any = null;
 
   constructor() {
+    // Inicializamos el genAI como null por defecto
+    this.genAI = null;
+    
     if (!process.env.GEMINI_API_KEY) {
       console.log('Servicio de Analytics inicializado sin API key de Gemini, funcionalidad limitada');
       return;
@@ -92,6 +97,8 @@ export class AnalyticsService {
       console.log('Servicio de Analytics inicializado con Gemini API');
     } catch (error) {
       console.error('Error al inicializar Gemini API para Analytics:', error);
+      this.genAI = null;
+      this.model = null;
     }
   }
 
@@ -661,6 +668,64 @@ export class AnalyticsService {
       factors: ['Se requiere configurar API key de Gemini para predicciones'],
       estimatedDays: 0
     }));
+  }
+  
+  /**
+   * Genera tags inteligentes basados en contenido de texto
+   */
+  async generateTags(inputText: string): Promise<{tag: string, confidence: number}[]> {
+    try {
+      if (!this.model) {
+        return [
+          { tag: "configurar-gemini", confidence: 100 },
+          { tag: "api-requerida", confidence: 100 }
+        ];
+      }
+
+      const prompt: string = `
+      Analiza este texto y genera hasta 5 tags o etiquetas relevantes:
+      
+      Texto: "${inputText}"
+      
+      Genera tags que capturen:
+      - Temas principales
+      - Sentimiento o tono
+      - Industria o sector relevante
+      - Intención o objetivo
+      - Nivel de urgencia
+      
+      Responde en formato JSON con la siguiente estructura exacta:
+      [
+        {"tag": "nombre-del-tag", "confidence": valor_numérico}
+      ]
+      
+      Donde "confidence" es un valor entre 0 y 100 que indica la relevancia o precisión del tag.
+      Ordena los tags de mayor a menor confianza.
+      Sólo proporciona el objeto JSON, sin texto adicional.
+      `;
+
+      const genResult = await this.model.generateContent(prompt);
+      const genResponse = genResult.response;
+      const responseText = genResponse.text();
+      
+      // Extraer el JSON de la respuesta
+      let jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || 
+                      responseText.match(/```\s*([\s\S]*?)\s*```/) || 
+                      responseText.match(/(\[[\s\S]*\])/);
+                      
+      const jsonText = jsonMatch ? jsonMatch[1] : responseText;
+      
+      try {
+        const tags = JSON.parse(jsonText);
+        return Array.isArray(tags) ? tags : [];
+      } catch (parseError) {
+        console.error("Error parsing tags JSON:", parseError);
+        return [{ tag: "error-formato", confidence: 100 }];
+      }
+    } catch (error) {
+      console.error("Error al generar tags:", error);
+      return [{ tag: "error-servicio", confidence: 100 }];
+    }
   }
 }
 
