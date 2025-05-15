@@ -57,11 +57,11 @@ interface MediaGalleryProps {
 export const MediaGallery = ({
   onSelect,
   selectedMediaId,
-  filter = {},
+  filter = {} as MediaGalleryProps['filter'],
   allowMultiple = false,
   buttonText = "Seleccionar de la galería",
   showButton = true
-}) => {
+}: MediaGalleryProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
