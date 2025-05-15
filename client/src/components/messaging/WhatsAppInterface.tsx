@@ -230,7 +230,9 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
   };
 
   // Obtener iniciales para avatar
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | undefined) => {
+    if (!name) return 'UN'; // Unknown/Usuario No identificado
+    
     return name
       .split(' ')
       .map(n => n[0])
