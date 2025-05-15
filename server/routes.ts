@@ -1109,6 +1109,165 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Crear servidor HTTP
   const httpServer = createServer(app);
   
+  // Rutas para Envío Masivo de WhatsApp
+  
+  // Obtener todas las campañas
+  app.get("/api/mass-sender/campaigns", async (req: Request, res: Response) => {
+    try {
+      const { massSenderService } = await import('./services/massSenderService');
+      const campaigns = massSenderService.getAllCampaigns();
+      res.json(campaigns);
+    } catch (error) {
+      console.error("Error al obtener campañas:", error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+  
+  // Crear nueva campaña
+  app.post("/api/mass-sender/campaigns", async (req: Request, res: Response) => {
+    try {
+      const { name, messageTemplate, targetGroups, targetTags, config } = req.body;
+      
+      if (!name || !messageTemplate) {
+        return res.status(400).json({ error: "Nombre y plantilla de mensaje son requeridos" });
+      }
+      
+      const { massSenderService } = await import('./services/massSenderService');
+      const campaign = await massSenderService.createCampaign(
+        name, 
+        messageTemplate, 
+        targetGroups || [], 
+        targetTags || [], 
+        config || {}
+      );
+      
+      res.status(201).json(campaign);
+    } catch (error) {
+      console.error("Error al crear campaña:", error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+  
+  // Obtener detalles de una campaña
+  app.get("/api/mass-sender/campaigns/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { massSenderService } = await import('./services/massSenderService');
+      
+      const campaign = massSenderService.getCampaignStatus(id);
+      
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaña no encontrada" });
+      }
+      
+      res.json(campaign);
+    } catch (error) {
+      console.error(`Error al obtener campaña ${req.params.id}:`, error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+  
+  // Iniciar una campaña
+  app.post("/api/mass-sender/campaigns/:id/start", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { massSenderService } = await import('./services/massSenderService');
+      
+      const result = await massSenderService.startCampaign(id);
+      
+      if (!result) {
+        return res.status(400).json({ error: "No se pudo iniciar la campaña" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error(`Error al iniciar campaña ${req.params.id}:`, error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+  
+  // Pausar una campaña
+  app.post("/api/mass-sender/campaigns/:id/pause", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { massSenderService } = await import('./services/massSenderService');
+      
+      const result = await massSenderService.pauseCampaign(id);
+      
+      if (!result) {
+        return res.status(400).json({ error: "No se pudo pausar la campaña" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error(`Error al pausar campaña ${req.params.id}:`, error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+  
+  // Reanudar una campaña
+  app.post("/api/mass-sender/campaigns/:id/resume", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { massSenderService } = await import('./services/massSenderService');
+      
+      const result = await massSenderService.resumeCampaign(id);
+      
+      if (!result) {
+        return res.status(400).json({ error: "No se pudo reanudar la campaña" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error(`Error al reanudar campaña ${req.params.id}:`, error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+  
+  // Obtener grupos de contactos de WhatsApp
+  app.get("/api/whatsapp/contact-groups", async (req: Request, res: Response) => {
+    try {
+      // Importar el servicio de WhatsApp bajo demanda
+      const { whatsappServiceImpl } = await import('./services/whatsappServiceImpl');
+      
+      // Obtener los chats y filtrar grupos
+      const chats = await whatsappServiceImpl.getChats();
+      const groups = chats
+        .filter(chat => chat.isGroup)
+        .map(chat => ({
+          id: chat.id._serialized,
+          name: chat.name || 'Grupo sin nombre',
+          count: chat.participants ? chat.participants.length : 0
+        }));
+      
+      res.json(groups);
+    } catch (error) {
+      console.error("Error al obtener grupos de contactos:", error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+  
+  // Obtener etiquetas de contactos (simulación - WhatsApp no soporta etiquetas oficialmente)
+  app.get("/api/whatsapp/contact-tags", async (req: Request, res: Response) => {
+    try {
+      // Como WhatsApp no tiene etiquetas nativas, usamos categorías definidas en nuestra app
+      // En una implementación completa, estas serían almacenadas en la base de datos
+      const tags = [
+        { id: "cliente_potencial", name: "Cliente potencial", count: 12 },
+        { id: "cliente_nuevo", name: "Cliente nuevo", count: 8 },
+        { id: "cliente_recurrente", name: "Cliente recurrente", count: 15 },
+        { id: "promocion_mayo", name: "Promoción Mayo", count: 24 },
+        { id: "interesado_producto_a", name: "Interesado Producto A", count: 10 },
+        { id: "interesado_producto_b", name: "Interesado Producto B", count: 7 }
+      ];
+      
+      res.json(tags);
+    } catch (error) {
+      console.error("Error al obtener etiquetas de contactos:", error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
   // Configurar el servidor WebSocket para notificaciones en tiempo real
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
