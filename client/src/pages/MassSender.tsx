@@ -320,7 +320,7 @@ export default function MassSender() {
                     <Label htmlFor="message-template">Plantilla de Mensaje</Label>
                     <Textarea 
                       id="message-template" 
-                      placeholder="Hola {{nombre}}, tenemos una oferta especial para ti..." 
+                      placeholder={"Hola " + "{{"+"nombre"+"}}" + ", tenemos una oferta especial para ti..."} 
                       className="min-h-32"
                       value={messageTemplate}
                       onChange={(e) => setMessageTemplate(e.target.value)}
