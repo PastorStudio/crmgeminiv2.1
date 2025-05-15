@@ -138,34 +138,36 @@ class MediaGalleryService {
     } = options;
     
     try {
-      // Construir consulta con filtros y claúsulas
-      let query = db.select().from(mediaGallery);
-      const whereConditions = [];
+      // Construir consulta base
+      const baseQuery = db.select().from(mediaGallery);
+      
+      // Crear condiciones de filtrado
+      const conditions = [];
       
       // Filtrar por tipo
       if (type) {
         if (Array.isArray(type)) {
-          query = query.where(inArray(mediaGallery.type, type));
+          conditions.push(inArray(mediaGallery.type, type));
         } else {
-          query = query.where(eq(mediaGallery.type, type));
+          conditions.push(eq(mediaGallery.type, type));
         }
       }
       
-      // Filtrar por tags - necesitamos hacerlo como una cláusula separada debido a la forma en que PostgreSQL maneja arrays
+      // Filtrar por tags
       if (tags) {
         if (Array.isArray(tags) && tags.length > 0) {
           // Usamos SQL raw para la intersección de arrays
-          query = query.where(sql`${mediaGallery.tags} && ${tags}`);
+          conditions.push(sql`${mediaGallery.tags} && ${tags}`);
         } else if (typeof tags === 'string') {
           // Búsqueda de un solo tag
-          query = query.where(sql`${tags} = ANY(${mediaGallery.tags})`);
+          conditions.push(sql`${tags} = ANY(${mediaGallery.tags})`);
         }
       }
       
       // Búsqueda por texto
       if (search) {
         const searchPattern = `%${search}%`;
-        query = query.where(
+        conditions.push(
           or(
             sql`${mediaGallery.title} LIKE ${searchPattern}`,
             sql`${mediaGallery.description} LIKE ${searchPattern}`,
@@ -174,26 +176,38 @@ class MediaGalleryService {
         );
       }
       
-      // Consulta para contar resultados
-      const countQuery = query.select({ count: sql`count(*)` });
-      const countResult = await countQuery;
+      // Aplicar condiciones si existen
+      let finalQuery = baseQuery;
+      if (conditions.length > 0) {
+        finalQuery = baseQuery.where(and(...conditions));
+      }
+      
+      // Consulta para contar resultados (usar una nueva consulta para evitar problemas de tipado)
+      const countResult = await db.select({ 
+        count: sql<number>`count(*)` 
+      }).from(mediaGallery)
+        .where(conditions.length > 0 ? and(...conditions) : undefined);
+      
       const total = Number(countResult[0]?.count || 0);
+      
+      // Crear una consulta paginada
+      let paginatedQuery = finalQuery;
       
       // Ordenar resultados
       if (orderBy === 'uploadedAt') {
-        query = query.orderBy(order === 'desc' ? desc(mediaGallery.uploadedAt) : asc(mediaGallery.uploadedAt));
+        paginatedQuery = paginatedQuery.orderBy(order === 'desc' ? desc(mediaGallery.uploadedAt) : asc(mediaGallery.uploadedAt));
       } else if (orderBy === 'useCount') {
-        query = query.orderBy(order === 'desc' ? desc(mediaGallery.useCount) : asc(mediaGallery.useCount));
+        paginatedQuery = paginatedQuery.orderBy(order === 'desc' ? desc(mediaGallery.useCount) : asc(mediaGallery.useCount));
       } else if (orderBy === 'lastUsedAt') {
-        query = query.orderBy(order === 'desc' ? desc(mediaGallery.lastUsedAt) : asc(mediaGallery.lastUsedAt));
+        paginatedQuery = paginatedQuery.orderBy(order === 'desc' ? desc(mediaGallery.lastUsedAt) : asc(mediaGallery.lastUsedAt));
       }
       
       // Paginación
       const offset = (page - 1) * limit;
-      query = query.limit(limit).offset(offset);
+      paginatedQuery = paginatedQuery.limit(limit).offset(offset);
       
       // Ejecutar consulta principal
-      const result = await query;
+      const result = await paginatedQuery;
       
       // Formatear resultados
       return {
@@ -215,40 +229,38 @@ class MediaGalleryService {
     tags?: string[];
   }): Promise<MediaItem | null> {
     try {
-      // Construir la consulta de actualización
-      const updateFields = [];
-      const params: any = {};
+      // Crear objeto de actualización con solo los campos proporcionados
+      const updateData: any = {};
       
       if (data.title !== undefined) {
-        updateFields.push(`title = '${data.title}'`);
+        updateData.title = data.title;
       }
       
       if (data.description !== undefined) {
-        updateFields.push(`description = '${data.description}'`);
+        updateData.description = data.description;
       }
       
       if (data.tags !== undefined && Array.isArray(data.tags)) {
-        // Convertir array a string para PostgreSQL
-        const tagsStr = data.tags.map(tag => `"${tag}"`).join(',');
-        updateFields.push(`tags = ARRAY[${tagsStr}]`);
+        updateData.tags = data.tags;
       }
       
-      if (updateFields.length === 0) {
+      if (Object.keys(updateData).length === 0) {
         // No hay nada que actualizar
         return await this.getMediaById(id);
       }
       
-      // Ejecutar la actualización
-      const updateQuery = `
-        UPDATE media_gallery 
-        SET ${updateFields.join(', ')} 
-        WHERE id = ${id}
-      `;
+      // Ejecutar la actualización usando Drizzle ORM
+      const result = await db.update(mediaGallery)
+        .set(updateData)
+        .where(eq(mediaGallery.id, id))
+        .returning();
       
-      await db.execute(updateQuery);
+      if (!result.length) {
+        return null;
+      }
       
       // Retornar el elemento actualizado
-      return await this.getMediaById(id);
+      return this.formatMediaItem(result[0]);
     } catch (error) {
       console.error('Error en updateMedia:', error);
       return null;
@@ -261,14 +273,13 @@ class MediaGalleryService {
   async deleteMedia(id: number): Promise<boolean> {
     try {
       // Primero, obtener el archivo para saber qué eliminar físicamente
-      const query = `SELECT * FROM media_gallery WHERE id = ${id} LIMIT 1`;
-      const result = await db.execute(query);
+      const mediaItems = await db.select().from(mediaGallery).where(eq(mediaGallery.id, id)).limit(1);
       
-      if (!result.rows.length) {
+      if (!mediaItems.length) {
         return false;
       }
       
-      const mediaItem = result.rows[0];
+      const mediaItem = mediaItems[0];
       
       // Eliminar el archivo físico
       try {
@@ -279,9 +290,8 @@ class MediaGalleryService {
         console.error('Error al eliminar archivo físico:', error);
       }
       
-      // Eliminar de la base de datos
-      const deleteQuery = `DELETE FROM media_gallery WHERE id = ${id}`;
-      await db.execute(deleteQuery);
+      // Eliminar de la base de datos usando Drizzle ORM
+      await db.delete(mediaGallery).where(eq(mediaGallery.id, id));
       
       return true;
     } catch (error) {
@@ -295,14 +305,26 @@ class MediaGalleryService {
    */
   async trackMediaUsage(id: number): Promise<void> {
     try {
-      // Usamos SQL directo para actualizar el contador
-      const query = `
-        UPDATE media_gallery 
-        SET use_count = use_count + 1, 
-            last_used_at = NOW() 
-        WHERE id = ${id}
-      `;
-      await db.execute(query);
+      // Obtener el archivo actual para incrementar el contador
+      const items = await db.select().from(mediaGallery).where(eq(mediaGallery.id, id)).limit(1);
+      
+      if (items.length === 0) {
+        console.warn(`No se encontró archivo con ID ${id} para actualizar estadísticas`);
+        return;
+      }
+      
+      const currentItem = items[0];
+      const newCount = (currentItem.useCount || 0) + 1;
+      
+      // Usar Drizzle ORM para la actualización
+      await db.update(mediaGallery)
+        .set({
+          useCount: newCount,
+          lastUsedAt: new Date()
+        })
+        .where(eq(mediaGallery.id, id));
+        
+      console.log(`Estadísticas actualizadas para archivo ID ${id}: ${newCount} usos`);
     } catch (error) {
       console.error('Error en trackMediaUsage:', error);
     }
