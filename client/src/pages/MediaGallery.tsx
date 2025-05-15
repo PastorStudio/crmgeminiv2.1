@@ -45,7 +45,7 @@ export default function MediaGalleryPage() {
                 <MediaGallery 
                   onSelect={handleMediaSelect}
                   selectedMediaId={selectedMedia?.id}
-                  showButton={false}
+                  showButton={true}
                 />
               </CardContent>
             </Card>
