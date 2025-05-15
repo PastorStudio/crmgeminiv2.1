@@ -52,7 +52,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Label } from "@/components/ui/label";
 
 // Tipos para las campañas de envío masivo
 interface ContactGroup {
