@@ -9,6 +9,7 @@ interface WhatsAppQRDisplayProps {
     ready?: boolean;
     authenticated?: boolean;
     qrCode?: string;
+    qrDataUrl?: string;
     error?: string;
   };
   isLoading: boolean;
@@ -27,11 +28,11 @@ export function WhatsAppQRDisplay({ status, isLoading, onRefresh }: WhatsAppQRDi
     setTimestamp(Date.now());
     
     // Si el status.qrCode no es una dataURL, intentamos convertirlo a una
-    if (status?.qrCode && !status.qrCode.startsWith('data:')) {
+    if (status?.qrCode && !status.qrDataUrl && !status.qrCode.startsWith('data:')) {
       try {
         console.log("Intentando generar QR en el cliente");
         // Importamos dinámicamente la librería qrcode
-        import('qrcode').then(QRCode => {
+        import('qrcode').then((QRCode) => {
           QRCode.toDataURL(status.qrCode!, {
             errorCorrectionLevel: 'H',
             margin: 1,
@@ -40,21 +41,21 @@ export function WhatsAppQRDisplay({ status, isLoading, onRefresh }: WhatsAppQRDi
               dark: '#128C7E',  // Color verde WhatsApp
               light: '#FFFFFF'  // Fondo blanco
             }
-          }).then(url => {
+          }).then((url: string) => {
             console.log("QR generado correctamente en el cliente");
             setQrDataUrl(url);
-          }).catch(err => {
+          }).catch((err: Error) => {
             console.error("Error al generar QR en el cliente:", err);
           });
-        }).catch(err => {
+        }).catch((err: Error) => {
           console.error("Error al importar qrcode:", err);
         });
       } catch (err) {
         console.error("Error intentando generar QR:", err);
       }
-    } else if (status?.qrCode && status.qrCode.startsWith('data:')) {
-      // Si ya es una dataURL, la usamos directamente
-      setQrDataUrl(status.qrCode);
+    } else if (status?.qrDataUrl) {
+      // Si ya tenemos una dataURL en el estado, la usamos directamente
+      setQrDataUrl(status.qrDataUrl);
     }
   }, [status]);
   
@@ -129,9 +130,9 @@ export function WhatsAppQRDisplay({ status, isLoading, onRefresh }: WhatsAppQRDi
       qrSource = qrDataUrl;
     } 
     // Prioridad 2: Usar el QR del status si es una dataURL
-    else if (status?.qrCode && status.qrCode.startsWith('data:')) {
+    else if (status?.qrDataUrl) {
       console.log("Usando dataURL del QR directamente desde el servidor");
-      qrSource = status.qrCode;
+      qrSource = status.qrDataUrl;
     } 
     // Prioridad 3: Usar el endpoint de imagen (podría fallar)
     else if (!qrDataUrl && status?.qrCode) {
