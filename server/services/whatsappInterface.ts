@@ -1,26 +1,48 @@
 /**
- * Interfaz común para servicios de WhatsApp
- * Esta interfaz permite utilizar diferentes implementaciones del servicio
- * (real con whatsapp-web.js o demo con código QR funcional)
+ * Interfaz común para el servicio de WhatsApp
+ * Define los métodos y tipos necesarios para la integración con WhatsApp
  */
 
+/**
+ * Estado del servicio de WhatsApp
+ */
 export interface WhatsAppStatus {
   initialized: boolean;
   ready: boolean;
   authenticated: boolean;
-  errorMessage?: string;
+  error?: string;
   qrCode?: string;
-  lastMessageAt?: Date;
-  clientInfo?: any;
+  qrDataUrl?: string;  // URL de datos para mostrar directamente en frontend
 }
 
+/**
+ * Interfaz del servicio de WhatsApp
+ */
 export interface IWhatsAppService {
+  /**
+   * Inicializa el cliente de WhatsApp
+   */
   initialize(): Promise<void>;
-  restart(): Promise<void>;
-  sendMessage(to: string, message: string, leadId?: number): Promise<any>;
-  getQrCode(): string | undefined;
+  
+  /**
+   * Obtiene el estado actual del servicio
+   */
   getStatus(): WhatsAppStatus;
-  addEventListener(event: string, callback: Function): void;
-  removeEventListener(event: string, callback: Function): void;
-  logout(): Promise<any>;
+  
+  /**
+   * Reinicia el servicio de WhatsApp
+   */
+  restart(): Promise<void>;
+  
+  /**
+   * Cierra la sesión actual
+   */
+  logout(): Promise<void>;
+  
+  /**
+   * Envía un mensaje de WhatsApp al número especificado
+   * @param phoneNumber Número de teléfono del destinatario
+   * @param message Mensaje a enviar
+   */
+  sendMessage(phoneNumber: string, message: string): Promise<any>;
 }

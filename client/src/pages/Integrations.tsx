@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCw, Loader2 } from "lucide-react";
-import { WhatsAppQRDisplay } from "@/components/messaging/WhatsAppQRDisplay";
+import WhatsAppIntegration from "@/components/messaging/WhatsAppIntegration";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -312,12 +312,8 @@ export default function Integrations() {
                   </p>
                   
                   <div className="flex justify-center my-6">
-                    {/* Importar y utilizar el componente independiente para mejor mantenimiento */}
-                    <WhatsAppQRDisplay 
-                      status={whatsappStatus || {}}
-                      isLoading={whatsappStatusLoading}
-                      onRefresh={restartWhatsapp}
-                    />
+                    {/* Componente autónomo de integración WhatsApp */}
+                    <WhatsAppIntegration />
                   </div>
                   
                   <div className="mt-4">
