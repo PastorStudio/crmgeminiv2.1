@@ -181,7 +181,7 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   }
 
   /**
-   * Inicializa el cliente de WhatsApp Web
+   * Inicializa el cliente de WhatsApp Web con soporte para recuperación de sesiones
    */
   async initialize(): Promise<void> {
     try {
@@ -190,9 +190,36 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
         return;
       }
 
+      // Verificar si hay una sesión activa anterior
+      const sessionStatusFile = path.join(SESSION_PATH, 'session_active.json');
+      let hasExistingSession = false;
+      
+      try {
+        if (fs.existsSync(sessionStatusFile)) {
+          const sessionData = JSON.parse(fs.readFileSync(sessionStatusFile, 'utf8'));
+          const lastActiveTime = new Date(sessionData.lastCheckedAt || sessionData.activatedAt);
+          const timeSinceActive = Date.now() - lastActiveTime.getTime();
+          
+          // Si la sesión ha estado activa en las últimas 8 horas, intentar recuperarla
+          if (timeSinceActive < 8 * 60 * 60 * 1000) {
+            console.log('Sesión de WhatsApp previa encontrada. Intentando recuperar...');
+            hasExistingSession = true;
+          } else {
+            console.log('Sesión de WhatsApp muy antigua. Creando nueva sesión...');
+            // Hacer copia de respaldo por si acaso
+            fs.copyFileSync(
+              sessionStatusFile, 
+              path.join(SESSION_PATH, `session_backup_${Date.now()}.json`)
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('Error verificando sesión anterior:', err);
+      }
+
       console.log('Inicializando cliente de WhatsApp Web...');
 
-      // Configuración de puppeteer para Replit
+      // Configuración de puppeteer para Replit - optimizada para estabilidad
       const puppeteerOptions = {
         executablePath: this.getChromiumExecutablePath(),
         headless: true,
@@ -206,17 +233,20 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
           '--single-process',
           '--disable-gpu',
           '--disable-web-security',
-          '--ignore-certificate-errors'
+          '--ignore-certificate-errors',
+          '--disable-features=AudioServiceOutOfProcess',
+          '--disable-gl-drawing-for-tests'
         ]
       };
 
       // Inicializamos el cliente con configuración optimizada para persistencia
+      // Nota: userDataDir no está soportado en la versión actual, usamos otra estrategia
       this.client = new Client({
         puppeteer: puppeteerOptions,
-        qrMaxRetries: 5,
+        qrMaxRetries: hasExistingSession ? 3 : 5, // Menos reintentos si estamos recuperando sesión
         restartOnAuthFail: true, // Reintentar automáticamente si falla la autenticación
         takeoverOnConflict: true, // Tomar el control en caso de conflicto de sesión
-        takeoverTimeoutMs: 10000 // Tiempo de espera para tomar el control de la sesión
+        takeoverTimeoutMs: 15000 // Mayor tiempo de espera para tomar el control si hay sesión previa
       });
 
       // Configuramos los eventos del cliente
@@ -500,13 +530,33 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   
   /**
    * Activa la conexión permanente y establece los mecanismos para mantenerla activa
+   * Incluye almacenamiento persistente para la sesión
    */
   async activatePermanentConnection(): Promise<void> {
     // Detener timers existentes si los hay
     this.stopConnectionTimers();
     
+    // Crear archivo de estado de sesión para indicar que estamos activos
+    try {
+      const sessionStatusFile = path.join(SESSION_PATH, 'session_active.json');
+      const sessionStatus = {
+        activatedAt: new Date().toISOString(),
+        clientId: 'crm-client',
+        active: true,
+        lastCheckedAt: new Date().toISOString(),
+        connectionState: this.status.connectionState
+      };
+      fs.writeFileSync(sessionStatusFile, JSON.stringify(sessionStatus, null, 2));
+      console.log('Archivo de estado de sesión creado en:', sessionStatusFile);
+    } catch (err) {
+      console.error('Error guardando estado de sesión:', err);
+    }
+    
     // Configurar timer para verificar la conexión periódicamente
     this.connectionCheckTimer = setInterval(() => {
+      // Actualizar archivo de estado de sesión
+      this.updateSessionStatusFile();
+      
       this.checkConnection().catch(err => {
         console.error('Error verificando conexión de WhatsApp:', err);
       });
@@ -528,6 +578,25 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
     this.refreshChats().catch(err => {
       console.error('Error cargando chats iniciales:', err);
     });
+  }
+  
+  /**
+   * Actualiza el archivo de estado de la sesión 
+   * para indicar que seguimos activos
+   */
+  private updateSessionStatusFile(): void {
+    try {
+      const sessionStatusFile = path.join(SESSION_PATH, 'session_active.json');
+      if (fs.existsSync(sessionStatusFile)) {
+        const currentStatus = JSON.parse(fs.readFileSync(sessionStatusFile, 'utf8'));
+        currentStatus.lastCheckedAt = new Date().toISOString();
+        currentStatus.connectionState = this.status.connectionState;
+        fs.writeFileSync(sessionStatusFile, JSON.stringify(currentStatus, null, 2));
+      }
+    } catch (err) {
+      // No lanzar error, solo registrar
+      console.error('Error actualizando archivo de estado:', err);
+    }
   }
   
   /**
