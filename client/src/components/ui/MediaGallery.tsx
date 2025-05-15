@@ -137,7 +137,7 @@ export const MediaGallery = ({
       });
       
       // Actualizar la galería
-      queryClient.invalidateQueries({ queryKey: ['/api/media-gallery'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/media-gallery/list'] });
       
       // Mostrar notificación
       toast({
