@@ -68,8 +68,8 @@ export function WhatsAppQRDisplay({ status, isLoading, onRefresh }: WhatsAppQRDi
     // Para depuración
     console.log("Intentando mostrar código QR, estado:", status);
     
-    // Usar endpoint directo con timestamp para evitar caché e interceptación
-    const qrImageUrl = `/api/direct/whatsapp/qr-image?t=${timestamp}&_=${Date.now()}`;
+    // Usar endpoint con timestamp para evitar caché
+    const qrImageUrl = `/api/integrations/whatsapp/qr-image?t=${timestamp}&_=${Date.now()}`;
     
     // Verificar si tenemos información de error
     if (status?.error) {
