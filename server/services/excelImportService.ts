@@ -367,7 +367,7 @@ export class ExcelImportService {
   }
 
   // Formatear número de teléfono al formato de WhatsApp
-  private formatPhoneNumber(phone: string): string | null {
+  private formatPhoneNumber(phone: string, countryCode?: string): string | null {
     console.log(`Formateando número de teléfono: "${phone}" (tipo: ${typeof phone})`);
     
     // Eliminar caracteres no numéricos
@@ -383,29 +383,57 @@ export class ExcelImportService {
     
     // WhatsApp requiere código de país
     // Si no tiene código de país (asumiendo números de 8-10 dígitos sin código),
-    // agregaremos un código por defecto (puede ser configurado según el país)
+    // agregaremos un código según la configuración o el país detectado
     let formattedPhone = digits;
     
-    // Detectar códigos de país comunes en Latinoamérica
-    if (digits.length <= 10) {
-      // Si no comienza con códigos de países comunes
-      if (!digits.startsWith('1') && !digits.startsWith('52') && 
-          !digits.startsWith('57') && !digits.startsWith('507')) {
-        
-        // Si tiene 8 dígitos y es un número de Panamá, agregar código 507
-        if (digits.length === 8) {
-          formattedPhone = '507' + digits;
-          console.log(`Número de 8 dígitos detectado como panameño: 507${digits}`);
-        } else {
-          // Para otros casos usar código por defecto 507 (Panamá)
-          formattedPhone = '507' + digits;
-          console.log(`Agregando código de país 507 a: ${digits}`);
-        }
+    // Comprobar si ya tiene un código de país conocido
+    const hasCountryCode = 
+      digits.startsWith('1') ||     // EE.UU. o Canadá
+      digits.startsWith('52') ||    // México
+      digits.startsWith('57') ||    // Colombia
+      digits.startsWith('507') ||   // Panamá
+      digits.startsWith('51') ||    // Perú
+      digits.startsWith('56') ||    // Chile
+      digits.startsWith('54') ||    // Argentina
+      digits.startsWith('55') ||    // Brasil
+      digits.startsWith('58') ||    // Venezuela
+      digits.startsWith('502') ||   // Guatemala
+      digits.startsWith('503') ||   // El Salvador
+      digits.startsWith('504') ||   // Honduras
+      digits.startsWith('505') ||   // Nicaragua
+      digits.startsWith('506') ||   // Costa Rica
+      digits.startsWith('593') ||   // Ecuador
+      digits.startsWith('595') ||   // Paraguay
+      digits.startsWith('598');     // Uruguay
+    
+    // Si no tiene código de país
+    if (!hasCountryCode && digits.length <= 10) {
+      const defaultCode = countryCode || '507'; // Usar el código proporcionado o 507 (Panamá) por defecto
+      
+      // Si tiene 8 dígitos y no se proporcionó un código específico, asumir que es Panamá
+      if (digits.length === 8 && !countryCode) {
+        formattedPhone = '507' + digits;
+        console.log(`Número de 8 dígitos detectado como panameño: 507${digits}`);
+      } else {
+        // Usar el código por defecto o proporcionado
+        formattedPhone = defaultCode + digits;
+        console.log(`Agregando código de país ${defaultCode} a: ${digits}`);
       }
     }
     
     console.log(`Número formateado final: ${formattedPhone}`);
     return formattedPhone;
+  }
+  
+  // Nueva función para formatear números con un código de país específico
+  public formatPhoneNumberWithCountryCode(phones: string[], countryCode: string): {
+    original: string,
+    formatted: string | null
+  }[] {
+    return phones.map(phone => ({
+      original: phone,
+      formatted: this.formatPhoneNumber(phone, countryCode)
+    }));
   }
 
   // Analizar archivo Excel para obtener sus columnas
