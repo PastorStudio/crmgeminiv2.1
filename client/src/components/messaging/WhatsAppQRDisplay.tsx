@@ -61,12 +61,20 @@ export function WhatsAppQRDisplay({ status, isLoading, onRefresh }: WhatsAppQRDi
     );
   }
 
+  // Comprobar si el servidor está listo para generar códigos QR
   if (status?.initialized && !status?.authenticated && !imgError) {
+    // Para depuración
+    console.log("Intentando mostrar código QR, estado:", status);
+    
+    // URL directa para la imagen del QR
+    const qrImageUrl = `/api/integrations/whatsapp/qr-image?t=${timestamp}`;
+    
     return (
       <div className="border p-4 rounded-md bg-white flex flex-col items-center">
         <div className="relative">
+          {/* Añadir manejo de errores */}
           <img 
-            src={`/api/integrations/whatsapp/qr-image?t=${timestamp}`}
+            src={qrImageUrl}
             alt="Código QR de WhatsApp" 
             className="h-64 w-64"
             onError={handleImageError}
