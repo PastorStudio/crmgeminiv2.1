@@ -85,7 +85,8 @@ class GeminiService {
       const { key: apiKey } = await this.getApiKeyAndModel();
       
       // Endpoint para Gemini (la versión se determina por this.config.model)
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${apiKey}`;
+      // Actualizado a API v1 en lugar de v1beta para evitar errores 404
+      const url = `https://generativelanguage.googleapis.com/v1/models/${this.config.model}:generateContent?key=${apiKey}`;
       
       const response = await axios.post(url, {
         contents: [
@@ -123,8 +124,8 @@ class GeminiService {
     try {
       const { key: apiKey } = await this.getApiKeyAndModel();
       
-      // Endpoint para Gemini (la versión se determina por this.config.model)
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${apiKey}`;
+      // Actualizado a API v1 en lugar de v1beta para evitar errores 404
+      const url = `https://generativelanguage.googleapis.com/v1/models/${this.config.model}:generateContent?key=${apiKey}`;
       
       // Configurar el prompt del sistema según el nivel de profesionalismo
       let systemPrompt = customSystemPrompt || this.getSystemPromptByLevel(this.config.professionLevel);
@@ -215,8 +216,8 @@ class GeminiService {
     try {
       const { key: apiKey } = await this.getApiKeyAndModel();
       
-      // Endpoint para Gemini (la versión se determina por this.config.model)
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${apiKey}`;
+      // Actualizado a API v1 en lugar de v1beta para evitar errores 404
+      const url = `https://generativelanguage.googleapis.com/v1/models/${this.config.model}:generateContent?key=${apiKey}`;
       
       const prompt = `
       Analiza la siguiente conversación con un cliente potencial y extrae toda la información relevante.
@@ -302,8 +303,8 @@ class GeminiService {
         ]
       };
       
-      // Endpoint para Gemini 1.5
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${apiKey}`;
+      // Endpoint para Gemini API
+      const url = `https://generativelanguage.googleapis.com/v1/models/${this.config.model}:generateContent?key=${apiKey}`;
       
       const prompt = `
       Analiza la siguiente información de un cliente potencial (lead) y genera etiquetas relevantes 
