@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
-import { GeminiAssistant } from './GeminiAssistant';
+// import { GeminiAssistant } from './GeminiAssistant';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -89,7 +89,9 @@ import {
   Clock,
   AlertCircle,
   RefreshCw,
-  MessageSquare
+  MessageSquare,
+  Brain, // Reemplazamos BrainCircuit por Brain
+  Zap
 } from 'lucide-react';
 
 interface WhatsAppInterfaceProps {
@@ -101,7 +103,7 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
   const [searchTerm, setSearchTerm] = useState('');
   const [messageText, setMessageText] = useState('');
   const [activeTab, setActiveTab] = useState('chats');
-  const [showAiAssistant, setShowAiAssistant] = useState(false);
+  // const [showAiAssistant, setShowAiAssistant] = useState(false);
   const [selectedLeadData, setSelectedLeadData] = useState<Lead | null>(null);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [newMessagesReceived, setNewMessagesReceived] = useState<boolean>(false);
@@ -733,26 +735,7 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
           {/* Área de escritura de mensajes */}
           <div className="border-t p-2">
             <form onSubmit={handleSendMessage} className="flex items-end gap-2">
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                className="h-9 w-9 flex-shrink-0"
-                onClick={() => setShowAiAssistant(!showAiAssistant)}
-              >
-                <BrainCircuit size={18} className={showAiAssistant ? "text-primary" : ""} />
-              </Button>
-              
               <div className="flex-1 rounded-lg bg-background border">
-                {showAiAssistant && (
-                  <div className="p-3 border-b">
-                    <GeminiAssistant 
-                      onMessageGenerated={(text) => setMessageText(text)}
-                      leadId={currentChat?.numericId || undefined}
-                      compact={true}
-                    />
-                  </div>
-                )}
                 
                 <div className="flex items-end p-2 gap-1">
                   <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
