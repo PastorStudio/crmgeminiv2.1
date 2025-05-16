@@ -104,7 +104,10 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
   const [showAiAssistant, setShowAiAssistant] = useState(false);
   const [selectedLeadData, setSelectedLeadData] = useState<Lead | null>(null);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [newMessagesReceived, setNewMessagesReceived] = useState<boolean>(false);
+  const [lastMessageCount, setLastMessageCount] = useState<number>(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastSeenMessagesRef = useRef<{[chatId: string]: number}>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -235,19 +238,24 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     );
   });
 
-  // Filtrar chats según término de búsqueda
+  // Filtrar y ordenar chats según término de búsqueda y timestamp
   const filteredChats = Array.isArray(whatsappChats) 
-    ? whatsappChats.filter((chat: WhatsAppChat) => {
-        if (!chat) return false;
-        
-        if (!searchTerm) return true;
-        
-        const searchLower = searchTerm.toLowerCase();
-        return (
-          (chat.name && chat.name.toLowerCase().includes(searchLower)) ||
-          (chat.lastMessage && chat.lastMessage.toLowerCase().includes(searchLower))
-        );
-      })
+    ? whatsappChats
+        .filter((chat: WhatsAppChat) => {
+          if (!chat) return false;
+          
+          if (!searchTerm) return true;
+          
+          const searchLower = searchTerm.toLowerCase();
+          return (
+            (chat.name && chat.name.toLowerCase().includes(searchLower)) ||
+            (chat.lastMessage && chat.lastMessage.toLowerCase().includes(searchLower))
+          );
+        })
+        .sort((a, b) => {
+          // Ordenar por timestamp (más reciente primero)
+          return (b.timestamp || 0) - (a.timestamp || 0);
+        })
     : [];
   
   // Consulta para obtener mensajes del CRM (modo fallback)
@@ -374,6 +382,14 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
   // Manejar click en chat de WhatsApp
   const handleChatSelect = (chat: WhatsAppChat) => {
     setSelectedChatId(chat.id);
+    // Resetear el contador de mensajes cuando se cambia de chat
+    setLastMessageCount(0);
+    // Marcar el chat como visto
+    if (Array.isArray(whatsappMessages) && whatsappMessages.length > 0) {
+      const chatLastMessageTimestamp = Math.max(...whatsappMessages.map(msg => msg.timestamp || 0));
+      lastSeenMessagesRef.current[chat.id] = chatLastMessageTimestamp;
+    }
+    
     if (onSelectLead && chat.numericId) {
       onSelectLead(chat.numericId);
     }
@@ -441,12 +457,37 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     }
   };
 
+  // Detectar nuevos mensajes y actualizar el estado
+  useEffect(() => {
+    if (Array.isArray(whatsappMessages) && whatsappMessages.length > 0) {
+      // Si tenemos un chat seleccionado y hay mensajes
+      if (selectedChatId) {
+        // Comprobar si hay nuevos mensajes
+        if (whatsappMessages.length > lastMessageCount) {
+          // Hay nuevos mensajes
+          setNewMessagesReceived(true);
+          setLastMessageCount(whatsappMessages.length);
+          
+          // Actualizar el timestamp del último mensaje visto para este chat
+          const chatLastMessageTimestamp = Math.max(...whatsappMessages.map(msg => msg.timestamp || 0));
+          lastSeenMessagesRef.current[selectedChatId] = chatLastMessageTimestamp;
+          
+          // Actualizar el orden de los chats
+          queryClient.invalidateQueries({ queryKey: ['whatsapp-chats-direct'] });
+        }
+      }
+    }
+  }, [whatsappMessages, selectedChatId, lastMessageCount, queryClient]);
+
   // Hacer scroll a la última mensaje cuando se cargan o envían mensajes
   useEffect(() => {
-    if (messagesEndRef.current) {
+    if (messagesEndRef.current && newMessagesReceived) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      setNewMessagesReceived(false);
+    } else if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [whatsappMessages, crmMessages]);
+  }, [whatsappMessages, crmMessages, newMessagesReceived]);
   
   // Mostrar el QR de WhatsApp y pantalla de configuración si no está autenticado
   if (whatsappStatus && whatsappStatus.initialized && !whatsappStatus.authenticated) {
