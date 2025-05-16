@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
 import * as googleai from '@google/generative-ai';
@@ -22,6 +23,7 @@ interface AutoResponseConfig {
   enabledForGroups: boolean;
   enabledForBroadcast: boolean;
   excludedContacts: string[];
+  aiProvider: "gemini" | "openai"; // Nueva propiedad para seleccionar el proveedor de IA
   customPrompts: {
     enabled: boolean;
     system: string;
@@ -54,6 +56,7 @@ const defaultConfig: AutoResponseConfig = {
   enabledForBroadcast: false,
   defaultTemplate: "default",
   excludedContacts: [],
+  aiProvider: "gemini", // Por defecto usamos Gemini
   customPrompts: {
     enabled: false,
     system: "Eres un asistente virtual amable y profesional que responde preguntas de clientes. Tu objetivo es proporcionar información clara y útil, resolver dudas específicas, y derivar a un agente humano cuando sea necesario. Nunca inventes información y siempre mantén un tono respetuoso y amigable.",
@@ -74,28 +77,43 @@ const responseSent: Map<string, boolean> = new Map();
 export class AutoResponseService {
   private config: AutoResponseConfig;
   private geminiClient: GoogleGenerativeAI | null = null;
+  private openaiClient: OpenAI | null = null;
   private configPath: string;
 
   constructor() {
     this.configPath = path.join(process.cwd(), 'temp', 'auto-response-config.json');
     this.config = this.loadConfig();
-    this.initGeminiClient();
+    this.initAIClients();
   }
 
   /**
-   * Inicializa el cliente de Gemini AI
+   * Inicializa los clientes de IA (Gemini y OpenAI)
    */
-  private initGeminiClient(): void {
+  private initAIClients(): void {
+    // Inicializar Gemini
     try {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        console.warn('GEMINI_API_KEY no está definida. Algunas funciones de IA estarán limitadas.');
-        return;
+        console.warn('GEMINI_API_KEY no está definida. Algunas funciones de IA de Gemini estarán limitadas.');
+      } else {
+        this.geminiClient = new googleai.GoogleGenerativeAI(apiKey);
+        console.log('Cliente Gemini inicializado correctamente');
       }
-
-      this.geminiClient = new googleai.GoogleGenerativeAI(apiKey);
     } catch (error) {
       console.error('Error al inicializar el cliente de Gemini:', error);
+    }
+
+    // Inicializar OpenAI
+    try {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        console.warn('OPENAI_API_KEY no está definida. Algunas funciones de IA de OpenAI estarán limitadas.');
+      } else {
+        this.openaiClient = new OpenAI({ apiKey });
+        console.log('Cliente OpenAI inicializado correctamente');
+      }
+    } catch (error) {
+      console.error('Error al inicializar el cliente de OpenAI:', error);
     }
   }
 
@@ -363,55 +381,101 @@ export class AutoResponseService {
       let responseText = '';
       
       // Decidir si usar IA generativa basada en prompts personalizados o la plantilla tradicional
-      if (this.config.customPrompts.enabled && this.geminiClient) {
+      if (this.config.customPrompts.enabled) {
         try {
-          // Usar Gemini con prompt personalizado para generar la respuesta
-          const model = this.geminiClient.getGenerativeModel({
-            model: "gemini-pro",
-            generationConfig: {
-              temperature: this.config.customPrompts.temperature,
-              maxOutputTokens: this.config.customPrompts.maxTokens,
-              topP: 0.8,
-              topK: 40
-            }
-          });
-          
           // Preparar el mensaje del sistema con el prompt personalizado
           const systemPrompt = this.config.customPrompts.system
             .replace(/{{nombre}}/g, contactName);
-          
-          // Preparar contexto con mensajes previos (si hay)
-          let chat;
-          if (previousMessages.length > 0) {
-            // Iniciar chat con historial y el mensaje del sistema
-            chat = model.startChat({
-              history: [
-                { role: "user", parts: "Hola" },
-                { role: "model", parts: `Hola ${contactName}, ¿en qué puedo ayudarte hoy?` },
-                ...previousMessages
-              ],
+            
+          // Determinar qué proveedor de IA usar
+          if (this.config.aiProvider === "openai" && this.openaiClient) {
+            // Usar OpenAI para generar la respuesta
+            console.log("Usando OpenAI para la respuesta automática");
+            
+            // Convertir los mensajes anteriores al formato de OpenAI
+            const openaiMessages = [];
+            
+            // Añadir el sistema prompt
+            openaiMessages.push({
+              role: "system",
+              content: systemPrompt
+            });
+            
+            // Añadir mensajes previos si existen
+            if (previousMessages.length > 0) {
+              previousMessages.forEach(msg => {
+                openaiMessages.push({
+                  role: msg.role, 
+                  content: msg.content
+                });
+              });
+            }
+            
+            // Añadir el mensaje actual
+            openaiMessages.push({
+              role: "user",
+              content: message.body || ""
+            });
+            
+            // Realizar la solicitud a OpenAI
+            const completion = await this.openaiClient.chat.completions.create({
+              model: "gpt-4o", // Usamos el modelo más reciente de OpenAI
+              messages: openaiMessages,
+              temperature: this.config.customPrompts.temperature,
+              max_tokens: this.config.customPrompts.maxTokens,
+            });
+            
+            responseText = completion.choices[0].message.content || "";
+            
+          } else if (this.geminiClient) {
+            // Usar Gemini con prompt personalizado para generar la respuesta
+            console.log("Usando Gemini para la respuesta automática");
+            const model = this.geminiClient.getGenerativeModel({
+              model: "gemini-pro",
               generationConfig: {
                 temperature: this.config.customPrompts.temperature,
-                maxOutputTokens: this.config.customPrompts.maxTokens
+                maxOutputTokens: this.config.customPrompts.maxTokens,
+                topP: 0.8,
+                topK: 40
               }
             });
-          } else {
-            // Iniciar chat nuevo solo con el mensaje del sistema
-            chat = model.startChat({
-              history: [
-                { role: "user", parts: "Instrucciones para asistente" },
-                { role: "model", parts: systemPrompt }
-              ],
-              generationConfig: {
-                temperature: this.config.customPrompts.temperature,
-                maxOutputTokens: this.config.customPrompts.maxTokens
-              }
-            });
+            
+            // Preparar contexto con mensajes previos (si hay)
+            let chat;
+            if (previousMessages.length > 0) {
+              // Iniciar chat con historial y el mensaje del sistema
+              chat = model.startChat({
+                history: [
+                  { role: "user", parts: [{ text: "Hola" }] },
+                  { role: "model", parts: [{ text: `Hola ${contactName}, ¿en qué puedo ayudarte hoy?` }] },
+                  ...previousMessages.map(msg => ({
+                    role: msg.role,
+                    parts: [{ text: msg.content }]
+                  }))
+                ],
+                generationConfig: {
+                  temperature: this.config.customPrompts.temperature,
+                  maxOutputTokens: this.config.customPrompts.maxTokens
+                }
+              });
+            } else {
+              // Iniciar chat nuevo solo con el mensaje del sistema
+              chat = model.startChat({
+                history: [
+                  { role: "user", parts: [{ text: "Instrucciones para asistente" }] },
+                  { role: "model", parts: [{ text: systemPrompt }] }
+                ],
+                generationConfig: {
+                  temperature: this.config.customPrompts.temperature,
+                  maxOutputTokens: this.config.customPrompts.maxTokens
+                }
+              });
+            }
+            
+            // Enviar el mensaje actual
+            const result = await chat.sendMessage(message.body || "");
+            responseText = result.response.text();
           }
-          
-          // Enviar el mensaje actual
-          const result = await chat.sendMessage(message.body || "");
-          responseText = result.response.text();
           
           // Aplicar nivel de profesionalidad si está habilitado
           if (this.config.useProfessionLevel) {
