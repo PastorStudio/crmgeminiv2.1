@@ -164,16 +164,16 @@ class GeminiKeyGenerator {
       // La clave es válida, ahora probamos Gemini 1.5 Pro
       let keyStatus = this.keysStatus.get(apiKey) || {
         key: apiKey,
-        model: 'gemini-2.5-pro',
+        model: 'gemini-1.5-pro',
         modelFallback: 'gemini-pro',
         quotaExceeded: false,
         lastCheck: Date.now()
       };
       
       try {
-        // Intentar con Gemini 2.5 Pro primero (el mejor modelo)
+        // Intentar con Gemini 1.5 Pro primero (el mejor modelo)
         const testResponse = await axios.post(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`,
           {
             contents: [
               {
@@ -188,9 +188,9 @@ class GeminiKeyGenerator {
           }
         );
         
-        // Si llegamos aquí, Gemini 2.5 funciona
-        console.log('Clave API válida para Gemini 2.5 Pro');
-        keyStatus.model = 'gemini-2.5-pro';
+        // Si llegamos aquí, Gemini 1.5 funciona
+        console.log('Clave API válida para Gemini 1.5 Pro');
+        keyStatus.model = 'gemini-1.5-pro';
         keyStatus.quotaExceeded = false;
         keyStatus.lastCheck = Date.now();
         this.keysStatus.set(apiKey, keyStatus);
@@ -198,7 +198,7 @@ class GeminiKeyGenerator {
       } catch (error: any) {
         // Verificar si el error es por límites de cuota (429)
         if (error.response && error.response.status === 429) {
-          console.log('Límite de cuota excedido para Gemini 2.5 Pro, probando con Gemini Pro...');
+          console.log('Límite de cuota excedido para Gemini 1.5 Pro, probando con Gemini Pro...');
           
           // Intentar con Gemini Pro (el modelo con más cuota disponible)
           try {
@@ -218,7 +218,7 @@ class GeminiKeyGenerator {
               }
             );
             
-            // Gemini Pro funciona cuando Gemini 2.5 está limitado
+            // Gemini Pro funciona cuando Gemini 1.5 está limitado
             console.log('Clave válida para Gemini Pro, usando como fallback');
             keyStatus.model = 'gemini-pro';
             keyStatus.quotaExceeded = true;
@@ -230,7 +230,7 @@ class GeminiKeyGenerator {
             return false;
           }
         } else {
-          console.error('Error validando modelo Gemini 2.5:', error);
+          console.error('Error validando modelo Gemini 1.5:', error);
           
           // Intentamos con Gemini Pro como último recurso
           try {

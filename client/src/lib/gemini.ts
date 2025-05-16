@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 // Variables para almacenar la configuración dinámica de Gemini
 let API_KEY = '';
 let MODEL_NAME = 'gemini-pro'; // Modelo por defecto (más estable y con más cuota)
-let PREFERRED_MODEL = 'gemini-2.5-pro'; // Modelo preferido (si está disponible)
+let PREFERRED_MODEL = 'gemini-1.5-pro'; // Modelo preferido (si está disponible)
 
 // Función para cargar la clave API dinámicamente desde el servidor
 async function loadApiKey() {
