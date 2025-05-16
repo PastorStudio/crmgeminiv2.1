@@ -36,12 +36,34 @@ class GeminiService {
   }
 
   /**
-   * Obtiene una clave API válida para Gemini
+   * Obtiene una clave API válida para Gemini y actualiza el modelo si es necesario
+   * @returns Objeto con la clave API y el modelo recomendado
    */
-  private async getApiKey(): Promise<string> {
+  private async getApiKeyAndModel(): Promise<{key: string, model: string}> {
     try {
-      // Intentar obtener una clave válida del generador
-      return await geminiKeyGenerator.getValidKey();
+      // Intentar obtener una clave válida del generador junto con el modelo recomendado
+      const keyInfo = await geminiKeyGenerator.getValidKey();
+      
+      // Si el keyInfo es un objeto con key y model, lo manejamos correctamente
+      if (typeof keyInfo === 'object' && keyInfo.key && keyInfo.model) {
+        // Actualizar el modelo si es diferente al configurado actualmente
+        if (keyInfo.model !== this.config.model) {
+          console.log(`Cambiando modelo de Gemini de ${this.config.model} a ${keyInfo.model} por disponibilidad de cuota`);
+          this.config.model = keyInfo.model;
+        }
+        return keyInfo;
+      } 
+      
+      // Si por alguna razón recibimos solo una string, la manejamos para compatibilidad
+      if (typeof keyInfo === 'string') {
+        return {
+          key: keyInfo,
+          model: this.config.model
+        };
+      }
+      
+      // Si llegamos aquí, algo salió mal
+      throw new Error('Formato de clave API inválido');
     } catch (error) {
       console.error('Error obteniendo clave API de Gemini:', error);
       throw new Error('No se pudo obtener una clave API válida para Gemini');
@@ -60,9 +82,9 @@ class GeminiService {
    */
   public async generateContent(prompt: string): Promise<string> {
     try {
-      const apiKey = await this.getApiKey();
+      const { key: apiKey } = await this.getApiKeyAndModel();
       
-      // Endpoint para Gemini 1.5
+      // Endpoint para Gemini (la versión se determina por this.config.model)
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${apiKey}`;
       
       const response = await axios.post(url, {
@@ -99,9 +121,9 @@ class GeminiService {
     customSystemPrompt?: string
   ): Promise<string> {
     try {
-      const apiKey = await this.getApiKey();
+      const { key: apiKey } = await this.getApiKeyAndModel();
       
-      // Endpoint para Gemini 1.5
+      // Endpoint para Gemini (la versión se determina por this.config.model)
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${apiKey}`;
       
       // Configurar el prompt del sistema según el nivel de profesionalismo
@@ -191,9 +213,9 @@ class GeminiService {
    */
   public async extractLeadInfoFromConversation(leadId: number, conversation: string): Promise<any> {
     try {
-      const apiKey = await this.getApiKey();
+      const { key: apiKey } = await this.getApiKeyAndModel();
       
-      // Endpoint para Gemini 1.5
+      // Endpoint para Gemini (la versión se determina por this.config.model)
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${apiKey}`;
       
       const prompt = `
@@ -264,7 +286,7 @@ class GeminiService {
    */
   public async generateTagsWithProbability(leadId: number): Promise<any> {
     try {
-      const apiKey = await this.getApiKey();
+      const { key: apiKey } = await this.getApiKeyAndModel();
       
       // En un sistema real, obtendríamos los datos del lead desde la base de datos
       const leadData = {

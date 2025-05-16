@@ -165,26 +165,42 @@ class GeminiKeyGenerator {
   /**
    * Obtiene la clave API actual o genera una nueva si es necesario
    */
-  public async getValidKey(): Promise<string> {
-    // Verificar si hay una clave válida
-    const currentKey = apiKeyManager.getGeminiKey();
-    
-    if (currentKey) {
-      // Si ya pasó el tiempo de validación, validar la clave
-      if (Date.now() - this.lastValidationTime > VALIDATION_INTERVAL) {
-        const isValid = await this.testApiKey(currentKey);
-        if (isValid) {
-          this.lastValidationTime = Date.now();
-          return currentKey;
+  public async getValidKey(): Promise<{key: string, model: string}> {
+    try {
+      // Verificar si hay una clave válida
+      const currentKey = apiKeyManager.getGeminiKey();
+      
+      if (currentKey) {
+        // Si ya pasó el tiempo de validación, validar la clave
+        if (Date.now() - this.lastValidationTime > VALIDATION_INTERVAL) {
+          const isValid = await this.testApiKey(currentKey);
+          if (isValid) {
+            this.lastValidationTime = Date.now();
+            // Devolvemos un objeto con la clave y el modelo recomendado
+            return {
+              key: currentKey,
+              model: 'gemini-pro' // Por defecto usamos gemini-pro para evitar problemas de cuota
+            };
+          }
+        } else {
+          // Si no ha pasado el tiempo de validación, devolver la clave actual
+          return {
+            key: currentKey,
+            model: 'gemini-pro'
+          };
         }
-      } else {
-        // Si no ha pasado el tiempo de validación, devolver la clave actual
-        return currentKey;
       }
+      
+      // Si no hay clave o no es válida, generar una nueva
+      return await this.generateKey();
+    } catch (error) {
+      console.error('Error obteniendo clave válida:', error);
+      // En caso de error, devolver un backup seguro
+      return {
+        key: 'AIzaSyCvNKcMCPd_oS2W7qvK6I_h-R7eNbtzCro', 
+        model: 'gemini-pro'
+      };
     }
-    
-    // Si no hay clave o no es válida, generar una nueva
-    return await this.generateKey();
   }
 }
 
