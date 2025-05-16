@@ -560,10 +560,10 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
 
   // Modo WhatsApp autenticado o modo fallback
   return (
-    <div className="bg-white rounded-lg shadow-sm border h-[calc(100vh-12rem)] flex overflow-hidden">
-      {/* Panel de chats/contactos */}
-      <div className="w-1/3 border-r flex flex-col">
-        <div className="border-b p-3">
+    <div className="bg-white rounded-lg shadow-sm border h-[calc(100vh-16rem)] flex overflow-hidden mx-auto max-w-6xl">
+      {/* Panel de chats/contactos - Área fija con scroll */}
+      <div className="w-1/3 border-r flex flex-col max-w-xs">
+        <div className="border-b p-3 sticky top-0 bg-white z-10">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
             <Input
@@ -585,8 +585,9 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
             <TabsTrigger value="contacts" className="flex-1">Contactos</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="chats" className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full">
+          {/* Lista de chats con área de scroll fija */}
+          <TabsContent value="chats" className="flex-1 overflow-hidden m-0 p-0">
+            <ScrollArea className="h-[calc(100vh-21rem)]">
               {whatsappStatus?.authenticated ? (
                 // Modo WhatsApp autenticado - Mostrar chats reales de WhatsApp
                 isLoadingChats ? (
@@ -706,8 +707,9 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
             </ScrollArea>
           </TabsContent>
           
-          <TabsContent value="contacts" className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full">
+          {/* Lista de contactos con área de scroll fija */}
+          <TabsContent value="contacts" className="flex-1 overflow-hidden m-0 p-0">
+            <ScrollArea className="h-[calc(100vh-21rem)]">
               {isLoadingLeads ? (
                 <div className="flex justify-center p-4">
                   <Spinner />
