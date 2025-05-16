@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { WhatsAppInterface } from "@/components/messaging/WhatsAppInterface";
+import { WhatsAppSimple } from "@/components/messaging/WhatsAppSimple";
 import { WhatsAppTest } from "@/components/messaging/WhatsAppTest";
 import { MessageSquare, Smartphone, Send, BrainCircuit, Wrench } from "lucide-react";
 
@@ -48,7 +48,7 @@ export default function Messages() {
       <div className="flex justify-center">
         <div className="w-full max-w-6xl">
           {activeTab === "whatsapp" && (
-            <WhatsAppInterface selectedLeadId={selectedLeadId} onSelectLead={setSelectedLeadId} />
+            <WhatsAppSimple selectedLeadId={selectedLeadId} onSelectLead={setSelectedLeadId} />
           )}
           
           {activeTab === "test" && (
