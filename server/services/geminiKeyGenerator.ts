@@ -7,27 +7,50 @@ import axios from 'axios';
 import * as crypto from 'crypto';
 import { apiKeyManager } from './apiKeyManager';
 
-// Lista de claves API de respaldo
+// Lista de claves API de respaldo con información del modelo recomendado
+// Usamos 'gemini-pro' como fallback cuando 'gemini-1.5-pro' tenga limitaciones de cuota
 const BACKUP_API_KEYS = [
-  'AIzaSyCvNKcMCPd_oS2W7qvK6I_h-R7eNbtzCro',
-  'AIzaSyDJ4uf0zcLn2IeL4WQeQaZA24LgAxCqRUw',
-  'AIzaSyB-QnuTZDp3b8_h9bq0JYW0fHF9MAQYHKA',
-  'AIzaSyBvr9vwW6FQVJebMZs_DmTHj8jGscCdcPg',
-  'AIzaSyAbFR_O8XgKp3FTVdKnCStSS5DTb6N2HpE'
+  {key: 'AIzaSyCvNKcMCPd_oS2W7qvK6I_h-R7eNbtzCro', model: 'gemini-pro'},
+  {key: 'AIzaSyDJ4uf0zcLn2IeL4WQeQaZA24LgAxCqRUw', model: 'gemini-pro'},
+  {key: 'AIzaSyB-QnuTZDp3b8_h9bq0JYW0fHF9MAQYHKA', model: 'gemini-pro'},
+  {key: 'AIzaSyBvr9vwW6FQVJebMZs_DmTHj8jGscCdcPg', model: 'gemini-pro'},
+  {key: 'AIzaSyAbFR_O8XgKp3FTVdKnCStSS5DTb6N2HpE', model: 'gemini-pro'}
 ];
 
 // Intervalo de validación de claves (en milisegundos)
 const VALIDATION_INTERVAL = 24 * 60 * 60 * 1000; // 24 horas
+
+// Interfaz para el estado de una clave API
+interface ApiKeyStatus {
+  key: string;
+  model: string;
+  modelFallback: string;
+  quotaExceeded: boolean;
+  lastCheck: number;
+  lastError?: string;
+}
 
 class GeminiKeyGenerator {
   private static instance: GeminiKeyGenerator;
   private lastValidationTime: number = 0;
   private isGenerating: boolean = false;
   private currentKeyIndex: number = 0;
+  private keysStatus: Map<string, ApiKeyStatus> = new Map();
   
   private constructor() {
     // Inicializar validador periódico
     this.setupPeriodicValidation();
+    
+    // Inicializar estado de las claves de respaldo
+    BACKUP_API_KEYS.forEach(keyInfo => {
+      this.keysStatus.set(keyInfo.key, {
+        key: keyInfo.key,
+        model: 'gemini-1.5-pro', // Intentamos primero con la última versión
+        modelFallback: keyInfo.model,
+        quotaExceeded: false,
+        lastCheck: 0
+      });
+    });
   }
   
   public static getInstance(): GeminiKeyGenerator {
@@ -50,7 +73,7 @@ class GeminiKeyGenerator {
    * Genera una nueva clave API (simulación)
    * En un entorno real, esto se conectaría a la API de Google
    */
-  public async generateKey(): Promise<string> {
+  public async generateKey(): Promise<{key: string, model: string}> {
     try {
       if (this.isGenerating) {
         return this.getBackupKey();
@@ -65,15 +88,15 @@ class GeminiKeyGenerator {
       // para generar una nueva clave API
       
       // Por ahora, usamos una de las claves de respaldo
-      const newKey = this.getBackupKey();
+      const backupKeyInfo = this.getBackupKey();
       
       // Guardar la nueva clave
-      apiKeyManager.updateGeminiKey(newKey);
+      apiKeyManager.updateGeminiKey(backupKeyInfo.key);
       
       this.isGenerating = false;
       this.lastValidationTime = Date.now();
       
-      return newKey;
+      return backupKeyInfo;
     } catch (error) {
       console.error('Error generando clave API de Gemini:', error);
       this.isGenerating = false;
@@ -82,13 +105,14 @@ class GeminiKeyGenerator {
   }
   
   /**
-   * Obtiene una clave de respaldo rotando entre las disponibles
+   * Obtiene una clave de respaldo con información del modelo recomendado
+   * @returns {Object} Objeto con la clave API y el modelo recomendado
    */
-  private getBackupKey(): string {
-    const key = BACKUP_API_KEYS[this.currentKeyIndex];
+  private getBackupKey(): { key: string, model: string } {
+    const backupInfo = BACKUP_API_KEYS[this.currentKeyIndex];
     // Rotar a la siguiente clave para la próxima solicitud
     this.currentKeyIndex = (this.currentKeyIndex + 1) % BACKUP_API_KEYS.length;
-    return key;
+    return backupInfo;
   }
   
   /**
