@@ -874,6 +874,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint para obtener la clave API de Gemini para el cliente
+  app.get("/api/settings/gemini-client-key", async (req: Request, res: Response) => {
+    try {
+      // Obtener la clave API de Gemini
+      const geminiApiKey = apiKeyManager.getGeminiKey();
+      
+      if (!geminiApiKey) {
+        return res.status(404).json({
+          success: false,
+          message: 'Clave API de Gemini no configurada'
+        });
+      }
+      
+      // Devolver la clave API al cliente
+      res.json({
+        success: true,
+        apiKey: geminiApiKey
+      });
+    } catch (error) {
+      console.error('Error obteniendo clave API de Gemini:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno al obtener la clave API'
+      });
+    }
+  });
+  
   app.post("/api/settings/update-gemini-key", async (req: Request, res: Response) => {
     try {
       const { apiKey } = req.body;
