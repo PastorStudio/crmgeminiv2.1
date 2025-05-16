@@ -34,7 +34,7 @@ interface AutoResponseConfig {
 
 // Configuración predeterminada
 const defaultConfig: AutoResponseConfig = {
-  enabled: false,
+  enabled: true,
   delaySeconds: 10,
   templates: [
     {
