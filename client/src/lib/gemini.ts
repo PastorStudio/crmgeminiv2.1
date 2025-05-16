@@ -24,9 +24,14 @@ const textModelConfig = {
  * Genera una respuesta automática basada en el mensaje del usuario y el historial de chat
  * @param message El mensaje del usuario
  * @param chatHistory Historial de conversación (opcional)
+ * @param customPrompt Prompt personalizado para la respuesta (opcional)
  * @returns La respuesta generada por Gemini
  */
-export async function generateAutoResponse(message: string, chatHistory: string[] = []): Promise<string> {
+export async function generateAutoResponse(
+  message: string, 
+  chatHistory: string[] = [], 
+  customPrompt?: string
+): Promise<string> {
   try {
     // Verificar si hay una API key configurada
     if (!API_KEY) {
@@ -38,8 +43,8 @@ export async function generateAutoResponse(message: string, chatHistory: string[
       model: "gemini-1.5-pro"
     });
 
-    // Formatear el mensaje para el sistema de prompting
-    let prompt = `
+    // Usar el prompt personalizado si está disponible, o el predeterminado
+    let systemPrompt = customPrompt || `
     Estás actuando como un asistente de atención al cliente profesional y útil. 
     Responde al siguiente mensaje del cliente. Tu respuesta debe ser:
     - Concisa y directa
@@ -47,25 +52,69 @@ export async function generateAutoResponse(message: string, chatHistory: string[
     - Útil y orientada a resolver la consulta del cliente
     - En español y con un tono amigable pero profesional
     
-    Mensaje del cliente: "${message}"
+    IMPORTANTE: Mantén la continuidad de la conversación. Si te preguntan por algo mencionado anteriormente,
+    haz referencia a ello en tu respuesta. Si te preguntan por detalles de un producto o servicio mencionado
+    en mensajes anteriores, incluye esa información en tu respuesta.
     `;
 
-    // Si hay historial de chat, incluirlo en el prompt
-    if (chatHistory.length > 0) {
-      prompt += "\n\nContexto de la conversación anterior:";
-      chatHistory.forEach((msg, index) => {
-        prompt += `\n${index % 2 === 0 ? "Cliente" : "Asistente"}: ${msg}`;
-      });
-    }
+    // Crear mensaje de usuario
+    const userMessage = message;
 
-    // Generar la respuesta
-    const result = await model.generateContent(prompt);
-    const response = result.response.text();
+    // Crear el historial de chat para Gemini en formato de chat real
+    const chatMessages = [];
     
+    // Primero el prompt del sistema
+    chatMessages.push({
+      role: 'user',
+      parts: [{ text: systemPrompt }]
+    });
+    
+    chatMessages.push({
+      role: 'model',
+      parts: [{ text: 'Entendido. Actuaré como un asistente profesional y mantendré la conversación coherente.' }]
+    });
+
+    // Después añadir el historial previo
+    if (chatHistory.length > 0) {
+      for (let i = 0; i < chatHistory.length; i += 2) {
+        if (i < chatHistory.length) {
+          chatMessages.push({
+            role: 'user',
+            parts: [{ text: chatHistory[i] }]
+          });
+        }
+        
+        if (i + 1 < chatHistory.length) {
+          chatMessages.push({
+            role: 'model',
+            parts: [{ text: chatHistory[i + 1] }]
+          });
+        }
+      }
+    }
+    
+    // Finalmente añadir el mensaje actual
+    chatMessages.push({
+      role: 'user',
+      parts: [{ text: userMessage }]
+    });
+
+    // Generar la respuesta utilizando el chat completo
+    const result = await model.generateContent({
+      contents: chatMessages,
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.8,
+        topK: 40,
+        maxOutputTokens: 1000,
+      }
+    });
+    
+    const response = result.response.text();
     return response;
   } catch (error: any) {
     console.error("Error generando respuesta con Gemini:", error);
-    return "Lo siento, no pude generar una respuesta automática en este momento.";
+    return "Lo siento, no pude generar una respuesta automática en este momento. Detalles del error: " + error.message;
   }
 }
 

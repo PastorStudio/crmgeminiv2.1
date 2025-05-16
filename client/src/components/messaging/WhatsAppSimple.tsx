@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateAutoResponse } from '@/lib/gemini';
+import { chatContext } from '@/lib/chatContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -69,6 +70,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
   const [showGeminiDialog, setShowGeminiDialog] = useState(false);
+  const [showGeminiConfigDialog, setShowGeminiConfigDialog] = useState(false);
   const [lastMessageCount, setLastMessageCount] = useState(0);
   const [newMessagesReceived, setNewMessagesReceived] = useState(false);
   const [processingAutoResponse, setProcessingAutoResponse] = useState(false);
@@ -231,17 +233,24 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       // Marcar que estamos procesando una respuesta automática
       setProcessingAutoResponse(true);
       
-      // Obtener historial reciente para dar contexto a la IA (últimos 4 mensajes)
-      const recentHistory = whatsappMessages
-        .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
-        .slice(-5)
-        .map(msg => msg.body)
-        .filter(Boolean);
+      // Añadir el mensaje del usuario al contexto de la conversación
+      chatContext.addMessage(selectedChatId, 'user', message.body);
       
-      // Generar respuesta con Gemini
-      const response = await generateAutoResponse(message.body, recentHistory);
+      // Obtener el historial de la conversación para este chat
+      const conversationHistory = chatContext.getHistoryForGemini(selectedChatId, 10);
+      
+      // Obtener el prompt personalizado si existe
+      const customPrompt = chatContext.getCustomPrompt(selectedChatId);
+      
+      console.log('Generando respuesta con historial de', conversationHistory.length, 'mensajes');
+      
+      // Generar respuesta con Gemini usando el contexto de la conversación
+      const response = await generateAutoResponse(message.body, conversationHistory, customPrompt);
       
       if (response && response.trim() !== '') {
+        // Guardar la respuesta del asistente en el contexto
+        chatContext.addMessage(selectedChatId, 'assistant', response);
+        
         // Enviar la respuesta generada
         sendMessageMutation.mutate(response);
         
