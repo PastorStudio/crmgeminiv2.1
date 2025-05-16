@@ -1,8 +1,15 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Inicializa la API de Gemini con la clave API almacenada en variables de entorno
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || window.__GEMINI_API_KEY__ || '';
 const genAI = new GoogleGenerativeAI(API_KEY);
+
+// Declare el tipo global para la variable de ventana
+declare global {
+  interface Window {
+    __GEMINI_API_KEY__?: string;
+  }
+}
 
 // Configuración para el modelo de generación de texto
 const textModelConfig = {
