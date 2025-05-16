@@ -89,7 +89,7 @@ import {
   Clock,
   AlertCircle,
   RefreshCw,
-  BrainCircuit
+  MessageSquare
 } from 'lucide-react';
 
 interface WhatsAppInterfaceProps {
@@ -508,7 +508,26 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     }
   }, [whatsappMessages, crmMessages, newMessagesReceived]);
   
-  // Mostrar el QR de WhatsApp y panel de mensajes
+  // Formatear timestamp de mensaje
+  const formatTime = (timestamp: number) => {
+    if (!timestamp) return '';
+    
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    
+    const isToday = date.toDateString() === now.toDateString();
+    const isYesterday = new Date(now.setDate(now.getDate() - 1)).toDateString() === date.toDateString();
+    
+    if (isToday) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (isYesterday) {
+      return 'Ayer';
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
+  // Renderizar el panel de mensajes
   const renderMessageArea = () => {
     // Si hay un estado de carga de WhatsApp
     if (isLoadingWhatsappStatus) {
@@ -618,7 +637,7 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
               </div>
             ) : whatsappMessages.length > 0 ? (
               <div className="space-y-2 px-3 py-4">
-                {whatsappMessages.map((msg: WhatsAppMessage, index) => {
+                {whatsappMessages.map((msg: WhatsAppMessage, index: number) => {
                   // Verificar si debe mostrar separador de fecha
                   const showDateSeparator = index === 0 || 
                     new Date(msg.timestamp * 1000).toDateString() !== 
@@ -781,181 +800,12 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <div className="text-gray-400 mb-2">
-              <Image size={64} strokeWidth={1} className="mx-auto" />
+              <MessageSquare size={64} strokeWidth={1} className="mx-auto" />
             </div>
             <div className="text-xl font-bold mb-2">Mensajería de WhatsApp</div>
             <div className="text-gray-500">
               Selecciona un chat para comenzar a enviar mensajes.
             </div>
-          </div>
-        </div>
-      );
-    }
-    
-    // Si WhatsApp no está autenticado y no hay QR, seleccionar de leads
-    if (!whatsappStatus.authenticated && !selectedLeadId) {
-      return (
-        <div className="flex flex-col items-center justify-center h-full">
-          <div className="text-center">
-            <div className="text-gray-400 mb-2">
-              <User size={64} strokeWidth={1} className="mx-auto" />
-            </div>
-            <div className="text-xl font-bold mb-2">Mensajería CRM</div>
-            <div className="text-gray-500">
-              Selecciona un contacto para comenzar a enviar mensajes.
-            </div>
-          </div>
-        </div>
-      );
-    }
-    
-    // Si WhatsApp no está autenticado pero hay un lead seleccionado
-    if (!whatsappStatus.authenticated && selectedLeadId) {
-      const isLoading = isLoadingLeadDetails || isLoadingCrmMessages;
-      
-      if (isLoading) {
-        return (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Spinner className="mb-4 mx-auto" />
-              <div className="text-gray-500">Cargando conversación...</div>
-            </div>
-          </div>
-        );
-      }
-      
-      return (
-        <div className="flex flex-col h-full">
-          {/* Cabecera del chat */}
-          <div className="border-b p-2 flex items-center gap-2">
-            <Avatar className="h-8 w-8">
-              {selectedLeadData?.avatar ? (
-                <AvatarImage src={selectedLeadData.avatar} alt={selectedLeadData.fullName} />
-              ) : null}
-              <AvatarFallback className="bg-green-500 text-white text-xs">
-                {getInitials(selectedLeadData?.fullName)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm truncate">{selectedLeadData?.fullName || 'Contacto'}</div>
-              <div className="text-xs text-gray-500 truncate">
-                {selectedLeadData?.phone || selectedLeadData?.email || ''}
-              </div>
-            </div>
-            <div className="flex gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Phone size={16} />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Video size={16} />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical size={16} />
-              </Button>
-            </div>
-          </div>
-          
-          {/* Área de mensajes con scroll independiente */}
-          <ScrollArea className="flex-1 p-3">
-            {crmMessages.length > 0 ? (
-              <div className="space-y-3">
-                {crmMessages.map((message: Message) => (
-                  <div 
-                    key={message.id}
-                    className={`flex ${message.direction === 'outgoing' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div 
-                      className={`max-w-[75%] rounded-lg p-2 shadow-sm ${
-                        message.direction === 'outgoing' 
-                          ? 'bg-primary text-primary-foreground ml-auto' 
-                          : 'bg-card border mr-auto'
-                      }`}
-                    >
-                      <div className="text-sm">{message.content}</div>
-                      <div className="text-right mt-1">
-                        {message.direction === 'outgoing' 
-                          ? renderMessageStatus(message.status, message.timestamp)
-                          : (
-                            <div className="text-[10px] text-gray-400">
-                              {new Date(message.timestamp).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </div>
-                          )
-                        }
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-            ) : (
-              <div className="text-center text-gray-500 p-4">
-                No hay mensajes. Envía el primero para iniciar la conversación.
-              </div>
-            )}
-          </ScrollArea>
-          
-          {/* Área de escritura de mensajes */}
-          <div className="border-t p-2">
-            <form onSubmit={handleSendMessage} className="flex items-end gap-2">
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                className="h-9 w-9 flex-shrink-0"
-                onClick={() => setShowAiAssistant(!showAiAssistant)}
-              >
-                <BrainCircuit size={18} className={showAiAssistant ? "text-primary" : ""} />
-              </Button>
-              
-              <div className="flex-1 rounded-lg bg-background border">
-                {showAiAssistant && (
-                  <div className="p-3 border-b">
-                    <GeminiAssistant 
-                      onMessageGenerated={(text) => setMessageText(text)}
-                      leadId={selectedLeadId}
-                      compact={true}
-                    />
-                  </div>
-                )}
-                
-                <div className="flex items-end p-2 gap-1">
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                    <Smile size={18} />
-                  </Button>
-                  
-                  <Input
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    placeholder="Escribe un mensaje..."
-                    className="border-0 flex-1 focus-visible:ring-0 focus-visible:ring-offset-0"
-                  />
-                  
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                    <Paperclip size={18} />
-                  </Button>
-                  
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                    <Mic size={18} />
-                  </Button>
-                </div>
-              </div>
-              
-              <Button 
-                type="submit" 
-                size="icon" 
-                className="h-9 w-9 rounded-full flex-shrink-0" 
-                disabled={!messageText.trim() || sendMessageMutation.isPending}
-              >
-                {sendMessageMutation.isPending ? (
-                  <Spinner className="h-4 w-4" />
-                ) : (
-                  <Send size={16} />
-                )}
-              </Button>
-            </form>
           </div>
         </div>
       );
@@ -971,25 +821,6 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
         </div>
       </div>
     );
-  };
-  
-  // Formatear timestamp de mensaje
-  const formatTime = (timestamp: number) => {
-    if (!timestamp) return '';
-    
-    const date = new Date(timestamp * 1000);
-    const now = new Date();
-    
-    const isToday = date.toDateString() === now.toDateString();
-    const isYesterday = new Date(now.setDate(now.getDate() - 1)).toDateString() === date.toDateString();
-    
-    if (isToday) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (isYesterday) {
-      return 'Ayer';
-    } else {
-      return date.toLocaleDateString();
-    }
   };
 
   // Renderizar el componente principal
@@ -1030,32 +861,38 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="p-3 pt-3 flex-1 flex flex-col overflow-hidden">
-        <div className="rounded-lg border mb-3">
-          <div className="flex items-center p-2">
-            <Search className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
-            <Input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar chats o contactos..."
-              className="border-0 p-0 h-6 focus-visible:ring-0 focus-visible:ring-offset-0"
-            />
+      {/* Contenedor principal dividido en 2 columnas */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* COLUMNA IZQUIERDA - Lista de chats */}
+        <div className="w-1/3 border-r flex flex-col overflow-hidden">
+          <div className="p-3">
+            <div className="rounded-lg border mb-3">
+              <div className="flex items-center p-2">
+                <Search className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar chats..."
+                  className="border-0 p-0 h-6 focus-visible:ring-0 focus-visible:ring-offset-0"
+                />
+              </div>
+            </div>
+            
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
+              <TabsList className="w-full mb-3">
+                <TabsTrigger value="chats" className="flex-1">Chats</TabsTrigger>
+                <TabsTrigger value="contacts" className="flex-1">Contactos</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
-        </div>
-        
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="flex-1 flex flex-col"
-        >
-          <TabsList className="px-2 pt-2 justify-start border-b rounded-none gap-1">
-            <TabsTrigger value="chats" className="flex-1">Chats</TabsTrigger>
-            <TabsTrigger value="contacts" className="flex-1">Contactos</TabsTrigger>
-          </TabsList>
           
-          {/* Lista de chats con área de scroll fija */}
-          <TabsContent value="chats" className="flex-1 overflow-hidden m-0 p-0">
-            <ScrollArea className="h-[calc(100vh-21rem)]">
+          {/* Lista de chats */}
+          {activeTab === 'chats' && (
+            <ScrollArea className="flex-1">
               {isLoadingChats ? (
                 <div className="flex justify-center p-4">
                   <Spinner />
@@ -1071,42 +908,29 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                   {whatsappChats.map((chat: WhatsAppChat) => (
                     <div
                       key={chat.id}
-                      className={`p-2.5 hover:bg-gray-50 cursor-pointer ${
-                        selectedChatId === chat.id ? 'bg-green-50 border-l-2 border-l-green-500' : ''
+                      className={`p-3 hover:bg-gray-50 cursor-pointer ${
+                        selectedChatId === chat.id ? 'bg-green-50 border-l-4 border-l-green-500' : ''
                       }`}
                       onClick={() => handleChatSelect(chat)}
                     >
-                      <div className="flex items-start gap-2.5">
-                        <Avatar className="h-10 w-10 flex-shrink-0 border shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-11 w-11 flex-shrink-0 border shadow-sm">
                           {chat.profilePicUrl ? (
                             <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
                           ) : null}
-                          <AvatarFallback className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs">
+                          <AvatarFallback className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">
                             {getInitials(chat.name)}
                           </AvatarFallback>
                         </Avatar>
                         
                         <div className="flex-1 min-w-0 overflow-hidden">
-                          <div className="flex justify-between w-full">
-                            <div className="font-medium text-sm truncate max-w-[70%]">{chat.name}</div>
-                            <div className="text-[10px] text-gray-500 shrink-0 mt-0.5">
-                              {formatTime(chat.timestamp)}
-                            </div>
-                          </div>
+                          <div className="font-medium truncate">{chat.name}</div>
                           
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            {chat.unreadCount > 0 ? (
-                              <div className="w-4 h-4 rounded-full bg-green-500 text-[9px] text-white font-semibold flex items-center justify-center">
-                                {chat.unreadCount > 9 ? '9+' : chat.unreadCount}
-                              </div>
-                            ) : chat.lastMessage ? (
-                              <Check className="w-3 h-3 text-green-500" />
-                            ) : null}
-                            
-                            <div className="text-xs text-gray-600 truncate">
-                              {chat.lastMessage || (chat.isGroup ? 'Grupo' : 'Contacto')}
-                            </div>
-                          </div>
+                          {chat.unreadCount > 0 && (
+                            <span className="inline-flex items-center justify-center ml-1 bg-green-500 text-white text-[11px] w-5 h-5 rounded-full">
+                              {chat.unreadCount}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1122,44 +946,37 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                 </div>
               )}
             </ScrollArea>
-          </TabsContent>
+          )}
           
-          {/* Lista de contactos con área de scroll fija */}
-          <TabsContent value="contacts" className="flex-1 overflow-hidden m-0 p-0">
-            <ScrollArea className="h-[calc(100vh-21rem)]">
+          {/* Lista de contactos */}
+          {activeTab === 'contacts' && (
+            <ScrollArea className="flex-1">
               {isLoadingLeads ? (
                 <div className="flex justify-center p-4">
                   <Spinner />
                 </div>
               ) : filteredLeads && filteredLeads.length > 0 ? (
-                <div className="space-y-0.5">
+                <div className="divide-y">
                   {filteredLeads.map((lead: Lead) => (
                     <div
                       key={lead.id}
-                      className={`p-2 hover:bg-gray-100 cursor-pointer flex items-start gap-2 ${
-                        selectedLeadId === lead.id ? 'bg-gray-100' : ''
+                      className={`p-3 hover:bg-gray-50 cursor-pointer ${
+                        selectedLeadId === lead.id ? 'bg-green-50 border-l-4 border-l-green-500' : ''
                       }`}
                       onClick={() => handleLeadSelect(lead.id)}
                     >
-                      <Avatar className="h-10 w-10 flex-shrink-0">
-                        {lead.avatar ? (
-                          <AvatarImage src={lead.avatar} alt={lead.fullName} />
-                        ) : null}
-                        <AvatarFallback className="bg-green-500 text-white text-xs">
-                          {getInitials(lead.fullName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <div className="flex justify-between w-full">
-                          <div className="font-medium text-xs truncate">{lead.fullName}</div>
-                        </div>
-                        <div className="text-[11px] text-gray-500 truncate">{lead.phone || lead.email}</div>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-11 w-11 flex-shrink-0 border shadow-sm">
+                          {lead.avatar ? (
+                            <AvatarImage src={lead.avatar} alt={lead.fullName} />
+                          ) : null}
+                          <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+                            {getInitials(lead.fullName)}
+                          </AvatarFallback>
+                        </Avatar>
                         
-                        <div className="flex gap-1">
-                          {lead.status === 'prospect' && <Badge variant="outline" className="rounded-full text-[9px] border-yellow-500 text-yellow-700 px-1 h-4">Prospecto</Badge>}
-                          {lead.status === 'qualified' && <Badge variant="outline" className="rounded-full text-[9px] border-blue-500 text-blue-700 px-1 h-4">Calificado</Badge>}
-                          {lead.status === 'customer' && <Badge variant="outline" className="rounded-full text-[9px] border-green-500 text-green-700 px-1 h-4">Cliente</Badge>}
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="font-medium truncate">{lead.fullName}</div>
                         </div>
                       </div>
                     </div>
@@ -1171,29 +988,13 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                 </div>
               )}
             </ScrollArea>
-          </TabsContent>
-          
-          <div className="h-px w-full bg-border mt-auto"></div>
-          <div className="p-2 pt-1">
-            <div className="text-xs text-gray-500 mb-1">Selección actual:</div>
-            <div className="text-sm font-medium truncate">
-              {whatsappStatus?.authenticated 
-                ? (selectedChatId 
-                  ? ((whatsappChats.find((c: WhatsAppChat) => c.id === selectedChatId) || {}).name || 'Chat')
-                  : 'Sin selección')
-                : (selectedLeadId 
-                  ? (selectedLeadData?.fullName || 'Contacto')
-                  : 'Sin selección')
-              }
-            </div>
-          </div>
-        </Tabs>
-      </CardContent>
-      
-      <div className="border-t" />
-      
-      <div className="flex-1 flex max-h-[calc(100%-240px)] min-h-[350px] overflow-hidden">
-        {renderMessageArea()}
+          )}
+        </div>
+        
+        {/* COLUMNA DERECHA - Área de mensajes */}
+        <div className="w-2/3 flex flex-col overflow-hidden">
+          {renderMessageArea()}
+        </div>
       </div>
     </Card>
   );
