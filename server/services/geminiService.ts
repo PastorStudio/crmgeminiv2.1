@@ -185,6 +185,171 @@ class GeminiService {
       throw error;
     }
   }
+  
+  /**
+   * Extrae información de una conversación con un lead
+   */
+  public async extractLeadInfoFromConversation(leadId: number, conversation: string): Promise<any> {
+    try {
+      const apiKey = await this.getApiKey();
+      
+      // Endpoint para Gemini 1.5
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${apiKey}`;
+      
+      const prompt = `
+      Analiza la siguiente conversación con un cliente potencial y extrae toda la información relevante.
+      Organiza los datos en formato JSON con las siguientes claves:
+      - intereses: array de temas que interesan al cliente
+      - objeciones: array de preocupaciones o objeciones del cliente
+      - necesidades: array de necesidades expresadas o implícitas
+      - urgencia: (alta, media, baja) basada en el tono y contenido
+      - nivel_de_interes: valor numérico del 1 al 10
+      - mejor_producto: cuál de nuestros productos o servicios parece más adecuado
+      - siguientes_pasos: recomendación sobre cómo proceder
+
+      Conversación:
+      ${conversation}
+      
+      Responde ÚNICAMENTE con un objeto JSON válido sin explicaciones adicionales.
+      `;
+      
+      const response = await axios.post(url, {
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.2, // Baja temperatura para respuestas más precisas
+          maxOutputTokens: this.config.maxOutputTokens,
+          topP: 0.8,
+          topK: 40
+        }
+      });
+      
+      // Extraer el texto generado
+      const generatedText = response.data.candidates[0]?.content?.parts[0]?.text || '';
+      
+      // Intentar parsear el JSON
+      try {
+        // Limpiar el texto para asegurar que es JSON válido
+        const cleanedText = generatedText.replace(/```json|```/g, '').trim();
+        const result = JSON.parse(cleanedText);
+        return {
+          success: true,
+          leadId,
+          analysis: result
+        };
+      } catch (parseError) {
+        console.error('Error parseando respuesta JSON:', parseError);
+        return {
+          success: false,
+          error: 'No se pudo parsear la respuesta',
+          rawResponse: generatedText
+        };
+      }
+    } catch (error) {
+      console.error('Error extrayendo información de conversación:', error);
+      return {
+        success: false,
+        error: `Error al extraer información: ${(error as Error).message}`
+      };
+    }
+  }
+  
+  /**
+   * Genera etiquetas con probabilidades para un lead
+   */
+  public async generateTagsWithProbability(leadId: number): Promise<any> {
+    try {
+      const apiKey = await this.getApiKey();
+      
+      // En un sistema real, obtendríamos los datos del lead desde la base de datos
+      const leadData = {
+        id: leadId,
+        name: "Cliente Ejemplo",
+        lastInteraction: "Mostró interés en nuestros servicios de desarrollo web y pidió presupuesto para una aplicación móvil",
+        industry: "Tecnología",
+        source: "Referido",
+        interactions: [
+          "Solicitud inicial de información",
+          "Demostración de producto",
+          "Revisión de presupuesto"
+        ]
+      };
+      
+      // Endpoint para Gemini 1.5
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${apiKey}`;
+      
+      const prompt = `
+      Analiza la siguiente información de un cliente potencial (lead) y genera etiquetas relevantes 
+      con su probabilidad de precisión (de 0 a 1).
+      
+      Información del lead:
+      ID: ${leadData.id}
+      Nombre: ${leadData.name}
+      Última interacción: ${leadData.lastInteraction}
+      Industria: ${leadData.industry}
+      Origen: ${leadData.source}
+      Interacciones:
+      ${leadData.interactions.map(i => `- ${i}`).join('\n')}
+      
+      Genera un array de objetos JSON, cada uno con:
+      - tag: el nombre de la etiqueta
+      - probability: probabilidad de 0 a 1 
+      - relevance: explicación breve de por qué esta etiqueta es relevante
+      
+      Incluye al menos 5 etiquetas posibles.
+      Responde ÚNICAMENTE con un array JSON válido sin explicaciones adicionales.
+      `;
+      
+      const response = await axios.post(url, {
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: this.config.maxOutputTokens,
+          topP: 0.8,
+          topK: 40
+        }
+      });
+      
+      // Extraer el texto generado
+      const generatedText = response.data.candidates[0]?.content?.parts[0]?.text || '';
+      
+      // Intentar parsear el JSON
+      try {
+        // Limpiar el texto para asegurar que es JSON válido
+        const cleanedText = generatedText.replace(/```json|```/g, '').trim();
+        const result = JSON.parse(cleanedText);
+        return {
+          success: true,
+          leadId,
+          tags: result
+        };
+      } catch (parseError) {
+        console.error('Error parseando respuesta JSON:', parseError);
+        return {
+          success: false,
+          error: 'No se pudo parsear la respuesta',
+          rawResponse: generatedText
+        };
+      }
+    } catch (error) {
+      console.error('Error generando etiquetas:', error);
+      return {
+        success: false,
+        error: `Error al generar etiquetas: ${(error as Error).message}`
+      };
+    }
+  }
 
   /**
    * Genera un mensaje personalizado para un lead

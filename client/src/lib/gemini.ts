@@ -1,17 +1,51 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Usar la clave API hardcodeada para pruebas
-const API_KEY = 'AIzaSyCvNKcMCPd_oS2W7qvK6I_h-R7eNbtzCro';
+// Variable para almacenar la clave API que se cargará dinámicamente
+let API_KEY = '';
+let MODEL_NAME = 'gemini-1.5-pro'; // Utilizando Gemini 1.5 Pro por defecto
 
-// Verificar si tenemos la clave API
-if (!API_KEY) {
-  console.warn('No se encontró una clave API para Gemini. Las respuestas automáticas no funcionarán.');
+// Función para cargar la clave API dinámicamente desde el servidor
+async function loadApiKey() {
+  try {
+    const response = await fetch('/api/settings/gemini-client-key');
+    
+    if (!response.ok) {
+      throw new Error('No se pudo obtener la clave API de Gemini');
+    }
+    
+    const data = await response.json();
+    
+    if (data.success && data.apiKey) {
+      API_KEY = data.apiKey;
+      // Si el servidor indica qué modelo usar, lo actualizamos
+      if (data.model) {
+        MODEL_NAME = data.model;
+      }
+      console.log('Estado de la clave API de Gemini: Configurada');
+      console.log('Modelo Gemini a utilizar:', MODEL_NAME);
+      return true;
+    } else {
+      console.warn('No se encontró una clave API válida para Gemini');
+      return false;
+    }
+  } catch (error) {
+    console.error('Error cargando clave API de Gemini:', error);
+    return false;
+  }
 }
 
-console.log('Estado de la clave API de Gemini:', API_KEY ? 'Configurada' : 'No configurada');
+// Cargar la clave API al inicializar
+loadApiKey().catch(err => {
+  console.error('Error inicializando Gemini:', err);
+});
 
-// Inicializar cliente de Gemini
-const genAI = new GoogleGenerativeAI(API_KEY);
+// Función para obtener una instancia de Gemini con la clave API actual
+function getGeminiInstance() {
+  if (!API_KEY) {
+    throw new Error('No hay una clave API de Gemini configurada');
+  }
+  return new GoogleGenerativeAI(API_KEY);
+}
 
 // Configuración para el modelo de generación de texto
 const textModelConfig = {
@@ -33,14 +67,21 @@ export async function generateAutoResponse(
   customPrompt?: string
 ): Promise<string> {
   try {
-    // Verificar si hay una API key configurada
+    // Asegurarse de que tenemos una clave API
     if (!API_KEY) {
-      return "No se pudo generar respuesta automática. API Key de Gemini no configurada.";
+      // Intentar cargar la clave API si no está disponible
+      const loaded = await loadApiKey();
+      if (!loaded) {
+        return "No se pudo generar respuesta automática. API Key de Gemini no configurada.";
+      }
     }
 
-    // Acceder al modelo de generación de texto
+    // Obtener instancia actualizada de Gemini
+    const genAI = getGeminiInstance();
+    
+    // Acceder al modelo de generación de texto con el modelo indicado desde el servidor
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-pro"
+      model: MODEL_NAME
     });
 
     // Usar el prompt personalizado si está disponible, o el predeterminado
@@ -125,12 +166,20 @@ export async function generateAutoResponse(
  */
 export async function analyzeMessage(message: string): Promise<any> {
   try {
+    // Asegurarse de que tenemos una clave API
     if (!API_KEY) {
-      return { success: false, error: "API Key de Gemini no configurada" };
+      // Intentar cargar la clave API si no está disponible
+      const loaded = await loadApiKey();
+      if (!loaded) {
+        return { success: false, error: "API Key de Gemini no configurada" };
+      }
     }
 
+    // Obtener instancia actualizada de Gemini
+    const genAI = getGeminiInstance();
+    
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro"
+      model: MODEL_NAME
     });
 
     const prompt = `
