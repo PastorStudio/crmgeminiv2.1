@@ -164,16 +164,16 @@ class GeminiKeyGenerator {
       // La clave es válida, ahora probamos Gemini 1.5 Pro
       let keyStatus = this.keysStatus.get(apiKey) || {
         key: apiKey,
-        model: 'gemini-1.5-pro',
+        model: 'gemini-2.5-pro',
         modelFallback: 'gemini-pro',
         quotaExceeded: false,
         lastCheck: Date.now()
       };
       
       try {
-        // Intentar con Gemini 1.5 Pro primero (el mejor modelo)
+        // Intentar con Gemini 2.5 Pro primero (el mejor modelo)
         const testResponse = await axios.post(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
           {
             contents: [
               {
