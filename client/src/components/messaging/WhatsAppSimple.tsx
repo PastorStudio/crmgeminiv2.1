@@ -32,8 +32,11 @@ import {
   Mic,
   Camera,
   Contact,
-  File
+  File,
+  Settings
 } from 'lucide-react';
+// Importar el componente de configuración
+import { GeminiConfig } from '@/components/GeminiConfig';
 
 // Interfaces
 interface WhatsAppChat {
