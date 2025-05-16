@@ -1,15 +1,17 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Inicializa la API de Gemini con la clave API almacenada en variables de entorno
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || window.__GEMINI_API_KEY__ || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
+// Usar la clave API de las variables de entorno disponibles en el cliente
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || (window as any).VITE_GEMINI_API_KEY || '';
 
-// Declare el tipo global para la variable de ventana
-declare global {
-  interface Window {
-    __GEMINI_API_KEY__?: string;
-  }
+// Verificar si tenemos la clave API
+if (!API_KEY) {
+  console.warn('No se encontró una clave API para Gemini. Las respuestas automáticas no funcionarán.');
 }
+
+console.log('Estado de la clave API de Gemini:', API_KEY ? 'Configurada' : 'No configurada');
+
+// Inicializar cliente de Gemini
+const genAI = new GoogleGenerativeAI(API_KEY);
 
 // Configuración para el modelo de generación de texto
 const textModelConfig = {
