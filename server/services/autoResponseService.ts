@@ -363,7 +363,7 @@ export class AutoResponseService {
             const chat = await storage.getWhatsAppChat(message.from);
             if (chat && chat.messages) {
               // Obtener los últimos 5 mensajes para contexto
-              previousMessages = chat.messages.slice(-5).map(m => ({
+              previousMessages = chat.messages.slice(-5).map((m: any) => ({
                 role: m.fromMe ? 'assistant' : 'user',
                 content: m.body
               }));
@@ -448,7 +448,7 @@ export class AutoResponseService {
                 history: [
                   { role: "user", parts: [{ text: "Hola" }] },
                   { role: "model", parts: [{ text: `Hola ${contactName}, ¿en qué puedo ayudarte hoy?` }] },
-                  ...previousMessages.map(msg => ({
+                  ...previousMessages.map((msg: any) => ({
                     role: msg.role,
                     parts: [{ text: msg.content }]
                   }))
