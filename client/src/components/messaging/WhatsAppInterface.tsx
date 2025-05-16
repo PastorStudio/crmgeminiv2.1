@@ -223,6 +223,19 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 5000 : false
   });
   
+  // Seleccionar automáticamente el primer chat cuando se cargan los chats
+  useEffect(() => {
+    if (Array.isArray(whatsappChats) && whatsappChats.length > 0 && !selectedChatId && whatsappStatus?.authenticated) {
+      // Ordenar los chats por timestamp más reciente
+      const sortedChats = [...whatsappChats].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      // Seleccionar el chat más reciente
+      setSelectedChatId(sortedChats[0].id);
+      if (onSelectLead && sortedChats[0].numericId) {
+        onSelectLead(sortedChats[0].numericId);
+      }
+    }
+  }, [whatsappChats, selectedChatId, whatsappStatus, onSelectLead]);
+  
   // Consulta para obtener leads (contactos) del CRM - Modo fallback
   const { data: leads = [], isLoading: isLoadingLeads } = useQuery({
     queryKey: ['/api/leads'],
