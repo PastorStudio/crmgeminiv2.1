@@ -559,20 +559,37 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       console.error('Error guardando estado de sesión:', err);
     }
     
-    // Configurar timer para verificar la conexión periódicamente
+    // Configurar timer para verificar la conexión periódicamente con intervalo más corto
     this.connectionCheckTimer = setInterval(() => {
       // Actualizar archivo de estado de sesión
       this.updateSessionStatusFile();
       
-      this.checkConnection().catch(err => {
-        console.error('Error verificando conexión de WhatsApp:', err);
-        
-        // Si hay un error, intentar reiniciar automáticamente
-        this.handleConnectionError(err).catch(handleErr => {
-          console.error('Error en manejo de error de conexión:', handleErr);
+      // Verificar si el cliente está inicializado antes de verificar la conexión
+      if (this.client) {
+        this.checkConnection().catch(err => {
+          console.error('Error verificando conexión de WhatsApp:', err);
+          
+          // Si hay un error, intentar recuperación inmediata y más agresiva
+          setTimeout(() => {
+            console.log('Intentando recuperación inmediata tras error...');
+            this.checkConnection().catch(recoverErr => {
+              console.error('Error en recuperación inmediata:', recoverErr);
+              
+              // Si falla la recuperación inmediata, intentar manejo de error completo
+              this.handleConnectionError(recoverErr).catch(handleErr => {
+                console.error('Error en manejo de error de conexión:', handleErr);
+              });
+            });
+          }, 5000); // Esperar 5 segundos e intentar inmediatamente
         });
-      });
-    }, CONNECTION_CHECK_INTERVAL);
+      } else {
+        // Si el cliente no está inicializado, intentar inicializarlo
+        console.log('Cliente WhatsApp no inicializado, intentando inicializar...');
+        this.initialize().catch(err => {
+          console.error('Error inicializando cliente de WhatsApp:', err);
+        });
+      }
+    }, Math.min(CONNECTION_CHECK_INTERVAL, 3 * 60 * 1000)); // Máximo 3 minutos entre verificaciones
     
     // Configurar timer para mantener activa la conexión (keep-alive)
     this.keepAliveTimer = setInterval(() => {

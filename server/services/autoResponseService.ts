@@ -294,15 +294,19 @@ export class AutoResponseService {
   }
 
   /**
-   * Determina la mejor plantilla para un mensaje utilizando Gemini AI
+   * Determina la mejor plantilla para un mensaje utilizando el proveedor de IA configurado
    */
   private async determineTemplateWithAI(messageText: string, templates: ResponseTemplate[]): Promise<ResponseTemplate | null> {
-    if (!this.geminiClient) return null;
+    if (!templates || templates.length === 0) return null;
+    
+    // Verificar si tenemos algún cliente de IA disponible
+    if (!this.geminiClient && !this.openaiClient) {
+      console.log("No hay cliente de IA disponible para determinar plantilla");
+      return null;
+    }
     
     try {
-      const model = this.geminiClient.getGenerativeModel({ model: 'gemini-pro' });
-      
-      // Crear el prompt para Gemini
+      // Crear descripciones de plantillas para el prompt
       const templateDescriptions = templates.map((t, i) => 
         `Template ${i + 1}: "${t.name}" - ${t.template}`
       ).join('\n');
@@ -318,11 +322,51 @@ export class AutoResponseService {
         Responde solo con el número de la plantilla más adecuada (1, 2, 3, etc.).
       `;
       
-      const result = await model.generateContent(prompt);
-      const response = result.response.text().trim();
+      let responseText = "";
       
-      // Intentar extraer el número de la respuesta
-      const match = response.match(/\d+/);
+      // Usar OpenAI si está configurado como proveedor
+      if (this.config.aiProvider === "openai" && this.openaiClient) {
+        try {
+          console.log("Usando OpenAI para determinar plantilla");
+          const response = await this.openaiClient.chat.completions.create({
+            model: "gpt-4o", // el modelo más reciente de OpenAI
+            messages: [{ role: "user", content: prompt }] as any,
+            temperature: 0, // Usamos temperatura baja para respuestas más deterministas
+            max_tokens: 10, // Solo necesitamos un número
+          });
+          
+          responseText = response.choices[0].message.content || "";
+          console.log("Respuesta de OpenAI:", responseText);
+        } catch (error) {
+          console.error("Error al determinar plantilla con OpenAI:", error);
+          // Si falla OpenAI y tenemos Gemini disponible, intentamos con él
+          if (this.geminiClient) {
+            console.log("Cambiando a Gemini tras error con OpenAI");
+          } else {
+            return null; // No podemos continuar sin ningún proveedor
+          }
+        }
+      }
+      
+      // Usar Gemini si está configurado como proveedor o si OpenAI falló
+      if ((this.config.aiProvider === "gemini" || responseText === "") && this.geminiClient) {
+        try {
+          console.log("Usando Gemini para determinar plantilla");
+          const model = this.geminiClient.getGenerativeModel({ model: 'gemini-pro' });
+          const result = await model.generateContent(prompt);
+          responseText = result.response.text().trim();
+          console.log("Respuesta de Gemini:", responseText);
+        } catch (error) {
+          console.error('Error al determinar plantilla con Gemini:', error);
+          if (responseText === "") {
+            return null; // No tenemos respuesta de ningún proveedor
+          }
+          // Si ya teníamos respuesta de OpenAI, continuamos con ella
+        }
+      }
+      
+      // Procesamos la respuesta para extraer el número de la plantilla
+      const match = responseText.match(/\d+/);
       if (match) {
         const templateIndex = parseInt(match[0]) - 1;
         if (templateIndex >= 0 && templateIndex < templates.length) {
@@ -330,9 +374,10 @@ export class AutoResponseService {
         }
       }
       
+      console.log(`No se pudo extraer un índice válido de la respuesta: "${responseText}"`);
       return null;
     } catch (error) {
-      console.error('Error al determinar plantilla con Gemini:', error);
+      console.error('Error general al determinar plantilla con IA:', error);
       return null;
     }
   }
