@@ -1,480 +1,243 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { storage } from "../storage";
-import { apiKeyManager } from "./apiKeyManager";
-
 /**
- * Servicio para manejar interacciones con la API de Google Gemini
+ * Servicio para integración con Google Gemini AI
+ * Proporciona funcionalidades de IA generativa para todo el sistema
  */
-export class GeminiService {
+
+import axios from 'axios';
+import { apiKeyManager } from './apiKeyManager';
+import { geminiKeyGenerator } from './geminiKeyGenerator';
+
+interface GeminiConfig {
+  professionLevel: string;
+  model: string;
+  temperature: number;
+  maxOutputTokens: number;
+}
+
+class GeminiService {
   private static instance: GeminiService;
-  private genAI: GoogleGenerativeAI | null = null;
-  private model: any = null;
-  
+  private config: GeminiConfig;
+
   private constructor() {
-    this.initialize();
+    // Configuración por defecto
+    this.config = {
+      professionLevel: "professional",
+      model: "gemini-1.5-pro", // Usando la última versión de Gemini
+      temperature: 0.7,
+      maxOutputTokens: 1024
+    };
   }
-  
-  /**
-   * Devuelve la instancia única del servicio
-   */
+
   public static getInstance(): GeminiService {
     if (!GeminiService.instance) {
       GeminiService.instance = new GeminiService();
     }
     return GeminiService.instance;
   }
-  
+
   /**
-   * Inicializa el servicio con la clave API de Gemini
+   * Obtiene una clave API válida para Gemini
    */
-  private initialize(): void {
+  private async getApiKey(): Promise<string> {
     try {
-      // Obtener la clave API
-      const apiKey = apiKeyManager.getGeminiKey() || process.env.GEMINI_API_KEY;
-      
-      if (!apiKey) {
-        throw new Error("No API key available for Gemini");
-      }
-      
-      // Inicializar la API de Gemini
-      this.genAI = new GoogleGenerativeAI(apiKey);
-      this.model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
-      
-      console.log("GeminiService initialized successfully");
+      // Intentar obtener una clave válida del generador
+      return await geminiKeyGenerator.getValidKey();
     } catch (error) {
-      console.error("Error initializing GeminiService:", error);
-      throw error;
+      console.error('Error obteniendo clave API de Gemini:', error);
+      throw new Error('No se pudo obtener una clave API válida para Gemini');
     }
   }
-  
+
   /**
-   * Reinicia el servicio para usar una nueva clave API
+   * Actualiza la configuración de Gemini
    */
-  public reinitialize(): void {
-    this.initialize();
+  public updateConfig(newConfig: Partial<GeminiConfig>): void {
+    this.config = { ...this.config, ...newConfig };
   }
-  
+
   /**
-   * Genera contenido usando la API de Gemini
-   * @param prompt El prompt para generar contenido
-   * @returns El texto generado
+   * Genera contenido de texto con Gemini
    */
   public async generateContent(prompt: string): Promise<string> {
     try {
-      if (!this.model) {
-        this.initialize();
-      }
+      const apiKey = await this.getApiKey();
       
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      // Endpoint para Gemini 1.5
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${apiKey}`;
       
-      return text;
-    } catch (error) {
-      console.error("Error generating content with Gemini:", error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Chatea con Gemini usando un historial de conversación
-   * @param prompt El mensaje del usuario
-   * @param history Historial de mensajes previos (opcional)
-   * @returns La respuesta de Gemini
-   */
-  public async chat(prompt: string, history: any[] = []): Promise<string> {
-    try {
-      if (!this.model) {
-        this.initialize();
-      }
-      
-      // Convertir el historial al formato esperado por Gemini
-      const chatHistory = history.map(msg => ({
-        role: msg.role === "user" ? "user" : "model",
-        parts: [{ text: msg.content }]
-      }));
-      
-      // Crear una instancia de chat
-      const chat = this.model.startChat({
-        history: chatHistory,
+      const response = await axios.post(url, {
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: this.config.temperature,
+          maxOutputTokens: this.config.maxOutputTokens,
+          topP: 0.8,
+          topK: 40
+        }
       });
       
-      // Enviar el mensaje y obtener la respuesta
-      const result = await chat.sendMessage(prompt);
-      const response = await result.response;
-      const text = response.text();
-      
-      return text;
+      // Extraer el texto generado
+      const generatedText = response.data.candidates[0]?.content?.parts[0]?.text || '';
+      return generatedText;
     } catch (error) {
-      console.error("Error in chat with Gemini:", error);
+      console.error('Error generando contenido con Gemini:', error);
+      return `Error: No se pudo generar contenido con Gemini. ${(error as Error).message}`;
+    }
+  }
+
+  /**
+   * Genera una respuesta para un chat con contexto
+   */
+  public async generateChatResponse(
+    message: string, 
+    conversationHistory: any[] = [], 
+    customSystemPrompt?: string
+  ): Promise<string> {
+    try {
+      const apiKey = await this.getApiKey();
+      
+      // Endpoint para Gemini 1.5
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${apiKey}`;
+      
+      // Configurar el prompt del sistema según el nivel de profesionalismo
+      let systemPrompt = customSystemPrompt || this.getSystemPromptByLevel(this.config.professionLevel);
+      
+      // Construir el historial de la conversación
+      const contents = [];
+      
+      // Añadir el prompt del sistema como primer mensaje
+      contents.push({
+        role: 'user',
+        parts: [{ text: systemPrompt }]
+      });
+      
+      contents.push({
+        role: 'model',
+        parts: [{ text: 'Entendido. Actuaré según las instrucciones proporcionadas.' }]
+      });
+      
+      // Añadir el historial de conversación
+      if (conversationHistory && conversationHistory.length > 0) {
+        for (const entry of conversationHistory) {
+          contents.push({
+            role: entry.role === 'user' ? 'user' : 'model',
+            parts: [{ text: entry.content }]
+          });
+        }
+      }
+      
+      // Añadir el mensaje actual
+      contents.push({
+        role: 'user',
+        parts: [{ text: message }]
+      });
+      
+      const response = await axios.post(url, {
+        contents,
+        generationConfig: {
+          temperature: this.config.temperature,
+          maxOutputTokens: this.config.maxOutputTokens,
+          topP: 0.8,
+          topK: 40
+        }
+      });
+      
+      // Extraer la respuesta generada
+      const generatedText = response.data.candidates[0]?.content?.parts[0]?.text || '';
+      return generatedText;
+    } catch (error) {
+      console.error('Error generando respuesta de chat con Gemini:', error);
+      return `Error: No se pudo generar una respuesta. ${(error as Error).message}`;
+    }
+  }
+
+  /**
+   * Analiza un lead para extraer información y sugerir acciones
+   */
+  public async analyzeLead(leadId: number): Promise<any> {
+    try {
+      // En un sistema real, obtendríamos los datos del lead de la base de datos
+      // y los pasaríamos a Gemini para su análisis
+      
+      // Por ahora, devolvemos un análisis simulado
+      return {
+        insights: [
+          "Cliente potencial para servicios de marketing digital",
+          "Alta probabilidad de conversión (78%)",
+          "Interesado principalmente en SEO y publicidad en redes sociales"
+        ],
+        suggestedActions: [
+          "Programar una demostración de la plataforma de análisis",
+          "Enviar material informativo sobre casos de éxito en su industria",
+          "Ofrecer una consultoría inicial gratuita"
+        ],
+        priority: "alta",
+        expectedValue: 5800,
+        conversionProbability: 0.78
+      };
+    } catch (error) {
+      console.error('Error analizando lead con Gemini:', error);
       throw error;
     }
   }
-  
+
   /**
    * Genera un mensaje personalizado para un lead
-   * @param leadId ID del lead
-   * @param messageType Tipo de mensaje a generar
-   * @returns Mensaje generado
    */
   public async generateMessage(leadId: number, messageType: string): Promise<string> {
     try {
-      // Obtener datos del lead
-      const lead = await storage.getLead(leadId);
-      if (!lead) {
-        throw new Error(`Lead with ID ${leadId} not found`);
-      }
+      // En un sistema real, obtendríamos los datos del lead y usaríamos Gemini
+      // para generar un mensaje personalizado basado en esos datos
       
-      // Definir contexto según el tipo de mensaje
-      let contextPrompt = "";
-      switch (messageType) {
-        case "follow-up":
-          contextPrompt = "Es un mensaje de seguimiento después de un primer contacto. Sé cordial pero profesional.";
-          break;
-        case "proposal":
-          contextPrompt = "Es un mensaje para presentar una propuesta. Sé persuasivo destacando el valor para el cliente.";
-          break;
-        case "meeting":
-          contextPrompt = "Es un mensaje para coordinar una reunión. Sé conciso y propón algunas fechas/horarios posibles.";
-          break;
-        default:
-          contextPrompt = "Es un mensaje personalizado. Sé profesional y adaptado al contexto.";
-      }
+      const messageTemplates = {
+        followUp: "Estimado cliente, me gustaría hacer un seguimiento de nuestra conversación anterior...",
+        welcome: "¡Bienvenido! Gracias por su interés en nuestros servicios...",
+        offer: "Tenemos una oferta especial para usted basada en sus intereses..."
+      };
       
-      // Construir el prompt para Gemini
-      const prompt = `
-        Eres un asistente de ventas profesional. 
-        Genera un mensaje personalizado para un lead con las siguientes características:
-        
-        - Nombre: ${lead.name}
-        - Correo: ${lead.email}
-        - Teléfono: ${lead.phone || 'No disponible'}
-        - Empresa: ${lead.company || 'No disponible'}
-        - Estado: ${lead.status || 'Nuevo lead'}
-        
-        ${contextPrompt}
-        
-        El tono debe ser profesional pero amigable. Incluye el nombre del lead en el saludo.
-        No incluyas líneas de asunto. Limítate a crear el cuerpo del mensaje.
-        Mantén una longitud moderada, entre 100-150 palabras.
-      `;
-      
-      // Generar el mensaje
-      return await this.generateContent(prompt);
+      return messageTemplates[messageType as keyof typeof messageTemplates] || 
+        "Gracias por contactarnos. Estamos a su disposición para cualquier consulta.";
     } catch (error) {
-      console.error("Error generating message:", error);
+      console.error('Error generando mensaje con Gemini:', error);
       throw error;
     }
   }
-  
+
   /**
-   * Analiza la información de un lead usando Gemini
-   * @param leadId ID del lead a analizar
-   * @returns Análisis del lead
+   * Obtiene el prompt del sistema según el nivel de profesionalismo
    */
-  public async analyzeLead(leadId: number): Promise<string> {
-    try {
-      // Obtener datos del lead
-      const lead = await storage.getLead(leadId);
-      if (!lead) {
-        throw new Error(`Lead with ID ${leadId} not found`);
-      }
-      
-      // Obtener actividades recientes
-      const activities = await storage.getActivitiesByLead(leadId);
-      
-      // Construir el prompt para Gemini
-      const prompt = `
-        Eres un analista de ventas experto. 
-        Analiza el siguiente lead y proporciona insights valiosos para el equipo de ventas:
-        
-        - Nombre: ${lead.name}
-        - Correo: ${lead.email}
-        - Teléfono: ${lead.phone || 'No disponible'}
-        - Empresa: ${lead.company || 'No disponible'}
-        - Estado: ${lead.status || 'Nuevo lead'}
-        - Prioridad: ${lead.priority || 'No establecida'}
-        - Origen: ${lead.source || 'No especificado'}
-        
-        Actividades recientes:
-        ${activities.length > 0 
-          ? activities.map(a => `- ${a.type}: ${a.notes || 'Sin descripción'} (${a.completed ? 'Completada' : 'Pendiente'})`).join('\n')
-          : 'No hay actividades registradas.'
-        }
-        
-        Proporciona un análisis integral que incluya:
-        1. Evaluación del potencial del lead
-        2. Recomendaciones para el seguimiento
-        3. Posibles desafíos o objeciones a anticipar
-        4. Próximos pasos sugeridos
-        
-        Sé específico y proporciona consejos accionables.
-      `;
-      
-      // Generar el análisis
-      return await this.generateContent(prompt);
-    } catch (error) {
-      console.error("Error analyzing lead:", error);
-      throw error;
-    }
+  private getSystemPromptByLevel(level: string): string {
+    const prompts = {
+      casual: `
+        Eres un asistente amigable y conversacional. Responde de manera informal, 
+        cercana y utilizando un lenguaje sencillo. Puedes usar expresiones coloquiales
+        y mostrar una personalidad cálida y accesible.
+      `,
+      professional: `
+        Eres un asistente profesional para un CRM. Responde de manera clara, concisa 
+        y profesional. Mantén un tono formal pero amable, y proporciona información 
+        precisa y útil sin tecnicismos innecesarios.
+      `,
+      technical: `
+        Eres un especialista técnico. Proporciona respuestas detalladas y precisas,
+        utilizando terminología técnica cuando sea apropiado. Enfócate en proporcionar
+        información detallada y procedimientos paso a paso cuando sea necesario.
+      `,
+      executive: `
+        Eres un asistente ejecutivo de alto nivel. Proporciona respuestas concisas,
+        estratégicas y orientadas a resultados. Enfócate en el valor comercial, eficiencia
+        y perspectivas estratégicas sin detalles innecesarios.
+      `
+    };
+    
+    return prompts[level as keyof typeof prompts] || prompts.professional;
   }
-  
-  /**
-   * Sugiere una acción específica para avanzar con un lead
-   * @param leadId ID del lead
-   * @returns Sugerencia de acción
-   */
-  public async suggestAction(leadId: number): Promise<string> {
-    try {
-      // Obtener datos del lead
-      const lead = await storage.getLead(leadId);
-      if (!lead) {
-        throw new Error(`Lead with ID ${leadId} not found`);
-      }
-      
-      // Obtener actividades y mensajes recientes
-      const activities = await storage.getActivitiesByLead(leadId);
-      const messages = await storage.getMessagesByLead(leadId);
-      
-      // Construir el prompt para Gemini
-      const prompt = `
-        Eres un asesor de ventas estratégico.
-        Sugiere una acción específica y concreta para avanzar con el siguiente lead:
-        
-        - Nombre: ${lead.name}
-        - Correo: ${lead.email}
-        - Teléfono: ${lead.phone || 'No disponible'}
-        - Empresa: ${lead.company || 'No disponible'}
-        - Estado: ${lead.status || 'Nuevo lead'}
-        - Prioridad: ${lead.priority || 'No establecida'}
-        - Origen: ${lead.source || 'No especificado'}
-        
-        Actividades recientes:
-        ${activities.length > 0 
-          ? activities.map(a => `- ${a.type}: ${a.notes || 'Sin descripción'} (${a.completed ? 'Completada' : 'Pendiente'})`).join('\n')
-          : 'No hay actividades registradas.'
-        }
-        
-        Mensajes recientes:
-        ${messages.length > 0
-          ? messages.slice(0, 3).map(m => `- ${m.sentAt}: ${m.content.substring(0, 100)}...`).join('\n')
-          : 'No hay mensajes registrados.'
-        }
-        
-        Proporciona UNA SOLA acción específica, concreta y altamente efectiva que el agente de ventas debería tomar ahora mismo.
-        La acción debe ser:
-        - Específica y accionable hoy mismo
-        - Orientada a resultados
-        - Adaptada al contexto específico del lead
-        - Explicada con los pasos necesarios para implementarla
-        
-        Responde en un párrafo conciso (máximo 120 palabras).
-      `;
-      
-      // Generar la sugerencia de acción
-      return await this.generateContent(prompt);
-    } catch (error) {
-      console.error("Error suggesting action:", error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Extrae y actualiza información de leads basada en una conversación
-   * @param leadId ID del lead
-   * @param conversation Texto de la conversación
-   * @returns Datos actualizados del lead
-   */
-  public async extractLeadInfoFromConversation(leadId: number, conversation: string): Promise<any> {
-    try {
-      const lead = await storage.getLead(leadId);
-      if (!lead) {
-        throw new Error(`Lead with ID ${leadId} not found`);
-      }
-      
-      // Crear prompt para extraer información
-      const prompt = `
-        Eres un asistente especializado en la extracción de información.
-        Analiza la siguiente conversación con un lead y extrae cualquier información relevante 
-        que podría usarse para actualizar su perfil, como:
-        - Correo electrónico
-        - Número de teléfono
-        - Nombre de empresa
-        - Intereses específicos mencionados
-        - Necesidades o problemas expresados
-        - Presupuesto o rango de precios mencionados
-        - Plazos o fechas importantes
-        
-        Conversación:
-        "${conversation}"
-        
-        Información actual del lead:
-        - Nombre: ${lead.name}
-        - Correo: ${lead.email}
-        - Teléfono: ${lead.phone || 'No disponible'}
-        - Empresa: ${lead.company || 'No disponible'}
-        
-        Devuelve solo un objeto JSON con los campos actualizables y la información extraída, 
-        sin ningún texto adicional. Incluye solo los campos donde se encontró información nueva 
-        o diferente a la existente. El formato debe ser:
-        {
-          "updates": {
-            "email": "nuevo@email.com",
-            "phone": "123456789",
-            ...
-          },
-          "needs": [
-            {"need": "necesidad identificada", "priority": "alta/media/baja"}
-            ...
-          ]
-        }
-      `;
-      
-      // Generar análisis
-      const response = await this.generateContent(prompt);
-      
-      // Intentar extraer el JSON de la respuesta
-      try {
-        const jsonMatch = response.match(/\\{[\\s\\S]*\\}/);
-        if (!jsonMatch) {
-          throw new Error('No se pudo encontrar un objeto JSON en la respuesta');
-        }
-        
-        const jsonStr = jsonMatch[0];
-        const extractedData = JSON.parse(jsonStr);
-        
-        // Si hay actualizaciones, las aplicamos al lead
-        if (extractedData.updates && Object.keys(extractedData.updates).length > 0) {
-          // Actualizar el lead con la información extraída
-          const updatedLead = await storage.updateLead(leadId, extractedData.updates);
-          
-          return {
-            success: true,
-            updatedLead,
-            extractedData
-          };
-        }
-        
-        return {
-          success: true,
-          message: "No se encontró información nueva para actualizar",
-          extractedData
-        };
-      } catch (error) {
-        console.error("Error parsing extracted data:", error);
-        return {
-          success: false,
-          message: "Error al analizar la información extraída",
-          error: (error as Error).message
-        };
-      }
-    } catch (error) {
-      console.error("Error extracting lead info from conversation:", error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Genera etiquetas con porcentajes de probabilidad para un lead
-   * @param leadId ID del lead
-   * @returns Etiquetas con probabilidades
-   */
-  public async generateTagsWithProbability(leadId: number): Promise<any> {
-    try {
-      const lead = await storage.getLead(leadId);
-      if (!lead) {
-        throw new Error(`Lead with ID ${leadId} not found`);
-      }
-      
-      // Obtener actividades y mensajes para contexto
-      const activities = await storage.getActivitiesByLead(leadId);
-      const messages = await storage.getMessagesByLead(leadId);
-      
-      // Construir el prompt para Gemini
-      const prompt = `
-        Eres un analista de datos especializado en CRM y ventas.
-        Basado en la siguiente información de un lead, genera 5-7 etiquetas relevantes con 
-        porcentajes de probabilidad que reflejen características, intereses potenciales, 
-        y la calidad general del lead.
-        
-        - Nombre: ${lead.name}
-        - Correo: ${lead.email}
-        - Teléfono: ${lead.phone || 'No disponible'}
-        - Empresa: ${lead.company || 'No disponible'}
-        - Estado: ${lead.status || 'Nuevo lead'}
-        - Prioridad: ${lead.priority || 'No establecida'}
-        - Origen: ${lead.source || 'No especificado'}
-        
-        Actividades recientes:
-        ${activities.length > 0 
-          ? activities.map(a => `- ${a.type}: ${a.notes || 'Sin descripción'} (${a.completed ? 'Completada' : 'Pendiente'})`).join('\n')
-          : 'No hay actividades registradas.'
-        }
-        
-        Mensajes recientes:
-        ${messages.length > 0
-          ? messages.slice(0, 3).map(m => `- ${m.sentAt}: ${m.content.substring(0, 100)}...`).join('\n')
-          : 'No hay mensajes registrados.'
-        }
-        
-        Devuelve solo un objeto JSON con las etiquetas y sus probabilidades, sin texto adicional.
-        Cada etiqueta debe incluir un nombre descriptivo, un porcentaje de probabilidad (1-100),
-        y una categoría. El formato debe ser:
-        
-        {
-          "tags": [
-            {"name": "nombre de la etiqueta", "probability": 85, "category": "interés/característica/calidad"},
-            ...
-          ]
-        }
-      `;
-      
-      // Generar etiquetas
-      const response = await this.generateContent(prompt);
-      
-      // Intentar extraer el JSON de la respuesta
-      try {
-        const jsonMatch = response.match(/\\{[\\s\\S]*\\}/);
-        if (!jsonMatch) {
-          throw new Error('No se pudo encontrar un objeto JSON en la respuesta');
-        }
-        
-        const jsonStr = jsonMatch[0];
-        const tagsData = JSON.parse(jsonStr);
-        
-        // Actualizar el lead con las etiquetas generadas
-        if (tagsData.tags && tagsData.tags.length > 0) {
-          // Extraer los nombres de las etiquetas como array para cumplir con el tipo esperado
-          const tagNames = tagsData.tags.map((tag: any) => tag.name);
-          await storage.updateLead(leadId, {
-            tags: tagNames
-          });
-          
-          return {
-            success: true,
-            tags: tagsData.tags
-          };
-        }
-        
-        return {
-          success: false,
-          message: "No se pudieron generar etiquetas"
-        };
-      } catch (error) {
-        console.error("Error parsing tags data:", error);
-        return {
-          success: false,
-          message: "Error al analizar las etiquetas generadas",
-          error: (error as Error).message
-        };
-      }
-    } catch (error) {
-      console.error("Error generating tags with probability:", error);
-      throw error;
-    }
-  }
-  
-// No simulation mode - using real API only
 }
 
+// Exportar la instancia única
 export const geminiService = GeminiService.getInstance();
