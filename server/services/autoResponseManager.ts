@@ -4,7 +4,7 @@
  * a mensajes de WhatsApp usando Gemini o OpenAI según configuración
  */
 
-import { AutoResponseService } from './autoResponseService';
+import { autoResponseService } from './autoResponseService';
 
-// Exportamos una instancia del servicio para uso en toda la aplicación
-export const autoResponseService = new AutoResponseService();
+// Exportar singleton para uso en toda la aplicación
+export { autoResponseService };
