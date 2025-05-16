@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+// API de Google Generative AI actualizada - el endpoint v1beta ya no existe, solo v1
 
 // Variables para almacenar la configuración dinámica de Gemini
 let API_KEY = '';

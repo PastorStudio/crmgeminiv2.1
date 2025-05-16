@@ -153,7 +153,8 @@ class GeminiKeyGenerator {
   private async testApiKey(apiKey: string): Promise<boolean> {
     try {
       // Primero verificamos que la clave API sea válida obteniendo la lista de modelos
-      const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+      // Actualizado a v1 (la versión beta no está disponible)
+      const url = `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`;
       const response = await axios.get(url);
       
       if (response.status !== 200) {
