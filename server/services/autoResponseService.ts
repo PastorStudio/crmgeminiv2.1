@@ -419,8 +419,8 @@ export class AutoResponseService {
             
             // Realizar la solicitud a OpenAI
             const completion = await this.openaiClient.chat.completions.create({
-              model: "gpt-4o", // Usamos el modelo más reciente de OpenAI
-              messages: openaiMessages,
+              model: "gpt-4o", // el modelo más reciente de OpenAI es "gpt-4o" que fue lanzado el 13 de mayo de 2024
+              messages: openaiMessages as any,
               temperature: this.config.customPrompts.temperature,
               max_tokens: this.config.customPrompts.maxTokens,
             });

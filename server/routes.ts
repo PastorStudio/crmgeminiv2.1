@@ -795,6 +795,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Verificar secretos disponibles (API keys)
+  app.get("/api/check-secrets", async (req: Request, res: Response) => {
+    try {
+      const secretKeys = req.query.secret_keys ? 
+        (Array.isArray(req.query.secret_keys) ? 
+          req.query.secret_keys as string[] : 
+          [req.query.secret_keys as string]) : 
+        [];
+      
+      // Verificar qué claves están disponibles
+      const availableSecrets = secretKeys.filter(key => {
+        return process.env[key] !== undefined && process.env[key] !== '';
+      });
+
+      return res.json(availableSecrets);
+    } catch (error) {
+      console.error('Error verificando secretos disponibles:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: (error as Error).message || "Error del servidor" 
+      });
+    }
+  });
+  
   // Auto-response endpoints
   app.get("/api/auto-response/config", async (req: Request, res: Response) => {
     try {
