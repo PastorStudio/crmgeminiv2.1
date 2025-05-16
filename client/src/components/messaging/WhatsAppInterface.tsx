@@ -765,12 +765,13 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
         </Tabs>
       </div>
       
-      {/* Área de chat */}
+      {/* Área de chat - Centralizada con áreas fijas y scroll */}
       <div className="flex-1 flex flex-col">
         {(selectedChatId || selectedLeadData) ? (
           <>
-            <div className="p-2 border-b flex justify-between items-center">
-              <div className="flex items-center gap-2">
+            {/* Cabecera fija del chat */}
+            <div className="p-2 border-b flex justify-between items-center sticky top-0 bg-white z-10">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <Avatar className="h-8 w-8 flex-shrink-0">
                   {selectedLeadData?.avatar ? (
                     <AvatarImage src={selectedLeadData.avatar} alt={selectedLeadData.fullName} />
