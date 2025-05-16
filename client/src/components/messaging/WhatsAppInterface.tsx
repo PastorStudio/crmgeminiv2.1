@@ -165,14 +165,19 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
         const data = await response.json();
         console.log('Chats de WhatsApp recibidos:', data);
         
-        // Asignar IDs numéricos a cada chat para compatibilidad con el sistema existente
+        // Depuración: mostrar la estructura completa en la consola
         if (Array.isArray(data)) {
+          console.log(`Número de chats cargados: ${data.length}`);
+          
+          // Asignar IDs numéricos a cada chat para compatibilidad con el sistema existente
           data.forEach((chat, index) => {
             chat.numericId = index + 1;
           });
+        } else {
+          console.log('Los datos recibidos no son un array:', typeof data);
         }
         
-        return data;
+        return Array.isArray(data) ? data : [];
       } catch (error) {
         console.error('Error obteniendo chats de WhatsApp:', error);
         return [];
@@ -180,7 +185,8 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     },
     enabled: whatsappStatus?.authenticated === true,
     refetchInterval: whatsappStatus?.authenticated ? 5000 : false,
-    refetchOnWindowFocus: true
+    refetchOnWindowFocus: true,
+    retry: 2
   });
   
   // Consulta para obtener mensajes de un chat específico de WhatsApp
@@ -489,88 +495,495 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
     }
   }, [whatsappMessages, crmMessages, newMessagesReceived]);
   
-  // Mostrar el QR de WhatsApp y pantalla de configuración si no está autenticado
-  if (whatsappStatus && whatsappStatus.initialized && !whatsappStatus.authenticated) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8">
-        <div className="mb-6 p-3 bg-green-100 rounded-full">
-          <div className="w-16 h-16 flex items-center justify-center">
-            <img 
-              src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/767px-WhatsApp.svg.png" 
-              alt="WhatsApp Logo"
-              className="w-full h-full"
-            />
+  // Mostrar el QR de WhatsApp y panel de mensajes
+  const renderMessageArea = () => {
+    // Si hay un estado de carga de WhatsApp
+    if (isLoadingWhatsappStatus) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <Spinner className="mb-4 mx-auto" />
+            <div className="text-gray-500">Cargando estado de WhatsApp...</div>
           </div>
         </div>
-        
-        <h3 className="text-xl font-semibold mb-2">Conectar WhatsApp</h3>
-        <p className="text-sm text-gray-600 mb-6 text-center">
-          Para usar WhatsApp en tu CRM, escanea el código QR con tu teléfono
-        </p>
-        
-        {whatsappStatus?.initialized && !whatsappStatus?.authenticated && whatsappStatus?.qrDataUrl ? (
-          <div className="border p-4 rounded-lg mb-6">
-            <img 
-              src={whatsappStatus.qrDataUrl}
-              alt="QR Code para WhatsApp"
-              className="w-64 h-64"
-            />
+      );
+    }
+    
+    // Si no hay estado de WhatsApp o no está inicializado
+    if (!whatsappStatus || !whatsappStatus.initialized) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="text-2xl font-bold mb-2">Error de conexión</div>
+            <div className="text-gray-500 mb-4">No se pudo establecer conexión con WhatsApp.</div>
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['whatsapp-status-direct'] })}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw size={16} />
+              Reintentar
+            </Button>
           </div>
-        ) : (
-          <div className="border p-8 rounded-lg mb-6 flex items-center justify-center">
-            <Spinner size="lg" />
+        </div>
+      );
+    }
+    
+    // Si WhatsApp no está autenticado pero tiene código QR
+    if (!whatsappStatus.authenticated && whatsappStatus.qrDataUrl) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full">
+          <div className="text-center mb-6">
+            <div className="text-xl font-bold mb-2">Conectar WhatsApp</div>
+            <div className="text-gray-500 mb-4">
+              Escanea este código QR con tu WhatsApp para iniciar sesión.
+              <br />
+              <span className="text-sm">(Abre WhatsApp en tu teléfono ➝ Configuración ➝ Dispositivos vinculados ➝ Vincular dispositivo)</span>
+            </div>
           </div>
-        )}
-        
-        <ol className="text-sm text-gray-600 space-y-2 mb-6">
-          <li className="flex items-start gap-2">
-            <span className="font-medium">1.</span>
-            <span>Abre WhatsApp en tu teléfono</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="font-medium">2.</span>
-            <span>Toca en <strong>Menu</strong> o <strong>Configuración</strong> y selecciona <strong>Dispositivos vinculados</strong></span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="font-medium">3.</span>
-            <span>Toca en <strong>Vincular un dispositivo</strong></span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="font-medium">4.</span>
-            <span>Apunta tu teléfono hacia esta pantalla para escanear el código QR</span>
-          </li>
-        </ol>
-        
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => restartWhatsAppMutation.mutate()}
-          disabled={restartWhatsAppMutation.isPending}
-        >
-          {restartWhatsAppMutation.isPending ? (
-            <Spinner size="sm" className="mr-2" />
-          ) : (
-            <RefreshCw className="mr-2 h-4 w-4" />
-          )}
-          Generar nuevo QR
-        </Button>
+          <div className="mb-6 border p-3 rounded-lg bg-white">
+            <img src={whatsappStatus.qrDataUrl} alt="WhatsApp QR Code" width={200} height={200} />
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['whatsapp-status-direct'] })}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw size={16} />
+            Generar nuevo QR
+          </Button>
+        </div>
+      );
+    }
+    
+    // Si WhatsApp está autenticado y hay un chat seleccionado
+    if (whatsappStatus.authenticated && selectedChatId) {
+      // Información del chat actual
+      const currentChat = whatsappChats.find((chat: WhatsAppChat) => chat.id === selectedChatId);
+      
+      return (
+        <div className="flex flex-col h-full">
+          {/* Cabecera del chat */}
+          <div className="border-b p-2 flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              {currentChat?.profilePicUrl ? (
+                <AvatarImage src={currentChat.profilePicUrl} alt={currentChat.name} />
+              ) : null}
+              <AvatarFallback className="bg-green-500 text-white text-xs">
+                {getInitials(currentChat?.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-sm truncate">{currentChat?.name || 'Chat'}</div>
+              <div className="text-xs text-gray-500 truncate">
+                {currentChat?.isGroup ? 'Grupo' : 'Contacto'}
+              </div>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Phone size={16} />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Video size={16} />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical size={16} />
+              </Button>
+            </div>
+          </div>
+          
+          {/* Área de mensajes con scroll independiente */}
+          <ScrollArea className="flex-1 p-3">
+            {isLoadingWhatsappMessages ? (
+              <div className="flex justify-center p-4">
+                <Spinner />
+              </div>
+            ) : whatsappMessages.length > 0 ? (
+              <div className="space-y-3">
+                {whatsappMessages.map((msg: WhatsAppMessage) => (
+                  <div 
+                    key={msg.id}
+                    className={`flex ${msg.fromMe ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div 
+                      className={`max-w-[75%] rounded-lg p-2 shadow-sm ${
+                        msg.fromMe 
+                          ? 'bg-primary text-primary-foreground ml-auto' 
+                          : 'bg-card border mr-auto'
+                      }`}
+                    >
+                      {msg.hasMedia && (
+                        <div className="mb-2">
+                          {msg.mediaUrl ? (
+                            <img 
+                              src={msg.mediaUrl} 
+                              alt={msg.caption || 'Imagen'} 
+                              className="rounded max-h-32 mb-1"
+                            />
+                          ) : (
+                            <div className="bg-gray-100 rounded flex items-center justify-center h-24 w-full">
+                              <Image size={24} className="text-gray-400" />
+                            </div>
+                          )}
+                          {msg.caption && <div className="text-xs mt-1">{msg.caption}</div>}
+                        </div>
+                      )}
+                      <div className="text-sm">{msg.body}</div>
+                      <div className="text-right">
+                        <div className="text-[10px] opacity-70">
+                          {new Date(msg.timestamp * 1000).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                          {msg.fromMe && (
+                            <span className="ml-1">
+                              {msg.fromMe && <CheckCheck size={12} className="inline" />}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 p-4">
+                No hay mensajes. Envía el primero para iniciar la conversación.
+              </div>
+            )}
+          </ScrollArea>
+          
+          {/* Área de escritura de mensajes */}
+          <div className="border-t p-2">
+            <form onSubmit={handleSendMessage} className="flex items-end gap-2">
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 flex-shrink-0"
+                onClick={() => setShowAiAssistant(!showAiAssistant)}
+              >
+                <BrainCircuit size={18} className={showAiAssistant ? "text-primary" : ""} />
+              </Button>
+              
+              <div className="flex-1 rounded-lg bg-background border">
+                {showAiAssistant && (
+                  <div className="p-3 border-b">
+                    <GeminiAssistant 
+                      onMessageGenerated={(text) => setMessageText(text)}
+                      leadId={currentChat?.numericId || undefined}
+                      compact={true}
+                    />
+                  </div>
+                )}
+                
+                <div className="flex items-end p-2 gap-1">
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                    <Smile size={18} />
+                  </Button>
+                  
+                  <Input
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder="Escribe un mensaje..."
+                    className="border-0 flex-1 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                  
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                    <Paperclip size={18} />
+                  </Button>
+                  
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                    <Mic size={18} />
+                  </Button>
+                </div>
+              </div>
+              
+              <Button 
+                type="submit" 
+                size="icon" 
+                className="h-9 w-9 rounded-full flex-shrink-0" 
+                disabled={!messageText.trim() || sendMessageMutation.isPending}
+              >
+                {sendMessageMutation.isPending ? (
+                  <Spinner className="h-4 w-4" />
+                ) : (
+                  <Send size={16} />
+                )}
+              </Button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+    
+    // Si WhatsApp está autenticado pero no hay chat seleccionado
+    if (whatsappStatus.authenticated && !selectedChatId) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="text-gray-400 mb-2">
+              <Image size={64} strokeWidth={1} className="mx-auto" />
+            </div>
+            <div className="text-xl font-bold mb-2">Mensajería de WhatsApp</div>
+            <div className="text-gray-500">
+              Selecciona un chat para comenzar a enviar mensajes.
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Si WhatsApp no está autenticado y no hay QR, seleccionar de leads
+    if (!whatsappStatus.authenticated && !selectedLeadId) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full">
+          <div className="text-center">
+            <div className="text-gray-400 mb-2">
+              <User size={64} strokeWidth={1} className="mx-auto" />
+            </div>
+            <div className="text-xl font-bold mb-2">Mensajería CRM</div>
+            <div className="text-gray-500">
+              Selecciona un contacto para comenzar a enviar mensajes.
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Si WhatsApp no está autenticado pero hay un lead seleccionado
+    if (!whatsappStatus.authenticated && selectedLeadId) {
+      const isLoading = isLoadingLeadDetails || isLoadingCrmMessages;
+      
+      if (isLoading) {
+        return (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Spinner className="mb-4 mx-auto" />
+              <div className="text-gray-500">Cargando conversación...</div>
+            </div>
+          </div>
+        );
+      }
+      
+      return (
+        <div className="flex flex-col h-full">
+          {/* Cabecera del chat */}
+          <div className="border-b p-2 flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              {selectedLeadData?.avatar ? (
+                <AvatarImage src={selectedLeadData.avatar} alt={selectedLeadData.fullName} />
+              ) : null}
+              <AvatarFallback className="bg-green-500 text-white text-xs">
+                {getInitials(selectedLeadData?.fullName)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-sm truncate">{selectedLeadData?.fullName || 'Contacto'}</div>
+              <div className="text-xs text-gray-500 truncate">
+                {selectedLeadData?.phone || selectedLeadData?.email || ''}
+              </div>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Phone size={16} />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Video size={16} />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical size={16} />
+              </Button>
+            </div>
+          </div>
+          
+          {/* Área de mensajes con scroll independiente */}
+          <ScrollArea className="flex-1 p-3">
+            {crmMessages.length > 0 ? (
+              <div className="space-y-3">
+                {crmMessages.map((message: Message) => (
+                  <div 
+                    key={message.id}
+                    className={`flex ${message.direction === 'outgoing' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div 
+                      className={`max-w-[75%] rounded-lg p-2 shadow-sm ${
+                        message.direction === 'outgoing' 
+                          ? 'bg-primary text-primary-foreground ml-auto' 
+                          : 'bg-card border mr-auto'
+                      }`}
+                    >
+                      <div className="text-sm">{message.content}</div>
+                      <div className="text-right mt-1">
+                        {message.direction === 'outgoing' 
+                          ? renderMessageStatus(message.status, message.timestamp)
+                          : (
+                            <div className="text-[10px] text-gray-400">
+                              {new Date(message.timestamp).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                          )
+                        }
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 p-4">
+                No hay mensajes. Envía el primero para iniciar la conversación.
+              </div>
+            )}
+          </ScrollArea>
+          
+          {/* Área de escritura de mensajes */}
+          <div className="border-t p-2">
+            <form onSubmit={handleSendMessage} className="flex items-end gap-2">
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 flex-shrink-0"
+                onClick={() => setShowAiAssistant(!showAiAssistant)}
+              >
+                <BrainCircuit size={18} className={showAiAssistant ? "text-primary" : ""} />
+              </Button>
+              
+              <div className="flex-1 rounded-lg bg-background border">
+                {showAiAssistant && (
+                  <div className="p-3 border-b">
+                    <GeminiAssistant 
+                      onMessageGenerated={(text) => setMessageText(text)}
+                      leadId={selectedLeadId}
+                      compact={true}
+                    />
+                  </div>
+                )}
+                
+                <div className="flex items-end p-2 gap-1">
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                    <Smile size={18} />
+                  </Button>
+                  
+                  <Input
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder="Escribe un mensaje..."
+                    className="border-0 flex-1 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                  
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                    <Paperclip size={18} />
+                  </Button>
+                  
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                    <Mic size={18} />
+                  </Button>
+                </div>
+              </div>
+              
+              <Button 
+                type="submit" 
+                size="icon" 
+                className="h-9 w-9 rounded-full flex-shrink-0" 
+                disabled={!messageText.trim() || sendMessageMutation.isPending}
+              >
+                {sendMessageMutation.isPending ? (
+                  <Spinner className="h-4 w-4" />
+                ) : (
+                  <Send size={16} />
+                )}
+              </Button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+    
+    // Fallback genérico
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="text-gray-500">
+            Algo salió mal. Por favor, actualiza la página.
+          </div>
+        </div>
       </div>
     );
-  }
+  };
+  
+  // Formatear timestamp de mensaje
+  const formatTime = (timestamp: number) => {
+    if (!timestamp) return '';
+    
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    
+    const isToday = date.toDateString() === now.toDateString();
+    const isYesterday = new Date(now.setDate(now.getDate() - 1)).toDateString() === date.toDateString();
+    
+    if (isToday) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (isYesterday) {
+      return 'Ayer';
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
 
-  // Modo WhatsApp autenticado o modo fallback
+  // Renderizar el componente principal
   return (
-    <div className="bg-white rounded-lg shadow-sm border h-[calc(100vh-16rem)] flex overflow-hidden mx-auto max-w-6xl">
-      {/* Panel de chats/contactos - Área fija con scroll */}
-      <div className="w-1/3 border-r flex flex-col max-w-xs">
-        <div className="border-b p-3 sticky top-0 bg-white z-10">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
+    <Card className="h-[calc(100vh-8.5rem)] flex flex-col shadow-md">
+      <CardHeader className="p-3 pb-0">
+        <CardTitle className="text-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Avatar className="h-7 w-7">
+              <AvatarFallback className="bg-green-500 text-white text-xs">
+                WA
+              </AvatarFallback>
+            </Avatar>
+            <span>WhatsApp</span>
+          </div>
+          
+          <div className="flex items-center gap-1">
+            {isLoadingWhatsappStatus ? (
+              <Badge variant="outline" className="flex items-center gap-1 h-6">
+                <Spinner className="h-3 w-3" />
+                <span>Cargando...</span>
+              </Badge>
+            ) : whatsappStatus?.authenticated ? (
+              <Badge variant="outline" className="bg-green-50 border-green-200 text-green-700 h-6">Conectado</Badge>
+            ) : (
+              <Badge variant="outline" className="h-6">Desconectado</Badge>
+            )}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-7 w-7"
+              onClick={() => restartWhatsAppMutation.mutate()}
+              disabled={restartWhatsAppMutation.isPending}
+            >
+              {restartWhatsAppMutation.isPending ? <Spinner className="h-3 w-3" /> : <RefreshCw size={14} />}
+            </Button>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      
+      <CardContent className="p-3 pt-3 flex-1 flex flex-col overflow-hidden">
+        <div className="rounded-lg border mb-3">
+          <div className="flex items-center p-2">
+            <Search className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
             <Input
-              placeholder="Buscar o iniciar nuevo chat"
-              className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar chats o contactos..."
+              className="border-0 p-0 h-6 focus-visible:ring-0 focus-visible:ring-offset-0"
             />
           </div>
         </div>
@@ -588,121 +1001,58 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
           {/* Lista de chats con área de scroll fija */}
           <TabsContent value="chats" className="flex-1 overflow-hidden m-0 p-0">
             <ScrollArea className="h-[calc(100vh-21rem)]">
-              {whatsappStatus?.authenticated ? (
-                // Modo WhatsApp autenticado - Mostrar chats reales de WhatsApp
-                isLoadingChats ? (
-                  <div className="flex justify-center p-4">
-                    <Spinner />
+              {isLoadingChats ? (
+                <div className="flex justify-center p-4">
+                  <Spinner />
+                </div>
+              ) : !whatsappStatus?.authenticated ? (
+                <div className="flex flex-col items-center justify-center p-4 h-full">
+                  <div className="text-sm text-gray-500 text-center mb-3">
+                    Escanea el código QR para ver tus chats de WhatsApp
                   </div>
-                ) : Array.isArray(whatsappChats) && whatsappChats.length > 0 ? (
-                  <div className="space-y-0.5">
-                    {whatsappChats.map((chat: WhatsAppChat) => (
-                      <div
-                        key={chat.id}
-                        className={`p-2 hover:bg-gray-100 cursor-pointer flex items-start gap-2 ${
-                          selectedChatId === chat.id ? 'bg-gray-100' : ''
-                        }`}
-                        onClick={() => handleChatSelect(chat)}
-                      >
-                        <Avatar className="h-10 w-10 flex-shrink-0">
-                          {chat.profilePicUrl ? (
-                            <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
-                          ) : null}
-                          <AvatarFallback className="bg-green-500 text-white text-xs">
-                            {getInitials(chat.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                          <div className="flex justify-between w-full">
-                            <div className="font-medium text-xs truncate max-w-[70%]">{chat.name}</div>
-                            <div className="text-[10px] text-gray-500 shrink-0">
-                              {chat.timestamp ? formatDistanceToNow(new Date(chat.timestamp), { 
-                                addSuffix: true,
-                                locale: es
-                              }) : ''}
-                            </div>
-                          </div>
-                          
-                          <div className="text-[11px] text-gray-500 truncate">{chat.lastMessage || ''}</div>
-                          
-                          <div className="flex gap-1">
-                            {chat.unreadCount > 0 && (
-                              <Badge variant="default" className="rounded-full bg-green-500 text-[9px] h-4 min-w-4 flex items-center justify-center px-1">
-                                {chat.unreadCount}
-                              </Badge>
-                            )}
-                            {chat.isGroup && (
-                              <Badge variant="outline" className="rounded-full text-[9px] border-blue-500 text-blue-700 px-1 h-4">
-                                Grupo
-                              </Badge>
-                            )}
+                </div>
+              ) : Array.isArray(whatsappChats) && whatsappChats.length > 0 ? (
+                <div className="space-y-0.5">
+                  {whatsappChats.map((chat: WhatsAppChat) => (
+                    <div
+                      key={chat.id}
+                      className={`p-2 hover:bg-gray-100 cursor-pointer flex items-start gap-2 ${
+                        selectedChatId === chat.id ? 'bg-gray-100' : ''
+                      }`}
+                      onClick={() => handleChatSelect(chat)}
+                    >
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        {chat.profilePicUrl ? (
+                          <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
+                        ) : null}
+                        <AvatarFallback className="bg-green-500 text-white text-xs">
+                          {getInitials(chat.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex justify-between w-full">
+                          <div className="font-medium text-xs truncate max-w-[70%]">{chat.name}</div>
+                          <div className="text-[10px] text-gray-500 shrink-0">
+                            {formatTime(chat.timestamp)}
                           </div>
                         </div>
+                        
+                        <div className="text-[11px] text-gray-500 truncate">
+                          {chat.lastMessage || ''}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-4 text-center text-gray-500 text-sm">
-                    <div className="mb-2">No hay chats disponibles</div>
-                    <div className="text-xs">
-                      Se ha establecido conexión con WhatsApp, pero no se encontraron chats.
-                      Por favor, asegúrate de tener conversaciones activas en tu WhatsApp.
                     </div>
-                  </div>
-                )
+                  ))}
+                </div>
               ) : (
-                // Modo fallback para leads del CRM
-                isLoadingLeads ? (
-                  <div className="flex justify-center p-4">
-                    <Spinner />
+                <div className="p-4 text-center text-gray-500 text-sm">
+                  <div className="mb-2">No hay chats disponibles</div>
+                  <div className="text-xs">
+                    Se ha establecido conexión con WhatsApp, pero no se encontraron chats.
+                    Por favor, asegúrate de tener conversaciones activas en tu WhatsApp.
                   </div>
-                ) : filteredLeads.length > 0 ? (
-                  <div className="space-y-0.5">
-                    {filteredLeads.map((lead: Lead) => (
-                      <div
-                        key={lead.id}
-                        className={`p-2 hover:bg-gray-100 cursor-pointer flex items-start gap-2 ${
-                          selectedLeadId === lead.id ? 'bg-gray-100' : ''
-                        }`}
-                        onClick={() => handleLeadSelect(lead.id)}
-                      >
-                        <Avatar className="h-10 w-10 flex-shrink-0">
-                          {lead.avatar ? (
-                            <AvatarImage src={lead.avatar} alt={lead.fullName} />
-                          ) : null}
-                          <AvatarFallback className="bg-green-500 text-white text-xs">
-                            {getInitials(lead.fullName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                          <div className="flex justify-between w-full">
-                            <div className="font-medium text-xs truncate max-w-[70%]">{lead.fullName}</div>
-                            <div className="text-[10px] text-gray-500 shrink-0">
-                              {lead.lastActive ? formatDistanceToNow(new Date(lead.lastActive), { 
-                                addSuffix: true,
-                                locale: es
-                              }) : 'Nunca'}
-                            </div>
-                          </div>
-                          
-                          <div className="text-[11px] text-gray-500 truncate">{lead.phone || lead.email}</div>
-                          
-                          <div className="flex gap-1">
-                            {lead.status === 'prospect' && <Badge variant="outline" className="rounded-full text-[9px] border-yellow-500 text-yellow-700 px-1 h-4">Prospecto</Badge>}
-                            {lead.status === 'qualified' && <Badge variant="outline" className="rounded-full text-[9px] border-blue-500 text-blue-700 px-1 h-4">Calificado</Badge>}
-                            {lead.status === 'customer' && <Badge variant="outline" className="rounded-full text-[9px] border-green-500 text-green-700 px-1 h-4">Cliente</Badge>}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-4 text-center text-gray-500 text-sm">
-                    No hay contactos disponibles
-                  </div>
-                )
+                </div>
               )}
             </ScrollArea>
           </TabsContent>
@@ -714,7 +1064,7 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                 <div className="flex justify-center p-4">
                   <Spinner />
                 </div>
-              ) : filteredLeads.length > 0 ? (
+              ) : filteredLeads && filteredLeads.length > 0 ? (
                 <div className="space-y-0.5">
                   {filteredLeads.map((lead: Lead) => (
                     <div
@@ -728,23 +1078,16 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                         {lead.avatar ? (
                           <AvatarImage src={lead.avatar} alt={lead.fullName} />
                         ) : null}
-                        <AvatarFallback className="bg-blue-500 text-white text-xs">
+                        <AvatarFallback className="bg-green-500 text-white text-xs">
                           {getInitials(lead.fullName)}
                         </AvatarFallback>
                       </Avatar>
                       
                       <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="flex justify-between w-full">
-                          <div className="font-medium text-xs truncate max-w-[70%]">{lead.fullName}</div>
-                          <div className="text-[10px] text-gray-500 shrink-0">
-                            {lead.lastActive ? formatDistanceToNow(new Date(lead.lastActive), { 
-                              addSuffix: true,
-                              locale: es
-                            }) : 'Nunca'}
-                          </div>
+                          <div className="font-medium text-xs truncate">{lead.fullName}</div>
                         </div>
-                        
-                        <div className="text-[11px] text-gray-500 truncate">{lead.company || lead.email}</div>
+                        <div className="text-[11px] text-gray-500 truncate">{lead.phone || lead.email}</div>
                         
                         <div className="flex gap-1">
                           {lead.status === 'prospect' && <Badge variant="outline" className="rounded-full text-[9px] border-yellow-500 text-yellow-700 px-1 h-4">Prospecto</Badge>}
@@ -762,262 +1105,29 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
               )}
             </ScrollArea>
           </TabsContent>
-        </Tabs>
-      </div>
-      
-      {/* Área de chat - Centralizada con áreas fijas y scroll */}
-      <div className="flex-1 flex flex-col">
-        {(selectedChatId || selectedLeadData) ? (
-          <>
-            {/* Cabecera fija del chat */}
-            <div className="p-2 border-b flex justify-between items-center sticky top-0 bg-white z-10">
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Avatar className="h-8 w-8 flex-shrink-0">
-                  {selectedLeadData?.avatar ? (
-                    <AvatarImage src={selectedLeadData.avatar} alt={selectedLeadData.fullName} />
-                  ) : null}
-                  <AvatarFallback className="bg-green-500 text-white text-xs">
-                    {whatsappStatus?.authenticated && selectedChatId
-                      ? getInitials((whatsappChats.find((c: WhatsAppChat) => c.id === selectedChatId) || {}).name)
-                      : selectedLeadData 
-                        ? getInitials(selectedLeadData.fullName)
-                        : 'UN'
-                    }
-                  </AvatarFallback>
-                </Avatar>
-                
-                <div className="min-w-0 overflow-hidden">
-                  <div className="font-medium text-xs truncate">
-                    {whatsappStatus?.authenticated && selectedChatId
-                      ? (whatsappChats.find((c: WhatsAppChat) => c.id === selectedChatId) || {}).name || 'Chat'
-                      : selectedLeadData 
-                        ? selectedLeadData.fullName
-                        : 'Contacto'
-                    }
-                  </div>
-                  <div className="text-[10px] text-gray-500 truncate">
-                    {selectedLeadData?.phone || selectedChatId || ''}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex gap-1">
-                <button className="h-7 w-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500" aria-label="Llamar">
-                  <Phone size={15} />
-                </button>
-                <button className="h-7 w-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500" aria-label="Videollamada">
-                  <Video size={15} />
-                </button>
-                <button 
-                  className={`h-7 w-7 rounded-full hover:bg-gray-100 flex items-center justify-center ${showAiAssistant ? 'text-primary-600' : 'text-gray-500'}`} 
-                  aria-label="Asistente IA"
-                  onClick={() => setShowAiAssistant(!showAiAssistant)}
-                >
-                  <BrainCircuit size={15} />
-                </button>
-                <button className="h-7 w-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500" aria-label="Más opciones">
-                  <MoreVertical size={15} />
-                </button>
-              </div>
-            </div>
-            
-            {/* Contenedor principal del área de mensajes con tamaño fijo */}
-            <div className="flex-1 overflow-hidden flex">
-              <div className={`flex-1 flex flex-col ${showAiAssistant ? 'w-2/3' : 'w-full'}`}>
-                {/* Área de mensajes con scroll fijo */}
-                <ScrollArea className="h-[calc(100vh-26rem)] p-4 bg-gray-50">
-                  <div className="space-y-3 pb-4 relative">
-                    {/* Indicador de mensajes nuevos en la parte inferior */}
-                    <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10 opacity-75">
-                      <div className="bg-gray-100 text-xs text-gray-500 px-2 py-1 rounded-full shadow-sm border">
-                        Los nuevos mensajes aparecerán aquí ↓
-                      </div>
-                    </div>
-                    
-                    {whatsappStatus?.authenticated && selectedChatId ? (
-                      // Mostrar mensajes de WhatsApp reales
-                      isLoadingWhatsappMessages ? (
-                        <div className="flex justify-center py-8">
-                          <Spinner size="lg" />
-                        </div>
-                      ) : Array.isArray(whatsappMessages) && whatsappMessages.length > 0 ? (
-                        whatsappMessages.map((msg: WhatsAppMessage) => (
-                          <div 
-                            key={msg.id}
-                            className={`flex ${msg.fromMe ? 'justify-end' : 'justify-start'}`}
-                          >
-                            <div 
-                              className={`max-w-[70%] rounded-lg p-3 ${
-                                msg.fromMe 
-                                  ? 'bg-green-100 text-gray-800' 
-                                  : 'bg-white border text-gray-800'
-                              }`}
-                            >
-                              <div className="text-sm whitespace-pre-wrap">{msg.body}</div>
-                              <div className="flex justify-end items-center mt-1 text-xs text-gray-500">
-                                {format(new Date(msg.timestamp), 'HH:mm')}
-                                {msg.fromMe && (
-                                  <div className="ml-1">
-                                    <CheckCheck size={14} className="text-green-500" />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          No hay mensajes para mostrar
-                        </div>
-                      )
-                    ) : (
-                      // Modo fallback para mensajes del CRM
-                      isLoadingCrmMessages ? (
-                        <div className="flex justify-center py-8">
-                          <Spinner size="lg" />
-                        </div>
-                      ) : crmMessages.length > 0 ? (
-                        crmMessages.map((message: Message) => (
-                          <div 
-                            key={message.id}
-                            className={`flex ${message.direction === 'outgoing' ? 'justify-end' : 'justify-start'}`}
-                          >
-                            <div 
-                              className={`max-w-[70%] rounded-lg p-3 ${
-                                message.direction === 'outgoing' 
-                                  ? 'bg-green-100 text-gray-800' 
-                                  : 'bg-white border text-gray-800'
-                              }`}
-                            >
-                              <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                              <div className="flex justify-end items-center mt-1">
-                                {message.direction === 'outgoing' && renderMessageStatus(message.status, message.timestamp)}
-                                {message.direction === 'incoming' && (
-                                  <div className="text-xs text-gray-500">
-                                    {new Date(message.timestamp).toLocaleTimeString([], { 
-                                      hour: '2-digit', 
-                                      minute: '2-digit' 
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                              {message.aiGenerated && (
-                                <div className="text-xs text-right mt-1 text-primary-500 flex items-center justify-end gap-1">
-                                  <BrainCircuit size={12} />
-                                  <span>IA</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          No hay mensajes para mostrar
-                        </div>
-                      )
-                    )}
-                  </div>
-                  <div ref={messagesEndRef} />
-                </ScrollArea>
-                
-                {/* Área de entrada de mensajes fija en la parte inferior */}
-                <div className="border-t p-3 bg-white sticky bottom-0">
-                  <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                    <button 
-                      type="button"
-                      className="text-gray-400 hover:text-gray-600"
-                      aria-label="Adjuntar archivo"
-                    >
-                      <Paperclip size={20} />
-                    </button>
-                    
-                    <Input 
-                      type="text"
-                      placeholder="Escribe un mensaje"
-                      className="flex-1"
-                      value={messageText}
-                      onChange={(e) => setMessageText(e.target.value)}
-                      disabled={sendMessageMutation.isPending}
-                    />
-                    
-                    <button 
-                      type="button"
-                      className="text-gray-400 hover:text-gray-600"
-                      aria-label="Insertar emoji"
-                    >
-                      <Smile size={20} />
-                    </button>
-                    
-                    <button 
-                      type="button"
-                      className="text-gray-400 hover:text-gray-600 hidden md:block"
-                      aria-label="Grabar audio"
-                    >
-                      <Mic size={20} />
-                    </button>
-                    
-                    <Button 
-                      type="submit" 
-                      size="icon" 
-                      variant="ghost"
-                      disabled={!messageText.trim() || sendMessageMutation.isPending}
-                      className={messageText.trim() ? "text-primary-600" : "text-gray-400"}
-                    >
-                      {sendMessageMutation.isPending ? (
-                        <Spinner size="sm" />
-                      ) : (
-                        <Send size={20} />
-                      )}
-                    </Button>
-                  </form>
-                </div>
-              </div>
-              
-              {showAiAssistant && (
-                <div className="w-1/3 border-l flex flex-col">
-                  <GeminiAssistant 
-                    leadId={selectedLeadId} 
-                    onMessageGenerated={(message) => {
-                      setMessageText(message);
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center p-8">
-              <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <MessageSquare className="h-8 w-8 text-gray-400" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">WhatsApp Web</h3>
-              <p className="text-gray-500 max-w-sm">
-                Selecciona un contacto de la lista o busca para comenzar a chatear
-              </p>
+          
+          <div className="h-px w-full bg-border mt-auto"></div>
+          <div className="p-2 pt-1">
+            <div className="text-xs text-gray-500 mb-1">Selección actual:</div>
+            <div className="text-sm font-medium truncate">
+              {whatsappStatus?.authenticated 
+                ? (selectedChatId 
+                  ? ((whatsappChats.find((c: WhatsAppChat) => c.id === selectedChatId) || {}).name || 'Chat')
+                  : 'Sin selección')
+                : (selectedLeadId 
+                  ? (selectedLeadData?.fullName || 'Contacto')
+                  : 'Sin selección')
+              }
             </div>
           </div>
-        )}
+        </Tabs>
+      </CardContent>
+      
+      <div className="border-t" />
+      
+      <div className="flex-1 flex max-h-[calc(100%-240px)] min-h-[350px] overflow-hidden">
+        {renderMessageArea()}
       </div>
-    </div>
-  );
-}
-
-function MessageSquare(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
+    </Card>
   );
 }
