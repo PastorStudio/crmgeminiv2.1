@@ -159,32 +159,28 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   // Detectar nuevos mensajes y procesar respuestas automáticas
   useEffect(() => {
     if (Array.isArray(whatsappMessages) && whatsappMessages.length > 0 && selectedChatId) {
-      // Verificar si hay nuevos mensajes
-      if (whatsappMessages.length > lastMessageCount) {
-        // Hay nuevos mensajes, actualizar contador
-        setNewMessagesReceived(true);
-        setLastMessageCount(whatsappMessages.length);
-        
-        // Actualizar timestamp del último mensaje visto
-        const chatLastMessageTimestamp = Math.max(...whatsappMessages.map(msg => msg.timestamp || 0));
-        lastSeenMessagesRef.current[selectedChatId] = chatLastMessageTimestamp;
-        
-        // Si las respuestas automáticas están habilitadas, responder al último mensaje
-        if (autoResponsesEnabled && !processingAutoResponse) {
-          // Buscar el último mensaje que no sea nuestro
-          const lastMessages = [...whatsappMessages]
-            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      // Siempre actualizar contador para evitar problemas de detección
+      setLastMessageCount(whatsappMessages.length);
+      
+      // Buscar mensajes no procesados
+      const sortedMessages = [...whatsappMessages].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      const lastIncomingMessage = sortedMessages.find(msg => !msg.fromMe);
+      
+      // Procesar respuesta automática si está habilitada
+      if (autoResponsesEnabled && 
+          !processingAutoResponse && 
+          lastIncomingMessage && 
+          lastIncomingMessage.body.trim() !== '') {
           
-          const lastIncomingMessage = lastMessages.find(msg => !msg.fromMe);
-          
-          if (lastIncomingMessage && lastIncomingMessage.body.trim() !== '') {
-            // Solo responder si hay un mensaje que no es nuestro y tiene contenido
-            handleAutoResponse(lastIncomingMessage);
-          }
-        }
+        console.log('Procesando respuesta automática para mensaje:', lastIncomingMessage.body);
+        
+        // Usar setTimeout para evitar múltiples respuestas
+        setTimeout(() => {
+          handleAutoResponse(lastIncomingMessage);
+        }, 1000);
       }
     }
-  }, [whatsappMessages, selectedChatId, lastMessageCount, autoResponsesEnabled, processingAutoResponse]);
+  }, [whatsappMessages, selectedChatId, autoResponsesEnabled]);
 
   // Mutación para enviar mensaje
   const sendMessageMutation = useMutation({
