@@ -69,7 +69,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
   const [showGeminiDialog, setShowGeminiDialog] = useState(false);
+  const [lastMessageCount, setLastMessageCount] = useState(0);
+  const [newMessagesReceived, setNewMessagesReceived] = useState(false);
+  const [processingAutoResponse, setProcessingAutoResponse] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastSeenMessagesRef = useRef<{[chatId: string]: number}>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -146,6 +150,36 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [whatsappMessages]);
+  
+  // Detectar nuevos mensajes y procesar respuestas automáticas
+  useEffect(() => {
+    if (Array.isArray(whatsappMessages) && whatsappMessages.length > 0 && selectedChatId) {
+      // Verificar si hay nuevos mensajes
+      if (whatsappMessages.length > lastMessageCount) {
+        // Hay nuevos mensajes, actualizar contador
+        setNewMessagesReceived(true);
+        setLastMessageCount(whatsappMessages.length);
+        
+        // Actualizar timestamp del último mensaje visto
+        const chatLastMessageTimestamp = Math.max(...whatsappMessages.map(msg => msg.timestamp || 0));
+        lastSeenMessagesRef.current[selectedChatId] = chatLastMessageTimestamp;
+        
+        // Si las respuestas automáticas están habilitadas, responder al último mensaje
+        if (autoResponsesEnabled && !processingAutoResponse) {
+          // Buscar el último mensaje que no sea nuestro
+          const lastMessages = [...whatsappMessages]
+            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          
+          const lastIncomingMessage = lastMessages.find(msg => !msg.fromMe);
+          
+          if (lastIncomingMessage && lastIncomingMessage.body.trim() !== '') {
+            // Solo responder si hay un mensaje que no es nuestro y tiene contenido
+            handleAutoResponse(lastIncomingMessage);
+          }
+        }
+      }
+    }
+  }, [whatsappMessages, selectedChatId, lastMessageCount, autoResponsesEnabled, processingAutoResponse]);
 
   // Mutación para enviar mensaje
   const sendMessageMutation = useMutation({
@@ -187,6 +221,48 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   // Manejar selección de chat
   const handleChatSelect = (chat: WhatsAppChat) => {
     setSelectedChatId(chat.id);
+  };
+  
+  // Función para generar y enviar respuestas automáticas con Gemini
+  const handleAutoResponse = async (message: WhatsAppMessage) => {
+    if (!selectedChatId || !message.body || processingAutoResponse) return;
+    
+    try {
+      // Marcar que estamos procesando una respuesta automática
+      setProcessingAutoResponse(true);
+      
+      // Obtener historial reciente para dar contexto a la IA (últimos 4 mensajes)
+      const recentHistory = whatsappMessages
+        .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+        .slice(-5)
+        .map(msg => msg.body)
+        .filter(Boolean);
+      
+      // Generar respuesta con Gemini
+      const response = await generateAutoResponse(message.body, recentHistory);
+      
+      if (response && response.trim() !== '') {
+        // Enviar la respuesta generada
+        sendMessageMutation.mutate(response);
+        
+        // Notificar al usuario
+        toast({
+          title: "Respuesta automática",
+          description: "Gemini AI ha respondido automáticamente al mensaje",
+          duration: 3000
+        });
+      }
+    } catch (error) {
+      console.error("Error al generar respuesta automática:", error);
+      toast({
+        title: "Error en respuesta automática",
+        description: "No se pudo generar una respuesta con Gemini AI",
+        variant: "destructive"
+      });
+    } finally {
+      // Marcar que ya no estamos procesando
+      setProcessingAutoResponse(false);
+    }
   };
 
   // Obtener iniciales para avatar
