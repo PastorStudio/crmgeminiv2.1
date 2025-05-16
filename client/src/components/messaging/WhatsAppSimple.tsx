@@ -9,19 +9,28 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
+import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Search,
   Send,
   Paperclip,
-  Phone,
-  Video,
+  Brain,
+  Bot,
   MoreVertical,
   Smile,
   CheckCheck,
   RefreshCw,
-  MessageSquare
+  MessageSquare,
+  Image,
+  FileText,
+  Mic,
+  Camera,
+  Contact,
+  File
 } from 'lucide-react';
 
 // Interfaces
@@ -55,6 +64,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [messageText, setMessageText] = useState('');
   const [activeTab, setActiveTab] = useState('chats');
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [autoResponsesEnabled, setAutoResponsesEnabled] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
+  const [showGeminiDialog, setShowGeminiDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -384,12 +397,46 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Phone size={16} />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Video size={16} />
-                  </Button>
+                  {/* Botón de Agente IA */}
+                  <Dialog open={showGeminiDialog} onOpenChange={setShowGeminiDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Brain size={16} className={showGeminiDialog ? "text-primary" : ""} />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Asistente de Inteligencia Artificial</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <p className="text-sm text-gray-600">
+                            El asistente IA de Gemini puede generar mensajes, analizar conversaciones y ayudarte a gestionar tus comunicaciones de manera más eficiente.
+                          </p>
+                        </div>
+                        <div className="flex flex-col space-y-1.5">
+                          <Button onClick={() => {
+                            setMessageText("Hola, soy el asistente IA de Gemini. ¿En qué puedo ayudarte hoy?");
+                            setShowGeminiDialog(false);
+                          }}>
+                            Generar mensaje de bienvenida
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  {/* Toggle para respuestas automáticas */}
+                  <div className="flex items-center gap-1 border rounded-md px-2 h-8">
+                    <Bot size={14} className={autoResponsesEnabled ? "text-primary" : "text-gray-400"} />
+                    <Switch
+                      checked={autoResponsesEnabled}
+                      onCheckedChange={setAutoResponsesEnabled}
+                      aria-label="Respuestas automáticas"
+                      className="scale-75 data-[state=checked]:bg-primary"
+                    />
+                  </div>
+                  
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <MoreVertical size={16} />
                   </Button>
@@ -505,9 +552,38 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 <form onSubmit={handleSendMessage} className="flex items-end gap-2">
                   <div className="flex-1 rounded-lg bg-background border">
                     <div className="flex items-end p-2 gap-1">
-                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                        <Smile size={18} />
-                      </Button>
+                      {/* Botón de emoji con popover */}
+                      <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                        <PopoverTrigger asChild>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 flex-shrink-0"
+                          >
+                            <Smile size={18} className={showEmojiPicker ? "text-primary" : ""} />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2" align="start">
+                          <div className="grid grid-cols-7 gap-2">
+                            {["😊", "👍", "❤️", "😂", "🎉", "👏", "🙏", 
+                              "😍", "😎", "🤔", "👌", "💪", "🔥", "👋",
+                              "🤗", "😉", "🤝", "💯", "✅", "⭐", "🌟"].map(emoji => (
+                              <Button 
+                                key={emoji} 
+                                variant="ghost" 
+                                className="h-8 w-8 p-0 hover:bg-gray-100"
+                                onClick={() => {
+                                  setMessageText(prev => prev + emoji);
+                                  setShowEmojiPicker(false);
+                                }}
+                              >
+                                {emoji}
+                              </Button>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                       
                       <Input
                         value={messageText}
@@ -516,9 +592,83 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                         className="border-0 flex-1 focus-visible:ring-0 focus-visible:ring-offset-0"
                       />
                       
-                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                        <Paperclip size={18} />
-                      </Button>
+                      {/* Botón de adjuntos con popover */}
+                      <Popover open={showAttachmentOptions} onOpenChange={setShowAttachmentOptions}>
+                        <PopoverTrigger asChild>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 flex-shrink-0"
+                          >
+                            <Paperclip size={18} className={showAttachmentOptions ? "text-primary" : ""} />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-52 p-2" align="end">
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="justify-start gap-2"
+                              onClick={() => {
+                                toast({
+                                  title: "Adjunto de foto",
+                                  description: "Esta función está en desarrollo"
+                                });
+                                setShowAttachmentOptions(false);
+                              }}
+                            >
+                              <Image size={14} />
+                              <span>Foto</span>
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="justify-start gap-2"
+                              onClick={() => {
+                                toast({
+                                  title: "Adjunto de documento",
+                                  description: "Esta función está en desarrollo"
+                                });
+                                setShowAttachmentOptions(false);
+                              }}
+                            >
+                              <FileText size={14} />
+                              <span>Documento</span>
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="justify-start gap-2"
+                              onClick={() => {
+                                toast({
+                                  title: "Adjunto de audio",
+                                  description: "Esta función está en desarrollo"
+                                });
+                                setShowAttachmentOptions(false);
+                              }}
+                            >
+                              <Mic size={14} />
+                              <span>Audio</span>
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="justify-start gap-2"
+                              onClick={() => {
+                                toast({
+                                  title: "Adjunto de contacto",
+                                  description: "Esta función está en desarrollo"
+                                });
+                                setShowAttachmentOptions(false);
+                              }}
+                            >
+                              <Contact size={14} />
+                              <span>Contacto</span>
+                            </Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                   
