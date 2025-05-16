@@ -85,6 +85,9 @@ export async function generateAutoResponse(
   customPrompt?: string
 ): Promise<string> {
   try {
+    // Guardar el modelo actual antes de recargar
+    const previousModel = MODEL_NAME;
+    
     // Siempre intentar recargar la clave API para tener la más actualizada
     // y el modelo recomendado según disponibilidad de cuota
     const loaded = await loadApiKey();
@@ -97,6 +100,11 @@ export async function generateAutoResponse(
     
     // Registrar qué modelo estamos usando para debug
     console.log(`Generando respuesta con modelo: ${MODEL_NAME}`);
+    
+    // Notificar si hubo un cambio de modelo automático
+    if (previousModel !== MODEL_NAME && previousModel && window.notifyModelChange) {
+      window.notifyModelChange(previousModel, MODEL_NAME);
+    }
     
     // Acceder al modelo de generación de texto con el modelo indicado desde el servidor
     const model = genAI.getGenerativeModel({ 

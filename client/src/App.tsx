@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Switch, Route } from "wouter";
+import React, { useEffect, useState } from 'react';
+import { Switch, Route, useLocation } from "wouter";
 import { Toaster } from '@/components/ui/toaster';
 import { Spinner } from '@/components/ui/spinner';
 import Dashboard from './pages/Dashboard';
@@ -15,8 +15,12 @@ import MassSender from './pages/MassSender';
 import NotFound from './pages/not-found';
 import Integrations from './pages/Integrations';
 import { useQuery } from '@tanstack/react-query';
+import { ModelNotificationProvider } from './lib/modelNotification';
 
 const App: React.FC = () => {
+  // Obtener la ruta actual para la navegación activa
+  const [location] = useLocation();
+  
   // Obtener clave API de Gemini para el cliente
   const { isLoading: isLoadingGeminiKey } = useQuery({
     queryKey: ['gemini-client-key'],
@@ -57,31 +61,31 @@ const App: React.FC = () => {
               </div>
               <div className="hidden md:block">
                 <div className="ml-10 flex items-baseline space-x-4">
-                  <a href="/" className="px-3 py-2 rounded-md text-sm font-medium text-blue-600 hover:text-blue-800">
+                  <a href="/" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
                     Dashboard
                   </a>
-                  <a href="/leads" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
+                  <a href="/leads" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/leads' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
                     Leads
                   </a>
-                  <a href="/messages" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
+                  <a href="/messages" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/messages' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
                     Mensajes
                   </a>
-                  <a href="/calendar" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
+                  <a href="/calendar" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/calendar' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
                     Calendario
                   </a>
-                  <a href="/tasks" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
+                  <a href="/tasks" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/tasks' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
                     Tareas
                   </a>
-                  <a href="/analytics" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
+                  <a href="/analytics" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/analytics' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
                     Análisis
                   </a>
-                  <a href="/media-gallery" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
+                  <a href="/media-gallery" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/media-gallery' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
                     Galería
                   </a>
-                  <a href="/message-templates" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
+                  <a href="/message-templates" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/message-templates' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
                     Plantillas
                   </a>
-                  <a href="/mass-sender" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
+                  <a href="/mass-sender" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/mass-sender' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
                     Envío Masivo
                   </a>
                 </div>
@@ -130,7 +134,9 @@ const App: React.FC = () => {
         </div>
       </main>
       
-      <Toaster />
+      <ModelNotificationProvider>
+        <Toaster />
+      </ModelNotificationProvider>
     </div>
   );
 };
