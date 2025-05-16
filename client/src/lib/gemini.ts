@@ -77,17 +77,18 @@ export async function generateAutoResponse(
   customPrompt?: string
 ): Promise<string> {
   try {
-    // Asegurarse de que tenemos una clave API
-    if (!API_KEY) {
-      // Intentar cargar la clave API si no está disponible
-      const loaded = await loadApiKey();
-      if (!loaded) {
-        return "No se pudo generar respuesta automática. API Key de Gemini no configurada.";
-      }
+    // Siempre intentar recargar la clave API para tener la más actualizada
+    // y el modelo recomendado según disponibilidad de cuota
+    const loaded = await loadApiKey();
+    if (!loaded && !API_KEY) {
+      return "No se pudo generar respuesta automática. API Key de Gemini no configurada.";
     }
 
     // Obtener instancia actualizada de Gemini
     const genAI = getGeminiInstance();
+    
+    // Registrar qué modelo estamos usando para debug
+    console.log(`Generando respuesta con modelo: ${MODEL_NAME}`);
     
     // Acceder al modelo de generación de texto con el modelo indicado desde el servidor
     const model = genAI.getGenerativeModel({ 
@@ -176,17 +177,18 @@ export async function generateAutoResponse(
  */
 export async function analyzeMessage(message: string): Promise<any> {
   try {
-    // Asegurarse de que tenemos una clave API
-    if (!API_KEY) {
-      // Intentar cargar la clave API si no está disponible
-      const loaded = await loadApiKey();
-      if (!loaded) {
-        return { success: false, error: "API Key de Gemini no configurada" };
-      }
+    // Siempre intentar recargar la clave API para tener la más actualizada
+    // y el modelo recomendado según disponibilidad de cuota
+    const loaded = await loadApiKey();
+    if (!loaded && !API_KEY) {
+      return { success: false, error: "API Key de Gemini no configurada" };
     }
 
     // Obtener instancia actualizada de Gemini
     const genAI = getGeminiInstance();
+    
+    // Registrar qué modelo estamos usando para debug
+    console.log(`Analizando mensaje con modelo: ${MODEL_NAME}`);
     
     const model = genAI.getGenerativeModel({
       model: MODEL_NAME
