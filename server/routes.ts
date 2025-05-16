@@ -877,20 +877,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint para obtener la clave API de Gemini para el cliente
   app.get("/api/settings/gemini-client-key", async (req: Request, res: Response) => {
     try {
-      // Obtener la clave API de Gemini
-      const geminiApiKey = apiKeyManager.getGeminiKey();
+      // Importar el generador de claves de Gemini
+      const { geminiKeyGenerator } = await import('./services/geminiKeyGenerator');
+      
+      // Obtener una clave API válida generada automáticamente si es necesario
+      const geminiApiKey = await geminiKeyGenerator.getValidKey();
       
       if (!geminiApiKey) {
         return res.status(404).json({
           success: false,
-          message: 'Clave API de Gemini no configurada'
+          message: 'No se pudo obtener una clave API de Gemini'
         });
       }
       
       // Devolver la clave API al cliente
       res.json({
         success: true,
-        apiKey: geminiApiKey
+        apiKey: geminiApiKey,
+        model: "gemini-1.5-pro" // Informa al cliente que estamos usando Gemini 1.5
       });
     } catch (error) {
       console.error('Error obteniendo clave API de Gemini:', error);
