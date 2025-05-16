@@ -161,19 +161,19 @@ class GeminiKeyGenerator {
         return false;
       }
       
-      // La clave es válida, ahora probamos Gemini 1.5 Pro
+      // La clave es válida, ahora intentamos con el modelo principal
       let keyStatus = this.keysStatus.get(apiKey) || {
         key: apiKey,
-        model: 'gemini-1.5-pro',
+        model: 'gemini-pro',
         modelFallback: 'gemini-pro',
         quotaExceeded: false,
         lastCheck: Date.now()
       };
       
       try {
-        // Intentar con Gemini 1.5 Pro primero (el mejor modelo)
+        // Intentar con Gemini Pro (modelo disponible)
         const testResponse = await axios.post(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
           {
             contents: [
               {
@@ -188,9 +188,9 @@ class GeminiKeyGenerator {
           }
         );
         
-        // Si llegamos aquí, Gemini 1.5 funciona
-        console.log('Clave API válida para Gemini 1.5 Pro');
-        keyStatus.model = 'gemini-1.5-pro';
+        // Si llegamos aquí, Gemini Pro funciona
+        console.log('Clave API válida para Gemini Pro');
+        keyStatus.model = 'gemini-pro';
         keyStatus.quotaExceeded = false;
         keyStatus.lastCheck = Date.now();
         this.keysStatus.set(apiKey, keyStatus);
@@ -198,7 +198,7 @@ class GeminiKeyGenerator {
       } catch (error: any) {
         // Verificar si el error es por límites de cuota (429)
         if (error.response && error.response.status === 429) {
-          console.log('Límite de cuota excedido para Gemini 1.5 Pro, probando con Gemini Pro...');
+          console.log('Límite de cuota excedido, intentando con modelo alternativo...');
           
           // Intentar con Gemini Pro (el modelo con más cuota disponible)
           try {

@@ -22,7 +22,7 @@ class GeminiService {
     // Configuración por defecto
     this.config = {
       professionLevel: "professional",
-      model: "gemini-1.5-pro", // Usando la última versión de Gemini
+      model: "gemini-pro", // Usando el modelo disponible de Gemini
       temperature: 0.7,
       maxOutputTokens: 1024
     };
