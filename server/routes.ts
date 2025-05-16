@@ -918,8 +918,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         apiKey: keyInfo.key,
-        model: "gemini-1.5-pro", // Modelo preferido
-        recommendedModel: keyInfo.model || "gemini-pro" // Modelo recomendado (con mayor cuota disponible)
+        model: "gemini-pro", // Usamos sólo el modelo estable para evitar error 404
+        recommendedModel: "gemini-pro" // Modelo recomendado con cuota disponible
       });
     } catch (error) {
       console.error('Error obteniendo clave API de Gemini:', error);

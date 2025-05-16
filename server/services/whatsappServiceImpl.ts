@@ -244,10 +244,16 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       // Inicializamos el cliente con configuración optimizada para persistencia
       // Nota: userDataDir no está soportado en la versión actual, usamos otra estrategia
       this.client = new Client({
-        puppeteer: puppeteerOptions,
-        qrMaxRetries: hasExistingSession ? 3 : 5, // Menos reintentos si estamos recuperando sesión
+        puppeteer: {
+          ...puppeteerOptions,
+          // Añadir opciones adicionales para mejorar estabilidad
+          timeout: 120000, // Mayor tiempo de espera (2 minutos)
+          ignoreHTTPSErrors: true, // Ignorar errores HTTPS
+        },
+        qrMaxRetries: hasExistingSession ? 5 : 10, // Aumentar reintentos para mayor estabilidad
         restartOnAuthFail: true, // Reintentar automáticamente si falla la autenticación
         takeoverOnConflict: true, // Tomar el control en caso de conflicto de sesión
+        authTimeoutMs: 120000, // Mayor tiempo para autenticación (2 minutos)
         takeoverTimeoutMs: 15000 // Mayor tiempo de espera para tomar el control si hay sesión previa
       });
 
