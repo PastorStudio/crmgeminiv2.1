@@ -608,63 +608,105 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
           </div>
           
           {/* Área de mensajes con scroll independiente */}
-          <ScrollArea className="flex-1 p-3">
+          <ScrollArea className="flex-1 pb-4">
             {isLoadingWhatsappMessages ? (
-              <div className="flex justify-center p-4">
-                <Spinner />
+              <div className="flex justify-center p-8">
+                <div className="text-center">
+                  <Spinner className="mx-auto mb-3" />
+                  <p className="text-sm text-gray-500">Cargando mensajes...</p>
+                </div>
               </div>
             ) : whatsappMessages.length > 0 ? (
-              <div className="space-y-3">
-                {whatsappMessages.map((msg: WhatsAppMessage) => (
-                  <div 
-                    key={msg.id}
-                    className={`flex ${msg.fromMe ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div 
-                      className={`max-w-[75%] rounded-lg p-2 shadow-sm ${
-                        msg.fromMe 
-                          ? 'bg-primary text-primary-foreground ml-auto' 
-                          : 'bg-card border mr-auto'
-                      }`}
-                    >
-                      {msg.hasMedia && (
-                        <div className="mb-2">
-                          {msg.mediaUrl ? (
-                            <img 
-                              src={msg.mediaUrl} 
-                              alt={msg.caption || 'Imagen'} 
-                              className="rounded max-h-32 mb-1"
-                            />
-                          ) : (
-                            <div className="bg-gray-100 rounded flex items-center justify-center h-24 w-full">
-                              <Image size={24} className="text-gray-400" />
-                            </div>
-                          )}
-                          {msg.caption && <div className="text-xs mt-1">{msg.caption}</div>}
+              <div className="space-y-2 px-3 py-4">
+                {whatsappMessages.map((msg: WhatsAppMessage, index) => {
+                  // Verificar si debe mostrar separador de fecha
+                  const showDateSeparator = index === 0 || 
+                    new Date(msg.timestamp * 1000).toDateString() !== 
+                    new Date(whatsappMessages[index - 1].timestamp * 1000).toDateString();
+                  
+                  // Verificar si es una secuencia de mensajes del mismo remitente
+                  const isSequential = index > 0 && 
+                    msg.fromMe === whatsappMessages[index - 1].fromMe;
+                  
+                  return (
+                    <React.Fragment key={msg.id}>
+                      {showDateSeparator && (
+                        <div className="flex justify-center my-4">
+                          <div className="bg-gray-100 text-gray-500 text-xs rounded-full px-3 py-1 font-medium">
+                            {format(new Date(msg.timestamp * 1000), 'EEEE, d MMMM', { locale: es })}
+                          </div>
                         </div>
                       )}
-                      <div className="text-sm">{msg.body}</div>
-                      <div className="text-right">
-                        <div className="text-[10px] opacity-70">
-                          {new Date(msg.timestamp * 1000).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                          {msg.fromMe && (
-                            <span className="ml-1">
-                              {msg.fromMe && <CheckCheck size={12} className="inline" />}
-                            </span>
+                      
+                      <div 
+                        className={`flex ${msg.fromMe ? 'justify-end' : 'justify-start'} ${isSequential ? 'mt-1' : 'mt-3'}`}
+                      >
+                        {!msg.fromMe && !isSequential && (
+                          <Avatar className="h-8 w-8 mr-2 mt-2 flex-shrink-0 border shadow-sm">
+                            <AvatarFallback className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs">
+                              {currentChat?.name ? getInitials(currentChat.name) : 'UN'}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+                        
+                        {!msg.fromMe && isSequential && <div className="w-10 flex-shrink-0"></div>}
+                        
+                        <div 
+                          className={`max-w-[75%] rounded-lg p-3 ${
+                            msg.fromMe 
+                              ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md' 
+                              : 'bg-white border shadow-sm'
+                          } ${isSequential && msg.fromMe ? 'rounded-tr-sm' : ''} ${isSequential && !msg.fromMe ? 'rounded-tl-sm' : ''}`}
+                        >
+                          {msg.hasMedia && (
+                            <div className="mb-2">
+                              {msg.mediaUrl ? (
+                                <img 
+                                  src={msg.mediaUrl} 
+                                  alt={msg.caption || 'Imagen'} 
+                                  className="rounded mb-1 w-full object-cover"
+                                />
+                              ) : (
+                                <div className="bg-gray-100 rounded flex items-center justify-center h-32 w-full">
+                                  <Image size={30} className="text-gray-400" />
+                                </div>
+                              )}
+                              {msg.caption && <div className="text-xs mt-1">{msg.caption}</div>}
+                            </div>
                           )}
+                          
+                          <div className="text-sm whitespace-pre-wrap break-words">
+                            {msg.body}
+                          </div>
+                          
+                          <div className="text-right mt-1 flex justify-end items-center gap-1">
+                            <span className={`text-[10px] ${msg.fromMe ? 'text-green-100' : 'text-gray-500'}`}>
+                              {new Date(msg.timestamp * 1000).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                            
+                            {msg.fromMe && (
+                              <CheckCheck size={14} className="text-green-100" />
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    </React.Fragment>
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
             ) : (
-              <div className="text-center text-gray-500 p-4">
-                No hay mensajes. Envía el primero para iniciar la conversación.
+              <div className="flex flex-col items-center justify-center h-full p-4">
+                <div className="p-4 rounded-full bg-gray-50 mb-4">
+                  <MessageSquare size={35} className="text-gray-300" />
+                </div>
+                <p className="text-base font-medium text-gray-600 mb-1">No hay mensajes</p>
+                <p className="text-sm text-gray-500 text-center">
+                  Envía tu primer mensaje para iniciar la conversación
+                </p>
               </div>
             )}
           </ScrollArea>
@@ -1025,34 +1067,46 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                   </div>
                 </div>
               ) : Array.isArray(whatsappChats) && whatsappChats.length > 0 ? (
-                <div className="space-y-0.5">
+                <div className="divide-y">
                   {whatsappChats.map((chat: WhatsAppChat) => (
                     <div
                       key={chat.id}
-                      className={`p-2 hover:bg-gray-100 cursor-pointer flex items-start gap-2 ${
-                        selectedChatId === chat.id ? 'bg-gray-100' : ''
+                      className={`p-2.5 hover:bg-gray-50 cursor-pointer ${
+                        selectedChatId === chat.id ? 'bg-green-50 border-l-2 border-l-green-500' : ''
                       }`}
                       onClick={() => handleChatSelect(chat)}
                     >
-                      <Avatar className="h-10 w-10 flex-shrink-0">
-                        {chat.profilePicUrl ? (
-                          <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
-                        ) : null}
-                        <AvatarFallback className="bg-green-500 text-white text-xs">
-                          {getInitials(chat.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <div className="flex justify-between w-full">
-                          <div className="font-medium text-xs truncate max-w-[70%]">{chat.name}</div>
-                          <div className="text-[10px] text-gray-500 shrink-0">
-                            {formatTime(chat.timestamp)}
-                          </div>
-                        </div>
+                      <div className="flex items-start gap-2.5">
+                        <Avatar className="h-10 w-10 flex-shrink-0 border shadow-sm">
+                          {chat.profilePicUrl ? (
+                            <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
+                          ) : null}
+                          <AvatarFallback className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs">
+                            {getInitials(chat.name)}
+                          </AvatarFallback>
+                        </Avatar>
                         
-                        <div className="text-[11px] text-gray-500 truncate">
-                          {chat.lastMessage || ''}
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex justify-between w-full">
+                            <div className="font-medium text-sm truncate max-w-[70%]">{chat.name}</div>
+                            <div className="text-[10px] text-gray-500 shrink-0 mt-0.5">
+                              {formatTime(chat.timestamp)}
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {chat.unreadCount > 0 ? (
+                              <div className="w-4 h-4 rounded-full bg-green-500 text-[9px] text-white font-semibold flex items-center justify-center">
+                                {chat.unreadCount > 9 ? '9+' : chat.unreadCount}
+                              </div>
+                            ) : chat.lastMessage ? (
+                              <Check className="w-3 h-3 text-green-500" />
+                            ) : null}
+                            
+                            <div className="text-xs text-gray-600 truncate">
+                              {chat.lastMessage || (chat.isGroup ? 'Grupo' : 'Contacto')}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
