@@ -393,7 +393,7 @@ export class AutoResponseService {
             console.log("Usando OpenAI para la respuesta automática");
             
             // Convertir los mensajes anteriores al formato de OpenAI
-            const openaiMessages = [];
+            const openaiMessages: Array<{role: string, content: string}> = [];
             
             // Añadir el sistema prompt
             openaiMessages.push({
@@ -403,9 +403,9 @@ export class AutoResponseService {
             
             // Añadir mensajes previos si existen
             if (previousMessages.length > 0) {
-              previousMessages.forEach(msg => {
+              previousMessages.forEach((msg: any) => {
                 openaiMessages.push({
-                  role: msg.role, 
+                  role: msg.role === 'model' ? 'assistant' : msg.role, 
                   content: msg.content
                 });
               });
