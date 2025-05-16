@@ -146,18 +146,123 @@ class GeminiKeyGenerator {
   }
   
   /**
-   * Prueba una clave API para verificar si es válida
+   * Prueba una clave API para verificar si es válida y determinar qué modelo usar
+   * @param apiKey La clave API a probar
+   * @returns {boolean} true si la clave es válida, false si no lo es
    */
   private async testApiKey(apiKey: string): Promise<boolean> {
     try {
-      // Realizar una petición simple a la API de Gemini
+      // Primero verificamos que la clave API sea válida obteniendo la lista de modelos
       const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
       const response = await axios.get(url);
       
-      // Si la respuesta es exitosa, la clave es válida
-      return response.status === 200;
+      if (response.status !== 200) {
+        console.log('Clave API inválida');
+        return false;
+      }
+      
+      // La clave es válida, ahora probamos Gemini 1.5 Pro
+      let keyStatus = this.keysStatus.get(apiKey) || {
+        key: apiKey,
+        model: 'gemini-1.5-pro',
+        modelFallback: 'gemini-pro',
+        quotaExceeded: false,
+        lastCheck: Date.now()
+      };
+      
+      try {
+        // Intentar con Gemini 1.5 Pro primero (el mejor modelo)
+        const testResponse = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`,
+          {
+            contents: [
+              {
+                parts: [
+                  { text: 'Hello' }
+                ]
+              }
+            ],
+            generationConfig: {
+              maxOutputTokens: 10,
+            }
+          }
+        );
+        
+        // Si llegamos aquí, Gemini 1.5 funciona
+        console.log('Clave API válida para Gemini 1.5 Pro');
+        keyStatus.model = 'gemini-1.5-pro';
+        keyStatus.quotaExceeded = false;
+        keyStatus.lastCheck = Date.now();
+        this.keysStatus.set(apiKey, keyStatus);
+        return true;
+      } catch (error: any) {
+        // Verificar si el error es por límites de cuota (429)
+        if (error.response && error.response.status === 429) {
+          console.log('Límite de cuota excedido para Gemini 1.5 Pro, probando con Gemini Pro...');
+          
+          // Intentar con Gemini Pro (el modelo con más cuota disponible)
+          try {
+            const fallbackResponse = await axios.post(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+              {
+                contents: [
+                  {
+                    parts: [
+                      { text: 'Hello' }
+                    ]
+                  }
+                ],
+                generationConfig: {
+                  maxOutputTokens: 10,
+                }
+              }
+            );
+            
+            // Gemini Pro funciona cuando Gemini 1.5 está limitado
+            console.log('Clave válida para Gemini Pro, usando como fallback');
+            keyStatus.model = 'gemini-pro';
+            keyStatus.quotaExceeded = true;
+            keyStatus.lastCheck = Date.now();
+            this.keysStatus.set(apiKey, keyStatus);
+            return true;
+          } catch (fallbackError) {
+            console.error('Error también con Gemini Pro:', fallbackError);
+            return false;
+          }
+        } else {
+          console.error('Error validando modelo Gemini 1.5:', error);
+          
+          // Intentamos con Gemini Pro como último recurso
+          try {
+            const fallbackResponse = await axios.post(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+              {
+                contents: [
+                  {
+                    parts: [
+                      { text: 'Hello' }
+                    ]
+                  }
+                ],
+                generationConfig: {
+                  maxOutputTokens: 10,
+                }
+              }
+            );
+            
+            console.log('Usando Gemini Pro como fallback');
+            keyStatus.model = 'gemini-pro';
+            keyStatus.lastCheck = Date.now();
+            this.keysStatus.set(apiKey, keyStatus);
+            return true;
+          } catch (fallbackError) {
+            console.error('Error también con Gemini Pro:', fallbackError);
+            return false;
+          }
+        }
+      }
     } catch (error) {
-      console.error('Error probando clave API de Gemini:', error);
+      console.error('Error general probando clave API de Gemini:', error);
       return false;
     }
   }
