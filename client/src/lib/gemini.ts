@@ -44,8 +44,16 @@ async function loadApiKey() {
   }
 }
 
+// Variable para rastrear el último modelo usado
+let lastUsedModel = '';
+
 // Cargar la clave API al inicializar
-loadApiKey().catch(err => {
+loadApiKey().then(success => {
+  if (success) {
+    lastUsedModel = MODEL_NAME;
+    console.log('Modelo inicial de Gemini:', MODEL_NAME);
+  }
+}).catch(err => {
   console.error('Error inicializando Gemini:', err);
 });
 
