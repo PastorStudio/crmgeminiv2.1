@@ -403,9 +403,12 @@ export class AutoResponseService {
           
           // Intentar obtener el nombre del contacto
           try {
-            const chat = await whatsappService.getChat(message.from);
-            if (chat && chat.name) {
-              contactName = chat.name.split(' ')[0]; // Primer nombre
+            // Obtener chats disponibles
+            const chats = await whatsappService.getChats();
+            // Buscar el chat correspondiente al remitente
+            const matchingChat = chats.find(c => c.id === message.from);
+            if (matchingChat && matchingChat.name) {
+              contactName = matchingChat.name.split(' ')[0]; // Primer nombre
             } else {
               // Usar número formateado como nombre
               contactName = message.from.split('@')[0];
@@ -416,9 +419,10 @@ export class AutoResponseService {
           
           // Intentar obtener mensajes previos para contexto
           try {
-            const chatMessages = await whatsappService.getChatMessages(message.from, 5);
-            if (chatMessages && chatMessages.length > 0) {
-              previousMessages = chatMessages.map((m: any) => ({
+            // Obtener mensajes del chat
+            const messages = await whatsappService.getMessages(message.from, 5);
+            if (messages && messages.length > 0) {
+              previousMessages = messages.map((m: any) => ({
                 role: m.fromMe ? 'assistant' : 'user',
                 content: m.body || ''
               }));
