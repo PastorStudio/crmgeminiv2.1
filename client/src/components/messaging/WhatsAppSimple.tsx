@@ -510,21 +510,58 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                           }}>
                             Generar mensaje de bienvenida
                           </Button>
+                          
+                          {selectedChatId && (
+                            <Button 
+                              variant="outline" 
+                              onClick={() => {
+                                setShowGeminiDialog(false);
+                                setShowGeminiConfigDialog(true);
+                              }}
+                              className="mt-2"
+                            >
+                              <Settings className="h-4 w-4 mr-2" />
+                              Configurar prompts y respuestas
+                            </Button>
+                          )}
+                          
+                          <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Bot className="h-4 w-4 text-primary" />
+                                <span className="text-sm font-medium">Respuestas automáticas</span>
+                              </div>
+                              <Switch
+                                checked={autoResponsesEnabled}
+                                onCheckedChange={setAutoResponsesEnabled}
+                                aria-label="Activar respuestas automáticas"
+                              />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Cuando está activado, Gemini AI responderá automáticamente a los mensajes entrantes
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </DialogContent>
                   </Dialog>
                   
-                  {/* Toggle para respuestas automáticas */}
-                  <Button 
-                    variant={autoResponsesEnabled ? "default" : "outline"} 
-                    size="sm"
-                    className="h-8 flex items-center gap-1"
-                    onClick={() => setAutoResponsesEnabled(!autoResponsesEnabled)}
-                  >
-                    <Bot size={14} />
-                    <span className="text-xs">{autoResponsesEnabled ? "IA: Activa" : "IA: Inactiva"}</span>
-                  </Button>
+                  {/* Diálogo de configuración avanzada de Gemini */}
+                  {selectedChatId && (
+                    <GeminiConfig 
+                      chatId={selectedChatId} 
+                      isOpen={showGeminiConfigDialog} 
+                      onClose={() => setShowGeminiConfigDialog(false)} 
+                    />
+                  )}
+                  
+                  {/* Indicador de estado IA */}
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-md text-xs">
+                    <Bot size={14} className={autoResponsesEnabled ? "text-green-500" : "text-gray-400"} />
+                    <span className={autoResponsesEnabled ? "text-green-500" : "text-gray-400"}>
+                      {autoResponsesEnabled ? "IA Activa" : "IA Inactiva"}
+                    </span>
+                  </div>
                   
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <MoreVertical size={16} />
