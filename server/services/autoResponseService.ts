@@ -36,6 +36,13 @@ interface AutoResponseConfig {
 const defaultConfig: AutoResponseConfig = {
   enabled: true,
   delaySeconds: 10,
+  customPrompts: {
+    enabled: true,
+    system: "Eres un asistente virtual profesional de atención al cliente. Tu objetivo es proporcionar respuestas amables, útiles y profesionales. Cuando te dirijas al cliente, llámalo por su nombre ({{nombre}}). Tus respuestas deben ser claras, concisas y orientadas a resolver las dudas o problemas del cliente. Mantén un tono amigable pero profesional en todo momento.",
+    temperature: 0.7,
+    maxTokens: 500
+  },
+  aiProvider: "gemini",
   templates: [
     {
       id: "default",

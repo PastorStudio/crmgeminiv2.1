@@ -173,8 +173,9 @@ class GeminiKeyGenerator {
       
       try {
         // Intentar con Gemini Pro (modelo disponible)
+        // Actualizado a v1 en lugar de v1beta para evitar errores 404
         const testResponse = await axios.post(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`,
           {
             contents: [
               {
