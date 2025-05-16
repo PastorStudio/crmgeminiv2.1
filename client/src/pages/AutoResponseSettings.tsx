@@ -70,7 +70,7 @@ export default function AutoResponseSettings() {
   const { data: config, isLoading: configLoading, isError } = useQuery({
     queryKey: ["/api/auto-response/config"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/auto-response/config");
+      const response = await fetch("/api/auto-response/config");
       return await response.json();
     },
   });
@@ -107,7 +107,12 @@ export default function AutoResponseSettings() {
   // Update configuration mutation
   const { mutate: updateConfig, isPending } = useMutation({
     mutationFn: async (values: AutoResponseConfig) => {
-      return apiRequest("POST", "/api/auto-response/config", values);
+      const response = await fetch("/api/auto-response/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values)
+      });
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auto-response/config"] });
@@ -134,7 +139,7 @@ export default function AutoResponseSettings() {
   const { data: geminiKeyStatus } = useQuery({
     queryKey: ["gemini-key-status"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/settings/gemini-key-status");
+      const response = await fetch("/api/settings/gemini-key-status");
       return await response.json();
     },
   });
@@ -331,7 +336,7 @@ export default function AutoResponseSettings() {
                                 />
                               </FormControl>
                               <FormDescription>
-                                Define cómo debe comportarse la IA al responder. Usa {{nombre}} para referirte al nombre del contacto.
+                                Define cómo debe comportarse la IA al responder. Usa {"{{"} + "nombre" + {"}}"}  para referirte al nombre del contacto.
                               </FormDescription>
                               <FormMessage />
                             </FormItem>
