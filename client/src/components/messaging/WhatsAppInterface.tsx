@@ -821,10 +821,19 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
               </div>
             </div>
             
+            {/* Contenedor principal del área de mensajes con tamaño fijo */}
             <div className="flex-1 overflow-hidden flex">
               <div className={`flex-1 flex flex-col ${showAiAssistant ? 'w-2/3' : 'w-full'}`}>
-                <ScrollArea className="flex-1 p-4 bg-gray-50">
-                  <div className="space-y-3 pb-4">
+                {/* Área de mensajes con scroll fijo */}
+                <ScrollArea className="h-[calc(100vh-26rem)] p-4 bg-gray-50">
+                  <div className="space-y-3 pb-4 relative">
+                    {/* Indicador de mensajes nuevos en la parte inferior */}
+                    <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10 opacity-75">
+                      <div className="bg-gray-100 text-xs text-gray-500 px-2 py-1 rounded-full shadow-sm border">
+                        Los nuevos mensajes aparecerán aquí ↓
+                      </div>
+                    </div>
+                    
                     {whatsappStatus?.authenticated && selectedChatId ? (
                       // Mostrar mensajes de WhatsApp reales
                       isLoadingWhatsappMessages ? (
@@ -911,7 +920,8 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                   <div ref={messagesEndRef} />
                 </ScrollArea>
                 
-                <div className="border-t p-3">
+                {/* Área de entrada de mensajes fija en la parte inferior */}
+                <div className="border-t p-3 bg-white sticky bottom-0">
                   <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                     <button 
                       type="button"
