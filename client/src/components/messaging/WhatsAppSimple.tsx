@@ -427,15 +427,15 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   </Dialog>
                   
                   {/* Toggle para respuestas automáticas */}
-                  <div className="flex items-center gap-1 border rounded-md px-2 h-8">
-                    <Bot size={14} className={autoResponsesEnabled ? "text-primary" : "text-gray-400"} />
-                    <Switch
-                      checked={autoResponsesEnabled}
-                      onCheckedChange={setAutoResponsesEnabled}
-                      aria-label="Respuestas automáticas"
-                      className="scale-75 data-[state=checked]:bg-primary"
-                    />
-                  </div>
+                  <Button 
+                    variant={autoResponsesEnabled ? "default" : "outline"} 
+                    size="sm"
+                    className="h-8 flex items-center gap-1"
+                    onClick={() => setAutoResponsesEnabled(!autoResponsesEnabled)}
+                  >
+                    <Bot size={14} />
+                    <span className="text-xs">{autoResponsesEnabled ? "IA: Activa" : "IA: Inactiva"}</span>
+                  </Button>
                   
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <MoreVertical size={16} />
