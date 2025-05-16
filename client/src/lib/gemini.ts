@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Usar la clave API de las variables de entorno disponibles en el cliente
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || (window as any).VITE_GEMINI_API_KEY || '';
+// Usar la clave API hardcodeada para pruebas
+const API_KEY = 'AIzaSyCvNKcMCPd_oS2W7qvK6I_h-R7eNbtzCro';
 
 // Verificar si tenemos la clave API
 if (!API_KEY) {
