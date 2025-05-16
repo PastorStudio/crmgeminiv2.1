@@ -67,7 +67,7 @@ export default function AutoResponseSettings() {
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   
   // Fetch configuration
-  const { data: config, isLoading: configLoading, isError } = useQuery<AutoResponseConfig>({
+  const { data: config, isLoading: configLoading, isError } = useQuery({
     queryKey: ["/api/auto-response/config"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/auto-response/config");
@@ -131,19 +131,19 @@ export default function AutoResponseSettings() {
   };
   
   // Check for API keys availability
-  const { data: geminiKeyStatus } = useQuery<{ hasValidKey: boolean }>({
-    queryKey: ["/api/settings/gemini-key-status"],
+  const { data: geminiKeyStatus } = useQuery({
+    queryKey: ["gemini-key-status"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/settings/gemini-key-status");
       return await response.json();
     },
   });
   
-  const { data: openaiKeyStatus } = useQuery<{ hasValidKey: boolean }>({
-    queryKey: ["/api/settings/openai-key-status"],
+  const { data: openaiKeyStatus } = useQuery({
+    queryKey: ["openai-key-status"],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", "/api/check-secrets", { secret_keys: ["OPENAI_API_KEY"] });
+        const response = await fetch('/api/check-secrets?secret_keys=OPENAI_API_KEY');
         const result = await response.json();
         return { hasValidKey: result?.includes("OPENAI_API_KEY") };
       } catch (error) {

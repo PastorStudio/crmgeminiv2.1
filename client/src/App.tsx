@@ -14,6 +14,7 @@ import MessageTemplates from './pages/MessageTemplates';
 import MassSender from './pages/MassSender';
 import NotFound from './pages/not-found';
 import Integrations from './pages/Integrations';
+import AutoResponseSettings from './pages/AutoResponseSettings';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
 
@@ -88,6 +89,9 @@ const App: React.FC = () => {
                   <a href="/mass-sender" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/mass-sender' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
                     Envío Masivo
                   </a>
+                  <a href="/auto-response-settings" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/auto-response-settings' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
+                    Respuestas Auto
+                  </a>
                 </div>
               </div>
             </div>
@@ -127,6 +131,7 @@ const App: React.FC = () => {
                 <Route path="/message-templates" component={MessageTemplates} />
                 <Route path="/mass-sender" component={MassSender} />
                 <Route path="/integrations" component={Integrations} />
+                <Route path="/auto-response-settings" component={AutoResponseSettings} />
                 <Route component={NotFound} />
               </Switch>
             )}
