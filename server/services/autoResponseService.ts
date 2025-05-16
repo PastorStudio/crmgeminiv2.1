@@ -389,37 +389,48 @@ export class AutoResponseService {
     if (!template) return;
     
     try {
+      console.log('Preparando respuesta automática para mensaje:', message.body);
+      
       // Obtener el nombre del contacto si está disponible
       let contactName = 'cliente';
       let previousMessages = [];
+      
+      // Verificar si tenemos información de contacto en el mensaje
       if (message.from) {
         try {
-          // Importar el servicio de almacenamiento bajo demanda
-          const { storage } = await import('../storage');
+          // Importar servicios bajo demanda
+          const { whatsappService } = await import('./whatsappServiceImpl');
           
-          // Intenta obtener el nombre real del contacto
-          const contact = await storage.getWhatsAppContact(message.from);
-          if (contact && contact.name) {
-            contactName = contact.name.split(' ')[0]; // Primer nombre
-          }
-          
-          // Intentar obtener mensajes previos si están disponibles
+          // Intentar obtener el nombre del contacto
           try {
-            const chat = await storage.getWhatsAppChat(message.from);
-            if (chat && chat.messages) {
-              // Obtener los últimos 5 mensajes para contexto
-              previousMessages = chat.messages.slice(-5).map((m: any) => ({
-                role: m.fromMe ? 'assistant' : 'user',
-                content: m.body
-              }));
+            const chat = await whatsappService.getChat(message.from);
+            if (chat && chat.name) {
+              contactName = chat.name.split(' ')[0]; // Primer nombre
+            } else {
+              // Usar número formateado como nombre
+              contactName = message.from.split('@')[0];
             }
           } catch (err) {
-            // Ignora errores al recuperar mensajes
-            console.error('Error al recuperar historial de mensajes:', err);
+            console.log('No se pudo obtener nombre de contacto:', err);
+          }
+          
+          // Intentar obtener mensajes previos para contexto
+          try {
+            const chatMessages = await whatsappService.getChatMessages(message.from, 5);
+            if (chatMessages && chatMessages.length > 0) {
+              previousMessages = chatMessages.map((m: any) => ({
+                role: m.fromMe ? 'assistant' : 'user',
+                content: m.body || ''
+              }));
+              console.log('Contexto de mensajes previos cargado:', previousMessages.length);
+            }
+          } catch (err) {
+            console.log('No se pudieron obtener mensajes previos:', err);
           }
         } catch (err) {
           // En caso de error, usar el número como nombre
           contactName = message.from.split('@')[0];
+          console.log('Usando número como nombre de contacto:', contactName);
         }
       }
       

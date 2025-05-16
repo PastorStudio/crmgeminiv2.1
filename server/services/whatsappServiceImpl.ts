@@ -428,37 +428,54 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
           await storage.createMessage({
             leadId: 1, // Utilizar ID de lead principal o buscar según el número
             content: message.body,
-            sender: contactName,
-            recipient: "CRM Sistema",
-            channel: "WhatsApp",
-            status: "received",
-            timestamp: new Date()
+            direction: "incoming", // Mensaje entrante
+            channel: "whatsapp",
+            read: false
           });
           
           console.log('Mensaje guardado en la base de datos');
+          
+          // Enviar notificación global vía WebSocket (usando función global)
+          if (global.sendNotification) {
+            (global as any).sendNotification({
+              type: 'new_message',
+              contactName,
+              messageText: message.body,
+              timestamp: new Date()
+            });
+          }
+          
+          // Procesar respuesta automática si está configurada
+          // Usamos un enfoque más directo para evitar problemas de importación circular
+          try {
+            // Importar el servicio
+            const autoResponseManager = await import('./autoResponseManager');
+            
+            if (autoResponseManager && autoResponseManager.autoResponseService) {
+              console.log('Procesando mensaje para respuesta automática');
+              
+              // Reenviar mensaje al controlador de respuestas automáticas
+              setTimeout(async () => {
+                try {
+                  await autoResponseManager.autoResponseService.handleIncomingMessage({
+                    from: contactId,
+                    body: message.body,
+                    getChat: async () => chat,
+                    _data: message._data,
+                    id: message.id
+                  });
+                } catch (innerError) {
+                  console.error('Error en procesamiento asíncrono de respuesta:', innerError);
+                }
+              }, 500); // Pequeño retraso para asegurar que el mensaje se procese correctamente
+            } else {
+              console.log('Servicio de respuesta automática no disponible');
+            }
+          } catch (autoResponseError) {
+            console.error('Error al cargar servicio de respuesta automática:', autoResponseError);
+          }
         } catch (dbError) {
           console.error('Error guardando mensaje en la base de datos:', dbError);
-        }
-        
-        // Enviar notificación global vía WebSocket (usando función global)
-        if (global.sendNotification) {
-          (global as any).sendNotification({
-            type: 'new_message',
-            contactName,
-            messageText: message.body,
-            timestamp: new Date()
-          });
-        }
-        
-        // Procesar respuesta automática si está configurada
-        try {
-          // Importar el servicio de respuestas automáticas
-          const { autoResponseService } = await import('./autoResponseManager');
-          
-          console.log('Procesando mensaje para respuesta automática');
-          await autoResponseService.handleIncomingMessage(message);
-        } catch (autoResponseError) {
-          console.error('Error procesando respuesta automática:', autoResponseError);
         }
       } catch (error) {
         console.error('Error al procesar notificación de mensaje:', error);
