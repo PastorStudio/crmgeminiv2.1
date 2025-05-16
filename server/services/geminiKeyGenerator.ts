@@ -45,7 +45,7 @@ class GeminiKeyGenerator {
     BACKUP_API_KEYS.forEach(keyInfo => {
       this.keysStatus.set(keyInfo.key, {
         key: keyInfo.key,
-        model: 'gemini-1.5-pro', // Intentamos primero con la última versión
+        model: 'gemini-pro', // Usamos el modelo estable que sabemos que funciona
         modelFallback: keyInfo.model,
         quotaExceeded: false,
         lastCheck: 0
