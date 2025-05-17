@@ -393,9 +393,9 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   <span className="h-2 w-2 bg-green-500 rounded-full"></span>
                   Conectado y listo para usar
                 </span> : 
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 text-red-600">
                   <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
-                  Desconectado - Escanea el código QR
+                  <strong>Desconectado</strong> - Se requiere autenticación
                 </span>
               }
             </div>
@@ -499,6 +499,22 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   {isLoadingChats ? (
                     <div className="flex justify-center p-4">
                       <Spinner />
+                    </div>
+                  ) : !whatsappStatus?.authenticated ? (
+                    <div className="flex flex-col items-center justify-center py-10 px-4 bg-gray-50 rounded-lg">
+                      <div className="text-center mb-6">
+                        <QrCode className="h-16 w-16 text-purple-500 mx-auto mb-4" />
+                        <h3 className="text-xl font-semibold text-gray-800 mb-2">WhatsApp no conectado</h3>
+                        <p className="text-gray-600 mb-4">Para ver tus chats y mensajes, necesitas conectar WhatsApp escaneando un código QR.</p>
+                      </div>
+                      <Button 
+                        className="bg-gradient-to-r from-purple-600 to-pink-500 text-white hover:bg-gradient-to-r hover:from-purple-700 hover:to-pink-600 shadow-md"
+                        size="lg"
+                        onClick={() => window.location.href = '/connection'}
+                      >
+                        <QrCode className="h-4 w-4 mr-2" />
+                        Ir a conectar WhatsApp
+                      </Button>
                     </div>
                   ) : whatsappChats ? (
                     <div className="divide-y">
