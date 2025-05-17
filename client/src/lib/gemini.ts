@@ -1,11 +1,15 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-// API de Google Generative AI actualizada - el endpoint v1beta ya no existe, solo v1
+// Importamos nuestro cliente personalizado para la API v1
+import { GeminiV1Client } from './geminiV1Client';
 
 // Variables para almacenar la configuración dinámica de Gemini
 let API_KEY = '';
 let MODEL_NAME = 'gemini-pro'; // Modelo por defecto (más estable y con más cuota)
 let PREFERRED_MODEL = 'gemini-pro'; // Modelo preferido (si está disponible)
 // Nota: 'gemini-1.5-pro' fue reemplazado porque generaba error 404
+
+// Cliente personalizado para la API v1
+let geminiV1Client: GeminiV1Client | null = null;
 
 // Función para cargar la clave API dinámicamente desde el servidor
 async function loadApiKey() {
@@ -20,6 +24,9 @@ async function loadApiKey() {
     
     if (data.success && data.apiKey) {
       API_KEY = data.apiKey;
+      // Inicializar nuestro cliente personalizado para la API v1
+      geminiV1Client = new GeminiV1Client(API_KEY);
+      
       // Si el servidor indica qué modelo usar, lo actualizamos
       if (data.model) {
         // Guardamos el modelo preferido (de alta capacidad pero con posibles límites de cuota)
@@ -67,6 +74,17 @@ function getGeminiInstance() {
   return new GoogleGenerativeAI(API_KEY);
 }
 
+// Función para obtener nuestro cliente personalizado para la API v1
+function getGeminiV1Client() {
+  if (!geminiV1Client) {
+    if (!API_KEY) {
+      throw new Error('No hay una clave API de Gemini configurada');
+    }
+    geminiV1Client = new GeminiV1Client(API_KEY);
+  }
+  return geminiV1Client;
+}
+
 // Configuración para el modelo de generación de texto
 const textModelConfig = {
   temperature: 0.7,
@@ -108,10 +126,8 @@ export async function generateAutoResponse(
       window.notifyModelChange(previousModel, MODEL_NAME);
     }
     
-    // Acceder al modelo de generación de texto con el modelo indicado desde el servidor
-    const model = genAI.getGenerativeModel({ 
-      model: MODEL_NAME
-    });
+    // Obtener nuestro cliente personalizado para la API v1
+    const client = getGeminiV1Client();
 
     // Usar el prompt personalizado si está disponible, o el predeterminado
     let systemPrompt = customPrompt || `
@@ -130,57 +146,46 @@ export async function generateAutoResponse(
     // Crear mensaje de usuario
     const userMessage = message;
 
-    // Crear el historial de chat para Gemini en formato de chat real
-    const chatMessages = [];
+    // Preparar el contenido con formato adecuado para nuestro cliente personalizado
+    let promptText = `${systemPrompt}\n\n`;
     
-    // Primero el prompt del sistema
-    chatMessages.push({
-      role: 'user',
-      parts: [{ text: systemPrompt }]
-    });
-    
-    chatMessages.push({
-      role: 'model',
-      parts: [{ text: 'Entendido. Actuaré como un asistente profesional y mantendré la conversación coherente.' }]
-    });
-
-    // Después añadir el historial previo
+    // Añadir historial previo si existe
     if (chatHistory.length > 0) {
+      promptText += "Conversación anterior:\n";
+      
       for (let i = 0; i < chatHistory.length; i += 2) {
         if (i < chatHistory.length) {
-          chatMessages.push({
-            role: 'user',
-            parts: [{ text: chatHistory[i] }]
-          });
+          promptText += `Cliente: ${chatHistory[i]}\n`;
         }
         
         if (i + 1 < chatHistory.length) {
-          chatMessages.push({
-            role: 'model',
-            parts: [{ text: chatHistory[i + 1] }]
-          });
+          promptText += `Asistente: ${chatHistory[i + 1]}\n`;
         }
       }
+      
+      promptText += "\n";
     }
     
-    // Finalmente añadir el mensaje actual
-    chatMessages.push({
-      role: 'user',
-      parts: [{ text: userMessage }]
-    });
-
-    // Generar la respuesta utilizando el chat completo
-    const result = await model.generateContent({
-      contents: chatMessages,
-      generationConfig: {
+    // Añadir mensaje actual e instrucciones específicas para mejorar la variabilidad
+    promptText += `Cliente: ${userMessage}\n\n`;
+    promptText += "Por favor, proporciona una respuesta personalizada y variada basándote en el contexto de la conversación. " +
+                  "No repitas contenido exacto de respuestas anteriores. Proporciona información útil y concreta. " +
+                  "Incluye ocasionalmente preguntas para mantener la conversación fluida.\n\n";
+    promptText += "Asistente:";
+    
+    console.log("Prompt para generación directa v1:", promptText.substring(0, 100) + "...");
+    
+    // Utilizar nuestro cliente personalizado para generar respuesta
+    const response = await client.generateContent(
+      promptText,
+      MODEL_NAME,
+      {
         temperature: 0.7,
         topP: 0.8,
         topK: 40,
-        maxOutputTokens: 1000,
+        maxOutputTokens: 1000
       }
-    });
-    
-    const response = result.response.text();
+    );
     return response;
   } catch (error: any) {
     console.error("Error generando respuesta con Gemini:", error);
@@ -202,16 +207,12 @@ export async function analyzeMessage(message: string): Promise<any> {
       return { success: false, error: "API Key de Gemini no configurada" };
     }
 
-    // Obtener instancia actualizada de Gemini
-    const genAI = getGeminiInstance();
+    // Obtener nuestro cliente personalizado para la API v1
+    const client = getGeminiV1Client();
     
     // Registrar qué modelo estamos usando para debug
-    console.log(`Analizando mensaje con modelo: ${MODEL_NAME}`);
+    console.log(`Analizando mensaje con cliente directo v1 y modelo: ${MODEL_NAME}`);
     
-    const model = genAI.getGenerativeModel({
-      model: MODEL_NAME
-    });
-
     const prompt = `
     Analiza el siguiente mensaje y extrae toda la información relevante.
     Organiza la información en formato JSON con las siguientes claves:
@@ -228,8 +229,15 @@ export async function analyzeMessage(message: string): Promise<any> {
     Responde ÚNICAMENTE con un objeto JSON válido sin explicaciones adicionales.
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = result.response.text();
+    // Usar nuestro cliente directo v1 
+    const response = await client.generateContent(
+      prompt,
+      MODEL_NAME,
+      {
+        temperature: 0.3, // Valor bajo para mejor precisión en análisis
+        maxOutputTokens: 800
+      }
+    );
     
     try {
       // Intentar parsear la respuesta como JSON
