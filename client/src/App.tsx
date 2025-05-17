@@ -16,6 +16,9 @@ import NotFound from './pages/not-found';
 import Integrations from './pages/Integrations';
 import AutoResponseSettings from './pages/AutoResponseSettings';
 import Connection from './pages/Connection';
+import QRCode from './pages/QRCode';
+import QrViewer from './pages/QrViewer';
+import QrTextViewer from './pages/QrTextViewer';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
 import { PageTransition } from '@/components/ui/page-transition';
@@ -97,6 +100,9 @@ const App: React.FC = () => {
                   <a href="/connection" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/connection' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
                     Conexión
                   </a>
+                  <a href="/qrcode" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/qrcode' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
+                    Código QR
+                  </a>
                   <a href="/integrations" className={`px-3 py-2 rounded-md text-sm font-medium ${location === '/integrations' ? 'text-blue-600 hover:text-blue-800' : 'text-gray-700 hover:text-blue-600'}`}>
                     Integraciones
                   </a>
@@ -142,6 +148,8 @@ const App: React.FC = () => {
                   <Route path="/integrations" component={Integrations} />
                   <Route path="/auto-response-settings" component={AutoResponseSettings} />
                   <Route path="/connection" component={Connection} />
+                  <Route path="/qrcode" component={QRCode} />
+                  <Route path="/qr-viewer" component={QrViewer} />
                   <Route component={NotFound} />
                 </Switch>
               </PageTransition>
