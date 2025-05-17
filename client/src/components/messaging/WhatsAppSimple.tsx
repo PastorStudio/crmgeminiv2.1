@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useWebSocket, NotificationType } from '@/hooks/useWebSocket';
 import {
   Search,
   Send,
@@ -33,7 +34,9 @@ import {
   Camera,
   Contact,
   File,
-  Settings
+  Settings,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 // Importar el componente de configuración
 import { GeminiConfig } from '@/components/GeminiConfig';
@@ -81,6 +84,34 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const lastSeenMessagesRef = useRef<{[chatId: string]: number}>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Configurar WebSocket para mensajes en tiempo real
+  const { isConnected: isWsConnected, lastMessage: wsLastMessage } = useWebSocket({
+    onNotification: (notification) => {
+      console.log('Notificación WebSocket recibida:', notification);
+
+      // Si es una notificación de nuevo mensaje y tenemos un chat seleccionado
+      if (notification.type === NotificationType.NEW_MESSAGE && 
+          notification.data.chatId === selectedChatId) {
+        // Invalidar las consultas para actualizar los datos
+        queryClient.invalidateQueries({ queryKey: ['whatsapp-messages-direct', selectedChatId] });
+        queryClient.invalidateQueries({ queryKey: ['whatsapp-chats-direct'] });
+        
+        // Marcar que hay nuevos mensajes
+        setNewMessagesReceived(true);
+      }
+    },
+    onConnect: () => {
+      toast({
+        title: "Conexión establecida",
+        description: "Conectado al servidor de mensajería en tiempo real",
+        duration: 3000
+      });
+    },
+    onDisconnect: () => {
+      console.log('Desconectado del WebSocket');
+    }
+  });
 
   // Estado de WhatsApp
   const { data: whatsappStatus, isLoading: isLoadingWhatsappStatus } = useQuery({
@@ -96,7 +127,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         return { authenticated: false };
       }
     },
-    refetchInterval: 5000
+    // Reducir la frecuencia de polling si el WebSocket está conectado
+    refetchInterval: isWsConnected ? 10000 : 5000
   });
   
   // Consulta para chats
@@ -115,7 +147,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       }
     },
     enabled: whatsappStatus?.authenticated === true,
-    refetchInterval: whatsappStatus?.authenticated ? 5000 : false
+    // Reducimos la frecuencia con WebSocket conectado
+    refetchInterval: whatsappStatus?.authenticated ? (isWsConnected ? 10000 : 5000) : false
   });
   
   // Consulta para mensajes
@@ -137,7 +170,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       }
     },
     enabled: !!selectedChatId && whatsappStatus?.authenticated === true,
-    refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 2000 : false
+    // Con WebSocket, podemos reducir drásticamente el polling o incluso eliminarlo
+    // Mantenemos un intervalo mínimo como respaldo por si el WebSocket falla
+    refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 
+      (isWsConnected ? 5000 : 2000) : false
   });
   
   // Seleccionar el primer chat al cargar
@@ -328,10 +364,33 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
             ) : (
               <Badge variant="outline" className="h-6">Desconectado</Badge>
             )}
+            
+            {/* Indicador de WebSocket */}
+            <Badge 
+              variant="outline" 
+              className={`flex items-center gap-1 h-6 ${
+                isWsConnected 
+                ? "bg-blue-50 border-blue-200 text-blue-700"
+                : "bg-gray-50 border-gray-200 text-gray-500"
+              }`}
+            >
+              {isWsConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
+              <span className="text-xs">
+                {isWsConnected ? "Tiempo real" : "Sincronización manual"}
+              </span>
+            </Badge>
+            
             <Button 
               variant="ghost" 
               size="icon" 
               className="h-7 w-7"
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['whatsapp-status-direct'] });
+                queryClient.invalidateQueries({ queryKey: ['whatsapp-chats-direct'] });
+                if (selectedChatId) {
+                  queryClient.invalidateQueries({ queryKey: ['whatsapp-messages-direct', selectedChatId] });
+                }
+              }}
             >
               <RefreshCw size={14} />
             </Button>
