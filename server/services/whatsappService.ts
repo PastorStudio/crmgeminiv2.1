@@ -37,6 +37,11 @@ export default {
     return whatsappService.getStatus();
   },
   
+  // Obtener el código QR más reciente
+  getLatestQR() {
+    return whatsappService.getLatestQR();
+  },
+  
   // Método para procesar mensajes entrantes y manejar respuestas automáticas
   async processIncomingMessage(message: any): Promise<void> {
     try {
