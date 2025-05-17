@@ -261,6 +261,18 @@ export class AutoResponseService {
    * Encuentra la plantilla más adecuada para un mensaje
    */
   private async findMatchingTemplate(message: any): Promise<ResponseTemplate> {
+    // Si los prompts personalizados están habilitados, ignoramos las plantillas
+    // y retornamos una plantilla especial que indicará al sistema que use la IA generativa
+    if (this.config.customPrompts.enabled) {
+      console.log("Usando modo de respuesta con IA personalizada (saltando búsqueda de plantilla)");
+      return {
+        id: "ai_response",
+        name: "Respuesta de IA personalizada",
+        template: "", // El contenido será generado por la IA
+        autoDetect: false
+      };
+    }
+    
     const messageText = message.body || '';
     
     // 1. Buscar por patrón explícito primero
@@ -273,14 +285,47 @@ export class AutoResponseService {
       }
     }
     
-    // 2. Si hay plantillas con autoDetect, intentar usar Gemini para determinar la mejor
+    // 2. Si hay plantillas con autoDetect, intentar usar IA para determinar la mejor
     const autoDetectTemplates = this.config.templates.filter(t => t.autoDetect);
-    if (autoDetectTemplates.length > 0 && this.geminiClient) {
+    if (autoDetectTemplates.length > 0) {
       try {
-        // Usar Gemini para analizar el mensaje y determinar la mejor plantilla
-        const bestTemplate = await this.determineTemplateWithAI(messageText, autoDetectTemplates);
-        if (bestTemplate) {
-          return bestTemplate;
+        // Intentar usar nuestra implementación directa de Gemini v1
+        if (this.geminiV1Client) {
+          console.log("Usando GeminiV1 directo para determinar plantilla");
+          
+          // Construir un prompt que describa las plantillas disponibles
+          let prompt = "Analiza el siguiente mensaje y selecciona la mejor plantilla de respuesta. ";
+          prompt += "Responde únicamente con el número de la plantilla más adecuada (1, 2, 3, etc.).\n\n";
+          prompt += "Mensaje del cliente: " + messageText + "\n\n";
+          prompt += "Plantillas disponibles:\n";
+          
+          autoDetectTemplates.forEach((template, index) => {
+            prompt += `${index + 1}. ${template.name}: "${template.template}"\n`;
+          });
+          
+          try {
+            const response = await this.geminiV1Client.generateContent(prompt);
+            console.log("Respuesta de GeminiV1 para elección de plantilla:", response);
+            
+            // Extraer el número de la plantilla de la respuesta
+            const match = response.match(/\d+/);
+            if (match) {
+              const templateIndex = parseInt(match[0]) - 1;
+              if (templateIndex >= 0 && templateIndex < autoDetectTemplates.length) {
+                return autoDetectTemplates[templateIndex];
+              }
+            }
+          } catch (error) {
+            console.error("Error usando GeminiV1 para determinar plantilla:", error);
+          }
+        }
+        
+        // Fallback al método tradicional
+        if (this.geminiClient) {
+          const bestTemplate = await this.determineTemplateWithAI(messageText, autoDetectTemplates);
+          if (bestTemplate) {
+            return bestTemplate;
+          }
         }
       } catch (error) {
         console.error('Error al determinar plantilla con IA:', error);
@@ -398,6 +443,9 @@ export class AutoResponseService {
    */
   private async sendAutoResponse(message: any, template: ResponseTemplate): Promise<void> {
     if (!template) return;
+    
+    // Si es una respuesta de IA personalizada, ignoramos la plantilla y usamos la IA directamente
+    const isAIResponse = template.id === "ai_response";
     
     try {
       console.log('Preparando respuesta automática para mensaje:', message.body);
