@@ -1199,49 +1199,8 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
     try {
       console.log('Obteniendo lista de chats...');
       
-      // Crear chats de demostración para garantizar que el usuario pueda ver algo
-      const demoChats: WhatsAppChat[] = [
-        {
-          id: "123456789@c.us",
-          name: "José Pérez",
-          isGroup: false,
-          timestamp: Date.now() / 1000,
-          unreadCount: 3,
-          lastMessage: "Hola, ¿podemos agendar una reunión?",
-          profilePicUrl: undefined,
-          participants: []
-        },
-        {
-          id: "987654321@g.us",
-          name: "Equipo de Marketing",
-          isGroup: true,
-          timestamp: (Date.now() - 3600000) / 1000,
-          unreadCount: 0,
-          lastMessage: "Debemos revisar la presentación",
-          profilePicUrl: undefined,
-          participants: []
-        },
-        {
-          id: "555555555@c.us",
-          name: "María López",
-          isGroup: false,
-          timestamp: (Date.now() - 7200000) / 1000,
-          unreadCount: 1,
-          lastMessage: "¿Recibiste mi correo sobre la propuesta?",
-          profilePicUrl: undefined,
-          participants: []
-        },
-        {
-          id: "444444444@g.us",
-          name: "Soporte Técnico",
-          isGroup: true,
-          timestamp: (Date.now() - 10800000) / 1000,
-          unreadCount: 5,
-          lastMessage: "Nuevo caso: #12345 requiere atención",
-          profilePicUrl: undefined,
-          participants: []
-        }
-      ];
+      // No usar datos de demostración, solo datos reales
+      const demoChats: WhatsAppChat[] = [];
       
       // Intentar actualizar la lista de chats reales si es posible
       if (this.client && this.status.authenticated) {
@@ -1255,43 +1214,15 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
           .sort((a, b) => b.timestamp - a.timestamp);
       }
       
-      // Si no hay chats reales, devolver los de demostración
-      console.log('No se encontraron chats reales, retornando datos de demostración');
-      
-      // Almacenar los chats de demo en la caché para el futuro
-      demoChats.forEach(chat => {
-        this.chatCache.set(chat.id, chat);
-      });
-      
-      return demoChats;
+      // Si no hay chats reales, devolver array vacío
+      console.log('No se encontraron chats reales, retornando array vacío');
+      return [];
     } catch (error) {
       console.error('Error obteniendo lista de chats:', error);
       
-      // En caso de error, devolver chats de demostración
-      const demoChats: WhatsAppChat[] = [
-        {
-          id: "123456789@c.us",
-          name: "Cliente Demo",
-          isGroup: false,
-          timestamp: Date.now() / 1000,
-          unreadCount: 2,
-          lastMessage: "Buenos días, necesito información",
-          profilePicUrl: undefined,
-          participants: []
-        },
-        {
-          id: "987654321@g.us",
-          name: "Grupo Ventas",
-          isGroup: true,
-          timestamp: (Date.now() - 1800000) / 1000,
-          unreadCount: 7,
-          lastMessage: "Reunión a las 3pm",
-          profilePicUrl: undefined,
-          participants: []
-        }
-      ];
-      
-      return demoChats;
+      // En caso de error, devolver array vacío
+      console.log('Error al obtener chats, retornando array vacío');
+      return [];
     }
   }
   

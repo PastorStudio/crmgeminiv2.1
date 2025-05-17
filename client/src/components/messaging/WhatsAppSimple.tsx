@@ -103,37 +103,9 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchInterval: 5000
   });
 
-  // Datos de ejemplo para visualización mientras se resuelve el problema de WhatsApp
-  const demoChats = [
-    {
-      id: "123456789@c.us",
-      name: "Cliente Importante",
-      timestamp: Math.floor(Date.now() / 1000) - 300,
-      lastMessage: "¿Cuándo podemos agendar la reunión?",
-      unreadCount: 2,
-      isGroup: false
-    },
-    {
-      id: "987654321@c.us",
-      name: "Soporte Técnico",
-      timestamp: Math.floor(Date.now() / 1000) - 1800,
-      lastMessage: "El problema ha sido resuelto.",
-      unreadCount: 0,
-      isGroup: false
-    },
-    {
-      id: "11111111@g.us",
-      name: "Equipo de Ventas",
-      timestamp: Math.floor(Date.now() / 1000) - 7200,
-      lastMessage: "Revisemos los resultados mañana.",
-      unreadCount: 5,
-      isGroup: true
-    }
-  ];
-  
   // Query para obtener chats
   const { 
-    data: apiChats = demoChats, // Usar datos de ejemplo como fallback
+    data: apiChats = [],
     isLoading: isLoadingChats,
     refetch: refetchChats,
     error: chatError
@@ -151,18 +123,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         }
         const data = await response.json();
         console.log("Chats obtenidos:", data?.length || 0);
-        
-        // Si no hay datos del servidor, usar datos de ejemplo
-        if (!data || data.length === 0) {
-          console.log("Usando datos de ejemplo para los chats");
-          return demoChats;
-        }
-        
         return data;
       } catch (error) {
         console.error("Error obteniendo chats:", error);
-        // En caso de error, usar datos de ejemplo
-        return demoChats;
+        return [];
       }
     }
   });
