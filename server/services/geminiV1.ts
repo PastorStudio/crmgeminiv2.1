@@ -37,10 +37,29 @@ export class GeminiV1Client {
    */
   async generateContent(prompt: string, model: string = 'gemini-pro', config: GenerationConfig = {}): Promise<string> {
     try {
+      if (!this.apiKey) {
+        throw new Error("API key no configurada para Gemini");
+      }
+      
+      // Verificar si estamos usando una API key de servidor o una API key de cliente
+      const isClientKey = this.apiKey.startsWith('AIzaSy');
+      
+      // Si es una clave de cliente, usar la API directamente que funciona con esa clave
+      if (isClientKey) {
+        // Intentar usar la clave de la variable de entorno como respaldo
+        const serverKey = process.env.GEMINI_API_KEY;
+        if (serverKey && !serverKey.startsWith('AIzaSy')) {
+          console.log("Usando clave de servidor de variable de entorno para Gemini");
+          this.apiKey = serverKey;
+        } else {
+          console.log("AVISO: Usando clave de cliente para Gemini en el servidor. Esto puede causar errores.");
+        }
+      }
+      
       // Usar directamente la URL v1 evitando cualquier manipulación
       const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${this.apiKey}`;
       
-      console.log("URL API Gemini v1:", url);
+      console.log("Modelo Gemini utilizado:", model);
       
       const requestBody = {
         contents: [
@@ -82,10 +101,29 @@ export class GeminiV1Client {
    */
   async chat(messages: GeminiMessage[], model: string = 'gemini-pro', config: GenerationConfig = {}): Promise<string> {
     try {
+      if (!this.apiKey) {
+        throw new Error("API key no configurada para Gemini");
+      }
+      
+      // Verificar si estamos usando una API key de servidor o una API key de cliente
+      const isClientKey = this.apiKey.startsWith('AIzaSy');
+      
+      // Si es una clave de cliente, usar la API directamente que funciona con esa clave
+      if (isClientKey) {
+        // Intentar usar la clave de la variable de entorno como respaldo
+        const serverKey = process.env.GEMINI_API_KEY;
+        if (serverKey && !serverKey.startsWith('AIzaSy')) {
+          console.log("Usando clave de servidor de variable de entorno para Gemini (chat)");
+          this.apiKey = serverKey;
+        } else {
+          console.log("AVISO: Usando clave de cliente para Gemini en el servidor (chat). Esto puede causar errores.");
+        }
+      }
+      
       // Usar directamente la URL v1 evitando cualquier manipulación
       const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${this.apiKey}`;
       
-      console.log("URL API Gemini v1 (chat):", url);
+      console.log("Modelo Gemini utilizado para chat:", model);
       
       const requestBody = {
         contents: messages,
