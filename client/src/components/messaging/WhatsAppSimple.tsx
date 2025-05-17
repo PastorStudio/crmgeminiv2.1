@@ -512,7 +512,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         </div>
         
         {/* Columna derecha - Área de mensajes */}
-        <div className="w-3/4 flex flex-col overflow-hidden">
+        <div className="w-3/4 flex flex-col overflow-hidden h-[calc(100vh-10rem)]">
           {!whatsappStatus?.authenticated ? (
             <div className="flex flex-col items-center justify-center h-full">
               <div className="text-center mb-6">
