@@ -79,12 +79,12 @@ export async function apiRequest<T = any>(
 }
 
 // Función auxiliar para usar XMLHttpRequest como alternativa a fetch
-async function makeXhrRequest<T>(
+async function makeXhrRequest<TData = any>(
   url: string, 
   method: string, 
   headers: Record<string, string>, 
   body?: string
-): Promise<T> {
+): Promise<TData> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open(method, url, true);
@@ -224,7 +224,10 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      // Configurar staleTime para un mejor rendimiento y menos solicitudes
+      staleTime: 30000, // 30 segundos antes de considerar datos obsoletos
+      // Agregar tiempo de caché para mejorar rendimiento
+      gcTime: 300000, // 5 minutos de caché
       retry: false,
     },
     mutations: {
