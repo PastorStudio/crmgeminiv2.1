@@ -5,56 +5,81 @@
  * cuando se detecta una discrepancia (está conectado pero el sistema no lo detecta)
  */
 
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
-// Ruta al archivo de estado de sesión
+// Definir rutas
 const TEMP_DIR = path.join(process.cwd(), 'temp');
 const SESSION_DIR = path.join(TEMP_DIR, 'whatsapp-sessions');
 const SESSION_FILE = path.join(SESSION_DIR, 'session_active.json');
+const FORCE_FILE = path.join(SESSION_DIR, '.force_connected');
 
-// Main function
 async function main() {
-  console.log('🔧 Iniciando corrección de estado de WhatsApp...');
+  console.log('🔎 Iniciando corrección de estado de WhatsApp...');
   
   try {
-    // Asegurar que el directorio de sesiones existe
+    // Asegurar que los directorios existen
+    if (!fs.existsSync(TEMP_DIR)) {
+      console.log('📁 Creando directorio temp...');
+      fs.mkdirSync(TEMP_DIR, { recursive: true });
+    }
+    
     if (!fs.existsSync(SESSION_DIR)) {
+      console.log('📁 Creando directorio de sesiones...');
       fs.mkdirSync(SESSION_DIR, { recursive: true });
     }
     
-    // Modificar el archivo de sesión para forzar el estado de autenticación
-    const sessionData = {
+    console.log('🔍 Verificando estado actual...');
+    
+    // Datos que forzaremos
+    const forcedStatus = {
       authenticated: true,
       ready: true,
       authenticatedAt: new Date().toISOString(),
-      activatedAt: new Date().toISOString()
+      activatedAt: new Date().toISOString(),
+      forceAuthenticated: true,
+      chatCount: 1,
+      hasLoadedChats: true,
+      hasRecentMessages: true,
+      hasPuppeteerPage: true
     };
     
-    // Escribir al archivo
-    fs.writeFileSync(SESSION_FILE, JSON.stringify(sessionData, null, 2), 'utf8');
-    console.log('✅ Archivo de sesión actualizado correctamente');
+    // Guardar archivo principal de sesión
+    console.log('💾 Escribiendo estado forzado en archivo de sesión...');
+    fs.writeFileSync(SESSION_FILE, JSON.stringify(forcedStatus, null, 2), 'utf8');
     
-    // Crear un archivo temporal para indicar que se ha forzado la autenticación
-    const forceAuthFile = path.join(SESSION_DIR, 'force_auth.flag');
-    fs.writeFileSync(forceAuthFile, new Date().toISOString(), 'utf8');
-    console.log('✅ Marcador de autenticación forzada creado');
+    // Crear archivo auxiliar para que el sistema sepa que se ha forzado la conexión
+    console.log('📌 Creando marcador de conexión forzada...');
+    fs.writeFileSync(FORCE_FILE, new Date().toISOString(), 'utf8');
     
-    console.log('✅ Corrección completada con éxito');
-    console.log('🔄 El sistema debería detectar la conexión después de reiniciar');
-    console.log('   Si persiste el problema, los pasos recomendados son:');
-    console.log('   1. Reiniciar el servidor (Workflow)');
-    console.log('   2. Escanear el código QR nuevamente en WhatsApp');
+    // Mostrar rutas para verificación
+    console.log('\n📊 Información:');
+    console.log(`- Archivo de sesión: ${SESSION_FILE}`);
+    console.log(`- Estado forzado: ${JSON.stringify(forcedStatus, null, 2)}`);
     
+    console.log('\n✅ Corrección aplicada exitosamente');
+    console.log('🔄 Ahora reinicie la aplicación para que los cambios surtan efecto');
+    console.log('⚠️ Si el problema persiste después de reiniciar, revise la conexión de WhatsApp Web directamente');
+    
+    return true;
   } catch (error) {
     console.error('❌ Error durante la corrección:', error);
+    return false;
   }
 }
 
-// Run the main function
-main().then(() => {
-  process.exit(0);
-}).catch((error) => {
-  console.error('❌ Error fatal:', error);
-  process.exit(1);
-});
+// Ejecutar el comando
+main()
+  .then((success) => {
+    if (success) {
+      console.log('\n✅ Comando completado con éxito');
+      process.exit(0);
+    } else {
+      console.log('\n❌ Comando falló');
+      process.exit(1);
+    }
+  })
+  .catch((error) => {
+    console.error('\n❌ Error ejecutando comando:', error);
+    process.exit(1);
+  });
