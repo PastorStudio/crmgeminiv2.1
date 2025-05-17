@@ -117,17 +117,29 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     retry: 3,
     queryFn: async () => {
       try {
-        const response = await fetch('/api/direct/whatsapp/chats');
+        // Usar fetch con opciones para evitar caché
+        const response = await fetch('/api/direct/whatsapp/chats', {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          },
+          cache: 'no-store'
+        });
+        
         if (!response.ok) {
-          throw new Error('Error al obtener chats');
+          throw new Error(`Error al obtener chats: ${response.status} ${response.statusText}`);
         }
+        
         const data = await response.json();
-        console.log("Chats obtenidos:", data?.length || 0);
-        // SOLO DATOS REALES: Si no hay datos, devolvemos array vacío
-        // sin usar ningún tipo de datos simulados
-        if (!Array.isArray(data) || data.length === 0) {
+        console.log("Chats obtenidos de la API:", JSON.stringify(data).substring(0, 100) + "...");
+        console.log("Número de chats recibidos:", Array.isArray(data) ? data.length : 0);
+        
+        // Verificar que tenemos un array válido
+        if (!Array.isArray(data)) {
+          console.error("Los datos recibidos no son un array:", typeof data);
           return [];
         }
+        
         return data;
       } catch (error) {
         console.error("Error obteniendo chats:", error);
@@ -250,12 +262,23 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   });
 
   // Solo usar chats reales de la API - NUNCA datos de ejemplo
-  // Verificar que tenemos datos reales y que WhatsApp está autenticado
-  const isWhatsAppAuthenticated = whatsappStatus?.authenticated === true;
+  console.log("Estado de autenticación WhatsApp:", whatsappStatus?.authenticated);
+  console.log("Chats recibidos de la API:", apiChats?.length);
+  
+  // Verificamos el estado de WhatsApp y mostramos datos detallados
+  console.log("WhatsApp Status completo:", JSON.stringify(whatsappStatus));
+  
+  // NO verificamos authenticated porque puede estar mal
+  // Solo verificamos que tengamos datos
   const hasRealChats = Array.isArray(apiChats) && apiChats.length > 0;
   
-  // Sólo asignar chats si hay datos reales Y estamos autenticados
-  const whatsappChats = (isWhatsAppAuthenticated && hasRealChats) ? apiChats : [];
+  // SIEMPRE usamos los datos de la API, independientemente del estado de autenticación
+  const whatsappChats = Array.isArray(apiChats) ? apiChats : [];
+  
+  // Mostramos los primeros 3 chats para debug
+  if (whatsappChats.length > 0) {
+    console.log("Primeros 3 chats:", whatsappChats.slice(0, 3));
+  }
   
   // Filtrar chats por nombre o último mensaje (si hay chats)
   const filteredChats = whatsappChats.length > 0 
@@ -485,12 +508,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   {isLoadingChats ? (
                     <div className="flex justify-center p-4">
                       <Spinner />
-                    </div>
-                  ) : !whatsappStatus?.authenticated ? (
-                    <div className="flex flex-col items-center justify-center p-4 h-full">
-                      <div className="text-sm text-gray-500 text-center mb-3">
-                        Escanea el código QR para ver tus chats de WhatsApp
-                      </div>
                     </div>
                   ) : whatsappChats && whatsappChats.length > 0 ? (
                     <div className="divide-y">
