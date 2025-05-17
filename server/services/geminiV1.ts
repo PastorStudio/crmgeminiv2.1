@@ -37,9 +37,12 @@ export class GeminiV1Client {
    */
   async generateContent(prompt: string, model: string = 'gemini-pro', config: GenerationConfig = {}): Promise<string> {
     try {
-      const url = `${this.baseUrl}/models/${model}:generateContent?key=${this.apiKey}`;
+      // Usar directamente la URL v1 evitando cualquier manipulación
+      const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${this.apiKey}`;
       
-      const response = await axios.post(url, {
+      console.log("URL API Gemini v1:", url);
+      
+      const requestBody = {
         contents: [
           {
             parts: [
@@ -54,7 +57,11 @@ export class GeminiV1Client {
           maxOutputTokens: config.maxOutputTokens ?? 800,
           stopSequences: config.stopSequences
         }
-      });
+      };
+      
+      console.log("Enviando solicitud a Gemini v1 con prompt:", prompt.substring(0, 100) + "...");
+      
+      const response = await axios.post(url, requestBody);
       
       if (response.data && response.data.candidates && response.data.candidates.length > 0) {
         const content = response.data.candidates[0].content;
@@ -75,9 +82,12 @@ export class GeminiV1Client {
    */
   async chat(messages: GeminiMessage[], model: string = 'gemini-pro', config: GenerationConfig = {}): Promise<string> {
     try {
-      const url = `${this.baseUrl}/models/${model}:generateContent?key=${this.apiKey}`;
+      // Usar directamente la URL v1 evitando cualquier manipulación
+      const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${this.apiKey}`;
       
-      const response = await axios.post(url, {
+      console.log("URL API Gemini v1 (chat):", url);
+      
+      const requestBody = {
         contents: messages,
         generationConfig: {
           temperature: config.temperature ?? 0.7,
@@ -86,7 +96,11 @@ export class GeminiV1Client {
           maxOutputTokens: config.maxOutputTokens ?? 800,
           stopSequences: config.stopSequences
         }
-      });
+      };
+      
+      console.log("Enviando solicitud de chat a Gemini v1");
+      
+      const response = await axios.post(url, requestBody);
       
       if (response.data && response.data.candidates && response.data.candidates.length > 0) {
         const content = response.data.candidates[0].content;

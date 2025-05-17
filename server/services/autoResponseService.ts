@@ -1,8 +1,7 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
-import * as googleai from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GeminiV1Client } from './geminiV1';
 
 // Tipo de datos para la plantilla de respuesta automática
@@ -106,7 +105,7 @@ export class AutoResponseService {
         console.warn('GEMINI_API_KEY no está definida. Algunas funciones de IA de Gemini estarán limitadas.');
       } else {
         // Inicializar ambos clientes - el oficial y nuestra implementación directa
-        this.geminiClient = new googleai.GoogleGenerativeAI(apiKey);
+        this.geminiClient = new GoogleGenerativeAI(apiKey);
         this.geminiV1Client = new GeminiV1Client(apiKey);
         console.log('Clientes Gemini inicializados correctamente (con soporte para v1)');
       }
