@@ -19,6 +19,7 @@ import Connection from './pages/Connection';
 import QRCode from './pages/QRCode';
 import QrViewer from './pages/QrViewer';
 import QrTextViewer from './pages/QrTextViewer';
+import RawQrViewer from './pages/RawQrViewer';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
 import { PageTransition } from '@/components/ui/page-transition';
@@ -150,6 +151,8 @@ const App: React.FC = () => {
                   <Route path="/connection" component={Connection} />
                   <Route path="/qrcode" component={QRCode} />
                   <Route path="/qr-viewer" component={QrViewer} />
+                  <Route path="/qr-text" component={QrTextViewer} />
+                  <Route path="/raw-qr" component={RawQrViewer} />
                   <Route component={NotFound} />
                 </Switch>
               </PageTransition>
