@@ -163,15 +163,38 @@ export class AutoResponseService {
   /**
    * Actualiza la configuración
    */
-  updateConfig(newConfig: AutoResponseConfig): AutoResponseConfig {
+  updateConfig(newConfig: Partial<AutoResponseConfig>): AutoResponseConfig {
     // Validar configuración básica
-    if (typeof newConfig.enabled !== 'boolean' || 
-        typeof newConfig.delaySeconds !== 'number' ||
-        !Array.isArray(newConfig.templates)) {
-      throw new Error('Configuración de respuesta automática inválida');
+    if (newConfig.enabled !== undefined && typeof newConfig.enabled !== 'boolean') {
+      throw new Error('El campo enabled debe ser un booleano');
+    }
+    
+    if (newConfig.delaySeconds !== undefined && typeof newConfig.delaySeconds !== 'number') {
+      throw new Error('El campo delaySeconds debe ser un número');
+    }
+    
+    if (newConfig.templates !== undefined && !Array.isArray(newConfig.templates)) {
+      throw new Error('El campo templates debe ser un array');
     }
 
-    this.config = { ...newConfig };
+    // Asegurarse de que aiProvider tenga un valor válido
+    if (newConfig.aiProvider !== undefined && 
+        newConfig.aiProvider !== 'gemini' && 
+        newConfig.aiProvider !== 'openai') {
+      throw new Error('El proveedor de IA debe ser "gemini" o "openai"');
+    }
+
+    // Combinar la configuración actual con la nueva
+    this.config = { 
+      ...this.config, 
+      ...newConfig,
+      // Asegurar que customPrompts se mezcla correctamente
+      customPrompts: {
+        ...this.config.customPrompts,
+        ...(newConfig.customPrompts || {})
+      }
+    };
+    
     this.saveConfig();
     return this.getConfig();
   }
