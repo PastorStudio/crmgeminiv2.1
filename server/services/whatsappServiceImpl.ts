@@ -446,9 +446,34 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
             (global as any).sendNotification({
               type: 'new_message',
               contactName,
-              messageText: message.body,
+              contactId,
+              chatId,
+              body: message.body,
               timestamp: new Date()
             });
+          }
+          
+          // Intentar enviar notificación mediante el servicio de notificaciones
+          try {
+            const { notificationService, NotificationType } = await import('../services/notificationService');
+            if (notificationService && NotificationType) {
+              console.log('Enviando notificación de nuevo mensaje mediante servicio de notificaciones');
+              notificationService.broadcastNotification({
+                id: Date.now().toString(),
+                type: NotificationType.NEW_MESSAGE,
+                timestamp: new Date(),
+                data: {
+                  channel: 'whatsapp',
+                  chatId,
+                  contactId,
+                  contactName,
+                  body: message.body,
+                  timestamp: Date.now()
+                }
+              });
+            }
+          } catch (notificationError) {
+            console.warn('No se pudo enviar notificación mediante servicio:', notificationError);
           }
           
           // Procesar respuesta automática si está configurada
