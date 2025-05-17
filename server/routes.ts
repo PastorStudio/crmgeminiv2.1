@@ -19,6 +19,7 @@ import { db } from "./db";
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
 import { autoResponseService } from "./services/autoResponseService";
+import { registerDirectAPIRoutes } from "./services/directApiServer";
 import multer from "multer";
 import { messageTemplateService } from "./services/messageTemplateService";
 import { analyticsService } from "./services/analyticsService";
