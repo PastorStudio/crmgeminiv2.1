@@ -77,14 +77,31 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [lastMessageCount, setLastMessageCount] = useState(0);
   const [newMessagesReceived, setNewMessagesReceived] = useState(false);
   const [processingAutoResponse, setProcessingAutoResponse] = useState(false);
+  const [forceRefresh, setForceRefresh] = useState(0); // Para forzar recarga de datos
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSeenMessagesRef = useRef<{[chatId: string]: number}>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Estado de respuestas automáticas
+  const { data: autoResponseStatus } = useQuery({
+    queryKey: ['autoresponse-status'],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/autoresponse/status`);
+        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        console.error('Error obteniendo estado de respuestas automáticas:', error);
+        return { enabled: false };
+      }
+    },
+    refetchInterval: 10000
+  });
+
   // Estado de WhatsApp
   const { data: whatsappStatus, isLoading: isLoadingWhatsappStatus } = useQuery({
-    queryKey: ['whatsapp-status-direct'],
+    queryKey: ['whatsapp-status-direct', forceRefresh],
     queryFn: async () => {
       try {
         const timestamp = Date.now();
@@ -101,7 +118,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   
   // Consulta para chats
   const { data: whatsappChats = [], isLoading: isLoadingChats } = useQuery({
-    queryKey: ['whatsapp-chats-direct'],
+    queryKey: ['whatsapp-chats-direct', forceRefresh],
     queryFn: async () => {
       try {
         const timestamp = Date.now();
@@ -115,7 +132,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       }
     },
     enabled: whatsappStatus?.authenticated === true,
-    refetchInterval: whatsappStatus?.authenticated ? 5000 : false
+    refetchInterval: whatsappStatus?.authenticated ? 5000 : false,
+    staleTime: 0 // Siempre recargar en cambios
   });
   
   // Consulta para mensajes
@@ -123,7 +141,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     data: whatsappMessages = [], 
     isLoading: isLoadingWhatsappMessages 
   } = useQuery({
-    queryKey: ['whatsapp-messages-direct', selectedChatId],
+    queryKey: ['whatsapp-messages-direct', selectedChatId, forceRefresh],
     queryFn: async () => {
       if (!selectedChatId) return [];
       try {
@@ -137,7 +155,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       }
     },
     enabled: !!selectedChatId && whatsappStatus?.authenticated === true,
-    refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 5000 : false
+    refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 5000 : false,
+    staleTime: 0 // Siempre recargar en cambios
   });
   
   // Seleccionar el primer chat al cargar
@@ -156,6 +175,21 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     }
   }, [whatsappMessages]);
   
+  // Actualizar el estado de respuestas automáticas cuando cambie
+  useEffect(() => {
+    if (autoResponseStatus?.success && typeof autoResponseStatus.enabled === 'boolean') {
+      setAutoResponsesEnabled(autoResponseStatus.enabled);
+    }
+  }, [autoResponseStatus]);
+
+  // Forzar recarga de datos cuando cambie el estado de WhatsApp
+  useEffect(() => {
+    if (whatsappStatus?.authenticated) {
+      // Invalidar todas las consultas cuando se autentica
+      setForceRefresh(prev => prev + 1);
+    }
+  }, [whatsappStatus?.authenticated]);
+
   // Detectar nuevos mensajes y procesar respuestas automáticas
   useEffect(() => {
     if (Array.isArray(whatsappMessages) && whatsappMessages.length > 0 && selectedChatId) {
@@ -552,9 +586,17 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   )}
                   
                   {/* Indicador de estado IA */}
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-md text-xs">
+                  <div 
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer hover:bg-gray-100 ${
+                      autoResponsesEnabled ? "bg-green-50" : ""
+                    }`}
+                    onClick={() => {
+                      // Al hacer clic, mostrar el diálogo de configuración
+                      setShowGeminiConfigDialog(true);
+                    }}
+                  >
                     <Bot size={14} className={autoResponsesEnabled ? "text-green-500" : "text-gray-400"} />
-                    <span className={autoResponsesEnabled ? "text-green-500" : "text-gray-400"}>
+                    <span className={autoResponsesEnabled ? "text-green-500 font-medium" : "text-gray-400"}>
                       {autoResponsesEnabled ? "IA Activa" : "IA Inactiva"}
                     </span>
                   </div>
@@ -597,7 +639,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                           )}
                           
                           <div 
-                            className={`flex ${msg.fromMe ? 'justify-end' : 'justify-start'} ${isSequential ? 'mt-1' : 'mt-3'}`}
+                            className={`flex w-full ${msg.fromMe ? 'justify-end' : 'justify-start'} ${isSequential ? 'mt-1' : 'mt-3'}`}
                           >
                             {!msg.fromMe && !isSequential && (
                               <Avatar className="h-8 w-8 mr-2 mt-2 flex-shrink-0 border shadow-sm">
@@ -612,7 +654,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                             <div 
                               className={`max-w-[75%] rounded-lg p-3 ${
                                 msg.fromMe 
-                                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md' 
+                                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md ml-auto' 
                                   : 'bg-white border shadow-sm'
                               } ${isSequential && msg.fromMe ? 'rounded-tr-sm' : ''} ${isSequential && !msg.fromMe ? 'rounded-tl-sm' : ''}`}
                             >
@@ -646,7 +688,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                                 </span>
                                 
                                 {msg.fromMe && (
-                                  <CheckCheck size={14} className="text-green-100" />
+                                  <CheckCheck size={14} className={msg.fromMe ? "text-green-100" : "text-gray-400"} />
                                 )}
                               </div>
                             </div>
