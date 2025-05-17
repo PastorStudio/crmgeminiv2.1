@@ -18,28 +18,30 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useWebSocket, NotificationType } from '@/hooks/useWebSocket';
 import { getInitials } from '@/lib/utils';
-import { MessageText } from '@/components/ui/message-text';
-import {
+import { 
+  Bot, 
+  Send, 
+  MessageSquare, 
+  Image as ImageIcon, 
+  Settings, 
+  MoreVertical, 
+  Wifi, 
+  WifiOff,
+  QrCode,
   Search,
-  Send,
   Paperclip,
   Brain,
-  Bot,
-  MoreVertical,
   Smile,
   CheckCheck,
   RefreshCw,
-  MessageSquare,
   Image,
   FileText,
   Mic,
   Camera,
   Contact,
-  File,
-  Settings,
-  Wifi,
-  WifiOff
+  File
 } from 'lucide-react';
+import { MessageText } from '@/components/ui/message-text';
 // Importar el componente de configuración
 import { GeminiConfig } from '@/components/GeminiConfig';
 
