@@ -150,6 +150,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     },
     enabled: whatsappStatus?.authenticated === true,
     // Reducimos la frecuencia con WebSocket conectado
+    staleTime: isWsConnected ? 60000 : 30000, // 1 minuto o 30 segundos dependiendo de la conexión
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    retry: 3,
     refetchInterval: whatsappStatus?.authenticated ? (isWsConnected ? 10000 : 5000) : false
   });
   
@@ -343,7 +347,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     : null;
 
   return (
-    <Card className="h-full flex flex-col shadow-md w-full border-0 rounded-none">
+    <Card className="h-full flex flex-col shadow-md w-full border-0 rounded-none absolute inset-0">
       <CardHeader className="p-3 pb-0">
         <CardTitle className="text-lg flex items-center justify-between">
           <div className="flex items-center gap-2">
