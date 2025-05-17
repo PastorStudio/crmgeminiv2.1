@@ -532,10 +532,37 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   }
 
   /**
-   * Obtiene el estado actual del servicio
+   * Obtiene el estado actual del servicio con verificación en tiempo real
    */
   getStatus(): WhatsAppStatus {
-    return this.status;
+    // Si el cliente no está inicializado, devolver el estado actual
+    if (!this.client) {
+      return { ...this.status, authenticated: false, ready: false };
+    }
+    
+    // Comprobar si el cliente tiene información de sesión (está autenticado)
+    const isAuthenticated = Boolean(this.client.info);
+    
+    // Actualizar el estado de autenticación en tiempo real
+    if (this.status.authenticated !== isAuthenticated) {
+      console.log(`Actualizando estado de autenticación: ${isAuthenticated ? 'Conectado' : 'Desconectado'}`);
+      this.status.authenticated = isAuthenticated;
+      
+      // Si se cambió de desconectado a conectado, esperar para actualizar los chats
+      if (isAuthenticated && this.chatCache.size === 0) {
+        console.log('Cliente WhatsApp listo para usar');
+        console.log('Sesión autenticada correctamente');
+        console.log('Cargando chats iniciales...');
+        setTimeout(() => {
+          this.refreshChats().catch(err => {
+            console.error('Error cargando chats iniciales:', err);
+          });
+        }, 2000);
+      }
+    }
+    
+    // Devolver el estado actualizado
+    return { ...this.status };
   }
   
   /**
@@ -1112,22 +1139,58 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
    * Actualiza la lista de chats disponibles
    */
   private async refreshChats(): Promise<void> {
-    if (!this.client || !this.status.authenticated) return;
+    if (!this.client) {
+      console.log('Cliente no inicializado, no se pueden obtener chats');
+      return;
+    }
+    
+    if (!this.status.authenticated) {
+      console.log('Cliente no autenticado, no se pueden obtener chats');
+      return;
+    }
     
     try {
       console.log('Actualizando lista de chats...');
       
-      // Obtener todos los chats de WhatsApp
-      const chats = await this.client.getChats();
+      // Verificar el estado actual
+      const state = await this.client.getState().catch(() => null);
+      if (state !== 'CONNECTED') {
+        console.log(`Cliente en estado incorrecto: ${state}, no se pueden obtener chats`);
+        return;
+      }
+      
+      // Asegurarse de que el cliente esté listo para realizar operaciones
+      if (!this.client.pupPage || !this.client.info) {
+        console.log('Cliente no completamente inicializado, esperando...');
+        // Marcar cliente como no autenticado para forzar reconexión
+        this.status.authenticated = false;
+        this.status.ready = false;
+        return;
+      }
+      
+      // Obtener todos los chats de WhatsApp con manejo de errores mejorado
+      const chats = await this.client.getChats().catch(error => {
+        console.error('Error obteniendo chats de WhatsApp:', error);
+        return [];
+      });
+      
+      if (chats.length === 0) {
+        console.log('No se encontraron chats o hubo un error al obtenerlos');
+        return;
+      }
       
       // Actualizar caché de chats
       for (const chat of chats) {
         await this.updateChatInfo(chat);
       }
       
-      console.log(`${chats.length} chats actualizados correctamente`);
+      // Actualizar estado para indicar que la carga fue exitosa
+      this.status.ready = true;
+      console.log(`Cargados ${chats.length} chats iniciales`);
     } catch (error) {
       console.error('Error actualizando chats:', error);
+      // En caso de error, marcar cliente como no listo para forzar reconexión
+      this.status.ready = false;
     }
   }
   
