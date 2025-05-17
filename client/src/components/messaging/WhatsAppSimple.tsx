@@ -341,7 +341,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     : null;
 
   return (
-    <Card className="h-[calc(100vh-8.5rem)] flex flex-col shadow-md w-full">
+    <Card className="h-screen flex flex-col shadow-md w-full">
       <CardHeader className="p-3 pb-0">
         <CardTitle className="text-lg flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -645,7 +645,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     </div>
                   </div>
                 ) : whatsappMessages.length > 0 ? (
-                  <div className="space-y-2 py-4 w-[95%] mx-auto">
+                  <div className="space-y-2 py-4 w-full px-2">
                     {whatsappMessages.map((msg: WhatsAppMessage, index: number) => {
                       // Verificar si debe mostrar separador de fecha
                       const showDateSeparator = index === 0 || 
@@ -680,7 +680,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                             {!msg.fromMe && isSequential && <div className="w-10 flex-shrink-0"></div>}
                             
                             <div 
-                              className={`w-[95%] rounded-lg p-3 ${
+                              className={`max-w-[95%] w-fit rounded-lg p-3 ${
                                 msg.fromMe 
                                   ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md ml-auto' 
                                   : 'bg-white border shadow-sm mr-auto'
