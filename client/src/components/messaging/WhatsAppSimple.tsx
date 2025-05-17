@@ -405,7 +405,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       </CardHeader>
       
       {/* Contenedor principal de dos columnas */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden h-[calc(100vh-10rem)]">
         {/* Columna izquierda - Lista de chats */}
         <div className="w-1/4 border-r flex flex-col overflow-hidden">
           <div className="p-3">
