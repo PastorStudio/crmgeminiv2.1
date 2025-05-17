@@ -184,12 +184,39 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
 
   /**
    * Inicializa el cliente de WhatsApp Web con soporte para recuperación de sesiones
+   * Incluye mecanismos mejorados para garantizar la conexión exitosa
    */
   async initialize(): Promise<void> {
     try {
       if (this.client) {
         console.log('Cliente WhatsApp ya inicializado');
-        return;
+        
+        // Verificar si el cliente está realmente conectado
+        try {
+          const state = await this.client.getState().catch(() => null);
+          if (state === 'CONNECTED') {
+            console.log('Cliente ya autenticado y conectado');
+            this.status.authenticated = true;
+            this.status.ready = true;
+            // Actualizar el archivo de estado
+            this.updateSessionFile();
+            return;
+          } else {
+            console.log(`Cliente inicializado pero no conectado (estado: ${state}). Reiniciando...`);
+          }
+        } catch (err) {
+          console.log('Error verificando estado del cliente, reiniciando...', err);
+        }
+        
+        // Si llegamos aquí, el cliente existe pero no está correctamente conectado
+        try {
+          await this.client.destroy();
+          this.client = null;
+          console.log('Cliente actual destruido para reinicialización');
+        } catch (destroyErr) {
+          console.error('Error al destruir cliente:', destroyErr);
+          this.client = null;
+        }
       }
 
       // Verificar si hay una sesión activa anterior
@@ -323,7 +350,7 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
     });
 
     // Evento cuando el cliente está listo
-    this.client.on('ready', () => {
+    this.client.on('ready', async () => {
       console.log('Cliente WhatsApp listo para usar');
       this.status.ready = true;
       this.status.authenticated = true;
@@ -333,6 +360,21 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       
       // Actualizar el archivo de sesión para marcar autenticación
       this.updateSessionStatusFile();
+      
+      // Cargar chats inmediatamente para garantizar que están disponibles para la interfaz
+      try {
+        console.log('Cargando chats iniciales...');
+        const initialChats = await this.client.getChats();
+        if (initialChats && Array.isArray(initialChats)) {
+          console.log(`Cargados ${initialChats.length} chats iniciales`);
+          // Actualizar caché
+          for (const chat of initialChats) {
+            await this.updateChatInfo(chat);
+          }
+        }
+      } catch (err) {
+        console.error('Error cargando chats iniciales:', err);
+      }
       
       // Activar la conexión permanente
       this.activatePermanentConnection()
