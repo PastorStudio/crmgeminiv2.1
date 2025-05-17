@@ -103,7 +103,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchInterval: 5000
   });
 
-  // Query para obtener chats - con protección adicional contra la desaparición de datos
+  // Query para obtener chats - ahora con enfoque directo para debugging
   const { 
     data: apiChats = [],
     isLoading: isLoadingChats,
@@ -111,79 +111,43 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     error: chatError
   } = useQuery({
     queryKey: ['/api/direct/whatsapp/chats'],
-    refetchInterval: 10000, // Reducimos frecuencia para evitar sobrecarga
+    refetchInterval: 15000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    retry: 5, // Aumentamos reintentos
-    staleTime: 30000, // Mantenemos datos por más tiempo
+    retry: 3,
     queryFn: async () => {
       try {
-        // Agregamos parámetro timestamp para evitar caché del navegador
+        // Enfoque simple y directo
         const timestamp = new Date().getTime();
-        const url = `/api/direct/whatsapp/chats?t=${timestamp}`;
+        const response = await fetch(`/api/direct/whatsapp/chats?noCache=${timestamp}`);
+        if (!response.ok) {
+          throw new Error(`Error obteniendo chats: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log(`Chats recibidos de API: ${Array.isArray(data) ? data.length : 0}`);
         
-        // Usar XMLHttpRequest en lugar de fetch para evitar problemas con el caché
-        return new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('GET', url, true);
-          xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-          xhr.setRequestHeader('Pragma', 'no-cache');
-          
-          xhr.onload = function() {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const data = JSON.parse(xhr.responseText);
-                if (Array.isArray(data)) {
-                  console.log(`Chats obtenidos correctamente: ${data.length} chats`);
-                  
-                  // Guardamos en localStorage para tener un respaldo
-                  if (data.length > 0) {
-                    try {
-                      localStorage.setItem('whatsapp_chats_backup', JSON.stringify(data));
-                      console.log('Chat backup guardado:', data.length, 'chats');
-                    } catch (localStorageError) {
-                      console.error('Error al guardar en localStorage:', localStorageError);
-                    }
-                  }
-                  
-                  resolve(data);
-                } else {
-                  console.error('Respuesta no es un array:', typeof data);
-                  
-                  // Intentar recuperar del localStorage
-                  try {
-                    const backup = localStorage.getItem('whatsapp_chats_backup');
-                    if (backup) {
-                      const parsedBackup = JSON.parse(backup);
-                      console.log('Usando chats de respaldo:', parsedBackup.length);
-                      resolve(parsedBackup);
-                      return;
-                    }
-                  } catch (backupError) {
-                    console.error('Error al recuperar backup:', backupError);
-                  }
-                  
-                  resolve([]);
-                }
-              } catch (error) {
-                console.error('Error al parsear respuesta:', error);
-                resolve([]);
-              }
-            } else {
-              console.error('Error en la solicitud XHR:', xhr.status);
-              resolve([]);
-            }
-          };
-          
-          xhr.onerror = function() {
-            console.error('Error de red en la solicitud XHR');
-            resolve([]);
-          };
-          
-          xhr.send();
-        });
+        // Si tenemos datos reales, los devolvemos
+        if (Array.isArray(data) && data.length > 0) {
+          return data;
+        }
+        
+        // Si no hay datos, regresamos un mock para debugging
+        // SOLO PARA DIAGNÓSTICO - mostrar lo que debería aparecer mientras encontramos
+        // por qué no se están mostrando los chats reales
+        console.log("Usando array de diagnóstico (37 chats)");
+        
+        // Crear un array de ejemplo con 37 elementos (para verificar la visualización)
+        return Array.from({ length: 37 }, (_, i) => ({
+          id: `chat_${i}`,
+          name: `Chat de diagnóstico ${i + 1}`,
+          isGroup: i % 3 === 0,
+          timestamp: Date.now() - (i * 1000 * 60),
+          unreadCount: i % 5,
+          lastMessage: `Este es un mensaje de diagnóstico ${i + 1}. Los chats reales no se están mostrando.`,
+          profilePicUrl: ''
+        }));
       } catch (error) {
-        console.error("Error obteniendo chats:", error);
+        console.error("Error en la obtención de chats:", error);
         return [];
       }
     }
