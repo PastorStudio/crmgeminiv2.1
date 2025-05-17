@@ -584,13 +584,75 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
             </TabsContent>
             
             <TabsContent value="contacts" className="flex-1 overflow-hidden">
+              <div className="relative mb-2 p-2 border-b">
+                <Search className="absolute left-4 top-4.5 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar contacto por nombre o número..."
+                  className="pl-8 h-9"
+                  value={contactFilter}
+                  onChange={(e) => setContactFilter(e.target.value)}
+                />
+              </div>
+              
               <ScrollArea className="flex-1">
-                <div className="p-4 text-center text-gray-500">
-                  <div className="mb-2">Lista de contactos</div>
-                  <div className="text-xs">
-                    Próximamente: funcionalidad para gestionar contactos
+                {isLoadingContacts ? (
+                  <div className="flex justify-center p-4">
+                    <Spinner />
                   </div>
-                </div>
+                ) : Array.isArray(whatsappContacts) && whatsappContacts.length > 0 ? (
+                  <div className="divide-y">
+                    <div className="p-3 text-sm text-gray-500">
+                      Contactos disponibles: {filteredContacts.length}
+                    </div>
+                    
+                    {filteredContacts.map((contact: any) => (
+                      <div
+                        key={contact.id}
+                        className="p-3 hover:bg-gray-50 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-11 w-11 flex-shrink-0 border shadow-sm">
+                            {contact.profilePicUrl ? (
+                              <AvatarImage src={contact.profilePicUrl} alt={contact.name} />
+                            ) : null}
+                            <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
+                              {getInitials(contact.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium truncate">{contact.name}</span>
+                              {contact.isGroup && (
+                                <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200">
+                                  Grupo
+                                </Badge>
+                              )}
+                              {!contact.isGroup && (
+                                <Badge variant="outline" className="text-[10px] h-4 px-1 bg-purple-50 text-purple-700 border-purple-200">
+                                  Contacto
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-sm text-gray-500">
+                              <p className="truncate w-36">
+                                {contact.number || 'Sin número'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-gray-500 text-sm">
+                    <div className="mb-2">No hay contactos disponibles</div>
+                    <div className="text-xs">
+                      Se ha establecido conexión con WhatsApp, pero no se encontraron contactos.
+                    </div>
+                  </div>
+                )}
               </ScrollArea>
             </TabsContent>
           </Tabs>
