@@ -1,10 +1,7 @@
 {
-  "activatedAt": "2025-05-17T01:33:18.173Z",
+  "activatedAt": "2025-05-17T02:19:37.088Z",
   "clientId": "crm-client",
   "active": true,
-  "lastCheckedAt": "2025-05-17T02:09:18.182Z",
-  "connectionState": "CONNECTED",
-  "permanentConnection": true,
-  "authenticated": true,
-  "authenticatedAt": "2025-05-17T01:33:18.175Z"
+  "lastCheckedAt": "2025-05-17T02:19:37.088Z",
+  "permanentConnection": true
 }

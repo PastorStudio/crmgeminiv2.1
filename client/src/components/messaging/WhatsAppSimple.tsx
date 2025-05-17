@@ -704,7 +704,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                               )}
                               
                               <div className="text-sm whitespace-pre-wrap break-words">
-                                {msg.body}
+                                {formatMessageWithLinks(msg.body)}
                               </div>
                               
                               <div className="text-right mt-1 flex justify-end items-center gap-1">
