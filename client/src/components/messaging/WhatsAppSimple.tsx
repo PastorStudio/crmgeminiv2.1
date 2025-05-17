@@ -336,6 +336,35 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       .toUpperCase()
       .substring(0, 2);
   };
+  
+  // Función para refrescar manualmente el estado de WhatsApp
+  const handleRefreshWhatsapp = async () => {
+    try {
+      setIsRefreshing(true);
+      
+      // Forzar actualización de los datos
+      setForceRefresh(prev => prev + 1);
+      
+      toast({
+        title: "Actualizando conexión",
+        description: "Verificando estado de WhatsApp...",
+      });
+      
+      // Esperar un momento para que se apliquen los cambios
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error al refrescar WhatsApp:', error);
+      toast({
+        title: "Error de conexión",
+        description: "No se pudo verificar el estado de WhatsApp. Intente nuevamente.",
+        variant: "destructive"
+      });
+      setIsRefreshing(false);
+    }
+  };
 
   // Formatear timestamp
   const formatTime = (timestamp: number) => {
@@ -386,9 +415,32 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
               variant="ghost" 
               size="icon" 
               className="h-7 w-7"
+              onClick={handleRefreshWhatsapp}
+              disabled={isRefreshing}
             >
-              <RefreshCw size={14} />
+              <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
             </Button>
+            
+            {!whatsappStatus?.authenticated && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="ml-2 h-7 text-xs">
+                    <QrCode className="h-3 w-3 mr-1" />
+                    Ver QR
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Conectar WhatsApp</DialogTitle>
+                  </DialogHeader>
+                  <ImprovedQRDisplay 
+                    status={whatsappStatus}
+                    isLoading={isLoadingWhatsappStatus} 
+                    onRefresh={handleRefreshWhatsapp}
+                  />
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </CardTitle>
       </CardHeader>
