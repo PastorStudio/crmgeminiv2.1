@@ -902,6 +902,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint para verificar el estado de la clave API de OpenAI
+  app.get("/api/settings/openai-key-status", async (req: Request, res: Response) => {
+    try {
+      // Verificar si tenemos una clave API de OpenAI configurada
+      const hasKey = process.env.OPENAI_API_KEY !== undefined && 
+                    process.env.OPENAI_API_KEY !== null && 
+                    process.env.OPENAI_API_KEY !== '';
+      
+      res.json({
+        success: true,
+        hasKey: hasKey,
+        apiKey: hasKey ? process.env.OPENAI_API_KEY : undefined
+      });
+    } catch (error) {
+      console.error('Error verificando estado de API key OpenAI:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error al verificar el estado de la API key OpenAI'
+      });
+    }
+  });
+  
   // Endpoint para obtener la clave API de Gemini para el cliente
   app.get("/api/settings/gemini-client-key", async (req: Request, res: Response) => {
     try {
