@@ -594,56 +594,63 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 />
               </div>
               
-              <ScrollArea className="flex-1">
+              <div className="flex-1 overflow-auto" style={{ height: 'calc(100vh - 180px)' }}>
                 {isLoadingContacts ? (
                   <div className="flex justify-center p-4">
                     <Spinner />
                   </div>
                 ) : Array.isArray(whatsappContacts) && whatsappContacts.length > 0 ? (
                   <div className="divide-y">
-                    <div className="p-3 text-sm text-gray-500">
+                    <div className="p-3 text-sm text-gray-500 sticky top-0 bg-white z-10 border-b">
                       Contactos disponibles: {filteredContacts.length}
                     </div>
                     
-                    {filteredContacts.map((contact: any) => (
-                      <div
-                        key={contact.id}
-                        className="p-3 hover:bg-gray-50 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-11 w-11 flex-shrink-0 border shadow-sm">
-                            {contact.profilePicUrl ? (
-                              <AvatarImage src={contact.profilePicUrl} alt={contact.name} />
-                            ) : null}
-                            <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
-                              {getInitials(contact.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          
-                          <div className="flex-1 min-w-0 overflow-hidden">
-                            <div className="flex items-center gap-1">
-                              <span className="font-medium truncate">{contact.name}</span>
-                              {contact.isGroup && (
-                                <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200">
-                                  Grupo
-                                </Badge>
-                              )}
-                              {!contact.isGroup && (
-                                <Badge variant="outline" className="text-[10px] h-4 px-1 bg-purple-50 text-purple-700 border-purple-200">
-                                  Contacto
-                                </Badge>
-                              )}
-                            </div>
+                    <div className="overflow-auto contact-list">
+                      {filteredContacts.map((contact: any) => (
+                        <div
+                          key={contact.id}
+                          className="p-3 hover:bg-gray-50 cursor-pointer border-b"
+                          onClick={() => {
+                            // Cambiar a la pestaña de chats y seleccionar este contacto
+                            setActiveTab("chats");
+                            setSelectedChatId(contact.id);
+                          }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-11 w-11 flex-shrink-0 border shadow-sm">
+                              {contact.profilePicUrl ? (
+                                <AvatarImage src={contact.profilePicUrl} alt={contact.name} />
+                              ) : null}
+                              <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
+                                {getInitials(contact.name)}
+                              </AvatarFallback>
+                            </Avatar>
                             
-                            <div className="flex justify-between items-center text-sm text-gray-500">
-                              <p className="truncate w-36">
-                                {contact.number || 'Sin número'}
-                              </p>
+                            <div className="flex-1 min-w-0 overflow-hidden">
+                              <div className="flex items-center gap-1">
+                                <span className="font-medium truncate">{contact.name}</span>
+                                {contact.isGroup && (
+                                  <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200">
+                                    Grupo
+                                  </Badge>
+                                )}
+                                {!contact.isGroup && (
+                                  <Badge variant="outline" className="text-[10px] h-4 px-1 bg-purple-50 text-purple-700 border-purple-200">
+                                    Contacto
+                                  </Badge>
+                                )}
+                              </div>
+                              
+                              <div className="flex justify-between items-center text-sm text-gray-500">
+                                <p className="truncate w-36">
+                                  {contact.number || 'Sin número'}
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="p-4 text-center text-gray-500 text-sm">
@@ -653,7 +660,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     </div>
                   </div>
                 )}
-              </ScrollArea>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
