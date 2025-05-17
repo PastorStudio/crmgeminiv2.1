@@ -140,13 +140,24 @@ export default function Connection() {
                       </div>
                     )}
                     
-                    <Button 
-                      onClick={getWhatsAppQR}
-                      className="flex items-center"
-                    >
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Actualizar código QR
-                    </Button>
+                    <div className="flex flex-col space-y-3">
+                      <Button 
+                        onClick={getWhatsAppQR}
+                        className="flex items-center"
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Actualizar código QR
+                      </Button>
+                      
+                      <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 mt-4 text-sm text-gray-600">
+                        <span>¿Problemas para escanear? Prueba:</span>
+                        <div className="flex space-x-2">
+                          <a href="/raw-qr" className="text-blue-600 hover:underline">Ver texto del QR</a>
+                          <span>|</span>
+                          <a href="/qr-text" className="text-blue-600 hover:underline">Formato alternativo</a>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </CardContent>
