@@ -12,11 +12,11 @@ async function createTables() {
         id SERIAL PRIMARY KEY,
         username TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
-        full_name TEXT,
+        "fullName" TEXT,
         email TEXT,
         role TEXT DEFAULT 'user',
         avatar TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
     console.log("Tabla 'users' creada o ya existe");
@@ -183,7 +183,7 @@ async function createTables() {
       if (count === 0) {
       console.log("No se encontraron usuarios, creando usuario administrador por defecto...");
       await db.execute(`
-        INSERT INTO users (username, password, full_name, email, role)
+        INSERT INTO users (username, password, "fullName", email, role)
         VALUES ('admin', 'password123', 'Administrador del Sistema', 'admin@example.com', 'admin');
       `);
       console.log("Usuario administrador creado correctamente.");
@@ -194,7 +194,7 @@ async function createTables() {
       console.error("Error al verificar usuarios:", error);
       // Creamos un usuario por defecto en caso de error
       await db.execute(`
-        INSERT INTO users (username, password, full_name, email, role)
+        INSERT INTO users (username, password, "fullName", email, role)
         VALUES ('admin', 'password123', 'Administrador del Sistema', 'admin@example.com', 'admin')
         ON CONFLICT (username) DO NOTHING;
       `);
