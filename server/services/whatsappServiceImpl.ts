@@ -199,7 +199,7 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
             this.status.authenticated = true;
             this.status.ready = true;
             // Actualizar el archivo de estado
-            this.updateSessionFile();
+            this.updateSessionStatusFile();
             return;
           } else {
             console.log(`Cliente inicializado pero no conectado (estado: ${state}). Reiniciando...`);

@@ -35,8 +35,10 @@ import {
   File,
   Settings
 } from 'lucide-react';
-// Importar el componente de configuración
+// Importar componentes personalizados
 import { GeminiConfig } from '@/components/GeminiConfig';
+import { ImprovedQRDisplay } from './ImprovedQRDisplay';
+import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 
 // Interfaces
 interface WhatsAppChat {
@@ -78,6 +80,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [newMessagesReceived, setNewMessagesReceived] = useState(false);
   const [processingAutoResponse, setProcessingAutoResponse] = useState(false);
   const [forceRefresh, setForceRefresh] = useState(0); // Para forzar recarga de datos
+  const [isRefreshing, setIsRefreshing] = useState(false); // Estado para mostrar spinner durante reconexión
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSeenMessagesRef = useRef<{[chatId: string]: number}>({});
   const { toast } = useToast();
@@ -373,10 +376,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 <Spinner className="h-3 w-3" />
                 <span>Cargando...</span>
               </Badge>
-            ) : whatsappStatus?.authenticated ? (
-              <Badge variant="outline" className="bg-green-50 border-green-200 text-green-700 h-6">Conectado</Badge>
             ) : (
-              <Badge variant="outline" className="h-6">Desconectado</Badge>
+              <ConnectionStatusIndicator 
+                status={whatsappStatus} 
+                onReconnect={handleRefreshWhatsapp}
+              />
             )}
             <Button 
               variant="ghost" 
