@@ -23,7 +23,7 @@ export const registerDirectAPIRoutes = (app: any) => {
     }
   });
   
-  // Obtener código QR de WhatsApp
+  // Obtener código QR de WhatsApp como imagen
   app.get("/api/direct/whatsapp/qrcode", async (req: Request, res: Response) => {
     try {
       // Verificar si existe el archivo QR
@@ -50,6 +50,34 @@ export const registerDirectAPIRoutes = (app: any) => {
       }
     } catch (error) {
       console.error('Error obteniendo código QR:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Error al procesar código QR' 
+      });
+    }
+  });
+  
+  // Obtener el texto del código QR directamente
+  app.get("/api/direct/whatsapp/qr-text", async (req: Request, res: Response) => {
+    try {
+      // Verificar si existe el archivo QR
+      if (fs.existsSync(QR_TEXT_FILE)) {
+        // Leer contenido del QR
+        const qrText = fs.readFileSync(QR_TEXT_FILE, 'utf8');
+        
+        // Devolver el texto del QR
+        res.json({
+          success: true,
+          qrText: qrText
+        });
+      } else {
+        res.status(404).json({ 
+          success: false, 
+          error: 'Código QR no disponible' 
+        });
+      }
+    } catch (error) {
+      console.error('Error obteniendo texto del código QR:', error);
       res.status(500).json({ 
         success: false, 
         error: 'Error al procesar código QR' 
