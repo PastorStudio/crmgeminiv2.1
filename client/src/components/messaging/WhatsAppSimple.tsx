@@ -123,6 +123,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         }
         const data = await response.json();
         console.log("Chats obtenidos:", data?.length || 0);
+        // SOLO DATOS REALES: Si no hay datos, devolvemos array vacío
+        // sin usar ningún tipo de datos simulados
+        if (!Array.isArray(data) || data.length === 0) {
+          return [];
+        }
         return data;
       } catch (error) {
         console.error("Error obteniendo chats:", error);
@@ -244,11 +249,16 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     }
   });
 
-  // Solo usar chats reales de la API
-  const whatsappChats = Array.isArray(apiChats) ? apiChats : [];
+  // Solo usar chats reales de la API - NUNCA datos de ejemplo
+  // Verificar que tenemos datos reales y que WhatsApp está autenticado
+  const isWhatsAppAuthenticated = whatsappStatus?.authenticated === true;
+  const hasRealChats = Array.isArray(apiChats) && apiChats.length > 0;
+  
+  // Sólo asignar chats si hay datos reales Y estamos autenticados
+  const whatsappChats = (isWhatsAppAuthenticated && hasRealChats) ? apiChats : [];
   
   // Filtrar chats por nombre o último mensaje (si hay chats)
-  const filteredChats = whatsappChats && whatsappChats.length > 0 
+  const filteredChats = whatsappChats.length > 0 
     ? whatsappChats.filter(chat => {
         if (!chatFilter) return true;
         
