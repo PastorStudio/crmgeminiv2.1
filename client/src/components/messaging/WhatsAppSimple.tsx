@@ -263,17 +263,17 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     retry: 3
   });
   
+  // Combinar los chats
+  const whatsappChats = apiChats.length > 0 ? apiChats : demoChats;
+  
   // Seleccionar el primer chat al cargar
   useEffect(() => {
-    // Usar los chats de la API o los de demostración si no hay datos
-    const effectiveChats = apiChats.length > 0 ? apiChats : demoChats;
-    
-    if (Array.isArray(effectiveChats) && effectiveChats.length > 0 && !selectedChatId) {
+    if (Array.isArray(whatsappChats) && whatsappChats.length > 0 && !selectedChatId) {
       // Ordenar por más reciente
-      const sortedChats = [...effectiveChats].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      const sortedChats = [...whatsappChats].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       setSelectedChatId(sortedChats[0].id);
     }
-  }, [apiChats, demoChats, selectedChatId]);
+  }, [whatsappChats, selectedChatId]);
   
   // Scroll al último mensaje
   useEffect(() => {
@@ -530,9 +530,9 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     Escanea el código QR para ver tus chats de WhatsApp
                   </div>
                 </div>
-              ) : Array.isArray(whatsappChats) && whatsappChats.length > 0 ? (
+              ) : (
                 <div className="divide-y">
-                  {whatsappChats.map((chat: WhatsAppChat) => (
+                  {(Array.isArray(apiChats) && apiChats.length > 0 ? apiChats : demoChats).map((chat: WhatsAppChat) => (
                     <div
                       key={chat.id}
                       className={`p-3 hover:bg-gray-50 cursor-pointer ${
