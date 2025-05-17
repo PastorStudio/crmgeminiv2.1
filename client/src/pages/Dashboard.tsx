@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Helmet } from "react-helmet";
+import { PageContainer } from "@/components/ui/page-container";
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import SalesPipeline from "@/components/dashboard/SalesPipeline";
 import UpcomingActivities from "@/components/dashboard/UpcomingActivities";
@@ -24,21 +25,23 @@ export default function Dashboard() {
   return (
     <>
       <Helmet>
-        <title>Dashboard | GeminiCRM</title>
+        <title>Dashboard | WhatsApp CRM</title>
         <meta name="description" content="Overview of your CRM metrics, sales pipeline, upcoming activities, and recent conversations." />
       </Helmet>
       
-      {/* Dashboard Stats */}
-      <DashboardStats />
-      
-      {/* Sales Pipeline */}
-      <SalesPipeline />
-      
-      {/* Upcoming Activities and Recent Conversations */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <UpcomingActivities />
-        <RecentConversations />
-      </div>
+      <PageContainer>
+        {/* Dashboard Stats */}
+        <DashboardStats />
+        
+        {/* Sales Pipeline */}
+        <SalesPipeline />
+        
+        {/* Upcoming Activities and Recent Conversations */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <UpcomingActivities />
+          <RecentConversations />
+        </div>
+      </PageContainer>
     </>
   );
 }
