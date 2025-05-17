@@ -52,15 +52,21 @@ export async function generateAutoResponseWithOpenAI(
 ): Promise<string> {
   try {
     // Verificar si tenemos una API key válida
-    if (!openai) {
-      return "Error: No se ha configurado una API key para OpenAI. Configúrala en las variables de entorno.";
+    const loaded = await loadOpenAIApiKey();
+    if (!loaded) {
+      return "Error: No se ha configurado una API key para OpenAI. Por favor, configúrala en la sección de ajustes.";
     }
+
+    // Obtener la instancia de OpenAI con la API key actual
+    const openai = getOpenAIInstance();
 
     const systemPrompt = config.customPrompt || 
       "Eres un asistente de atención al cliente profesional y útil. Responde de manera clara, concisa y amable.";
 
     // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
     const model = config.modelName || 'gpt-4o';
+    
+    console.log(`Generando respuesta con OpenAI, modelo: ${model}`);
     
     const response = await openai.chat.completions.create({
       model,
@@ -85,7 +91,12 @@ export async function generateAutoResponseWithOpenAI(
  */
 export async function checkOpenAIKeyStatus(): Promise<boolean> {
   try {
-    if (!openai) return false;
+    // Intentar cargar la API key primero
+    const loaded = await loadOpenAIApiKey();
+    if (!loaded) return false;
+    
+    // Obtener instancia de OpenAI
+    const openai = getOpenAIInstance();
     
     // Intentar hacer una llamada simple para verificar que la API key funciona
     const response = await openai.chat.completions.create({

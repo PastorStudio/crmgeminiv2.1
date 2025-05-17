@@ -5,6 +5,10 @@ import { chatContext, type ChatConfig } from '@/lib/chatContext';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { checkGeminiKeyStatus } from '@/lib/gemini';
+import { checkOpenAIKeyStatus } from '@/lib/openai';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 interface GeminiConfigProps {
   chatId: string;
@@ -21,11 +25,27 @@ export function GeminiConfig({ chatId, isOpen, onClose }: GeminiConfigProps) {
     provider: 'gemini' // Proveedor por defecto
   });
   
+  const [geminiKeyStatus, setGeminiKeyStatus] = useState<boolean | null>(null);
+  const [openaiKeyStatus, setOpenaiKeyStatus] = useState<boolean | null>(null);
+  
   // Cargar la configuración actual cuando se abre el diálogo
   useEffect(() => {
     if (isOpen && chatId) {
       const currentConfig = chatContext.getConversation(chatId).config;
       setConfig(currentConfig);
+      
+      // Verificar el estado de las claves API
+      checkGeminiKeyStatus().then(status => {
+        setGeminiKeyStatus(status);
+      }).catch(() => {
+        setGeminiKeyStatus(false);
+      });
+      
+      checkOpenAIKeyStatus().then(status => {
+        setOpenaiKeyStatus(status);
+      }).catch(() => {
+        setOpenaiKeyStatus(false);
+      });
     }
   }, [isOpen, chatId]);
   
