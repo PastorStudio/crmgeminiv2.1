@@ -107,18 +107,27 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const { 
     data: apiChats = [],
     isLoading: isLoadingChats,
-    refetch: refetchChats
+    refetch: refetchChats,
+    error: chatError
   } = useQuery({
     queryKey: ['/api/direct/whatsapp/chats'],
     refetchInterval: 5000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     retry: 3,
-    onSuccess: (data) => {
-      console.log("Chats obtenidos:", data?.length || 0);
-    },
-    onError: (error) => {
-      console.error("Error obteniendo chats:", error);
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/direct/whatsapp/chats');
+        if (!response.ok) {
+          throw new Error('Error al obtener chats');
+        }
+        const data = await response.json();
+        console.log("Chats obtenidos:", data?.length || 0, data);
+        return data;
+      } catch (error) {
+        console.error("Error obteniendo chats:", error);
+        throw error;
+      }
     }
   });
 
