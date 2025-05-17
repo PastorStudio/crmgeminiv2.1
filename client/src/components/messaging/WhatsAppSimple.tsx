@@ -229,30 +229,28 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     }
   });
 
-  // Combinar y filtrar chats (API o demo)
-  const combinedChats = apiChats && apiChats.length > 0 ? apiChats : demoChats;
+  // Solo usar chats reales de la API
+  const whatsappChats = apiChats || [];
   
-  // Filtrar chats por nombre o último mensaje
-  const whatsappChats = combinedChats.filter(chat => {
-    if (!chatFilter) return true;
-    
-    const searchTermLower = chatFilter.toLowerCase();
-    return (
-      chat.name.toLowerCase().includes(searchTermLower) || 
-      (chat.lastMessage && chat.lastMessage.toLowerCase().includes(searchTermLower))
-    );
-  });
-  
-  // Mensajes del chat seleccionado (API o demo)
-  const whatsappMessages = selectedChatId 
-    ? (apiMessages && apiMessages.length > 0 
-      ? apiMessages 
-      : getDemoMessages(selectedChatId))
+  // Filtrar chats por nombre o último mensaje (si hay chats)
+  const filteredChats = whatsappChats.length > 0 
+    ? whatsappChats.filter(chat => {
+        if (!chatFilter) return true;
+        
+        const searchTermLower = chatFilter.toLowerCase();
+        return (
+          chat.name.toLowerCase().includes(searchTermLower) || 
+          (chat.lastMessage && chat.lastMessage.toLowerCase().includes(searchTermLower))
+        );
+      })
     : [];
+  
+  // Solo usar mensajes reales de la API
+  const whatsappMessages = selectedChatId && apiMessages ? apiMessages : [];
   
   // Obtener el chat actual
   const currentChat = selectedChatId 
-    ? combinedChats.find((chat: WhatsAppChat) => chat.id === selectedChatId) 
+    ? whatsappChats.find((chat: WhatsAppChat) => chat.id === selectedChatId) 
     : null;
 
   // Seleccionar el primer chat al cargar
@@ -471,7 +469,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     </div>
                   ) : whatsappChats && whatsappChats.length > 0 ? (
                     <div className="divide-y">
-                      {whatsappChats.map((chat: WhatsAppChat) => (
+                      {filteredChats.map((chat: WhatsAppChat) => (
                         <div
                           key={chat.id}
                           className={`p-3 hover:bg-gray-50 cursor-pointer ${
