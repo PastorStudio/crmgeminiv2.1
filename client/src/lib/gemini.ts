@@ -1,6 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 // Importamos nuestro cliente personalizado para la API v1
 import { GeminiV1Client } from './geminiV1Client';
+// Importamos la función de OpenAI
+import { generateAutoResponseWithOpenAI } from './openai';
+// Importamos el contexto de chat para acceder a las configuraciones
+import { chatContext, ChatConfig } from './chatContext';
 
 // Variables para almacenar la configuración dinámica de Gemini
 let API_KEY = '';
@@ -95,16 +99,32 @@ const textModelConfig = {
 /**
  * Genera una respuesta automática basada en el mensaje del usuario y el historial de chat
  * @param message El mensaje del usuario
+ * @param chatId ID del chat para obtener la configuración
  * @param chatHistory Historial de conversación (opcional)
- * @param customPrompt Prompt personalizado para la respuesta (opcional)
- * @returns La respuesta generada por Gemini
+ * @returns La respuesta generada por el modelo de IA seleccionado
  */
 export async function generateAutoResponse(
-  message: string, 
-  chatHistory: string[] = [], 
-  customPrompt?: string
+  message: string,
+  chatId: string,
+  chatHistory: string[] = []
 ): Promise<string> {
   try {
+    // Obtener la configuración del chat
+    const conversation = chatContext.getConversation(chatId);
+    const config = conversation.config;
+    
+    // Determinar qué proveedor usar
+    const provider = config.provider || 'gemini';
+    
+    console.log(`Generando respuesta con proveedor: ${provider}, modelo: ${config.modelName}`);
+    
+    // Usar OpenAI si está configurado como proveedor
+    if (provider === 'openai') {
+      return await generateAutoResponseWithOpenAI(chatId, message, config);
+    } 
+    
+    // De lo contrario, usar Gemini (opción por defecto)
+    
     // Guardar el modelo actual antes de recargar
     const previousModel = MODEL_NAME;
     
@@ -118,9 +138,6 @@ export async function generateAutoResponse(
     // Obtener instancia actualizada de Gemini
     const genAI = getGeminiInstance();
     
-    // Registrar qué modelo estamos usando para debug
-    console.log(`Generando respuesta con modelo: ${MODEL_NAME}`);
-    
     // Notificar si hubo un cambio de modelo automático
     if (previousModel !== MODEL_NAME && previousModel && window.notifyModelChange) {
       window.notifyModelChange(previousModel, MODEL_NAME);
@@ -130,7 +147,7 @@ export async function generateAutoResponse(
     const client = getGeminiV1Client();
 
     // Usar el prompt personalizado si está disponible, o el predeterminado
-    let systemPrompt = customPrompt || `
+    let systemPrompt = config.customPrompt || `
     Estás actuando como un asistente de atención al cliente profesional y útil. 
     Responde al siguiente mensaje del cliente. Tu respuesta debe ser:
     - Concisa y directa
@@ -178,9 +195,9 @@ export async function generateAutoResponse(
     // Utilizar nuestro cliente personalizado para generar respuesta
     const response = await client.generateContent(
       promptText,
-      MODEL_NAME,
+      config.modelName || MODEL_NAME,
       {
-        temperature: 0.7,
+        temperature: config.temperature || 0.7,
         topP: 0.8,
         topK: 40,
         maxOutputTokens: 1000
@@ -188,7 +205,7 @@ export async function generateAutoResponse(
     );
     return response;
   } catch (error: any) {
-    console.error("Error generando respuesta con Gemini:", error);
+    console.error("Error generando respuesta automática:", error);
     return "Lo siento, no pude generar una respuesta automática en este momento. Detalles del error: " + error.message;
   }
 }

@@ -344,8 +344,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     if (!message || !selectedChatId) return;
     
     try {
-      const context = await chatContext(selectedChatId);
-      const response = await generateAutoResponse(message.body, context);
+      // Obtener el historial de mensajes para contexto
+      const chatHistory = chatContext.getHistoryForGemini(selectedChatId);
+      
+      // Generar respuesta usando la configuración del chat seleccionado
+      const response = await generateAutoResponse(message.body, selectedChatId, chatHistory);
       
       if (response) {
         messageMutation.mutate(response);

@@ -60,17 +60,72 @@ export function GeminiConfig({ chatId, isOpen, onClose }: GeminiConfigProps) {
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
-          <div>
-            <label htmlFor="prompt" className="block text-sm font-medium mb-1">
-              Prompt personalizado
-            </label>
-            <textarea
-              id="prompt"
-              value={config.customPrompt || ''}
-              onChange={handlePromptChange}
-              placeholder="Eres un asistente de atención al cliente profesional y útil..."
-              className="w-full h-32 px-3 py-2 border rounded-md"
-            />
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Proveedor de IA
+              </label>
+              <RadioGroup 
+                value={config.provider || 'gemini'} 
+                onValueChange={(value) => setConfig(prev => ({ ...prev, provider: value as 'gemini' | 'openai' }))}
+                className="flex space-x-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="gemini" id="gemini" />
+                  <Label htmlFor="gemini">Google Gemini</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="openai" id="openai" />
+                  <Label htmlFor="openai">OpenAI</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Modelo
+              </label>
+              {config.provider === 'gemini' ? (
+                <Select 
+                  value={config.modelName} 
+                  onValueChange={(value) => setConfig(prev => ({ ...prev, modelName: value }))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona un modelo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
+                    <SelectItem value="gemini-1.5-flash">Gemini 1.5 Flash</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select 
+                  value={config.modelName} 
+                  onValueChange={(value) => setConfig(prev => ({ ...prev, modelName: value }))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona un modelo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                    <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="prompt" className="block text-sm font-medium mb-1">
+                Prompt personalizado
+              </label>
+              <textarea
+                id="prompt"
+                value={config.customPrompt || ''}
+                onChange={handlePromptChange}
+                placeholder="Eres un asistente de atención al cliente profesional y útil..."
+                className="w-full h-32 px-3 py-2 border rounded-md"
+              />
+            </div>
           </div>
 
           <div className="mt-4">
