@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { chatContext, type ChatConfig } from '@/lib/chatContext';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface GeminiConfigProps {
   chatId: string;
@@ -14,7 +17,8 @@ export function GeminiConfig({ chatId, isOpen, onClose }: GeminiConfigProps) {
     customPrompt: '',
     systemRole: 'asistente',
     temperature: 0.7,
-    modelName: 'gemini-1.5-pro'
+    modelName: 'gemini-1.5-pro',
+    provider: 'gemini' // Proveedor por defecto
   });
   
   // Cargar la configuración actual cuando se abre el diálogo
