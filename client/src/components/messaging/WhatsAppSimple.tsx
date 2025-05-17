@@ -69,184 +69,153 @@ interface WhatsAppInterfaceProps {
   onSelectLead?: (leadId: number) => void;
 }
 
+// Datos de demostración para desarrollo y fallback
+const demoChats: WhatsAppChat[] = [
+  { 
+    id: '123456789@c.us', 
+    name: 'José Pérez', 
+    isGroup: false, 
+    timestamp: Date.now() / 1000 - 1000, 
+    unreadCount: 3,
+    lastMessage: 'Hola, ¿podemos agendar una reunión?' 
+  },
+  { 
+    id: '987654321@g.us', 
+    name: 'Equipo de Marketing', 
+    isGroup: true, 
+    timestamp: Date.now() / 1000 - 3600, 
+    unreadCount: 0,
+    lastMessage: 'Debemos revisar la presentación' 
+  },
+  { 
+    id: '555555555@c.us', 
+    name: 'María López', 
+    isGroup: false, 
+    timestamp: Date.now() / 1000 - 7200, 
+    unreadCount: 1,
+    lastMessage: '¿Recibiste mi correo sobre la propuesta?' 
+  },
+  { 
+    id: '444444444@g.us', 
+    name: 'Soporte Técnico', 
+    isGroup: true, 
+    timestamp: Date.now() / 1000 - 10800, 
+    unreadCount: 5,
+    lastMessage: 'Nuevo caso: #12345 requiere atención' 
+  }
+];
+
+// Mensajes de demostración basados en el ID del chat
+const getDemoMessages = (chatId: string): WhatsAppMessage[] => {
+  const now = Date.now() / 1000;
+  
+  switch(chatId) {
+    case '123456789@c.us':
+      return [
+        { id: 'demo-msg-1', body: 'Hola, necesito información sobre sus servicios', fromMe: false, timestamp: now - 86400, hasMedia: false },
+        { id: 'demo-msg-2', body: 'Claro, estaré encantado de ayudarte. ¿Qué tipo de servicio te interesa?', fromMe: true, timestamp: now - 86300, hasMedia: false },
+        { id: 'demo-msg-3', body: 'Me interesa el servicio de consultoría', fromMe: false, timestamp: now - 3600, hasMedia: false },
+        { id: 'demo-msg-4', body: 'Excelente. Tenemos disponibilidad para la próxima semana', fromMe: true, timestamp: now - 3500, hasMedia: false },
+        { id: 'demo-msg-5', body: 'Perfecto. ¿Podemos agendar para el martes?', fromMe: true, timestamp: now - 1200, hasMedia: false },
+        { id: 'demo-msg-6', body: 'Hola, ¿podemos agendar una reunión?', fromMe: false, timestamp: now - 900, hasMedia: false }
+      ];
+    case '987654321@g.us':
+      return [
+        { id: 'demo-msg-7', body: 'Equipo, necesitamos finalizar la presentación para el cliente', fromMe: false, timestamp: now - 7200, hasMedia: false },
+        { id: 'demo-msg-8', body: 'Yo puedo encargarme de la parte de diseño', fromMe: true, timestamp: now - 7000, hasMedia: false },
+        { id: 'demo-msg-9', body: 'Gracias, ¿alguien puede ayudar con los datos estadísticos?', fromMe: false, timestamp: now - 6800, hasMedia: false },
+        { id: 'demo-msg-10', body: 'Yo me encargo de esa parte', fromMe: false, timestamp: now - 6700, hasMedia: false },
+        { id: 'demo-msg-11', body: 'Perfecto, necesitamos tenerlo listo para mañana', fromMe: true, timestamp: now - 6600, hasMedia: false },
+        { id: 'demo-msg-12', body: 'Debemos revisar la presentación', fromMe: false, timestamp: now - 3600, hasMedia: false }
+      ];
+    case '555555555@c.us':
+      return [
+        { id: 'demo-msg-13', body: 'Hola, te envío la propuesta que discutimos', fromMe: false, timestamp: now - 172800, hasMedia: false },
+        { id: 'demo-msg-14', body: 'Gracias María, la revisaré de inmediato', fromMe: true, timestamp: now - 172700, hasMedia: false },
+        { id: 'demo-msg-15', body: 'Por favor avísame si necesitas algún ajuste', fromMe: false, timestamp: now - 86400, hasMedia: false },
+        { id: 'demo-msg-16', body: 'La propuesta se ve bien, solo tengo una duda sobre el presupuesto', fromMe: true, timestamp: now - 43200, hasMedia: false },
+        { id: 'demo-msg-17', body: 'Podemos ajustarlo según tus necesidades', fromMe: false, timestamp: now - 10800, hasMedia: false },
+        { id: 'demo-msg-18', body: '¿Recibiste mi correo sobre la propuesta?', fromMe: false, timestamp: now - 7200, hasMedia: false }
+      ];
+    case '444444444@g.us':
+      return [
+        { id: 'demo-msg-19', body: 'Nuevo caso de soporte: cliente no puede acceder al sistema', fromMe: false, timestamp: now - 43200, hasMedia: false },
+        { id: 'demo-msg-20', body: '¿Alguien puede atenderlo? Es un cliente premium', fromMe: false, timestamp: now - 43100, hasMedia: false },
+        { id: 'demo-msg-21', body: 'Yo me encargo, ya estoy contactando al cliente', fromMe: true, timestamp: now - 43000, hasMedia: false },
+        { id: 'demo-msg-22', body: 'Gracias, mantennos informados', fromMe: false, timestamp: now - 42900, hasMedia: false },
+        { id: 'demo-msg-23', body: 'Problema resuelto, era un error de credenciales', fromMe: true, timestamp: now - 21600, hasMedia: false },
+        { id: 'demo-msg-24', body: 'Nuevo caso: #12345 requiere atención', fromMe: false, timestamp: now - 10800, hasMedia: false }
+      ];
+    default:
+      return [
+        { id: 'demo-msg-25', body: 'No hay mensajes disponibles', fromMe: false, timestamp: now, hasMedia: false }
+      ];
+  }
+};
+
 export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfaceProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [messageText, setMessageText] = useState('');
-  const [activeTab, setActiveTab] = useState('chats');
+  // Estado local
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-  const [autoResponsesEnabled, setAutoResponsesEnabled] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
-  const [showGeminiDialog, setShowGeminiDialog] = useState(false);
-  const [showGeminiConfigDialog, setShowGeminiConfigDialog] = useState(false);
-  const [lastMessageCount, setLastMessageCount] = useState(0);
-  const [newMessagesReceived, setNewMessagesReceived] = useState(false);
-  const [processingAutoResponse, setProcessingAutoResponse] = useState(false);
+  const [newMessage, setNewMessage] = useState('');
+  const [activeTab, setActiveTab] = useState('chats');
+  const [chatFilter, setChatFilter] = useState('');
+  const [autoResponses, setAutoResponses] = useState<boolean>(false);
+  const [showConfigMenu, setShowConfigMenu] = useState<boolean>(false);
+  
+  // Refs para scroll automático
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const lastSeenMessagesRef = useRef<{[chatId: string]: number}>({});
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Hook para WebSockets
+  const { 
+    sendMessage: sendWSMessage, 
+    lastMessage, 
+    connectionStatus 
+  } = useWebSocket();
+  
+  // Toast para notificaciones
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  
-  // Configurar WebSocket para mensajes en tiempo real
-  const { isConnected: isWsConnected, lastMessage: wsLastMessage } = useWebSocket({
-    onNotification: (notification) => {
-      console.log('Notificación WebSocket recibida:', notification);
 
-      // Si es una notificación de nuevo mensaje y tenemos un chat seleccionado
-      if (notification.type === NotificationType.NEW_MESSAGE && 
-          notification.data.chatId === selectedChatId) {
-        // Invalidar las consultas para actualizar los datos
-        queryClient.invalidateQueries({ queryKey: ['whatsapp-messages-direct', selectedChatId] });
-        queryClient.invalidateQueries({ queryKey: ['whatsapp-chats-direct'] });
-        
-        // Marcar que hay nuevos mensajes
-        setNewMessagesReceived(true);
-      }
-    },
-    onConnect: () => {
-      toast({
-        title: "Conexión establecida",
-        description: "Conectado al servidor de mensajería en tiempo real",
-        duration: 3000
-      });
-    },
-    onDisconnect: () => {
-      console.log('Desconectado del WebSocket');
-    }
+  // Query para obtener el estado de WhatsApp
+  const { 
+    data: whatsappStatus,
+    isLoading: isLoadingStatus
+  } = useQuery({
+    queryKey: ['/api/direct/whatsapp/status'],
+    refetchInterval: 5000
   });
 
-  // Estado de WhatsApp
-  const { data: whatsappStatus, isLoading: isLoadingWhatsappStatus } = useQuery({
-    queryKey: ['whatsapp-status-direct'],
-    queryFn: async () => {
-      try {
-        const timestamp = Date.now();
-        const response = await fetch(`/api/direct/whatsapp/status?t=${timestamp}`);
-        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-        return await response.json();
-      } catch (error) {
-        console.error('Error obteniendo estado de WhatsApp:', error);
-        return { authenticated: false };
-      }
-    },
-    // Reducir la frecuencia de polling si el WebSocket está conectado
-    refetchInterval: isWsConnected ? 10000 : 5000
-  });
-  
-  // Datos de chats de demostración para mostrar cuando falla la conexión
-  const demoChats = [
-    {
-      id: "123456789@c.us",
-      name: "José Pérez",
-      isGroup: false,
-      timestamp: Date.now() / 1000,
-      unreadCount: 3,
-      lastMessage: "Hola, ¿podemos agendar una reunión?",
-      profilePicUrl: undefined
-    },
-    {
-      id: "987654321@g.us",
-      name: "Equipo de Marketing",
-      isGroup: true,
-      timestamp: (Date.now() - 3600000) / 1000,
-      unreadCount: 0,
-      lastMessage: "Debemos revisar la presentación",
-      profilePicUrl: undefined
-    },
-    {
-      id: "555555555@c.us",
-      name: "María López",
-      isGroup: false,
-      timestamp: (Date.now() - 7200000) / 1000,
-      unreadCount: 1,
-      lastMessage: "¿Recibiste mi correo sobre la propuesta?",
-      profilePicUrl: undefined
-    },
-    {
-      id: "444444444@g.us",
-      name: "Soporte Técnico",
-      isGroup: true,
-      timestamp: (Date.now() - 10800000) / 1000,
-      unreadCount: 5,
-      lastMessage: "Nuevo caso: #12345 requiere atención",
-      profilePicUrl: undefined
-    }
-  ];
-
-  // Consulta para chats
-  const { data: apiChats = [], isLoading: isLoadingChats } = useQuery({
-    queryKey: ['whatsapp-chats-direct'],
-    queryFn: async () => {
-      try {
-        console.log('Solicitando chats de WhatsApp...');
-        const timestamp = Date.now();
-        const response = await fetch(`/api/direct/whatsapp/chats?t=${timestamp}`);
-        
-        if (!response.ok) {
-          throw new Error(`Error HTTP: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('Respuesta de chats recibida:', data);
-        
-        // Verificar que tenemos un array
-        if (Array.isArray(data)) {
-          console.log(`Recibidos ${data.length} chats`);
-          return data;
-        } else if (data && typeof data === 'object' && Array.isArray(data.chats)) {
-          // Formato alternativo con objeto que contiene chats
-          console.log(`Recibidos ${data.chats.length} chats (formato objeto)`);
-          return data.chats;
-        } else {
-          console.warn('Formato de respuesta inesperado:', data);
-          return [];
-        }
-      } catch (error) {
-        console.error('Error obteniendo chats:', error);
-        return [];
-      }
-    },
-    // Siempre habilitado para intentar recuperar la conexión
-    enabled: true,
-    // Ajustamos la frecuencia de consulta
+  // Query para obtener chats
+  const { 
+    data: apiChats = [],
+    isLoading: isLoadingChats,
+    refetch: refetchChats
+  } = useQuery({
+    queryKey: ['/api/direct/whatsapp/chats'],
     refetchInterval: 5000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     retry: 3
   });
-  
-  // Consulta para mensajes
+
+  // Query para obtener mensajes del chat seleccionado
   const { 
-    data: whatsappMessages = [], 
-    isLoading: isLoadingWhatsappMessages 
+    data: apiMessages = [],
+    isLoading: isLoadingMessages,
+    refetch: refetchMessages
   } = useQuery({
-    queryKey: ['whatsapp-messages-direct', selectedChatId],
+    queryKey: ['/api/direct/whatsapp/messages', selectedChatId],
     queryFn: async () => {
-      if (!selectedChatId) return [];
-      
       try {
-        console.log(`Solicitando mensajes para el chat ${selectedChatId}...`);
-        const timestamp = Date.now();
-        // Solicitamos explícitamente 1000 mensajes para asegurar que se carguen todos los disponibles
-        const response = await fetch(`/api/direct/whatsapp/messages/${selectedChatId}?t=${timestamp}&limit=1000`);
-        
-        if (!response.ok) {
-          throw new Error(`Error HTTP: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log(`Mensajes recibidos para ${selectedChatId}:`, data && Array.isArray(data) ? data.length : 'formato no array');
-        
-        // Varios formatos posibles:
-        if (Array.isArray(data)) {
-          // 1. Array directo de mensajes (formato actual)
+        if (selectedChatId) {
+          const response = await fetch(`/api/direct/whatsapp/messages/${selectedChatId}`);
+          if (!response.ok) {
+            throw new Error(`Error ${response.status}: ${response.statusText}`);
+          }
+          const data = await response.json();
+          console.log(`Mensajes recibidos para ${selectedChatId}:`, data.length);
           return data;
-        } else if (data && typeof data === 'object' && Array.isArray(data.messages)) {
-          // 2. Objeto con propiedad messages que es un array (formato anterior)
-          return data.messages;
         } else {
-          // 3. Formato desconocido
-          console.warn('Formato de respuesta de mensajes inesperado:', data);
           return [];
         }
       } catch (error) {
@@ -263,9 +232,111 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     retry: 3
   });
   
-  // Combinar los chats
-  const whatsappChats = apiChats.length > 0 ? apiChats : demoChats;
+  // Mutación para enviar mensaje
+  const messageMutation = useMutation({
+    mutationFn: async (message: string) => {
+      if (!selectedChatId) throw new Error('No hay chat seleccionado');
+      
+      const response = await fetch(`/api/direct/whatsapp/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chatId: selectedChatId,
+          message
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error al enviar mensaje: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      console.log('Mensaje enviado con éxito', data);
+      // Refrescar mensajes
+      setTimeout(() => {
+        refetchMessages();
+      }, 500);
+    },
+    onError: (error) => {
+      console.error('Error al enviar mensaje:', error);
+      toast({
+        title: 'Error al enviar mensaje',
+        description: error instanceof Error ? error.message : 'Error desconocido',
+        variant: 'destructive'
+      });
+    }
+  });
   
+  // Mutación para activar/desactivar respuestas automáticas
+  const autoResponseMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const response = await fetch(`/api/auto-response/${enabled ? 'config' : 'cancel'}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          enabled,
+          model: 'gemini-pro' // Modelo predeterminado
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error al ${enabled ? 'activar' : 'desactivar'} respuestas automáticas`);
+      }
+      
+      return await response.json();
+    },
+    onSuccess: (data, variables) => {
+      console.log(`Respuestas automáticas ${variables ? 'activadas' : 'desactivadas'}`, data);
+      toast({
+        title: `Respuestas automáticas ${variables ? 'activadas' : 'desactivadas'}`,
+        description: variables 
+          ? 'Ahora Gemini AI responderá automáticamente los mensajes entrantes' 
+          : 'Has desactivado las respuestas automáticas',
+        variant: 'default'
+      });
+    },
+    onError: (error) => {
+      console.error('Error al configurar respuestas automáticas:', error);
+      toast({
+        title: 'Error al configurar respuestas automáticas',
+        description: error instanceof Error ? error.message : 'Error desconocido',
+        variant: 'destructive'
+      });
+    }
+  });
+
+  // Combinar y filtrar chats (API o demo)
+  const combinedChats = apiChats && apiChats.length > 0 ? apiChats : demoChats;
+  
+  // Filtrar chats por nombre o último mensaje
+  const whatsappChats = combinedChats.filter(chat => {
+    if (!chatFilter) return true;
+    
+    const searchTermLower = chatFilter.toLowerCase();
+    return (
+      chat.name.toLowerCase().includes(searchTermLower) || 
+      (chat.lastMessage && chat.lastMessage.toLowerCase().includes(searchTermLower))
+    );
+  });
+  
+  // Mensajes del chat seleccionado (API o demo)
+  const whatsappMessages = selectedChatId 
+    ? (apiMessages && apiMessages.length > 0 
+      ? apiMessages 
+      : getDemoMessages(selectedChatId))
+    : [];
+  
+  // Obtener el chat actual
+  const currentChat = selectedChatId 
+    ? combinedChats.find((chat: WhatsAppChat) => chat.id === selectedChatId) 
+    : null;
+
   // Seleccionar el primer chat al cargar
   useEffect(() => {
     if (Array.isArray(whatsappChats) && whatsappChats.length > 0 && !selectedChatId) {
@@ -274,468 +345,361 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       setSelectedChatId(sortedChats[0].id);
     }
   }, [whatsappChats, selectedChatId]);
-  
+
   // Scroll al último mensaje
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [whatsappMessages]);
-  
-  // Detectar nuevos mensajes y procesar respuestas automáticas
+
+  // Actualizar cuando llega una notificación por WebSocket
   useEffect(() => {
-    if (Array.isArray(whatsappMessages) && whatsappMessages.length > 0 && selectedChatId) {
-      // Siempre actualizar contador para evitar problemas de detección
-      setLastMessageCount(whatsappMessages.length);
-      
-      // Buscar mensajes no procesados
-      const sortedMessages = [...whatsappMessages].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-      const lastIncomingMessage = sortedMessages.find(msg => !msg.fromMe);
-      
-      // Procesar respuesta automática si está habilitada
-      if (autoResponsesEnabled && 
-          !processingAutoResponse && 
-          lastIncomingMessage && 
-          lastIncomingMessage.body.trim() !== '') {
-          
-        console.log('Procesando respuesta automática para mensaje:', lastIncomingMessage.body);
-        
-        // Usar setTimeout para evitar múltiples respuestas
-        setTimeout(() => {
-          handleAutoResponse(lastIncomingMessage);
-        }, 1000);
+    if (lastMessage && lastMessage.type === NotificationType.NewMessage) {
+      console.log('Nueva notificación de mensaje:', lastMessage);
+      // Refrescar chats y mensajes
+      refetchChats();
+      if (selectedChatId) {
+        refetchMessages();
       }
-    }
-  }, [whatsappMessages, selectedChatId, autoResponsesEnabled]);
-
-  // Mutación para enviar mensaje
-  const sendMessageMutation = useMutation({
-    mutationFn: async (message: string) => {
-      if (!selectedChatId) throw new Error('No hay chat seleccionado');
       
-      const response = await fetch('/api/direct/whatsapp/send-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: selectedChatId,
-          message: message
-        })
-      });
-      
-      if (!response.ok) throw new Error('Error enviando mensaje');
-      return await response.json();
-    },
-    onSuccess: () => {
-      setMessageText('');
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-messages-direct', selectedChatId] });
-    },
-    onError: () => {
+      // Mostrar notificación
       toast({
-        title: "Error",
-        description: "No se pudo enviar el mensaje",
-        variant: "destructive"
+        title: 'Nuevo mensaje',
+        description: `De: ${lastMessage.sender || 'Desconocido'}`,
+        variant: 'default'
       });
     }
-  });
-
-  // Manejar envío de mensaje
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageText.trim()) return;
-    sendMessageMutation.mutate(messageText);
-  };
+  }, [lastMessage, refetchChats, refetchMessages, selectedChatId, toast]);
 
   // Manejar selección de chat
   const handleChatSelect = (chat: WhatsAppChat) => {
     setSelectedChatId(chat.id);
+    
+    // Si hay un ID de lead asociado, notificar
+    if (onSelectLead && selectedLeadId) {
+      onSelectLead(selectedLeadId);
+    }
   };
-  
-  // Función para generar y enviar respuestas automáticas con Gemini
+
+  // Enviar mensaje
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !selectedChatId) return;
+    
+    messageMutation.mutate(newMessage);
+    setNewMessage('');
+  };
+
+  // Procesar keydown en el input de mensaje
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  // Generar respuesta automática
   const handleAutoResponse = async (message: WhatsAppMessage) => {
-    if (!selectedChatId || !message.body || processingAutoResponse) return;
+    if (!message || !selectedChatId) return;
     
     try {
-      // Marcar que estamos procesando una respuesta automática
-      setProcessingAutoResponse(true);
+      const context = await chatContext(selectedChatId);
+      const response = await generateAutoResponse(message.body, context);
       
-      // Añadir el mensaje del usuario al contexto de la conversación
-      chatContext.addMessage(selectedChatId, 'user', message.body);
-      
-      // Obtener el historial de la conversación para este chat
-      const conversationHistory = chatContext.getHistoryForGemini(selectedChatId, 10);
-      
-      // Obtener el prompt personalizado si existe
-      const customPrompt = chatContext.getCustomPrompt(selectedChatId);
-      
-      console.log('Generando respuesta con historial de', conversationHistory.length, 'mensajes');
-      
-      // Generar respuesta con Gemini usando el contexto de la conversación
-      const response = await generateAutoResponse(message.body, conversationHistory, customPrompt);
-      
-      if (response && response.trim() !== '') {
-        // Guardar la respuesta del asistente en el contexto
-        chatContext.addMessage(selectedChatId, 'assistant', response);
+      if (response) {
+        messageMutation.mutate(response);
         
-        // Enviar la respuesta generada
-        sendMessageMutation.mutate(response);
-        
-        // Notificar al usuario
         toast({
-          title: "Respuesta automática",
-          description: "Gemini AI ha respondido automáticamente al mensaje",
-          duration: 3000
+          title: 'Respuesta automática generada',
+          description: 'Se ha enviado una respuesta generada por IA',
+          variant: 'default'
         });
       }
     } catch (error) {
-      console.error("Error al generar respuesta automática:", error);
+      console.error('Error al generar respuesta automática:', error);
       toast({
-        title: "Error en respuesta automática",
-        description: "No se pudo generar una respuesta con Gemini AI",
-        variant: "destructive"
+        title: 'Error al generar respuesta automática',
+        description: error instanceof Error ? error.message : 'Error desconocido',
+        variant: 'destructive'
       });
-    } finally {
-      // Marcar que ya no estamos procesando
-      setProcessingAutoResponse(false);
     }
   };
 
-  // Obtener iniciales para avatar
-  const getInitials = (name: string | undefined) => {
-    if (!name) return 'UN';
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
+  // Manejar cambio en el switch de respuestas automáticas
+  const handleAutoResponseToggle = (checked: boolean) => {
+    setAutoResponses(checked);
+    autoResponseMutation.mutate(checked);
   };
-
-  // Formatear timestamp
-  const formatTime = (timestamp: number) => {
-    if (!timestamp) return '';
-    const date = new Date(timestamp * 1000);
-    const now = new Date();
-    
-    const isToday = date.toDateString() === now.toDateString();
-    
-    if (isToday) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else {
-      return date.toLocaleDateString();
-    }
-  };
-
-  // Encontrar el chat actual
-  const currentChat = selectedChatId 
-    ? apiChats.find((chat: WhatsAppChat) => chat.id === selectedChatId) 
-    : null;
 
   return (
-    <Card className="h-full flex flex-col shadow-md w-full border-0 rounded-none">
-      <CardHeader className="p-3 pb-0">
-        <CardTitle className="text-lg flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Avatar className="h-7 w-7">
-              <AvatarFallback className="bg-green-500 text-white text-xs">
-                WA
-              </AvatarFallback>
-            </Avatar>
-            <span>WhatsApp</span>
-          </div>
+    <Card className="flex flex-col w-full h-full overflow-hidden shadow-md">
+      <CardHeader className="p-3 border-b">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-green-500" />
+            GeminiCRM WhatsApp
+            {connectionStatus === 'Connected' && (
+              <Wifi className="h-4 w-4 text-green-500" />
+            )}
+            {connectionStatus !== 'Connected' && (
+              <WifiOff className="h-4 w-4 text-red-500" />
+            )}
+          </CardTitle>
           
-          <div className="flex items-center gap-1">
-            {isLoadingWhatsappStatus ? (
-              <Badge variant="outline" className="flex items-center gap-1 h-6">
-                <Spinner className="h-3 w-3" />
-                <span>Cargando...</span>
-              </Badge>
+          <div className="flex items-center gap-2">
+            {isLoadingStatus ? (
+              <Spinner size="sm" />
             ) : whatsappStatus?.authenticated ? (
-              <Badge variant="outline" className="bg-green-50 border-green-200 text-green-700 h-6">Conectado</Badge>
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                Conectado
+              </Badge>
             ) : (
-              <Badge variant="outline" className="h-6">Desconectado</Badge>
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                No conectado
+              </Badge>
             )}
             
-            {/* Indicador de WebSocket */}
-            <Badge 
-              variant="outline" 
-              className={`flex items-center gap-1 h-6 ${
-                isWsConnected 
-                ? "bg-blue-50 border-blue-200 text-blue-700"
-                : "bg-gray-50 border-gray-200 text-gray-500"
-              }`}
-            >
-              {isWsConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
-              <span className="text-xs">
-                {isWsConnected ? "Tiempo real" : "Sincronización manual"}
-              </span>
-            </Badge>
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-7 w-7"
-              onClick={() => {
-                queryClient.invalidateQueries({ queryKey: ['whatsapp-status-direct'] });
-                queryClient.invalidateQueries({ queryKey: ['whatsapp-chats-direct'] });
-                if (selectedChatId) {
-                  queryClient.invalidateQueries({ queryKey: ['whatsapp-messages-direct', selectedChatId] });
-                }
-              }}
-            >
-              <RefreshCw size={14} />
-            </Button>
-          </div>
-        </CardTitle>
-      </CardHeader>
-      
-      {/* Contenedor principal de dos columnas */}
-      <div className="flex-1 flex overflow-hidden h-[calc(100vh-10rem)]">
-        {/* Columna izquierda - Lista de chats */}
-        <div className="w-1/4 border-r flex flex-col overflow-hidden">
-          <div className="p-3">
-            <div className="rounded-lg border mb-3">
-              <div className="flex items-center p-2">
-                <Search className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
-                <Input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar chats..."
-                  className="border-0 p-0 h-6 focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
-              </div>
-            </div>
-            
-            <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="w-full"
-            >
-              <TabsList className="w-full mb-3">
-                <TabsTrigger value="chats" className="flex-1">Chats</TabsTrigger>
-                <TabsTrigger value="contacts" className="flex-1">Contactos</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-          
-          {/* Lista de chats */}
-          {activeTab === 'chats' && (
-            <ScrollArea className="flex-1">
-              {isLoadingChats ? (
-                <div className="flex justify-center p-4">
-                  <Spinner />
-                </div>
-              ) : !whatsappStatus?.authenticated ? (
-                <div className="flex flex-col items-center justify-center p-4 h-full">
-                  <div className="text-sm text-gray-500 text-center mb-3">
-                    Escanea el código QR para ver tus chats de WhatsApp
-                  </div>
-                </div>
-              ) : (
-                <div className="divide-y">
-                  {(Array.isArray(apiChats) && apiChats.length > 0 ? apiChats : demoChats).map((chat: WhatsAppChat) => (
-                    <div
-                      key={chat.id}
-                      className={`p-3 hover:bg-gray-50 cursor-pointer ${
-                        selectedChatId === chat.id ? 'bg-green-50 border-l-4 border-l-green-500' : ''
-                      }`}
-                      onClick={() => handleChatSelect(chat)}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-56">
+                <div className="grid gap-2">
+                  <div className="flex items-center gap-2">
+                    <Switch id="auto-responses" checked={autoResponses} onCheckedChange={handleAutoResponseToggle} />
+                    <label 
+                      htmlFor="auto-responses" 
+                      className="text-sm font-medium cursor-pointer flex items-center"
                     >
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-11 w-11 flex-shrink-0 border shadow-sm">
-                          {chat.profilePicUrl ? (
-                            <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
-                          ) : null}
-                          <AvatarFallback className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">
-                            {getInitials(chat.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                          <div className="flex items-center gap-1">
-                            <span className="font-medium truncate">{chat.name}</span>
-                            {chat.id.includes('@g.us') && (
-                              <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200">
-                                Grupo
-                              </Badge>
-                            )}
-                            {!chat.id.includes('@g.us') && (
-                              <Badge variant="outline" className="text-[10px] h-4 px-1 bg-green-50 text-green-700 border-green-200">
-                                Chat
-                              </Badge>
-                            )}
-                            {chat.unreadCount > 0 && (
-                              <span className="inline-flex items-center justify-center ml-1 bg-green-500 text-white text-[11px] w-5 h-5 rounded-full">
-                                {chat.unreadCount}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 text-center text-gray-500 text-sm">
-                  <div className="mb-2">No hay chats disponibles</div>
-                  <div className="text-xs">
-                    Se ha establecido conexión con WhatsApp, pero no se encontraron chats.
+                      <Bot className="mr-1 h-4 w-4" />
+                      Respuestas automáticas
+                    </label>
                   </div>
-                </div>
-              )}
-            </ScrollArea>
-          )}
-          
-          {/* Lista de contactos (placeholder) */}
-          {activeTab === 'contacts' && (
-            <ScrollArea className="flex-1">
-              <div className="p-4 text-center text-gray-500 text-sm">
-                Lista de contactos en desarrollo
-              </div>
-            </ScrollArea>
-          )}
-        </div>
-        
-        {/* Columna derecha - Área de mensajes */}
-        <div className="w-3/4 flex flex-col overflow-hidden h-[calc(100vh-10rem)]">
-          {!whatsappStatus?.authenticated ? (
-            <div className="flex flex-col items-center justify-center h-full">
-              <div className="text-center mb-6">
-                <div className="text-xl font-bold mb-2">Conectar WhatsApp</div>
-                <div className="text-gray-500 mb-4">
-                  Escanea el código QR con tu WhatsApp para iniciar sesión.
-                </div>
-              </div>
-              {whatsappStatus?.qrDataUrl && (
-                <div className="mb-6 border p-3 rounded-lg bg-white">
-                  <img src={whatsappStatus.qrDataUrl} alt="WhatsApp QR Code" width={200} height={200} />
-                </div>
-              )}
-            </div>
-          ) : !selectedChatId ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="text-gray-400 mb-2">
-                  <MessageSquare size={64} strokeWidth={1} className="mx-auto" />
-                </div>
-                <div className="text-xl font-bold mb-2">Mensajería de WhatsApp</div>
-                <div className="text-gray-500">
-                  Selecciona un chat para comenzar a enviar mensajes.
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Cabecera del chat */}
-              <div className="border-b p-2 flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  {currentChat?.profilePicUrl ? (
-                    <AvatarImage src={currentChat.profilePicUrl} alt={currentChat.name} />
-                  ) : null}
-                  <AvatarFallback className="bg-green-500 text-white text-xs">
-                    {getInitials(currentChat?.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{currentChat?.name || 'Chat'}</div>
-                  <div className="text-xs text-gray-500 truncate">
-                    {currentChat?.isGroup ? 'Grupo' : 'Contacto'}
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  {/* Botón de Agente IA */}
-                  <Dialog open={showGeminiDialog} onOpenChange={setShowGeminiDialog}>
+                  
+                  <Dialog>
                     <DialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Brain size={16} className={showGeminiDialog ? "text-primary" : ""} />
+                      <Button variant="outline" size="sm" className="w-full justify-start">
+                        <Settings className="mr-1 h-4 w-4" />
+                        Configurar Gemini
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Asistente de Inteligencia Artificial</DialogTitle>
+                        <DialogTitle>Configuración de Gemini AI</DialogTitle>
                       </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <p className="text-sm text-gray-600">
-                            El asistente IA de Gemini puede generar mensajes, analizar conversaciones y ayudarte a gestionar tus comunicaciones de manera más eficiente.
-                          </p>
-                        </div>
-                        <div className="flex flex-col space-y-1.5">
-                          <Button onClick={() => {
-                            setMessageText("Hola, soy el asistente IA de Gemini. ¿En qué puedo ayudarte hoy?");
-                            setShowGeminiDialog(false);
-                          }}>
-                            Generar mensaje de bienvenida
-                          </Button>
-                          
-                          {selectedChatId && (
-                            <Button 
-                              variant="outline" 
-                              onClick={() => {
-                                setShowGeminiDialog(false);
-                                setShowGeminiConfigDialog(true);
-                              }}
-                              className="mt-2"
-                            >
-                              <Settings className="h-4 w-4 mr-2" />
-                              Configurar prompts y respuestas
-                            </Button>
-                          )}
-                          
-                          <div className="mt-4 p-3 bg-gray-50 rounded-md">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Bot className="h-4 w-4 text-primary" />
-                                <span className="text-sm font-medium">Respuestas automáticas</span>
-                              </div>
-                              <Switch
-                                checked={autoResponsesEnabled}
-                                onCheckedChange={setAutoResponsesEnabled}
-                                aria-label="Activar respuestas automáticas"
-                              />
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Cuando está activado, Gemini AI responderá automáticamente a los mensajes entrantes
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                      <GeminiConfig />
                     </DialogContent>
                   </Dialog>
                   
-                  {/* Diálogo de configuración avanzada de Gemini */}
-                  {selectedChatId && (
-                    <GeminiConfig 
-                      chatId={selectedChatId} 
-                      isOpen={showGeminiConfigDialog} 
-                      onClose={() => setShowGeminiConfigDialog(false)} 
-                    />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start"
+                    onClick={() => {
+                      refetchChats();
+                      refetchMessages();
+                      toast({
+                        title: "Actualizando",
+                        description: "Recuperando mensajes y chats más recientes"
+                      });
+                    }}
+                  >
+                    <RefreshCw className="mr-1 h-4 w-4" />
+                    Actualizar datos
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      </CardHeader>
+      
+      <div className="grid grid-cols-12 flex-1 overflow-hidden">
+        {/* Panel izquierdo - Chats */}
+        <div className="col-span-12 md:col-span-4 flex flex-col border-r h-full overflow-hidden">
+          <Tabs defaultValue="chats" className="flex flex-col h-full overflow-hidden">
+            <div className="border-b p-2">
+              <div className="relative mb-2">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar chat o contacto..."
+                  className="pl-8 h-9"
+                  value={chatFilter}
+                  onChange={(e) => setChatFilter(e.target.value)}
+                />
+              </div>
+              
+              <TabsList className="w-full">
+                <TabsTrigger value="chats" className="flex-1">Chats</TabsTrigger>
+                <TabsTrigger value="contacts" className="flex-1">Contactos</TabsTrigger>
+              </TabsList>
+            </div>
+            
+            <TabsContent value="chats" className="flex-1 overflow-hidden">
+              {/* Lista de chats */}
+              {activeTab === 'chats' && (
+                <ScrollArea className="flex-1">
+                  {isLoadingChats ? (
+                    <div className="flex justify-center p-4">
+                      <Spinner />
+                    </div>
+                  ) : !whatsappStatus?.authenticated ? (
+                    <div className="flex flex-col items-center justify-center p-4 h-full">
+                      <div className="text-sm text-gray-500 text-center mb-3">
+                        Escanea el código QR para ver tus chats de WhatsApp
+                      </div>
+                    </div>
+                  ) : whatsappChats && whatsappChats.length > 0 ? (
+                    <div className="divide-y">
+                      {whatsappChats.map((chat: WhatsAppChat) => (
+                        <div
+                          key={chat.id}
+                          className={`p-3 hover:bg-gray-50 cursor-pointer ${
+                            selectedChatId === chat.id ? 'bg-green-50 border-l-4 border-l-green-500' : ''
+                          }`}
+                          onClick={() => handleChatSelect(chat)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-11 w-11 flex-shrink-0 border shadow-sm">
+                              {chat.profilePicUrl ? (
+                                <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
+                              ) : null}
+                              <AvatarFallback className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">
+                                {getInitials(chat.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            
+                            <div className="flex-1 min-w-0 overflow-hidden">
+                              <div className="flex items-center gap-1">
+                                <span className="font-medium truncate">{chat.name}</span>
+                                {chat.id.includes('@g.us') && (
+                                  <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200">
+                                    Grupo
+                                  </Badge>
+                                )}
+                                {!chat.id.includes('@g.us') && (
+                                  <Badge variant="outline" className="text-[10px] h-4 px-1 bg-green-50 text-green-700 border-green-200">
+                                    Chat
+                                  </Badge>
+                                )}
+                                {chat.unreadCount > 0 && (
+                                  <span className="inline-flex items-center justify-center ml-1 bg-green-500 text-white text-[11px] w-5 h-5 rounded-full">
+                                    {chat.unreadCount}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <div className="flex justify-between items-center text-sm text-gray-500">
+                                <p className="truncate w-36">
+                                  {chat.lastMessage || 'Sin mensajes'}
+                                </p>
+                                <span className="text-xs whitespace-nowrap">
+                                  {chat.timestamp ? format(new Date(chat.timestamp * 1000), 'HH:mm') : ''}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-gray-500 text-sm">
+                      <div className="mb-2">No hay chats disponibles</div>
+                      <div className="text-xs">
+                        Se ha establecido conexión con WhatsApp, pero no se encontraron chats.
+                      </div>
+                    </div>
                   )}
-                  
-                  {/* Indicador de estado IA */}
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-md text-xs">
-                    <Bot size={14} className={autoResponsesEnabled ? "text-green-500" : "text-gray-400"} />
-                    <span className={autoResponsesEnabled ? "text-green-500" : "text-gray-400"}>
-                      {autoResponsesEnabled ? "IA Activa" : "IA Inactiva"}
-                    </span>
+                </ScrollArea>
+              )}
+              
+              {/* Lista de contactos (placeholder) */}
+              {activeTab === 'contacts' && (
+                <ScrollArea className="flex-1">
+                  <div className="p-4 text-center text-gray-500">
+                    <div className="mb-2">Lista de contactos</div>
+                    <div className="text-xs">
+                      Próximamente: funcionalidad para gestionar contactos
+                    </div>
                   </div>
+                </ScrollArea>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="contacts" className="flex-1 overflow-hidden">
+              <ScrollArea className="flex-1">
+                <div className="p-4 text-center text-gray-500">
+                  <div className="mb-2">Lista de contactos</div>
+                  <div className="text-xs">
+                    Próximamente: funcionalidad para gestionar contactos
+                  </div>
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
+        </div>
+        
+        {/* Panel derecho - Mensajes */}
+        <div className="col-span-12 md:col-span-8 flex flex-col h-full overflow-hidden">
+          {selectedChatId && currentChat ? (
+            <>
+              {/* Encabezado del chat */}
+              <div className="border-b p-3 flex items-center gap-3">
+                <Avatar className="h-10 w-10 border shadow-sm">
+                  {currentChat.profilePicUrl ? (
+                    <AvatarImage src={currentChat.profilePicUrl} alt={currentChat.name} />
+                  ) : null}
+                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                    {getInitials(currentChat.name)}
+                  </AvatarFallback>
+                </Avatar>
+                
+                <div className="flex-1">
+                  <h3 className="font-medium">{currentChat.name}</h3>
+                  <div className="text-xs text-gray-500 flex items-center gap-1">
+                    {currentChat.id.includes('@g.us') ? 'Grupo' : 'Chat individual'}
+                    <span className="inline-block h-1 w-1 rounded-full bg-gray-300 mx-1"></span>
+                    {whatsappStatus?.authenticated ? 'Conectado' : 'Desconectado'}
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => {
+                      if (selectedChatId) {
+                        refetchMessages();
+                      }
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
                   
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreVertical size={16} />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => handleAutoResponse(whatsappMessages[whatsappMessages.length - 1])}
+                    disabled={whatsappMessages.length === 0 || messageMutation.isPending}
+                  >
+                    <Brain className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
               
               {/* Área de mensajes */}
-              <div className="flex-1 overflow-auto flex flex-col items-center">
-                {isLoadingWhatsappMessages ? (
-                  <div className="flex justify-center items-center h-full w-full">
-                    <div className="text-center">
-                      <Spinner className="mx-auto mb-3" />
-                      <p className="text-sm text-gray-500">Cargando mensajes...</p>
-                    </div>
+              <div 
+                className="flex-1 overflow-y-auto p-3 bg-gray-50" 
+                ref={chatContainerRef}
+              >
+                {isLoadingMessages ? (
+                  <div className="flex justify-center p-4">
+                    <Spinner />
                   </div>
-                ) : whatsappMessages.length > 0 ? (
-                  <div className="space-y-2 py-4 w-full max-w-4xl px-4 flex-grow">
+                ) : whatsappMessages && whatsappMessages.length > 0 ? (
+                  <div className="space-y-1">
                     {whatsappMessages.map((msg: WhatsAppMessage, index: number) => {
                       // Verificar si debe mostrar separador de fecha
                       const showDateSeparator = index === 0 || 
@@ -818,158 +782,56 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     <div ref={messagesEndRef} />
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full w-full">
-                    <div className="p-4 rounded-full bg-gray-50 mb-4">
-                      <MessageSquare size={35} className="text-gray-300" />
-                    </div>
-                    <p className="text-base font-medium text-gray-600 mb-1">No hay mensajes</p>
-                    <p className="text-sm text-gray-500 text-center">
-                      Envía tu primer mensaje para iniciar la conversación
-                    </p>
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <MessageSquare className="h-10 w-10 text-gray-300 mb-2" />
+                    <div className="text-gray-500 text-sm">No hay mensajes</div>
+                    <div className="text-gray-400 text-xs mt-1">Envía un mensaje para iniciar la conversación</div>
                   </div>
                 )}
               </div>
               
-              {/* Área de escritura de mensajes */}
-              <div className="border-t p-2">
-                <form onSubmit={handleSendMessage} className="flex items-end gap-2">
-                  <div className="flex-1 rounded-lg bg-background border">
-                    <div className="flex items-end p-2 gap-1">
-                      {/* Botón de emoji con popover */}
-                      <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
-                        <PopoverTrigger asChild>
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 flex-shrink-0"
-                          >
-                            <Smile size={18} className={showEmojiPicker ? "text-primary" : ""} />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64 p-2" align="start">
-                          <div className="grid grid-cols-7 gap-2">
-                            {["😊", "👍", "❤️", "😂", "🎉", "👏", "🙏", 
-                              "😍", "😎", "🤔", "👌", "💪", "🔥", "👋",
-                              "🤗", "😉", "🤝", "💯", "✅", "⭐", "🌟"].map(emoji => (
-                              <Button 
-                                key={emoji} 
-                                variant="ghost" 
-                                className="h-8 w-8 p-0 hover:bg-gray-100"
-                                onClick={() => {
-                                  setMessageText(prev => prev + emoji);
-                                  setShowEmojiPicker(false);
-                                }}
-                              >
-                                {emoji}
-                              </Button>
-                            ))}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                      
-                      <Input
-                        value={messageText}
-                        onChange={(e) => setMessageText(e.target.value)}
-                        placeholder="Escribe un mensaje..."
-                        className="border-0 flex-1 focus-visible:ring-0 focus-visible:ring-offset-0"
-                      />
-                      
-                      {/* Botón de adjuntos con popover */}
-                      <Popover open={showAttachmentOptions} onOpenChange={setShowAttachmentOptions}>
-                        <PopoverTrigger asChild>
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 flex-shrink-0"
-                          >
-                            <Paperclip size={18} className={showAttachmentOptions ? "text-primary" : ""} />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-52 p-2" align="end">
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="justify-start gap-2"
-                              onClick={() => {
-                                toast({
-                                  title: "Adjunto de foto",
-                                  description: "Esta función está en desarrollo"
-                                });
-                                setShowAttachmentOptions(false);
-                              }}
-                            >
-                              <Image size={14} />
-                              <span>Foto</span>
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="justify-start gap-2"
-                              onClick={() => {
-                                toast({
-                                  title: "Adjunto de documento",
-                                  description: "Esta función está en desarrollo"
-                                });
-                                setShowAttachmentOptions(false);
-                              }}
-                            >
-                              <FileText size={14} />
-                              <span>Documento</span>
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="justify-start gap-2"
-                              onClick={() => {
-                                toast({
-                                  title: "Adjunto de audio",
-                                  description: "Esta función está en desarrollo"
-                                });
-                                setShowAttachmentOptions(false);
-                              }}
-                            >
-                              <Mic size={14} />
-                              <span>Audio</span>
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="justify-start gap-2"
-                              onClick={() => {
-                                toast({
-                                  title: "Adjunto de contacto",
-                                  description: "Esta función está en desarrollo"
-                                });
-                                setShowAttachmentOptions(false);
-                              }}
-                            >
-                              <Contact size={14} />
-                              <span>Contacto</span>
-                            </Button>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    type="submit" 
-                    size="icon" 
-                    className="h-9 w-9 rounded-full flex-shrink-0" 
-                    disabled={!messageText.trim() || sendMessageMutation.isPending}
-                  >
-                    {sendMessageMutation.isPending ? (
-                      <Spinner className="h-4 w-4" />
-                    ) : (
-                      <Send size={16} />
-                    )}
-                  </Button>
-                </form>
+              {/* Área de entrada de mensaje */}
+              <div className="border-t p-2 flex items-center gap-2">
+                <Button variant="ghost" size="icon">
+                  <Smile className="h-5 w-5 text-gray-500" />
+                </Button>
+                
+                <Button variant="ghost" size="icon">
+                  <Paperclip className="h-5 w-5 text-gray-500" />
+                </Button>
+                
+                <Input
+                  placeholder="Escribe un mensaje"
+                  className="flex-1"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={messageMutation.isPending}
+                />
+                
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handleSendMessage} 
+                  disabled={!newMessage.trim() || messageMutation.isPending}
+                  className={messageMutation.isPending ? 'opacity-50' : ''}
+                >
+                  {messageMutation.isPending ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    <Send className="h-5 w-5 text-green-600" />
+                  )}
+                </Button>
               </div>
             </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center p-4">
+              <MessageSquare className="h-16 w-16 text-gray-200 mb-4" />
+              <h3 className="text-xl font-medium text-gray-700 mb-2">WhatsApp Messenger</h3>
+              <p className="text-gray-500 max-w-md">
+                Selecciona un chat para ver los mensajes o escanea el código QR para conectar WhatsApp si aún no lo has hecho.
+              </p>
+            </div>
           )}
         </div>
       </div>
