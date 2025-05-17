@@ -682,8 +682,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                             <div 
                               className={`w-[95%] rounded-lg p-3 ${
                                 msg.fromMe 
-                                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md' 
-                                  : 'bg-white border shadow-sm'
+                                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md ml-auto' 
+                                  : 'bg-white border shadow-sm mr-auto'
                               } ${isSequential && msg.fromMe ? 'rounded-tr-sm' : ''} ${isSequential && !msg.fromMe ? 'rounded-tl-sm' : ''}`}
                             >
                               {msg.hasMedia && (
