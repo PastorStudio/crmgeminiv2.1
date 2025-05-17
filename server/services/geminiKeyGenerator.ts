@@ -204,8 +204,9 @@ class GeminiKeyGenerator {
           
           // Intentar con Gemini Pro (el modelo con más cuota disponible)
           try {
+            // Actualizado a v1 (la versión beta ya no está disponible)
             const fallbackResponse = await axios.post(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+              `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`,
               {
                 contents: [
                   {
@@ -236,8 +237,9 @@ class GeminiKeyGenerator {
           
           // Intentamos con Gemini Pro como último recurso
           try {
+            // Actualizado a v1 (la versión beta ya no está disponible)
             const fallbackResponse = await axios.post(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+              `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`,
               {
                 contents: [
                   {
