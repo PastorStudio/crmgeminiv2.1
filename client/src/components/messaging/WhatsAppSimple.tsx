@@ -407,28 +407,44 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
 
   return (
     <Card className="flex flex-col w-full h-full overflow-hidden shadow-md">
-      <CardHeader className="p-3 border-b">
+      <CardHeader className="p-3 border-b bg-gradient-to-r from-purple-300 via-pink-200 to-green-300">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-green-500" />
-            GeminiCRM WhatsApp
-            {connectionStatus === 'Connected' && (
-              <Wifi className="h-4 w-4 text-green-500" />
-            )}
-            {connectionStatus !== 'Connected' && (
-              <WifiOff className="h-4 w-4 text-red-500" />
-            )}
-          </CardTitle>
+          <div className="pl-2">
+            <CardTitle className="text-xl font-semibold flex items-center gap-2 text-purple-800">
+              <MessageSquare className="h-6 w-6 text-purple-700" />
+              GeminiCRM WhatsApp
+              {connectionStatus === 'Connected' && (
+                <Wifi className="h-5 w-5 text-green-600" />
+              )}
+              {connectionStatus !== 'Connected' && (
+                <WifiOff className="h-5 w-5 text-red-600 animate-pulse" />
+              )}
+            </CardTitle>
+            
+            {/* Añadimos un estado visible */}
+            <div className="ml-8 mt-1 text-xs font-medium text-gray-700">
+              {whatsappStatus?.authenticated ? 
+                <span className="flex items-center gap-1">
+                  <span className="h-2 w-2 bg-green-500 rounded-full"></span>
+                  Conectado y listo para usar
+                </span> : 
+                <span className="flex items-center gap-1">
+                  <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
+                  Desconectado - Escanea el código QR
+                </span>
+              }
+            </div>
+          </div>
           
           <div className="flex items-center gap-2">
             {isLoadingStatus ? (
               <Spinner size="sm" />
             ) : whatsappStatus?.authenticated ? (
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              <Badge variant="outline" className="bg-green-100/70 text-green-800 border-green-300 font-medium">
                 Conectado
               </Badge>
             ) : (
-              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+              <Badge variant="outline" className="bg-red-100/70 text-red-800 border-red-300 font-medium animate-pulse">
                 No conectado
               </Badge>
             )}
