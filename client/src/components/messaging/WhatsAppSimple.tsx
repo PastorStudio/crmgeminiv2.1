@@ -103,7 +103,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchInterval: 5000
   });
 
-  // Query para obtener chats - ahora con enfoque directo para debugging
+  // Query para obtener chats
   const { 
     data: apiChats = [],
     isLoading: isLoadingChats,
@@ -114,43 +114,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchInterval: 15000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    retry: 3,
-    queryFn: async () => {
-      try {
-        // Enfoque simple y directo
-        const timestamp = new Date().getTime();
-        const response = await fetch(`/api/direct/whatsapp/chats?noCache=${timestamp}`);
-        if (!response.ok) {
-          throw new Error(`Error obteniendo chats: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log(`Chats recibidos de API: ${Array.isArray(data) ? data.length : 0}`);
-        
-        // Si tenemos datos reales, los devolvemos
-        if (Array.isArray(data) && data.length > 0) {
-          return data;
-        }
-        
-        // Si no hay datos, regresamos un mock para debugging
-        // SOLO PARA DIAGNÓSTICO - mostrar lo que debería aparecer mientras encontramos
-        // por qué no se están mostrando los chats reales
-        console.log("Usando array de diagnóstico (37 chats)");
-        
-        // Crear un array de ejemplo con 37 elementos (para verificar la visualización)
-        return Array.from({ length: 37 }, (_, i) => ({
-          id: `chat_${i}`,
-          name: `Chat de diagnóstico ${i + 1}`,
-          isGroup: i % 3 === 0,
-          timestamp: Date.now() - (i * 1000 * 60),
-          unreadCount: i % 5,
-          lastMessage: `Este es un mensaje de diagnóstico ${i + 1}. Los chats reales no se están mostrando.`,
-          profilePicUrl: ''
-        }));
-      } catch (error) {
-        console.error("Error en la obtención de chats:", error);
-        return [];
-      }
-    }
+    retry: 3
   });
 
   // Query para obtener mensajes del chat seleccionado
@@ -266,29 +230,20 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     }
   });
 
-  // Solo usar chats reales de la API - NUNCA datos de ejemplo
-  console.log("Estado de autenticación WhatsApp:", whatsappStatus?.authenticated);
-  console.log("Chats recibidos de la API:", apiChats?.length);
+  // Solo usar chats reales de la API
   
-  // Verificamos el estado de WhatsApp y mostramos datos detallados
-  console.log("WhatsApp Status completo:", JSON.stringify(whatsappStatus));
-  
-  // Solución para evitar desaparición de chats
-  const hasRealChats = Array.isArray(apiChats) && apiChats.length > 0;
-  
-  // Estado local para almacenar los chats y que no desaparezcan
+  // Estado local para almacenar los chats
   const [persistentChats, setPersistentChats] = useState<WhatsAppChat[]>([]);
   
-  // Efecto para mantener los chats persistentes
+  // Efecto para mantener los chats
   useEffect(() => {
     if (Array.isArray(apiChats) && apiChats.length > 0) {
-      console.log("Actualizando chats persistentes con", apiChats.length, "chats");
       setPersistentChats(apiChats);
     }
   }, [apiChats]);
   
-  // Usamos chats persistentes si están disponibles, o los datos de la API en caso contrario
-  const whatsappChats = persistentChats.length > 0 ? persistentChats : (Array.isArray(apiChats) ? apiChats : []);
+  // Usamos los datos de la API directamente
+  const whatsappChats = Array.isArray(apiChats) ? apiChats : [];
   
   // Filtrar chats por nombre o último mensaje (si hay chats)
   const filteredChats = whatsappChats.length > 0 
