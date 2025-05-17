@@ -461,13 +461,24 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                         </Avatar>
                         
                         <div className="flex-1 min-w-0 overflow-hidden">
-                          <div className="font-medium truncate">{chat.name}</div>
-                          
-                          {chat.unreadCount > 0 && (
-                            <span className="inline-flex items-center justify-center ml-1 bg-green-500 text-white text-[11px] w-5 h-5 rounded-full">
-                              {chat.unreadCount}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium truncate">{chat.name}</span>
+                            {chat.id.includes('@g.us') && (
+                              <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200">
+                                Grupo
+                              </Badge>
+                            )}
+                            {!chat.id.includes('@g.us') && (
+                              <Badge variant="outline" className="text-[10px] h-4 px-1 bg-green-50 text-green-700 border-green-200">
+                                Chat
+                              </Badge>
+                            )}
+                            {chat.unreadCount > 0 && (
+                              <span className="inline-flex items-center justify-center ml-1 bg-green-500 text-white text-[11px] w-5 h-5 rounded-full">
+                                {chat.unreadCount}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
