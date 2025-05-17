@@ -56,15 +56,10 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar con menú vertical */}
-      <aside className="fixed h-full w-64 bg-gradient-to-b from-purple-400 via-pink-300 to-green-300 shadow-lg z-50">
-        <div className="p-4">
-          <div className="flex items-center justify-center mb-8">
-            <img
-              className="h-10 w-auto"
-              src="https://tailwindui.com/img/logos/workflow-mark-white.svg"
-              alt="GeminiCRM"
-            />
-            <span className="ml-3 text-white text-xl font-bold">GeminiCRM</span>
+      <aside className="fixed h-full w-56 bg-gradient-to-b from-purple-400 via-pink-300 to-green-300 shadow-lg z-50">
+        <div className="p-3">
+          <div className="flex items-center justify-center mb-6">
+            <span className="text-white text-xl font-bold">WhatsApp CRM</span>
           </div>
           
           <nav className="mt-5 flex flex-col space-y-1.5">
@@ -171,7 +166,7 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 ml-64 overflow-hidden">
+      <main className="flex-1 ml-56 overflow-hidden">
         <div className="w-full h-full mx-auto">
           <div className="h-full">
             {isLoadingGeminiKey ? (
