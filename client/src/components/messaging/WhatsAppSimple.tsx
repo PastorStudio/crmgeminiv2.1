@@ -342,7 +342,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       {/* Contenedor principal de dos columnas */}
       <div className="flex-1 flex overflow-hidden">
         {/* Columna izquierda - Lista de chats */}
-        <div className="w-1/3 border-r flex flex-col overflow-hidden">
+        <div className="w-1/4 border-r flex flex-col overflow-hidden">
           <div className="p-3">
             <div className="rounded-lg border mb-3">
               <div className="flex items-center p-2">
@@ -436,7 +436,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         </div>
         
         {/* Columna derecha - Área de mensajes */}
-        <div className="w-2/3 flex flex-col overflow-hidden">
+        <div className="w-3/4 flex flex-col overflow-hidden">
           {!whatsappStatus?.authenticated ? (
             <div className="flex flex-col items-center justify-center h-full">
               <div className="text-center mb-6">
