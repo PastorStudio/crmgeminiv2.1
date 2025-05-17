@@ -17,6 +17,7 @@ import Integrations from './pages/Integrations';
 import AutoResponseSettings from './pages/AutoResponseSettings';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
+import { PageTransition } from '@/components/ui/page-transition';
 
 const App: React.FC = () => {
   // Obtener la ruta actual para la navegación activa
@@ -119,21 +120,23 @@ const App: React.FC = () => {
                 <span className="ml-2 text-gray-600">Cargando configuración de la API...</span>
               </div>
             ) : (
-              <Switch>
-                <Route path="/" component={Dashboard} />
-                <Route path="/leads" component={Leads} />
-                <Route path="/messages" component={Messages} />
-                <Route path="/calendar" component={Calendar} />
-                <Route path="/tasks" component={Tasks} />
-                <Route path="/analytics" component={Analytics} />
-                <Route path="/settings" component={Settings} />
-                <Route path="/media-gallery" component={MediaGallery} />
-                <Route path="/message-templates" component={MessageTemplates} />
-                <Route path="/mass-sender" component={MassSender} />
-                <Route path="/integrations" component={Integrations} />
-                <Route path="/auto-response-settings" component={AutoResponseSettings} />
-                <Route component={NotFound} />
-              </Switch>
+              <PageTransition>
+                <Switch>
+                  <Route path="/" component={Dashboard} />
+                  <Route path="/leads" component={Leads} />
+                  <Route path="/messages" component={Messages} />
+                  <Route path="/calendar" component={Calendar} />
+                  <Route path="/tasks" component={Tasks} />
+                  <Route path="/analytics" component={Analytics} />
+                  <Route path="/settings" component={Settings} />
+                  <Route path="/media-gallery" component={MediaGallery} />
+                  <Route path="/message-templates" component={MessageTemplates} />
+                  <Route path="/mass-sender" component={MassSender} />
+                  <Route path="/integrations" component={Integrations} />
+                  <Route path="/auto-response-settings" component={AutoResponseSettings} />
+                  <Route component={NotFound} />
+                </Switch>
+              </PageTransition>
             )}
           </div>
         </div>
