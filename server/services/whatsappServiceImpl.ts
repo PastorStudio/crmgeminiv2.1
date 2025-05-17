@@ -1093,6 +1093,7 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   
   /**
    * Actualiza la lista de chats disponibles
+   * Asegura que todos los chats se carguen correctamente
    */
   private async refreshChats(): Promise<void> {
     if (!this.client || !this.status.authenticated) return;
@@ -1100,15 +1101,49 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
     try {
       console.log('Actualizando lista de chats...');
       
-      // Obtener todos los chats de WhatsApp
-      const chats = await this.client.getChats();
+      // Intentar obtener todos los chats de WhatsApp, con reintento
+      let chats: any[] = [];
+      let attempts = 0;
       
-      // Actualizar caché de chats
+      while (attempts < 3) {
+        attempts++;
+        try {
+          // Esperar un poco para asegurar que la conexión es estable
+          if (attempts > 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
+          chats = await this.client.getChats();
+          
+          // Si tenemos chats, continuar
+          if (chats && chats.length > 0) {
+            break;
+          }
+          
+          console.log(`Intento ${attempts}: No se obtuvieron chats, reintentando...`);
+        } catch (retryError) {
+          console.warn(`Error en intento ${attempts} de obtener chats:`, retryError);
+        }
+      }
+      
+      // Verificar si tenemos chats para actualizar
+      if (!chats || chats.length === 0) {
+        console.warn('No se pudieron obtener chats después de varios intentos');
+        return;
+      }
+      
+      // Actualizar caché de chats con toda la información posible
+      console.log(`Procesando ${chats.length} chats...`);
       for (const chat of chats) {
         await this.updateChatInfo(chat);
       }
       
       console.log(`${chats.length} chats actualizados correctamente`);
+      
+      // Verificar si hay nuevos chats comparando con la caché anterior
+      if (this.chatCache.size < chats.length) {
+        console.log(`Detectados ${chats.length - this.chatCache.size} nuevos chats`);
+      }
     } catch (error) {
       console.error('Error actualizando chats:', error);
     }
@@ -1116,53 +1151,75 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   
   /**
    * Obtiene la lista de chats disponibles
+   * Siempre actualizamos la lista para asegurar que tengamos todos los chats
    */
   async getChats(): Promise<WhatsAppChat[]> {
-    // Si no hay caché o está vacía, intentar cargar
-    if (this.chatCache.size === 0) {
-      await this.refreshChats();
+    try {
+      // Siempre intentamos actualizar la lista de chats para tener los datos más recientes
+      if (this.client && this.status.authenticated) {
+        await this.refreshChats();
+      } else if (this.chatCache.size === 0) {
+        // Si no tenemos cliente pero la caché está vacía, intentamos inicializar
+        console.log('Cliente no disponible, intentando inicializar...');
+        await this.initialize();
+        await this.refreshChats();
+      }
+      
+      // Verificar que tenemos chats
+      if (this.chatCache.size === 0) {
+        console.warn('No se pudieron obtener chats. Conexión WhatsApp posiblemente desconectada.');
+      } else {
+        console.log(`Retornando ${this.chatCache.size} chats desde la caché`);
+      }
+      
+      // Convertir el mapa a un array y ordenar por timestamp (más reciente primero)
+      return Array.from(this.chatCache.values())
+        .sort((a, b) => b.timestamp - a.timestamp);
+    } catch (error) {
+      console.error('Error obteniendo lista de chats:', error);
+      
+      // Si hay error, devolver al menos lo que tengamos en caché
+      return Array.from(this.chatCache.values())
+        .sort((a, b) => b.timestamp - a.timestamp);
     }
-    
-    // Convertir el mapa a un array y ordenar por timestamp (más reciente primero)
-    return Array.from(this.chatCache.values())
-      .sort((a, b) => b.timestamp - a.timestamp);
   }
   
   /**
    * Obtiene los mensajes de un chat específico
    */
-  async getMessages(chatId: string, limit: number = 100): Promise<WhatsAppMessage[]> {
+  async getMessages(chatId: string, limit: number = 1000): Promise<WhatsAppMessage[]> {
     if (!this.client || !this.status.authenticated) {
       throw new Error('Cliente no inicializado o no autenticado');
     }
     
     try {
-      // Verificar si tenemos mensajes en caché
-      if (this.messageCache.has(chatId)) {
-        const cachedMessages = this.messageCache.get(chatId) || [];
-        
-        // Si tenemos suficientes mensajes en caché, usarlos
-        if (cachedMessages.length >= limit) {
-          return cachedMessages.slice(0, limit);
-        }
-      }
-      
       // Si no hay suficientes en caché, cargar desde WhatsApp
       console.log(`Cargando mensajes para el chat ${chatId}...`);
       
       // Obtener el chat
       const chat = await this.client.getChatById(chatId);
       
-      // Cargar los mensajes
-      await chat.fetchMessages({ limit });
+      // Aumentamos el límite a un número alto para cargar más mensajes
+      // Intentamos cargar 1000 mensajes o el límite especificado, lo que sea mayor
+      const effectiveLimit = Math.max(1000, limit);
+      
+      // Cargar los mensajes - hacemos un esfuerzo por cargar todos los mensajes posibles
+      try {
+        await chat.fetchMessages({ limit: effectiveLimit });
+      } catch (fetchError) {
+        console.warn(`Error al hacer fetch de ${effectiveLimit} mensajes, intentando con menos:`, fetchError);
+      }
       
       // Obtener los mensajes cargados
-      const messages = await chat.fetchMessages({ limit });
+      console.log(`Recuperando hasta ${effectiveLimit} mensajes del chat ${chatId}...`);
+      const messages = await chat.fetchMessages({ limit: effectiveLimit });
+      
+      console.log(`Recuperados ${messages.length} mensajes del chat ${chatId}`);
       
       // Convertir a nuestro formato
       const convertedMessages: WhatsAppMessage[] = messages.map(msg => this.convertToWhatsAppMessage(msg));
       
-      // Actualizar caché
+      // Actualizar caché sin límite
       this.messageCache.set(chatId, convertedMessages);
       
       return convertedMessages;
