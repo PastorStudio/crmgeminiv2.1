@@ -103,9 +103,9 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchInterval: 5000
   });
 
-  // Query para obtener chats
+  // Query para obtener chats reales de WhatsApp
   const { 
-    data: apiChats = [],
+    data: whatsappChats = [],
     isLoading: isLoadingChats,
     refetch: refetchChats,
     error: chatError
@@ -230,20 +230,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     }
   });
 
-  // Solo usar chats reales de la API
-  
-  // Estado local para almacenar los chats
-  const [persistentChats, setPersistentChats] = useState<WhatsAppChat[]>([]);
-  
-  // Efecto para mantener los chats
-  useEffect(() => {
-    if (Array.isArray(apiChats) && apiChats.length > 0) {
-      setPersistentChats(apiChats);
-    }
-  }, [apiChats]);
-  
-  // Usamos los datos de la API directamente
-  const whatsappChats = Array.isArray(apiChats) ? apiChats : [];
+  // Filtrar chats por nombre o último mensaje (si hay chats)
   
   // Filtrar chats por nombre o último mensaje (si hay chats)
   const filteredChats = whatsappChats.length > 0 
