@@ -110,9 +110,9 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="flex-1">
-        <div className="w-full mx-auto">
-          <div>
+      <main className="flex-1 overflow-hidden">
+        <div className="w-full h-full mx-auto">
+          <div className="h-full">
             {isLoadingGeminiKey ? (
               <div className="flex justify-center items-center h-12">
                 <Spinner className="h-6 w-6 text-blue-600" />
