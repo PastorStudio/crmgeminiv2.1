@@ -31,7 +31,11 @@ export function MessageText({ text, className = '' }: MessageTextProps) {
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline font-medium"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                window.open(matches[index], '_blank');
+              }}
             >
               {matches[index]}
             </a>
