@@ -107,13 +107,24 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         const timestamp = Date.now();
         const response = await fetch(`/api/direct/whatsapp/status?t=${timestamp}`);
         if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-        return await response.json();
+        const data = await response.json();
+        return data;
       } catch (error) {
         console.error('Error obteniendo estado de WhatsApp:', error);
-        return { authenticated: false };
+        // Retornar un estado predeterminado con todas las propiedades necesarias
+        return { 
+          initialized: false, 
+          ready: false, 
+          authenticated: false,
+          qrCode: null,
+          pendingMessages: 0
+        };
       }
     },
-    refetchInterval: 5000
+    refetchInterval: 5000,
+    // Reintentar hasta 3 veces en caso de error
+    retry: 3,
+    retryDelay: 1000
   });
   
   // Consulta para chats
@@ -133,7 +144,9 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     },
     enabled: whatsappStatus?.authenticated === true,
     refetchInterval: whatsappStatus?.authenticated ? 5000 : false,
-    staleTime: 0 // Siempre recargar en cambios
+    staleTime: 0, // Siempre recargar en cambios
+    retry: 3,     // Reintentar hasta 3 veces
+    retryDelay: 1000
   });
   
   // Consulta para mensajes
@@ -148,7 +161,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         const timestamp = Date.now();
         const response = await fetch(`/api/direct/whatsapp/messages/${selectedChatId}?t=${timestamp}`);
         if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-        return await response.json();
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
       } catch (error) {
         console.error('Error obteniendo mensajes:', error);
         return [];
@@ -156,7 +170,9 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     },
     enabled: !!selectedChatId && whatsappStatus?.authenticated === true,
     refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 5000 : false,
-    staleTime: 0 // Siempre recargar en cambios
+    staleTime: 0, // Siempre recargar en cambios
+    retry: 3,     // Reintentar hasta 3 veces
+    retryDelay: 1000
   });
   
   // Seleccionar el primer chat al cargar
