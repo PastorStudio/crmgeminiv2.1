@@ -94,6 +94,20 @@ export interface IWhatsAppService {
   refreshChats(): Promise<void>;
   
   /**
+   * Verifica si el cliente de WhatsApp está autenticado accediendo directamente 
+   * a las propiedades del navegador subyacente para determinar el estado real
+   * @returns Un objeto con información detallada sobre el estado real de la conexión
+   */
+  checkAuthenticationDirect(): Promise<{
+    authenticated: boolean;
+    browserConnected: boolean;
+    hasWhatsappStore: boolean;
+    wid?: string;
+    error?: string;
+    diagnosticData?: any;
+  }>;
+  
+  /**
    * Envía un mensaje de WhatsApp al número especificado
    * @param phoneNumber Número de teléfono del destinatario
    * @param message Mensaje a enviar

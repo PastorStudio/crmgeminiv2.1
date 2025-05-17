@@ -532,6 +532,126 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   }
 
   /**
+   * Verifica si el cliente de WhatsApp está autenticado accediendo directamente 
+   * a las propiedades del navegador subyacente para determinar el estado real
+   */
+  async checkAuthenticationDirect(): Promise<{
+    authenticated: boolean;
+    browserConnected: boolean;
+    hasWhatsappStore: boolean;
+    wid?: string;
+    error?: string;
+    diagnosticData?: any;
+  }> {
+    // Por defecto, asumimos que no está autenticado
+    const result = {
+      authenticated: false,
+      browserConnected: false,
+      hasWhatsappStore: false
+    };
+    
+    if (!this.client || !this.client.pupPage) {
+      return {
+        ...result,
+        error: 'Cliente o página de navegador no disponible'
+      };
+    }
+    
+    try {
+      // Verificar si la página aún está disponible
+      const isPageActive = await this.client.pupPage.evaluate(() => true).catch(() => false);
+      result.browserConnected = isPageActive;
+      
+      if (!isPageActive) {
+        return {
+          ...result,
+          error: 'Navegador Puppeteer no responde'
+        };
+      }
+      
+      // Consultar datos internos de WhatsApp para verificar autenticación
+      const storeData = await this.client.pupPage.evaluate(() => {
+        // @ts-ignore - Acceder a objetos internos de WhatsApp no visibles en el tipado
+        if (!window.Store || !window.Store.Conn) {
+          return { 
+            hasStore: false,
+            authenticated: false
+          };
+        }
+        
+        try {
+          // @ts-ignore
+          const conn = window.Store.Conn;
+          
+          // Construir objeto de diagnóstico completo
+          return {
+            hasStore: true,
+            authenticated: conn.authenticated || false,
+            // @ts-ignore
+            wid: conn.wid ? conn.wid.user : null,
+            // @ts-ignore
+            me: conn.me ? {
+              // @ts-ignore
+              name: conn.me.name,
+              // @ts-ignore
+              phone: conn.me.user
+            } : null,
+            // @ts-ignore
+            connected: conn.connected || false,
+            // @ts-ignore
+            isMainLoaded: window.Store.Stream && window.Store.Stream.displayInfo ? true : false
+          };
+        } catch (e) {
+          return { 
+            hasStore: true,
+            authenticated: false,
+            error: e.toString()
+          };
+        }
+      }).catch(err => {
+        return { 
+          hasStore: false,
+          authenticated: false,
+          error: err.toString()
+        };
+      });
+      
+      // Actualizar resultado con los datos obtenidos
+      result.hasWhatsappStore = storeData.hasStore;
+      result.authenticated = storeData.authenticated;
+      result.wid = storeData.wid;
+      result.diagnosticData = storeData;
+      
+      console.log('Verificación directa de autenticación WhatsApp:', storeData);
+      
+      // Si detectamos que está autenticado pero el estado del sistema dice que no,
+      // actualizamos el estado del sistema
+      if (storeData.authenticated && !this.status.authenticated) {
+        console.log('¡Detectada discrepancia! WhatsApp está autenticado en navegador pero no en sistema');
+        this.status.authenticated = true;
+        this.status.ready = true;
+        this.updateSessionStatusFile();
+        
+        // Intentar cargar chats si no hay
+        if (this.chatCache.size === 0) {
+          setTimeout(() => {
+            this.refreshChats().catch(err => {
+              console.error('Error cargando chats después de detección de autenticación:', err);
+            });
+          }, 1000);
+        }
+      }
+      
+      return result;
+    } catch (error) {
+      return {
+        ...result,
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      };
+    }
+  }
+  
+  /**
    * Obtiene el estado actual del servicio con verificación en tiempo real avanzada
    * Implementa múltiples métodos de verificación para una detección más precisa
    */
@@ -549,24 +669,49 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
     
     // VERIFICACIÓN NIVEL 2: Comprobar existencia de info (principal indicador de autenticación)
     // La propiedad client.info es el indicador más fiable de autenticación
-    const isAuthenticated = Boolean(this.client.info);
+    let isAuthenticated = Boolean(this.client.info);
     
-    // VERIFICACIÓN NIVEL 3: Checar objetos esenciales de cliente
+    // VERIFICACIÓN NIVEL 3: Intenta obtener el estado actual de WhatsApp
+    try {
+      // Si tenemos mensajes recientes, estamos casi seguros que estamos autenticados
+      const hasRecentMessages = this.lastReceivedMessageTime && 
+                               (Date.now() - this.lastReceivedMessageTime.getTime() < 60 * 60 * 1000);
+      if (hasRecentMessages) {
+        console.log('Detectados mensajes recientes, cliente está autenticado');
+        isAuthenticated = true;
+      }
+    } catch (e) {
+      console.log('Error verificando mensajes recientes:', e);
+    }
+    
+    // VERIFICACIÓN NIVEL 4: Checar objetos esenciales de cliente
     const hasPuppeteerPage = Boolean(this.client.pupPage);
     
-    // VERIFICACIÓN NIVEL 4: ¿Tenemos chats cargados?
+    // VERIFICACIÓN NIVEL 5: ¿Tenemos chats cargados?
     const hasLoadedChats = this.chatCache.size > 0;
     
+    // Verificación adicional: si el código QR caducó pero recibimos mensajes recientes, 
+    // está conectado aunque no lo parezca
+    if (this.status.qrCode && this.lastReceivedMessageTime) {
+      const timeSinceMessageReceived = Date.now() - this.lastReceivedMessageTime.getTime();
+      if (timeSinceMessageReceived < 10 * 60 * 1000) { // Menos de 10 minutos
+        console.log('QR caducado pero mensajes recientes detectados, cliente autenticado');
+        isAuthenticated = true;
+        // Programar verificación profunda
+        this.checkAuthenticationDirect().catch(e => console.error('Error en verificación adicional:', e));
+      }
+    }
+    
     // DECISIÓN DE ESTADO:
-    // - Si tiene info = autenticado (99% fiable)
-    // - Si tiene info y PuppeteerPage y chats = completamente funcional
+    // - Si tiene info o mensajes recientes = autenticado
+    // - Si tiene info y PuppeteerPage y (chats o mensajes recientes) = completamente funcional
     
     // Actualizar estado según condiciones reales
     const newStatus = {
       ...this.status,
       initialized: true,
       authenticated: isAuthenticated,
-      ready: isAuthenticated && hasPuppeteerPage && hasLoadedChats,
+      ready: isAuthenticated && hasPuppeteerPage && (hasLoadedChats || Boolean(this.lastReceivedMessageTime)),
       lastConnectionCheck: new Date()
     };
     
@@ -602,6 +747,7 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       ...this.status,
       hasPuppeteerPage,
       hasLoadedChats,
+      hasRecentMessages: Boolean(this.lastReceivedMessageTime),
       chatCount: this.chatCache.size
     };
   }

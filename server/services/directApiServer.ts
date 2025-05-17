@@ -140,6 +140,45 @@ export function registerDirectRoutes(app: Express): void {
     }
   });
   
+  // Endpoint para realizar una verificación profunda de la autenticación de WhatsApp
+  app.post('/api/direct/whatsapp/check-authentication-direct', async (req: Request, res: Response) => {
+    try {
+      // Realizar verificación profunda accediendo directamente a objetos internos de WhatsApp
+      const authStatus = await whatsappService.checkAuthenticationDirect();
+      
+      console.log('Verificación profunda de autenticación WhatsApp:', authStatus);
+      
+      // Si está autenticado según la verificación profunda, actualizar el estado del sistema
+      if (authStatus.authenticated) {
+        console.log('¡AUTENTICACIÓN VERIFICADA! Actualizando estado del sistema');
+        
+        // Obtener el estado actual después de la actualización
+        const updatedStatus = whatsappService.getStatus();
+        
+        res.json({
+          success: true,
+          authenticated: true,
+          status: updatedStatus,
+          authDetails: authStatus
+        });
+      } else {
+        res.json({
+          success: true,
+          authenticated: false,
+          status: whatsappService.getStatus(),
+          authDetails: authStatus
+        });
+      }
+    } catch (error) {
+      console.error('Error en verificación profunda de autenticación:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error en verificación profunda',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+  
   // Endpoint directo para obtener todos los chats
   app.get('/api/direct/whatsapp/chats', async (req: Request, res: Response) => {
     try {
