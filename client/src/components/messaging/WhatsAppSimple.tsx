@@ -669,7 +669,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                             {!msg.fromMe && isSequential && <div className="w-10 flex-shrink-0"></div>}
                             
                             <div 
-                              className={`max-w-[75%] rounded-lg p-3 ${
+                              className={`max-w-[95%] rounded-lg p-3 ${
                                 msg.fromMe 
                                   ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md' 
                                   : 'bg-white border shadow-sm'
