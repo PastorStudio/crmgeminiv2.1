@@ -184,39 +184,12 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
 
   /**
    * Inicializa el cliente de WhatsApp Web con soporte para recuperación de sesiones
-   * Incluye mecanismos mejorados para garantizar la conexión exitosa
    */
   async initialize(): Promise<void> {
     try {
       if (this.client) {
         console.log('Cliente WhatsApp ya inicializado');
-        
-        // Verificar si el cliente está realmente conectado
-        try {
-          const state = await this.client.getState().catch(() => null);
-          if (state === 'CONNECTED') {
-            console.log('Cliente ya autenticado y conectado');
-            this.status.authenticated = true;
-            this.status.ready = true;
-            // Actualizar el archivo de estado
-            this.updateSessionStatusFile();
-            return;
-          } else {
-            console.log(`Cliente inicializado pero no conectado (estado: ${state}). Reiniciando...`);
-          }
-        } catch (err) {
-          console.log('Error verificando estado del cliente, reiniciando...', err);
-        }
-        
-        // Si llegamos aquí, el cliente existe pero no está correctamente conectado
-        try {
-          await this.client.destroy();
-          this.client = null;
-          console.log('Cliente actual destruido para reinicialización');
-        } catch (destroyErr) {
-          console.error('Error al destruir cliente:', destroyErr);
-          this.client = null;
-        }
+        return;
       }
 
       // Verificar si hay una sesión activa anterior
@@ -350,7 +323,7 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
     });
 
     // Evento cuando el cliente está listo
-    this.client.on('ready', async () => {
+    this.client.on('ready', () => {
       console.log('Cliente WhatsApp listo para usar');
       this.status.ready = true;
       this.status.authenticated = true;
@@ -360,21 +333,6 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       
       // Actualizar el archivo de sesión para marcar autenticación
       this.updateSessionStatusFile();
-      
-      // Cargar chats inmediatamente para garantizar que están disponibles para la interfaz
-      try {
-        console.log('Cargando chats iniciales...');
-        const initialChats = await this.client.getChats();
-        if (initialChats && Array.isArray(initialChats)) {
-          console.log(`Cargados ${initialChats.length} chats iniciales`);
-          // Actualizar caché
-          for (const chat of initialChats) {
-            await this.updateChatInfo(chat);
-          }
-        }
-      } catch (err) {
-        console.error('Error cargando chats iniciales:', err);
-      }
       
       // Activar la conexión permanente
       this.activatePermanentConnection()
@@ -532,224 +490,10 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   }
 
   /**
-   * Verifica si el cliente de WhatsApp está autenticado accediendo directamente 
-   * a las propiedades del navegador subyacente para determinar el estado real
-   */
-  async checkAuthenticationDirect(): Promise<{
-    authenticated: boolean;
-    browserConnected: boolean;
-    hasWhatsappStore: boolean;
-    wid?: string;
-    error?: string;
-    diagnosticData?: any;
-  }> {
-    // Por defecto, asumimos que no está autenticado
-    const result = {
-      authenticated: false,
-      browserConnected: false,
-      hasWhatsappStore: false
-    };
-    
-    if (!this.client || !this.client.pupPage) {
-      return {
-        ...result,
-        error: 'Cliente o página de navegador no disponible'
-      };
-    }
-    
-    try {
-      // Verificar si la página aún está disponible
-      const isPageActive = await this.client.pupPage.evaluate(() => true).catch(() => false);
-      result.browserConnected = isPageActive;
-      
-      if (!isPageActive) {
-        return {
-          ...result,
-          error: 'Navegador Puppeteer no responde'
-        };
-      }
-      
-      // Consultar datos internos de WhatsApp para verificar autenticación
-      const storeData = await this.client.pupPage.evaluate(() => {
-        // @ts-ignore - Acceder a objetos internos de WhatsApp no visibles en el tipado
-        if (!window.Store || !window.Store.Conn) {
-          return { 
-            hasStore: false,
-            authenticated: false
-          };
-        }
-        
-        try {
-          // @ts-ignore
-          const conn = window.Store.Conn;
-          
-          // Construir objeto de diagnóstico completo
-          return {
-            hasStore: true,
-            authenticated: conn.authenticated || false,
-            // @ts-ignore
-            wid: conn.wid ? conn.wid.user : null,
-            // @ts-ignore
-            me: conn.me ? {
-              // @ts-ignore
-              name: conn.me.name,
-              // @ts-ignore
-              phone: conn.me.user
-            } : null,
-            // @ts-ignore
-            connected: conn.connected || false,
-            // @ts-ignore
-            isMainLoaded: window.Store.Stream && window.Store.Stream.displayInfo ? true : false
-          };
-        } catch (e) {
-          return { 
-            hasStore: true,
-            authenticated: false,
-            error: e.toString()
-          };
-        }
-      }).catch(err => {
-        return { 
-          hasStore: false,
-          authenticated: false,
-          error: err.toString()
-        };
-      });
-      
-      // Actualizar resultado con los datos obtenidos
-      result.hasWhatsappStore = storeData.hasStore;
-      result.authenticated = storeData.authenticated;
-      result.wid = storeData.wid;
-      result.diagnosticData = storeData;
-      
-      console.log('Verificación directa de autenticación WhatsApp:', storeData);
-      
-      // Si detectamos que está autenticado pero el estado del sistema dice que no,
-      // actualizamos el estado del sistema
-      if (storeData.authenticated && !this.status.authenticated) {
-        console.log('¡Detectada discrepancia! WhatsApp está autenticado en navegador pero no en sistema');
-        this.status.authenticated = true;
-        this.status.ready = true;
-        this.updateSessionStatusFile();
-        
-        // Intentar cargar chats si no hay
-        if (this.chatCache.size === 0) {
-          setTimeout(() => {
-            this.refreshChats().catch(err => {
-              console.error('Error cargando chats después de detección de autenticación:', err);
-            });
-          }, 1000);
-        }
-      }
-      
-      return result;
-    } catch (error) {
-      return {
-        ...result,
-        error: error instanceof Error ? error.message : 'Error desconocido'
-      };
-    }
-  }
-  
-  /**
-   * Obtiene el estado actual del servicio con verificación en tiempo real avanzada
-   * Implementa múltiples métodos de verificación para una detección más precisa
+   * Obtiene el estado actual del servicio
    */
   getStatus(): WhatsAppStatus {
-    // VERIFICACIÓN NIVEL 1: Existe el cliente?
-    if (!this.client) {
-      return { 
-        ...this.status, 
-        initialized: this.status.initialized, 
-        authenticated: false, 
-        ready: false,
-        lastConnectionCheck: new Date()
-      };
-    }
-    
-    // VERIFICACIÓN NIVEL 2: Comprobar existencia de info (principal indicador de autenticación)
-    // La propiedad client.info es el indicador más fiable de autenticación
-    let isAuthenticated = Boolean(this.client.info);
-    
-    // VERIFICACIÓN NIVEL 3: Intenta obtener el estado actual de WhatsApp
-    try {
-      // Si tenemos mensajes recientes, estamos casi seguros que estamos autenticados
-      const hasRecentMessages = this.lastReceivedMessageTime && 
-                               (Date.now() - this.lastReceivedMessageTime.getTime() < 60 * 60 * 1000);
-      if (hasRecentMessages) {
-        console.log('Detectados mensajes recientes, cliente está autenticado');
-        isAuthenticated = true;
-      }
-    } catch (e) {
-      console.log('Error verificando mensajes recientes:', e);
-    }
-    
-    // VERIFICACIÓN NIVEL 4: Checar objetos esenciales de cliente
-    const hasPuppeteerPage = Boolean(this.client.pupPage);
-    
-    // VERIFICACIÓN NIVEL 5: ¿Tenemos chats cargados?
-    const hasLoadedChats = this.chatCache.size > 0;
-    
-    // Verificación adicional: si el código QR caducó pero recibimos mensajes recientes, 
-    // está conectado aunque no lo parezca
-    if (this.status.qrCode && this.lastReceivedMessageTime) {
-      const timeSinceMessageReceived = Date.now() - this.lastReceivedMessageTime.getTime();
-      if (timeSinceMessageReceived < 10 * 60 * 1000) { // Menos de 10 minutos
-        console.log('QR caducado pero mensajes recientes detectados, cliente autenticado');
-        isAuthenticated = true;
-        // Programar verificación profunda
-        this.checkAuthenticationDirect().catch(e => console.error('Error en verificación adicional:', e));
-      }
-    }
-    
-    // DECISIÓN DE ESTADO:
-    // - Si tiene info o mensajes recientes = autenticado
-    // - Si tiene info y PuppeteerPage y (chats o mensajes recientes) = completamente funcional
-    
-    // Actualizar estado según condiciones reales
-    const newStatus = {
-      ...this.status,
-      initialized: true,
-      authenticated: isAuthenticated,
-      ready: isAuthenticated && hasPuppeteerPage && (hasLoadedChats || Boolean(this.lastReceivedMessageTime)),
-      lastConnectionCheck: new Date()
-    };
-    
-    // Registrar cambios de estado importantes
-    if (this.status.authenticated !== newStatus.authenticated) {
-      console.log(`Actualizando estado de autenticación: ${newStatus.authenticated ? 'Conectado' : 'Desconectado'}`);
-      
-      // Si cambió a autenticado pero sin chats, iniciar carga de chats en segundo plano
-      if (newStatus.authenticated && !hasLoadedChats) {
-        console.log('Cliente WhatsApp autenticado. Cargando chats iniciales...');
-        setTimeout(() => {
-          this.refreshChats().catch(err => {
-            console.error('Error cargando chats iniciales:', err);
-          });
-        }, 2000);
-      }
-    }
-    
-    if (this.status.ready !== newStatus.ready) {
-      console.log(`Actualizando estado de operatividad: ${newStatus.ready ? 'Listo para usar' : 'No operativo'}`);
-      
-      // Actualizar archivo de sesión si está listo
-      if (newStatus.ready) {
-        this.updateSessionStatusFile();
-      }
-    }
-    
-    // Actualizar el estado interno
-    this.status = newStatus;
-    
-    // Agregar información adicional para diagnóstico
-    return {
-      ...this.status,
-      hasPuppeteerPage,
-      hasLoadedChats,
-      hasRecentMessages: Boolean(this.lastReceivedMessageTime),
-      chatCount: this.chatCache.size
-    };
+    return this.status;
   }
   
   /**
@@ -1324,122 +1068,24 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   
   /**
    * Actualiza la lista de chats disponibles
-   * Versión mejorada con mayor tolerancia a fallos y mejor verificación de estado
    */
-  async refreshChats(): Promise<void> {
-    // Verificación 1: Cliente existe
-    if (!this.client) {
-      console.log('Cliente no inicializado, no se pueden obtener chats');
-      return;
-    }
-    
-    // Verificación 2: Comprobar el estado real del cliente, no solo el estado guardado
-    // Comprobamos si client.info existe, que es el indicador más fiable de autenticación
-    const isAuthenticated = Boolean(this.client.info);
-    
-    // Actualizar nuestro estado interno según la realidad
-    if (this.status.authenticated !== isAuthenticated) {
-      console.log(`Actualizando estado de autenticación: ${isAuthenticated ? 'Autenticado' : 'No autenticado'}`);
-      this.status.authenticated = isAuthenticated;
-    }
-    
-    // Si no está autenticado, no podemos obtener chats
-    if (!isAuthenticated) {
-      console.log('Cliente no autenticado (según info), no se pueden obtener chats');
-      this.status.ready = false;
-      return;
-    }
+  private async refreshChats(): Promise<void> {
+    if (!this.client || !this.status.authenticated) return;
     
     try {
       console.log('Actualizando lista de chats...');
       
-      // Verificación 3: Obtener el estado oficial si es posible
-      try {
-        const state = await this.client.getState().catch(() => null);
-        console.log(`Estado oficial del cliente: ${state}`);
-        
-        // Si el estado no es CONNECTED pero tenemos info, intentamos continuar de todos modos
-        // ya que el cliente a veces reporta estados incorrectos
-        if (state !== 'CONNECTED' && state !== null) {
-          console.log(`Advertencia: Cliente en estado ${state}, pero intentaremos obtener chats de todos modos`);
-        }
-      } catch (stateError) {
-        console.log('Error obteniendo estado oficial, continuando de todos modos');
-      }
-      
-      // Verificación 4: Validar objetos críticos
-      // Si no tenemos página de Puppeteer, es un problema grave que requiere reinicio
-      if (!this.client.pupPage) {
-        console.log('Error crítico: Cliente sin página de Puppeteer, marcando para reinicio');
-        this.status.authenticated = false;
-        this.status.ready = false;
-        return;
-      }
-      
-      // Verificación 5: Obtener chats con doble nivel de protección contra errores
-      let chats = [];
-      
-      try {
-        // Primer intento: método estándar
-        chats = await this.client.getChats().catch(async error => {
-          console.error('Error en primer intento de obtener chats:', error);
-          
-          // Segundo intento: esperar un poco y reintentar
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          try {
-            return await this.client!.getChats();
-          } catch (retryError) {
-            console.error('Error en segundo intento de obtener chats:', retryError);
-            return [];
-          }
-        });
-      } catch (outerError) {
-        console.error('Error crítico obteniendo chats:', outerError);
-        chats = [];
-      }
-      
-      // Si seguimos sin chats, reportar el problema
-      if (!chats || chats.length === 0) {
-        console.log('No se encontraron chats después de múltiples intentos');
-        
-        // Reducir estado pero mantener autenticación si tenemos info
-        if (this.client.info) {
-          this.status.ready = false;
-          this.status.authenticated = true;
-        } else {
-          this.status.ready = false;
-          this.status.authenticated = false;
-        }
-        return;
-      }
+      // Obtener todos los chats de WhatsApp
+      const chats = await this.client.getChats();
       
       // Actualizar caché de chats
-      let updatedCount = 0;
       for (const chat of chats) {
-        try {
-          await this.updateChatInfo(chat);
-          updatedCount++;
-        } catch (chatError) {
-          console.error('Error actualizando información de chat:', chatError);
-        }
+        await this.updateChatInfo(chat);
       }
       
-      // Actualizar estado para indicar que la carga fue exitosa
-      this.status.ready = true;
-      this.status.authenticated = true;
-      console.log(`Cargados ${updatedCount} de ${chats.length} chats correctamente`);
+      console.log(`${chats.length} chats actualizados correctamente`);
     } catch (error) {
-      console.error('Error crítico actualizando chats:', error);
-      
-      // Mantener autenticación si aún tenemos info
-      if (this.client.info) {
-        this.status.ready = false;
-        this.status.authenticated = true;
-      } else {
-        this.status.ready = false;
-        this.status.authenticated = false;
-      }
+      console.error('Error actualizando chats:', error);
     }
   }
   
