@@ -98,34 +98,8 @@ export const registerDirectAPIRoutes = (app: any) => {
       // Verificar si está autenticado
       if (!status.authenticated) {
         console.log('WhatsApp no autenticado o no listo. No hay datos disponibles.');
-        // Generar datos de muestra temporales para desarrollo
-        const demoChats = [
-          {
-            id: "123456789@c.us",
-            name: "Cliente Importante",
-            timestamp: Math.floor(Date.now() / 1000) - 300,
-            lastMessage: "¿Cuándo podemos agendar la reunión?",
-            unreadCount: 2,
-            isGroup: false
-          },
-          {
-            id: "987654321@c.us",
-            name: "Soporte Técnico",
-            timestamp: Math.floor(Date.now() / 1000) - 1800,
-            lastMessage: "El problema ha sido resuelto.",
-            unreadCount: 0,
-            isGroup: false
-          },
-          {
-            id: "11111111@g.us",
-            name: "Equipo de Ventas",
-            timestamp: Math.floor(Date.now() / 1000) - 7200,
-            lastMessage: "Revisemos los resultados mañana.",
-            unreadCount: 5,
-            isGroup: true
-          }
-        ];
-        return res.json(demoChats);
+        // No hay datos disponibles, devolver array vacío
+        return res.json([]);
       }
       
       try {
