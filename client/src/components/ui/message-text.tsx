@@ -20,28 +20,36 @@ export function MessageText({ text, className = '' }: MessageTextProps) {
   const parts = text.split(URL_REGEX);
   const matches = text.match(URL_REGEX) || [];
   
-  return (
-    <div className={className}>
-      {parts.map((part, index) => (
-        <React.Fragment key={index}>
-          {part}
-          {index < matches.length && (
-            <a 
-              href={matches[index]} 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline font-medium"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                window.open(matches[index], '_blank');
-              }}
-            >
-              {matches[index]}
-            </a>
-          )}
-        </React.Fragment>
-      ))}
-    </div>
-  );
+  // Crear elementos para el texto con enlaces resaltados
+  const content: JSX.Element[] = [];
+  
+  // Procesar cada parte del texto y los enlaces
+  for (let i = 0; i < parts.length; i++) {
+    // Agregar el texto normal
+    if (parts[i]) {
+      content.push(<span key={`text-${i}`}>{parts[i]}</span>);
+    }
+    
+    // Agregar enlace (si existe en esta posición)
+    if (i < matches.length) {
+      const url = matches[i];
+      content.push(
+        <a 
+          key={`link-${i}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline font-medium"
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open(url, '_blank');
+          }}
+        >
+          {url}
+        </a>
+      );
+    }
+  }
+  
+  return <div className={className}>{content}</div>;
 }
