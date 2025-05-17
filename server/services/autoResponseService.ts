@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GeminiV1Client } from './geminiV1';
+import { getGeminiApiKey, getOpenAIApiKey } from './aiKeysManager';
 
 // Tipo de datos para la plantilla de respuesta automática
 interface ResponseTemplate {
@@ -91,32 +92,67 @@ export class AutoResponseService {
    * Inicializa los clientes de IA (Gemini y OpenAI)
    */
   private initAIClients(): void {
-    // Inicializar Gemini
+    // Inicializar Gemini usando nuestro gestor de claves API
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        console.warn('GEMINI_API_KEY no está definida. Algunas funciones de IA de Gemini estarán limitadas.');
+      const { key: geminiApiKey, isClientKey } = getGeminiApiKey();
+      
+      if (!geminiApiKey) {
+        console.warn('GEMINI_API_KEY no está definida. Las funciones de IA de Gemini no estarán disponibles.');
       } else {
+        // Advertir si estamos usando una clave de cliente
+        if (isClientKey) {
+          console.warn('ADVERTENCIA: Usando clave de cliente Gemini en el servidor.');
+          console.warn('Esto puede causar errores 404 o problemas en las llamadas a la API.');
+          console.warn('Se recomienda configurar una clave de servidor correcta para Gemini.');
+        }
+        
         // Inicializar ambos clientes - el oficial y nuestra implementación directa
-        this.geminiClient = new GoogleGenerativeAI(apiKey);
-        this.geminiV1Client = new GeminiV1Client(apiKey);
-        console.log('Clientes Gemini inicializados correctamente (con soporte para v1)');
+        this.geminiClient = new GoogleGenerativeAI(geminiApiKey);
+        // La clase GeminiV1Client ahora maneja internamente la validación de la clave
+        this.geminiV1Client = new GeminiV1Client(geminiApiKey);
+        console.log('Clientes Gemini inicializados con soporte para v1');
       }
     } catch (error) {
       console.error('Error al inicializar el cliente de Gemini:', error);
     }
 
-    // Inicializar OpenAI
+    // Inicializar OpenAI usando nuestro gestor de claves API
     try {
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) {
-        console.warn('OPENAI_API_KEY no está definida. Algunas funciones de IA de OpenAI estarán limitadas.');
+      const openaiApiKey = getOpenAIApiKey();
+      
+      if (!openaiApiKey) {
+        console.warn('OPENAI_API_KEY no está definida. Las funciones de IA de OpenAI no estarán disponibles.');
       } else {
-        this.openaiClient = new OpenAI({ apiKey });
+        this.openaiClient = new OpenAI({ apiKey: openaiApiKey });
         console.log('Cliente OpenAI inicializado correctamente');
+        
+        // Verificar que la clave funciona haciendo una pequeña prueba
+        this.testOpenAIConnection().catch(err => {
+          console.warn('La clave de OpenAI parece estar configurada pero no funciona correctamente:', err.message);
+        });
       }
     } catch (error) {
       console.error('Error al inicializar el cliente de OpenAI:', error);
+    }
+  }
+  
+  /**
+   * Prueba la conexión a OpenAI para verificar que la clave funciona
+   */
+  private async testOpenAIConnection(): Promise<void> {
+    if (!this.openaiClient) return;
+    
+    try {
+      // Hacer una prueba muy simple con pocos tokens
+      await this.openaiClient.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: "Hola" }],
+        max_tokens: 5
+      });
+      console.log('Conexión a OpenAI verificada correctamente');
+    } catch (error) {
+      console.error('Error al verificar la conexión a OpenAI:', error);
+      throw error;
     }
   }
 
