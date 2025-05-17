@@ -12,7 +12,7 @@ export default function Messages() {
         <meta name="description" content="Comunícate con tus clientes a través de WhatsApp directamente desde tu CRM" />
       </Helmet>
 
-      <div className="w-full max-w-7xl mx-auto flex justify-center items-center">
+      <div className="w-full py-4 flex justify-center items-center">
         <WhatsAppSimple selectedLeadId={selectedLeadId} onSelectLead={setSelectedLeadId} />
       </div>
     </>
