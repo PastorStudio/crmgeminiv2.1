@@ -1182,7 +1182,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/integrations/telegram/status", async (req: Request, res: Response) => {
+  // Obtener estado de las respuestas automáticas
+app.get("/api/autoresponse/status", async (req: Request, res: Response) => {
+  try {
+    const { autoResponseService } = await import('./services/autoResponseService');
+    const config = autoResponseService.getConfig();
+    
+    // Devolver sólo los campos relevantes para el estado
+    res.json({
+      success: true,
+      enabled: config.enabled,
+      aiProvider: config.aiProvider,
+      customPromptsEnabled: config.customPrompts.enabled
+    });
+  } catch (error) {
+    console.error("Error al obtener estado de respuestas automáticas:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Error al obtener estado de respuestas automáticas",
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.get("/api/integrations/telegram/status", async (req: Request, res: Response) => {
     try {
       // Importar el servicio de Telegram
       const { telegramService } = await import('./services/telegramService');
