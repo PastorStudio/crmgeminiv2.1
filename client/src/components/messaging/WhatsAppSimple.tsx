@@ -512,16 +512,22 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
             </div>
             
             <TabsContent value="chats" className="flex-1 overflow-hidden">
-              {/* Lista de chats - Manejo más robusto */}
+              {/* Lista de chats - Verificación explícita */}
               {activeTab === 'chats' && (
                 <ScrollArea className="flex-1">
-                  {isLoadingChats && whatsappChats.length === 0 ? (
+                  {isLoadingChats ? (
                     <div className="flex justify-center p-4">
                       <Spinner />
                     </div>
-                  ) : whatsappChats && whatsappChats.length > 0 ? (
+                  ) : whatsappChats ? (
                     <div className="divide-y">
-                      {filteredChats.map((chat: WhatsAppChat) => (
+                      {/* Mostramos un mensaje de depuración antes del mapeo */}
+                      <div className="p-3 text-sm text-gray-500">
+                        Chats disponibles: {whatsappChats.length}
+                      </div>
+                      
+                      {/* Mapeo de chats con protección de errores */}
+                      {whatsappChats.map((chat: any) => (
                         <div
                           key={chat.id}
                           className={`p-3 hover:bg-gray-50 cursor-pointer ${
