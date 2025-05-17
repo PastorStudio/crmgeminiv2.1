@@ -56,15 +56,15 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar con menú vertical */}
-      <aside className="fixed h-full w-56 bg-gradient-to-b from-purple-400 via-pink-300 to-green-300 shadow-lg z-50">
-        <div className="p-3">
-          <div className="flex items-center justify-center mb-6">
-            <span className="text-white text-xl font-bold">WhatsApp CRM</span>
+      <aside className="fixed h-full w-44 bg-gradient-to-b from-purple-400 via-pink-300 to-green-300 shadow-lg z-50">
+        <div className="p-2">
+          <div className="flex items-center justify-center mb-4">
+            <span className="text-white text-sm font-bold">WhatsApp CRM</span>
           </div>
           
-          <nav className="mt-5 flex flex-col space-y-1.5">
-            <a href="/" className={`flex items-center px-4 py-3 text-sm font-medium rounded-md ${location === '/' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-              <svg className="mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <nav className="mt-2 flex flex-col space-y-1">
+            <a href="/" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
               Dashboard
@@ -166,7 +166,7 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 ml-56 overflow-hidden">
+      <main className="flex-1 ml-44 overflow-hidden">
         <div className="w-full h-full mx-auto">
           <div className="h-full">
             {isLoadingGeminiKey ? (
