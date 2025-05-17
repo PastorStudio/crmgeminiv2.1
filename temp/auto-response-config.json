@@ -1,6 +1,6 @@
 {
   "enabled": true,
-  "delaySeconds": 7,
+  "delaySeconds": 3,
   "templates": [
     {
       "id": "default",
