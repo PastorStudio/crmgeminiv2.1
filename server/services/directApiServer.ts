@@ -88,7 +88,7 @@ export function registerDirectRoutes(app: Express): void {
   app.get('/api/direct/whatsapp/messages/:chatId', async (req: Request, res: Response) => {
     try {
       const { chatId } = req.params;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 1000; // Aumentado para mostrar más mensajes
       
       if (!chatId) {
         return res.status(400).json({ error: 'Se requiere el ID del chat' });
