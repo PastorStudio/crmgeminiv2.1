@@ -103,7 +103,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchInterval: 5000
   });
 
-  // Query para obtener chats
+  // Query para obtener chats - con protección adicional contra la desaparición de datos
   const { 
     data: apiChats = [],
     isLoading: isLoadingChats,
@@ -111,36 +111,77 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     error: chatError
   } = useQuery({
     queryKey: ['/api/direct/whatsapp/chats'],
-    refetchInterval: 5000,
+    refetchInterval: 10000, // Reducimos frecuencia para evitar sobrecarga
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    retry: 3,
+    retry: 5, // Aumentamos reintentos
+    staleTime: 30000, // Mantenemos datos por más tiempo
     queryFn: async () => {
       try {
-        // Usar fetch con opciones para evitar caché
-        const response = await fetch('/api/direct/whatsapp/chats', {
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          },
-          cache: 'no-store'
+        // Agregamos parámetro timestamp para evitar caché del navegador
+        const timestamp = new Date().getTime();
+        const url = `/api/direct/whatsapp/chats?t=${timestamp}`;
+        
+        // Usar XMLHttpRequest en lugar de fetch para evitar problemas con el caché
+        return new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', url, true);
+          xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          xhr.setRequestHeader('Pragma', 'no-cache');
+          
+          xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                if (Array.isArray(data)) {
+                  console.log(`Chats obtenidos correctamente: ${data.length} chats`);
+                  
+                  // Guardamos en localStorage para tener un respaldo
+                  if (data.length > 0) {
+                    try {
+                      localStorage.setItem('whatsapp_chats_backup', JSON.stringify(data));
+                      console.log('Chat backup guardado:', data.length, 'chats');
+                    } catch (localStorageError) {
+                      console.error('Error al guardar en localStorage:', localStorageError);
+                    }
+                  }
+                  
+                  resolve(data);
+                } else {
+                  console.error('Respuesta no es un array:', typeof data);
+                  
+                  // Intentar recuperar del localStorage
+                  try {
+                    const backup = localStorage.getItem('whatsapp_chats_backup');
+                    if (backup) {
+                      const parsedBackup = JSON.parse(backup);
+                      console.log('Usando chats de respaldo:', parsedBackup.length);
+                      resolve(parsedBackup);
+                      return;
+                    }
+                  } catch (backupError) {
+                    console.error('Error al recuperar backup:', backupError);
+                  }
+                  
+                  resolve([]);
+                }
+              } catch (error) {
+                console.error('Error al parsear respuesta:', error);
+                resolve([]);
+              }
+            } else {
+              console.error('Error en la solicitud XHR:', xhr.status);
+              resolve([]);
+            }
+          };
+          
+          xhr.onerror = function() {
+            console.error('Error de red en la solicitud XHR');
+            resolve([]);
+          };
+          
+          xhr.send();
         });
-        
-        if (!response.ok) {
-          throw new Error(`Error al obtener chats: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        console.log("Chats obtenidos de la API:", JSON.stringify(data).substring(0, 100) + "...");
-        console.log("Número de chats recibidos:", Array.isArray(data) ? data.length : 0);
-        
-        // Verificar que tenemos un array válido
-        if (!Array.isArray(data)) {
-          console.error("Los datos recibidos no son un array:", typeof data);
-          return [];
-        }
-        
-        return data;
       } catch (error) {
         console.error("Error obteniendo chats:", error);
         return [];
@@ -268,17 +309,22 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   // Verificamos el estado de WhatsApp y mostramos datos detallados
   console.log("WhatsApp Status completo:", JSON.stringify(whatsappStatus));
   
-  // NO verificamos authenticated porque puede estar mal
-  // Solo verificamos que tengamos datos
+  // Solución para evitar desaparición de chats
   const hasRealChats = Array.isArray(apiChats) && apiChats.length > 0;
   
-  // SIEMPRE usamos los datos de la API, independientemente del estado de autenticación
-  const whatsappChats = Array.isArray(apiChats) ? apiChats : [];
+  // Estado local para almacenar los chats y que no desaparezcan
+  const [persistentChats, setPersistentChats] = useState<WhatsAppChat[]>([]);
   
-  // Mostramos los primeros 3 chats para debug
-  if (whatsappChats.length > 0) {
-    console.log("Primeros 3 chats:", whatsappChats.slice(0, 3));
-  }
+  // Efecto para mantener los chats persistentes
+  useEffect(() => {
+    if (Array.isArray(apiChats) && apiChats.length > 0) {
+      console.log("Actualizando chats persistentes con", apiChats.length, "chats");
+      setPersistentChats(apiChats);
+    }
+  }, [apiChats]);
+  
+  // Usamos chats persistentes si están disponibles, o los datos de la API en caso contrario
+  const whatsappChats = persistentChats.length > 0 ? persistentChats : (Array.isArray(apiChats) ? apiChats : []);
   
   // Filtrar chats por nombre o último mensaje (si hay chats)
   const filteredChats = whatsappChats.length > 0 
@@ -502,10 +548,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
             </div>
             
             <TabsContent value="chats" className="flex-1 overflow-hidden">
-              {/* Lista de chats */}
+              {/* Lista de chats - Manejo más robusto */}
               {activeTab === 'chats' && (
                 <ScrollArea className="flex-1">
-                  {isLoadingChats ? (
+                  {isLoadingChats && whatsappChats.length === 0 ? (
                     <div className="flex justify-center p-4">
                       <Spinner />
                     </div>
