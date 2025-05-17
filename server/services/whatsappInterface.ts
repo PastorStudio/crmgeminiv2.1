@@ -16,6 +16,10 @@ export interface WhatsAppStatus {
   qrDataUrl?: string;  // URL de datos para mostrar directamente en frontend
   lastConnectionCheck?: Date;
   connectionState?: string;
+  hasPuppeteerPage?: boolean;  // Indica si la página de Puppeteer está disponible
+  hasLoadedChats?: boolean;    // Indica si los chats se han cargado exitosamente
+  hasRecentMessages?: boolean; // Indica si se han recibido mensajes recientemente
+  chatCount?: number;          // Número de chats disponibles como verificación adicional
 }
 
 /**
@@ -166,4 +170,10 @@ export interface IWhatsAppService {
    * @returns Etiqueta guardada con su ID
    */
   saveCustomTag(tag: any): Promise<any>;
+  
+  /**
+   * Corrige el estado de autenticación del cliente cuando se detecta inconsistencia
+   * @returns true si la operación fue exitosa
+   */
+  fixAuthenticationState(): Promise<boolean>;
 }
