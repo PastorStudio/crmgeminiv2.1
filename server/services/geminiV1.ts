@@ -5,6 +5,7 @@
  */
 
 import axios from 'axios';
+import { getGeminiApiKey } from './aiKeysManager';
 
 interface GenerationConfig {
   temperature?: number;
@@ -24,11 +25,33 @@ interface GeminiMessage {
 }
 
 export class GeminiV1Client {
-  private apiKey: string;
+  private apiKey: string | null;
   private baseUrl: string;
+  private isClientKey: boolean;
   
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
+  constructor(initialApiKey?: string) {
+    // Intentar usar la clave proporcionada, pero verificar si es de cliente
+    if (initialApiKey) {
+      this.apiKey = initialApiKey;
+      this.isClientKey = initialApiKey.startsWith('AIzaSy');
+      
+      if (this.isClientKey) {
+        console.warn('AVISO: GeminiV1Client inicializado con una clave de cliente. Intentando usar clave de servidor.');
+        // Intentar obtener la clave de servidor
+        const { key, isClientKey } = getGeminiApiKey();
+        if (key && !isClientKey) {
+          console.log('GeminiV1Client: Se reemplazó la clave de cliente por una clave de servidor válida');
+          this.apiKey = key;
+          this.isClientKey = false;
+        }
+      }
+    } else {
+      // Si no se proporciona clave, intentar obtenerla del gestor
+      const { key, isClientKey } = getGeminiApiKey();
+      this.apiKey = key;
+      this.isClientKey = isClientKey;
+    }
+    
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1';
   }
   
@@ -37,23 +60,21 @@ export class GeminiV1Client {
    */
   async generateContent(prompt: string, model: string = 'gemini-pro', config: GenerationConfig = {}): Promise<string> {
     try {
+      // Si no tenemos apiKey, intentar obtenerla nuevamente
       if (!this.apiKey) {
-        throw new Error("API key no configurada para Gemini");
+        const { key, isClientKey } = getGeminiApiKey();
+        if (key) {
+          this.apiKey = key;
+          this.isClientKey = isClientKey;
+        } else {
+          throw new Error("No hay una clave API configurada para Gemini");
+        }
       }
       
-      // Verificar si estamos usando una API key de servidor o una API key de cliente
-      const isClientKey = this.apiKey.startsWith('AIzaSy');
-      
-      // Si es una clave de cliente, usar la API directamente que funciona con esa clave
-      if (isClientKey) {
-        // Intentar usar la clave de la variable de entorno como respaldo
-        const serverKey = process.env.GEMINI_API_KEY;
-        if (serverKey && !serverKey.startsWith('AIzaSy')) {
-          console.log("Usando clave de servidor de variable de entorno para Gemini");
-          this.apiKey = serverKey;
-        } else {
-          console.log("AVISO: Usando clave de cliente para Gemini en el servidor. Esto puede causar errores.");
-        }
+      // Comprobar si la clave es de cliente y mostrar advertencia
+      if (this.isClientKey) {
+        console.warn("ADVERTENCIA: Usando clave de cliente para Gemini en el servidor.");
+        console.warn("Esto puede causar errores 404 en las llamadas a la API.");
       }
       
       // Usar directamente la URL v1 evitando cualquier manipulación
@@ -101,23 +122,21 @@ export class GeminiV1Client {
    */
   async chat(messages: GeminiMessage[], model: string = 'gemini-pro', config: GenerationConfig = {}): Promise<string> {
     try {
+      // Si no tenemos apiKey, intentar obtenerla nuevamente
       if (!this.apiKey) {
-        throw new Error("API key no configurada para Gemini");
+        const { key, isClientKey } = getGeminiApiKey();
+        if (key) {
+          this.apiKey = key;
+          this.isClientKey = isClientKey;
+        } else {
+          throw new Error("No hay una clave API configurada para Gemini");
+        }
       }
       
-      // Verificar si estamos usando una API key de servidor o una API key de cliente
-      const isClientKey = this.apiKey.startsWith('AIzaSy');
-      
-      // Si es una clave de cliente, usar la API directamente que funciona con esa clave
-      if (isClientKey) {
-        // Intentar usar la clave de la variable de entorno como respaldo
-        const serverKey = process.env.GEMINI_API_KEY;
-        if (serverKey && !serverKey.startsWith('AIzaSy')) {
-          console.log("Usando clave de servidor de variable de entorno para Gemini (chat)");
-          this.apiKey = serverKey;
-        } else {
-          console.log("AVISO: Usando clave de cliente para Gemini en el servidor (chat). Esto puede causar errores.");
-        }
+      // Comprobar si la clave es de cliente y mostrar advertencia
+      if (this.isClientKey) {
+        console.warn("ADVERTENCIA: Usando clave de cliente para Gemini en el servidor (modo chat).");
+        console.warn("Esto puede causar errores 404 en las llamadas a la API.");
       }
       
       // Usar directamente la URL v1 evitando cualquier manipulación
