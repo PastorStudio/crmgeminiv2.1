@@ -24,7 +24,7 @@ interface AutoResponseConfig {
   enabledForGroups: boolean;
   enabledForBroadcast: boolean;
   excludedContacts: string[];
-  aiProvider: "gemini" | "openai"; // Nueva propiedad para seleccionar el proveedor de IA
+  aiProvider: "gemini" | "openai"; // Propiedad para seleccionar el proveedor de IA
   customPrompts: {
     enabled: boolean;
     system: string;
@@ -73,7 +73,7 @@ const responseTimers: Map<string, NodeJS.Timeout> = new Map();
 const responseSent: Map<string, boolean> = new Map();
 
 /**
- * Clase que gestiona las respuestas automáticas de WhatsApp utilizando Gemini AI
+ * Clase que gestiona las respuestas automáticas de WhatsApp utilizando IA
  */
 export class AutoResponseService {
   private config: AutoResponseConfig;
@@ -446,33 +446,47 @@ export class AutoResponseService {
           console.log("Respuesta de OpenAI:", responseText);
         } catch (error) {
           console.error("Error al determinar plantilla con OpenAI:", error);
-          // Si falla OpenAI y tenemos Gemini disponible, intentamos con él
-          if (this.geminiClient) {
-            console.log("Cambiando a Gemini tras error con OpenAI");
-          } else {
-            return null; // No podemos continuar sin ningún proveedor
+          // Si falla OpenAI, intentamos con Gemini
+          if (this.geminiV1Client) {
+            try {
+              const geminiResponse = await this.geminiV1Client.generateContent(prompt);
+              responseText = geminiResponse;
+              console.log("Respuesta alternativa de Gemini:", responseText);
+            } catch (innerError) {
+              console.error("Error al determinar plantilla con Gemini alternativo:", innerError);
+            }
           }
         }
       }
-      
-      // Usar Gemini si está configurado como proveedor o si OpenAI falló
-      if ((this.config.aiProvider === "gemini" || responseText === "") && this.geminiClient) {
+      // Usar Gemini en caso contrario
+      else if (this.geminiV1Client) {
         try {
           console.log("Usando Gemini para determinar plantilla");
-          const model = this.geminiClient.getGenerativeModel({ model: 'gemini-pro' });
-          const result = await model.generateContent(prompt);
-          responseText = result.response.text().trim();
+          const response = await this.geminiV1Client.generateContent(prompt);
+          responseText = response;
           console.log("Respuesta de Gemini:", responseText);
         } catch (error) {
-          console.error('Error al determinar plantilla con Gemini:', error);
-          if (responseText === "") {
-            return null; // No tenemos respuesta de ningún proveedor
+          console.error("Error al determinar plantilla con Gemini:", error);
+          // Si falla Gemini y tenemos OpenAI, intentar con OpenAI
+          if (this.openaiClient) {
+            try {
+              const openaiResponse = await this.openaiClient.chat.completions.create({
+                model: "gpt-4o",
+                messages: [{ role: "user", content: prompt }] as any,
+                temperature: 0,
+                max_tokens: 10,
+              });
+              
+              responseText = openaiResponse.choices[0].message.content || "";
+              console.log("Respuesta alternativa de OpenAI:", responseText);
+            } catch (innerError) {
+              console.error("Error al determinar plantilla con OpenAI alternativo:", innerError);
+            }
           }
-          // Si ya teníamos respuesta de OpenAI, continuamos con ella
         }
       }
       
-      // Procesamos la respuesta para extraer el número de la plantilla
+      // Extraer el número de plantilla de la respuesta
       const match = responseText.match(/\d+/);
       if (match) {
         const templateIndex = parseInt(match[0]) - 1;
@@ -480,13 +494,12 @@ export class AutoResponseService {
           return templates[templateIndex];
         }
       }
-      
-      console.log(`No se pudo extraer un índice válido de la respuesta: "${responseText}"`);
-      return null;
     } catch (error) {
-      console.error('Error general al determinar plantilla con IA:', error);
-      return null;
+      console.error("Error general al determinar plantilla:", error);
     }
+    
+    // Si todo falla, devolver null para usar métodos alternativos
+    return null;
   }
 
   /**
@@ -699,7 +712,7 @@ export class AutoResponseService {
         throw error;
       }
     } catch (error) {
-      console.error('Error al enviar respuesta automática:', error);
+      console.error('Error general en envío de respuesta automática:', error);
       throw error;
     }
   }
@@ -708,32 +721,82 @@ export class AutoResponseService {
    * Ajusta el tono del mensaje según el nivel de profesionalidad actual
    */
   private async adjustToneWithGemini(text: string, professionLevel: string): Promise<string> {
-    if (!this.geminiClient) return text;
+    // Si el texto está vacío o el nivel es profesional (que es el predeterminado), no ajustar
+    if (!text || professionLevel === 'professional') {
+      return text;
+    }
     
-    try {
-      // Si el nivel es profesional, no es necesario ajustar
-      if (professionLevel === 'professional') return text;
-      
-      const model = this.geminiClient.getGenerativeModel({ model: 'gemini-pro' });
-      
-      // Crear el prompt para Gemini
-      const prompt = `
+    // Intentar primero con nuestro cliente personalizado para Gemini v1
+    if (this.geminiV1Client) {
+      try {
+        console.log(`Ajustando tono a nivel: ${professionLevel} con GeminiV1Client`);
+        
+        // Crear prompt para ajustar el tono
+        const prompt = `
+        Reescribe el siguiente mensaje para que tenga un tono ${professionLevel}. 
+        Mantén el mismo significado y la misma información, pero ajusta el tono.
+        Si el tono ya es apropiado, simplemente devuelve el mismo texto.
+        
+        Original: ${text}
+        
+        Reescrito:
+        `;
+        
+        // Generar respuesta con nuestro cliente
+        const response = await this.geminiV1Client.generateContent(
+          prompt,
+          "gemini-pro",
+          {
+            temperature: 0.7,
+            maxOutputTokens: 500
+          }
+        );
+        
+        // Si tenemos respuesta, usarla. De lo contrario, devolver el texto original
+        if (response && response.trim()) {
+          console.log('Tono ajustado correctamente con GeminiV1Client');
+          return response;
+        } else {
+          console.log('GeminiV1Client devolvió respuesta vacía, usando texto original');
+          return text;
+        }
+      } catch (error) {
+        console.error('Error al ajustar tono con GeminiV1Client:', error);
+        // Continuar con el siguiente método si este falla
+      }
+    }
+    
+    // Intentar con el cliente oficial de Google como fallback
+    if (this.geminiClient) {
+      try {
+        console.log(`Intentando ajustar tono con cliente oficial de Google Gemini`);
+        const model = this.geminiClient.getGenerativeModel({ model: 'gemini-pro' });
+        
+        const prompt = `
         Reformula el siguiente texto en un tono "${professionLevel}" (puede ser casual, profesional, técnico o ejecutivo).
         Mantén el mismo significado y propósito, pero adapta el estilo y formalidad.
         
         Texto original: "${text}"
         
         Reformulación:
-      `;
-      
-      const result = await model.generateContent(prompt);
-      const response = result.response.text().trim();
-      
-      return response || text; // Si hay algún error, devolver el texto original
-    } catch (error) {
-      console.error('Error al ajustar tono con Gemini:', error);
-      return text;
+        `;
+        
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const responseText = response.text();
+        
+        if (responseText && responseText.trim()) {
+          console.log('Tono ajustado correctamente con cliente oficial de Google');
+          return responseText;
+        }
+      } catch (error) {
+        console.error('Error en ajuste de tono con cliente oficial de Google:', error);
+      }
     }
+    
+    // Si todo falla, devolver el texto original
+    console.log('No se pudo ajustar el tono, usando texto original');
+    return text;
   }
 }
 
