@@ -172,12 +172,15 @@ async function createTables() {
     console.log("Índices creados o actualizados correctamente.");
 
     // Verificar si existe algún usuario, si no, crear uno administrador
-    const usersCheck = await db.select({ count: sql`count(*)` }).from(users);
-    
-    // El resultado viene como array, verificamos si está vacío
-    const count = Number(usersCheck?.[0]?.count || 0);
-    
-    if (count === 0) {
+    try {
+      // Mejor enfoque: intentamos contar directamente usando SQL
+      const result = await db.execute(sql`SELECT COUNT(*) as count FROM users`);
+      
+      // Verificamos si hay registros
+      const countStr = result.rows && result.rows[0] ? result.rows[0].count : '0';
+      const count = parseInt(countStr as string);
+      
+      if (count === 0) {
       console.log("No se encontraron usuarios, creando usuario administrador por defecto...");
       await db.execute(`
         INSERT INTO users (username, password, full_name, email, role)
@@ -186,6 +189,16 @@ async function createTables() {
       console.log("Usuario administrador creado correctamente.");
     } else {
       console.log("Ya existen usuarios en la base de datos.");
+    }
+    } catch (error) {
+      console.error("Error al verificar usuarios:", error);
+      // Creamos un usuario por defecto en caso de error
+      await db.execute(`
+        INSERT INTO users (username, password, full_name, email, role)
+        VALUES ('admin', 'password123', 'Administrador del Sistema', 'admin@example.com', 'admin')
+        ON CONFLICT (username) DO NOTHING;
+      `);
+      console.log("Se intentó crear un usuario administrador de respaldo");
     }
 
     console.log("Inicialización de la base de datos completada exitosamente.");

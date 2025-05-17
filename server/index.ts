@@ -38,6 +38,16 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Inicializamos la base de datos
+  try {
+    const { storage } = await import('./storage');
+    console.log("Inicializando datos en la base de datos PostgreSQL...");
+    await storage.initializeData();
+    console.log("Base de datos inicializada exitosamente.");
+  } catch (error) {
+    console.error("Error al inicializar la base de datos:", error);
+  }
+  
   // Registramos rutas directas para evitar la interceptación de Vite
   registerDirectAPIRoutes(app);
   
