@@ -19,7 +19,6 @@ import { db } from "./db";
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
 import { autoResponseService } from "./services/autoResponseService";
-import { whatsappReconnector } from "./services/whatsappReconnector";
 import multer from "multer";
 import { messageTemplateService } from "./services/messageTemplateService";
 import { analyticsService } from "./services/analyticsService";
@@ -45,10 +44,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Registrar rutas específicas de WhatsApp con implementación directa
   registerWhatsAppRoutes(app);
-  
-  // Iniciar el sistema de reconexión automática de WhatsApp
-  whatsappReconnector.startMonitoring();
-  console.log("Sistema de reconexión automática de WhatsApp iniciado");
   
   // Registrar rutas de analytics avanzado
   registerAnalyticsRoutes(app);
@@ -1187,30 +1182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Obtener estado de las respuestas automáticas
-app.get("/api/autoresponse/status", async (req: Request, res: Response) => {
-  try {
-    const { autoResponseService } = await import('./services/autoResponseService');
-    const config = autoResponseService.getConfig();
-    
-    // Devolver sólo los campos relevantes para el estado
-    res.json({
-      success: true,
-      enabled: config.enabled,
-      aiProvider: config.aiProvider,
-      customPromptsEnabled: config.customPrompts.enabled
-    });
-  } catch (error) {
-    console.error("Error al obtener estado de respuestas automáticas:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Error al obtener estado de respuestas automáticas",
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
-app.get("/api/integrations/telegram/status", async (req: Request, res: Response) => {
+  app.get("/api/integrations/telegram/status", async (req: Request, res: Response) => {
     try {
       // Importar el servicio de Telegram
       const { telegramService } = await import('./services/telegramService');

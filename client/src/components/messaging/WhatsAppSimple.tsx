@@ -33,13 +33,10 @@ import {
   Camera,
   Contact,
   File,
-  Settings,
-  QrCode
+  Settings
 } from 'lucide-react';
-// Importar componentes personalizados
+// Importar el componente de configuración
 import { GeminiConfig } from '@/components/GeminiConfig';
-import { ImprovedQRDisplay } from './ImprovedQRDisplay';
-import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 
 // Interfaces
 interface WhatsAppChat {
@@ -80,101 +77,31 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [lastMessageCount, setLastMessageCount] = useState(0);
   const [newMessagesReceived, setNewMessagesReceived] = useState(false);
   const [processingAutoResponse, setProcessingAutoResponse] = useState(false);
-  const [forceRefresh, setForceRefresh] = useState(0); // Para forzar recarga de datos
-  const [isRefreshing, setIsRefreshing] = useState(false); // Estado para mostrar spinner durante reconexión
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSeenMessagesRef = useRef<{[chatId: string]: number}>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Estado de respuestas automáticas
-  const { data: autoResponseStatus } = useQuery({
-    queryKey: ['autoresponse-status'],
+  // Estado de WhatsApp
+  const { data: whatsappStatus, isLoading: isLoadingWhatsappStatus } = useQuery({
+    queryKey: ['whatsapp-status-direct'],
     queryFn: async () => {
       try {
-        const response = await fetch(`/api/autoresponse/status`);
+        const timestamp = Date.now();
+        const response = await fetch(`/api/direct/whatsapp/status?t=${timestamp}`);
         if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
         return await response.json();
       } catch (error) {
-        console.error('Error obteniendo estado de respuestas automáticas:', error);
-        return { enabled: false };
-      }
-    },
-    refetchInterval: 10000
-  });
-
-  // Estado de WhatsApp con mejor manejo de errores y reconexión
-  const { data: whatsappStatus, isLoading: isLoadingWhatsappStatus } = useQuery({
-    queryKey: ['whatsapp-status-direct', forceRefresh],
-    queryFn: async () => {
-      try {
-        // Incluir contador para permitir actualización periódica de chats en backend
-        const timestamp = Date.now();
-        const requestCount = (forceRefresh % 100) + 1;
-        
-        // Usar API mejorada para evitar problemas con Vite
-        const response = await fetch(`/api/direct/whatsapp/status?t=${timestamp}&count=${requestCount}`, {
-          headers: {
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          }
-        });
-        
-        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-        
-        // Verificar que la respuesta sea JSON válido
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          console.error('Respuesta no es JSON, posible intercepción de Vite');
-          throw new Error('Respuesta no es JSON');
-        }
-        
-        const data = await response.json();
-        console.log('Estado de WhatsApp actualizado:', data);
-        
-        // Validar que la respuesta tenga la estructura correcta
-        if (typeof data.initialized === 'undefined') {
-          console.error('Datos de estado inválidos:', data);
-          throw new Error('Datos de estado inválidos');
-        }
-        
-        return data;
-      } catch (error) {
         console.error('Error obteniendo estado de WhatsApp:', error);
-        
-        // Intentar reconexión si falla la obtención de estado
-        try {
-          if (!isRefreshing && forceRefresh > 0) {
-            await fetch('/api/direct/whatsapp/reconnect', { 
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' }
-            });
-          }
-        } catch (reconnectError) {
-          console.error('Error intentando reconexión automática:', reconnectError);
-        }
-        
-        // Retornar un estado predeterminado con todas las propiedades necesarias
-        return { 
-          initialized: forceRefresh > 0, // Asumir inicializado después del primer intento
-          ready: false, 
-          authenticated: false,
-          qrCode: null,
-          pendingMessages: 0,
-          error: error instanceof Error ? error.message : 'Error desconocido'
-        };
+        return { authenticated: false };
       }
     },
-    refetchInterval: 5000,
-    // Reintentar hasta 3 veces en caso de error
-    retry: 3,
-    retryDelay: 1000
+    refetchInterval: 5000
   });
   
   // Consulta para chats
   const { data: whatsappChats = [], isLoading: isLoadingChats } = useQuery({
-    queryKey: ['whatsapp-chats-direct', forceRefresh],
+    queryKey: ['whatsapp-chats-direct'],
     queryFn: async () => {
       try {
         const timestamp = Date.now();
@@ -188,10 +115,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       }
     },
     enabled: whatsappStatus?.authenticated === true,
-    refetchInterval: whatsappStatus?.authenticated ? 5000 : false,
-    staleTime: 0, // Siempre recargar en cambios
-    retry: 3,     // Reintentar hasta 3 veces
-    retryDelay: 1000
+    refetchInterval: whatsappStatus?.authenticated ? 5000 : false
   });
   
   // Consulta para mensajes
@@ -199,25 +123,21 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     data: whatsappMessages = [], 
     isLoading: isLoadingWhatsappMessages 
   } = useQuery({
-    queryKey: ['whatsapp-messages-direct', selectedChatId, forceRefresh],
+    queryKey: ['whatsapp-messages-direct', selectedChatId],
     queryFn: async () => {
       if (!selectedChatId) return [];
       try {
         const timestamp = Date.now();
         const response = await fetch(`/api/direct/whatsapp/messages/${selectedChatId}?t=${timestamp}`);
         if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-        const data = await response.json();
-        return Array.isArray(data) ? data : [];
+        return await response.json();
       } catch (error) {
         console.error('Error obteniendo mensajes:', error);
         return [];
       }
     },
     enabled: !!selectedChatId && whatsappStatus?.authenticated === true,
-    refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 5000 : false,
-    staleTime: 0, // Siempre recargar en cambios
-    retry: 3,     // Reintentar hasta 3 veces
-    retryDelay: 1000
+    refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 5000 : false
   });
   
   // Seleccionar el primer chat al cargar
@@ -236,21 +156,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     }
   }, [whatsappMessages]);
   
-  // Actualizar el estado de respuestas automáticas cuando cambie
-  useEffect(() => {
-    if (autoResponseStatus?.success && typeof autoResponseStatus.enabled === 'boolean') {
-      setAutoResponsesEnabled(autoResponseStatus.enabled);
-    }
-  }, [autoResponseStatus]);
-
-  // Forzar recarga de datos cuando cambie el estado de WhatsApp
-  useEffect(() => {
-    if (whatsappStatus?.authenticated) {
-      // Invalidar todas las consultas cuando se autentica
-      setForceRefresh(prev => prev + 1);
-    }
-  }, [whatsappStatus?.authenticated]);
-
   // Detectar nuevos mensajes y procesar respuestas automáticas
   useEffect(() => {
     if (Array.isArray(whatsappMessages) && whatsappMessages.length > 0 && selectedChatId) {
@@ -378,50 +283,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       .toUpperCase()
       .substring(0, 2);
   };
-  
-  // Función para refrescar manualmente el estado de WhatsApp
-  const handleRefreshWhatsapp = async () => {
-    try {
-      setIsRefreshing(true);
-      
-      // Intentar reconectar WhatsApp mediante la API
-      const response = await fetch('/api/direct/whatsapp/reconnect', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Error al reconectar WhatsApp: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      // Forzar actualización de los datos
-      setForceRefresh(prev => prev + 1);
-      
-      toast({
-        title: "Reconexión iniciada",
-        description: "El sistema está intentando restablecer la conexión con WhatsApp",
-      });
-      
-      // Esperar un momento para que se apliquen los cambios
-      setTimeout(() => {
-        setIsRefreshing(false);
-        setForceRefresh(prev => prev + 1); // Refrescar nuevamente después de un tiempo
-      }, 5000);
-      
-    } catch (error) {
-      console.error('Error al refrescar WhatsApp:', error);
-      toast({
-        title: "Error de reconexión",
-        description: "No se pudo iniciar la reconexión con WhatsApp. Intente nuevamente.",
-        variant: "destructive"
-      });
-      setIsRefreshing(false);
-    }
-  };
 
   // Formatear timestamp
   const formatTime = (timestamp: number) => {
@@ -462,42 +323,18 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 <Spinner className="h-3 w-3" />
                 <span>Cargando...</span>
               </Badge>
+            ) : whatsappStatus?.authenticated ? (
+              <Badge variant="outline" className="bg-green-50 border-green-200 text-green-700 h-6">Conectado</Badge>
             ) : (
-              <ConnectionStatusIndicator 
-                status={whatsappStatus} 
-                onReconnect={handleRefreshWhatsapp}
-              />
+              <Badge variant="outline" className="h-6">Desconectado</Badge>
             )}
             <Button 
               variant="ghost" 
               size="icon" 
               className="h-7 w-7"
-              onClick={handleRefreshWhatsapp}
-              disabled={isRefreshing}
             >
-              <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
+              <RefreshCw size={14} />
             </Button>
-            
-            {!whatsappStatus?.authenticated && (
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="ml-2 h-7 text-xs">
-                    <QrCode className="h-3 w-3 mr-1" />
-                    Ver QR
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Conectar WhatsApp</DialogTitle>
-                  </DialogHeader>
-                  <ImprovedQRDisplay 
-                    status={whatsappStatus}
-                    isLoading={isLoadingWhatsappStatus} 
-                    onRefresh={handleRefreshWhatsapp}
-                  />
-                </DialogContent>
-              </Dialog>
-            )}
           </div>
         </CardTitle>
       </CardHeader>
@@ -715,17 +552,9 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   )}
                   
                   {/* Indicador de estado IA */}
-                  <div 
-                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer hover:bg-gray-100 ${
-                      autoResponsesEnabled ? "bg-green-50" : ""
-                    }`}
-                    onClick={() => {
-                      // Al hacer clic, mostrar el diálogo de configuración
-                      setShowGeminiConfigDialog(true);
-                    }}
-                  >
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-md text-xs">
                     <Bot size={14} className={autoResponsesEnabled ? "text-green-500" : "text-gray-400"} />
-                    <span className={autoResponsesEnabled ? "text-green-500 font-medium" : "text-gray-400"}>
+                    <span className={autoResponsesEnabled ? "text-green-500" : "text-gray-400"}>
                       {autoResponsesEnabled ? "IA Activa" : "IA Inactiva"}
                     </span>
                   </div>
@@ -768,7 +597,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                           )}
                           
                           <div 
-                            className={`flex w-full ${msg.fromMe ? 'justify-end' : 'justify-start'} ${isSequential ? 'mt-1' : 'mt-3'}`}
+                            className={`flex ${msg.fromMe ? 'justify-end' : 'justify-start'} ${isSequential ? 'mt-1' : 'mt-3'}`}
                           >
                             {!msg.fromMe && !isSequential && (
                               <Avatar className="h-8 w-8 mr-2 mt-2 flex-shrink-0 border shadow-sm">
@@ -783,7 +612,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                             <div 
                               className={`max-w-[75%] rounded-lg p-3 ${
                                 msg.fromMe 
-                                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md ml-auto' 
+                                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md' 
                                   : 'bg-white border shadow-sm'
                               } ${isSequential && msg.fromMe ? 'rounded-tr-sm' : ''} ${isSequential && !msg.fromMe ? 'rounded-tl-sm' : ''}`}
                             >
@@ -817,7 +646,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                                 </span>
                                 
                                 {msg.fromMe && (
-                                  <CheckCheck size={14} className={msg.fromMe ? "text-green-100" : "text-gray-400"} />
+                                  <CheckCheck size={14} className="text-green-100" />
                                 )}
                               </div>
                             </div>

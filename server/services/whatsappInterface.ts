@@ -16,10 +16,6 @@ export interface WhatsAppStatus {
   qrDataUrl?: string;  // URL de datos para mostrar directamente en frontend
   lastConnectionCheck?: Date;
   connectionState?: string;
-  hasPuppeteerPage?: boolean;  // Indica si la página de Puppeteer está disponible
-  hasLoadedChats?: boolean;    // Indica si los chats se han cargado exitosamente
-  hasRecentMessages?: boolean; // Indica si se han recibido mensajes recientemente
-  chatCount?: number;          // Número de chats disponibles como verificación adicional
 }
 
 /**
@@ -92,26 +88,6 @@ export interface IWhatsAppService {
   logout(): Promise<void>;
   
   /**
-   * Actualiza la lista de chats disponibles
-   * Versión mejorada con mayor tolerancia a fallos y mejor verificación de estado
-   */
-  refreshChats(): Promise<void>;
-  
-  /**
-   * Verifica si el cliente de WhatsApp está autenticado accediendo directamente 
-   * a las propiedades del navegador subyacente para determinar el estado real
-   * @returns Un objeto con información detallada sobre el estado real de la conexión
-   */
-  checkAuthenticationDirect(): Promise<{
-    authenticated: boolean;
-    browserConnected: boolean;
-    hasWhatsappStore: boolean;
-    wid?: string;
-    error?: string;
-    diagnosticData?: any;
-  }>;
-  
-  /**
    * Envía un mensaje de WhatsApp al número especificado
    * @param phoneNumber Número de teléfono del destinatario
    * @param message Mensaje a enviar
@@ -170,10 +146,4 @@ export interface IWhatsAppService {
    * @returns Etiqueta guardada con su ID
    */
   saveCustomTag(tag: any): Promise<any>;
-  
-  /**
-   * Corrige el estado de autenticación del cliente cuando se detecta inconsistencia
-   * @returns true si la operación fue exitosa
-   */
-  fixAuthenticationState(): Promise<boolean>;
 }

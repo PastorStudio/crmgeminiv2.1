@@ -18,26 +18,10 @@ import * as qrcode from 'qrcode';
  */
 export function registerDirectRoutes(app: Express): void {
   
-  // Endpoint directo para obtener el estado de WhatsApp con verificación avanzada
-  app.get('/api/direct/whatsapp/status', async (req: Request, res: Response) => {
+  // Endpoint directo para obtener el estado de WhatsApp
+  app.get('/api/direct/whatsapp/status', (req: Request, res: Response) => {
     try {
-      // Intentar verificar la conexión real de WhatsApp con un tiempo máximo de espera
-      const checkConnectionPromise = whatsappService.checkConnection().catch(() => false);
-      const timeoutPromise = new Promise<boolean>(resolve => setTimeout(() => resolve(false), 100));
-      
-      // Esperar a la verificación o al timeout, lo que ocurra primero
-      await Promise.race([checkConnectionPromise, timeoutPromise]);
-      
-      // Obtener el estado actualizado
       const status = whatsappService.getStatus();
-      
-      // Intentar refrescar chats cada 5 solicitudes de estado (opcional)
-      const requestCount = req.query.count ? parseInt(req.query.count as string) : 0;
-      if (status.authenticated && status.ready && requestCount % 5 === 0) {
-        // No esperar a que termine para no bloquear la respuesta
-        whatsappService.refreshChats().catch(() => {});
-      }
-      
       // Añadir un timestamp para evitar caché del navegador
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       res.set('Expires', '-1');
@@ -47,60 +31,6 @@ export function registerDirectRoutes(app: Express): void {
       console.error('Error obteniendo estado de WhatsApp (directo):', error);
       res.status(500).json({ 
         error: 'Error interno al obtener estado',
-        message: error instanceof Error ? error.message : 'Error desconocido'
-      });
-    }
-  });
-  
-  // Endpoint para solicitar una reconexión de WhatsApp desde el frontend
-  app.post('/api/direct/whatsapp/reconnect', async (req: Request, res: Response) => {
-    try {
-      console.log('Iniciando reconexión automática de WhatsApp...');
-      
-      // Verificar estado actual
-      const currentStatus = whatsappService.getStatus();
-      
-      // Si ya está autenticado y con estado ready, solo refrescar la lista de chats
-      if (currentStatus.authenticated && currentStatus.ready) {
-        console.log('Cliente WhatsApp ya autenticado, refrescando chats...');
-        await whatsappService.refreshChats?.();
-        res.json({
-          success: true,
-          message: 'Cliente ya conectado, chats actualizados',
-          status: whatsappService.getStatus()
-        });
-        return;
-      }
-      
-      // Si el cliente está inicializado pero no autenticado, reiniciarlo
-      if (currentStatus.initialized && !currentStatus.authenticated) {
-        console.log('Cliente WhatsApp ya inicializado pero no autenticado. Reiniciando...');
-        await whatsappService.restart();
-        res.json({
-          success: true,
-          message: 'Cliente reiniciado, escanee el código QR',
-          status: whatsappService.getStatus()
-        });
-        return;
-      }
-      
-      // Si el cliente no está inicializado, inicializarlo
-      console.log('Cliente WhatsApp no inicializado, inicializando...');
-      await whatsappService.initialize();
-      
-      // Verificar estado después de inicialización
-      const newStatus = whatsappService.getStatus();
-      
-      res.json({
-        success: true,
-        message: 'Cliente inicializado correctamente',
-        status: newStatus
-      });
-    } catch (error) {
-      console.error('Error en reconexión de WhatsApp:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error en reconexión de WhatsApp',
         message: error instanceof Error ? error.message : 'Error desconocido'
       });
     }
@@ -135,130 +65,6 @@ export function registerDirectRoutes(app: Express): void {
       console.error('Error verificando conexión:', error);
       res.status(500).json({ 
         error: 'Error verificando conexión',
-        message: error instanceof Error ? error.message : 'Error desconocido'
-      });
-    }
-  });
-  
-  // Endpoint para forzar el estado de autenticación (solución temporal)
-  app.post('/api/direct/whatsapp/force-auth', async (req: Request, res: Response) => {
-    try {
-      console.log('🔄 Solicitud para forzar autenticación de WhatsApp recibida');
-      
-      // Intentar verificación profunda primero
-      try {
-        const authStatus = await whatsappService.checkAuthenticationDirect();
-        console.log('📊 Resultado de verificación profunda:', authStatus);
-        
-        if (authStatus.authenticated) {
-          console.log('✅ Verificación profunda confirmó autenticación');
-          
-          // Forzar estado en memoria
-          const status = whatsappService.getStatus();
-          status.authenticated = true;
-          status.ready = true;
-          
-          res.json({
-            success: true,
-            message: 'Estado actualizado correctamente basado en verificación profunda',
-            status: whatsappService.getStatus(),
-            details: authStatus
-          });
-          return;
-        }
-      } catch (verifyErr) {
-        console.error('❌ Error en verificación profunda:', verifyErr);
-      }
-      
-      // Forzar el estado mediante archivo de sesión
-      try {
-        const fs = require('fs');
-        const path = require('path');
-        
-        const TEMP_DIR = path.join(process.cwd(), 'temp');
-        const SESSION_DIR = path.join(TEMP_DIR, 'whatsapp-sessions');
-        const SESSION_FILE = path.join(SESSION_DIR, 'session_active.json');
-        
-        // Asegurar que el directorio existe
-        if (!fs.existsSync(SESSION_DIR)) {
-          fs.mkdirSync(SESSION_DIR, { recursive: true });
-        }
-        
-        // Datos que forzaremos en el archivo
-        const forcedStatus = {
-          authenticated: true,
-          ready: true,
-          authenticatedAt: new Date().toISOString(),
-          activatedAt: new Date().toISOString(),
-          forceAuthenticated: true
-        };
-        
-        // Guardar al archivo
-        fs.writeFileSync(SESSION_FILE, JSON.stringify(forcedStatus, null, 2), 'utf8');
-        console.log('✅ Archivo de sesión actualizado forzando autenticación');
-        
-        // Actualizar estado en memoria también
-        const status = whatsappService.getStatus();
-        status.authenticated = true;
-        status.ready = true;
-        
-        res.json({
-          success: true,
-          message: 'Estado de autenticación forzado mediante archivo',
-          status: whatsappService.getStatus()
-        });
-      } catch (fileErr) {
-        console.error('❌ Error actualizando archivo de sesión:', fileErr);
-        res.status(500).json({
-          success: false,
-          error: 'Error actualizando archivo de sesión',
-          message: fileErr instanceof Error ? fileErr.message : 'Error desconocido'
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error general forzando autenticación:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error general forzando autenticación',
-        message: error instanceof Error ? error.message : 'Error desconocido'
-      });
-    }
-  });
-  
-  // Endpoint para realizar una verificación profunda de la autenticación de WhatsApp
-  app.post('/api/direct/whatsapp/check-authentication-direct', async (req: Request, res: Response) => {
-    try {
-      // Realizar verificación profunda accediendo directamente a objetos internos de WhatsApp
-      const authStatus = await whatsappService.checkAuthenticationDirect();
-      
-      console.log('Verificación profunda de autenticación WhatsApp:', authStatus);
-      
-      // Si está autenticado según la verificación profunda, actualizar el estado del sistema
-      if (authStatus.authenticated) {
-        console.log('¡AUTENTICACIÓN VERIFICADA! Actualizando estado del sistema');
-        
-        // Obtener el estado actual después de la actualización
-        const updatedStatus = whatsappService.getStatus();
-        
-        res.json({
-          success: true,
-          authenticated: true,
-          status: updatedStatus,
-          authDetails: authStatus
-        });
-      } else {
-        res.json({
-          success: true,
-          authenticated: false,
-          status: whatsappService.getStatus(),
-          authDetails: authStatus
-        });
-      }
-    } catch (error) {
-      console.error('Error en verificación profunda de autenticación:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error en verificación profunda',
         message: error instanceof Error ? error.message : 'Error desconocido'
       });
     }
