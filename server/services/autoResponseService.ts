@@ -36,13 +36,6 @@ interface AutoResponseConfig {
 const defaultConfig: AutoResponseConfig = {
   enabled: true,
   delaySeconds: 10,
-  customPrompts: {
-    enabled: true,
-    system: "Eres un asistente virtual profesional de atención al cliente. Tu objetivo es proporcionar respuestas amables, útiles y profesionales. Cuando te dirijas al cliente, llámalo por su nombre ({{nombre}}). Tus respuestas deben ser claras, concisas y orientadas a resolver las dudas o problemas del cliente. Mantén un tono amigable pero profesional en todo momento.",
-    temperature: 0.7,
-    maxTokens: 500
-  },
-  aiProvider: "gemini",
   templates: [
     {
       id: "default",
@@ -65,8 +58,8 @@ const defaultConfig: AutoResponseConfig = {
   excludedContacts: [],
   aiProvider: "gemini", // Por defecto usamos Gemini
   customPrompts: {
-    enabled: false,
-    system: "Eres un asistente virtual amable y profesional que responde preguntas de clientes. Tu objetivo es proporcionar información clara y útil, resolver dudas específicas, y derivar a un agente humano cuando sea necesario. Nunca inventes información y siempre mantén un tono respetuoso y amigable.",
+    enabled: true,
+    system: "Eres un asistente virtual profesional de atención al cliente. Tu objetivo es proporcionar respuestas amables, útiles y profesionales. Cuando te dirijas al cliente, llámalo por su nombre si lo conoces. Tus respuestas deben ser claras, concisas y orientadas a resolver las dudas o problemas del cliente. Mantén un tono amigable pero profesional en todo momento.",
     temperature: 0.7,
     maxTokens: 500
   }
