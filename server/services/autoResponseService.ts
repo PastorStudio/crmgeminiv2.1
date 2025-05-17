@@ -451,7 +451,7 @@ export class AutoResponseService {
       
       // Obtener el nombre del contacto si está disponible
       let contactName = 'cliente';
-      let previousMessages = [];
+      let previousMessages: Array<{role: string, content: string}> = [];
       
       // Verificar si tenemos información de contacto en el mensaje
       if (message.from) {
