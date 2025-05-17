@@ -77,6 +77,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [newMessage, setNewMessage] = useState('');
   const [activeTab, setActiveTab] = useState('chats');
   const [chatFilter, setChatFilter] = useState('');
+  const [contactFilter, setContactFilter] = useState('');
   const [autoResponses, setAutoResponses] = useState<boolean>(false);
   const [showConfigMenu, setShowConfigMenu] = useState<boolean>(false);
   
@@ -117,6 +118,17 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     retry: 3
   });
 
+  // Query para obtener contactos de WhatsApp
+  const {
+    data: whatsappContacts = [],
+    isLoading: isLoadingContacts,
+  } = useQuery({
+    queryKey: ['/api/direct/whatsapp/contacts'],
+    refetchInterval: 30000, // Actualizar cada 30 segundos
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+  
   // Query para obtener mensajes del chat seleccionado
   const { 
     data: apiMessages = [],
@@ -231,8 +243,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   });
 
   // Filtrar chats por nombre o último mensaje (si hay chats)
-  
-  // Filtrar chats por nombre o último mensaje (si hay chats)
   const filteredChats = whatsappChats.length > 0 
     ? whatsappChats.filter(chat => {
         if (!chatFilter) return true;
@@ -241,6 +251,19 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         return (
           (chat.name && chat.name.toLowerCase().includes(searchTermLower)) || 
           (chat.lastMessage && chat.lastMessage.toLowerCase().includes(searchTermLower))
+        );
+      })
+    : [];
+    
+  // Filtrar contactos por nombre o número
+  const filteredContacts = Array.isArray(whatsappContacts) && whatsappContacts.length > 0
+    ? whatsappContacts.filter(contact => {
+        if (!contactFilter) return true;
+        
+        const searchTermLower = contactFilter.toLowerCase();
+        return (
+          (contact.name && contact.name.toLowerCase().includes(searchTermLower)) || 
+          (contact.number && contact.number.toLowerCase().includes(searchTermLower))
         );
       })
     : [];

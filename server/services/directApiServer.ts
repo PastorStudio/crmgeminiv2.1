@@ -203,6 +203,37 @@ export const registerDirectAPIRoutes = (app: any) => {
     }
   });
   
+  // Obtener contactos de WhatsApp
+  app.get("/api/direct/whatsapp/contacts", async (req: Request, res: Response) => {
+    try {
+      // Obtener estado actual
+      const status = await whatsappService.getStatus();
+      
+      // Verificar si está autenticado
+      if (!status.authenticated) {
+        console.log('WhatsApp no autenticado o no listo. No hay contactos disponibles.');
+        // No hay datos disponibles, devolver array vacío
+        return res.json([]);
+      }
+      
+      try {
+        // Importar servicio de contactos
+        const { getAllWhatsAppContacts } = await import('./whatsappContactsService');
+        
+        // Obtener contactos
+        const contacts = await getAllWhatsAppContacts();
+        
+        return res.json(contacts);
+      } catch (contactError) {
+        console.error('Error obteniendo contactos de WhatsApp:', contactError);
+        return res.json([]);
+      }
+    } catch (error) {
+      console.error('Error obteniendo contactos de WhatsApp:', error);
+      res.status(500).json({ error: 'Error al obtener contactos' });
+    }
+  });
+  
   // Cerrar sesión de WhatsApp
   app.post("/api/direct/whatsapp/logout", async (req: Request, res: Response) => {
     try {
