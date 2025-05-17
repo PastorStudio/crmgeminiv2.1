@@ -75,6 +75,7 @@ export function registerDirectRoutes(app: Express): void {
     try {
       // Verificar el estado de la conexión primero
       const status = whatsappService.getStatus();
+      console.log('Estado actual de WhatsApp:', status);
       
       // Si no está autenticado, intentar reconectar
       if (!status.authenticated || !status.ready) {
@@ -90,21 +91,19 @@ export function registerDirectRoutes(app: Express): void {
         }
       }
       
-      // Intentar obtener los chats (ahora con posible reconexión)
-      const chats = await whatsappService.getChats();
+      console.log('Forzando actualización de chats...');
       
-      // Incluir estado de la conexión en la respuesta
-      res.json({
-        chats: chats,
-        status: whatsappService.getStatus()
-      });
+      // Para depuración y compatibilidad, vamos a devolver los chats directamente como un array
+      // Esto mantendrá compatibilidad con clientes que esperan un array directamente
+      const chats = await whatsappService.getChats();
+      console.log(`Número de chats obtenidos: ${chats.length}`);
+      
+      // Devolver solo el array de chats, para mantener compatibilidad
+      res.json(chats);
     } catch (error) {
       console.error('Error obteniendo chats:', error);
-      // Devolver un objeto vacío compatible con la interfaz esperada
-      res.json({
-        chats: [],
-        status: whatsappService.getStatus()
-      });
+      // Devolver un array vacío para mantener compatibilidad
+      res.json([]);
     }
   });
   
@@ -120,6 +119,7 @@ export function registerDirectRoutes(app: Express): void {
       
       // Verificar el estado de la conexión primero
       const status = whatsappService.getStatus();
+      console.log('Estado actual de WhatsApp para mensajes:', status);
       
       // Si no está autenticado, intentar reconectar
       if (!status.authenticated || !status.ready) {
@@ -142,24 +142,12 @@ export function registerDirectRoutes(app: Express): void {
       const messages = await whatsappService.getMessages(chatId, effectiveLimit);
       console.log(`Recuperados ${messages.length} mensajes para el chat ${chatId}`);
       
-      // Incluir información adicional en la respuesta
-      res.json({
-        messages: messages,
-        count: messages.length,
-        chatId: chatId,
-        timestamp: Date.now()
-      });
+      // Para mantener compatibilidad, devolvemos directamente el array de mensajes
+      res.json(messages);
     } catch (error) {
       console.error('Error obteniendo mensajes:', error);
-      // Devolver un objeto compatible con la interfaz esperada
-      const errorChatId = chatId || 'unknown';
-      res.json({
-        messages: [],
-        count: 0,
-        chatId: errorChatId,
-        error: error instanceof Error ? error.message : 'Error desconocido',
-        timestamp: Date.now()
-      });
+      // Devolver un array vacío para mantener compatibilidad
+      res.json([]);
     }
   });
   
