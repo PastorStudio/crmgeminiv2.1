@@ -33,7 +33,8 @@ import {
   Camera,
   Contact,
   File,
-  Settings
+  Settings,
+  QrCode
 } from 'lucide-react';
 // Importar componentes personalizados
 import { GeminiConfig } from '@/components/GeminiConfig';
@@ -342,24 +343,39 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     try {
       setIsRefreshing(true);
       
+      // Intentar reconectar WhatsApp mediante la API
+      const response = await fetch('/api/direct/whatsapp/reconnect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error al reconectar WhatsApp: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
       // Forzar actualización de los datos
       setForceRefresh(prev => prev + 1);
       
       toast({
-        title: "Actualizando conexión",
-        description: "Verificando estado de WhatsApp...",
+        title: "Reconexión iniciada",
+        description: "El sistema está intentando restablecer la conexión con WhatsApp",
       });
       
       // Esperar un momento para que se apliquen los cambios
       setTimeout(() => {
         setIsRefreshing(false);
-      }, 2000);
+        setForceRefresh(prev => prev + 1); // Refrescar nuevamente después de un tiempo
+      }, 5000);
       
     } catch (error) {
       console.error('Error al refrescar WhatsApp:', error);
       toast({
-        title: "Error de conexión",
-        description: "No se pudo verificar el estado de WhatsApp. Intente nuevamente.",
+        title: "Error de reconexión",
+        description: "No se pudo iniciar la reconexión con WhatsApp. Intente nuevamente.",
         variant: "destructive"
       });
       setIsRefreshing(false);
