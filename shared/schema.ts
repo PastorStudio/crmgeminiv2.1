@@ -8,11 +8,11 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  fullName: text("full_name"),
+  fullName: text("fullName"),
   email: text("email"),
   role: text("role").default("user"),
   avatar: text("avatar"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("createdAt").defaultNow(),
 });
 
 // Lead model - represents potential customers
