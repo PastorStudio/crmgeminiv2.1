@@ -10,6 +10,7 @@ export interface ChatConfig {
   userName?: string;      // Nombre del usuario en la conversación
   modelName?: string;     // Nombre del modelo a usar (default: gemini-1.5-pro)
   temperature?: number;   // Temperatura para generación (0-1)
+  provider?: 'gemini' | 'openai'; // Proveedor de IA a usar
 }
 
 // Interfaz para el mensaje
@@ -72,7 +73,8 @@ class ChatContextManager {
         config: {
           modelName: 'gemini-1.5-pro',
           temperature: 0.7,
-          systemRole: 'asistente'
+          systemRole: 'asistente',
+          provider: 'gemini'
         },
         messages: [],
         lastUpdated: Date.now()
