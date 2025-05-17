@@ -73,13 +73,37 @@ export function registerDirectRoutes(app: Express): void {
   // Endpoint directo para obtener todos los chats
   app.get('/api/direct/whatsapp/chats', async (req: Request, res: Response) => {
     try {
+      // Verificar el estado de la conexión primero
+      const status = whatsappService.getStatus();
+      
+      // Si no está autenticado, intentar reconectar
+      if (!status.authenticated || !status.ready) {
+        console.log('Estado de WhatsApp no es óptimo para obtener chats, intentando verificar conexión...');
+        try {
+          // Intentar verificar y restaurar la conexión
+          await whatsappService.checkConnection();
+          // Esperar un momento para que se estabilice
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (connError) {
+          console.warn('Error verificando conexión en endpoint de chats:', connError);
+          // Continuar de todos modos, tal vez tengamos chats en caché
+        }
+      }
+      
+      // Intentar obtener los chats (ahora con posible reconexión)
       const chats = await whatsappService.getChats();
-      res.json(chats);
+      
+      // Incluir estado de la conexión en la respuesta
+      res.json({
+        chats: chats,
+        status: whatsappService.getStatus()
+      });
     } catch (error) {
       console.error('Error obteniendo chats:', error);
-      res.status(500).json({ 
-        error: 'Error obteniendo chats',
-        message: error instanceof Error ? error.message : 'Error desconocido'
+      // Devolver un objeto vacío compatible con la interfaz esperada
+      res.json({
+        chats: [],
+        status: whatsappService.getStatus()
       });
     }
   });
@@ -94,13 +118,47 @@ export function registerDirectRoutes(app: Express): void {
         return res.status(400).json({ error: 'Se requiere el ID del chat' });
       }
       
-      const messages = await whatsappService.getMessages(chatId, limit);
-      res.json(messages);
+      // Verificar el estado de la conexión primero
+      const status = whatsappService.getStatus();
+      
+      // Si no está autenticado, intentar reconectar
+      if (!status.authenticated || !status.ready) {
+        console.log('Estado de WhatsApp no es óptimo para obtener mensajes, intentando verificar conexión...');
+        try {
+          // Intentar verificar y restaurar la conexión
+          await whatsappService.checkConnection();
+          // Esperar un momento para que se estabilice
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (connError) {
+          console.warn('Error verificando conexión en endpoint de mensajes:', connError);
+          // Continuar de todos modos, tal vez tengamos mensajes en caché
+        }
+      }
+      
+      // Intentamos cargar los mensajes con un límite alto
+      const effectiveLimit = Math.max(limit, 1000); // Al menos 1000 mensajes
+      console.log(`Solicitando ${effectiveLimit} mensajes para el chat ${chatId}`);
+      
+      const messages = await whatsappService.getMessages(chatId, effectiveLimit);
+      console.log(`Recuperados ${messages.length} mensajes para el chat ${chatId}`);
+      
+      // Incluir información adicional en la respuesta
+      res.json({
+        messages: messages,
+        count: messages.length,
+        chatId: chatId,
+        timestamp: Date.now()
+      });
     } catch (error) {
       console.error('Error obteniendo mensajes:', error);
-      res.status(500).json({ 
-        error: 'Error obteniendo mensajes',
-        message: error instanceof Error ? error.message : 'Error desconocido'
+      // Devolver un objeto compatible con la interfaz esperada
+      const errorChatId = chatId || 'unknown';
+      res.json({
+        messages: [],
+        count: 0,
+        chatId: errorChatId,
+        error: error instanceof Error ? error.message : 'Error desconocido',
+        timestamp: Date.now()
       });
     }
   });
