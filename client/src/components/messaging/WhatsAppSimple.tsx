@@ -113,7 +113,13 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchInterval: 5000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    retry: 3
+    retry: 3,
+    onSuccess: (data) => {
+      console.log("Chats obtenidos:", data?.length || 0);
+    },
+    onError: (error) => {
+      console.error("Error obteniendo chats:", error);
+    }
   });
 
   // Query para obtener mensajes del chat seleccionado
@@ -230,26 +236,26 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   });
 
   // Solo usar chats reales de la API
-  const whatsappChats = apiChats || [];
+  const whatsappChats = Array.isArray(apiChats) ? apiChats : [];
   
   // Filtrar chats por nombre o último mensaje (si hay chats)
-  const filteredChats = whatsappChats.length > 0 
+  const filteredChats = whatsappChats && whatsappChats.length > 0 
     ? whatsappChats.filter(chat => {
         if (!chatFilter) return true;
         
         const searchTermLower = chatFilter.toLowerCase();
         return (
-          chat.name.toLowerCase().includes(searchTermLower) || 
+          (chat.name && chat.name.toLowerCase().includes(searchTermLower)) || 
           (chat.lastMessage && chat.lastMessage.toLowerCase().includes(searchTermLower))
         );
       })
     : [];
   
   // Solo usar mensajes reales de la API
-  const whatsappMessages = selectedChatId && apiMessages ? apiMessages : [];
+  const whatsappMessages = selectedChatId && Array.isArray(apiMessages) ? apiMessages : [];
   
   // Obtener el chat actual
-  const currentChat = selectedChatId 
+  const currentChat = selectedChatId && Array.isArray(whatsappChats) 
     ? whatsappChats.find((chat: WhatsAppChat) => chat.id === selectedChatId) 
     : null;
 
