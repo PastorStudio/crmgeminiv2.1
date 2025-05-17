@@ -137,7 +137,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       }
     },
     enabled: !!selectedChatId && whatsappStatus?.authenticated === true,
-    refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 5000 : false
+    refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 2000 : false
   });
   
   // Seleccionar el primer chat al cargar
