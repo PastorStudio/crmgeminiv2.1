@@ -411,6 +411,7 @@ export class DatabaseStorage implements IStorage {
         title: "Auto-respuesta enviada",
         description: `Mensaje automático enviado a ${data.contactId}: "${data.responseText.substring(0, 50)}${data.responseText.length > 50 ? '...' : ''}"`,
         type: "message",
+        scheduled: new Date(), // Agregamos el campo scheduled que es obligatorio
         dueDate: new Date(),
         completed: true,
         leadId: null, // Tendríamos que encontrar el lead asociado al número
