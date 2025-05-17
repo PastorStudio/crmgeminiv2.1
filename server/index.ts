@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { registerDirectRoutes } from "./services/directApiServer";
+import { registerDirectAPIRoutes } from "./services/directApiServer";
 
 const app = express();
 app.use(express.json());
@@ -39,7 +39,7 @@ app.use((req, res, next) => {
 
 (async () => {
   // Registramos rutas directas para evitar la interceptación de Vite
-  registerDirectRoutes(app);
+  registerDirectAPIRoutes(app);
   
   // Registramos las rutas normales de la API
   const server = await registerRoutes(app);

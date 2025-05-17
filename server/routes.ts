@@ -46,6 +46,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Registrar rutas específicas de WhatsApp con implementación directa
   registerWhatsAppRoutes(app);
   
+  // Registrar rutas de API directa para WhatsApp (códigos QR, etc.)
+  registerDirectAPIRoutes(app);
+  
   // Registrar rutas de analytics avanzado
   registerAnalyticsRoutes(app);
   
