@@ -103,25 +103,66 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchInterval: 10000
   });
 
-  // Estado de WhatsApp
+  // Estado de WhatsApp con mejor manejo de errores y reconexión
   const { data: whatsappStatus, isLoading: isLoadingWhatsappStatus } = useQuery({
     queryKey: ['whatsapp-status-direct', forceRefresh],
     queryFn: async () => {
       try {
+        // Incluir contador para permitir actualización periódica de chats en backend
         const timestamp = Date.now();
-        const response = await fetch(`/api/direct/whatsapp/status?t=${timestamp}`);
+        const requestCount = (forceRefresh % 100) + 1;
+        
+        // Usar API mejorada para evitar problemas con Vite
+        const response = await fetch(`/api/direct/whatsapp/status?t=${timestamp}&count=${requestCount}`, {
+          headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
+        
         if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+        
+        // Verificar que la respuesta sea JSON válido
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('Respuesta no es JSON, posible intercepción de Vite');
+          throw new Error('Respuesta no es JSON');
+        }
+        
         const data = await response.json();
+        console.log('Estado de WhatsApp actualizado:', data);
+        
+        // Validar que la respuesta tenga la estructura correcta
+        if (typeof data.initialized === 'undefined') {
+          console.error('Datos de estado inválidos:', data);
+          throw new Error('Datos de estado inválidos');
+        }
+        
         return data;
       } catch (error) {
         console.error('Error obteniendo estado de WhatsApp:', error);
+        
+        // Intentar reconexión si falla la obtención de estado
+        try {
+          if (!isRefreshing && forceRefresh > 0) {
+            await fetch('/api/direct/whatsapp/reconnect', { 
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+        } catch (reconnectError) {
+          console.error('Error intentando reconexión automática:', reconnectError);
+        }
+        
         // Retornar un estado predeterminado con todas las propiedades necesarias
         return { 
-          initialized: false, 
+          initialized: forceRefresh > 0, // Asumir inicializado después del primer intento
           ready: false, 
           authenticated: false,
           qrCode: null,
-          pendingMessages: 0
+          pendingMessages: 0,
+          error: error instanceof Error ? error.message : 'Error desconocido'
         };
       }
     },

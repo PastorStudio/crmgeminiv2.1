@@ -18,10 +18,26 @@ import * as qrcode from 'qrcode';
  */
 export function registerDirectRoutes(app: Express): void {
   
-  // Endpoint directo para obtener el estado de WhatsApp
-  app.get('/api/direct/whatsapp/status', (req: Request, res: Response) => {
+  // Endpoint directo para obtener el estado de WhatsApp con verificación avanzada
+  app.get('/api/direct/whatsapp/status', async (req: Request, res: Response) => {
     try {
+      // Intentar verificar la conexión real de WhatsApp con un tiempo máximo de espera
+      const checkConnectionPromise = whatsappService.checkConnection().catch(() => false);
+      const timeoutPromise = new Promise<boolean>(resolve => setTimeout(() => resolve(false), 100));
+      
+      // Esperar a la verificación o al timeout, lo que ocurra primero
+      await Promise.race([checkConnectionPromise, timeoutPromise]);
+      
+      // Obtener el estado actualizado
       const status = whatsappService.getStatus();
+      
+      // Intentar refrescar chats cada 5 solicitudes de estado (opcional)
+      const requestCount = req.query.count ? parseInt(req.query.count as string) : 0;
+      if (status.authenticated && status.ready && requestCount % 5 === 0) {
+        // No esperar a que termine para no bloquear la respuesta
+        whatsappService.refreshChats().catch(() => {});
+      }
+      
       // Añadir un timestamp para evitar caché del navegador
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       res.set('Expires', '-1');
@@ -31,6 +47,60 @@ export function registerDirectRoutes(app: Express): void {
       console.error('Error obteniendo estado de WhatsApp (directo):', error);
       res.status(500).json({ 
         error: 'Error interno al obtener estado',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+  
+  // Endpoint para solicitar una reconexión de WhatsApp desde el frontend
+  app.post('/api/direct/whatsapp/reconnect', async (req: Request, res: Response) => {
+    try {
+      console.log('Iniciando reconexión automática de WhatsApp...');
+      
+      // Verificar estado actual
+      const currentStatus = whatsappService.getStatus();
+      
+      // Si ya está autenticado y con estado ready, solo refrescar la lista de chats
+      if (currentStatus.authenticated && currentStatus.ready) {
+        console.log('Cliente WhatsApp ya autenticado, refrescando chats...');
+        await whatsappService.refreshChats?.();
+        res.json({
+          success: true,
+          message: 'Cliente ya conectado, chats actualizados',
+          status: whatsappService.getStatus()
+        });
+        return;
+      }
+      
+      // Si el cliente está inicializado pero no autenticado, reiniciarlo
+      if (currentStatus.initialized && !currentStatus.authenticated) {
+        console.log('Cliente WhatsApp ya inicializado pero no autenticado. Reiniciando...');
+        await whatsappService.restart();
+        res.json({
+          success: true,
+          message: 'Cliente reiniciado, escanee el código QR',
+          status: whatsappService.getStatus()
+        });
+        return;
+      }
+      
+      // Si el cliente no está inicializado, inicializarlo
+      console.log('Cliente WhatsApp no inicializado, inicializando...');
+      await whatsappService.initialize();
+      
+      // Verificar estado después de inicialización
+      const newStatus = whatsappService.getStatus();
+      
+      res.json({
+        success: true,
+        message: 'Cliente inicializado correctamente',
+        status: newStatus
+      });
+    } catch (error) {
+      console.error('Error en reconexión de WhatsApp:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error en reconexión de WhatsApp',
         message: error instanceof Error ? error.message : 'Error desconocido'
       });
     }
