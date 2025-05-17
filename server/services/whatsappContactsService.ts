@@ -40,7 +40,7 @@ export async function getAllWhatsAppContacts() {
     });
     
     // Transformamos al formato que necesitamos
-    const formattedContacts = personalContacts.map(contact => {
+    let formattedContacts = personalContacts.map(contact => {
       return {
         id: contact.id._serialized,
         name: contact.name || contact.pushname || contact.shortName || 'Sin nombre',
@@ -50,6 +50,16 @@ export async function getAllWhatsAppContacts() {
         profilePicUrl: contact.profilePicUrl || '',
       };
     });
+    
+    // Eliminamos duplicados usando un Map con el ID como clave
+    const uniqueContactsMap = new Map();
+    formattedContacts.forEach(contact => {
+      if (!uniqueContactsMap.has(contact.id)) {
+        uniqueContactsMap.set(contact.id, contact);
+      }
+    });
+    
+    formattedContacts = Array.from(uniqueContactsMap.values());
 
     return formattedContacts;
   } catch (error) {
@@ -103,6 +113,10 @@ export async function getContactsByCategory() {
     const personalContacts = [];
     const groupContacts = [];
     
+    // Usamos sets para almacenar IDs únicos
+    const uniquePersonalIds = new Set();
+    const uniqueGroupIds = new Set();
+    
     for (const contact of contacts) {
       if (!contact.id || !contact.id._serialized) continue;
       
@@ -116,8 +130,14 @@ export async function getContactsByCategory() {
         continue;
       }
       
+      const contactId = contact.id._serialized;
+      
+      // Evitamos duplicados verificando si ya procesamos este ID
+      if (isGroup && uniqueGroupIds.has(contactId)) continue;
+      if (!isGroup && uniquePersonalIds.has(contactId)) continue;
+      
       const formattedContact = {
-        id: contact.id._serialized,
+        id: contactId,
         name: contact.name || contact.pushname || contact.shortName || 'Sin nombre',
         number: contact.number || '',
         isGroup: isGroup,
@@ -127,8 +147,10 @@ export async function getContactsByCategory() {
       
       if (isGroup) {
         groupContacts.push(formattedContact);
+        uniqueGroupIds.add(contactId);
       } else {
         personalContacts.push(formattedContact);
+        uniquePersonalIds.add(contactId);
       }
     }
 
