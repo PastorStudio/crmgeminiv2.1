@@ -70,6 +70,36 @@ loadApiKey().then(success => {
   console.error('Error inicializando Gemini:', err);
 });
 
+/**
+ * Verifica si la API key de Gemini está configurada y es válida
+ * @returns True si la API key es válida
+ */
+export async function checkGeminiKeyStatus(): Promise<boolean> {
+  try {
+    // Intentar cargar la API key primero
+    const loaded = await loadApiKey();
+    if (!loaded) return false;
+    
+    // Obtener el cliente personalizado para la API v1
+    const client = getGeminiV1Client();
+    
+    // Intentar hacer una llamada simple para verificar que la API key funciona
+    const response = await client.generateContent(
+      "Hello",
+      MODEL_NAME,
+      { 
+        temperature: 0.1,
+        maxOutputTokens: 5 
+      }
+    );
+    
+    return !!response;
+  } catch (error) {
+    console.error("Error al verificar API key de Gemini:", error);
+    return false;
+  }
+}
+
 // Función para obtener una instancia de Gemini con la clave API actual
 function getGeminiInstance() {
   if (!API_KEY) {

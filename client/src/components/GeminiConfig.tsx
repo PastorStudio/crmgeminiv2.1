@@ -76,7 +76,11 @@ export function GeminiConfig({ chatId, isOpen, onClose }: GeminiConfigProps) {
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Configuración de Gemini AI</DialogTitle>
+          <DialogTitle>
+            {config.provider === 'openai' 
+              ? 'Configuración de OpenAI' 
+              : 'Configuración de Gemini AI'}
+          </DialogTitle>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
@@ -93,12 +97,34 @@ export function GeminiConfig({ chatId, isOpen, onClose }: GeminiConfigProps) {
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="gemini" id="gemini" />
                   <Label htmlFor="gemini">Google Gemini</Label>
+                  {geminiKeyStatus !== null && (
+                    <span className={`text-xs ml-2 px-2 py-0.5 rounded-full ${geminiKeyStatus ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {geminiKeyStatus ? 'Activa' : 'Inactiva'}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="openai" id="openai" />
                   <Label htmlFor="openai">OpenAI</Label>
+                  {openaiKeyStatus !== null && (
+                    <span className={`text-xs ml-2 px-2 py-0.5 rounded-full ${openaiKeyStatus ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {openaiKeyStatus ? 'Activa' : 'Inactiva'}
+                    </span>
+                  )}
                 </div>
               </RadioGroup>
+              
+              {/* Mostrar alerta si la clave del proveedor seleccionado no está activa */}
+              {((config.provider === 'gemini' && geminiKeyStatus === false) || 
+                (config.provider === 'openai' && openaiKeyStatus === false)) && (
+                <Alert className="mt-3 bg-amber-50 border-amber-200">
+                  <Info className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-800 text-sm">
+                    La clave API para {config.provider === 'gemini' ? 'Gemini' : 'OpenAI'} no está configurada o no es válida. 
+                    Por favor, configure una clave válida en la sección de Ajustes.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
 
             <div>
