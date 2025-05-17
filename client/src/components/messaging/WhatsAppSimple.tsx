@@ -642,16 +642,16 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
               </div>
               
               {/* Área de mensajes */}
-              <ScrollArea className="flex-1 pb-4">
+              <div className="flex-1 overflow-auto flex flex-col items-center">
                 {isLoadingWhatsappMessages ? (
-                  <div className="flex justify-center p-8">
+                  <div className="flex justify-center items-center h-full w-full">
                     <div className="text-center">
                       <Spinner className="mx-auto mb-3" />
                       <p className="text-sm text-gray-500">Cargando mensajes...</p>
                     </div>
                   </div>
                 ) : whatsappMessages.length > 0 ? (
-                  <div className="space-y-2 py-4 w-full px-2">
+                  <div className="space-y-2 py-4 w-full max-w-4xl px-4 flex-grow">
                     {whatsappMessages.map((msg: WhatsAppMessage, index: number) => {
                       // Verificar si debe mostrar separador de fecha
                       const showDateSeparator = index === 0 || 
@@ -734,7 +734,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     <div ref={messagesEndRef} />
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full p-4">
+                  <div className="flex flex-col items-center justify-center h-full w-full">
                     <div className="p-4 rounded-full bg-gray-50 mb-4">
                       <MessageSquare size={35} className="text-gray-300" />
                     </div>
@@ -744,7 +744,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     </p>
                   </div>
                 )}
-              </ScrollArea>
+              </div>
               
               {/* Área de escritura de mensajes */}
               <div className="border-t p-2">
