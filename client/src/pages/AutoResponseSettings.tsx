@@ -132,7 +132,20 @@ export default function AutoResponseSettings() {
   
   // Form submission handler
   const onSubmit = (values: AutoResponseConfig) => {
-    updateConfig(values);
+    // Asegurarse de que todos los campos requeridos estén presentes
+    const completeConfig: AutoResponseConfig = {
+      ...values,
+      aiProvider: values.aiProvider || "gemini",
+      customPrompts: {
+        enabled: values.customPrompts?.enabled || false,
+        system: values.customPrompts?.system || "",
+        temperature: values.customPrompts?.temperature || 0.7,
+        maxTokens: values.customPrompts?.maxTokens || 500
+      }
+    };
+    
+    console.log("Enviando configuración:", completeConfig);
+    updateConfig(completeConfig);
   };
   
   // Check for API keys availability
