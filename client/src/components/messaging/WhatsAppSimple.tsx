@@ -341,7 +341,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     : null;
 
   return (
-    <Card className="h-[calc(100vh-8.5rem)] flex flex-col shadow-md w-full max-w-6xl">
+    <Card className="h-[calc(100vh-8.5rem)] flex flex-col shadow-md w-full">
       <CardHeader className="p-3 pb-0">
         <CardTitle className="text-lg flex items-center justify-between">
           <div className="flex items-center gap-2">
