@@ -134,7 +134,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   });
   
   // Consulta para chats
-  const { data: whatsappChats = [], isLoading: isLoadingChats } = useQuery({
+  const { data: whatsappChatsResponse, isLoading: isLoadingChats } = useQuery({
     queryKey: ['whatsapp-chats-direct'],
     queryFn: async () => {
       try {
@@ -142,45 +142,98 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         const response = await fetch(`/api/direct/whatsapp/chats?t=${timestamp}`);
         if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
         const data = await response.json();
-        return Array.isArray(data) ? data : [];
+        
+        // El nuevo formato incluye chats y status
+        if (data && typeof data === 'object' && data.chats) {
+          // Actualizar el estado de WhatsApp si viene en la respuesta
+          if (data.status) {
+            // El queryClient actualizará automáticamente el estado en la siguiente consulta
+            queryClient.setQueryData(['whatsapp-status-direct'], data.status);
+          }
+          
+          return {
+            chats: Array.isArray(data.chats) ? data.chats : [],
+            status: data.status
+          };
+        }
+        
+        // Compatibilidad con formato anterior (solo array de chats)
+        return {
+          chats: Array.isArray(data) ? data : [],
+          status: null
+        };
       } catch (error) {
         console.error('Error obteniendo chats:', error);
-        return [];
+        return { chats: [], status: null };
       }
     },
-    enabled: whatsappStatus?.authenticated === true,
+    // Siempre habilitado para intentar recuperar la conexión
+    enabled: true,
     // Reducimos la frecuencia con WebSocket conectado
     staleTime: isWsConnected ? 60000 : 30000, // 1 minuto o 30 segundos dependiendo de la conexión
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     retry: 3,
-    refetchInterval: whatsappStatus?.authenticated ? (isWsConnected ? 10000 : 5000) : false
+    refetchInterval: isWsConnected ? 10000 : 5000 // Siempre intentamos obtener los chats
   });
+  
+  // Extraer los chats del nuevo formato de respuesta
+  const whatsappChats = whatsappChatsResponse?.chats || [];
   
   // Consulta para mensajes
   const { 
-    data: whatsappMessages = [], 
+    data: whatsappMessagesResponse, 
     isLoading: isLoadingWhatsappMessages 
   } = useQuery({
     queryKey: ['whatsapp-messages-direct', selectedChatId],
     queryFn: async () => {
-      if (!selectedChatId) return [];
+      if (!selectedChatId) return { messages: [], count: 0, chatId: null };
       try {
         const timestamp = Date.now();
-        const response = await fetch(`/api/direct/whatsapp/messages/${selectedChatId}?t=${timestamp}`);
+        // Solicitamos explícitamente 1000 mensajes para asegurar que se carguen todos los disponibles
+        const response = await fetch(`/api/direct/whatsapp/messages/${selectedChatId}?t=${timestamp}&limit=1000`);
         if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-        return await response.json();
+        const data = await response.json();
+        
+        // Formato nuevo con campo messages y metadatos
+        if (data && typeof data === 'object' && data.messages) {
+          return {
+            messages: Array.isArray(data.messages) ? data.messages : [],
+            count: data.count || 0,
+            chatId: data.chatId || selectedChatId,
+            timestamp: data.timestamp
+          };
+        }
+        
+        // Compatibilidad con formato anterior (array directo)
+        return {
+          messages: Array.isArray(data) ? data : [],
+          count: Array.isArray(data) ? data.length : 0,
+          chatId: selectedChatId,
+          timestamp: Date.now()
+        };
       } catch (error) {
         console.error('Error obteniendo mensajes:', error);
-        return [];
+        return { 
+          messages: [], 
+          count: 0, 
+          chatId: selectedChatId,
+          error: true
+        };
       }
     },
-    enabled: !!selectedChatId && whatsappStatus?.authenticated === true,
-    // Con WebSocket, podemos reducir drásticamente el polling o incluso eliminarlo
-    // Mantenemos un intervalo mínimo como respaldo por si el WebSocket falla
-    refetchInterval: selectedChatId && whatsappStatus?.authenticated ? 
-      (isWsConnected ? 5000 : 2000) : false
+    // Siempre intentamos cargar mensajes si hay un chat seleccionado
+    enabled: !!selectedChatId,
+    // Con WebSocket, podemos reducir la frecuencia pero seguimos actualizando
+    refetchInterval: selectedChatId ? 
+      (isWsConnected ? 8000 : 3000) : false,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    retry: 2
   });
+  
+  // Extraer los mensajes del nuevo formato de respuesta
+  const whatsappMessages = whatsappMessagesResponse?.messages || [];
   
   // Seleccionar el primer chat al cargar
   useEffect(() => {
