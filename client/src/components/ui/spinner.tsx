@@ -1,40 +1,29 @@
-import React from "react";
+import React from 'react';
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SpinnerProps extends React.HTMLAttributes<HTMLDivElement> {
+  className?: string;
   size?: "sm" | "md" | "lg";
-  variant?: "default" | "primary" | "secondary";
+  centered?: boolean;
 }
 
-export function Spinner({
-  size = "md",
-  variant = "default",
-  className,
-  ...props
-}: SpinnerProps) {
-  // Tamaños del spinner
+export function Spinner({ className, size = "md", centered = false, ...props }: SpinnerProps) {
+  // Tamaños predefinidos para el spinner
   const sizeClasses = {
-    sm: "w-4 h-4 border-2",
-    md: "w-6 h-6 border-2",
-    lg: "w-8 h-8 border-3",
+    sm: "h-4 w-4",
+    md: "h-8 w-8",
+    lg: "h-12 w-12"
   };
 
-  // Variantes de color del spinner
-  const variantClasses = {
-    default: "border-white/30 border-t-white",
-    primary: "border-teal-200 border-t-teal-600",
-    secondary: "border-gray-200 border-t-gray-600",
-  };
+  // Clases para centrado
+  const centeredClasses = centered 
+    ? "flex items-center justify-center" 
+    : "";
 
   return (
-    <div
-      className={cn(
-        "animate-spin rounded-full",
-        sizeClasses[size],
-        variantClasses[variant],
-        className
-      )}
-      {...props}
-    ></div>
+    <div className={cn(centeredClasses, className)} {...props}>
+      <Loader2 className={cn("animate-spin", sizeClasses[size])} />
+    </div>
   );
 }

@@ -22,6 +22,27 @@ export async function registerWhatsAppRoutes(app: Express): Promise<void> {
       console.error("Error inicializando servicio de WhatsApp:", err);
     });
     
+    // Endpoint para reconexión manual de WhatsApp
+    app.post("/api/direct/whatsapp/reconnect", async (req: Request, res: Response) => {
+      try {
+        console.log("Intentando reconexión manual de WhatsApp...");
+        
+        // Reiniciar el cliente de WhatsApp
+        await whatsappService.restart();
+        
+        return res.status(200).json({
+          success: true,
+          message: "Reconexión de WhatsApp iniciada exitosamente"
+        });
+      } catch (error) {
+        console.error("Error al reconectar WhatsApp:", error);
+        return res.status(500).json({
+          success: false,
+          error: "Error al reconectar WhatsApp"
+        });
+      }
+    });
+    
     // Status endpoint estándar (puede ser interceptado por Vite)
     app.get("/api/integrations/whatsapp/status", async (req: Request, res: Response) => {
       try {
