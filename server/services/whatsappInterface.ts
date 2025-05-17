@@ -88,6 +88,12 @@ export interface IWhatsAppService {
   logout(): Promise<void>;
   
   /**
+   * Actualiza la lista de chats disponibles
+   * Versión mejorada con mayor tolerancia a fallos y mejor verificación de estado
+   */
+  refreshChats(): Promise<void>;
+  
+  /**
    * Envía un mensaje de WhatsApp al número especificado
    * @param phoneNumber Número de teléfono del destinatario
    * @param message Mensaje a enviar
