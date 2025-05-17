@@ -17,6 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useWebSocket, NotificationType } from '@/hooks/useWebSocket';
+import { getInitials } from '@/lib/utils';
+import { MessageText } from '@/components/ui/message-text';
 import {
   Search,
   Send,
@@ -703,9 +705,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                                 </div>
                               )}
                               
-                              <div className="text-sm whitespace-pre-wrap break-words">
-                                {formatMessageWithLinks(msg.body)}
-                              </div>
+                              <MessageText 
+                                text={msg.body} 
+                                className="text-sm whitespace-pre-wrap break-words" 
+                              />
                               
                               <div className="text-right mt-1 flex justify-end items-center gap-1">
                                 <span className={`text-[10px] ${msg.fromMe ? 'text-green-100' : 'text-gray-500'}`}>
