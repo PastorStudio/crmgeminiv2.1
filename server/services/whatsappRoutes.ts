@@ -22,6 +22,15 @@ export async function registerWhatsAppRoutes(app: Express): Promise<void> {
       console.error("Error inicializando servicio de WhatsApp:", err);
     });
     
+    // Cargamos el servicio mejorado de respuestas automáticas
+    try {
+      const { integrateWithWhatsApp } = require('./autoResponseServiceFix');
+      await integrateWithWhatsApp();
+      console.log("Servicio mejorado de respuestas automáticas integrado con WhatsApp");
+    } catch (error) {
+      console.error("Error al integrar el servicio de respuestas automáticas:", error);
+    }
+    
     // Status endpoint estándar (puede ser interceptado por Vite)
     app.get("/api/integrations/whatsapp/status", async (req: Request, res: Response) => {
       try {
