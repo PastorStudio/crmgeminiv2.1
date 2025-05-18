@@ -1,83 +1,215 @@
-import React, { useState } from 'react';
-import { useLocation } from 'wouter';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Card, 
   CardContent, 
-  CardDescription, 
-  CardFooter, 
   CardHeader, 
-  CardTitle 
+  CardTitle, 
+  CardDescription, 
+  CardFooter 
 } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, QrCode, RefreshCw, MoreVertical, Check, X, User, UserPlus } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { useForm } from 'react-hook-form';
+import {
+  Badge,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui';
+import { useToast } from '@/hooks/use-toast';
+import {
+  QrCode,
+  Plus,
+  RefreshCw,
+  Trash,
+  Settings,
+  Power,
+  PowerOff,
+  Phone,
+  ChevronRight,
+  UserPlus,
+  CheckCircle,
+  XCircle,
+} from 'lucide-react';
+
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { queryClient, apiRequest } from '@/lib/queryClient';
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-// Esquema para la creación de una nueva cuenta de WhatsApp
-const createWhatsAppAccountSchema = z.object({
-  name: z.string().min(1, { message: 'El nombre es obligatorio' }),
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { apiRequest } from '../lib/queryClient';
+
+// Esquema para creación de cuentas
+const accountSchema = z.object({
+  name: z.string().min(3, { message: 'El nombre debe tener al menos 3 caracteres' }),
   description: z.string().optional(),
   ownerName: z.string().optional(),
   ownerPhone: z.string().optional(),
 });
 
-type CreateWhatsAppAccountFormValues = z.infer<typeof createWhatsAppAccountSchema>;
+// Tipo para cuenta de WhatsApp con estado
+type WhatsAppAccount = {
+  id: number;
+  name: string;
+  description?: string | null;
+  ownerName?: string | null;
+  ownerPhone?: string | null;
+  status: string;
+  adminId?: number | null;
+  createdAt: string;
+  lastActiveAt?: string | null;
+  sessionData?: any;
+  currentStatus?: {
+    initialized: boolean;
+    ready: boolean;
+    authenticated: boolean;
+    error?: string;
+    qrCode?: string;
+    qrDataUrl?: string;
+  };
+};
 
 const WhatsAppAccounts = () => {
-  const [, setLocation] = useLocation();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState<any>(null);
-  const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
-  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
-  const [isQrLoading, setIsQrLoading] = useState(false);
-  const [isAgentsDialogOpen, setIsAgentsDialogOpen] = useState(false);
   const { toast } = useToast();
-  // Usando setLocation para navegación con wouter en lugar de useNavigate
-
-  const { data: accounts, isLoading, refetch } = useQuery({
+  const queryClient = useQueryClient();
+  const [selectedAccount, setSelectedAccount] = useState<WhatsAppAccount | null>(null);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  
+  // Consulta para obtener cuentas
+  const { data: accounts = [], isLoading, error, refetch } = useQuery<WhatsAppAccount[]>({
     queryKey: ['/api/whatsapp-accounts'],
     queryFn: async () => {
-      const response = await fetch('/api/whatsapp-accounts');
-      if (!response.ok) {
-        throw new Error('Error al cargar las cuentas de WhatsApp');
-      }
-      return response.json();
+      return await apiRequest('/api/whatsapp-accounts');
     }
   });
-
-  const form = useForm<CreateWhatsAppAccountFormValues>({
-    resolver: zodResolver(createWhatsAppAccountSchema),
+  
+  // Consulta para obtener código QR
+  const { data: qrData, isLoading: isQrLoading, refetch: refetchQr } = useQuery({
+    queryKey: ['/api/whatsapp-accounts', selectedAccount?.id, 'qrcode'],
+    queryFn: async () => {
+      if (!selectedAccount) return null;
+      try {
+        const data = await apiRequest(`/api/whatsapp-accounts/${selectedAccount.id}/qrcode`);
+        return data.success ? data : null;
+      } catch (error) {
+        console.error('Error fetching QR code:', error);
+        return null;
+      }
+    },
+    enabled: !!selectedAccount && qrDialogOpen && 
+             ['inactive', 'pending_auth'].includes(selectedAccount.status || ''),
+    refetchInterval: qrDialogOpen ? 5000 : false // Refrescar cada 5 segundos si el diálogo está abierto
+  });
+  
+  // Mutation para crear cuenta
+  const createAccountMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof accountSchema>) => {
+      return await apiRequest('/api/whatsapp-accounts', {
+        method: 'POST',
+        body: data
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Cuenta creada',
+        description: 'La cuenta de WhatsApp se ha creado correctamente.',
+        variant: 'default',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+      setAddDialogOpen(false);
+      form.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: 'No se pudo crear la cuenta de WhatsApp.',
+        variant: 'destructive',
+      });
+    }
+  });
+  
+  // Mutation para inicializar cuenta
+  const initializeAccountMutation = useMutation({
+    mutationFn: async (accountId: number) => {
+      const res = await apiRequest('POST', `/api/whatsapp-accounts/${accountId}/initialize`);
+      return await res.json();
+    },
+    onSuccess: (data, accountId) => {
+      toast({
+        title: 'Cuenta inicializada',
+        description: 'La cuenta se ha inicializado correctamente.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts', accountId, 'qrcode'] });
+    },
+    onError: (error, accountId) => {
+      toast({
+        title: 'Error',
+        description: 'No se pudo inicializar la cuenta.',
+        variant: 'destructive',
+      });
+    }
+  });
+  
+  // Mutation para desconectar cuenta
+  const disconnectAccountMutation = useMutation({
+    mutationFn: async (accountId: number) => {
+      const res = await apiRequest('POST', `/api/whatsapp-accounts/${accountId}/disconnect`);
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Cuenta desconectada',
+        description: 'La cuenta se ha desconectado correctamente.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+      setQrDialogOpen(false);
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'No se pudo desconectar la cuenta.',
+        variant: 'destructive',
+      });
+    }
+  });
+  
+  // Mutation para eliminar cuenta
+  const deleteAccountMutation = useMutation({
+    mutationFn: async (accountId: number) => {
+      const res = await apiRequest('DELETE', `/api/whatsapp-accounts/${accountId}`);
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Cuenta eliminada',
+        description: 'La cuenta se ha eliminado correctamente.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+      setSelectedAccount(null);
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'No se pudo eliminar la cuenta.',
+        variant: 'destructive',
+      });
+    }
+  });
+  
+  // Formulario para crear cuenta
+  const form = useForm<z.infer<typeof accountSchema>>({
+    resolver: zodResolver(accountSchema),
     defaultValues: {
       name: '',
       description: '',
@@ -85,425 +217,370 @@ const WhatsAppAccounts = () => {
       ownerPhone: '',
     },
   });
-
-  const createAccountMutation = useMutation({
-    mutationFn: async (data: CreateWhatsAppAccountFormValues) => {
-      const response = await apiRequest('POST', '/api/whatsapp-accounts', data);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Cuenta creada',
-        description: 'La cuenta de WhatsApp ha sido creada exitosamente',
-      });
-      setIsCreateDialogOpen(false);
-      form.reset();
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: `No se pudo crear la cuenta: ${error.message}`,
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const updateAccountStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number, status: string }) => {
-      const response = await apiRequest('PATCH', `/api/whatsapp-accounts/${id}/status`, { status });
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Estado actualizado',
-        description: 'El estado de la cuenta ha sido actualizado exitosamente',
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: `No se pudo actualizar el estado: ${error.message}`,
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const deleteAccountMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const response = await apiRequest('DELETE', `/api/whatsapp-accounts/${id}`);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Cuenta eliminada',
-        description: 'La cuenta de WhatsApp ha sido eliminada exitosamente',
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: `No se pudo eliminar la cuenta: ${error.message}`,
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const generateQRCodeMutation = useMutation({
-    mutationFn: async (accountId: number) => {
-      setIsQrLoading(true);
-      const response = await apiRequest('POST', `/api/whatsapp-accounts/${accountId}/generate-qr`);
-      if (!response.ok) {
-        throw new Error('Error al generar código QR');
-      }
-      return response.json();
-    },
-    onSuccess: (data) => {
-      setQrCodeUrl(data.qrUrl);
-      setIsQrLoading(false);
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: `No se pudo generar el código QR: ${error.message}`,
-        variant: 'destructive',
-      });
-      setIsQrLoading(false);
-    },
-  });
-
-  const onSubmit = (data: CreateWhatsAppAccountFormValues) => {
+  
+  // Manejador de envío del formulario
+  const onSubmit = (data: z.infer<typeof accountSchema>) => {
     createAccountMutation.mutate(data);
   };
-
-  const handleConnectAccount = (account) => {
+  
+  // Abrir diálogo para mostrar código QR
+  const handleShowQR = (account: WhatsAppAccount) => {
     setSelectedAccount(account);
-    setIsConnectDialogOpen(true);
-    generateQRCodeMutation.mutate(account.id);
-  };
-
-  const handleGenerateNewQR = () => {
-    if (selectedAccount) {
-      generateQRCodeMutation.mutate(selectedAccount.id);
+    setQrDialogOpen(true);
+    
+    // Si la cuenta no está inicializada, iniciarla
+    if (account.status === 'inactive') {
+      initializeAccountMutation.mutate(account.id);
     }
   };
-
-  const handleManageAgents = (account) => {
-    setSelectedAccount(account);
-    setIsAgentsDialogOpen(true);
+  
+  // Reconectar cuenta
+  const handleReconnect = () => {
+    if (selectedAccount) {
+      initializeAccountMutation.mutate(selectedAccount.id);
+    }
   };
-
-  const renderStatus = (status) => {
+  
+  // Actualizar QR code
+  const handleRefreshQR = () => {
+    refetchQr();
+  };
+  
+  // Desconectar cuenta
+  const handleDisconnect = () => {
+    if (selectedAccount) {
+      disconnectAccountMutation.mutate(selectedAccount.id);
+    }
+  };
+  
+  // Eliminar cuenta
+  const handleDelete = (account: WhatsAppAccount) => {
+    // Confirmar eliminación
+    if (window.confirm(`¿Está seguro de que desea eliminar la cuenta ${account.name}?`)) {
+      deleteAccountMutation.mutate(account.id);
+    }
+  };
+  
+  // Renderizar badge de estado
+  const renderStatusBadge = (status: string, isAuthenticated?: boolean) => {
+    if (isAuthenticated) {
+      return <Badge className="bg-green-500">Conectada</Badge>;
+    }
+    
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-500">Conectada</Badge>;
-      case 'inactive':
-        return <Badge className="bg-gray-500">Desconectada</Badge>;
+        return <Badge className="bg-green-500">Activa</Badge>;
       case 'pending_auth':
-        return <Badge className="bg-yellow-500">Pendiente</Badge>;
+        return <Badge className="bg-yellow-500">Esperando autenticación</Badge>;
+      case 'inactive':
+        return <Badge className="bg-gray-500">Inactiva</Badge>;
       default:
-        return <Badge>{status}</Badge>;
+        return <Badge className="bg-gray-500">{status}</Badge>;
     }
   };
+  
+  // Auto-refrescar la lista de cuentas cada 30 segundos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [refetch]);
+  
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <div className="text-red-500 mb-4">Error al cargar las cuentas de WhatsApp</div>
+        <Button onClick={() => refetch()}>Reintentar</Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="container p-6">
+    <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Cuentas de WhatsApp</h1>
-          <p className="text-gray-600">Administre múltiples cuentas de WhatsApp para diferentes departamentos o equipos</p>
+          <h1 className="text-3xl font-bold mb-2">Cuentas de WhatsApp</h1>
+          <p className="text-muted-foreground">
+            Gestione sus cuentas de WhatsApp conectadas al sistema
+          </p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)} className="flex items-center">
-          <Plus className="mr-2 h-4 w-4" />
-          Nueva Cuenta
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => refetch()} size="sm" variant="outline">
+            <RefreshCw className="mr-2 h-4 w-4" /> Actualizar
+          </Button>
+          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Añadir cuenta
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Añadir nueva cuenta de WhatsApp</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nombre de la cuenta *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ej. Ventas" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descripción</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ej. Línea principal de atención al cliente" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="ownerName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nombre del propietario</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ej. Juan Pérez" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="ownerPhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Teléfono</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ej. +51999999999" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setAddDialogOpen(false)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={createAccountMutation.isPending}
+                    >
+                      {createAccountMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Creando...
+                        </>
+                      ) : 'Crear cuenta'}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
-
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2 text-gray-600">Cargando cuentas...</span>
-        </div>
-      ) : accounts && accounts.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {accounts.map((account) => (
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {accounts.length > 0 ? (
+          accounts.map((account) => (
             <Card key={account.id} className="overflow-hidden">
-              <CardHeader className="pb-4">
+              <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-xl">{account.name}</CardTitle>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleConnectAccount(account)}>
-                        <QrCode className="mr-2 h-4 w-4" />
-                        Conectar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleManageAgents(account)}>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Asignar Agentes
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      {account.status === 'active' ? (
-                        <DropdownMenuItem onClick={() => updateAccountStatusMutation.mutate({ id: account.id, status: 'inactive' })}>
-                          <X className="mr-2 h-4 w-4" />
-                          Desconectar
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem onClick={() => handleConnectAccount(account)}>
-                          <Check className="mr-2 h-4 w-4" />
-                          Reconectar
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        className="text-red-500"
-                        onClick={() => {
-                          if (window.confirm('¿Estás seguro de que deseas eliminar esta cuenta? Esta acción no se puede deshacer.')) {
-                            deleteAccountMutation.mutate(account.id);
-                          }
-                        }}
-                      >
-                        Eliminar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {renderStatusBadge(account.status, account.currentStatus?.authenticated)}
                 </div>
-                <CardDescription>{account.description || 'Sin descripción'}</CardDescription>
+                <CardDescription className="line-clamp-2">
+                  {account.description || 'Sin descripción'}
+                </CardDescription>
               </CardHeader>
               <CardContent className="pb-2">
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-500">Estado:</span>
-                    {renderStatus(account.status)}
+                <div className="grid grid-cols-2 gap-1 text-sm my-2">
+                  <div className="text-muted-foreground">Propietario:</div>
+                  <div>{account.ownerName || 'No especificado'}</div>
+                  <div className="text-muted-foreground">Teléfono:</div>
+                  <div>{account.ownerPhone || 'No especificado'}</div>
+                  <div className="text-muted-foreground">Última actividad:</div>
+                  <div>
+                    {account.lastActiveAt 
+                      ? new Date(account.lastActiveAt).toLocaleString() 
+                      : 'Nunca'}
                   </div>
-                  {account.ownerName && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-500">Propietario:</span>
-                      <span className="text-sm">{account.ownerName}</span>
-                    </div>
-                  )}
-                  {account.lastActiveAt && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-500">Última actividad:</span>
-                      <span className="text-sm">{new Date(account.lastActiveAt).toLocaleString()}</span>
-                    </div>
-                  )}
                 </div>
               </CardContent>
-              <CardFooter className="pt-2 flex justify-between">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => handleConnectAccount(account)}
-                  className="flex items-center"
-                >
-                  <QrCode className="mr-2 h-4 w-4" />
-                  Conectar
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => handleManageAgents(account)}
-                  className="flex items-center"
-                >
-                  <User className="mr-2 h-4 w-4" />
-                  Agentes
-                </Button>
+              <CardFooter className="flex justify-between border-t p-4">
+                <div className="flex gap-1">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleDelete(account)}
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    disabled
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex gap-1">
+                  {account.currentStatus?.authenticated ? (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="text-red-500 border-red-500 hover:bg-red-50"
+                      onClick={() => {
+                        setSelectedAccount(account);
+                        disconnectAccountMutation.mutate(account.id);
+                      }}
+                    >
+                      <PowerOff className="h-4 w-4 mr-2" />
+                      Desconectar
+                    </Button>
+                  ) : (
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleShowQR(account)}
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Conectar
+                    </Button>
+                  )}
+                </div>
               </CardFooter>
             </Card>
-          ))}
-        </div>
-      ) : (
-        <Card className="border-dashed border-2 border-gray-300 p-6">
-          <div className="text-center">
-            <h3 className="text-lg font-medium text-gray-700">No hay cuentas configuradas</h3>
-            <p className="text-gray-500 mt-1">Agregue su primera cuenta de WhatsApp para comenzar</p>
-            <Button onClick={() => setIsCreateDialogOpen(true)} className="mt-4">
-              <Plus className="mr-2 h-4 w-4" />
-              Agregar cuenta
+          ))
+        ) : (
+          <div className="col-span-full flex flex-col items-center justify-center bg-muted p-12 rounded-lg">
+            <Phone className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-medium mb-2">No hay cuentas</h3>
+            <p className="text-muted-foreground text-center mb-4">
+              Aún no has añadido ninguna cuenta de WhatsApp al sistema.
+            </p>
+            <Button onClick={() => setAddDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Añadir cuenta
             </Button>
           </div>
-        </Card>
-      )}
-
-      {/* Dialog para crear nueva cuenta */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Crear Nueva Cuenta de WhatsApp</DialogTitle>
-            <DialogDescription>
-              Complete los siguientes datos para agregar una nueva cuenta de WhatsApp al sistema.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre de la cuenta</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ej: Soporte Técnico" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Un nombre descriptivo para identificar esta cuenta
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descripción</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Ej: Cuenta principal de WhatsApp para el equipo de soporte"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="ownerName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Propietario</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ej: Juan Pérez" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="ownerPhone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Número de Teléfono</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ej: +123456789" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsCreateDialogOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={createAccountMutation.isPending}
-                >
-                  {createAccountMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Crear Cuenta
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog para conectar cuenta (QR Code) */}
-      <Dialog open={isConnectDialogOpen} onOpenChange={setIsConnectDialogOpen}>
+        )}
+      </div>
+      
+      {/* Diálogo de código QR */}
+      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Conectar Cuenta de WhatsApp</DialogTitle>
-            <DialogDescription>
-              Escanee este código QR con su aplicación de WhatsApp para conectar la cuenta.
-            </DialogDescription>
+            <DialogTitle>
+              {selectedAccount?.currentStatus?.authenticated 
+                ? `Cuenta conectada: ${selectedAccount?.name}` 
+                : `Conectar cuenta: ${selectedAccount?.name}`}
+            </DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col items-center justify-center py-4">
-            {isQrLoading ? (
-              <div className="flex flex-col items-center justify-center h-64">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <span className="mt-4 text-gray-500">Generando código QR...</span>
+          
+          <div className="py-4">
+            {selectedAccount?.currentStatus?.authenticated ? (
+              <div className="flex flex-col items-center justify-center p-6">
+                <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
+                <h3 className="text-xl font-medium mb-2">Cuenta conectada</h3>
+                <p className="text-muted-foreground text-center mb-4">
+                  Esta cuenta de WhatsApp está activa y conectada al sistema.
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="text-red-500 border-red-500 hover:bg-red-50"
+                  onClick={handleDisconnect}
+                >
+                  <PowerOff className="h-4 w-4 mr-2" />
+                  Desconectar
+                </Button>
               </div>
-            ) : qrCodeUrl ? (
-              <div className="flex flex-col items-center">
-                <img src={qrCodeUrl} alt="WhatsApp QR Code" className="w-64 h-64 object-contain" />
-                <p className="mt-4 text-sm text-gray-500 text-center">
-                  Este código expirará en 60 segundos. Si no puede escanearlo a tiempo, genere uno nuevo.
+            ) : isQrLoading || initializeAccountMutation.isPending ? (
+              <div className="flex flex-col items-center justify-center p-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mb-4"></div>
+                <p className="text-center text-muted-foreground">
+                  {initializeAccountMutation.isPending 
+                    ? 'Inicializando cuenta...' 
+                    : 'Generando código QR...'}
                 </p>
               </div>
+            ) : qrData?.qrcode ? (
+              <div className="flex flex-col items-center">
+                <div className="bg-white p-4 rounded-lg mb-4">
+                  <img 
+                    src={`data:image/png;base64,${qrData.qrcode}`} 
+                    alt="Código QR de WhatsApp" 
+                    className="w-64 h-64"
+                  />
+                </div>
+                <p className="text-center text-sm text-muted-foreground mb-4">
+                  Escanee este código QR con WhatsApp en su teléfono para conectar la cuenta.
+                  <br />
+                  El código se actualizará automáticamente.
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleRefreshQR}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Actualizar QR
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleReconnect}
+                  >
+                    <Power className="h-4 w-4 mr-2" />
+                    Reinicializar
+                  </Button>
+                </div>
+              </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-64">
-                <p className="text-gray-500">No se pudo generar el código QR. Inténtelo nuevamente.</p>
+              <div className="flex flex-col items-center justify-center p-6">
+                <XCircle className="h-16 w-16 text-red-500 mb-4" />
+                <h3 className="text-xl font-medium mb-2">Error</h3>
+                <p className="text-muted-foreground text-center mb-4">
+                  No se pudo generar el código QR. Intente reinicializar la cuenta.
+                </p>
+                <Button onClick={handleReconnect}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reintentar
+                </Button>
               </div>
             )}
-          </div>
-          <DialogFooter className="flex justify-between">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsConnectDialogOpen(false)}
-            >
-              Cerrar
-            </Button>
-            <Button 
-              onClick={handleGenerateNewQR} 
-              disabled={isQrLoading}
-              className="flex items-center"
-            >
-              {isQrLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <RefreshCw className={`mr-2 h-4 w-4 ${isQrLoading ? '' : 'animate-spin'}`} />
-              Generar Nuevo QR
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog para gestionar agentes */}
-      <Dialog open={isAgentsDialogOpen} onOpenChange={setIsAgentsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              Asignar Agentes a {selectedAccount?.name}
-            </DialogTitle>
-            <DialogDescription>
-              Seleccione qué agentes pueden acceder a esta cuenta de WhatsApp y qué permisos tendrán.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Button
-              className="mb-4"
-              onClick={() => setLocation('/chat-assignments')}
-            >
-              <UserPlus className="mr-2 h-4 w-4" />
-              Asignar Agentes
-            </Button>
-            
-            <Separator className="my-4" />
-            
-            <div className="text-center py-8">
-              <p>La asignación de agentes y permisos detallados se puede configurar en la página de Asignar Chats.</p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => setLocation('/chat-assignments')}
-              >
-                Ir a Asignación de Chats
-              </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>
