@@ -806,7 +806,18 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 <div className="flex-1">
                   <h3 className="font-medium">{currentChat.name}</h3>
                   <div className="text-xs text-gray-500 flex items-center gap-1">
-                    {currentChat.id.includes('@g.us') ? 'Grupo' : assignedAgent ? `Agente: ${assignedAgent.name}` : 'Chat sin asignar'}
+                    {currentChat.id.includes('@g.us') ? 'Grupo' : 
+                      assignedAgent ? (
+                        <Badge variant="outline" className="text-[10px] h-5 px-1 bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center">
+                          <UserCheck className="mr-1 h-3 w-3" />
+                          Asignado a: {assignedAgent.name}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] h-5 px-1 bg-amber-50 text-amber-700 border-amber-200">
+                          Chat sin asignar
+                        </Badge>
+                      )
+                    }
                     <span className="inline-block h-1 w-1 rounded-full bg-gray-300 mx-1"></span>
                     {whatsappStatus?.authenticated ? 'Conectado' : 'Desconectado'}
                   </div>
