@@ -54,5 +54,12 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    background-image: url('/src/assets/GeminiCRM.png');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: 40%;
+    background-attachment: fixed;
+    background-color: rgba(255, 255, 255, 0.94); /* Fondo con 60% de opacidad del logo */
+    background-blend-mode: overlay;
   }
 }

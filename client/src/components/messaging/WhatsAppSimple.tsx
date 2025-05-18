@@ -946,6 +946,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   ) : !whatsappStatus?.authenticated ? (
                     <div className="flex flex-col items-center justify-center py-10 px-4 bg-gray-50 rounded-lg">
                       <div className="text-center mb-6">
+                        <img 
+                          src="/src/assets/GeminiCRM.png" 
+                          alt="GeminiCRM Logo" 
+                          className="w-48 h-auto mx-auto mb-6"
+                        />
                         <h3 className="text-xl font-semibold text-gray-800 mb-2">WhatsApp no conectado</h3>
                         <p className="text-gray-600 mb-4">Para ver tus chats y mensajes, necesitas conectar WhatsApp escaneando el código QR.</p>
                       </div>
