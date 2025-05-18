@@ -826,8 +826,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auto-response endpoints
   app.get("/api/auto-response/config", async (req: Request, res: Response) => {
     try {
-      const config = autoResponseService.getConfig();
-      res.json(config);
+      // Intentar obtener configuración del servicio mejorado primero
+      try {
+        const { getAutoResponseConfig } = await import('./services/autoResponseIntegration');
+        const config = getAutoResponseConfig();
+        return res.json(config);
+      } catch (importError) {
+        console.log("Usando servicio de respuestas automáticas clásico");
+        // Fallback al servicio original si el mejorado no está disponible
+        const config = autoResponseService.getConfig();
+        return res.json(config);
+      }
     } catch (error) {
       console.error("Error al obtener configuración de respuestas automáticas:", error);
       res.status(500).json({ 
