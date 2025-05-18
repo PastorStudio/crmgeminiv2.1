@@ -196,31 +196,143 @@ class GeminiService {
 
   /**
    * Analiza un lead para extraer información y sugerir acciones
+   * @param leadId ID del lead a analizar
+   * @param skipCache Si es true, fuerza un nuevo análisis incluso si ya existe
    */
-  public async analyzeLead(leadId: number): Promise<any> {
+  public async analyzeLead(leadId: number, skipCache: boolean = false): Promise<any> {
     try {
-      // En un sistema real, obtendríamos los datos del lead de la base de datos
-      // y los pasaríamos a Gemini para su análisis
+      // Importar storage para acceder a la base de datos
+      const { storage } = await import('../storage');
       
-      // Por ahora, devolvemos un análisis simulado
-      return {
-        insights: [
-          "Cliente potencial para servicios de marketing digital",
-          "Alta probabilidad de conversión (78%)",
-          "Interesado principalmente en SEO y publicidad en redes sociales"
+      // Obtener los datos del lead
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        throw new Error(`No se encontró el lead con ID ${leadId}`);
+      }
+      
+      // Obtener mensajes relacionados con el lead para analizar su conversación
+      const messages = await storage.getMessagesByLead(leadId);
+      
+      // Si no hay mensajes pero es un lead de WhatsApp, podemos intentar obtener los mensajes de WhatsApp
+      let whatsappMessages = [];
+      if (messages.length === 0 && lead.source === 'WhatsApp' && lead.phone) {
+        try {
+          // Intentar importar el servicio de WhatsApp
+          const { whatsappService } = await import('./whatsappServiceImpl');
+          // Formatear el ID de WhatsApp
+          const whatsappId = `${lead.phone}@c.us`;
+          // Obtener mensajes de WhatsApp
+          whatsappMessages = await whatsappService.getMessages(whatsappId) || [];
+        } catch (whatsappError) {
+          console.error('Error obteniendo mensajes de WhatsApp:', whatsappError);
+        }
+      }
+      
+      // Combinar los mensajes de todas las fuentes
+      const allMessagesContent = [
+        ...messages.map(msg => `${msg.direction === 'inbound' ? 'Cliente' : 'Nosotros'}: ${msg.content}`),
+        ...whatsappMessages.map(msg => `${msg.fromMe ? 'Nosotros' : 'Cliente'}: ${msg.body}`)
+      ].join('\n');
+      
+      // Obtener una clave API válida para Gemini
+      const { key: apiKey } = await this.getApiKeyAndModel();
+      
+      // Endpoint para Gemini API
+      const url = `https://generativelanguage.googleapis.com/v1/models/${this.config.model}:generateContent?key=${apiKey}`;
+      
+      // Construir el prompt para el análisis
+      const prompt = `
+      Analiza la siguiente información de un cliente potencial (lead) y genera:
+      1. Insights clave sobre sus necesidades e intereses
+      2. Acciones recomendadas para avanzar con este lead
+      3. Probabilidad de conversión (en porcentaje)
+      4. Categorías de servicios que parecen interesarle
+      5. Nivel de prioridad (alta, media, baja)
+      
+      Información del lead:
+      ID: ${lead.id}
+      Nombre: ${lead.name || 'No disponible'}
+      Email: ${lead.email || 'No disponible'}
+      Teléfono: ${lead.phone || 'No disponible'}
+      Empresa: ${lead.company || 'No disponible'}
+      Origen: ${lead.source || 'No especificado'}
+      Notas: ${lead.notes || 'Sin notas'}
+      
+      Historial de conversaciones:
+      ${allMessagesContent || 'Sin conversaciones registradas'}
+      
+      Proporciona la respuesta en formato JSON con las siguientes claves:
+      - insights: array de strings con observaciones clave
+      - suggestedActions: array de strings con acciones recomendadas
+      - serviceCategories: array de strings con categorías de servicios de interés
+      - priority: string ("alta", "media" o "baja")
+      - conversionProbability: número decimal entre 0 y 1
+      
+      Responde ÚNICAMENTE con un objeto JSON válido sin explicaciones o texto adicional.
+      `;
+      
+      // Hacer la solicitud a Gemini
+      const response = await axios.post(url, {
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
         ],
-        suggestedActions: [
-          "Programar una demostración de la plataforma de análisis",
-          "Enviar material informativo sobre casos de éxito en su industria",
-          "Ofrecer una consultoría inicial gratuita"
-        ],
-        priority: "alta",
-        expectedValue: 5800,
-        conversionProbability: 0.78
-      };
+        generationConfig: {
+          temperature: 0.2, // Baja temperatura para respuestas más consistentes
+          maxOutputTokens: this.config.maxOutputTokens,
+          topP: 0.8,
+          topK: 40
+        }
+      });
+      
+      // Extraer y procesar la respuesta
+      const generatedText = response.data.candidates[0]?.content?.parts[0]?.text || '';
+      
+      try {
+        // Limpiar el texto para asegurar que es JSON válido
+        const cleanedText = generatedText.replace(/```json|```/g, '').trim();
+        const result = JSON.parse(cleanedText);
+        
+        // Guardar las etiquetas de servicios en el lead
+        if (result.serviceCategories && Array.isArray(result.serviceCategories) && result.serviceCategories.length > 0) {
+          // Combinar etiquetas existentes con las nuevas
+          const existingTags = lead.tags || [];
+          const serviceTags = result.serviceCategories.filter(tag => !existingTags.includes(tag));
+          
+          // Si tenemos una probabilidad de conversión, añadirla como etiqueta
+          if (typeof result.conversionProbability === 'number') {
+            const probabilityPercentage = Math.round(result.conversionProbability * 100);
+            serviceTags.push(`Interés: ${probabilityPercentage}%`);
+          }
+          
+          // Actualizar el lead con las nuevas etiquetas
+          await storage.updateLead(leadId, {
+            tags: [...existingTags, ...serviceTags]
+          });
+        }
+        
+        return {
+          success: true,
+          leadId,
+          analysis: result
+        };
+      } catch (parseError) {
+        console.error('Error parseando respuesta JSON de Gemini:', parseError);
+        return {
+          success: false,
+          error: 'No se pudo procesar la respuesta',
+          rawResponse: generatedText
+        };
+      }
     } catch (error) {
       console.error('Error analizando lead con Gemini:', error);
-      throw error;
+      return {
+        success: false,
+        error: `Error al analizar lead: ${(error as Error).message}`
+      };
     }
   }
   
