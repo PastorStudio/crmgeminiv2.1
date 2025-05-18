@@ -857,11 +857,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const updatedConfig = autoResponseService.updateConfig(config);
-      res.json({ 
-        success: true, 
-        config: updatedConfig 
-      });
+      // Intentar actualizar en el servicio mejorado primero
+      try {
+        const { setAutoResponseConfig } = await import('./services/autoResponseIntegration');
+        setAutoResponseConfig(config);
+        console.log("Configuración actualizada en servicio mejorado de respuestas automáticas");
+        res.json({ 
+          success: true, 
+          message: "Configuración actualizada correctamente",
+          config: config
+        });
+        return;
+      } catch (importError) {
+        console.log("Usando servicio de respuestas automáticas clásico:", importError);
+        // Fallback al servicio original si el mejorado no está disponible
+        const updatedConfig = autoResponseService.updateConfig(config);
+        res.json({ 
+          success: true, 
+          config: updatedConfig 
+        });
+      }
     } catch (error) {
       console.error("Error al actualizar configuración de respuestas automáticas:", error);
       res.status(500).json({ 
@@ -882,11 +897,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const cancelled = autoResponseService.cancelPendingResponse(contactId);
-      res.json({ 
-        success: true, 
-        cancelled 
-      });
+      // Intentar cancelar con el servicio mejorado
+      try {
+        const { setAutoResponseConfig, getAutoResponseConfig } = await import('./services/autoResponseIntegration');
+        const currentConfig = getAutoResponseConfig();
+        
+        // Añadir este chat a la lista de excluidos si no está ya
+        if (!currentConfig.excludedChats) {
+          currentConfig.excludedChats = [];
+        }
+        
+        if (!currentConfig.excludedChats.includes(contactId)) {
+          currentConfig.excludedChats.push(contactId);
+          setAutoResponseConfig({
+            ...currentConfig,
+            excludedChats: currentConfig.excludedChats
+          });
+        }
+        
+        console.log(`Chat ${contactId} agregado a la lista de exclusión de respuestas automáticas`);
+        res.json({ 
+          success: true, 
+          message: "Respuestas automáticas desactivadas para este contacto",
+          cancelled: true 
+        });
+        return;
+      } catch (importError) {
+        console.log("Usando servicio de respuestas automáticas clásico para cancelar");
+        // Fallback al servicio original
+        const cancelled = autoResponseService.cancelPendingResponse(contactId);
+        res.json({ 
+          success: true, 
+          cancelled 
+        });
+      }
     } catch (error) {
       console.error("Error al cancelar respuesta automática:", error);
       res.status(500).json({ 
