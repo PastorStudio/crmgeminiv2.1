@@ -1,116 +1,129 @@
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import { storage } from '../storage';
-import { users, User } from '@shared/schema';
-import { eq } from 'drizzle-orm';
-import { db } from '../db';
-import * as crypto from 'crypto';
-import * as jwt from 'jsonwebtoken';
+import { User } from '@shared/schema';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'crm-gemini-secret-key-2025';
-const SESSION_DURATION = '24h'; // Token válido por 24 horas
+// Clave secreta para firmar los tokens JWT
+// En un entorno de producción, esto debería estar en variables de entorno
+const JWT_SECRET = process.env.JWT_SECRET || 'crm-whatsapp-secret-key';
 
-/**
- * Servicio para manejar autenticación y sesiones de usuario
- */
-export class AuthService {
+// Tiempo de expiración del token (24 horas)
+const TOKEN_EXPIRATION = '24h';
+
+class AuthService {
   /**
-   * Verificar credenciales de usuario
+   * Genera un token JWT para un usuario
+   * @param user El usuario para el que generar el token
+   * @returns Token JWT firmado
+   */
+  generateToken(user: User): string {
+    // Creamos el payload del token
+    const payload = {
+      userId: user.id,
+      username: user.username,
+      role: user.role || 'agent',
+      // No incluimos información sensible como la contraseña
+    };
+
+    // Generamos y devolvemos el token firmado
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRATION });
+  }
+
+  /**
+   * Verifica las credenciales de un usuario
+   * @param username Nombre de usuario
+   * @param password Contraseña
+   * @returns Usuario si las credenciales son válidas, null en caso contrario
    */
   async verifyCredentials(username: string, password: string): Promise<User | null> {
     try {
-      // En producción usaríamos hashes, pero para simplificar usamos texto plano
-      const [user] = await db.select().from(users).where(eq(users.username, username));
-      
-      if (!user) return null;
-      
-      // En producción: compareHash(password, user.password)
-      if (user.password !== password) return null;
-      
+      // Buscar el usuario por nombre de usuario
+      const user = await storage.getUserByUsername(username);
+
+      // Si no existe el usuario o la contraseña no coincide, devolver null
+      if (!user || user.password !== password) {
+        return null;
+      }
+
+      // Si el usuario está inactivo o suspendido, devolver null
+      if (user.status === 'inactive' || user.status === 'suspended') {
+        return null;
+      }
+
+      // Actualizar última fecha de login
+      await storage.updateUser(user.id, {
+        lastLoginAt: new Date(),
+      });
+
+      // Devolver el usuario
       return user;
     } catch (error) {
       console.error('Error verificando credenciales:', error);
       return null;
     }
   }
-  
+
   /**
-   * Generar token JWT para el usuario autenticado
+   * Middleware para autenticar solicitudes
+   * @param req Objeto Request de Express
+   * @param res Objeto Response de Express
+   * @param next Función next
    */
-  generateToken(user: User): string {
-    // Evitamos incluir datos sensibles como la contraseña
-    const payload = {
-      id: user.id,
-      username: user.username,
-      role: user.role,
-      fullName: user.fullName
-    };
-    
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_DURATION });
-  }
-  
-  /**
-   * Verificar y decodificar token JWT
-   */
-  verifyToken(token: string): any | null {
+  authenticate(req: Request, res: Response, next: NextFunction): void {
     try {
-      return jwt.verify(token, JWT_SECRET);
-    } catch (error) {
-      console.error('Error verificando token:', error);
-      return null;
-    }
-  }
-  
-  /**
-   * Middleware para proteger rutas que requieren autenticación
-   */
-  authenticate(req: Request, res: Response, next: NextFunction) {
-    // Extraer token del header Authorization (Bearer token)
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    if (!token) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Se requiere autenticación' 
-      });
-    }
-    
-    const decoded = this.verifyToken(token);
-    if (!decoded) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Token inválido o expirado' 
-      });
-    }
-    
-    // Añadir información del usuario al request para uso en controladores
-    (req as any).user = decoded;
-    
-    next();
-  }
-  
-  /**
-   * Middleware para verificar roles específicos
-   */
-  authorizeRoles(...roles: string[]) {
-    return (req: Request, res: Response, next: NextFunction) => {
-      const user = (req as any).user;
-      
-      if (!user) {
-        return res.status(401).json({ 
-          success: false, 
-          message: 'Se requiere autenticación' 
-        });
+      // Obtener el token del header Authorization
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401).json({ success: false, message: 'Token no proporcionado' });
+        return;
       }
-      
-      if (!roles.includes(user.role)) {
-        return res.status(403).json({ 
-          success: false, 
-          message: 'No tiene permiso para acceder a este recurso' 
-        });
-      }
-      
+
+      // Extraer el token
+      const token = authHeader.substring(7); // Quitar 'Bearer ' del inicio
+
+      // Verificar el token
+      const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string; role: string };
+
+      // Añadir información del usuario a la solicitud
+      (req as any).user = decoded;
+
+      // Continuar con la siguiente middleware/ruta
       next();
+    } catch (error) {
+      console.error('Error de autenticación:', error);
+      res.status(401).json({ success: false, message: 'Token inválido o expirado' });
+    }
+  }
+
+  /**
+   * Middleware para verificar roles
+   * @param allowedRoles Array de roles permitidos
+   * @returns Middleware de Express
+   */
+  authorize(allowedRoles: string[]) {
+    return (req: Request, res: Response, next: NextFunction): void => {
+      try {
+        // Verificar que el usuario esté autenticado
+        if (!(req as any).user) {
+          res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+          return;
+        }
+
+        // Obtener el rol del usuario
+        const userRole = (req as any).user.role;
+
+        // Verificar si el rol está permitido
+        if (!allowedRoles.includes(userRole)) {
+          res.status(403).json({ success: false, message: 'Acceso denegado - No tienes permisos suficientes' });
+          return;
+        }
+
+        // El usuario tiene el rol adecuado, continuar
+        next();
+      } catch (error) {
+        console.error('Error de autorización:', error);
+        res.status(500).json({ success: false, message: 'Error interno del servidor' });
+      }
     };
   }
 }
