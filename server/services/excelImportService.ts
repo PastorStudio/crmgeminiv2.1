@@ -311,6 +311,17 @@ export class ExcelImportService {
       
       console.log(`Importación finalizada: ${validRows} filas válidas, ${invalidRows} filas inválidas, ${contacts.length} contactos importados`);
       
+      // Identificar las columnas originales del Excel para usar como variables
+      let originalColumns: string[] = [];
+      if (data.length > 0) {
+        // Si la primera fila tiene datos, extraer sus claves como columnas
+        const firstRow = data[0];
+        if (firstRow && typeof firstRow === 'object') {
+          originalColumns = Object.keys(firstRow);
+          console.log(`Se encontraron ${originalColumns.length} columnas originales en el archivo Excel`);
+        }
+      }
+      
       // Crear resultado de importación
       const importResult: ImportResult = {
         id: nanoid(),
@@ -322,6 +333,7 @@ export class ExcelImportService {
         invalidRows,
         contacts,
         fieldMapping,
+        originalColumns: originalColumns.length > 0 ? originalColumns : undefined,
         errors: errors.length > 0 ? errors : undefined
       };
       
