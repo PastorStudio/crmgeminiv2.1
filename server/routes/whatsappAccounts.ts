@@ -1,17 +1,29 @@
-import { Router, Request, Response } from 'express';
+/**
+ * Rutas para gestionar cuentas de WhatsApp
+ */
+import { Router } from 'express';
 import { storage } from '../storage';
-import { insertWhatsappAccountSchema } from '@shared/schema';
-import whatsappService from '../services/whatsappService';
-import fs from 'fs';
-import path from 'path';
+import { z } from 'zod';
+import { whatsappMultiAccountManager } from '../services/whatsappMultiAccountManager';
+import whatsappServiceMulti from '../services/whatsappServiceMulti';
 
 const router = Router();
 
 // Obtener todas las cuentas de WhatsApp
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req, res) => {
   try {
     const accounts = await storage.getAllWhatsappAccounts();
-    res.json(accounts);
+    
+    // Obtener el estado actual de cada cuenta desde el administrador de múltiples cuentas
+    const accountsWithStatus = accounts.map(account => {
+      const statusInfo = whatsappMultiAccountManager.getStatus(account.id);
+      return {
+        ...account,
+        currentStatus: statusInfo
+      };
+    });
+    
+    res.json(accountsWithStatus);
   } catch (error) {
     console.error('Error al obtener cuentas de WhatsApp:', error);
     res.status(500).json({ error: 'Error al obtener cuentas de WhatsApp' });
@@ -19,39 +31,59 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // Obtener una cuenta específica de WhatsApp
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const account = await storage.getWhatsappAccount(parseInt(id));
-    
-    if (!account) {
-      return res.status(404).json({ error: 'Cuenta de WhatsApp no encontrada' });
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
-    res.json(account);
+    const account = await storage.getWhatsappAccount(id);
+    if (!account) {
+      return res.status(404).json({ error: 'Cuenta no encontrada' });
+    }
+    
+    // Obtener estado actualizado desde el administrador de múltiples cuentas
+    const statusInfo = whatsappMultiAccountManager.getStatus(id);
+    
+    res.json({
+      ...account,
+      currentStatus: statusInfo
+    });
   } catch (error) {
     console.error('Error al obtener cuenta de WhatsApp:', error);
     res.status(500).json({ error: 'Error al obtener cuenta de WhatsApp' });
   }
 });
 
+// Esquema de validación para creación de cuentas
+const accountSchema = z.object({
+  name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
+  description: z.string().optional(),
+  ownerName: z.string().optional(),
+  ownerPhone: z.string().optional(),
+  adminId: z.number().optional()
+});
+
 // Crear una nueva cuenta de WhatsApp
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (req, res) => {
   try {
-    // Validar los datos de entrada con el esquema
-    const validation = insertWhatsappAccountSchema.safeParse(req.body);
-    
+    // Validar datos de entrada
+    const validation = accountSchema.safeParse(req.body);
     if (!validation.success) {
-      return res.status(400).json({ error: 'Datos de entrada inválidos', details: validation.error });
+      return res.status(400).json({ 
+        error: 'Datos inválidos', 
+        details: validation.error.format() 
+      });
     }
     
-    // Si hay un usuario autenticado, asignarlo como administrador
-    if (req.user && req.user.id) {
-      req.body.adminId = req.user.id;
-    }
-    
-    // Crear la cuenta
-    const newAccount = await storage.createWhatsappAccount(req.body);
+    // Crear cuenta en la base de datos
+    const newAccount = await storage.createWhatsappAccount({
+      ...validation.data,
+      status: 'inactive',
+      sessionData: {},
+      createdAt: new Date()
+    });
     
     res.status(201).json(newAccount);
   } catch (error) {
@@ -61,20 +93,27 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // Actualizar una cuenta de WhatsApp
-router.patch('/:id', async (req: Request, res: Response) => {
+router.patch('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const accountId = parseInt(id);
-    
-    // Verificar si la cuenta existe
-    const existingAccount = await storage.getWhatsappAccount(accountId);
-    
-    if (!existingAccount) {
-      return res.status(404).json({ error: 'Cuenta de WhatsApp no encontrada' });
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
-    // Actualizar la cuenta
-    const updatedAccount = await storage.updateWhatsappAccount(accountId, req.body);
+    // Validar datos de entrada
+    const validation = accountSchema.partial().safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: 'Datos inválidos', 
+        details: validation.error.format() 
+      });
+    }
+    
+    // Actualizar cuenta en la base de datos
+    const updatedAccount = await storage.updateWhatsappAccount(id, validation.data);
+    if (!updatedAccount) {
+      return res.status(404).json({ error: 'Cuenta no encontrada' });
+    }
     
     res.json(updatedAccount);
   } catch (error) {
@@ -83,152 +122,190 @@ router.patch('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Actualizar estado de una cuenta
-router.patch('/:id/status', async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-    const accountId = parseInt(id);
-    
-    if (!status || !['active', 'inactive', 'pending_auth'].includes(status)) {
-      return res.status(400).json({ error: 'Estado no válido' });
-    }
-    
-    // Verificar si la cuenta existe
-    const existingAccount = await storage.getWhatsappAccount(accountId);
-    
-    if (!existingAccount) {
-      return res.status(404).json({ error: 'Cuenta de WhatsApp no encontrada' });
-    }
-    
-    // Actualizar solo el estado
-    const updatedAccount = await storage.updateWhatsappAccount(accountId, { status });
-    
-    res.json(updatedAccount);
-  } catch (error) {
-    console.error('Error al actualizar estado de cuenta de WhatsApp:', error);
-    res.status(500).json({ error: 'Error al actualizar estado de cuenta de WhatsApp' });
-  }
-});
-
 // Eliminar una cuenta de WhatsApp
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const accountId = parseInt(id);
-    
-    // Verificar si la cuenta existe
-    const existingAccount = await storage.getWhatsappAccount(accountId);
-    
-    if (!existingAccount) {
-      return res.status(404).json({ error: 'Cuenta de WhatsApp no encontrada' });
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
-    // Eliminar la cuenta
-    await storage.deleteWhatsappAccount(accountId);
+    // Primero desconectar la cuenta si está activa
+    await whatsappMultiAccountManager.disconnectAccount(id);
     
-    res.json({ success: true, message: 'Cuenta de WhatsApp eliminada correctamente' });
+    // Luego eliminar de la base de datos
+    await storage.deleteWhatsappAccount(id);
+    
+    res.json({ success: true });
   } catch (error) {
     console.error('Error al eliminar cuenta de WhatsApp:', error);
     res.status(500).json({ error: 'Error al eliminar cuenta de WhatsApp' });
   }
 });
 
-// Generar código QR para una cuenta
-router.post('/:id/generate-qr', async (req: Request, res: Response) => {
+// Inicializar una cuenta de WhatsApp
+router.post('/:id/initialize', async (req, res) => {
   try {
-    const { id } = req.params;
-    const accountId = parseInt(id);
-    
-    // Verificar si la cuenta existe
-    const existingAccount = await storage.getWhatsappAccount(accountId);
-    
-    if (!existingAccount) {
-      return res.status(404).json({ error: 'Cuenta de WhatsApp no encontrada' });
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
-    // Generar un código QR para esta cuenta
-    // (Usando la implementación existente por ahora)
-    const qrCodePath = path.join(process.cwd(), 'temp', 'whatsapp-qr.txt');
-    let qrCodeData = "";
-    
-    try {
-      // Intentar leer el código QR existente
-      if (fs.existsSync(qrCodePath)) {
-        qrCodeData = fs.readFileSync(qrCodePath, 'utf8');
-      }
-      
-      if (!qrCodeData) {
-        // Si no hay código QR, intentar obtener uno nuevo
-        await whatsappService.getLatestQR();
-        
-        // Esperar un momento para que se genere el código QR
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Intentar leer el código QR generado
-        if (fs.existsSync(qrCodePath)) {
-          qrCodeData = fs.readFileSync(qrCodePath, 'utf8');
-        }
-      }
-      
-      // Actualizar el estado de la cuenta
-      await storage.updateWhatsappAccount(accountId, { status: 'pending_auth' });
-      
-      res.json({ success: true, qrCode: qrCodeData, qrUrl: `/api/qrcode/raw` });
-    } catch (error) {
-      console.error('Error al generar código QR:', error);
-      res.status(500).json({ error: 'Error al generar código QR' });
+    // Verificar que la cuenta existe
+    const account = await storage.getWhatsappAccount(id);
+    if (!account) {
+      return res.status(404).json({ error: 'Cuenta no encontrada' });
     }
+    
+    // Inicializar la cuenta
+    const success = await whatsappServiceMulti.initializeAccount(id);
+    if (!success) {
+      return res.status(500).json({ error: 'Error al inicializar cuenta' });
+    }
+    
+    // Obtener estado actualizado
+    const status = whatsappServiceMulti.getStatus(id);
+    
+    // Actualizar estado en base de datos
+    await storage.updateWhatsappAccount(id, {
+      status: 'pending_auth',
+      sessionData: status
+    });
+    
+    res.json({ success: true, status });
   } catch (error) {
-    console.error('Error al procesar solicitud de código QR:', error);
-    res.status(500).json({ error: 'Error al procesar solicitud de código QR' });
+    console.error('Error al inicializar cuenta de WhatsApp:', error);
+    res.status(500).json({ error: 'Error al inicializar cuenta de WhatsApp' });
   }
 });
 
-// Obtener chats disponibles para asignar
-router.get('/chats/available', async (req: Request, res: Response) => {
+// Obtener código QR para una cuenta
+router.get('/:id/qrcode', async (req, res) => {
   try {
-    const { accountId } = req.query;
-    
-    // Por ahora, solo usamos una cuenta, así que ignoramos el accountId
-    // En una implementación completa, obtendríamos los chats específicos de esa cuenta
-    
-    // Verificar el estado del servicio WhatsApp
-    const status = whatsappService.getStatus();
-    
-    if (!status.ready) {
-      return res.status(400).json({ 
-        error: 'Cliente de WhatsApp no está listo',
-        message: 'Por favor, asegúrese de que WhatsApp está conectado'
-      });
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
-    // En un sistema completo, obtendríamos los chats de la implementación de whatsappService
-    // Por ahora, usando una implementación simplificada
-    const chats = [];
+    // Obtener código QR
+    const qrCode = await whatsappServiceMulti.getLatestQR(id);
+    if (!qrCode) {
+      return res.status(404).json({ error: 'Código QR no disponible' });
+    }
     
-    // Obtener chats ya asignados para excluirlos
-    const assignedChats = await storage.getAllChatAssignments();
-    const assignedChatIds = assignedChats.map(a => a.chatId);
-    
-    // Filtrar chats no asignados y solo mostrar chats individuales
-    // Como estamos usando un array vacío, este código no afectará nada por ahora
-    const availableChats = chats
-      .filter(chat => !assignedChatIds.includes(chat.id) && !chat.isGroup)
-      .map(chat => ({
-        id: chat.id,
-        name: chat.name || chat.id,
-        unreadCount: chat.unreadCount || 0,
-        lastMessage: chat.lastMessage ? {
-          body: chat.lastMessage.body,
-          timestamp: chat.lastMessage.timestamp
-        } : null
-      }));
-    
-    res.json(availableChats);
+    // Respuesta con el código QR
+    res.json({ success: true, qrcode: qrCode });
   } catch (error) {
-    console.error('Error al obtener chats disponibles:', error);
-    res.status(500).json({ error: 'Error al obtener chats disponibles' });
+    console.error('Error al obtener código QR:', error);
+    res.status(500).json({ error: 'Error al obtener código QR' });
+  }
+});
+
+// Obtener estado de una cuenta
+router.get('/:id/status', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+    
+    // Obtener estado actualizado
+    const status = whatsappServiceMulti.getStatus(id);
+    
+    res.json(status);
+  } catch (error) {
+    console.error('Error al obtener estado de cuenta:', error);
+    res.status(500).json({ error: 'Error al obtener estado de cuenta' });
+  }
+});
+
+// Desconectar una cuenta
+router.post('/:id/disconnect', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+    
+    // Desconectar la cuenta
+    const success = await whatsappServiceMulti.disconnectAccount(id);
+    if (!success) {
+      return res.status(500).json({ error: 'Error al desconectar cuenta' });
+    }
+    
+    // Actualizar estado en base de datos
+    await storage.updateWhatsappAccount(id, {
+      status: 'inactive',
+      sessionData: { disconnectedAt: new Date().toISOString() }
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error al desconectar cuenta de WhatsApp:', error);
+    res.status(500).json({ error: 'Error al desconectar cuenta de WhatsApp' });
+  }
+});
+
+// Enviar mensaje desde una cuenta específica
+router.post('/:id/send', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+    
+    // Validar datos de entrada
+    const { to, message } = req.body;
+    if (!to || !message) {
+      return res.status(400).json({ error: 'Se requieren los campos "to" y "message"' });
+    }
+    
+    // Enviar mensaje
+    const result = await whatsappServiceMulti.sendMessage(id, to, message);
+    
+    res.json({ success: true, messageId: result.id?._serialized || result.id });
+  } catch (error) {
+    console.error('Error al enviar mensaje:', error);
+    res.status(500).json({ error: 'Error al enviar mensaje' });
+  }
+});
+
+// Obtener chats de una cuenta específica
+router.get('/:id/chats', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+    
+    // Obtener chats
+    const chats = await whatsappServiceMulti.getChats(id);
+    
+    res.json(chats);
+  } catch (error) {
+    console.error('Error al obtener chats:', error);
+    res.status(500).json({ error: 'Error al obtener chats' });
+  }
+});
+
+// Obtener mensajes de un chat específico
+router.get('/:id/messages/:chatId', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+    
+    const { chatId } = req.params;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+    
+    // Obtener mensajes
+    const messages = await whatsappServiceMulti.getChatMessages(id, chatId, limit);
+    
+    res.json(messages);
+  } catch (error) {
+    console.error('Error al obtener mensajes:', error);
+    res.status(500).json({ error: 'Error al obtener mensajes' });
   }
 });
 
