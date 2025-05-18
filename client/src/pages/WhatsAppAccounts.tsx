@@ -120,13 +120,26 @@ const WhatsAppAccounts = () => {
         body: data
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: 'Cuenta creada',
         description: 'La cuenta de WhatsApp se ha creado correctamente.',
         variant: 'default',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+      
+      // Guardar el ID de la cuenta recién creada para mostrar automáticamente el QR
+      if (data && data.id) {
+        setNewlyCreatedAccountId(data.id);
+        // Refrescar las cuentas y luego mostrar el QR
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] }).then(() => {
+          // Seleccionar la cuenta recién creada y abrir el diálogo QR
+          setSelectedAccount(accounts.find(acc => acc.id === data.id) || null);
+          setQrDialogOpen(true);
+        });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+      }
+      
       setAddDialogOpen(false);
       form.reset();
     },
