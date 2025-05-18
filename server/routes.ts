@@ -1307,8 +1307,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Para asegurar que importamos contactos, temporalmente importar todos
-        // Comentado para diagnóstico: if (!hasRecentMessages) continue;
+        // Solo importar contactos con mensajes recientes/activos
+        if (!hasRecentMessages) continue;
         
         // Verificar si ya existe un lead con este número de teléfono
         const phone = contact.id.split('@')[0];
