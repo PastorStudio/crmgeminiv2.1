@@ -13,7 +13,20 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function RecentConversations() {
-  // Fetch recent messages
+  // Fetch WhatsApp conversations directly using the direct API
+  const { data: whatsappConversations, isLoading: whatsappLoading } = useQuery({
+    queryKey: ["/api/direct/whatsapp/chats"],
+    queryFn: async () => {
+      const response = await fetch('/api/direct/whatsapp/chats');
+      if (!response.ok) {
+        return []; // Return empty array for now to handle unauthorized state
+      }
+      return response.json();
+    },
+    refetchInterval: 10000 // Refetch every 10 seconds for real-time updates
+  });
+  
+  // Fetch recent messages from the internal database
   const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: ["/api/messages", { recent: true, limit: 5 }],
     queryFn: async () => {
@@ -88,9 +101,9 @@ export default function RecentConversations() {
       </CardHeader>
       <CardContent className="p-0">
         <div className="border-t border-gray-200">
-          {messagesLoading || leadsLoading ? (
+          {messagesLoading || leadsLoading || whatsappLoading ? (
             <div className="animate-pulse space-y-4 p-4">
-              {[...Array(3)].map((_, i) => (
+              {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex space-x-4">
                   <div className="rounded-full bg-gray-200 h-10 w-10"></div>
                   <div className="flex-1 space-y-2 py-1">
@@ -101,66 +114,123 @@ export default function RecentConversations() {
                 </div>
               ))}
             </div>
-          ) : messages && messages.length > 0 ? (
+          ) : (
             <ul className="divide-y divide-gray-200">
-              {messages.map((message) => {
-                const lead = getLeadForMessage(message.leadId);
-                const { icon, color } = getChannelInfo(message.channel);
-                const isAI = message.userId === 0 || message.aiGenerated;
-                
-                return (
-                  <li key={message.id}>
-                    <div className="px-4 py-4 sm:px-6 hover:bg-gray-50 cursor-pointer">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          {isAI ? (
-                            <div className="h-10 w-10 rounded-full mr-4 bg-secondary-100 flex items-center justify-center">
-                              <span className="material-icons text-secondary-600">smart_toy</span>
+              {/* Mostrar chats de WhatsApp directamente si están disponibles */}
+              {whatsappConversations && whatsappConversations.length > 0 && 
+                whatsappConversations.slice(0, 5).map((chat) => {
+                  const lastMessage = chat.lastMessage || {};
+                  
+                  return (
+                    <li key={chat.id}>
+                      <div className="px-4 py-4 sm:px-6 hover:bg-gray-50 cursor-pointer">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="h-10 w-10 rounded-full mr-4 bg-green-100 flex items-center justify-center">
+                              <span className="material-icons text-green-600">whatsapp</span>
                             </div>
-                          ) : (
-                            <div className="h-10 w-10 rounded-full mr-4 bg-gray-200 flex items-center justify-center">
-                              <span className="material-icons text-gray-500">person</span>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {chat.name || "Contacto"}
+                              </p>
+                              <p className="text-sm text-gray-500 truncate max-w-[95%] overflow-hidden text-ellipsis">
+                                {lastMessage.body || "Sin mensajes"}
+                              </p>
                             </div>
-                          )}
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {isAI ? "AI Assistant" : lead?.fullName || `Lead #${message.leadId}`}
-                            </p>
-                            <p className="text-sm text-gray-500 truncate max-w-[95%] overflow-hidden text-ellipsis">
-                              {message.content}
-                            </p>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs text-gray-500">
+                              {lastMessage.timestamp ? formatMessageTime(new Date(lastMessage.timestamp * 1000)) : ""}
+                            </span>
+                            {chat.unreadCount > 0 && (
+                              <Badge className="mt-1 bg-green-600">{chat.unreadCount}</Badge>
+                            )}
                           </div>
                         </div>
-                        <div className="flex flex-col items-end">
-                          <span className="text-xs text-gray-500">
-                            {formatMessageTime(message.sentAt)}
-                          </span>
-                          {!message.read && message.direction === "incoming" && (
-                            <Badge className="mt-1 bg-primary-600">New</Badge>
-                          )}
+                        <div className="mt-2 flex justify-between">
+                          <div className="flex items-center">
+                            <span className="material-icons text-gray-400 text-sm mr-1">phone</span>
+                            <p className="text-xs text-gray-500 truncate max-w-[95%] overflow-hidden text-ellipsis">
+                              {chat.id.split('@')[0]}
+                            </p>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="material-icons text-green-500 text-sm mr-1">whatsapp</span>
+                            <p className="text-xs text-gray-500">WhatsApp</p>
+                          </div>
                         </div>
                       </div>
-                      <div className="mt-2 flex justify-between">
-                        <div className="flex items-center">
-                          <span className="material-icons text-gray-400 text-sm mr-1">business</span>
-                          <p className="text-xs text-gray-500 truncate max-w-[95%] overflow-hidden text-ellipsis">
-                            {lead?.company || "Unknown Company"}
-                          </p>
+                    </li>
+                  );
+                })
+              }
+              
+              {/* Mensajes del sistema de CRM */}
+              {messages && messages.length > 0 && 
+                messages.slice(0, 5 - (whatsappConversations?.length || 0)).map((message) => {
+                  const lead = getLeadForMessage(message.leadId);
+                  const { icon, color } = getChannelInfo(message.channel);
+                  const isAI = message.userId === 0 || message.aiGenerated;
+                  
+                  return (
+                    <li key={`crm-${message.id}`}>
+                      <div className="px-4 py-4 sm:px-6 hover:bg-gray-50 cursor-pointer">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            {isAI ? (
+                              <div className="h-10 w-10 rounded-full mr-4 bg-secondary-100 flex items-center justify-center">
+                                <span className="material-icons text-secondary-600">smart_toy</span>
+                              </div>
+                            ) : (
+                              <div className="h-10 w-10 rounded-full mr-4 bg-gray-200 flex items-center justify-center">
+                                <span className="material-icons text-gray-500">person</span>
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {isAI ? "AI Assistant" : lead?.fullName || `Lead #${message.leadId}`}
+                              </p>
+                              <p className="text-sm text-gray-500 truncate max-w-[95%] overflow-hidden text-ellipsis">
+                                {message.content}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs text-gray-500">
+                              {formatMessageTime(message.sentAt)}
+                            </span>
+                            {!message.read && message.direction === "incoming" && (
+                              <Badge className="mt-1 bg-primary-600">New</Badge>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center">
-                          <span className={`material-icons ${color} text-sm mr-1`}>{icon}</span>
-                          <p className="text-xs text-gray-500">{message.channel}</p>
+                        <div className="mt-2 flex justify-between">
+                          <div className="flex items-center">
+                            <span className="material-icons text-gray-400 text-sm mr-1">business</span>
+                            <p className="text-xs text-gray-500 truncate max-w-[95%] overflow-hidden text-ellipsis">
+                              {lead?.company || "Unknown Company"}
+                            </p>
+                          </div>
+                          <div className="flex items-center">
+                            <span className={`material-icons ${color} text-sm mr-1`}>{icon}</span>
+                            <p className="text-xs text-gray-500">{message.channel}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </li>
-                );
-              })}
+                    </li>
+                  );
+                })
+              }
+              
+              {/* Mensaje cuando no hay conversaciones */}
+              {(!messages || messages.length === 0) && (!whatsappConversations || whatsappConversations.length === 0) && (
+                <li>
+                  <div className="p-4 text-center text-gray-500">
+                    No hay conversaciones recientes
+                  </div>
+                </li>
+              )}
             </ul>
-          ) : (
-            <div className="p-4 text-center text-gray-500">
-              No recent conversations
-            </div>
           )}
         </div>
       </CardContent>
