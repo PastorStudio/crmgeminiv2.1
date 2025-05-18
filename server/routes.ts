@@ -106,10 +106,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generar token JWT
       const token = authService.generateToken(user);
       
-      // Actualizar última fecha de login
-      await db.update(users)
-        .set({ lastLoginAt: new Date() })
-        .where(eq(users.id, user.id));
+      // Actualizar última fecha de login solo si no es el superadmin (que está hardcoded)
+      if (user.id !== 999999) {
+        try {
+          await db.update(users)
+            .set({ lastLoginAt: new Date() })
+            .where(eq(users.id, user.id));
+        } catch (error) {
+          console.error("Error al actualizar la fecha de último inicio de sesión:", error);
+          // Continuar con el inicio de sesión aunque falle esta actualización
+        }
+      }
       
       // Devolver información del usuario (sin contraseña)
       const { password: _, ...userInfo } = user;
