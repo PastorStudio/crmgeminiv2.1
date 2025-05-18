@@ -371,14 +371,28 @@ export default function UserManagement() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={user.status === 'active' ? 'default' : user.status === 'inactive' ? 'secondary' : 'destructive'}
-                          className={user.status === 'active' ? 'bg-green-500 hover:bg-green-600' : ''}
-                        >
-                          {user.status === 'active' ? 'Activo' : 
-                           user.status === 'inactive' ? 'Inactivo' : 
-                           'Suspendido'}
-                        </Badge>
+                        {user.status === 'active' ? (
+                          <div className="flex items-center">
+                            <div className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></div>
+                            <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200">
+                              Activo
+                            </Badge>
+                          </div>
+                        ) : user.status === 'inactive' ? (
+                          <div className="flex items-center">
+                            <div className="w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
+                            <Badge variant="outline" className="bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200">
+                              Inactivo
+                            </Badge>
+                          </div>
+                        ) : (
+                          <div className="flex items-center">
+                            <div className="w-2 h-2 rounded-full bg-red-500 mr-2"></div>
+                            <Badge variant="outline" className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200">
+                              Suspendido
+                            </Badge>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         {user.department ? (
@@ -756,12 +770,37 @@ export default function UserManagement() {
       
       {/* Diálogo de confirmación para eliminar */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Confirmar eliminación</DialogTitle>
-            <DialogDescription>
-              ¿Estás seguro de que deseas eliminar al usuario <strong>{selectedUser?.username}</strong>?
-              Esta acción no se puede deshacer.
+            <DialogTitle className="flex items-center text-red-500">
+              <Trash className="h-5 w-5 mr-2" />
+              Confirmar Eliminación de Agente
+            </DialogTitle>
+            <DialogDescription className="pt-3">
+              {selectedUser?.role === 'agent' ? (
+                <>
+                  <p className="mb-3">Estás a punto de eliminar al agente <strong>{selectedUser?.fullName || selectedUser?.username}</strong>.</p>
+                  <div className="flex items-start mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>Al eliminar este agente, todas sus asignaciones de chat pasarán al administrador. Las conversaciones existentes no se eliminarán.</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="mb-3">Estás a punto de eliminar al usuario <strong>{selectedUser?.fullName || selectedUser?.username}</strong> con rol de <strong>{selectedUser?.role === 'admin' ? 'Administrador' : 'Supervisor'}</strong>.</p>
+                  <div className="flex items-start mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>Los usuarios con permisos elevados tienen acceso a funciones administrativas. Al eliminarlos, asegúrate de que exista otro administrador en el sistema.</span>
+                  </div>
+                </>
+              )}
+              <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-600">
+                Esta acción es permanente y no se puede deshacer.
+              </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -773,10 +812,17 @@ export default function UserManagement() {
               onClick={() => selectedUser && deleteUserMutation.mutate(selectedUser.id)}
               disabled={deleteUserMutation.isPending}
             >
-              {deleteUserMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {deleteUserMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                <>
+                  <Trash className="mr-2 h-4 w-4" />
+                  Confirmar Eliminación
+                </>
               )}
-              Eliminar
             </Button>
           </DialogFooter>
         </DialogContent>
