@@ -25,6 +25,7 @@ export interface ImportResult {
   invalidRows: number;
   contacts: ContactData[];
   fieldMapping: Record<string, string>;
+  originalColumns?: string[]; // Guardar los encabezados originales del Excel
   errors?: string[];
 }
 
@@ -693,12 +694,51 @@ export class ExcelImportService {
     // Reemplazar variables en el formato {{variable}}
     for (const [key, value] of Object.entries(variables)) {
       if (value !== undefined && value !== null) {
+        // Soportar tanto {{variable}} como {{columna}}
         const regex = new RegExp(`{{${key}}}`, 'g');
         result = result.replace(regex, String(value));
       }
     }
     
+    // Buscar variables no reemplazadas (para depuración)
+    const unreplacedVars = result.match(/{{[^{}]+}}/g);
+    if (unreplacedVars && unreplacedVars.length > 0) {
+      console.log(`Variables no reemplazadas: ${unreplacedVars.join(', ')}`);
+    }
+    
     return result;
+  }
+  
+  // Obtener todas las variables disponibles de un archivo importado
+  getAvailableVariables(importId: string): string[] {
+    const importResult = this.getImportResult(importId);
+    if (!importResult || !importResult.contacts || importResult.contacts.length === 0) {
+      return [];
+    }
+    
+    // Tomar el primer contacto como referencia
+    const sampleContact = importResult.contacts[0];
+    
+    // Extraer todas las propiedades como variables potenciales
+    const variables: string[] = [];
+    
+    // Agregar propiedades del contacto como variables
+    for (const key in sampleContact) {
+      if (Object.prototype.hasOwnProperty.call(sampleContact, key)) {
+        variables.push(key);
+      }
+    }
+    
+    // Agregar también las columnas originales del archivo Excel
+    if (importResult.originalColumns && Array.isArray(importResult.originalColumns)) {
+      importResult.originalColumns.forEach(column => {
+        if (!variables.includes(column)) {
+          variables.push(column);
+        }
+      });
+    }
+    
+    return variables;
   }
 }
 
