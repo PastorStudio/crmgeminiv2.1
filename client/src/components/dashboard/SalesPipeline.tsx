@@ -83,7 +83,7 @@ export default function SalesPipeline() {
         onClick={() => setEditingLead(lead)}
       >
         <div className="flex justify-between">
-          <span className="text-sm font-medium">{lead.fullName || lead.name}</span>
+          <span className="text-sm font-medium">{lead.name}</span>
           <Badge className={`${
             lead.status === 'new' ? 'bg-blue-100 text-blue-800' : 
             lead.status === 'contacted' ? 'bg-purple-100 text-purple-800' : 
@@ -101,10 +101,10 @@ export default function SalesPipeline() {
           {lead.company ? `Company: ${lead.company}` : lead.phone ? `Phone: ${lead.phone}` : `Email: ${lead.email}`}
         </div>
         
-        {/* Mostrar último mensaje si existe */}
-        {lead.lastMessage && (
+        {/* Extraer último mensaje de las notas si existe */}
+        {lead.notes && lead.notes.includes('Último mensaje:') && (
           <div className="mt-2 text-xs bg-gray-50 p-1.5 rounded text-gray-600 max-h-10 overflow-hidden">
-            <p className="truncate">"{lead.lastMessage}"</p>
+            <p className="truncate">"{lead.notes.split('Último mensaje:')[1].trim()}"</p>
           </div>
         )}
         

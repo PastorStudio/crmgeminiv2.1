@@ -118,8 +118,17 @@ export default function RecentConversations() {
             <ul className="divide-y divide-gray-200">
               {/* Mostrar chats de WhatsApp directamente si están disponibles */}
               {whatsappConversations && whatsappConversations.length > 0 && 
-                whatsappConversations.slice(0, 5).map((chat) => {
-                  const lastMessage = chat.lastMessage || {};
+                whatsappConversations
+                  .filter(chat => !chat.isGroup) // Filtrar grupos
+                  .slice(0, 5).map((chat) => {
+                  const lastMsg = chat.messages && chat.messages.length > 0 
+                    ? chat.messages[chat.messages.length - 1] 
+                    : null;
+                  
+                  // Si no hay mensaje, usar el lastMessage del objeto chat
+                  const lastMessage = lastMsg || chat.lastMessage || {};
+                  const messageBody = lastMsg?.body || lastMessage?.body || 'Sin mensajes';
+                  const timestamp = lastMsg?.timestamp || lastMessage?.timestamp || null;
                   
                   return (
                     <li key={chat.id}>
@@ -134,13 +143,13 @@ export default function RecentConversations() {
                                 {chat.name || "Contacto"}
                               </p>
                               <p className="text-sm text-gray-500 truncate max-w-[95%] overflow-hidden text-ellipsis">
-                                {lastMessage.body || "Sin mensajes"}
+                                {messageBody}
                               </p>
                             </div>
                           </div>
                           <div className="flex flex-col items-end">
                             <span className="text-xs text-gray-500">
-                              {lastMessage.timestamp ? formatMessageTime(new Date(lastMessage.timestamp * 1000)) : ""}
+                              {timestamp ? formatMessageTime(new Date(timestamp * 1000)) : ""}
                             </span>
                             {chat.unreadCount > 0 && (
                               <Badge className="mt-1 bg-green-600">{chat.unreadCount}</Badge>
