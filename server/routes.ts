@@ -217,7 +217,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req as any).user.id;
       
-      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      // Modificación para seleccionar campos específicos (sin incluir settings que causa problemas)
+      const [user] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          email: users.email,
+          role: users.role,
+          status: users.status,
+          avatar: users.avatar,
+          department: users.department,
+          supervisorId: users.supervisorId,
+          lastLoginAt: users.lastLoginAt,
+          createdAt: users.createdAt
+        })
+        .from(users)
+        .where(eq(users.id, userId));
       
       if (!user) {
         return res.status(404).json({
@@ -226,12 +242,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // No devolver la contraseña
-      const { password, ...userInfo } = user;
-      
       res.json({
         success: true,
-        user: userInfo
+        user: user
       });
     } catch (error) {
       console.error("Error al obtener perfil:", error);
