@@ -9,6 +9,9 @@ import OpenAI from 'openai';
 import path from 'path';
 import fs from 'fs';
 
+// Importaciones para base de datos
+import { db } from '../db';
+
 // Importaciones de servicios para gestión de claves API
 import { getOpenAIApiKey, getGeminiApiKey } from './aiKeysManager';
 
@@ -18,12 +21,39 @@ const config = {
   aiProvider: "gemini", // o "openai"
   customPrompts: {
     enabled: true,
-    system: "Eres un asistente profesional que representa a una empresa. Responde de manera cordial, clara y concisa. Incluye un saludo con el nombre del cliente. Da información específica cuando la tienes, y cuando no, indícales que consultarás con el equipo y te pondrás en contacto pronto.",
-    temperature: 0.7,
-    maxTokens: 300
+    system: `Eres un representante de ventas de élite en Gemini CRM, un software innovador de gestión de relaciones con clientes (CRM) potenciado con Inteligencia Artificial.
+
+Tu objetivo es guiar a los posibles clientes hacia la compra de nuestro sistema CRM siguiendo estas directrices:
+
+1. Sé profesional pero cálido, construyendo rápidamente una conexión emocional con el cliente.
+2. Utiliza un lenguaje persuasivo, destacando BENEFICIOS, no solo características. 
+3. Personaliza cada respuesta a las necesidades específicas que mencione el cliente.
+4. Sugiere soluciones a problemas empresariales comunes que nuestro CRM resuelve.
+5. Menciona discretamente cómo nuestro CRM ayuda a incrementar ventas, mejorar retención de clientes y optimizar procesos.
+6. Si el cliente muestra interés, ofrece información sobre planes de precios o una demostración.
+7. Evita ser excesivamente promocional o usar un lenguaje genérico.
+8. SIEMPRE mantén la continuidad de la conversación, recordando lo que el cliente ha mencionado anteriormente.
+9. NUNCA inventes características que no existen.
+
+Características principales de Gemini CRM:
+- Integración directa con WhatsApp y Telegram
+- Análisis de conversaciones con IA para clasificar leads automáticamente
+- Respuestas automáticas personalizadas con IA
+- Automatización de tareas y seguimientos
+- Análisis predictivo de ventas
+- Gestión de campañas de marketing
+- Panel de estadísticas en tiempo real
+- Importación de contactos desde Excel
+- Almacenamiento de archivos y multimedia
+- Precio base desde $49/mes para 5 usuarios
+
+Recuerda: cada mensaje es una oportunidad para avanzar en el proceso de venta.`,
+    temperature: 0.8,
+    maxTokens: 500
   },
   excludedChats: [],
-  delaySeconds: 2
+  delaySeconds: 2,
+  storeConversationHistory: true
 };
 
 // Variables para clientes de IA
@@ -66,6 +96,46 @@ export async function initialize() {
 }
 
 /**
+ * Obtiene el historial de conversación para un chat específico
+ */
+async function getConversationHistory(chatId: string, limit: number = 10): Promise<Array<{message: string, isFromUser: boolean}>> {
+  try {
+    const result = await db.query(`
+      SELECT message_text, is_from_user, timestamp
+      FROM conversation_history
+      WHERE chat_id = $1
+      ORDER BY timestamp DESC
+      LIMIT $2
+    `, [chatId, limit]);
+    
+    // Devolver el resultado invertido para tener orden cronológico
+    return result.rows.reverse().map(row => ({
+      message: row.message_text,
+      isFromUser: row.is_from_user
+    }));
+  } catch (error) {
+    console.error('Error al obtener historial de conversación:', error);
+    return [];
+  }
+}
+
+/**
+ * Guarda un mensaje en el historial de conversación
+ */
+async function saveToConversationHistory(chatId: string, messageText: string, isFromUser: boolean, contextData: any = null): Promise<void> {
+  try {
+    await db.query(`
+      INSERT INTO conversation_history (chat_id, message_text, is_from_user, context_data)
+      VALUES ($1, $2, $3, $4)
+    `, [chatId, messageText, isFromUser, contextData ? JSON.stringify(contextData) : null]);
+    
+    console.log(`Mensaje ${isFromUser ? 'del usuario' : 'del sistema'} guardado en historial para chat ${chatId}`);
+  } catch (error) {
+    console.error('Error al guardar mensaje en historial:', error);
+  }
+}
+
+/**
  * Maneja un mensaje de WhatsApp entrante para generar una posible respuesta automática
  */
 export async function handleIncomingMessage(message: any) {
@@ -99,11 +169,34 @@ export async function handleIncomingMessage(message: any) {
     console.warn('No se pudo obtener el nombre del contacto para respuesta automática');
   }
   
-  // Generar respuesta con IA
-  let responseText = await generateAIResponse(message.body, contactName);
+  // Guardar mensaje del usuario en el historial si está habilitado
+  if (config.storeConversationHistory) {
+    await saveToConversationHistory(message.from, message.body, true, {
+      contactName,
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  // Obtener historial de conversación si está habilitado
+  let conversationHistory = [];
+  if (config.storeConversationHistory) {
+    conversationHistory = await getConversationHistory(message.from, 10);
+    console.log(`Recuperado historial de conversación para ${message.from}: ${conversationHistory.length} mensajes`);
+  }
+  
+  // Generar respuesta con IA, incluyendo historial
+  let responseText = await generateAIResponse(message.body, contactName, conversationHistory);
   
   // Si hay una respuesta, enviarla con retraso para simular escritura
   if (responseText && responseText.trim()) {
+    // Guardar respuesta en el historial si está habilitado
+    if (config.storeConversationHistory) {
+      await saveToConversationHistory(message.from, responseText, false, {
+        aiProvider: config.aiProvider,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
     setTimeout(async () => {
       try {
         // Simular estado de escritura
@@ -138,17 +231,21 @@ export async function handleIncomingMessage(message: any) {
 /**
  * Genera una respuesta utilizando IA
  */
-async function generateAIResponse(messageText: string, contactName: string): Promise<string> {
+async function generateAIResponse(
+  messageText: string, 
+  contactName: string, 
+  conversationHistory: Array<{message: string, isFromUser: boolean}> = []
+): Promise<string> {
   // Primero intentar con el proveedor configurado
   if (config.aiProvider === "openai" && openaiClient) {
     try {
-      return await generateWithOpenAI(messageText, contactName);
+      return await generateWithOpenAI(messageText, contactName, conversationHistory);
     } catch (error) {
       console.error('Error con OpenAI:', error);
       // Si falla, intentar con Gemini como respaldo
       if (geminiClient) {
         try {
-          return await generateWithGemini(messageText, contactName);
+          return await generateWithGemini(messageText, contactName, conversationHistory);
         } catch (innerError) {
           console.error('Error con Gemini (respaldo):', innerError);
         }
@@ -156,13 +253,13 @@ async function generateAIResponse(messageText: string, contactName: string): Pro
     }
   } else if (geminiClient) {
     try {
-      return await generateWithGemini(messageText, contactName);
+      return await generateWithGemini(messageText, contactName, conversationHistory);
     } catch (error) {
       console.error('Error con Gemini:', error);
       // Si falla, intentar con OpenAI como respaldo
       if (openaiClient) {
         try {
-          return await generateWithOpenAI(messageText, contactName);
+          return await generateWithOpenAI(messageText, contactName, conversationHistory);
         } catch (innerError) {
           console.error('Error con OpenAI (respaldo):', innerError);
         }
@@ -177,7 +274,11 @@ async function generateAIResponse(messageText: string, contactName: string): Pro
 /**
  * Genera respuesta usando OpenAI
  */
-async function generateWithOpenAI(messageText: string, contactName: string): Promise<string> {
+async function generateWithOpenAI(
+  messageText: string, 
+  contactName: string, 
+  conversationHistory: Array<{message: string, isFromUser: boolean}> = []
+): Promise<string> {
   if (!openaiClient) throw new Error("Cliente OpenAI no inicializado");
   
   const systemPrompt = config.customPrompts.system
@@ -186,12 +287,29 @@ async function generateWithOpenAI(messageText: string, contactName: string): Pro
   // Instrucción específica para evitar los mensajes genéricos
   const enhancedSystemPrompt = `${systemPrompt}\n\nIMPORTANTE: Evita iniciar la respuesta con saludos genéricos como "Hola, gracias por tu mensaje" o "En breve nos pondremos en contacto contigo". Personaliza tu respuesta directamente al contexto del mensaje y al cliente.`;
   
+  // Crear mensajes para el historial de conversación
+  const messages = [
+    { role: "system", content: enhancedSystemPrompt },
+  ];
+  
+  // Añadir historial de conversación si existe
+  if (conversationHistory && conversationHistory.length > 0) {
+    console.log(`Usando ${conversationHistory.length} mensajes de historial para respuesta con OpenAI`);
+    // Añadir historial de conversación previo
+    conversationHistory.forEach(entry => {
+      messages.push({
+        role: entry.isFromUser ? "user" : "assistant",
+        content: entry.message
+      });
+    });
+  }
+  
+  // Añadir el mensaje actual del usuario
+  messages.push({ role: "user", content: messageText });
+  
   const response = await openaiClient.chat.completions.create({
     model: "gpt-4o", // el modelo más reciente de OpenAI es "gpt-4o" 
-    messages: [
-      { role: "system", content: enhancedSystemPrompt },
-      { role: "user", content: messageText }
-    ],
+    messages: messages,
     temperature: config.customPrompts.temperature,
     max_tokens: config.customPrompts.maxTokens,
   });
@@ -209,14 +327,34 @@ async function generateWithOpenAI(messageText: string, contactName: string): Pro
 /**
  * Genera respuesta usando Gemini
  */
-async function generateWithGemini(messageText: string, contactName: string): Promise<string> {
+async function generateWithGemini(
+  messageText: string, 
+  contactName: string, 
+  conversationHistory: Array<{message: string, isFromUser: boolean}> = []
+): Promise<string> {
   if (!geminiClient) throw new Error("Cliente Gemini no inicializado");
   
   const systemPrompt = config.customPrompts.system
     .replace(/{{nombre}}/g, contactName);
   
-  // Formatear el prompt para Gemini
-  const fullPrompt = `${systemPrompt}\n\nMensaje del cliente: ${messageText}\n\nTu respuesta:`;
+  // Formatear el prompt para Gemini incluyendo el historial
+  let fullPrompt = systemPrompt + "\n\n";
+  
+  // Añadir historial de conversación si existe
+  if (conversationHistory && conversationHistory.length > 0) {
+    console.log(`Usando ${conversationHistory.length} mensajes de historial para respuesta con Gemini`);
+    
+    fullPrompt += "HISTORIAL DE CONVERSACIÓN:\n";
+    conversationHistory.forEach(entry => {
+      const role = entry.isFromUser ? "Cliente" : "Asistente";
+      fullPrompt += `${role}: ${entry.message}\n`;
+    });
+    
+    fullPrompt += "\nBasado en el historial anterior, responde al siguiente mensaje:\n";
+  }
+  
+  // Añadir el mensaje actual
+  fullPrompt += `Mensaje actual del cliente: ${messageText}\n\nTu respuesta:`;
   
   const result = await geminiClient.generateContent(
     fullPrompt,
