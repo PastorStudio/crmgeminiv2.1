@@ -82,7 +82,8 @@ export function MessageText({ text, className = '' }: MessageTextProps) {
       );
     }
     
-    return <>{fragments}</>;
+    // Usamos createElement para evitar problemas con data-replit-metadata
+    return React.createElement(React.Fragment, null, ...fragments);
   };
   
   return <div className={className}>{linkifyText(text)}</div>;
