@@ -74,7 +74,7 @@ class AuthService {
 
       try {
         // Actualizar última fecha de login si es posible
-        if (user.id !== 999999) { // No actualizar si es el superadmin
+        if (user.id !== 3) { // No actualizar si es el superadmin con ID 3
           try {
             await storage.updateUser(user.id, {
               lastLoginAt: new Date().toISOString()
