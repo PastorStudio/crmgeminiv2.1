@@ -30,9 +30,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, UserPlus, UserX, MessageSquare, Filter, Search } from 'lucide-react';
+import { Loader2, Plus, UserPlus, UserX, MessageSquare, Filter, Search, RefreshCw, MoreVertical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -73,6 +74,7 @@ const assignChatSchema = z.object({
 type AssignChatFormValues = z.infer<typeof assignChatSchema>;
 
 const ChatAssignments = () => {
+  const [, setLocation] = useLocation();
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [selectedChat, setSelectedChat] = useState(null);
