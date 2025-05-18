@@ -46,33 +46,79 @@ export default function SalesPipeline() {
     }
   };
 
-  // Render a lead card with drag-and-drop functionality
-  const renderLeadCard = (lead: Lead) => (
-    <div 
-      key={lead.id}
-      className="bg-white p-3 rounded-lg shadow-sm mb-3 cursor-pointer"
-      onClick={() => setEditingLead(lead)}
-    >
-      <div className="flex justify-between">
-        <span className="text-sm font-medium">{lead.fullName}</span>
-        <Badge variant={getStatusBadgeVariant(lead.status)}>
-          {formatStatus(lead.status)}
-        </Badge>
-      </div>
-      <div className="mt-2 text-xs text-gray-500">Company: {lead.company || 'N/A'}</div>
-      <div className="text-xs text-gray-500">Email: {lead.email}</div>
-      <div className="mt-2 flex justify-between">
-        <span className="text-xs text-gray-500">
-          Added: {formatDate(lead.createdAt)}
-        </span>
-        {lead.matchPercentage && (
-          <span className="text-xs font-medium text-green-600">
-            {lead.matchPercentage}% Match
-          </span>
+  // Render a lead card with services interests and probability based on conversation analysis
+  const renderLeadCard = (lead: Lead) => {
+    // Extraer servicios de interés y probabilidades de los tags si están disponibles
+    const serviceTags = lead.tags?.filter(tag => !tag.includes('%')) || [];
+    
+    // Identificar tags de probabilidad (formato: "Interés: 75%")
+    const probabilityTag = lead.tags?.find(tag => tag.includes('%'));
+    let probability = null;
+    
+    if (probabilityTag) {
+      const match = probabilityTag.match(/(\d+)%/);
+      probability = match ? parseInt(match[1]) : null;
+    } else if (lead.matchPercentage) {
+      probability = lead.matchPercentage;
+    }
+    
+    return (
+      <div 
+        key={lead.id}
+        className="bg-white p-3 rounded-lg shadow-sm mb-3 cursor-pointer"
+        onClick={() => setEditingLead(lead)}
+      >
+        <div className="flex justify-between">
+          <span className="text-sm font-medium">{lead.fullName}</span>
+          <Badge variant={getStatusBadgeVariant(lead.status)}>
+            {formatStatus(lead.status)}
+          </Badge>
+        </div>
+        
+        <div className="mt-2 text-xs text-gray-500">Company: {lead.company || 'N/A'}</div>
+        <div className="text-xs text-gray-500">Email: {lead.email}</div>
+        
+        {/* Mostrar servicios de interés analizados por Gemini */}
+        {serviceTags.length > 0 && (
+          <div className="mt-2">
+            <p className="text-xs text-gray-700 font-medium">Servicios de interés:</p>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {serviceTags.map((tag, index) => (
+                <Badge key={index} variant="outline" className="text-xs bg-blue-50">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
         )}
+        
+        {/* Mostrar datos básicos */}
+        <div className="mt-2 flex justify-between">
+          <span className="text-xs text-gray-500">
+            Added: {formatDate(lead.createdAt)}
+          </span>
+          
+          {/* Mostrar probabilidad de interés/conversión */}
+          {probability !== null && (
+            <div className="flex flex-col">
+              <div className="w-24 bg-gray-200 rounded-full h-1.5 mb-1">
+                <div 
+                  className={`h-1.5 rounded-full ${
+                    probability > 75 ? 'bg-green-600' : 
+                    probability > 50 ? 'bg-blue-600' : 
+                    probability > 25 ? 'bg-yellow-500' : 'bg-red-600'}`}
+                  style={{ width: `${probability}%` }}
+                ></div>
+              </div>
+              <span className="text-xs font-medium text-green-600 text-right">
+                {probability}% Prob.
+              </span>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Format date to "2d ago" or similar
   const formatDate = (dateString?: string | Date) => {
