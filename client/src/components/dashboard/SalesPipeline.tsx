@@ -71,14 +71,30 @@ export default function SalesPipeline() {
         onClick={() => setEditingLead(lead)}
       >
         <div className="flex justify-between">
-          <span className="text-sm font-medium">{lead.fullName}</span>
-          <Badge variant={getStatusBadgeVariant(lead.status)}>
+          <span className="text-sm font-medium">{lead.fullName || lead.name}</span>
+          <Badge className={`${
+            lead.status === 'new' ? 'bg-blue-100 text-blue-800' : 
+            lead.status === 'contacted' ? 'bg-purple-100 text-purple-800' : 
+            lead.status === 'meeting' ? 'bg-amber-100 text-amber-800' : 
+            lead.status === 'closed-won' ? 'bg-green-100 text-green-800' : 
+            lead.status === 'closed-lost' ? 'bg-red-100 text-red-800' : 
+            'bg-gray-100 text-gray-800'
+          }`}>
             {formatStatus(lead.status)}
           </Badge>
         </div>
         
-        <div className="mt-2 text-xs text-gray-500">Company: {lead.company || 'N/A'}</div>
-        <div className="text-xs text-gray-500">Email: {lead.email}</div>
+        <div className="mt-2 text-xs text-gray-500">
+          {lead.source && <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 mr-2">{lead.source}</span>}
+          {lead.company ? `Company: ${lead.company}` : lead.phone ? `Phone: ${lead.phone}` : `Email: ${lead.email}`}
+        </div>
+        
+        {/* Mostrar último mensaje si existe */}
+        {lead.lastMessage && (
+          <div className="mt-2 text-xs bg-gray-50 p-1.5 rounded text-gray-600 max-h-10 overflow-hidden">
+            <p className="truncate">"{lead.lastMessage}"</p>
+          </div>
+        )}
         
         {/* Mostrar servicios de interés analizados por Gemini */}
         {serviceTags.length > 0 && (
