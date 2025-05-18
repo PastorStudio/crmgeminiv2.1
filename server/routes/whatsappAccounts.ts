@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { storage } from '../storage';
 import { insertWhatsappAccountSchema } from '@shared/schema';
-import { generateQRCode, getWhatsAppClient } from '../services/whatsappService';
+import whatsappService from '../services/whatsappService';
 import fs from 'fs';
 import path from 'path';
 
