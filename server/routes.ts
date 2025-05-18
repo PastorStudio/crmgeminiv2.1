@@ -1756,12 +1756,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const templateData = req.body;
+      
+      console.log("Recibiendo actualización de plantilla:", JSON.stringify(templateData));
+      
+      // Asegurarse de que los tags sean un array si vienen en la solicitud
+      if (templateData.tags && !Array.isArray(templateData.tags)) {
+        console.log("Tags no es un array, corrigiendo:", templateData.tags);
+        if (typeof templateData.tags === 'string') {
+          // Intentar convertir si es un string (posiblemente JSON)
+          try {
+            templateData.tags = JSON.parse(templateData.tags);
+          } catch (e) {
+            templateData.tags = templateData.tags.split(',').map(tag => tag.trim());
+          }
+        } else {
+          // Por defecto, crear un array vacío
+          templateData.tags = [];
+        }
+      }
+      
+      console.log("Datos procesados para actualización:", JSON.stringify(templateData));
+
       const template = await messageTemplateService.updateTemplate(id, templateData);
       
       if (!template) {
+        console.log("La plantilla no fue encontrada:", id);
         return res.status(404).json({ error: "Plantilla no encontrada" });
       }
       
+      console.log("Plantilla actualizada exitosamente:", JSON.stringify(template));
       res.json(template);
     } catch (error) {
       console.error("Error al actualizar plantilla:", error);
