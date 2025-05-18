@@ -96,10 +96,9 @@ export async function createAppointmentFromConversation(clientInfo: any, leadId:
           direction,
           channel,
           read,
-          "sentAt",
-          "aiGenerated"
+          "sentAt"
         )
-        VALUES ($1, $2, 'system', 'calendar', true, NOW(), true)
+        VALUES ($1, $2, 'system', 'calendar', true, NOW())
       `,
       values: [
         leadId,
