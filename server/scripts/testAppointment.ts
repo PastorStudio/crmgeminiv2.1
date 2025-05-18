@@ -8,6 +8,7 @@ import { createAppointmentFromConversation } from '../services/appointmentDetect
 
 // Función principal que crea una cita de prueba para un lead específico
 async function createTestAppointment(leadId: number): Promise<void> {
+  console.log('Conectando a la base de datos PostgreSQL...');
   try {
     console.log(`Creando cita de prueba para el lead ID: ${leadId}`);
     
@@ -40,6 +41,8 @@ async function createTestAppointment(leadId: number): Promise<void> {
       }
     };
     
+    console.log('Datos de prueba:', JSON.stringify(clientInfo, null, 2));
+    
     // Llamar a la función de creación de citas
     await createAppointmentFromConversation(clientInfo, leadId);
     
@@ -49,20 +52,17 @@ async function createTestAppointment(leadId: number): Promise<void> {
   }
 }
 
-// Si este script se ejecuta directamente
-if (require.main === module) {
-  // Usar el lead ID 1 como valor predeterminado
-  const leadId = process.argv[2] ? parseInt(process.argv[2]) : 1;
-  
-  createTestAppointment(leadId)
-    .then(() => {
-      console.log('Proceso de prueba completado');
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error('Error en el proceso de prueba:', error);
-      process.exit(1);
-    });
-}
+// Para ejecución directa del script
+const leadId = process.argv[2] ? parseInt(process.argv[2]) : 1;
+
+createTestAppointment(leadId)
+  .then(() => {
+    console.log('Proceso de prueba completado');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('Error en el proceso de prueba:', error);
+    process.exit(1);
+  });
 
 export default createTestAppointment;
