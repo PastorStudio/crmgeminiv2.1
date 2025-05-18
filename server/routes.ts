@@ -159,23 +159,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Leads endpoints
+  // Leads endpoints - usando datos reales de WhatsApp
   app.get("/api/leads", async (req: Request, res: Response) => {
     try {
       const status = req.query.status as string;
       const assignedTo = req.query.assignedTo ? parseInt(req.query.assignedTo as string) : undefined;
       
+      // Primero obtenemos los leads de la base de datos
+      let dbLeads = [];
       if (status) {
-        const leads = await storage.getLeadsByStatus(status);
-        return res.json(leads);
+        dbLeads = await storage.getLeadsByStatus(status);
       } else if (assignedTo) {
-        const leads = await storage.getLeadsByAssignee(assignedTo);
-        return res.json(leads);
+        dbLeads = await storage.getLeadsByAssignee(assignedTo);
       } else {
-        const leads = await storage.getAllLeads();
-        return res.json(leads);
+        dbLeads = await storage.getAllLeads();
       }
+      
+      // Luego intentamos enriquecer los datos con información real de WhatsApp
+      try {
+        const whatsappService = (global as any).whatsappService;
+        
+        if (whatsappService && whatsappService.isReady()) {
+          // Obtener datos reales de WhatsApp
+          const contactos = await whatsappService.getContacts();
+          const chats = await whatsappService.getChats();
+          
+          // Mapa para buscar leads por número de teléfono
+          const leadsByPhone: { [phone: string]: any } = {};
+          dbLeads.forEach((lead: any) => {
+            if (lead.phone) {
+              leadsByPhone[lead.phone] = lead;
+            }
+          });
+          
+          // Convertir contactos de WhatsApp a leads si no existen en la base de datos
+          const phoneNumbers = new Set(dbLeads.map((lead: any) => lead.phone));
+          const newLeads = [];
+          
+          for (const contacto of contactos) {
+            if (!contacto.id || phoneNumbers.has(contacto.id.replace('@c.us', ''))) {
+              continue; // Ya existe en la base de datos o no tiene ID
+            }
+            
+            // Buscar el último chat con este contacto
+            const chat = chats.find((c: any) => c.id === contacto.id);
+            let lastMessage = '';
+            let lastActivity = new Date();
+            
+            if (chat && chat.messages && chat.messages.length > 0) {
+              const message = chat.messages[chat.messages.length - 1];
+              lastMessage = message.body || '';
+              if (message.timestamp) {
+                lastActivity = new Date(message.timestamp);
+              }
+            }
+            
+            // Crear un nuevo lead desde el contacto de WhatsApp
+            const phone = contacto.id.replace('@c.us', '');
+            const newLead = await storage.createLead({
+              name: contacto.name || contacto.pushname || phone,
+              email: '',
+              phone,
+              status: status || 'new', // Asignar el estado solicitado o 'new' por defecto
+              assignedTo: assignedTo || 1, // Asignar al usuario solicitado o al primero
+              source: 'whatsapp',
+              notes: `Última actividad: ${lastActivity.toLocaleString()}\nÚltimo mensaje: ${lastMessage}`,
+              value: 0,
+              tags: ['whatsapp', 'auto-importado']
+            });
+            
+            newLeads.push(newLead);
+          }
+          
+          // Combinar los leads existentes con los nuevos
+          if (newLeads.length > 0) {
+            if (status) {
+              // Filtrar solo los nuevos leads con el estado correcto
+              const filteredNewLeads = newLeads.filter(lead => lead.status === status);
+              return res.json([...dbLeads, ...filteredNewLeads]);
+            } else if (assignedTo) {
+              // Filtrar solo los nuevos leads asignados al usuario correcto
+              const filteredNewLeads = newLeads.filter(lead => lead.assignedTo === assignedTo);
+              return res.json([...dbLeads, ...filteredNewLeads]);
+            } else {
+              return res.json([...dbLeads, ...newLeads]);
+            }
+          }
+        }
+      } catch (whatsappError) {
+        console.error('Error obteniendo datos reales de WhatsApp para leads:', whatsappError);
+        // Si hay un error, continuamos con los leads de la base de datos
+      }
+      
+      // Si no pudimos obtener datos de WhatsApp o no hay nuevos leads, devolvemos los de la base de datos
+      return res.json(dbLeads);
     } catch (error) {
+      console.error('Error en endpoint de leads:', error);
       res.status(500).json({ message: "Failed to fetch leads" });
     }
   });
@@ -460,10 +539,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dashboard stats endpoint
+  // Dashboard stats endpoint - usando datos reales de WhatsApp
   app.get("/api/dashboard-stats", async (req: Request, res: Response) => {
     try {
-      const stats = await storage.getDashboardStats();
+      // Intentar obtener estadísticas de la base de datos primero
+      let stats = await storage.getDashboardStats();
+      
+      // Si estamos conectados a WhatsApp, obtenemos datos reales
+      try {
+        const whatsappService = (global as any).whatsappService;
+        
+        if (whatsappService && whatsappService.isReady()) {
+          // Obtener datos reales de WhatsApp
+          const contactos = await whatsappService.getContacts();
+          const chats = await whatsappService.getChats();
+          
+          // Calcular métricas en base a datos reales
+          const totalLeads = contactos.length;
+          const messagesThisMonth = chats.reduce((total: number, chat: any) => {
+            return total + (chat.messages?.length || 0);
+          }, 0);
+          
+          // Calcular chats activos (con mensajes en los últimos 7 días)
+          const now = new Date();
+          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          
+          const activeChats = chats.filter((chat: any) => {
+            if (!chat.messages || chat.messages.length === 0) return false;
+            const lastMessage = chat.messages[chat.messages.length - 1];
+            const timestamp = lastMessage.timestamp || 0;
+            return new Date(timestamp) >= sevenDaysAgo;
+          }).length;
+          
+          // Crear o actualizar estadísticas con datos reales
+          if (!stats) {
+            // Si no existen estadísticas, las creamos
+            stats = await storage.updateDashboardStats({
+              totalLeads,
+              newLeadsThisMonth: totalLeads, // Por ahora, asumimos todos como nuevos
+              activeLeads: activeChats,
+              messagesThisMonth,
+              conversionRate: 0,
+              averageResponseTime: 0,
+              salesThisMonth: 0,
+              revenue: 0
+            });
+          } else {
+            // Actualizamos las estadísticas existentes con datos reales
+            stats = await storage.updateDashboardStats({
+              ...stats,
+              totalLeads,
+              activeLeads: activeChats,
+              messagesThisMonth,
+              newLeadsThisMonth: totalLeads // Por ahora, asumimos todos como nuevos
+            });
+          }
+        }
+      } catch (whatsappError) {
+        console.error('Error obteniendo estadísticas reales de WhatsApp:', whatsappError);
+        // Si hay un error, continuamos con las estadísticas de la base de datos
+      }
       
       if (!stats) {
         return res.status(404).json({ message: "Dashboard stats not found" });
@@ -471,6 +606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(stats);
     } catch (error) {
+      console.error('Error en dashboard stats:', error);
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
     }
   });
