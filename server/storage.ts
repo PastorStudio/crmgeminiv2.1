@@ -70,6 +70,21 @@ export interface IStorage {
   getDashboardStats(): Promise<DashboardStats | undefined>;
   updateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats>;
   
+  // WhatsApp Account methods
+  getAllWhatsappAccounts(): Promise<any[]>;
+  getWhatsappAccount(id: number): Promise<any>;
+  createWhatsappAccount(account: any): Promise<any>;
+  updateWhatsappAccount(id: number, data: any): Promise<any>;
+  deleteWhatsappAccount(id: number): Promise<void>;
+  
+  // Chat Assignment methods
+  getAllChatAssignments(): Promise<any[]>;
+  getChatAssignmentsByAgent(agentId: number): Promise<any[]>;
+  getChatAssignment(id: number): Promise<any>;
+  createChatAssignment(assignment: any): Promise<any>;
+  updateChatAssignment(id: number, data: any): Promise<any>;
+  deleteChatAssignment(id: number): Promise<void>;
+  
   // WhatsApp methods
   getWhatsAppContact(contactId: string): Promise<any>;
   getWhatsAppChat(chatId: string): Promise<any>;
