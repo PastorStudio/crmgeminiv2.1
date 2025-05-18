@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/authContext';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -268,10 +268,13 @@ export default function UserManagement() {
       // Copiar solo los campos con valores válidos
       Object.keys(values).forEach(key => {
         // No incluir contraseña vacía
-        if (key === 'password' && (!values[key] || values[key].trim() === '')) {
+        if (key === 'password' && (!values[key as keyof typeof values] || (values[key as keyof typeof values] as string).trim() === '')) {
           return;
         }
-        userData[key] = values[key];
+        // Utilizar tipado seguro para acceder a las propiedades
+        if (key in values) {
+          (userData as any)[key] = values[key as keyof typeof values];
+        }
       });
       
       updateUserMutation.mutate({ id: selectedUser.id, userData });
@@ -304,19 +307,32 @@ export default function UserManagement() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Gestión de Usuarios</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Gestión de Agentes</h1>
           <p className="text-muted-foreground">
-            Administra usuarios, asigna roles y gestiona permisos
+            Administra los agentes que atenderán los chats de WhatsApp
           </p>
         </div>
-        <Button onClick={() => {
-          setSelectedUser(null);
-          form.reset(defaultValues);
-          setIsDialogOpen(true);
-        }}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Nuevo Usuario
-        </Button>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/users'] })}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Actualizar Lista
+          </Button>
+          <Button onClick={() => {
+            setSelectedUser(null);
+            form.reset({
+              ...defaultValues,
+              role: "agent", // Por defecto, crear un agente
+              status: "active", // Activo por defecto
+              department: "ventas" // Departamento por defecto
+            });
+            setIsDialogOpen(true);
+          }}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Nuevo Agente
+          </Button>
+        </div>
       </div>
 
       <Card>
