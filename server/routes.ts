@@ -1203,6 +1203,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Ruta para crear leads a partir de contactos de WhatsApp
+  app.post("/api/direct/whatsapp/create-leads-from-contacts", async (req: Request, res: Response) => {
+    try {
+      // Importar el servicio de WhatsApp e importar storage
+      const { whatsappService } = await import('./services/whatsappServiceImpl');
+      
+      // Verificar que el servicio esté activo
+      const status = whatsappService.getStatus();
+      if (!status.authenticated) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "WhatsApp no está autenticado. Escanee el código QR primero." 
+        });
+      }
+      
+      // Obtener lista de contactos
+      const contacts = await whatsappService.getContacts();
+      
+      if (!contacts || contacts.length === 0) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "No se encontraron contactos de WhatsApp" 
+        });
+      }
+      
+      // Convertir contactos en leads
+      const createdLeads = [];
+      const updatedLeads = [];
+      
+      for (const contact of contacts) {
+        if (!contact.name) continue; // Omitir contactos sin nombre
+        
+        // Verificar si ya existe un lead con este número de teléfono
+        const existingLeads = await storage.getLeadsByPhone(contact.id.split('@')[0]);
+        
+        if (existingLeads && existingLeads.length > 0) {
+          // Actualizar el lead existente
+          const updatedLead = await storage.updateLead(existingLeads[0].id, {
+            fullName: contact.name,
+            phone: contact.id.split('@')[0],
+            tags: ['WhatsApp', 'Contacto Real']
+          });
+          
+          if (updatedLead) {
+            updatedLeads.push(updatedLead);
+          }
+        } else {
+          // Crear nuevo lead
+          const newLead = await storage.createLead({
+            fullName: contact.name,
+            email: `${contact.id.split('@')[0]}@whatsapp.contact`,
+            phone: contact.id.split('@')[0],
+            company: contact.name.split(' ')[0] + ' Inc',
+            status: 'new',
+            source: 'WhatsApp',
+            tags: ['WhatsApp', 'Contacto Real']
+          });
+          
+          createdLeads.push(newLead);
+        }
+      }
+      
+      // Analizar los leads con Gemini
+      const { geminiService } = await import('./services/geminiService');
+      
+      // Intentar analizar cada lead nuevo
+      for (const lead of [...createdLeads, ...updatedLeads]) {
+        try {
+          await geminiService.analyzeLead(lead.id);
+        } catch (error) {
+          console.error(`Error analizando lead ${lead.id} con Gemini:`, error);
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: `Se procesaron ${contacts.length} contactos, creando ${createdLeads.length} leads nuevos y actualizando ${updatedLeads.length} existentes.`,
+        createdLeads,
+        updatedLeads
+      });
+    } catch (error) {
+      console.error("Error creando leads desde contactos WhatsApp:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al procesar contactos de WhatsApp" 
+      });
+    }
+  });
+
   // Rutas para WhatsApp - Usando implementación directa
   // Estas rutas ahora están gestionadas por el servicio registerWhatsAppRoutes que se llama al inicio
   /*
