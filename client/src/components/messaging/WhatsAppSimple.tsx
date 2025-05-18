@@ -946,11 +946,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   ) : !whatsappStatus?.authenticated ? (
                     <div className="flex flex-col items-center justify-center py-10 px-4 bg-gray-50 rounded-lg">
                       <div className="text-center mb-6">
-                        <img 
-                          src="/src/assets/GeminiCRM.png" 
-                          alt="GeminiCRM Logo" 
-                          className="w-48 h-auto mx-auto mb-6"
-                        />
                         <h3 className="text-xl font-semibold text-gray-800 mb-2">WhatsApp no conectado</h3>
                         <p className="text-gray-600 mb-4">Para ver tus chats y mensajes, necesitas conectar WhatsApp escaneando el código QR.</p>
                       </div>
@@ -1284,11 +1279,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full">
-                    <img 
-                      src="/src/assets/GeminiCRM.png" 
-                      alt="GeminiCRM Logo" 
-                      className="w-32 h-auto mx-auto mb-4"
-                    />
+                    <MessageSquare className="h-10 w-10 text-gray-300 mb-2" />
                     <div className="text-gray-500 text-sm">No hay mensajes</div>
                     <div className="text-gray-400 text-xs mt-1">Envía un mensaje para iniciar la conversación</div>
                   </div>
