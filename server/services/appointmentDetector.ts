@@ -29,7 +29,7 @@ export async function createAppointmentFromConversation(clientInfo: any, leadId:
     const { rows: existingActivities } = await pool.query(
       `SELECT id FROM activities 
        WHERE "leadId" = $1 
-       AND DATE("startTime") = DATE($2)
+       AND DATE(scheduled) = DATE($2)
        LIMIT 1`,
       [leadId, clientInfo.appointment.date]
     );
@@ -62,30 +62,25 @@ export async function createAppointmentFromConversation(clientInfo: any, leadId:
       title = `Seguimiento con ${clientInfo.clientName || 'Cliente'}`;
     }
     
-    // Crear la actividad en la base de datos
+    // Crear la actividad en la base de datos con los campos correctos según el esquema
     const insertQuery = {
       text: `
         INSERT INTO activities (
-          lead_id,
+          "leadId",
           type,
-          title,
-          description,
-          start_time,
+          scheduled,
+          notes,
           completed,
-          created_at,
-          ai_generated,
-          ai_summary
+          "createdAt"
         )
-        VALUES ($1, $2, $3, $4, $5, false, NOW(), true, $6)
+        VALUES ($1, $2, $3, $4, false, NOW())
         RETURNING id
       `,
       values: [
         leadId,
         activityType,
-        title,
-        clientInfo.appointment.description,
         scheduledDateTime.toISOString(),
-        `Cita detectada en conversación de WhatsApp. Interés del cliente: ${clientInfo.interestLevel || 'No determinado'}`
+        `${title}: ${clientInfo.appointment.description}. Interés del cliente: ${clientInfo.interestLevel || 'No determinado'}`
       ]
     };
     
@@ -96,13 +91,13 @@ export async function createAppointmentFromConversation(clientInfo: any, leadId:
     const messageInsertQuery = {
       text: `
         INSERT INTO messages (
-          lead_id,
+          "leadId",
           content,
           direction,
           channel,
           read,
-          sent_at,
-          ai_generated
+          "sentAt",
+          "aiGenerated"
         )
         VALUES ($1, $2, 'system', 'calendar', true, NOW(), true)
       `,
