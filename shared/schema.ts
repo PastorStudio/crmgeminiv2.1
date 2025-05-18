@@ -3,16 +3,45 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Base user table - extending from what's already present
+// Base user table - con roles mejorados y campos adicionales
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   fullName: text("fullName"),
   email: text("email"),
-  role: text("role").default("user"),
+  // Roles: admin, agent, supervisor
+  role: text("role").default("agent"),
+  // Estado: active, inactive, suspended
+  status: text("status").default("active"),
   avatar: text("avatar"),
+  // Departamento o área del usuario (ventas, soporte, marketing, etc.)
+  department: text("department"),
+  // El ID del supervisor o gerente de este usuario
+  supervisorId: integer("supervisorId").references(() => users.id),
+  // Ajustes personalizados para este usuario (tema, notificaciones, etc.)
+  settings: jsonb("settings"),
+  lastLoginAt: timestamp("lastLoginAt"),
   createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
+});
+
+// WhatsApp Accounts - para manejar múltiples cuentas
+export const whatsappAccounts = pgTable("whatsapp_accounts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  // Información del propietario o usuario principal
+  ownerName: text("ownerName"),
+  ownerPhone: text("ownerPhone"),
+  // JSON con datos de configuración y estado
+  sessionData: jsonb("sessionData"),
+  // Estado de la conexión: active, inactive, pending_auth
+  status: text("status").default("inactive"),
+  // Usuario asignado como administrador de esta cuenta
+  adminId: integer("adminId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow(),
+  lastActiveAt: timestamp("lastActiveAt"),
 });
 
 // Lead model - represents potential customers
@@ -119,11 +148,6 @@ export const marketingCampaigns = pgTable("marketing_campaigns", {
 });
 
 // Insert schemas for each model
-// Definir relaciones
-export const usersRelations = relations(users, ({ many }) => ({
-  assignedLeads: many(leads),
-  activities: many(activities, { relationName: "userActivities" })
-}));
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
   assignee: one(users, {
@@ -240,6 +264,130 @@ export const mediaGalleryRelations = relations(mediaGallery, ({ one }) => ({
   })
 }));
 
+// Usuario-Cuenta WhatsApp para asignar agentes a diferentes cuentas
+export const userWhatsappAccounts = pgTable("user_whatsapp_accounts", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id),
+  accountId: integer("accountId").notNull().references(() => whatsappAccounts.id),
+  // Permisos: read_only, respond, full_access
+  permissions: text("permissions").default("respond"),
+  // Categorías o etiquetas de chats que este usuario puede manejar
+  assignedCategories: text("assignedCategories").array(),
+  assignedAt: timestamp("assignedAt").defaultNow(),
+  assignedBy: integer("assignedBy").references(() => users.id),
+});
+
+// Chat-Agente para asignación de conversaciones a agentes específicos
+export const chatAssignments = pgTable("chat_assignments", {
+  id: serial("id").primaryKey(),
+  // Chat ID en formato de WhatsApp (número@c.us)
+  chatId: text("chatId").notNull(),
+  // Conexión a la cuenta de WhatsApp
+  accountId: integer("accountId").notNull().references(() => whatsappAccounts.id),
+  // Usuario al que se asigna el chat
+  assignedToId: integer("assignedToId").notNull().references(() => users.id),
+  // Usuario que hizo la asignación
+  assignedById: integer("assignedById").references(() => users.id),
+  // Categoría o etiqueta del chat
+  category: text("category"),
+  // Estado: active, closed, transferred
+  status: text("status").default("active"),
+  // Notas o motivo de la asignación
+  notes: text("notes"),
+  assignedAt: timestamp("assignedAt").defaultNow(),
+  lastActivityAt: timestamp("lastActivityAt"),
+});
+
+// Categorías para organizar chats
+export const chatCategories = pgTable("chat_categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  color: text("color").default("#3b82f6"), // Color para UI
+  icon: text("icon"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  createdBy: integer("createdBy").references(() => users.id),
+});
+
+// Relaciones para cuentas de WhatsApp
+export const whatsappAccountsRelations = relations(whatsappAccounts, ({ one, many }) => ({
+  admin: one(users, {
+    fields: [whatsappAccounts.adminId],
+    references: [users.id]
+  }),
+  assignedUsers: many(userWhatsappAccounts),
+  chatAssignments: many(chatAssignments)
+}));
+
+// Relaciones para usuario-cuenta
+export const userWhatsappAccountsRelations = relations(userWhatsappAccounts, ({ one }) => ({
+  user: one(users, {
+    fields: [userWhatsappAccounts.userId],
+    references: [users.id]
+  }),
+  account: one(whatsappAccounts, {
+    fields: [userWhatsappAccounts.accountId],
+    references: [whatsappAccounts.id]
+  }),
+  assignedBy: one(users, {
+    fields: [userWhatsappAccounts.assignedBy],
+    references: [users.id]
+  })
+}));
+
+// Relaciones para asignaciones de chat
+export const chatAssignmentsRelations = relations(chatAssignments, ({ one }) => ({
+  account: one(whatsappAccounts, {
+    fields: [chatAssignments.accountId],
+    references: [whatsappAccounts.id]
+  }),
+  assignedTo: one(users, {
+    fields: [chatAssignments.assignedToId],
+    references: [users.id]
+  }),
+  assignedBy: one(users, {
+    fields: [chatAssignments.assignedById],
+    references: [users.id]
+  })
+}));
+
+// Relaciones para categorías de chat
+export const chatCategoriesRelations = relations(chatCategories, ({ one }) => ({
+  createdByUser: one(users, {
+    fields: [chatCategories.createdBy],
+    references: [users.id]
+  })
+}));
+
+// Definir relaciones de usuarios
+export const usersRelations = relations(users, ({ one, many }) => ({
+  supervisor: one(users, {
+    fields: [users.supervisorId],
+    references: [users.id]
+  }),
+  subordinates: many(users, {
+    relationName: "supervisorRelation"
+  }),
+  assignedLeads: many(leads),
+  activities: many(activities, { relationName: "userActivities" }),
+  whatsappAccounts: many(userWhatsappAccounts),
+  chatAssignments: many(chatAssignments, { relationName: "assignedChats" })
+}));
+
 export const insertMediaGallerySchema = createInsertSchema(mediaGallery).omit({ id: true, uploadedAt: true, lastUsedAt: true, useCount: true });
+export const insertWhatsappAccountSchema = createInsertSchema(whatsappAccounts).omit({ id: true, createdAt: true, lastActiveAt: true });
+export const insertUserWhatsappAccountSchema = createInsertSchema(userWhatsappAccounts).omit({ id: true, assignedAt: true });
+export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
+export const insertChatCategorySchema = createInsertSchema(chatCategories).omit({ id: true, createdAt: true });
+
 export type InsertMediaGallery = z.infer<typeof insertMediaGallerySchema>;
+export type InsertWhatsappAccount = z.infer<typeof insertWhatsappAccountSchema>;
+export type InsertUserWhatsappAccount = z.infer<typeof insertUserWhatsappAccountSchema>;
+export type InsertChatAssignment = z.infer<typeof insertChatAssignmentSchema>;
+export type InsertChatCategory = z.infer<typeof insertChatCategorySchema>;
+
 export type MediaGallery = typeof mediaGallery.$inferSelect;
+export type WhatsappAccount = typeof whatsappAccounts.$inferSelect;
+export type UserWhatsappAccount = typeof userWhatsappAccounts.$inferSelect;
+export type ChatAssignment = typeof chatAssignments.$inferSelect;
+export type ChatCategory = typeof chatCategories.$inferSelect;
