@@ -18,6 +18,9 @@ import { db } from "./db";
 // Importar las rutas de WhatsApp
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
+import { authService } from "./services/authService";
+import { eq, and, ne, not, isNull } from "drizzle-orm";
+import { users, whatsappAccounts, userWhatsappAccounts, chatAssignments, chatCategories } from "@shared/schema";
 import { autoResponseService } from "./services/autoResponseService";
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import multer from "multer";
@@ -68,6 +71,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
   app.get("/api/health", (req: Request, res: Response) => {
     res.json({ status: "ok" });
+  });
+  
+  // Rutas de autenticación
+  
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere nombre de usuario y contraseña"
+        });
+      }
+      
+      const user = await authService.verifyCredentials(username, password);
+      
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: "Credenciales inválidas"
+        });
+      }
+      
+      // Verificar si el usuario está activo
+      if (user.status && user.status !== 'active') {
+        return res.status(403).json({
+          success: false,
+          message: "Cuenta suspendida o inactiva. Contacte al administrador."
+        });
+      }
+      
+      // Generar token JWT
+      const token = authService.generateToken(user);
+      
+      // Actualizar última fecha de login
+      await db.update(users)
+        .set({ lastLoginAt: new Date() })
+        .where(eq(users.id, user.id));
+      
+      // Devolver información del usuario (sin contraseña)
+      const { password: _, ...userInfo } = user;
+      
+      res.json({
+        success: true,
+        message: "Inicio de sesión exitoso",
+        token,
+        user: userInfo
+      });
+    } catch (error) {
+      console.error("Error en inicio de sesión:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al procesar la solicitud de inicio de sesión"
+      });
+    }
+  });
+  
+  app.get("/api/auth/me", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user.id;
+      
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "Usuario no encontrado"
+        });
+      }
+      
+      // No devolver la contraseña
+      const { password, ...userInfo } = user;
+      
+      res.json({
+        success: true,
+        user: userInfo
+      });
+    } catch (error) {
+      console.error("Error al obtener perfil:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener información de perfil"
+      });
+    }
+  });
+  
+  app.post("/api/auth/logout", (req: Request, res: Response) => {
+    // En un JWT puro, el logout se maneja del lado del cliente
+    // eliminando el token, pero podríamos implementar una lista negra
+    // de tokens si es necesario
+    
+    res.json({
+      success: true,
+      message: "Sesión cerrada correctamente"
+    });
   });
   
   // Database status endpoint
