@@ -97,6 +97,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState<boolean>(false);
   // Estado para almacenar el ID de cuenta de WhatsApp actual (por defecto 1)
   const [currentAccountId, setCurrentAccountId] = useState<number>(1);
+  // Estado para almacenar todas las cuentas de WhatsApp
+  const [whatsappAccounts, setWhatsappAccounts] = useState<any[]>([]);
   
   // Refs para scroll automático
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -112,7 +114,33 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   // Toast para notificaciones
   const { toast } = useToast();
 
-  // Query para obtener el estado de WhatsApp
+  // Query para obtener todas las cuentas de WhatsApp
+  const {
+    data: accountsData,
+    isLoading: isLoadingAccounts
+  } = useQuery({
+    queryKey: ['/api/whatsapp-accounts'],
+    queryFn: async () => {
+      try {
+        const { apiRequest } = await import('@/lib/queryClient');
+        const response = await apiRequest('/api/whatsapp-accounts');
+        return response || [];
+      } catch (error) {
+        console.error('Error obteniendo cuentas de WhatsApp:', error);
+        return [];
+      }
+    },
+    refetchInterval: 10000
+  });
+
+  // Actualizar el estado de las cuentas cuando se carguen
+  useEffect(() => {
+    if (accountsData && Array.isArray(accountsData)) {
+      setWhatsappAccounts(accountsData);
+    }
+  }, [accountsData]);
+
+  // Query para obtener el estado de WhatsApp para la cuenta actual
   const { 
     data: whatsappStatus,
     isLoading: isLoadingStatus
@@ -652,6 +680,28 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         <div className="col-span-12 md:col-span-4 flex flex-col border-r h-full overflow-hidden">
           <Tabs defaultValue="chats" className="flex flex-col h-full overflow-hidden">
             <div className="border-b p-2">
+              {/* Selector de cuentas WhatsApp */}
+              <div className="mb-2">
+                <select 
+                  className="w-full rounded-md border border-gray-300 py-1 px-2 text-sm"
+                  value={currentAccountId}
+                  onChange={(e) => setCurrentAccountId(Number(e.target.value))}
+                  disabled={isLoadingAccounts || !Array.isArray(whatsappAccounts) || whatsappAccounts.length === 0}
+                >
+                  {isLoadingAccounts ? (
+                    <option>Cargando cuentas...</option>
+                  ) : whatsappAccounts.length === 0 ? (
+                    <option>No hay cuentas disponibles</option>
+                  ) : (
+                    whatsappAccounts.map(account => (
+                      <option key={account.id} value={account.id}>
+                        {account.name} {account.currentStatus?.authenticated ? '✓' : ''}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
               <div className="relative mb-2">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
                 <Input
@@ -671,7 +721,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
             <TabsContent value="chats" className="flex-1 overflow-hidden">
               {/* Lista de chats - Verificación explícita */}
               {activeTab === 'chats' && (
-                <ScrollArea className="flex-1">
+                <ScrollArea className="h-[calc(100vh-320px)]">
                   {isLoadingChats ? (
                     <div className="flex justify-center p-4">
                       <Spinner />
