@@ -60,7 +60,12 @@ export function TemplateManager() {
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   
-  const [newTemplate, setNewTemplate] = useState({
+  const [newTemplate, setNewTemplate] = useState<{
+    name: string;
+    content: string;
+    category: string;
+    tags: string[];
+  }>({
     name: "",
     content: "",
     category: "general",
@@ -68,12 +73,18 @@ export function TemplateManager() {
   });
 
   // Variables para el formulario de edición
-  const [editTemplate, setEditTemplate] = useState({
+  const [editTemplate, setEditTemplate] = useState<{
+    id: number;
+    name: string;
+    content: string;
+    category: string;
+    tags: string[];
+  }>({
     id: 0,
     name: "",
     content: "",
     category: "",
-    tags: [] as string[]
+    tags: []
   });
 
   // Para la entrada de tags
@@ -87,15 +98,22 @@ export function TemplateManager() {
   // Mutación para añadir una nueva plantilla
   const addTemplateMutation = useMutation({
     mutationFn: async (templateData: Omit<Template, "id" | "createdAt" | "updatedAt">) => {
-      console.log("Enviando plantilla:", templateData);
+      // Asegurar que los tags estén correctamente formateados como array
+      const formattedTemplate = {
+        ...templateData,
+        tags: Array.isArray(templateData.tags) ? templateData.tags : []
+      };
+      
+      console.log("Enviando plantilla (formateada):", formattedTemplate);
       const result = await apiRequest("/api/message-templates", {
         method: "POST",
-        body: templateData 
+        body: formattedTemplate
       });
       console.log("Respuesta del servidor:", result);
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Plantilla creada exitosamente:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/message-templates"] });
       toast({
         title: "Plantilla creada",
@@ -117,15 +135,26 @@ export function TemplateManager() {
   // Mutación para editar una plantilla
   const editTemplateMutation = useMutation({
     mutationFn: async (templateData: Partial<Template> & { id: number }) => {
-      console.log("Actualizando plantilla:", templateData);
-      const result = await apiRequest(`/api/message-templates/${templateData.id}`, {
+      // Asegurar que los tags estén correctamente formateados como array
+      const formattedTemplate = {
+        ...templateData,
+        tags: Array.isArray(templateData.tags) ? templateData.tags : []
+      };
+      
+      console.log("Actualizando plantilla (formateada):", formattedTemplate);
+      
+      // Usar el endpoint correcto con JSON bien formateado
+      const result = await apiRequest(`/api/message-templates/${formattedTemplate.id}`, {
         method: "PATCH",
-        body: templateData
+        body: formattedTemplate
       });
+      
       console.log("Respuesta de actualización:", result);
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Plantilla actualizada exitosamente:", data);
+      // Invalidar la consulta para refrescar la lista
       queryClient.invalidateQueries({ queryKey: ["/api/message-templates"] });
       toast({
         title: "Plantilla actualizada",
@@ -181,12 +210,16 @@ export function TemplateManager() {
 
   // Preparar la edición de una plantilla
   const prepareEditTemplate = (template: Template) => {
+    // Asegurar que los tags sean siempre un array válido
+    const tags = Array.isArray(template.tags) ? template.tags : [];
+    console.log(`Preparando plantilla para edición:`, template.id, template.name, `tags:`, tags);
+    
     setEditTemplate({
       id: template.id,
       name: template.name,
       content: template.content,
-      category: template.category,
-      tags: template.tags || []
+      category: template.category || "general",
+      tags: tags
     });
     setIsEditDialogOpen(true);
   };
@@ -210,12 +243,12 @@ export function TemplateManager() {
     if (isEdit) {
       setEditTemplate({
         ...editTemplate,
-        tags: [...(editTemplate.tags || []), tagInput.trim()]
+        tags: [...editTemplate.tags, tagInput.trim()]
       });
     } else {
       setNewTemplate({
         ...newTemplate,
-        tags: [...(newTemplate.tags || []), tagInput.trim()]
+        tags: [...newTemplate.tags, tagInput.trim()]
       });
     }
     
@@ -225,18 +258,20 @@ export function TemplateManager() {
   // Eliminar un tag
   const removeTag = (index: number, isEdit = false) => {
     if (isEdit) {
-      const newTags = [...editTemplate.tags];
-      newTags.splice(index, 1);
+      // Crear una copia segura del array de tags
+      const currentTags = Array.isArray(editTemplate.tags) ? [...editTemplate.tags] : [];
+      currentTags.splice(index, 1);
       setEditTemplate({
         ...editTemplate,
-        tags: newTags
+        tags: currentTags
       });
     } else {
-      const newTags = [...newTemplate.tags];
-      newTags.splice(index, 1);
+      // Crear una copia segura del array de tags
+      const currentTags = Array.isArray(newTemplate.tags) ? [...newTemplate.tags] : [];
+      currentTags.splice(index, 1);
       setNewTemplate({
         ...newTemplate,
-        tags: newTags
+        tags: currentTags
       });
     }
   };
