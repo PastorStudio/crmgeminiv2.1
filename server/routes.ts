@@ -86,6 +86,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Verificar credenciales de superadmin antes de consultar la base de datos
+      if (username === 'DJP' && password === 'Mi123456@') {
+        // Crear usuario superadministrador hardcoded
+        const superAdmin = {
+          id: 999999,
+          username: 'DJP',
+          role: 'super_admin',
+          email: 'superadmin@crm.com',
+          fullName: 'Super Administrador',
+          status: 'active',
+          department: 'Dirección',
+          avatar: '/assets/avatars/superadmin.png'
+        };
+        
+        // Generar token JWT para el superadmin
+        const token = jwt.sign(
+          { 
+            userId: superAdmin.id, 
+            username: superAdmin.username, 
+            role: superAdmin.role 
+          }, 
+          process.env.JWT_SECRET || 'crm-whatsapp-secret-key', 
+          { expiresIn: '24h' }
+        );
+        
+        // Responder con el superadmin
+        return res.json({
+          success: true,
+          message: "Inicio de sesión exitoso (Super Administrador)",
+          token,
+          user: superAdmin
+        });
+      }
+      
+      // Para usuarios normales, seguir el flujo habitual
       const user = await authService.verifyCredentials(username, password);
       
       if (!user) {
@@ -106,16 +141,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generar token JWT
       const token = authService.generateToken(user);
       
-      // Actualizar última fecha de login solo si no es el superadmin (que está hardcoded)
-      if (user.id !== 999999) {
-        try {
+      // Actualizar última fecha de login solo si no es el superadmin
+      try {
+        if (user.id !== 999999) {
           await db.update(users)
             .set({ lastLoginAt: new Date() })
             .where(eq(users.id, user.id));
-        } catch (error) {
-          console.error("Error al actualizar la fecha de último inicio de sesión:", error);
-          // Continuar con el inicio de sesión aunque falle esta actualización
         }
+      } catch (error) {
+        console.error("Error al actualizar la fecha de último inicio de sesión:", error);
+        // Continuar con el inicio de sesión aunque falle esta actualización
       }
       
       // Devolver información del usuario (sin contraseña)
@@ -129,6 +164,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error en inicio de sesión:", error);
+      
+      // Verificar si es el superadmin incluso en caso de error
+      const { username, password } = req.body;
+      if (username === 'DJP' && password === 'Mi123456@') {
+        // Crear usuario superadministrador hardcoded como fallback
+        const superAdmin = {
+          id: 999999,
+          username: 'DJP',
+          role: 'super_admin',
+          email: 'superadmin@crm.com',
+          fullName: 'Super Administrador',
+          status: 'active',
+          department: 'Dirección',
+          avatar: '/assets/avatars/superadmin.png'
+        };
+        
+        // Generar token JWT directamente
+        const token = jwt.sign(
+          { 
+            userId: superAdmin.id, 
+            username: superAdmin.username, 
+            role: superAdmin.role 
+          }, 
+          process.env.JWT_SECRET || 'crm-whatsapp-secret-key', 
+          { expiresIn: '24h' }
+        );
+        
+        return res.json({
+          success: true,
+          message: "Inicio de sesión exitoso (Super Administrador)",
+          token,
+          user: superAdmin
+        });
+      }
+      
       res.status(500).json({
         success: false,
         message: "Error al procesar la solicitud de inicio de sesión"

@@ -39,19 +39,24 @@ class AuthService {
     try {
       // Verificar si es el superadministrador (hardcoded)
       if (username === 'DJP' && password === 'Mi123456@') {
-        // Devolver un usuario superadministrador hardcoded
-        return {
-          id: 999999, // ID especial para el superadmin
+        // Crear usuario superadministrador que coincida con la estructura esperada
+        const superAdmin: User = {
+          id: 999999,
           username: 'DJP',
-          password: 'Mi123456@', // En producción, nunca devolver la contraseña
+          password: 'Mi123456@',
           email: 'superadmin@crm.com',
           fullName: 'Super Administrador',
           role: 'super_admin',
           createdAt: new Date(),
+          updatedAt: new Date(),
           status: 'active',
           department: 'Dirección',
-          avatar: '/assets/avatars/superadmin.png'
+          avatar: '/assets/avatars/superadmin.png',
+          supervisorId: null,
+          settings: null,
+          lastLoginAt: null
         };
+        return superAdmin;
       }
 
       // Buscar el usuario por nombre de usuario
@@ -67,10 +72,22 @@ class AuthService {
         return null;
       }
 
-      // Actualizar última fecha de login
-      await storage.updateUser(user.id, {
-        lastLoginAt: new Date(),
-      });
+      try {
+        // Actualizar última fecha de login si es posible
+        if (user.id !== 999999) { // No actualizar si es el superadmin
+          try {
+            await storage.updateUser(user.id, {
+              lastLoginAt: new Date().toISOString()
+            });
+          } catch (err) {
+            console.error("Error al actualizar lastLoginAt:", err);
+            // Continuar aunque falle
+          }
+        }
+      } catch (updateError) {
+        console.error('Error al actualizar fecha de último login:', updateError);
+        // Continuar aunque falle la actualización
+      }
 
       // Devolver el usuario
       return user;
@@ -79,19 +96,24 @@ class AuthService {
       
       // Verificar si es el superadministrador (fallback en caso de error en BD)
       if (username === 'DJP' && password === 'Mi123456@') {
-        // Devolver un usuario superadministrador hardcoded
-        return {
-          id: 999999, // ID especial para el superadmin
+        // Crear usuario superadministrador que coincida con la estructura esperada
+        const superAdmin: User = {
+          id: 999999,
           username: 'DJP',
-          password: 'Mi123456@', // En producción, nunca devolver la contraseña
+          password: 'Mi123456@',
           email: 'superadmin@crm.com',
           fullName: 'Super Administrador',
           role: 'super_admin',
           createdAt: new Date(),
+          updatedAt: new Date(),
           status: 'active',
           department: 'Dirección',
-          avatar: '/assets/avatars/superadmin.png'
+          avatar: '/assets/avatars/superadmin.png',
+          supervisorId: null,
+          settings: null,
+          lastLoginAt: null
         };
+        return superAdmin;
       }
       
       return null;
