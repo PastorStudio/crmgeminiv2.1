@@ -2659,6 +2659,12 @@ export default function MassSender() {
         </DialogContent>
       </Dialog>
       
+      {/* Componente de diálogo para envío inmediato */}
+      <SendImmediateDialog 
+        open={showImmediateMessaging}
+        onOpenChange={setShowImmediateMessaging}
+        importedData={importedData}
+      />
     </div>
   );
 }
