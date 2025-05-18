@@ -189,6 +189,13 @@ export default function MassSender() {
   const [selectedImportedContactIds, setSelectedImportedContactIds] = useState<string[]>([]);
   const [selectAllImported, setSelectAllImported] = useState<boolean>(false);
   
+  // Estados para contactos individuales de WhatsApp
+  const [showWhatsAppContacts, setShowWhatsAppContacts] = useState<boolean>(false);
+  const [whatsAppContacts, setWhatsAppContacts] = useState<any[]>([]);
+  const [loadingWhatsAppContacts, setLoadingWhatsAppContacts] = useState<boolean>(false);
+  const [selectedWhatsAppContactIds, setSelectedWhatsAppContactIds] = useState<string[]>([]);
+  const [selectAllWhatsAppContacts, setSelectAllWhatsAppContacts] = useState<boolean>(false);
+  
   // Estados para asistente Gemini
   const [isGeminiAssistantOpen, setIsGeminiAssistantOpen] = useState<boolean>(false);
   const [geminiResult, setGeminiResult] = useState<string>("");
@@ -200,6 +207,30 @@ export default function MassSender() {
     queryKey: ['/api/whatsapp/contact-groups'],
     retry: false
   });
+  
+  // Consulta para obtener contactos individuales de WhatsApp
+  const fetchWhatsAppContacts = async () => {
+    try {
+      setLoadingWhatsAppContacts(true);
+      const response = await fetch('/api/direct/whatsapp/contacts');
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      const data = await response.json();
+      setWhatsAppContacts(data);
+      return data;
+    } catch (error) {
+      console.error('Error obteniendo contactos de WhatsApp:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron obtener los contactos de WhatsApp.",
+        variant: "destructive",
+      });
+      return [];
+    } finally {
+      setLoadingWhatsAppContacts(false);
+    }
+  };
   
   // Consulta para obtener las etiquetas de contactos
   const { data: contactTags = [], isLoading: loadingTags } = useQuery<any[]>({
