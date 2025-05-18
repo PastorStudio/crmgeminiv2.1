@@ -58,19 +58,9 @@ function QRCodeDisplay({ qrData }: { qrData: string }) {
     
     const generateQR = async () => {
       try {
-        // WhatsApp QR tiene un formato diferente, primero intentamos convertirlo a un formato adecuado
-        // para la librería qrcode
-        let qrText = qrData;
-        if (qrData.startsWith('2@')) {
-          // Si el formato es específico de WhatsApp, extraemos solo el texto del QR
-          // y lo convertimos a un formato URL para que sea compatible con la mayoría de
-          // escáneres de QR
-          const cleanQrData = qrData.replace(/^2@/, '');
-          qrText = `https://web.whatsapp.com/?code=${encodeURIComponent(cleanQrData)}`;
-        }
-        
-        // Generar y dibujar el QR en el canvas
-        await QRCode.toCanvas(canvasRef.current, qrText, {
+        // Para WhatsApp, debemos usar el texto tal como viene, sin modificar
+        // La biblioteca de WhatsApp Web espera este formato específico
+        await QRCode.toCanvas(canvasRef.current, qrData, {
           width: 256,
           margin: 1,
           color: {
