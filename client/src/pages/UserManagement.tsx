@@ -356,7 +356,7 @@ export default function UserManagement() {
               </TableHeader>
               <TableBody>
                 {users && users.length > 0 ? (
-                  users.map((user) => (
+                  users.map((user: User) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.username}</TableCell>
                       <TableCell>{user.fullName || '-'}</TableCell>
@@ -394,11 +394,33 @@ export default function UserManagement() {
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                // Cambiar estado (activar/desactivar)
+                                const newStatus = user.status === 'active' ? 'inactive' : 'active';
+                                updateUserMutation.mutate({ 
+                                  id: user.id, 
+                                  userData: { status: newStatus } 
+                                });
+                              }}
+                            >
+                              {user.status === 'active' ? (
+                                <>
+                                  <UserX className="mr-2 h-4 w-4" />
+                                  Desactivar
+                                </>
+                              ) : (
+                                <>
+                                  <UserPlus className="mr-2 h-4 w-4" />
+                                  Activar
+                                </>
+                              )}
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => openDeleteDialog(user)}
                               className="text-destructive focus:text-destructive"
-                              disabled={user.id === currentUser?.id} // No permitir eliminar al usuario actual
+                              disabled={user.id === currentUser?.id || user.role === 'super_admin'} // No permitir eliminar al usuario actual o al superadmin
                             >
                               <Trash className="mr-2 h-4 w-4" />
                               Eliminar
@@ -425,13 +447,23 @@ export default function UserManagement() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {selectedUser ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
+            <DialogTitle className="flex items-center">
+              {selectedUser ? (
+                <>
+                  <Edit className="h-5 w-5 mr-2 text-blue-500" />
+                  Editar Agente
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-5 w-5 mr-2 text-green-500" /> 
+                  Registrar Nuevo Agente
+                </>
+              )}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="mt-2">
               {selectedUser 
-                ? 'Modifica los datos del usuario seleccionado.' 
-                : 'Completa el formulario para crear un nuevo usuario.'}
+                ? 'Modifica los datos del agente para actualizar su acceso al sistema.' 
+                : 'Crea un nuevo agente para que pueda iniciar sesión y atender los chats asignados.'}
             </DialogDescription>
           </DialogHeader>
           
@@ -508,23 +540,48 @@ export default function UserManagement() {
                   name="role"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Rol</FormLabel>
+                      <FormLabel>Tipo de Usuario</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
-                        defaultValue={field.value}
                         value={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="h-10">
                             <SelectValue placeholder="Selecciona un rol" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="admin">Administrador</SelectItem>
-                          <SelectItem value="supervisor">Supervisor</SelectItem>
-                          <SelectItem value="agent">Agente</SelectItem>
+                          <SelectItem value="agent">
+                            <div className="flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                              </svg>
+                              <span>Agente de Chat</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="supervisor">
+                            <div className="flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                              </svg>
+                              <span>Supervisor</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="admin">
+                            <div className="flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                              </svg>
+                              <span>Administrador</span>
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
+                      <FormDescription>
+                        {field.value === "agent" && "Los agentes pueden ver y responder chats que les sean asignados."}
+                        {field.value === "supervisor" && "Los supervisores pueden monitorear a los agentes y sus conversaciones."}
+                        {field.value === "admin" && "Los administradores tienen acceso completo a todas las funciones del sistema."}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
