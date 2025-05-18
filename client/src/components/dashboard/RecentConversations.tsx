@@ -160,7 +160,7 @@ export default function RecentConversations() {
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-900">
-                                {chat.name || "Contacto"}
+                                {chat.name || chat.id.split('@')[0] || "Contacto"}
                               </p>
                               <p className="text-sm text-gray-500 truncate max-w-[98%] overflow-hidden text-ellipsis">
                                 {messageBody}

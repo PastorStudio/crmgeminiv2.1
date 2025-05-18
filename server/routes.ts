@@ -716,17 +716,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/gemini/generate-message", async (req: Request, res: Response) => {
     try {
-      const { leadId, messageType } = req.body;
-      
-      if (!leadId || !messageType) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Lead ID y tipo de mensaje son requeridos" 
-        });
-      }
+      // Aceptar tanto el formato para leads como para envíos masivos
+      const { leadId, messageType, prompt, type } = req.body;
       
       // Import the Gemini service
       const { geminiService } = await import('./services/geminiService');
+      
+      // Si es para envío masivo, generamos con el prompt directo
+      if (prompt) {
+        console.log("Generando mensaje con Gemini para envío masivo:", prompt.substring(0, 50) + "...");
+        
+        try {
+          const content = await geminiService.generateContent(prompt);
+          return res.json({ 
+            success: true,
+            content 
+          });
+        } catch (error) {
+          console.error("Error al generar contenido con Gemini:", error);
+          return res.status(500).json({ 
+            success: false, 
+            message: "Error al generar contenido con Gemini",
+            error: (error as Error).message
+          });
+        }
+      }
+      
+      // Si no hay prompt, verificamos leadId y messageType
+      if (!leadId || !messageType) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Lead ID y tipo de mensaje son requeridos o un prompt es requerido" 
+        });
+      }
       
       // Generate personalized message
       const message = await geminiService.generateMessage(parseInt(leadId), messageType);
