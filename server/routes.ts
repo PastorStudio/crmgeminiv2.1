@@ -15,6 +15,7 @@ import {
 import { z } from "zod";
 import { apiKeyManager } from "./services/apiKeyManager";
 import { db } from "./db";
+import jwt from "jsonwebtoken";
 // Importar las rutas de WhatsApp
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
