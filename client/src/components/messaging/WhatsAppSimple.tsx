@@ -164,7 +164,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchInterval: 5000
   });
 
-  // Query para obtener chats reales de WhatsApp para la cuenta específica
+  // Query para obtener chats reales de WhatsApp para la cuenta específica con optimizaciones
   const { 
     data: whatsappChats = [],
     isLoading: isLoadingChats,
@@ -173,31 +173,65 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   } = useQuery({
     queryKey: ['/api/whatsapp-accounts', currentAccountId, 'chats'],
     queryFn: async () => {
+      // Recuperar cache primero para mostrar datos inmediatos
+      const cachedData = localStorage.getItem(`whatsapp_chats_${currentAccountId}`);
+      let initialData = [];
+      
+      if (cachedData) {
+        try {
+          initialData = JSON.parse(cachedData);
+          console.log(`Usando ${initialData.length} chats en cache para cuenta ${currentAccountId}`);
+        } catch (e) {}
+      }
+      
       try {
+        // Si no está autenticado, usar la cache o devolver vacío
         if (!whatsappStatus?.authenticated) {
-          return [];
+          console.log(`Cuenta ${currentAccountId} no autenticada, usando datos en cache`);
+          return initialData.length > 0 ? initialData : [];
         }
-        // Importar en línea apiRequest
+        
+        // Importar en línea apiRequest para usar consistentemente
         const { apiRequest } = await import('@/lib/queryClient');
         
         try {
+          // Intentar con la API específica de la cuenta primero (más fiable)
           const response = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/chats`);
-          console.log("Respuesta de chats obtenida:", response);
-          return response || [];
-        } catch (apiError) {
-          console.error('Error en solicitud API a /api/whatsapp-accounts:', apiError);
           
-          // Intentar con el endpoint directo como fallback temporal
-          const fallbackResponse = await apiRequest('/api/direct/whatsapp/chats');
-          console.log("Respuesta de fallback obtenida:", fallbackResponse);
-          return fallbackResponse || [];
+          if (Array.isArray(response) && response.length > 0) {
+            console.log(`Obtenidos ${response.length} chats para cuenta ${currentAccountId}`);
+            
+            // Guardar en cache para acceso rápido futuro
+            localStorage.setItem(`whatsapp_chats_${currentAccountId}`, JSON.stringify(response));
+            
+            return response;
+          } else {
+            console.warn(`Sin chats para cuenta ${currentAccountId}, intentando alternativa...`);
+          }
+        } catch (apiError) {
+          console.error(`Error en API para cuenta ${currentAccountId}:`, apiError);
         }
+        
+        // Si no hay respuesta o hay error, intentar con el endpoint directo
+        try {
+          const fallbackResponse = await apiRequest('/api/direct/whatsapp/chats');
+          
+          if (Array.isArray(fallbackResponse) && fallbackResponse.length > 0) {
+            console.log(`Usando fallback: ${fallbackResponse.length} chats obtenidos`);
+            return fallbackResponse;
+          }
+        } catch (fallbackError) {
+          console.error('Error en fallback de chats:', fallbackError);
+        }
+        
+        // Si todo falla, devolver la cache o un array vacío
+        return initialData.length > 0 ? initialData : [];
       } catch (error) {
-        console.error('Error obteniendo chats de WhatsApp:', error);
-        return [];
+        console.error(`Error obteniendo chats de WhatsApp para cuenta ${currentAccountId}:`, error);
+        return initialData.length > 0 ? initialData : [];
       }
     },
-    refetchInterval: 15000,
+    refetchInterval: 5000, // Más frecuente para mejor experiencia en tiempo real
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     retry: 3,
@@ -283,9 +317,25 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   useEffect(() => {
     // Limpiar selección de chat al cambiar de cuenta
     setSelectedChatId(null);
+    
     // Forzar refresco de los chats para la nueva cuenta
     refetchChats();
-  }, [currentAccountId, refetchChats]);
+    
+    // Notificar sobre el cambio de cuenta mediante WebSocket si está disponible
+    if (sendWSMessage) {
+      try {
+        sendWSMessage({
+          type: 'ACCOUNT_CHANGED',
+          accountId: currentAccountId
+        });
+      } catch (error) {
+        console.error('Error notificando cambio de cuenta:', error);
+      }
+    }
+    
+    // Actualizar estado en el almacenamiento local para persistencia
+    localStorage.setItem('lastWhatsAppAccount', currentAccountId.toString());
+  }, [currentAccountId, refetchChats, sendWSMessage]);
   
   // Ya tenemos una consulta para la asignación del chat actual arriba,
   // así que eliminamos esta duplicada
@@ -299,38 +349,54 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     queryKey: ['/api/whatsapp-accounts', currentAccountId, 'messages', selectedChatId],
     queryFn: async () => {
       try {
-        if (selectedChatId) {
-          // Importar apiRequest para consistencia
-          const { apiRequest } = await import('@/lib/queryClient');
-          
-          try {
-            // Intentar obtener mensajes específicos de la cuenta actual
-            const accountResponse = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/messages/${selectedChatId}`);
-            console.log(`Mensajes recibidos para cuenta ${currentAccountId}, chat ${selectedChatId}:`, accountResponse?.length || 0);
-            return accountResponse || [];
-          } catch (accountError) {
-            console.error(`Error al obtener mensajes de cuenta ${currentAccountId}:`, accountError);
-            
-            // Fallback a la API directa
-            const directResponse = await apiRequest(`/api/direct/whatsapp/messages/${selectedChatId}`);
-            console.log(`Mensajes fallback recibidos para ${selectedChatId}:`, directResponse?.length || 0);
-            return directResponse || [];
-          }
-        } else {
+        if (!selectedChatId || !currentAccountId) {
           return [];
         }
+        
+        // Usar importación dinámica para asegurar que tenemos la última versión
+        const { apiRequest } = await import('@/lib/queryClient');
+        
+        try {
+          // Primero intentamos obtener mensajes específicos de la cuenta actual
+          const accountResponse = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/messages/${selectedChatId}`);
+          console.log(`Mensajes recibidos para cuenta ${currentAccountId}, chat ${selectedChatId}:`, accountResponse?.length || 0);
+          
+          if (Array.isArray(accountResponse) && accountResponse.length > 0) {
+            return accountResponse;
+          }
+          
+          // Si la cuenta no tiene mensajes, intentamos otra vez con la API directa
+          console.warn(`Sin mensajes para cuenta ${currentAccountId}, probando API directa...`);
+          const directResponse = await apiRequest(`/api/direct/whatsapp/messages/${selectedChatId}`);
+          console.log(`Mensajes fallback recibidos para ${selectedChatId}:`, directResponse?.length || 0);
+          return directResponse || [];
+        } catch (error) {
+          console.error(`Error al obtener mensajes para cuenta ${currentAccountId}:`, error);
+          
+          // Última opción: intentar la API genérica si falla la específica
+          try {
+            const fallbackResponse = await apiRequest(`/api/direct/whatsapp/messages/${selectedChatId}`);
+            console.log(`Mensajes de última opción para ${selectedChatId}:`, fallbackResponse?.length || 0);
+            return fallbackResponse || [];
+          } catch (fallbackError) {
+            console.error('Error en fallback para mensajes:', fallbackError);
+            return [];
+          }
+        }
       } catch (error) {
-        console.error(`Error obteniendo mensajes para ${selectedChatId}:`, error);
+        console.error(`Error grave obteniendo mensajes:`, error);
         return [];
       }
     },
-    // Siempre intentamos cargar mensajes si hay un chat seleccionado
-    enabled: !!selectedChatId,
-    // Configuración de refresco
-    refetchInterval: selectedChatId ? 3000 : false,
+    // Habilitamos la consulta solo si tenemos chatId y accountId
+    enabled: !!selectedChatId && !!currentAccountId,
+    // Configuración mejorada para tiempo real
+    refetchInterval: selectedChatId ? 1000 : false, // Más rápido para mejor tiempo real
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    retry: 3
+    retry: 5, // Más reintentos
+    staleTime: 250, // Consideramos los datos frescos por menos tiempo
+    gcTime: 1 * 60 * 1000 // Tiempo de garbage collection más corto
   });
   
   // Mutación para enviar mensaje
@@ -704,7 +770,25 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   value={currentAccountId}
                   onChange={(e) => {
                     const newAccountId = Number(e.target.value);
+                    
+                    // Guardar el chat seleccionado actual para la cuenta anterior
+                    if (selectedChatId && currentAccountId) {
+                      localStorage.setItem(`last_chat_${currentAccountId}`, selectedChatId);
+                    }
+                    
+                    // Limpiar selección actual
+                    setSelectedChatId(null);
+                    
+                    // Actualizar la cuenta seleccionada
                     setCurrentAccountId(newAccountId);
+                    
+                    // Intentar restaurar el último chat usado para esta cuenta
+                    setTimeout(() => {
+                      const lastChatForAccount = localStorage.getItem(`last_chat_${newAccountId}`);
+                      if (lastChatForAccount) {
+                        setSelectedChatId(lastChatForAccount);
+                      }
+                    }, 500);
                     
                     // Mensaje de notificación para el usuario
                     toast({
@@ -712,6 +796,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                       description: `Cambiando a la cuenta ${whatsappAccounts.find(acc => acc.id === newAccountId)?.name || 'seleccionada'}`,
                       variant: "default"
                     });
+                    
+                    // Forzar refresco inmediato de los datos
+                    setTimeout(() => {
+                      refetchChats();
+                    }, 100);
                   }}
                   disabled={isLoadingAccounts || !Array.isArray(whatsappAccounts) || whatsappAccounts.length === 0}
                 >
