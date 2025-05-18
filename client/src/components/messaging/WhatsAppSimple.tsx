@@ -151,8 +151,19 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         }
         // Importar en línea apiRequest
         const { apiRequest } = await import('@/lib/queryClient');
-        const response = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/chats`);
-        return response.chats || [];
+        
+        try {
+          const response = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/chats`);
+          console.log("Respuesta de chats obtenida:", response);
+          return response || [];
+        } catch (apiError) {
+          console.error('Error en solicitud API a /api/whatsapp-accounts:', apiError);
+          
+          // Intentar con el endpoint directo como fallback temporal
+          const fallbackResponse = await apiRequest('/api/direct/whatsapp/chats');
+          console.log("Respuesta de fallback obtenida:", fallbackResponse);
+          return fallbackResponse || [];
+        }
       } catch (error) {
         console.error('Error obteniendo chats de WhatsApp:', error);
         return [];
@@ -178,8 +189,19 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         }
         // Importar en línea apiRequest
         const { apiRequest } = await import('@/lib/queryClient');
-        const response = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/contacts`);
-        return response.contacts || [];
+        
+        try {
+          const response = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/contacts`);
+          console.log("Respuesta de contactos obtenida:", response);
+          return response || [];
+        } catch (apiError) {
+          console.error('Error en solicitud API a /api/whatsapp-accounts/contacts:', apiError);
+          
+          // Intentar con el endpoint directo como fallback temporal
+          const fallbackResponse = await apiRequest('/api/direct/whatsapp/contacts');
+          console.log("Respuesta de fallback para contactos obtenida:", fallbackResponse);
+          return fallbackResponse || [];
+        }
       } catch (error) {
         console.error('Error obteniendo contactos de WhatsApp:', error);
         return [];
