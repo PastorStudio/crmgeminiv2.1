@@ -371,50 +371,58 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         // Usar importación dinámica para asegurar que tenemos la última versión
         const { apiRequest } = await import('@/lib/queryClient');
         
-        // Para la cuenta de Soporte (ID 2), intentamos obtener sus mensajes directamente primero
-        if (currentAccountId === 2) {
-          try {
-            const directResponse = await apiRequest(`/api/direct/whatsapp/messages/${selectedChatId}`);
-            
-            if (Array.isArray(directResponse) && directResponse.length > 0) {
-              // Guardar en caché para futuros accesos rápidos
-              localStorage.setItem(cacheKey, JSON.stringify(directResponse));
-              console.log(`Mensajes obtenidos directamente para Soporte (cuenta ${currentAccountId}):`, directResponse.length);
-              return directResponse;
-            }
-          } catch (directError) {
-            console.warn(`Error obteniendo mensajes directos para cuenta Soporte:`, directError);
-          }
+        // Intentar recuperar mensajes de caché primero
+        if (cachedMessages.length > 0) {
+          console.log(`Usando ${cachedMessages.length} mensajes de caché para mostrar inmediatamente`);
         }
         
-        // Intento estándar para todas las cuentas
-        try {
-          const accountResponse = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/messages/${selectedChatId}`);
+        // Proporcionar los mensajes en caché mientras se recargan
+        if (cachedMessages.length > 0) {
+          // Recarga en background
+          setTimeout(async () => {
+            try {
+              // Inténtalo con el método directo que funciona para ambas cuentas
+              const directResponse = await apiRequest(`/api/direct/whatsapp/messages/${selectedChatId}`);
+              if (Array.isArray(directResponse) && directResponse.length > 0) {
+                localStorage.setItem(cacheKey, JSON.stringify(directResponse));
+                queryClient.setQueryData(
+                  ['/api/whatsapp-accounts', currentAccountId, 'messages', selectedChatId], 
+                  directResponse
+                );
+              }
+            } catch (e) {}
+          }, 100);
           
-          if (Array.isArray(accountResponse) && accountResponse.length > 0) {
+          // Devuelve los datos en caché inmediatamente
+          return cachedMessages;
+        }
+        
+        // Usar método directo que funciona para todas las cuentas
+        try {
+          const directResponse = await apiRequest(`/api/direct/whatsapp/messages/${selectedChatId}`);
+          
+          if (Array.isArray(directResponse) && directResponse.length > 0) {
             // Guardar en caché para futuros accesos rápidos
-            localStorage.setItem(cacheKey, JSON.stringify(accountResponse));
-            console.log(`Mensajes obtenidos para cuenta ${currentAccountId}, chat ${selectedChatId}:`, accountResponse.length);
-            return accountResponse;
-          } else {
-            console.warn(`Sin mensajes específicos para cuenta ${currentAccountId}, intentando alternativa...`);
+            localStorage.setItem(cacheKey, JSON.stringify(directResponse));
+            console.log(`Mensajes obtenidos directamente para chat ${selectedChatId}:`, directResponse.length);
+            return directResponse;
           }
-        } catch (accountError) {
-          console.warn(`Error con mensajes específicos para cuenta ${currentAccountId}:`, accountError);
+        } catch (directError) {
+          console.warn(`Error obteniendo mensajes directos:`, directError);
         }
         
-        // Fallback a API directa si no se obtuvieron mensajes específicos de la cuenta
-        try {
-          const fallbackResponse = await apiRequest(`/api/direct/whatsapp/messages/${selectedChatId}`);
-          
-          if (Array.isArray(fallbackResponse) && fallbackResponse.length > 0) {
-            // Guardar también en cache
-            localStorage.setItem(cacheKey, JSON.stringify(fallbackResponse));
-            console.log(`Mensajes de fallback para chat ${selectedChatId}:`, fallbackResponse.length);
-            return fallbackResponse;
+        // Si el método directo falló, intentar con el método específico de cuenta
+        if (currentAccountId !== 2) { // Evitar para cuenta de soporte que sabemos falla
+          try {
+            const accountResponse = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/messages/${selectedChatId}`);
+            
+            if (Array.isArray(accountResponse) && accountResponse.length > 0) {
+              localStorage.setItem(cacheKey, JSON.stringify(accountResponse));
+              return accountResponse;
+            }
+          } catch (accountError) {
+            console.warn(`Error con mensajes específicos de cuenta:`, accountError);
           }
-        } catch (fallbackError) {
-          console.warn('Error en fallback para mensajes:', fallbackError);
         }
         
         // Si llegamos aquí sin mensajes, usar la caché si existe
@@ -849,9 +857,30 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                         // Intentar cargar chats inmediatamente
                         apiRequest(`/api/whatsapp-accounts/${newAccountId}/chats`).catch(() => {});
                         
-                        // Si es la cuenta de Soporte (ID 2), también precargar mensajes directos
+                        // Tratamiento especial para la cuenta de Soporte (ID 2)
                         if (newAccountId === 2) {
+                          // Limpiar caché para evitar confusiones
+                          queryClient.invalidateQueries({
+                            queryKey: ['/api/whatsapp-accounts', 2]
+                          });
+                          
+                          // Usar endpoint directo que funciona con todas las cuentas
                           apiRequest('/api/direct/whatsapp/chats').catch(() => {});
+                          
+                          // Precargar algunos mensajes de ejemplo para tener datos
+                          const lastChats = localStorage.getItem('whatsapp_chats_2');
+                          if (lastChats) {
+                            try {
+                              const parsedChats = JSON.parse(lastChats);
+                              if (Array.isArray(parsedChats) && parsedChats.length > 0) {
+                                // Precargar mensajes del primer chat para tener algo rápido
+                                const firstChatId = parsedChats[0]?.id;
+                                if (firstChatId) {
+                                  apiRequest(`/api/direct/whatsapp/messages/${firstChatId}`).catch(() => {});
+                                }
+                              }
+                            } catch (e) {}
+                          }
                         }
                         
                         // Notificar completado
