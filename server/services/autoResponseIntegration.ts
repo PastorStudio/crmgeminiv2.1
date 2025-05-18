@@ -8,9 +8,9 @@ import { whatsappService } from './whatsappServiceImpl';
 import OpenAI from 'openai';
 import path from 'path';
 import fs from 'fs';
+import { db, pool } from '../db';
 
-// Importaciones para base de datos
-import { db } from '../db';
+// Evitar importar db dos veces
 
 // Importaciones de servicios para gestión de claves API
 import { getOpenAIApiKey, getGeminiApiKey } from './aiKeysManager';
@@ -100,13 +100,19 @@ export async function initialize() {
  */
 async function getConversationHistory(chatId: string, limit: number = 10): Promise<Array<{message: string, isFromUser: boolean}>> {
   try {
-    const result = await db.query(`
-      SELECT message_text, is_from_user, timestamp
-      FROM conversation_history
-      WHERE chat_id = $1
-      ORDER BY timestamp DESC
-      LIMIT $2
-    `, [chatId, limit]);
+    // Usar SQL nativo de PostgreSQL 
+    const query = {
+      text: `
+        SELECT message_text, is_from_user, timestamp
+        FROM conversation_history
+        WHERE chat_id = $1
+        ORDER BY timestamp DESC
+        LIMIT $2
+      `,
+      values: [chatId, limit]
+    };
+    
+    const result = await pool.query(query);
     
     // Devolver el resultado invertido para tener orden cronológico
     return result.rows.reverse().map(row => ({
@@ -124,10 +130,16 @@ async function getConversationHistory(chatId: string, limit: number = 10): Promi
  */
 async function saveToConversationHistory(chatId: string, messageText: string, isFromUser: boolean, contextData: any = null): Promise<void> {
   try {
-    await db.query(`
-      INSERT INTO conversation_history (chat_id, message_text, is_from_user, context_data)
-      VALUES ($1, $2, $3, $4)
-    `, [chatId, messageText, isFromUser, contextData ? JSON.stringify(contextData) : null]);
+    // Usar SQL nativo de PostgreSQL
+    const query = {
+      text: `
+        INSERT INTO conversation_history (chat_id, message_text, is_from_user, context_data)
+        VALUES ($1, $2, $3, $4)
+      `,
+      values: [chatId, messageText, isFromUser, contextData ? JSON.stringify(contextData) : null]
+    };
+    
+    await pool.query(query);
     
     console.log(`Mensaje ${isFromUser ? 'del usuario' : 'del sistema'} guardado en historial para chat ${chatId}`);
   } catch (error) {
