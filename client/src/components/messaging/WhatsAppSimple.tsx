@@ -88,6 +88,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [contactFilter, setContactFilter] = useState('');
   const [autoResponses, setAutoResponses] = useState<boolean>(false);
   const [showConfigMenu, setShowConfigMenu] = useState<boolean>(false);
+  // Estado para controlar el diálogo de asignación de chat
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState<boolean>(false);
+  // Estado para almacenar el ID de cuenta de WhatsApp actual (por defecto 1)
+  const [currentAccountId, setCurrentAccountId] = useState<number>(1);
   
   // Refs para scroll automático
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -447,6 +451,14 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
               </Badge>
             )}
             
+            {/* Mostrar estado de asignación si hay un chat seleccionado */}
+            {selectedChatId && assignedAgent && (
+              <Badge variant="outline" className="bg-purple-100/70 text-purple-800 border-purple-300 font-medium">
+                <User className="h-3 w-3 mr-1" />
+                {assignedAgent.name}
+              </Badge>
+            )}
+            
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -465,6 +477,19 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                       Respuestas automáticas
                     </label>
                   </div>
+                  
+                  {/* Botón para asignar chat a agente */}
+                  {selectedChatId && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start bg-purple-50 hover:bg-purple-100 border-purple-200"
+                      onClick={() => setAssignmentDialogOpen(true)}
+                    >
+                      <UserPlus className="mr-1 h-4 w-4 text-purple-600" />
+                      {assignedAgent ? 'Reasignar chat' : 'Asignar a agente'}
+                    </Button>
+                  )}
                   
                   <Dialog>
                     <DialogTrigger asChild>
@@ -908,6 +933,16 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
           )}
         </div>
       </div>
+      
+      {/* Diálogo de asignación de chat */}
+      {selectedChatId && (
+        <ChatAssignmentDialog
+          open={assignmentDialogOpen}
+          onOpenChange={setAssignmentDialogOpen}
+          chatId={selectedChatId}
+          accountId={currentAccountId}
+        />
+      )}
     </Card>
   );
 }
