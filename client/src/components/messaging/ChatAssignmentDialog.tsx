@@ -63,12 +63,24 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
   const { data: assignment, isLoading: checkingAssignment } = useQuery({
     queryKey: ['/api/chat-assignments/by-chat', chatId, accountId],
     queryFn: async () => {
+      // Imprimir para depuración
+      console.log('Verificando asignación para chatId:', chatId, 'y accountId:', accountId);
+      
+      if (!chatId || !accountId) {
+        console.warn('ChatID o accountID no válidos para buscar asignación');
+        return null;
+      }
+      
       try {
-        const result = await apiRequest(`/api/chat-assignments/by-chat?chatId=${chatId}&accountId=${accountId}`);
+        // Asegurarse de que los parámetros estén codificados correctamente para la URL
+        const encodedChatId = encodeURIComponent(chatId);
+        const result = await apiRequest(`/api/chat-assignments/by-chat?chatId=${encodedChatId}&accountId=${accountId}`);
+        console.log('Asignación encontrada:', result);
         return result;
       } catch (error) {
         // Si devuelve 404, significa que no hay asignación
         if ((error as any)?.status === 404) {
+          console.log('No se encontró asignación existente');
           return null;
         }
         console.error('Error al verificar asignación:', error);
@@ -76,6 +88,10 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
       }
     },
     enabled: open && !!chatId && !!accountId,
+    // Forzar reintento en caso de errores
+    retry: 1,
+    // No almacenar en caché para siempre asegurar datos actualizados
+    staleTime: 0,
   });
   
   // Cargar usuarios (agentes)
@@ -117,25 +133,41 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
       category: '',
     },
   });
+  
+  // Para depuración
+  console.log('Estado actual del formulario:', form.getValues());
 
   // Mutation para crear asignación
   const createAssignmentMutation = useMutation({
     mutationFn: async (data: z.infer<typeof assignmentSchema>) => {
+      console.log('Enviando datos para crear asignación:', data);
       return await apiRequest('/api/chat-assignments', {
         method: 'POST',
-        body: data,
+        body: JSON.stringify(data),
       });
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
+      console.log('Asignación creada exitosamente:', response);
       toast({
         title: 'Chat asignado',
         description: 'El chat ha sido asignado correctamente',
       });
+      
+      // Invalidar todas las consultas relacionadas
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat'] });
+      
+      // Invalidar consultas específicas
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat', chatId, accountId] });
+      
+      // Forzar refresco de los datos de WhatsApp
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+      
+      // Cerrar diálogo
       onOpenChange(false);
     },
     onError: (error) => {
+      console.error('Error al crear asignación:', error);
       toast({
         title: 'Error',
         description: 'No se pudo asignar el chat: ' + (error as any)?.message || 'Error desconocido',
@@ -147,21 +179,34 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
   // Mutation para actualizar asignación
   const updateAssignmentMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<z.infer<typeof assignmentSchema>> }) => {
+      console.log('Actualizando asignación:', id, 'con datos:', data);
       return await apiRequest(`/api/chat-assignments/${id}`, {
         method: 'PUT',
-        body: data,
+        body: JSON.stringify(data),
       });
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
+      console.log('Asignación actualizada exitosamente:', response);
       toast({
         title: 'Asignación actualizada',
         description: 'La asignación ha sido actualizada correctamente',
       });
+      
+      // Invalidar todas las consultas relacionadas
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat'] });
+      
+      // Invalidar consultas específicas
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat', chatId, accountId] });
+      
+      // Forzar refresco global de los datos
+      queryClient.invalidateQueries();
+      
+      // Cerrar diálogo
       onOpenChange(false);
     },
     onError: (error) => {
+      console.error('Error al actualizar asignación:', error);
       toast({
         title: 'Error',
         description: 'No se pudo actualizar la asignación: ' + (error as any)?.message || 'Error desconocido',
@@ -193,6 +238,18 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
 
   // Manejar envío del formulario
   const onSubmit = (data: z.infer<typeof assignmentSchema>) => {
+    console.log('Datos enviados en formulario:', data);
+    
+    // Validar datos antes de continuar
+    if (!data.assignedToId || data.assignedToId <= 0) {
+      toast({
+        title: 'Error de validación',
+        description: 'Por favor seleccione un agente válido',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     if (existingAssignment) {
       // Actualizar asignación existente
       updateAssignmentMutation.mutate({
@@ -202,9 +259,24 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
           category: data.category,
         },
       });
+      
+      // Para asegurar que se refleje el cambio inmediatamente, forzamos actualización
+      setTimeout(() => {
+        queryClient.invalidateQueries();
+      }, 500);
     } else {
       // Crear nueva asignación
-      createAssignmentMutation.mutate(data);
+      createAssignmentMutation.mutate({
+        accountId: accountId,
+        chatId: chatId,
+        assignedToId: data.assignedToId,
+        category: data.category || 'general',
+      });
+      
+      // Para asegurar que se refleje el cambio inmediatamente, forzamos actualización
+      setTimeout(() => {
+        queryClient.invalidateQueries();
+      }, 500);
     }
   };
 
@@ -280,8 +352,19 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                   <FormItem>
                     <FormLabel>Asignar a</FormLabel>
                     <Select
-                      onValueChange={(value) => field.onChange(parseInt(value))}
-                      defaultValue={field.value ? field.value.toString() : ''}
+                      onValueChange={(value) => {
+                        console.log('Agente seleccionado:', value);
+                        // Convertir a número y establecer el valor
+                        const numValue = parseInt(value);
+                        if (!isNaN(numValue)) {
+                          field.onChange(numValue);
+                          // Para depuración
+                          console.log('Valor del campo actualizado a:', numValue);
+                        } else {
+                          console.error('Error al convertir ID de agente:', value);
+                        }
+                      }}
+                      value={field.value ? field.value.toString() : undefined}
                     >
                       <FormControl>
                         <SelectTrigger>

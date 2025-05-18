@@ -1,8 +1,8 @@
 {
   "accountId": 1,
   "accountName": "Ventas",
-  "activatedAt": "2025-05-18T23:32:08.860Z",
-  "lastCheckedAt": "2025-05-18T23:32:08.860Z",
+  "activatedAt": "2025-05-18T23:42:08.862Z",
+  "lastCheckedAt": "2025-05-18T23:42:08.862Z",
   "status": {
     "initialized": true,
     "ready": true,
