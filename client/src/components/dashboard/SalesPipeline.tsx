@@ -261,7 +261,7 @@ export default function SalesPipeline() {
               <div className="bg-gray-50 rounded-lg p-3">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-medium text-gray-900">Contacted</h4>
-                  <Badge variant="outline">{contactedLeads?.length || 0}</Badge>
+                  <Badge variant="outline">{contactedLeads?.filter(lead => lead.source === 'whatsapp').length || 0}</Badge>
                 </div>
                 
                 {!isWhatsappConnected ? (
@@ -300,7 +300,7 @@ export default function SalesPipeline() {
               <div className="bg-gray-50 rounded-lg p-3">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-medium text-gray-900">Meeting Scheduled</h4>
-                  <Badge variant="outline">{meetingLeads?.length || 0}</Badge>
+                  <Badge variant="outline">{meetingLeads?.filter(lead => lead.source === 'whatsapp').length || 0}</Badge>
                 </div>
                 
                 {!isWhatsappConnected ? (
@@ -339,7 +339,7 @@ export default function SalesPipeline() {
               <div className="bg-gray-50 rounded-lg p-3">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-medium text-gray-900">Closed</h4>
-                  <Badge variant="outline">{closedLeads?.length || 0}</Badge>
+                  <Badge variant="outline">{closedLeads?.filter(lead => lead.source === 'whatsapp').length || 0}</Badge>
                 </div>
                 
                 {!isWhatsappConnected ? (
