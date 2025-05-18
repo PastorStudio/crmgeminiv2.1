@@ -1,71 +1,83 @@
+/**
+ * Rutas para gestionar asignaciones de chats a agentes
+ */
 import { Router, Request, Response } from 'express';
+import { db } from '../db';
+import { chatAssignments, whatsappAccounts, users } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 import { storage } from '../storage';
-import { insertChatAssignmentSchema } from '@shared/schema';
-import whatsappService from '../services/whatsappService';
+import { whatsappMultiAccountManager } from '../services/whatsappMultiAccountManager';
 
 const router = Router();
 
-// Obtener todas las asignaciones de chat (con filtros opcionales)
+// Middleware para verificar que el usuario es administrador o supervisor
+const isAdminOrSupervisor = (req: Request, res: Response, next: Function) => {
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({ error: 'No autenticado' });
+  }
+  
+  if (['admin', 'super_admin', 'supervisor'].includes(user.role)) {
+    return next();
+  }
+  
+  return res.status(403).json({ error: 'No autorizado' });
+};
+
+// Obtener todas las asignaciones de chat
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { accountId, agentId, category, query } = req.query;
+    // Buscar asignaciones en la base de datos
+    const assignments = await db.select().from(chatAssignments);
     
-    // Si el usuario no es admin o super_admin, solo puede ver sus propias asignaciones
-    const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
-    const userId = req.user ? req.user.id : null;
+    // Obtener información detallada de cada asignación
+    const assignmentsWithDetails = await Promise.all(
+      assignments.map(async (assignment) => {
+        const account = await db.select().from(whatsappAccounts).where(eq(whatsappAccounts.id, assignment.accountId)).limit(1);
+        const assignedTo = await db.select().from(users).where(eq(users.id, assignment.assignedToId)).limit(1);
+        let assignedBy = null;
+        if (assignment.assignedById) {
+          assignedBy = await db.select().from(users).where(eq(users.id, assignment.assignedById)).limit(1);
+        }
+        
+        // Intentar obtener información del chat desde WhatsApp
+        let chatInfo = null;
+        try {
+          const chats = await whatsappMultiAccountManager.getChats(assignment.accountId);
+          chatInfo = chats.find(chat => chat.id === assignment.chatId);
+        } catch (error) {
+          console.error(`Error al obtener información del chat ${assignment.chatId}:`, error);
+        }
+        
+        return {
+          ...assignment,
+          accountInfo: account[0] || null,
+          assignedTo: assignedTo[0] || null,
+          assignedBy: assignedBy?.[0] || null,
+          chatInfo: chatInfo || { 
+            id: assignment.chatId,
+            name: assignment.chatId.split('@')[0],
+            isGroup: assignment.chatId.includes('-')
+          }
+        };
+      })
+    );
     
-    if (!isAdmin && userId) {
-      // Forzar a que solo vea sus propias asignaciones
-      const userAssignments = await storage.getChatAssignmentsByAgent(userId);
-      return res.json(userAssignments);
-    }
-    
-    // Aplicar filtros si existen
-    let assignments = await storage.getAllChatAssignments();
-    
-    if (accountId && accountId !== 'all') {
-      assignments = assignments.filter(a => a.accountId === parseInt(accountId as string));
-    }
-    
-    if (agentId && agentId !== 'all') {
-      assignments = assignments.filter(a => a.assignedToId === parseInt(agentId as string));
-    }
-    
-    if (category && category !== 'all') {
-      assignments = assignments.filter(a => a.category === category);
-    }
-    
-    if (query) {
-      const searchTerm = (query as string).toLowerCase();
-      assignments = assignments.filter(a => 
-        a.chatId.toLowerCase().includes(searchTerm) || 
-        (a.notes && a.notes.toLowerCase().includes(searchTerm))
-      );
-    }
-    
-    res.json(assignments);
+    res.json(assignmentsWithDetails);
   } catch (error) {
     console.error('Error al obtener asignaciones de chat:', error);
     res.status(500).json({ error: 'Error al obtener asignaciones de chat' });
   }
 });
 
-// Obtener una asignación específica
+// Obtener asignación de chat por ID
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const assignment = await storage.getChatAssignment(parseInt(id));
+    const id = parseInt(req.params.id);
+    const assignment = await storage.getChatAssignment(id);
     
     if (!assignment) {
       return res.status(404).json({ error: 'Asignación de chat no encontrada' });
-    }
-    
-    // Verificar si el usuario tiene acceso a esta asignación
-    const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
-    const isAssignedAgent = req.user && assignment.assignedToId === req.user.id;
-    
-    if (!isAdmin && !isAssignedAgent) {
-      return res.status(403).json({ error: 'No tiene permisos para ver esta asignación' });
     }
     
     res.json(assignment);
@@ -75,85 +87,81 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Obtener asignación por chatId
-router.get('/by-chat/:chatId', async (req: Request, res: Response) => {
+// Obtener asignación de chat por ID de chat
+router.get('/by-chat', async (req: Request, res: Response) => {
   try {
-    const { chatId } = req.params;
-    const assignment = await storage.getChatAssignmentByChatId(chatId);
+    const { chatId, accountId } = req.query;
+    
+    if (!chatId || !accountId) {
+      return res.status(400).json({ error: 'Se requiere chatId y accountId' });
+    }
+    
+    const assignment = await storage.getChatAssignmentByChatId(chatId as string, parseInt(accountId as string));
     
     if (!assignment) {
       return res.status(404).json({ error: 'Asignación de chat no encontrada' });
     }
     
-    // Verificar si el usuario tiene acceso a esta asignación
-    const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
-    const isAssignedAgent = req.user && assignment.assignedToId === req.user.id;
-    
-    if (!isAdmin && !isAssignedAgent) {
-      return res.status(403).json({ error: 'No tiene permisos para ver esta asignación' });
-    }
-    
     res.json(assignment);
   } catch (error) {
-    console.error('Error al obtener asignación de chat:', error);
-    res.status(500).json({ error: 'Error al obtener asignación de chat' });
+    console.error('Error al obtener asignación de chat por chatId:', error);
+    res.status(500).json({ error: 'Error al obtener asignación de chat por chatId' });
   }
 });
 
-// Crear una nueva asignación de chat
-router.post('/', async (req: Request, res: Response) => {
+// Crear asignación de chat
+router.post('/', isAdminOrSupervisor, async (req: Request, res: Response) => {
   try {
-    // Validar los datos de entrada con el esquema
-    const validation = insertChatAssignmentSchema.safeParse(req.body);
+    const { chatId, accountId, assignedToId, category, notes } = req.body;
     
-    if (!validation.success) {
-      return res.status(400).json({ error: 'Datos de entrada inválidos', details: validation.error });
+    if (!chatId || !accountId || !assignedToId) {
+      return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
     
     // Verificar si el chat ya está asignado
-    const existingAssignment = await storage.getChatAssignmentByChatId(req.body.chatId);
-    
+    const existingAssignment = await storage.getChatAssignmentByChatId(chatId, accountId);
     if (existingAssignment) {
-      return res.status(400).json({ error: 'Este chat ya está asignado a un agente' });
+      return res.status(409).json({ error: 'Este chat ya está asignado' });
     }
     
-    // Si hay un usuario autenticado, marcarlo como el que hizo la asignación
-    if (req.user && req.user.id) {
-      req.body.assignedById = req.user.id;
-    }
+    // Crear asignación
+    const assignment = await storage.createChatAssignment({
+      chatId,
+      accountId,
+      assignedToId,
+      assignedById: req.user?.id,
+      category,
+      notes,
+      status: 'active'
+    });
     
-    // Crear la asignación
-    const newAssignment = await storage.createChatAssignment(req.body);
-    
-    res.status(201).json(newAssignment);
+    res.status(201).json(assignment);
   } catch (error) {
     console.error('Error al crear asignación de chat:', error);
     res.status(500).json({ error: 'Error al crear asignación de chat' });
   }
 });
 
-// Actualizar una asignación de chat
-router.patch('/:id', async (req: Request, res: Response) => {
+// Actualizar asignación de chat
+router.put('/:id', isAdminOrSupervisor, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const assignmentId = parseInt(id);
+    const id = parseInt(req.params.id);
+    const { assignedToId, category, status, notes } = req.body;
     
     // Verificar si la asignación existe
-    const existingAssignment = await storage.getChatAssignment(assignmentId);
-    
+    const existingAssignment = await storage.getChatAssignment(id);
     if (!existingAssignment) {
       return res.status(404).json({ error: 'Asignación de chat no encontrada' });
     }
     
-    // Verificar si el usuario tiene permisos para actualizar
-    const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
-    
-    if (!isAdmin) {
-      return res.status(403).json({ error: 'No tiene permisos para actualizar esta asignación' });
-    }
-    
-    // Actualizar la asignación
-    const updatedAssignment = await storage.updateChatAssignment(assignmentId, req.body);
+    // Actualizar asignación
+    const updatedAssignment = await storage.updateChatAssignment(id, {
+      assignedToId,
+      category,
+      status,
+      notes,
+      assignedById: req.user?.id
+    });
     
     res.json(updatedAssignment);
   } catch (error) {
@@ -162,30 +170,21 @@ router.patch('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Eliminar una asignación de chat
-router.delete('/:id', async (req: Request, res: Response) => {
+// Eliminar asignación de chat
+router.delete('/:id', isAdminOrSupervisor, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const assignmentId = parseInt(id);
+    const id = parseInt(req.params.id);
     
     // Verificar si la asignación existe
-    const existingAssignment = await storage.getChatAssignment(assignmentId);
-    
+    const existingAssignment = await storage.getChatAssignment(id);
     if (!existingAssignment) {
       return res.status(404).json({ error: 'Asignación de chat no encontrada' });
     }
     
-    // Verificar si el usuario tiene permisos para eliminar
-    const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
+    // Eliminar asignación
+    await storage.deleteChatAssignment(id);
     
-    if (!isAdmin) {
-      return res.status(403).json({ error: 'No tiene permisos para eliminar esta asignación' });
-    }
-    
-    // Eliminar la asignación
-    await storage.deleteChatAssignment(assignmentId);
-    
-    res.json({ success: true, message: 'Asignación de chat eliminada correctamente' });
+    res.json({ success: true });
   } catch (error) {
     console.error('Error al eliminar asignación de chat:', error);
     res.status(500).json({ error: 'Error al eliminar asignación de chat' });
