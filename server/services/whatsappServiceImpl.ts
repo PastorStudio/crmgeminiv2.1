@@ -283,6 +283,74 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   /**
    * Configura los eventos del cliente de WhatsApp
    */
+  /**
+   * Implementa un mecanismo de recuperación de conexión automática
+   * @param force Si es true, fuerza la reinicialización aunque la conexión parezca estar activa
+   */
+  private async attemptConnectionRecovery(force: boolean = false): Promise<boolean> {
+    console.log('Intentando recuperar conexión de WhatsApp...');
+    
+    if (!this.client || force) {
+      try {
+        // Limpieza previa
+        if (this.client) {
+          console.log('Cerrando cliente de WhatsApp existente...');
+          try {
+            await this.client.destroy();
+          } catch (err) {
+            console.error('Error al cerrar cliente previo:', err);
+          }
+          this.client = null;
+        }
+        
+        // Reinicializar completamente
+        console.log('Reinicializando cliente de WhatsApp...');
+        await this.initialize();
+        return true;
+      } catch (error) {
+        console.error('Error durante la recuperación de conexión:', error);
+        return false;
+      }
+    } else {
+      // Verificar el estado de conexión
+      try {
+        console.log('Verificando estado de conexión...');
+        const state = await this.client.getState();
+        console.log('Estado actual de la conexión WhatsApp:', state);
+        
+        if (state !== 'CONNECTED') {
+          console.log('Conexión no está activa, intentando reconexión...');
+          try {
+            // Intentar primero una reconexión simple
+            await this.client.resetState();
+            
+            // Verificar nuevamente si se recuperó
+            const newState = await this.client.getState();
+            if (newState !== 'CONNECTED') {
+              // Si sigue sin conectar, reinicializar completamente
+              console.log('Reconexión simple falló, reinicializando completamente...');
+              return await this.attemptConnectionRecovery(true);
+            }
+            
+            console.log('Conexión recuperada exitosamente');
+            return true;
+          } catch (err) {
+            console.error('Error durante la reconexión:', err);
+            // En caso de error, intentar reinicialización completa
+            return await this.attemptConnectionRecovery(true);
+          }
+        } else {
+          console.log('La conexión ya está activa, no es necesario recuperarla');
+          return true;
+        }
+      } catch (checkError) {
+        console.error('Error verificando estado de conexión:', checkError);
+        // Si no podemos verificar el estado, asumimos que necesitamos reinicializar
+        return await this.attemptConnectionRecovery(true);
+      }
+    }
+  }
+
   private setupClientEvents(): void {
     if (!this.client) return;
 
