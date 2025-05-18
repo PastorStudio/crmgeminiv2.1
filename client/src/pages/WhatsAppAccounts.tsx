@@ -84,6 +84,7 @@ const WhatsAppAccounts = () => {
   const [selectedAccount, setSelectedAccount] = useState<WhatsAppAccount | null>(null);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [newlyCreatedAccountId, setNewlyCreatedAccountId] = useState<number | null>(null);
   
   // Consulta para obtener cuentas
   const { data: accounts = [], isLoading, error, refetch } = useQuery<WhatsAppAccount[]>({
