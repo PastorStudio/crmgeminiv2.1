@@ -28,8 +28,8 @@ export async function createAppointmentFromConversation(clientInfo: any, leadId:
     // Verificar si ya existe una cita con la misma fecha y lead
     const { rows: existingActivities } = await pool.query(
       `SELECT id FROM activities 
-       WHERE lead_id = $1 
-       AND DATE(start_time) = DATE($2)
+       WHERE "leadId" = $1 
+       AND DATE("startTime") = DATE($2)
        LIMIT 1`,
       [leadId, clientInfo.appointment.date]
     );
