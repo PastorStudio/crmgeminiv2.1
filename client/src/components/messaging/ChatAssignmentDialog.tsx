@@ -99,14 +99,25 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     queryKey: ['/api/users'],
     queryFn: async () => {
       try {
+        console.log('Cargando usuarios para asignación de chat...');
         const data = await apiRequest('/api/users');
-        return data.success ? data.users : [];
+        if (data.success && Array.isArray(data.users)) {
+          console.log('Usuarios obtenidos correctamente:', data.users.length);
+          return data.users;
+        } else {
+          console.warn('Respuesta inesperada al cargar usuarios:', data);
+          return [];
+        }
       } catch (error) {
         console.error('Error cargando usuarios:', error);
         return [];
       }
     },
     enabled: open,
+    // Importante: No mantener caché para siempre asegurar datos frescos
+    staleTime: 0,
+    // Forzar revalidación en cada apertura del diálogo
+    refetchOnMount: true,
   });
   
   // Cargar cuentas de WhatsApp
@@ -285,6 +296,9 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     user.status === 'active' && 
     ['agent', 'supervisor'].includes(user.role)
   );
+  
+  // Registro para depuración
+  console.log('Agentes disponibles:', agents);
 
   // Determinar si hay un agente asignado actualmente
   const currentAgent = existingAssignment?.assignedTo 
