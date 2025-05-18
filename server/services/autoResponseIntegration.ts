@@ -9,6 +9,7 @@ import OpenAI from 'openai';
 import path from 'path';
 import fs from 'fs';
 import { db, pool } from '../db';
+import { createAppointmentFromConversation } from './appointmentDetector';
 
 // Evitar importar db dos veces
 
@@ -172,18 +173,25 @@ async function extractClientInfo(chatId: string, conversationHistory: Array<{mes
     // Añadir el último mensaje
     conversationText += `Cliente: ${lastMessage}\n`;
     
+    // Mejorar análisis con pistas específicas sobre citas y reuniones
+    conversationText += `\nANÁLISIS ESPECIAL: Busca cuidadosamente cualquier mención de citas, reuniones o llamadas programadas. 
+    Por ejemplo: "nos vemos el lunes", "podemos reunirnos el día 15", "hablamos mañana a las 10am", etc.
+    Reconoce fechas y horas tanto específicas como relativas (mañana, próximo lunes, etc.).`;
+    
     // Definir criterios para niveles de interés
     const interestCriteria = {
       alto: [
         "necesito inmediatamente", "cuándo podemos empezar", "listos para comprar",
         "urgente", "lo necesito ya", "presupuesto aprobado", "toma de decisión",
         "contratación inmediata", "compra", "adquirir", "implementar ahora",
-        "muy interesado", "demostración detallada", "cuánto cuesta exactamente"
+        "muy interesado", "demostración detallada", "cuánto cuesta exactamente",
+        "¿cuándo podemos reunirnos?", "agendar una cita", "programar una reunión"
       ],
       medio: [
         "me interesa", "podría funcionar", "dime más", "precios", "opciones",
         "características", "comparativa", "considerando", "evaluando", "tal vez",
-        "posibilidad", "próximamente", "en el futuro cercano", "planificando"
+        "posibilidad", "próximamente", "en el futuro cercano", "planificando",
+        "tal vez podríamos reunirnos", "podríamos hablar después"
       ],
       bajo: [
         "solo estoy preguntando", "información general", "quizás después", "no estoy seguro",
@@ -402,7 +410,14 @@ Notas: ${clientInfo.notes || 'Ninguna'}
       };
       
       const updateResult = await pool.query(updateQuery);
-      console.log(`Lead actualizado con ID: ${updateResult.rows[0].id}`);
+      const leadId = updateResult.rows[0].id;
+      console.log(`Lead actualizado con ID: ${leadId}`);
+      
+      // Verificar si hay información de cita en la conversación
+      if (clientInfo.appointment && clientInfo.appointment.detected === true) {
+        // Crear cita automáticamente para el lead existente
+        await createAppointmentFromConversation(clientInfo, leadId);
+      }
     } else {
       // Generar etiquetas inteligentes para el nuevo lead
       const generateTags = () => {
@@ -517,7 +532,14 @@ Notas: ${clientInfo.notes || 'Ninguna'}
       };
       
       const insertResult = await pool.query(insertQuery);
-      console.log(`Nuevo lead creado con ID: ${insertResult.rows[0].id}`);
+      const leadId = insertResult.rows[0].id;
+      console.log(`Nuevo lead creado con ID: ${leadId}`);
+      
+      // Verificar si hay información de cita en la conversación
+      if (clientInfo.appointment && clientInfo.appointment.detected === true) {
+        // Crear cita automáticamente
+        await createAppointmentFromConversation(clientInfo, leadId);
+      }
     }
   } catch (error) {
     console.error('Error al actualizar/crear lead:', error);
