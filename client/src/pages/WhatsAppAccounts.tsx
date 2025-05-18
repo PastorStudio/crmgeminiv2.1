@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import QRCode from 'qrcode';
 import { 
   Card, 
   CardContent, 
@@ -47,6 +48,52 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { apiRequest } from '../lib/queryClient';
+
+// Componente para mostrar el código QR
+function QRCodeDisplay({ qrData }: { qrData: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  useEffect(() => {
+    if (!canvasRef.current || !qrData) return;
+    
+    const generateQR = async () => {
+      try {
+        // WhatsApp QR tiene un formato diferente, primero intentamos convertirlo a un formato adecuado
+        // para la librería qrcode
+        let qrText = qrData;
+        if (qrData.startsWith('2@')) {
+          // Si el formato es específico de WhatsApp, extraemos solo el texto del QR
+          // y lo convertimos a un formato URL para que sea compatible con la mayoría de
+          // escáneres de QR
+          const cleanQrData = qrData.replace(/^2@/, '');
+          qrText = `https://web.whatsapp.com/?code=${encodeURIComponent(cleanQrData)}`;
+        }
+        
+        // Generar y dibujar el QR en el canvas
+        await QRCode.toCanvas(canvasRef.current, qrText, {
+          width: 256,
+          margin: 1,
+          color: {
+            dark: '#000000',
+            light: '#ffffff'
+          }
+        });
+      } catch (error) {
+        console.error('Error al generar el código QR:', error);
+      }
+    };
+    
+    generateQR();
+  }, [qrData]);
+  
+  return (
+    <canvas 
+      ref={canvasRef} 
+      className="w-64 h-64 border rounded"
+      aria-label="Código QR para conectar WhatsApp"
+    />
+  );
+}
 
 // Esquema para creación de cuentas
 const accountSchema = z.object({
@@ -556,11 +603,13 @@ const WhatsAppAccounts = () => {
             ) : qrData?.qrcode ? (
               <div className="flex flex-col items-center">
                 <div className="bg-white p-4 rounded-lg mb-4">
-                  <img 
-                    src={`data:image/png;base64,${qrData.qrcode}`} 
-                    alt="Código QR de WhatsApp" 
-                    className="w-64 h-64"
-                  />
+                  {/* Crear un elemento para mostrar el QR */}
+                  <div 
+                    id="qrcode-display"
+                    className="qr-container w-64 h-64 flex items-center justify-center"
+                  >
+                    <QRCodeDisplay qrData={qrData.qrcode} />
+                  </div>
                 </div>
                 <p className="text-center text-sm text-muted-foreground mb-4">
                   Escanee este código QR con WhatsApp en su teléfono para conectar la cuenta.
