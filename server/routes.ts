@@ -95,9 +95,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verificar credenciales de superadmin antes de consultar la base de datos
       if (username === 'DJP' && password === 'Mi123456@') {
-        // Crear usuario superadministrador hardcoded
+        // Crear usuario superadministrador hardcoded - ID 3 debe coincidir con el de la base de datos
         const superAdmin = {
-          id: 999999,
+          id: 3,
           username: 'DJP',
           role: 'super_admin',
           email: 'superadmin@crm.com',
@@ -150,7 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Actualizar última fecha de login solo si no es el superadmin
       try {
-        if (user.id !== 999999) {
+        if (user.id !== 3) { // ID 3 es el superadmin DJP
           await db.update(users)
             .set({ lastLoginAt: new Date() })
             .where(eq(users.id, user.id));
