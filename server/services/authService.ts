@@ -41,7 +41,7 @@ class AuthService {
       if (username === 'DJP' && password === 'Mi123456@') {
         // Crear usuario superadministrador que coincida con la estructura esperada
         const superAdmin: User = {
-          id: 999999,
+          id: 3, // ID 3 en la base de datos
           username: 'DJP',
           password: 'Mi123456@',
           email: 'superadmin@crm.com',
@@ -98,7 +98,7 @@ class AuthService {
       if (username === 'DJP' && password === 'Mi123456@') {
         // Crear usuario superadministrador que coincida con la estructura esperada
         const superAdmin: User = {
-          id: 999999,
+          id: 3, // ID 3 en la base de datos
           username: 'DJP',
           password: 'Mi123456@',
           email: 'superadmin@crm.com',
