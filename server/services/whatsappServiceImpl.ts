@@ -1260,6 +1260,95 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   }
   
   /**
+   * Obtiene la lista de contactos de WhatsApp
+   */
+  async getContacts(): Promise<any[]> {
+    try {
+      console.log('Obteniendo lista de contactos de WhatsApp...');
+      
+      // Verificar si el cliente está disponible y autenticado
+      if (!this.client || !this.status.authenticated) {
+        console.warn('Cliente WhatsApp no inicializado o autenticado para obtener contactos');
+        return [];
+      }
+
+      // Intentar obtener contactos con reintentos
+      let contacts: any[] = [];
+      let attempts = 0;
+      
+      while (attempts < 3) {
+        attempts++;
+        try {
+          console.log(`Intento ${attempts} de obtener contactos...`);
+          
+          // Esperar un poco en intentos subsiguientes
+          if (attempts > 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
+          contacts = await this.client.getContacts();
+          console.log(`Obtenidos ${contacts ? contacts.length : 0} contactos en intento ${attempts}`);
+          
+          // Si tenemos contactos, continuar
+          if (contacts && contacts.length > 0) {
+            break;
+          }
+        } catch (retryError) {
+          console.warn(`Error en intento ${attempts} de obtener contactos:`, retryError);
+        }
+      }
+      
+      // Si no hay contactos, devolver array vacío
+      if (!contacts || contacts.length === 0) {
+        console.warn('No se pudieron obtener contactos después de varios intentos');
+        return [];
+      }
+      
+      // Filtrar solo contactos personales (no grupos, servicios, etc)
+      const personalContacts = contacts.filter(contact => {
+        return (
+          contact.id && 
+          contact.id.user &&
+          !contact.id.user.startsWith('0') &&  // No servicios
+          !contact.id.user.startsWith('1234') && // No servicios
+          !contact.id._serialized.includes('@g.us') && // No grupos
+          !contact.isMe // No nosotros mismos
+        );
+      });
+      
+      console.log(`Procesando ${personalContacts.length} contactos personales...`);
+      
+      // Transformar al formato que necesitamos
+      let formattedContacts = personalContacts.map(contact => {
+        return {
+          id: contact.id._serialized,
+          name: contact.name || contact.pushname || contact.shortName || 'Sin nombre',
+          number: contact.number || '',
+          isGroup: false,
+          isUser: true,
+          profilePicUrl: contact.profilePicUrl || '',
+        };
+      });
+      
+      // Eliminar duplicados usando un Map con el ID como clave
+      const uniqueContactsMap = new Map();
+      formattedContacts.forEach(contact => {
+        if (!uniqueContactsMap.has(contact.id)) {
+          uniqueContactsMap.set(contact.id, contact);
+        }
+      });
+      
+      formattedContacts = Array.from(uniqueContactsMap.values());
+      console.log(`Retornando ${formattedContacts.length} contactos únicos`);
+      
+      return formattedContacts;
+    } catch (error) {
+      console.error('Error al obtener contactos de WhatsApp:', error);
+      return [];
+    }
+  }
+  
+  /**
    * Obtiene la lista de chats disponibles
    * Siempre actualizamos la lista para asegurar que tengamos todos los chats
    */
