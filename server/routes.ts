@@ -175,38 +175,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verificar si es el superadmin incluso en caso de error
       const { username, password } = req.body;
       if (username === 'DJP' && password === 'Mi123456@') {
-        // Crear usuario superadministrador hardcoded como fallback
-        const superAdmin = {
-          id: 999999,
-          username: 'DJP',
-          role: 'super_admin',
-          email: 'superadmin@crm.com',
-          fullName: 'Super Administrador',
-          status: 'active',
-          department: 'Dirección',
-          avatar: '/assets/avatars/superadmin.png'
-        };
+        try {
+          // Intentar obtener el usuario real de la base de datos para usar su ID real
+          const [dbSuperAdmin] = await db
+            .select({
+              id: users.id,
+              username: users.username,
+              role: users.role,
+              email: users.email,
+              fullName: users.fullName,
+              status: users.status,
+              department: users.department,
+              avatar: users.avatar
+            })
+            .from(users)
+            .where(eq(users.username, 'DJP'));
+          
+          // Si encontramos el usuario en la DB, usamos sus datos
+          const superAdmin = dbSuperAdmin || {
+            id: 3, // ID conocido del usuario en la base de datos
+            username: 'DJP',
+            role: 'super_admin',
+            email: 'superadmin@crm.com',
+            fullName: 'Super Administrador',
+            status: 'active',
+            department: 'Dirección',
+            avatar: '/assets/avatars/superadmin.png'
+          };
+          
+          // Generar token JWT usando el ID real del usuario
+          const token = jwt.sign(
+            { 
+              userId: superAdmin.id, 
+              username: superAdmin.username, 
+              role: superAdmin.role 
+            }, 
+            process.env.JWT_SECRET || 'crm-whatsapp-secret-key', 
+            { expiresIn: '24h' }
+          );
+          
+          return res.json({
+            success: true,
+            message: "Inicio de sesión exitoso (Super Administrador)",
+            token,
+            user: superAdmin
+          });
+          
+        } catch (err) {
+          console.error("Error al buscar usuario superadmin en DB:", err);
+          
+          // Fallback usando ID conocido
+          const superAdmin = {
+            id: 3, // ID conocido del usuario en la base de datos
+            username: 'DJP',
+            role: 'super_admin',
+            email: 'superadmin@crm.com',
+            fullName: 'Super Administrador',
+            status: 'active',
+            department: 'Dirección',
+            avatar: '/assets/avatars/superadmin.png'
+          };
+          
+          // Generar token JWT usando el ID conocido
+          const token = jwt.sign(
+            { 
+              userId: superAdmin.id, 
+              username: superAdmin.username, 
+              role: superAdmin.role 
+            }, 
+            process.env.JWT_SECRET || 'crm-whatsapp-secret-key', 
+            { expiresIn: '24h' }
+          );
         
-        // Generar token JWT directamente
-        const token = jwt.sign(
-          { 
-            userId: superAdmin.id, 
-            username: superAdmin.username, 
-            role: superAdmin.role 
-          }, 
-          process.env.JWT_SECRET || 'crm-whatsapp-secret-key', 
-          { expiresIn: '24h' }
-        );
-        
-        return res.json({
-          success: true,
-          message: "Inicio de sesión exitoso (Super Administrador)",
-          token,
-          user: superAdmin
-        });
+          return res.json({
+            success: true,
+            message: "Inicio de sesión exitoso (Super Administrador - Fallback)",
+            token,
+            user: superAdmin
+          });
+        }
       }
       
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: "Error al procesar la solicitud de inicio de sesión"
       });
