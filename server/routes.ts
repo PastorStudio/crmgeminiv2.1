@@ -1260,9 +1260,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Definir el período de actividad reciente (7 días)
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      // Definir el período de actividad reciente (1 día)
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
       
       // Convertir contactos en leads
       const createdLeads = [];
@@ -1290,7 +1290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastMessage = message.body || '';
           if (message.timestamp) {
             lastActivity = new Date(message.timestamp);
-            hasRecentMessages = lastActivity >= sevenDaysAgo;
+            hasRecentMessages = lastActivity >= oneDayAgo;
           }
         }
         
