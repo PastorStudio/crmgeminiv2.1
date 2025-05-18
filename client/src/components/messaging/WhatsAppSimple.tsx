@@ -78,6 +78,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [activeTab, setActiveTab] = useState('chats');
+  // Estado para el agente asignado al chat actual
+  const [assignedAgent, setAssignedAgent] = useState<{name: string, username: string} | null>(null);
   const [chatFilter, setChatFilter] = useState('');
   const [contactFilter, setContactFilter] = useState('');
   const [autoResponses, setAutoResponses] = useState<boolean>(false);
@@ -131,6 +133,28 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchOnWindowFocus: true,
   });
   
+  // Query para obtener la asignación de agente para el chat seleccionado
+  const {
+    data: chatAssignment,
+    isLoading: isLoadingAssignment
+  } = useQuery({
+    queryKey: ['/api/chat-assignments/by-chat', selectedChatId],
+    enabled: !!selectedChatId,
+    onSuccess: (data) => {
+      if (data && data.assignedAgent) {
+        setAssignedAgent({
+          name: data.assignedAgent.name || data.assignedAgent.username,
+          username: data.assignedAgent.username
+        });
+      } else {
+        setAssignedAgent(null);
+      }
+    },
+    onError: () => {
+      setAssignedAgent(null);
+    }
+  });
+
   // Query para obtener mensajes del chat seleccionado
   const { 
     data: apiMessages = [],
