@@ -100,6 +100,11 @@ export interface IWhatsAppService {
   getChats(): Promise<WhatsAppChat[]>;
   
   /**
+   * Obtiene los contactos de WhatsApp
+   */
+  getContacts(): Promise<any[]>;
+  
+  /**
    * Obtiene los mensajes de un chat específico
    * @param chatId ID del chat del cual obtener mensajes
    * @param limit Número máximo de mensajes a obtener (opcional)
