@@ -162,7 +162,7 @@ export default function RecentConversations() {
                               <p className="text-sm font-medium text-gray-900">
                                 {chat.name || "Contacto"}
                               </p>
-                              <p className="text-sm text-gray-500 truncate max-w-[95%] overflow-hidden text-ellipsis">
+                              <p className="text-sm text-gray-500 truncate max-w-[98%] overflow-hidden text-ellipsis">
                                 {messageBody}
                               </p>
                             </div>
@@ -219,7 +219,7 @@ export default function RecentConversations() {
                               <p className="text-sm font-medium text-gray-900">
                                 {isAI ? "AI Assistant" : lead?.fullName || `Lead #${message.leadId}`}
                               </p>
-                              <p className="text-sm text-gray-500 truncate max-w-[95%] overflow-hidden text-ellipsis">
+                              <p className="text-sm text-gray-500 truncate max-w-[98%] overflow-hidden text-ellipsis">
                                 {message.content}
                               </p>
                             </div>
