@@ -56,6 +56,7 @@ export interface IStorage {
   getMessage(id: number): Promise<Message | undefined>;
   getMessagesByLead(leadId: number): Promise<Message[]>;
   getRecentMessages(limit?: number): Promise<Message[]>;
+  getAllMessages(): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
   markMessageAsRead(id: number): Promise<Message | undefined>;
 
@@ -270,6 +271,13 @@ export class DatabaseStorage implements IStorage {
       .from(messages)
       .orderBy(desc(messages.sentAt))
       .limit(limit);
+  }
+  
+  async getAllMessages(): Promise<Message[]> {
+    return db
+      .select()
+      .from(messages)
+      .orderBy(desc(messages.sentAt));
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
