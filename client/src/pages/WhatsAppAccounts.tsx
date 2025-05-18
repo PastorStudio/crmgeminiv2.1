@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { 
   Card, 
@@ -54,6 +55,7 @@ const createWhatsAppAccountSchema = z.object({
 type CreateWhatsAppAccountFormValues = z.infer<typeof createWhatsAppAccountSchema>;
 
 const WhatsAppAccounts = () => {
+  const [, setLocation] = useLocation();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
   const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
@@ -61,7 +63,7 @@ const WhatsAppAccounts = () => {
   const [isQrLoading, setIsQrLoading] = useState(false);
   const [isAgentsDialogOpen, setIsAgentsDialogOpen] = useState(false);
   const { toast } = useToast();
-  const [_, navigate] = useNavigate();
+  // Usando setLocation para navegación con wouter en lugar de useNavigate
 
   const { data: accounts, isLoading, refetch } = useQuery({
     queryKey: ['/api/whatsapp-accounts'],
