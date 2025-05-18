@@ -1284,7 +1284,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full">
-                    <MessageSquare className="h-10 w-10 text-gray-300 mb-2" />
+                    <img 
+                      src="/src/assets/GeminiCRM.png" 
+                      alt="GeminiCRM Logo" 
+                      className="w-32 h-auto mx-auto mb-4"
+                    />
                     <div className="text-gray-500 text-sm">No hay mensajes</div>
                     <div className="text-gray-400 text-xs mt-1">Envía un mensaje para iniciar la conversación</div>
                   </div>
@@ -1327,7 +1331,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
             </>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
-              <MessageSquare className="h-16 w-16 text-gray-200 mb-4" />
+              <img 
+                src="/src/assets/GeminiCRM.png" 
+                alt="GeminiCRM Logo" 
+                className="w-48 h-auto mx-auto mb-6"
+              />
               <h3 className="text-xl font-medium text-gray-700 mb-2">WhatsApp Messenger</h3>
               <p className="text-gray-500 max-w-md">
                 Selecciona un chat para ver los mensajes o escanea el código QR para conectar WhatsApp si aún no lo has hecho.
