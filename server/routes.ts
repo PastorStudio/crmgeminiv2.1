@@ -27,6 +27,7 @@ import { excelImportService } from "./services/excelImportService";
 import { massSenderService } from "./services/massSenderService";
 import { mediaGalleryRouter, mediaServeRouter } from "./services/mediaGalleryRoutes";
 import { mediaGalleryService } from "./services/mediaGalleryService";
+import { registerTemplateVariablesRoutes } from "./services/templateVariablesRoutes";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -48,6 +49,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Registrar rutas de API directa para WhatsApp (códigos QR, etc.)
   registerDirectAPIRoutes(app);
+  
+  // Registrar rutas para manejo de variables en plantillas
+  registerTemplateVariablesRoutes(app);
   
   // Registrar rutas de analytics avanzado
   registerAnalyticsRoutes(app);
