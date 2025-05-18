@@ -107,32 +107,56 @@ export default function UserManagement() {
   const { data: users, isLoading } = useQuery({
     queryKey: ['/api/users'],
     queryFn: async () => {
-      const response = await fetch('/api/users');
-      if (!response.ok) throw new Error('No se pudo obtener la lista de usuarios');
+      const response = await fetch('/api/users', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'No se pudo obtener la lista de usuarios');
+      }
+      
       const data = await response.json();
-      return data.users as User[];
-    }
+      return data.success && data.users ? data.users : [];
+    },
+    enabled: !!currentUser // Solo cargar si hay un usuario autenticado
   });
 
   // Mutación para crear usuario
   const createUserMutation = useMutation({
     mutationFn: async (userData: UserFormValues) => {
-      return apiRequest('/api/users', 'POST', userData);
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
+        },
+        body: JSON.stringify(userData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al crear usuario');
+      }
+      
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       setIsDialogOpen(false);
       form.reset(defaultValues);
       toast({
         title: "Usuario creado",
-        description: "El usuario ha sido creado exitosamente",
+        description: data.message || "El usuario ha sido creado exitosamente",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error('Error al crear usuario:', error);
       toast({
         title: "Error",
-        description: "No se pudo crear el usuario",
+        description: error.message || "No se pudo crear el usuario",
         variant: "destructive",
       });
     }
@@ -141,23 +165,37 @@ export default function UserManagement() {
   // Mutación para actualizar usuario
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, userData }: { id: number, userData: Partial<UserFormValues> }) => {
-      return apiRequest(`/api/users/${id}`, 'PATCH', userData);
+      const response = await fetch(`/api/users/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
+        },
+        body: JSON.stringify(userData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al actualizar usuario');
+      }
+      
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       setIsDialogOpen(false);
       setSelectedUser(null);
       form.reset(defaultValues);
       toast({
         title: "Usuario actualizado",
-        description: "El usuario ha sido actualizado exitosamente",
+        description: data.message || "El usuario ha sido actualizado exitosamente",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error('Error al actualizar usuario:', error);
       toast({
         title: "Error",
-        description: "No se pudo actualizar el usuario",
+        description: error.message || "No se pudo actualizar el usuario",
         variant: "destructive",
       });
     }
@@ -166,22 +204,34 @@ export default function UserManagement() {
   // Mutación para eliminar usuario
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
-      return apiRequest(`/api/users/${userId}`, 'DELETE');
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al eliminar usuario');
+      }
+      
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       setIsDeleteDialogOpen(false);
       setSelectedUser(null);
       toast({
         title: "Usuario eliminado",
-        description: "El usuario ha sido eliminado exitosamente",
+        description: data.message || "El usuario ha sido eliminado exitosamente",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error('Error al eliminar usuario:', error);
       toast({
         title: "Error",
-        description: "No se pudo eliminar el usuario",
+        description: error.message || "No se pudo eliminar el usuario",
         variant: "destructive",
       });
     }
@@ -212,11 +262,18 @@ export default function UserManagement() {
   // Submit del formulario
   const onSubmit = (values: UserFormValues) => {
     if (selectedUser) {
-      // Si no se proporciona contraseña, la eliminamos para no actualizarla
-      const userData = { ...values };
-      if (!userData.password || userData.password.trim() === '') {
-        delete userData.password;
-      }
+      // Si no se proporciona contraseña, creamos un objeto nuevo sin ella
+      const userData: Partial<UserFormValues> = {};
+      
+      // Copiar solo los campos con valores válidos
+      Object.keys(values).forEach(key => {
+        // No incluir contraseña vacía
+        if (key === 'password' && (!values[key] || values[key].trim() === '')) {
+          return;
+        }
+        userData[key] = values[key];
+      });
+      
       updateUserMutation.mutate({ id: selectedUser.id, userData });
     } else {
       createUserMutation.mutate(values);
@@ -299,7 +356,8 @@ export default function UserManagement() {
                       </TableCell>
                       <TableCell>
                         <Badge
-                          variant={user.status === 'active' ? 'success' : user.status === 'inactive' ? 'secondary' : 'destructive'}
+                          variant={user.status === 'active' ? 'default' : user.status === 'inactive' ? 'secondary' : 'destructive'}
+                          className={user.status === 'active' ? 'bg-green-500 hover:bg-green-600' : ''}
                         >
                           {user.status === 'active' ? 'Activo' : 
                            user.status === 'inactive' ? 'Inactivo' : 
