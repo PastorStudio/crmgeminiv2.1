@@ -1128,7 +1128,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         
         {/* Panel derecho - Mensajes */}
         <div className="col-span-12 md:col-span-8 flex flex-col h-full overflow-hidden">
-          {selectedChatId && currentChat ? (
+          {selectedChatId && currentChat && whatsappStatus?.authenticated ? (
             <>
               {/* Encabezado del chat */}
               <div className="border-b p-3 flex items-center gap-3">
@@ -1286,41 +1286,39 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 )}
               </div>
               
-              {/* Área de entrada de mensaje - Solo mostrar si WhatsApp está autenticado */}
-              {whatsappStatus?.authenticated && (
-                <div className="border-t p-2 flex items-center gap-2">
-                  <Button variant="ghost" size="icon">
-                    <Smile className="h-5 w-5 text-gray-500" />
-                  </Button>
-                  
-                  <Button variant="ghost" size="icon">
-                    <Paperclip className="h-5 w-5 text-gray-500" />
-                  </Button>
-                  
-                  <Input
-                    placeholder="Escribe un mensaje"
-                    className="flex-1"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    disabled={messageMutation.isPending}
-                  />
-                  
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={handleSendMessage} 
-                    disabled={!newMessage.trim() || messageMutation.isPending}
-                    className={messageMutation.isPending ? 'opacity-50' : ''}
-                  >
-                    {messageMutation.isPending ? (
-                      <Spinner size="sm" />
-                    ) : (
-                      <Send className="h-5 w-5 text-green-600" />
-                    )}
-                  </Button>
-                </div>
-              )}
+              {/* Área de entrada de mensaje */}
+              <div className="border-t p-2 flex items-center gap-2">
+                <Button variant="ghost" size="icon">
+                  <Smile className="h-5 w-5 text-gray-500" />
+                </Button>
+                
+                <Button variant="ghost" size="icon">
+                  <Paperclip className="h-5 w-5 text-gray-500" />
+                </Button>
+                
+                <Input
+                  placeholder="Escribe un mensaje"
+                  className="flex-1"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={messageMutation.isPending}
+                />
+                
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handleSendMessage} 
+                  disabled={!newMessage.trim() || messageMutation.isPending}
+                  className={messageMutation.isPending ? 'opacity-50' : ''}
+                >
+                  {messageMutation.isPending ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    <Send className="h-5 w-5 text-green-600" />
+                  )}
+                </Button>
+              </div>
             </>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
