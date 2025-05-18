@@ -176,7 +176,17 @@ async function extractClientInfo(chatId: string, conversationHistory: Array<{mes
     // Mejorar análisis con pistas específicas sobre citas y reuniones
     conversationText += `\nANÁLISIS ESPECIAL: Busca cuidadosamente cualquier mención de citas, reuniones o llamadas programadas. 
     Por ejemplo: "nos vemos el lunes", "podemos reunirnos el día 15", "hablamos mañana a las 10am", etc.
-    Reconoce fechas y horas tanto específicas como relativas (mañana, próximo lunes, etc.).`;
+    Reconoce fechas y horas tanto específicas como relativas (mañana, próximo lunes, etc.).
+    
+    GUÍA PARA FECHAS RELATIVAS (Hoy es ${new Date().toISOString().split('T')[0]}):
+    - "mañana" = ${new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0]}
+    - "pasado mañana" = ${new Date(new Date().setDate(new Date().getDate() + 2)).toISOString().split('T')[0]}
+    - "próximo lunes" = fecha del próximo lunes desde hoy
+    - "la próxima semana" = una semana desde hoy
+    - "en 3 días" = ${new Date(new Date().setDate(new Date().getDate() + 3)).toISOString().split('T')[0]}
+    - "el mes que viene" = primer día del próximo mes
+    
+    Si detectas una cita, asegúrate de marcar "appointment.detected" como true y completar los campos de fecha, hora y descripción.`;
     
     // Definir criterios para niveles de interés
     const interestCriteria = {
@@ -294,7 +304,7 @@ async function updateOrCreateLead(clientInfo: any): Promise<void> {
     
     if (result.rows.length > 0) {
       // Actualizar lead existente
-      const leadId = result.rows[0].id;
+      const existingLeadId = result.rows[0].id;
       
       // Generar etiquetas inteligentes basadas en la conversación
       const generateTags = () => {
@@ -410,13 +420,13 @@ Notas: ${clientInfo.notes || 'Ninguna'}
       };
       
       const updateResult = await pool.query(updateQuery);
-      const leadId = updateResult.rows[0].id;
-      console.log(`Lead actualizado con ID: ${leadId}`);
+      const updatedLeadId = updateResult.rows[0].id;
+      console.log(`Lead actualizado con ID: ${updatedLeadId}`);
       
       // Verificar si hay información de cita en la conversación
       if (clientInfo.appointment && clientInfo.appointment.detected === true) {
         // Crear cita automáticamente para el lead existente
-        await createAppointmentFromConversation(clientInfo, leadId);
+        await createAppointmentFromConversation(clientInfo, updatedLeadId);
       }
     } else {
       // Generar etiquetas inteligentes para el nuevo lead
