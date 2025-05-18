@@ -43,7 +43,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 
 // Esquema para la creación de una nueva cuenta de WhatsApp
 const createWhatsAppAccountSchema = z.object({
