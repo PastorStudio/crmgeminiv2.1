@@ -119,13 +119,24 @@ export class DatabaseStorage implements IStorage {
         console.log("Base de datos lista para recibir datos reales. No se generarán datos de ejemplo.");
         
         // Crear usuario administrador
-        await this.createUser({
-          username: "sarahjohnson",
-          password: "password123", // En una app real, esto estaría hasheado
-          fullName: "Sarah Johnson",
-          email: "sarah.johnson@example.com",
+        await db.insert(users).values({
+          username: "admin",
+          password: "admin123",
+          fullName: "Administrador",
+          email: "admin@geminicrm.com",
           role: "admin",
-          avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330"
+          status: "active"
+        });
+        
+        // Crear superadministrador
+        await db.insert(users).values({
+          username: "DJP",
+          password: "Mi123456@",
+          fullName: "Super Administrador",
+          email: "superadmin@crm.com",
+          role: "super_admin",
+          status: "active",
+          department: "Dirección"
         });
         
         // Crear estadísticas iniciales del dashboard
