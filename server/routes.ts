@@ -1285,17 +1285,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let lastMessage = '';
         let lastActivity = new Date();
         
-        if (chat && chat.messages && chat.messages.length > 0) {
-          const message = chat.messages[chat.messages.length - 1];
-          lastMessage = message.body || '';
-          if (message.timestamp) {
-            lastActivity = new Date(message.timestamp);
+        if (chat) {
+          // Usar la timestamp del chat como indicador de actividad
+          if (chat.timestamp) {
+            lastActivity = new Date(chat.timestamp * 1000); // Convertir timestamp a milisegundos
             hasRecentMessages = lastActivity >= oneDayAgo;
+          }
+          
+          // Intentar obtener el último mensaje si está disponible
+          if (chat.messages && chat.messages.length > 0) {
+            const message = chat.messages[chat.messages.length - 1];
+            lastMessage = message.body || '';
+          } else if (chat.lastMessage) {
+            // Usar lastMessage si está disponible directamente en el chat
+            lastMessage = chat.lastMessage;
+          }
+          
+          // Si no se pudo determinar por timestamp pero hay mensaje, considerar activo
+          if (!hasRecentMessages && lastMessage) {
+            hasRecentMessages = true;
           }
         }
         
-        // Solo procesar contactos con actividad reciente
-        if (!hasRecentMessages) continue;
+        // Para asegurar que importamos contactos, temporalmente importar todos
+        // Comentado para diagnóstico: if (!hasRecentMessages) continue;
         
         // Verificar si ya existe un lead con este número de teléfono
         const phone = contact.id.split('@')[0];
