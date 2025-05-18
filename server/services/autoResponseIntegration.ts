@@ -170,8 +170,8 @@ async function generateAIResponse(messageText: string, contactName: string): Pro
     }
   }
   
-  // Si todo falla, devolver mensaje por defecto
-  return `Hola ${contactName}, gracias por tu mensaje. En breve nos pondremos en contacto contigo.`;
+  // Si todo falla, devolver cadena vacía para que no se envíe ningún mensaje
+  return "";
 }
 
 /**
