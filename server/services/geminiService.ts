@@ -76,6 +76,21 @@ class GeminiService {
   public updateConfig(newConfig: Partial<GeminiConfig>): void {
     this.config = { ...this.config, ...newConfig };
   }
+  
+  /**
+   * Verifica si el servicio Gemini está listo para su uso
+   * @returns true si el servicio está listo, false en caso contrario
+   */
+  public async isReady(): Promise<boolean> {
+    try {
+      // Intentamos obtener una clave API válida
+      const apiKeyInfo = await this.getApiKeyAndModel();
+      return !!apiKeyInfo.key; // Si tenemos una clave, el servicio está listo
+    } catch (error) {
+      console.error("Error verificando disponibilidad de Gemini:", error);
+      return false;
+    }
+  }
 
   /**
    * Genera contenido de texto con Gemini
