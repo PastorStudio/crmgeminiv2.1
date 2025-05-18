@@ -86,11 +86,14 @@ export function TemplateManager() {
 
   // Mutación para añadir una nueva plantilla
   const addTemplateMutation = useMutation({
-    mutationFn: (templateData: Omit<Template, "id" | "createdAt" | "updatedAt">) => {
-      return apiRequest("/api/message-templates", {
+    mutationFn: async (templateData: Omit<Template, "id" | "createdAt" | "updatedAt">) => {
+      console.log("Enviando plantilla:", templateData);
+      const result = await apiRequest("/api/message-templates", {
         method: "POST",
-        body: templateData // Cambiado de 'data' a 'body' para que coincida con lo que espera apiRequest
+        body: templateData 
       });
+      console.log("Respuesta del servidor:", result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/message-templates"] });
@@ -113,11 +116,14 @@ export function TemplateManager() {
 
   // Mutación para editar una plantilla
   const editTemplateMutation = useMutation({
-    mutationFn: (templateData: Partial<Template> & { id: number }) => {
-      return apiRequest(`/api/message-templates/${templateData.id}`, {
+    mutationFn: async (templateData: Partial<Template> & { id: number }) => {
+      console.log("Actualizando plantilla:", templateData);
+      const result = await apiRequest(`/api/message-templates/${templateData.id}`, {
         method: "PATCH",
-        data: templateData
+        body: templateData
       });
+      console.log("Respuesta de actualización:", result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/message-templates"] });
@@ -204,12 +210,12 @@ export function TemplateManager() {
     if (isEdit) {
       setEditTemplate({
         ...editTemplate,
-        tags: [...editTemplate.tags, tagInput.trim()]
+        tags: [...(editTemplate.tags || []), tagInput.trim()]
       });
     } else {
       setNewTemplate({
         ...newTemplate,
-        tags: [...newTemplate.tags, tagInput.trim()]
+        tags: [...(newTemplate.tags || []), tagInput.trim()]
       });
     }
     
