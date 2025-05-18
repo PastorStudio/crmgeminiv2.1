@@ -22,11 +22,16 @@ export async function registerWhatsAppRoutes(app: Express): Promise<void> {
       console.error("Error inicializando servicio de WhatsApp:", err);
     });
     
-    // Cargamos el servicio mejorado de respuestas automáticas
+    // Cargamos el servicio mejorado de respuestas automáticas con TypeScript
     try {
-      const { integrateWithWhatsApp } = require('./autoResponseServiceFix');
-      await integrateWithWhatsApp();
-      console.log("Servicio mejorado de respuestas automáticas integrado con WhatsApp");
+      // Importar el módulo de integración de respuestas automáticas
+      import('./autoResponseIntegration').then(async (module) => {
+        const { setupAutoResponsesWithWhatsApp } = module;
+        await setupAutoResponsesWithWhatsApp();
+        console.log("Servicio mejorado de respuestas automáticas integrado con WhatsApp");
+      }).catch(err => {
+        console.error("Error importando módulo de respuestas automáticas:", err);
+      });
     } catch (error) {
       console.error("Error al integrar el servicio de respuestas automáticas:", error);
     }
