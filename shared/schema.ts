@@ -23,7 +23,7 @@ export const users = pgTable("users", {
   settings: jsonb("settings"),
   lastLoginAt: timestamp("lastLoginAt"),
   createdAt: timestamp("createdAt").defaultNow(),
-  updatedAt: timestamp("updatedAt").defaultNow(),
+  updatedAt: timestamp("updatedat"), // Nota: en PostgreSQL los nombres se convierten a minúsculas
 });
 
 // WhatsApp Accounts - para manejar múltiples cuentas
