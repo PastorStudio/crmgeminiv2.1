@@ -32,6 +32,8 @@ import { massSenderService } from "./services/massSenderService";
 import { mediaGalleryRouter, mediaServeRouter } from "./services/mediaGalleryRoutes";
 import { mediaGalleryService } from "./services/mediaGalleryService";
 import { registerTemplateVariablesRoutes } from "./services/templateVariablesRoutes";
+import whatsappAccountsRouter from "./routes/whatsappAccounts";
+import chatAssignmentsRouter from "./routes/chatAssignments";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -63,6 +65,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Registrar rutas para la galería de medios
   app.use("/api/media-gallery", mediaGalleryRouter);
   app.use("/api/media", mediaServeRouter);
+  
+  // Registrar rutas para cuentas de WhatsApp y asignaciones de chat
+  app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
+  app.use("/api/chat-assignments", chatAssignmentsRouter);
   
   // Ruta para la página de prueba de la galería de medios
   app.get("/media-gallery-test", (req: Request, res: Response) => {
