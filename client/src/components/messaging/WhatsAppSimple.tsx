@@ -938,7 +938,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
             <TabsContent value="chats" className="flex-1 overflow-hidden">
               {/* Lista de chats - Verificación explícita */}
               {activeTab === 'chats' && (
-                <ScrollArea className="h-[calc(100vh-320px)]">
+                <ScrollArea className="h-[calc(100vh-180px)]">
                   {isLoadingChats ? (
                     <div className="flex justify-center p-4">
                       <Spinner />
