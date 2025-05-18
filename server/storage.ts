@@ -109,17 +109,17 @@ export class DatabaseStorage implements IStorage {
         // Crear estadísticas iniciales del dashboard
         await this.updateDashboardStats({
           totalLeads: 1652,
-          conversionRate: 2450, // 24.5%
-          activeConversations: 37,
-          todayMeetings: 5,
-          leadsByStatus: {
-            new: 425,
-            contacted: 312,
-            qualified: 211,
-            proposal: 156,
-            negotiation: 98,
-            "closed-won": 315,
-            "closed-lost": 135
+          newLeadsThisMonth: 350,
+          activeLeads: 520,
+          convertedLeads: 315,
+          totalSales: 24500,
+          salesThisMonth: 8500,
+          pendingActivities: 37,
+          completedActivities: 128,
+          performanceMetrics: {
+            responseTime: 3.5,
+            conversionRate: 24.5,
+            customerSatisfaction: 4.8
           }
         });
         
@@ -169,19 +169,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLeadsByAssignee(userId: number): Promise<Lead[]> {
-    return db.select().from(leads).where(eq(leads.assignedTo, userId));
+    return db.select().from(leads).where(eq(leads.assigneeId, userId));
   }
   
   async getLeadsByPhone(phone: string): Promise<Lead[]> {
-    // Buscar por teléfono principal o teléfono de WhatsApp
+    // Buscar por teléfono principal
     return db.select()
       .from(leads)
-      .where(
-        or(
-          eq(leads.phone, phone),
-          eq(leads.whatsappPhone, phone)
-        )
-      );
+      .where(eq(leads.phone, phone));
   }
 
   async getAllLeads(): Promise<Lead[]> {
@@ -416,14 +411,12 @@ export class DatabaseStorage implements IStorage {
       console.log("Auto-respuesta registrada:", data);
       // Crear una actividad para esta auto-respuesta
       await this.createActivity({
-        title: "Auto-respuesta enviada",
-        description: `Mensaje automático enviado a ${data.contactId}: "${data.responseText.substring(0, 50)}${data.responseText.length > 50 ? '...' : ''}"`,
         type: "message",
         scheduled: new Date(), // Agregamos el campo scheduled que es obligatorio
-        dueDate: new Date(),
+        notes: `Mensaje automático enviado a ${data.contactId}: "${data.responseText.substring(0, 50)}${data.responseText.length > 50 ? '...' : ''}"`,
         completed: true,
         leadId: null, // Tendríamos que encontrar el lead asociado al número
-        assignedTo: 1, // Asignado al usuario administrador
+        userId: 1, // Asignado al usuario administrador
         priority: "low"
       });
     } catch (error) {
