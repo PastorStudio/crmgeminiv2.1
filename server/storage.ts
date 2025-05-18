@@ -5,6 +5,8 @@ import {
   messages, 
   surveys, 
   dashboardStats,
+  whatsappAccounts,
+  chatAssignments,
   type User, 
   type InsertUser,
   type Lead,
@@ -16,7 +18,11 @@ import {
   type Survey,
   type InsertSurvey,
   type DashboardStats,
-  type InsertDashboardStats
+  type InsertDashboardStats,
+  type WhatsappAccount,
+  type InsertWhatsappAccount,
+  type ChatAssignment,
+  type InsertChatAssignment
 } from "@shared/schema";
 import { db } from './db';
 import { eq, desc, or } from 'drizzle-orm';
@@ -71,18 +77,19 @@ export interface IStorage {
   updateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats>;
   
   // WhatsApp Account methods
-  getAllWhatsappAccounts(): Promise<any[]>;
-  getWhatsappAccount(id: number): Promise<any>;
-  createWhatsappAccount(account: any): Promise<any>;
-  updateWhatsappAccount(id: number, data: any): Promise<any>;
+  getAllWhatsappAccounts(): Promise<WhatsappAccount[]>;
+  getWhatsappAccount(id: number): Promise<WhatsappAccount | undefined>;
+  createWhatsappAccount(account: InsertWhatsappAccount): Promise<WhatsappAccount>;
+  updateWhatsappAccount(id: number, data: Partial<InsertWhatsappAccount>): Promise<WhatsappAccount | undefined>;
   deleteWhatsappAccount(id: number): Promise<void>;
   
   // Chat Assignment methods
-  getAllChatAssignments(): Promise<any[]>;
-  getChatAssignmentsByAgent(agentId: number): Promise<any[]>;
-  getChatAssignment(id: number): Promise<any>;
-  createChatAssignment(assignment: any): Promise<any>;
-  updateChatAssignment(id: number, data: any): Promise<any>;
+  getAllChatAssignments(): Promise<ChatAssignment[]>;
+  getChatAssignmentsByAgent(agentId: number): Promise<ChatAssignment[]>;
+  getChatAssignment(id: number): Promise<ChatAssignment | undefined>;
+  getChatAssignmentByChatId(chatId: string): Promise<ChatAssignment | undefined>;
+  createChatAssignment(assignment: InsertChatAssignment): Promise<ChatAssignment>;
+  updateChatAssignment(id: number, data: Partial<InsertChatAssignment>): Promise<ChatAssignment | undefined>;
   deleteChatAssignment(id: number): Promise<void>;
   
   // WhatsApp methods
@@ -440,6 +447,157 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  // WhatsApp Accounts methods
+  async getAllWhatsappAccounts(): Promise<WhatsappAccount[]> {
+    try {
+      const results = await db.select().from(whatsappAccounts);
+      return results;
+    } catch (error) {
+      console.error("Error al obtener cuentas de WhatsApp:", error);
+      return [];
+    }
+  }
+
+  async getWhatsappAccount(id: number): Promise<WhatsappAccount | undefined> {
+    try {
+      const [account] = await db.select()
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.id, id));
+      return account;
+    } catch (error) {
+      console.error(`Error al obtener cuenta WhatsApp ${id}:`, error);
+      return undefined;
+    }
+  }
+
+  async createWhatsappAccount(account: InsertWhatsappAccount): Promise<WhatsappAccount> {
+    try {
+      const [createdAccount] = await db.insert(whatsappAccounts)
+        .values(account)
+        .returning();
+      return createdAccount;
+    } catch (error) {
+      console.error("Error al crear cuenta WhatsApp:", error);
+      throw error;
+    }
+  }
+
+  async updateWhatsappAccount(id: number, data: Partial<InsertWhatsappAccount>): Promise<WhatsappAccount | undefined> {
+    try {
+      const [updatedAccount] = await db.update(whatsappAccounts)
+        .set({
+          ...data,
+          ...(data.status === 'active' ? { lastActiveAt: new Date() } : {})
+        })
+        .where(eq(whatsappAccounts.id, id))
+        .returning();
+      return updatedAccount;
+    } catch (error) {
+      console.error(`Error al actualizar cuenta WhatsApp ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteWhatsappAccount(id: number): Promise<void> {
+    try {
+      await db.delete(whatsappAccounts)
+        .where(eq(whatsappAccounts.id, id));
+    } catch (error) {
+      console.error(`Error al eliminar cuenta WhatsApp ${id}:`, error);
+      throw error;
+    }
+  }
+
+  // Chat Assignment methods
+  async getAllChatAssignments(): Promise<ChatAssignment[]> {
+    try {
+      const assignments = await db.select().from(chatAssignments);
+      return assignments;
+    } catch (error) {
+      console.error("Error al obtener asignaciones de chat:", error);
+      return [];
+    }
+  }
+
+  async getChatAssignmentsByAgent(agentId: number): Promise<ChatAssignment[]> {
+    try {
+      const assignments = await db.select()
+        .from(chatAssignments)
+        .where(eq(chatAssignments.assignedToId, agentId));
+      return assignments;
+    } catch (error) {
+      console.error(`Error al obtener asignaciones para agente ${agentId}:`, error);
+      return [];
+    }
+  }
+
+  async getChatAssignment(id: number): Promise<ChatAssignment | undefined> {
+    try {
+      const [assignment] = await db.select()
+        .from(chatAssignments)
+        .where(eq(chatAssignments.id, id));
+      return assignment;
+    } catch (error) {
+      console.error(`Error al obtener asignación de chat ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  async getChatAssignmentByChatId(chatId: string): Promise<ChatAssignment | undefined> {
+    try {
+      const [assignment] = await db.select()
+        .from(chatAssignments)
+        .where(eq(chatAssignments.chatId, chatId));
+      return assignment;
+    } catch (error) {
+      console.error(`Error al obtener asignación para chat ${chatId}:`, error);
+      return undefined;
+    }
+  }
+
+  async createChatAssignment(assignment: InsertChatAssignment): Promise<ChatAssignment> {
+    try {
+      const now = new Date();
+      const [createdAssignment] = await db.insert(chatAssignments)
+        .values({
+          ...assignment,
+          assignedAt: now,
+          lastActivityAt: now
+        })
+        .returning();
+      return createdAssignment;
+    } catch (error) {
+      console.error("Error al crear asignación de chat:", error);
+      throw error;
+    }
+  }
+
+  async updateChatAssignment(id: number, data: Partial<InsertChatAssignment>): Promise<ChatAssignment | undefined> {
+    try {
+      const [updatedAssignment] = await db.update(chatAssignments)
+        .set({
+          ...data,
+          lastActivityAt: new Date()
+        })
+        .where(eq(chatAssignments.id, id))
+        .returning();
+      return updatedAssignment;
+    } catch (error) {
+      console.error(`Error al actualizar asignación de chat ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteChatAssignment(id: number): Promise<void> {
+    try {
+      await db.delete(chatAssignments)
+        .where(eq(chatAssignments.id, id));
+    } catch (error) {
+      console.error(`Error al eliminar asignación de chat ${id}:`, error);
+      throw error;
+    }
+  }
+
   // Gemini settings
   async getGeminiSettings(): Promise<any> {
     try {
