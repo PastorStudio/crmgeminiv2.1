@@ -172,6 +172,26 @@ async function extractClientInfo(chatId: string, conversationHistory: Array<{mes
     // Añadir el último mensaje
     conversationText += `Cliente: ${lastMessage}\n`;
     
+    // Definir criterios para niveles de interés
+    const interestCriteria = {
+      alto: [
+        "necesito inmediatamente", "cuándo podemos empezar", "listos para comprar",
+        "urgente", "lo necesito ya", "presupuesto aprobado", "toma de decisión",
+        "contratación inmediata", "compra", "adquirir", "implementar ahora",
+        "muy interesado", "demostración detallada", "cuánto cuesta exactamente"
+      ],
+      medio: [
+        "me interesa", "podría funcionar", "dime más", "precios", "opciones",
+        "características", "comparativa", "considerando", "evaluando", "tal vez",
+        "posibilidad", "próximamente", "en el futuro cercano", "planificando"
+      ],
+      bajo: [
+        "solo estoy preguntando", "información general", "quizás después", "no estoy seguro",
+        "sólo explorando opciones", "está muy caro", "no es prioridad", "más adelante",
+        "en un futuro", "cuando tenga presupuesto", "solo investigando", "gracias por la info"
+      ]
+    };
+    
     // Prompt para extraer información
     const extractionPrompt = `
 Analiza la siguiente conversación y extrae información clave del cliente de forma discreta. 
@@ -184,8 +204,25 @@ Devuelve SOLAMENTE un objeto JSON con estos campos:
   "serviceInterest": "servicio específico que le interesa (detallado)",
   "interestLevel": "alto, medio o bajo, basado en el lenguaje y preguntas",
   "interestPercentage": número entre 0-100 basado en probabilidad de compra,
+  "budget": número estimado de presupuesto si se menciona (o null),
+  "timeline": "marco temporal para decisión/implementación (o null)",
+  "decisionMaker": "true/false si es la persona que toma decisiones",
+  "competitors": "competidores que está evaluando (si menciona)",
+  "painPoints": "problemas actuales que está enfrentando",
+  "appointment": {
+    "detected": true/false,
+    "description": "descripción de la cita (si se detecta)",
+    "date": "fecha en formato YYYY-MM-DD (si se menciona)",
+    "time": "hora en formato HH:MM (si se menciona)",
+    "type": "meeting/call/followup (tipo de cita)"
+  },
   "notes": "información adicional relevante"
 }
+
+Criterios para determinar el nivel de interés:
+- ALTO (70-100%): Menciona urgencia, presupuesto aprobado, preguntas específicas sobre implementación, solicita una prueba/demo, habla de contratar pronto, menciona decisión inmediata.
+- MEDIO (40-69%): Solicita más información, pregunta por precios/planes, solicita características específicas, muestra consideración activa, pide comparativas.
+- BAJO (0-39%): Solo busca información general, menciona "tal vez en el futuro", muestra preocupación por costos, respuestas cortas, no hace preguntas de seguimiento.
 
 Si algún campo no se puede determinar, déjalo como null o como cadena vacía. NO INVENTES INFORMACIÓN.
 Analiza el lenguaje y contexto cuidadosamente para determinar el nivel de interés.
@@ -251,6 +288,83 @@ async function updateOrCreateLead(clientInfo: any): Promise<void> {
       // Actualizar lead existente
       const leadId = result.rows[0].id;
       
+      // Generar etiquetas inteligentes basadas en la conversación
+      const generateTags = () => {
+        const tags = [];
+        
+        // Etiqueta de interés basada en el nivel detectado
+        tags.push(`interés-${clientInfo.interestLevel || 'bajo'}`);
+        
+        // Etiqueta de servicio específico
+        if (clientInfo.serviceInterest) {
+          tags.push(`servicio-${clientInfo.serviceInterest.toLowerCase() || 'general'}`);
+        }
+        
+        // Etiquetas basadas en urgencia/plazo
+        if (clientInfo.timeline) {
+          if (clientInfo.timeline.includes('inmediato') || clientInfo.timeline.includes('urgente')) {
+            tags.push('urgencia-alta');
+          } else if (clientInfo.timeline.includes('mes') || clientInfo.timeline.includes('semana')) {
+            tags.push('plazo-corto');
+          } else if (clientInfo.timeline.includes('trimestre') || clientInfo.timeline.includes('año')) {
+            tags.push('plazo-largo');
+          }
+        }
+        
+        // Etiqueta basada en presupuesto
+        if (clientInfo.budget) {
+          if (clientInfo.budget > 5000) {
+            tags.push('presupuesto-alto');
+          } else if (clientInfo.budget > 1000) {
+            tags.push('presupuesto-medio');
+          } else {
+            tags.push('presupuesto-bajo');
+          }
+        }
+        
+        // Etiqueta de toma de decisiones
+        if (clientInfo.decisionMaker === 'true') {
+          tags.push('tomador-decisiones');
+        } else if (clientInfo.decisionMaker === 'false') {
+          tags.push('influenciador');
+        }
+        
+        // Etiqueta de problemas específicos
+        if (clientInfo.painPoints) {
+          if (clientInfo.painPoints.includes('tiempo')) {
+            tags.push('problema-tiempo');
+          }
+          if (clientInfo.painPoints.includes('costo') || clientInfo.painPoints.includes('precio')) {
+            tags.push('problema-costo');
+          }
+          if (clientInfo.painPoints.includes('calidad')) {
+            tags.push('problema-calidad');
+          }
+          if (clientInfo.painPoints.includes('integración')) {
+            tags.push('problema-integración');
+          }
+        }
+        
+        // Limitar a máximo 5 etiquetas para no saturar
+        return tags.slice(0, 5);
+      };
+      
+      // Obtener etiquetas generadas
+      const tags = generateTags();
+      
+      // Preparar notas completas
+      const notesText = `
+Ubicación: ${clientInfo.location || 'No especificada'}
+Interés: ${clientInfo.serviceInterest || 'No especificado'}
+Nivel de interés: ${clientInfo.interestLevel} (${clientInfo.interestPercentage}%)
+Presupuesto: ${clientInfo.budget ? `$${clientInfo.budget}` : 'No especificado'}
+Plazo: ${clientInfo.timeline || 'No especificado'}
+Tomador de decisiones: ${clientInfo.decisionMaker === 'true' ? 'Sí' : clientInfo.decisionMaker === 'false' ? 'No' : 'Sin determinar'}
+Competidores: ${clientInfo.competitors || 'No mencionados'}
+Problemas: ${clientInfo.painPoints || 'No mencionados'}
+Notas: ${clientInfo.notes || 'Ninguna'}
+      `.trim();
+      
       // Preparar datos para actualización
       const updateQuery = {
         text: `
@@ -271,19 +385,18 @@ async function updateOrCreateLead(clientInfo: any): Promise<void> {
               END,
             tags = 
               CASE 
-                WHEN tags IS NULL THEN ARRAY[$5, $6]::text[]
-                ELSE array_append(array_append(tags, $5), $6)
+                WHEN tags IS NULL THEN $5::text[]
+                ELSE array_cat(tags, $5::text[])
               END
-          WHERE id = $7
+          WHERE id = $6
           RETURNING id
         `,
         values: [
           clientInfo.clientName || null,
           clientInfo.company || null,
-          `Ubicación: ${clientInfo.location || 'No especificada'}\nInterés: ${clientInfo.serviceInterest || 'No especificado'}\nNivel de interés: ${clientInfo.interestLevel} (${clientInfo.interestPercentage}%)\nNotas: ${clientInfo.notes || 'Ninguna'}`,
+          notesText,
           clientInfo.interestPercentage || 0,
-          `interés-${clientInfo.interestLevel || 'bajo'}`,
-          `servicio-${clientInfo.serviceInterest?.toLowerCase() || 'general'}`,
+          tags,
           leadId
         ]
       };
@@ -291,6 +404,83 @@ async function updateOrCreateLead(clientInfo: any): Promise<void> {
       const updateResult = await pool.query(updateQuery);
       console.log(`Lead actualizado con ID: ${updateResult.rows[0].id}`);
     } else {
+      // Generar etiquetas inteligentes para el nuevo lead
+      const generateTags = () => {
+        const tags = [];
+        
+        // Etiqueta de interés basada en el nivel detectado
+        tags.push(`interés-${clientInfo.interestLevel || 'bajo'}`);
+        
+        // Etiqueta de servicio específico
+        if (clientInfo.serviceInterest) {
+          tags.push(`servicio-${clientInfo.serviceInterest.toLowerCase() || 'general'}`);
+        }
+        
+        // Etiquetas basadas en urgencia/plazo
+        if (clientInfo.timeline) {
+          if (clientInfo.timeline.includes('inmediato') || clientInfo.timeline.includes('urgente')) {
+            tags.push('urgencia-alta');
+          } else if (clientInfo.timeline.includes('mes') || clientInfo.timeline.includes('semana')) {
+            tags.push('plazo-corto');
+          } else if (clientInfo.timeline.includes('trimestre') || clientInfo.timeline.includes('año')) {
+            tags.push('plazo-largo');
+          }
+        }
+        
+        // Etiqueta basada en presupuesto
+        if (clientInfo.budget) {
+          if (clientInfo.budget > 5000) {
+            tags.push('presupuesto-alto');
+          } else if (clientInfo.budget > 1000) {
+            tags.push('presupuesto-medio');
+          } else {
+            tags.push('presupuesto-bajo');
+          }
+        }
+        
+        // Etiqueta de toma de decisiones
+        if (clientInfo.decisionMaker === 'true') {
+          tags.push('tomador-decisiones');
+        } else if (clientInfo.decisionMaker === 'false') {
+          tags.push('influenciador');
+        }
+        
+        // Etiqueta de problemas específicos
+        if (clientInfo.painPoints) {
+          if (clientInfo.painPoints.includes('tiempo')) {
+            tags.push('problema-tiempo');
+          }
+          if (clientInfo.painPoints.includes('costo') || clientInfo.painPoints.includes('precio')) {
+            tags.push('problema-costo');
+          }
+          if (clientInfo.painPoints.includes('calidad')) {
+            tags.push('problema-calidad');
+          }
+          if (clientInfo.painPoints.includes('integración')) {
+            tags.push('problema-integración');
+          }
+        }
+        
+        // Limitar a máximo 5 etiquetas para no saturar
+        return tags.slice(0, 5);
+      };
+      
+      // Obtener etiquetas generadas
+      const tags = generateTags();
+      
+      // Preparar notas completas
+      const notesText = `
+Ubicación: ${clientInfo.location || 'No especificada'}
+Interés: ${clientInfo.serviceInterest || 'No especificado'}
+Nivel de interés: ${clientInfo.interestLevel} (${clientInfo.interestPercentage}%)
+Presupuesto: ${clientInfo.budget ? `$${clientInfo.budget}` : 'No especificado'}
+Plazo: ${clientInfo.timeline || 'No especificado'}
+Tomador de decisiones: ${clientInfo.decisionMaker === 'true' ? 'Sí' : clientInfo.decisionMaker === 'false' ? 'No' : 'Sin determinar'}
+Competidores: ${clientInfo.competitors || 'No mencionados'}
+Problemas: ${clientInfo.painPoints || 'No mencionados'}
+Notas: ${clientInfo.notes || 'Ninguna'}
+      `.trim();
+      
       // Crear nuevo lead
       const insertQuery = {
         text: `
@@ -311,7 +501,7 @@ async function updateOrCreateLead(clientInfo: any): Promise<void> {
               ELSE 'cold'
             END, 
             $5,
-            ARRAY[$6, $7]::text[],
+            $6::text[],
             NOW()
           )
           RETURNING id
@@ -321,9 +511,8 @@ async function updateOrCreateLead(clientInfo: any): Promise<void> {
           clientInfo.phoneNumber,
           clientInfo.company || null,
           clientInfo.interestPercentage || 0,
-          `Ubicación: ${clientInfo.location || 'No especificada'}\nInterés: ${clientInfo.serviceInterest || 'No especificado'}\nNivel de interés: ${clientInfo.interestLevel} (${clientInfo.interestPercentage}%)\nNotas: ${clientInfo.notes || 'Ninguna'}`,
-          `interés-${clientInfo.interestLevel || 'bajo'}`,
-          `servicio-${clientInfo.serviceInterest?.toLowerCase() || 'general'}`
+          notesText,
+          tags
         ]
       };
       
@@ -385,8 +574,16 @@ export async function handleIncomingMessage(message: any) {
   }
   
   // Extraer información del cliente y actualizar lead
-  // Solo lo hacemos cada cierto número de mensajes para no sobrecargar
-  if (conversationHistory.length > 0 && conversationHistory.length % 3 === 0) {
+  // Usar configuración para determinar frecuencia
+  const extractionConfig = {
+    enabled: true,
+    frequency: 2, // Analizar cada 2 mensajes (más frecuente)
+    minMessages: 1 // Mínimo de mensajes para iniciar análisis
+  };
+  
+  if (conversationHistory.length >= extractionConfig.minMessages && 
+      conversationHistory.length % extractionConfig.frequency === 0 &&
+      extractionConfig.enabled) {
     console.log('Iniciando extracción de información del cliente...');
     const clientInfo = await extractClientInfo(message.from, conversationHistory, message.body);
     if (clientInfo) {
