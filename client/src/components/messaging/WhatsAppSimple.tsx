@@ -115,7 +115,22 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     data: whatsappStatus,
     isLoading: isLoadingStatus
   } = useQuery({
-    queryKey: ['/api/direct/whatsapp/status'],
+    queryKey: ['/api/whatsapp-accounts', currentAccountId],
+    queryFn: async () => {
+      try {
+        // Importar en línea apiRequest
+        const { apiRequest } = await import('@/lib/queryClient');
+        const response = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}`);
+        return {
+          initialized: true,
+          ready: true,
+          authenticated: response.currentStatus?.authenticated || false
+        };
+      } catch (error) {
+        console.error('Error obteniendo estado de WhatsApp:', error);
+        return { initialized: false, ready: false, authenticated: false };
+      }
+    },
     refetchInterval: 5000
   });
 
