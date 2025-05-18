@@ -4,6 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { toast } from "@/hooks/use-toast";
 import { TemplateSelector } from "@/components/message-templates/TemplateSelector";
 import { TemplatePreview } from "@/components/message-templates/TemplatePreview";
+import { SendImmediateDialog } from "@/components/messaging/SendImmediateDialog";
 import { 
   Card, 
   CardContent, 
