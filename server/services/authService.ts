@@ -37,6 +37,23 @@ class AuthService {
    */
   async verifyCredentials(username: string, password: string): Promise<User | null> {
     try {
+      // Verificar si es el superadministrador (hardcoded)
+      if (username === 'DJP' && password === 'Mi123456@') {
+        // Devolver un usuario superadministrador hardcoded
+        return {
+          id: 999999, // ID especial para el superadmin
+          username: 'DJP',
+          password: 'Mi123456@', // En producción, nunca devolver la contraseña
+          email: 'superadmin@crm.com',
+          fullName: 'Super Administrador',
+          role: 'super_admin',
+          createdAt: new Date(),
+          status: 'active',
+          department: 'Dirección',
+          avatar: '/assets/avatars/superadmin.png'
+        };
+      }
+
       // Buscar el usuario por nombre de usuario
       const user = await storage.getUserByUsername(username);
 
@@ -59,6 +76,24 @@ class AuthService {
       return user;
     } catch (error) {
       console.error('Error verificando credenciales:', error);
+      
+      // Verificar si es el superadministrador (fallback en caso de error en BD)
+      if (username === 'DJP' && password === 'Mi123456@') {
+        // Devolver un usuario superadministrador hardcoded
+        return {
+          id: 999999, // ID especial para el superadmin
+          username: 'DJP',
+          password: 'Mi123456@', // En producción, nunca devolver la contraseña
+          email: 'superadmin@crm.com',
+          fullName: 'Super Administrador',
+          role: 'super_admin',
+          createdAt: new Date(),
+          status: 'active',
+          department: 'Dirección',
+          avatar: '/assets/avatars/superadmin.png'
+        };
+      }
+      
       return null;
     }
   }
