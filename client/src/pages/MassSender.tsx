@@ -1530,22 +1530,31 @@ export default function MassSender() {
                   <Button variant="outline" onClick={() => setTab("campaigns")}>
                     Cancelar
                   </Button>
-                  <Button 
-                    onClick={handleCreateCampaign}
-                    disabled={createCampaignMutation.isPending}
-                  >
-                    {createCampaignMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creando...
-                      </>
-                    ) : (
-                      <>
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        Crear Campaña
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button 
+                      variant="secondary"
+                      onClick={() => setShowImmediateMessaging(true)}
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      Enviar Ahora
+                    </Button>
+                    <Button 
+                      onClick={handleCreateCampaign}
+                      disabled={createCampaignMutation.isPending}
+                    >
+                      {createCampaignMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Creando...
+                        </>
+                      ) : (
+                        <>
+                          <PlusCircle className="h-4 w-4 mr-2" />
+                          Crear Campaña
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </CardFooter>
               </Card>
               
@@ -2503,7 +2512,7 @@ export default function MassSender() {
           <DialogHeader>
             <DialogTitle>Envío Inmediato de Mensajes</DialogTitle>
             <DialogDescription>
-              Envía mensajes directamente a los contactos importados
+              Envía mensajes directamente a los contactos importados o seleccionados de WhatsApp
             </DialogDescription>
           </DialogHeader>
           
