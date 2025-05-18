@@ -22,6 +22,8 @@ import QrTextViewer from './pages/QrTextViewer';
 import RawQrViewer from './pages/RawQrViewer';
 import Login from './pages/Login';
 import UserManagement from './pages/UserManagement';
+import WhatsAppAccounts from './pages/WhatsAppAccounts';
+import ChatAssignments from './pages/ChatAssignments';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
 import { PageTransition } from '@/components/ui/page-transition';
@@ -305,6 +307,8 @@ const AppRoutes: React.FC = () => {
                 <Route path="/qr-text" component={() => <PrivateRoute component={QrTextViewer} path="/qr-text" />} />
                 <Route path="/raw-qr" component={() => <PrivateRoute component={RawQrViewer} path="/raw-qr" />} />
                 <Route path="/users" component={() => <PrivateRoute component={UserManagement} path="/users" />} />
+                <Route path="/whatsapp-accounts" component={() => <PrivateRoute component={WhatsAppAccounts} path="/whatsapp-accounts" />} />
+                <Route path="/chat-assignments" component={() => <PrivateRoute component={ChatAssignments} path="/chat-assignments" />} />
                 <Route component={() => <PrivateRoute component={NotFound} path="*" />} />
               </Switch>
             </PageTransition>
