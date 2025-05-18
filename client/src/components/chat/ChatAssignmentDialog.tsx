@@ -296,7 +296,12 @@ export default function ChatAssignmentDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Sin categoría</SelectItem>
-                {categories?.map((cat) => (
+                {categories?.map((cat: {
+                    id: number;
+                    name: string;
+                    color?: string;
+                    description?: string;
+                  }) => (
                   <SelectItem key={cat.id} value={cat.name}>
                     <div className="flex items-center gap-2">
                       <div 
