@@ -159,8 +159,8 @@ router.post('/:id/generate-qr', async (req: Request, res: Response) => {
       }
       
       if (!qrCodeData) {
-        // Si no hay código QR, intentar generar uno nuevo
-        await generateQRCode();
+        // Si no hay código QR, intentar obtener uno nuevo
+        await whatsappService.getLatestQR();
         
         // Esperar un momento para que se genere el código QR
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -193,7 +193,7 @@ router.get('/chats/available', async (req: Request, res: Response) => {
     // Por ahora, solo usamos una cuenta, así que ignoramos el accountId
     // En una implementación completa, obtendríamos los chats específicos de esa cuenta
     
-    const client = getWhatsAppClient();
+    const client = whatsappService.getClient();
     
     if (!client || !client.isReady) {
       return res.status(400).json({ 

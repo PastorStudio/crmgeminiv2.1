@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { storage } from '../storage';
 import { insertChatAssignmentSchema } from '@shared/schema';
-import { whatsappService } from '../services/whatsappService';
+import whatsappService from '../services/whatsappService';
 
 const router = Router();
 
