@@ -193,7 +193,8 @@ router.get('/chats/available', async (req: Request, res: Response) => {
     // Por ahora, solo usamos una cuenta, así que ignoramos el accountId
     // En una implementación completa, obtendríamos los chats específicos de esa cuenta
     
-    const client = whatsappService.getClient();
+    // Verificar el estado del servicio WhatsApp en lugar de obtener el cliente directamente
+    const status = whatsappService.getStatus();
     
     if (!client || !client.isReady) {
       return res.status(400).json({ 
