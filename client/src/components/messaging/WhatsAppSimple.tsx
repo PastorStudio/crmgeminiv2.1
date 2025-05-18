@@ -19,21 +19,25 @@ import { es } from 'date-fns/locale';
 import { useWebSocket, NotificationType } from '@/hooks/useWebSocket';
 import { getInitials } from '@/lib/utils';
 import { 
-  Bot, 
+  UserCheck, 
+  RefreshCw, 
+  Trash, 
   Send, 
-  MessageSquare, 
-  Image as ImageIcon, 
+  Search, 
+  X, 
   Settings, 
+  MessageSquare, 
+  Users,
+  Bot, 
+  Image as ImageIcon, 
   MoreVertical, 
   Wifi, 
   WifiOff,
   QrCode,
-  Search,
   Paperclip,
   Brain,
   Smile,
   CheckCheck,
-  RefreshCw,
   Image,
   FileText,
   Mic,
@@ -41,8 +45,7 @@ import {
   Contact,
   File,
   UserPlus,
-  User,
-  Users
+  User
 } from 'lucide-react';
 import ChatAssignmentDialog from './ChatAssignmentDialog';
 import { MessageText } from '@/components/ui/message-text';
@@ -141,27 +144,46 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchOnWindowFocus: true,
   });
   
-  // Query para obtener la asignación de agente para el chat seleccionado
+  // Query para obtener la asignación del chat actual
   const {
     data: chatAssignment,
-    isLoading: isLoadingAssignment
+    isLoading: isLoadingAssignment,
+    refetch: refetchAssignment
   } = useQuery({
-    queryKey: ['/api/chat-assignments/by-chat', selectedChatId],
-    enabled: !!selectedChatId,
-    onSuccess: (data) => {
-      if (data && data.assignedAgent) {
-        setAssignedAgent({
-          name: data.assignedAgent.name || data.assignedAgent.username,
-          username: data.assignedAgent.username
-        });
-      } else {
-        setAssignedAgent(null);
+    queryKey: ['/api/chat-assignments/by-chat', selectedChatId, currentAccountId],
+    queryFn: async () => {
+      if (!selectedChatId || !currentAccountId) return null;
+      try {
+        // Importar en línea apiRequest
+        const { apiRequest } = await import('@/lib/queryClient');
+        const response = await apiRequest(`/api/chat-assignments/by-chat?chatId=${selectedChatId}&accountId=${currentAccountId}`);
+        return response;
+      } catch (error) {
+        // Si es error 404, significa que no hay asignación
+        if ((error as any)?.status === 404) {
+          return null;
+        }
+        console.error('Error obteniendo asignación de chat:', error);
+        return null;
       }
     },
-    onError: () => {
+    enabled: !!selectedChatId && !!currentAccountId
+  });
+  
+  // Actualizar información del agente asignado cuando cambia la asignación
+  useEffect(() => {
+    if (chatAssignment && chatAssignment.assignedTo) {
+      setAssignedAgent({
+        name: chatAssignment.assignedTo.fullName,
+        username: chatAssignment.assignedTo.username
+      });
+    } else {
       setAssignedAgent(null);
     }
-  });
+  }, [chatAssignment]);
+  
+  // Ya tenemos una consulta para la asignación del chat actual arriba,
+  // así que eliminamos esta duplicada
 
   // Query para obtener mensajes del chat seleccionado
   const { 
@@ -506,6 +528,30 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     </DialogContent>
                   </Dialog>
                   
+                  {/* Botón para asignar agente */}
+                  {selectedChatId && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start mb-2"
+                      onClick={() => setAssignmentDialogOpen(true)}
+                    >
+                      <UserCheck className="mr-2 h-4 w-4" />
+                      Asignar a agente
+                    </Button>
+                  )}
+                  
+                  {/* Diálogo de asignación */}
+                  {selectedChatId && (
+                    <ChatAssignmentDialog
+                      open={assignmentDialogOpen}
+                      onOpenChange={setAssignmentDialogOpen}
+                      chatId={selectedChatId}
+                      accountId={currentAccountId}
+                    />
+                  )}
+                  
+                  {/* Botón de actualizar */}
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -513,6 +559,9 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     onClick={() => {
                       refetchChats();
                       refetchMessages();
+                      if (selectedChatId) {
+                        refetchAssignment();
+                      }
                       toast({
                         title: "Actualizando",
                         description: "Recuperando mensajes y chats más recientes"
