@@ -188,15 +188,34 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       }
       
       try {
-        // Aunque no esté autenticado, intentamos obtener los datos
-        // Solo verificamos la autenticación como información, no como bloqueo
-        if (!whatsappStatus?.authenticated) {
-          console.log(`Cuenta ${currentAccountId} posiblemente no autenticada, pero intentaremos obtener datos`);
-        }
+        // Verificación especial para la cuenta de Soporte (ID 2)
+        // Esta cuenta ha mostrado problemas en el pasado, así que intentamos ambos métodos
+        const isSupportAccount = currentAccountId === 2;
         
         // Importar en línea apiRequest para usar consistentemente
         const { apiRequest } = await import('@/lib/queryClient');
         
+        // Si es la cuenta de soporte y tenemos datos en caché, usarlos primero
+        if (isSupportAccount && initialData.length > 0) {
+          console.log(`Usando caché para cuenta Soporte (ID ${currentAccountId}): ${initialData.length} chats`);
+          
+          // Intentar actualizar en segundo plano
+          setTimeout(async () => {
+            try {
+              const refreshData = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/chats`);
+              if (Array.isArray(refreshData) && refreshData.length > 0) {
+                localStorage.setItem(`whatsapp_chats_${currentAccountId}`, JSON.stringify(refreshData));
+                console.log(`Actualización de caché exitosa para Soporte: ${refreshData.length} chats`);
+              }
+            } catch (e) {
+              console.log("Actualización en segundo plano falló, manteniendo caché");
+            }
+          }, 100);
+          
+          return initialData;
+        }
+        
+        // Para el resto de cuentas o si no hay caché, procedemos normalmente
         try {
           // Intentar con la API específica de la cuenta primero (más fiable)
           const response = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/chats`);
@@ -221,6 +240,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
           
           if (Array.isArray(fallbackResponse) && fallbackResponse.length > 0) {
             console.log(`Usando fallback: ${fallbackResponse.length} chats obtenidos`);
+            // Guardar estos datos también en caché
+            localStorage.setItem(`whatsapp_chats_${currentAccountId}`, JSON.stringify(fallbackResponse));
             return fallbackResponse;
           }
         } catch (fallbackError) {
@@ -320,9 +341,19 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   useEffect(() => {
     // Limpiar selección de chat al cambiar de cuenta
     setSelectedChatId(null);
+    setCurrentChat(null);
+    
+    // Limpiar la caché de chats para evitar mostrar datos desactualizados
+    // Esto es especialmente importante para la cuenta de Soporte (ID 2) que ha mostrado problemas
+    if (currentAccountId === 2) {
+      localStorage.removeItem(`whatsapp_chats_2`);
+      console.log("Caché de chats para cuenta de Soporte (ID 2) limpiada al cambiar");
+    }
     
     // Forzar refresco de los chats para la nueva cuenta
-    refetchChats();
+    setTimeout(() => {
+      refetchChats();
+    }, 100); // Pequeño retraso para asegurar que todo está listo
     
     // Notificar sobre el cambio de cuenta mediante WebSocket si está disponible
     if (sendWSMessage) {
