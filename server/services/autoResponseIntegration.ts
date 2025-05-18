@@ -183,10 +183,13 @@ async function generateWithOpenAI(messageText: string, contactName: string): Pro
   const systemPrompt = config.customPrompts.system
     .replace(/{{nombre}}/g, contactName);
   
+  // Instrucción específica para evitar los mensajes genéricos
+  const enhancedSystemPrompt = `${systemPrompt}\n\nIMPORTANTE: Evita iniciar la respuesta con saludos genéricos como "Hola, gracias por tu mensaje" o "En breve nos pondremos en contacto contigo". Personaliza tu respuesta directamente al contexto del mensaje y al cliente.`;
+  
   const response = await openaiClient.chat.completions.create({
     model: "gpt-4o", // el modelo más reciente de OpenAI es "gpt-4o" 
     messages: [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: enhancedSystemPrompt },
       { role: "user", content: messageText }
     ],
     temperature: config.customPrompts.temperature,
