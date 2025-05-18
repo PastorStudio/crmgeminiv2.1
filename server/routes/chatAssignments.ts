@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { Express } from 'express';
 import { db } from "../db";
 import { users } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { authService } from '../services/authService';
 import { chatAssignmentService } from '../services/chatAssignmentService';
 
@@ -89,7 +89,7 @@ export function registerChatAssignmentRoutes(app: Express) {
         success: true,
         assignments
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al obtener asignaciones:', error);
       return res.status(500).json({
         success: false,
@@ -136,7 +136,7 @@ export function registerChatAssignmentRoutes(app: Express) {
         message: 'Asignación creada exitosamente',
         assignment: newAssignment
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al crear asignación:', error);
       return res.status(500).json({
         success: false,
@@ -203,7 +203,7 @@ export function registerChatAssignmentRoutes(app: Express) {
         success: true,
         categories
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al obtener categorías:', error);
       return res.status(500).json({
         success: false,
@@ -248,7 +248,7 @@ export function registerChatAssignmentRoutes(app: Express) {
         message: 'Categoría creada exitosamente',
         category: newCategory
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al crear categoría:', error);
       return res.status(500).json({
         success: false,

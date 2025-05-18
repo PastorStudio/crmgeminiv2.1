@@ -265,7 +265,12 @@ export default function ChatAssignmentDialog({
                 <SelectValue placeholder="Seleccionar un agente" />
               </SelectTrigger>
               <SelectContent>
-                {agents?.map((agent) => (
+                {agents?.map((agent: { 
+                    id: number; 
+                    avatar?: string; 
+                    fullName?: string; 
+                    username: string;
+                  }) => (
                   <SelectItem key={agent.id} value={agent.id.toString()}>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6">
