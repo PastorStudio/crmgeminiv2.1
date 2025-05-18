@@ -486,7 +486,7 @@ const WhatsAppAccounts = () => {
           <div className="py-4">
             <Button
               className="mb-4"
-              onClick={() => navigate('/chat-assignments')}
+              onClick={() => setLocation('/chat-assignments')}
             >
               <UserPlus className="mr-2 h-4 w-4" />
               Asignar Agentes
@@ -499,7 +499,7 @@ const WhatsAppAccounts = () => {
               <Button
                 variant="outline"
                 className="mt-4"
-                onClick={() => navigate('/chat-assignments')}
+                onClick={() => setLocation('/chat-assignments')}
               >
                 Ir a Asignación de Chats
               </Button>
