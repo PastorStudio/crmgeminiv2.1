@@ -1249,8 +1249,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Obtener lista de contactos
+      // Obtener lista de contactos y chats
       const contacts = await whatsappService.getContacts();
+      const chats = await whatsappService.getChats();
       
       if (!contacts || contacts.length === 0) {
         return res.status(404).json({ 
@@ -1259,37 +1260,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Definir el período de actividad reciente (7 días)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
       // Convertir contactos en leads
       const createdLeads = [];
       const updatedLeads = [];
       
       for (const contact of contacts) {
-        if (!contact.name) continue; // Omitir contactos sin nombre
+        // Omitir contactos sin nombre o con formato incorrecto
+        if (!contact.name || !contact.id || !contact.id.includes('@c.us')) continue;
+        
+        // Verificar si es un chat individual (no grupo)
+        const chatId = contact.id;
+        const isGroup = chatId.includes('@g.us');
+        if (isGroup) continue; // Omitir grupos
+        
+        // Buscar el chat correspondiente al contacto
+        const chat = chats.find((c: any) => c.id === chatId);
+        
+        // Verificar si hay mensajes recientes
+        let hasRecentMessages = false;
+        let lastMessage = '';
+        let lastActivity = new Date();
+        
+        if (chat && chat.messages && chat.messages.length > 0) {
+          const message = chat.messages[chat.messages.length - 1];
+          lastMessage = message.body || '';
+          if (message.timestamp) {
+            lastActivity = new Date(message.timestamp);
+            hasRecentMessages = lastActivity >= sevenDaysAgo;
+          }
+        }
+        
+        // Solo procesar contactos con actividad reciente
+        if (!hasRecentMessages) continue;
         
         // Verificar si ya existe un lead con este número de teléfono
-        const existingLeads = await storage.getLeadsByPhone(contact.id.split('@')[0]);
+        const phone = contact.id.split('@')[0];
+        const existingLeads = await storage.getLeadsByPhone(phone);
         
         if (existingLeads && existingLeads.length > 0) {
-          // Actualizar el lead existente
+          // Actualizar el lead existente con información reciente
           const updatedLead = await storage.updateLead(existingLeads[0].id, {
-            fullName: contact.name,
-            phone: contact.id.split('@')[0],
-            tags: ['WhatsApp', 'Contacto Real']
+            name: contact.name,
+            phone: phone,
+            source: 'whatsapp',
+            notes: `Última actividad: ${lastActivity.toLocaleString()}\nÚltimo mensaje: ${lastMessage}`,
+            tags: ['whatsapp', 'contacto-reciente']
           });
           
           if (updatedLead) {
             updatedLeads.push(updatedLead);
           }
         } else {
-          // Crear nuevo lead
+          // Crear nuevo lead con información de actividad reciente
           const newLead = await storage.createLead({
-            fullName: contact.name,
-            email: `${contact.id.split('@')[0]}@whatsapp.contact`,
-            phone: contact.id.split('@')[0],
+            name: contact.name,
+            email: `${phone}@whatsapp.contact`,
+            phone: phone,
             company: contact.name.split(' ')[0] + ' Inc',
             status: 'new',
-            source: 'WhatsApp',
-            tags: ['WhatsApp', 'Contacto Real']
+            source: 'whatsapp',
+            notes: `Última actividad: ${lastActivity.toLocaleString()}\nÚltimo mensaje: ${lastMessage}`,
+            value: 0,
+            tags: ['whatsapp', 'contacto-reciente']
           });
           
           createdLeads.push(newLead);
