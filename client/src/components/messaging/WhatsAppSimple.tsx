@@ -136,29 +136,59 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchInterval: 5000
   });
 
-  // Query para obtener chats reales de WhatsApp
+  // Query para obtener chats reales de WhatsApp para la cuenta específica
   const { 
     data: whatsappChats = [],
     isLoading: isLoadingChats,
     refetch: refetchChats,
     error: chatError
   } = useQuery({
-    queryKey: ['/api/direct/whatsapp/chats'],
+    queryKey: ['/api/whatsapp-accounts', currentAccountId, 'chats'],
+    queryFn: async () => {
+      try {
+        if (!whatsappStatus?.authenticated) {
+          return [];
+        }
+        // Importar en línea apiRequest
+        const { apiRequest } = await import('@/lib/queryClient');
+        const response = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/chats`);
+        return response.chats || [];
+      } catch (error) {
+        console.error('Error obteniendo chats de WhatsApp:', error);
+        return [];
+      }
+    },
     refetchInterval: 15000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    retry: 3
+    retry: 3,
+    enabled: !!whatsappStatus?.authenticated
   });
 
-  // Query para obtener contactos de WhatsApp
+  // Query para obtener contactos de WhatsApp para la cuenta específica
   const {
     data: whatsappContacts = [],
     isLoading: isLoadingContacts,
   } = useQuery({
-    queryKey: ['/api/direct/whatsapp/contacts'],
-    refetchInterval: 30000, // Actualizar cada 30 segundos
+    queryKey: ['/api/whatsapp-accounts', currentAccountId, 'contacts'],
+    queryFn: async () => {
+      try {
+        if (!whatsappStatus?.authenticated) {
+          return [];
+        }
+        // Importar en línea apiRequest
+        const { apiRequest } = await import('@/lib/queryClient');
+        const response = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/contacts`);
+        return response.contacts || [];
+      } catch (error) {
+        console.error('Error obteniendo contactos de WhatsApp:', error);
+        return [];
+      }
+    },
+    refetchInterval: 30000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    enabled: !!whatsappStatus?.authenticated
   });
   
   // Query para obtener la asignación del chat actual
