@@ -255,6 +255,7 @@ IMPORTANTE PARA CITAS (appointment):
 - Para "pasado mañana" usa: ${new Date(Date.now() + 172800000).toISOString().split('T')[0]}
 - Siempre marca "detected": true si encuentras cualquier referencia a reuniones o citas
 - Si mencionan una cita pero no especifican fecha, marca "detected": true pero deja "date" vacío
+- SIEMPRE identifica citas o reuniones incluso cuando se mencionan indirectamente. Por ejemplo, si dicen "nos vemos mañana" o "podemos hablar el jueves" o "paso por tu oficina el lunes"
 `;
 
     console.log('Extrayendo información del cliente con IA...');
@@ -557,9 +558,19 @@ Notas: ${clientInfo.notes || 'Ninguna'}
       console.log(`Nuevo lead creado con ID: ${leadId}`);
       
       // Verificar si hay información de cita en la conversación
+      console.log('Verificando información de cita en clientInfo:', JSON.stringify(clientInfo.appointment));
       if (clientInfo.appointment && clientInfo.appointment.detected === true) {
+        console.log('🔔 Cita detectada en la conversación:', 
+                   JSON.stringify({
+                     fecha: clientInfo.appointment.date,
+                     hora: clientInfo.appointment.time,
+                     descripcion: clientInfo.appointment.description
+                   }));
         // Crear cita automáticamente
         await createAppointmentFromConversation(clientInfo, leadId);
+        console.log('✅ Proceso de creación de cita finalizado para lead ID:', leadId);
+      } else {
+        console.log('No se detectó ninguna cita válida en la conversación');
       }
     }
   } catch (error) {
