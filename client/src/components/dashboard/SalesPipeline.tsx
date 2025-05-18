@@ -12,21 +12,33 @@ export default function SalesPipeline() {
   const { toast } = useToast();
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
 
-  // Fetch leads by status
+  // Verificar si WhatsApp está conectado
+  const { data: whatsappStatus, isLoading: loadingWhatsappStatus } = useQuery({
+    queryKey: ["/api/direct/whatsapp/status"],
+    refetchInterval: 10000, // Refrescar cada 10 segundos
+  });
+  
+  const isWhatsappConnected = whatsappStatus?.authenticated === true;
+
+  // Fetch leads by status - solo si WhatsApp está conectado
   const { data: newLeads, isLoading: loadingNewLeads } = useQuery<Lead[]>({
-    queryKey: ["/api/leads", { status: "new" }]
+    queryKey: ["/api/leads", { status: "new" }],
+    enabled: isWhatsappConnected,
   });
 
   const { data: contactedLeads, isLoading: loadingContactedLeads } = useQuery<Lead[]>({
-    queryKey: ["/api/leads", { status: "contacted" }]
+    queryKey: ["/api/leads", { status: "contacted" }],
+    enabled: isWhatsappConnected,
   });
 
   const { data: meetingLeads, isLoading: loadingMeetingLeads } = useQuery<Lead[]>({
-    queryKey: ["/api/leads", { status: "meeting" }]
+    queryKey: ["/api/leads", { status: "meeting" }],
+    enabled: isWhatsappConnected,
   });
 
   const { data: closedLeads, isLoading: loadingClosedLeads } = useQuery<Lead[]>({
     queryKey: ["/api/leads", { status: "closed-won" }],
+    enabled: isWhatsappConnected,
   });
 
   // Update lead status
@@ -210,10 +222,18 @@ export default function SalesPipeline() {
               <div className="bg-gray-50 rounded-lg p-3">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-medium text-gray-900">New Leads</h4>
-                  <Badge variant="outline">{newLeads?.length || 0}</Badge>
+                  <Badge variant="outline">{newLeads?.filter(lead => lead.source === 'whatsapp').length || 0}</Badge>
                 </div>
                 
-                {loadingNewLeads ? (
+                {!isWhatsappConnected ? (
+                  <div className="text-center p-3 text-gray-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <span className="material-icons text-2xl mb-2">wifi_off</span>
+                      <p>WhatsApp no conectado</p>
+                      <p className="text-xs mt-1">Escanea el código QR para ver leads reales</p>
+                    </div>
+                  </div>
+                ) : loadingNewLeads ? (
                   <div className="space-y-2">
                     <div className="bg-white p-3 rounded-lg shadow-sm mb-3">
                       <div className="animate-pulse flex flex-col space-y-2">
@@ -224,7 +244,7 @@ export default function SalesPipeline() {
                     </div>
                   </div>
                 ) : (
-                  newLeads?.map(lead => renderLeadCard(lead))
+                  newLeads?.filter(lead => lead.source === 'whatsapp').map(lead => renderLeadCard(lead))
                 )}
                 
                 <Button 
@@ -244,7 +264,15 @@ export default function SalesPipeline() {
                   <Badge variant="outline">{contactedLeads?.length || 0}</Badge>
                 </div>
                 
-                {loadingContactedLeads ? (
+                {!isWhatsappConnected ? (
+                  <div className="text-center p-3 text-gray-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <span className="material-icons text-2xl mb-2">wifi_off</span>
+                      <p>WhatsApp no conectado</p>
+                      <p className="text-xs mt-1">Escanea el código QR para ver leads reales</p>
+                    </div>
+                  </div>
+                ) : loadingContactedLeads ? (
                   <div className="space-y-2">
                     <div className="bg-white p-3 rounded-lg shadow-sm mb-3">
                       <div className="animate-pulse flex flex-col space-y-2">
@@ -255,7 +283,7 @@ export default function SalesPipeline() {
                     </div>
                   </div>
                 ) : (
-                  contactedLeads?.map(lead => renderLeadCard(lead))
+                  contactedLeads?.filter(lead => lead.source === 'whatsapp').map(lead => renderLeadCard(lead))
                 )}
                 
                 <Button 
@@ -275,7 +303,15 @@ export default function SalesPipeline() {
                   <Badge variant="outline">{meetingLeads?.length || 0}</Badge>
                 </div>
                 
-                {loadingMeetingLeads ? (
+                {!isWhatsappConnected ? (
+                  <div className="text-center p-3 text-gray-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <span className="material-icons text-2xl mb-2">wifi_off</span>
+                      <p>WhatsApp no conectado</p>
+                      <p className="text-xs mt-1">Escanea el código QR para ver leads reales</p>
+                    </div>
+                  </div>
+                ) : loadingMeetingLeads ? (
                   <div className="space-y-2">
                     <div className="bg-white p-3 rounded-lg shadow-sm mb-3">
                       <div className="animate-pulse flex flex-col space-y-2">
@@ -286,7 +322,7 @@ export default function SalesPipeline() {
                     </div>
                   </div>
                 ) : (
-                  meetingLeads?.map(lead => renderLeadCard(lead))
+                  meetingLeads?.filter(lead => lead.source === 'whatsapp').map(lead => renderLeadCard(lead))
                 )}
                 
                 <Button 
@@ -306,7 +342,15 @@ export default function SalesPipeline() {
                   <Badge variant="outline">{closedLeads?.length || 0}</Badge>
                 </div>
                 
-                {loadingClosedLeads ? (
+                {!isWhatsappConnected ? (
+                  <div className="text-center p-3 text-gray-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <span className="material-icons text-2xl mb-2">wifi_off</span>
+                      <p>WhatsApp no conectado</p>
+                      <p className="text-xs mt-1">Escanea el código QR para ver leads reales</p>
+                    </div>
+                  </div>
+                ) : loadingClosedLeads ? (
                   <div className="space-y-2">
                     <div className="bg-white p-3 rounded-lg shadow-sm mb-3">
                       <div className="animate-pulse flex flex-col space-y-2">
@@ -317,7 +361,7 @@ export default function SalesPipeline() {
                     </div>
                   </div>
                 ) : (
-                  closedLeads?.map(lead => renderLeadCard(lead))
+                  closedLeads?.filter(lead => lead.source === 'whatsapp').map(lead => renderLeadCard(lead))
                 )}
                 
                 <Button 
