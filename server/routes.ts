@@ -175,6 +175,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dbLeads = await storage.getAllLeads();
       }
       
+      // Obtener mensajes para enriquecer los leads con su último mensaje
+      try {
+        const allMessages = await storage.getAllMessages();
+        
+        // Enriquecer los leads con el último mensaje
+        dbLeads = dbLeads.map(lead => {
+          // Buscar mensajes para este lead
+          const leadMessages = allMessages
+            .filter(msg => msg.leadId === lead.id)
+            .sort((a, b) => {
+              const dateA = a.sentAt ? new Date(a.sentAt).getTime() : 0;
+              const dateB = b.sentAt ? new Date(b.sentAt).getTime() : 0;
+              return dateB - dateA;
+            });
+          
+          // Si hay mensajes, añadir el último al lead
+          if (leadMessages.length > 0) {
+            return {
+              ...lead,
+              lastMessage: leadMessages[0].content,
+              lastMessageDate: leadMessages[0].sentAt
+            };
+          }
+          
+          return lead;
+        });
+      } catch (error) {
+        console.error('Error obteniendo mensajes para leads:', error);
+        // Continuamos con los leads sin enriquecer con mensajes
+      }
+      
       // Luego intentamos enriquecer los datos con información real de WhatsApp
       try {
         const whatsappService = (global as any).whatsappService;
@@ -221,7 +252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               email: '',
               phone,
               status: status || 'new', // Asignar el estado solicitado o 'new' por defecto
-              assignedTo: assignedTo || 1, // Asignar al usuario solicitado o al primero
+              assigneeId: assignedTo || 1, // Asignar al usuario solicitado o al primero
               source: 'whatsapp',
               notes: `Última actividad: ${lastActivity.toLocaleString()}\nÚltimo mensaje: ${lastMessage}`,
               value: 0,
