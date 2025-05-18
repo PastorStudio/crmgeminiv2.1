@@ -22,8 +22,25 @@ class ChatAssignmentService {
         );
       
       return assignment || null;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al buscar asignación:", error);
+      throw new Error("Error al buscar asignación de chat");
+    }
+  }
+  
+  /**
+   * Busca una asignación por ID
+   */
+  async findAssignmentById(id: number) {
+    try {
+      const [assignment] = await db
+        .select()
+        .from(chatAssignments)
+        .where(eq(chatAssignments.id, id));
+      
+      return assignment || null;
+    } catch (error: any) {
+      console.error("Error al buscar asignación por ID:", error);
       throw new Error("Error al buscar asignación de chat");
     }
   }
