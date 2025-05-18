@@ -130,12 +130,13 @@ const WhatsAppAccounts = () => {
       // Guardar el ID de la cuenta recién creada para mostrar automáticamente el QR
       if (data && data.id) {
         setNewlyCreatedAccountId(data.id);
-        // Refrescar las cuentas y luego mostrar el QR
-        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] }).then(() => {
-          // Seleccionar la cuenta recién creada y abrir el diálogo QR
-          setSelectedAccount(accounts.find(acc => acc.id === data.id) || null);
-          setQrDialogOpen(true);
-        });
+        
+        // Usar directamente los datos devueltos por la API en lugar de buscar en accounts
+        setSelectedAccount(data);
+        setQrDialogOpen(true);
+        
+        // También refrescar las cuentas para actualizar la lista
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
       } else {
         queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
       }
