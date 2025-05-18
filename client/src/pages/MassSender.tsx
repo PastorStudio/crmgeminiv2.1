@@ -217,6 +217,7 @@ export default function MassSender() {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
       const data = await response.json();
+      console.log("Contactos WhatsApp obtenidos:", data);
       setWhatsAppContacts(data);
       return data;
     } catch (error) {
@@ -229,6 +230,29 @@ export default function MassSender() {
       return [];
     } finally {
       setLoadingWhatsAppContacts(false);
+    }
+  };
+  
+  // Función para manejar selección/deselección de contactos de WhatsApp
+  const handleToggleWhatsAppContact = (contactId: string) => {
+    setSelectedWhatsAppContactIds(prev => 
+      prev.includes(contactId) 
+        ? prev.filter(id => id !== contactId)
+        : [...prev, contactId]
+    );
+  };
+  
+  // Función para seleccionar/deseleccionar todos los contactos de WhatsApp
+  const handleToggleAllWhatsAppContacts = (checked: boolean) => {
+    setSelectAllWhatsAppContacts(checked);
+    
+    if (checked && whatsAppContacts && whatsAppContacts.length > 0) {
+      setSelectedWhatsAppContactIds(whatsAppContacts
+        .filter((contact: any) => contact.id?.user)
+        .map((contact: any) => contact.id.user)
+      );
+    } else {
+      setSelectedWhatsAppContactIds([]);
     }
   };
   
@@ -251,7 +275,8 @@ export default function MassSender() {
   // Mutación para crear una nueva campaña
   const createCampaignMutation = useMutation({
     mutationFn: (data: any) => apiRequest("/api/mass-sender/campaigns", { method: "POST", body: data }),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Campaña creada exitosamente:", data);
       queryClient.invalidateQueries({ queryKey: ['/api/mass-sender/campaigns'] });
       toast({
         title: "Campaña creada",
@@ -286,6 +311,7 @@ export default function MassSender() {
       setTab("campaigns");
     },
     onError: (error) => {
+      console.error("Error al crear campaña:", error);
       toast({
         title: "Error",
         description: "No se pudo crear la campaña de mensajes.",
@@ -866,13 +892,24 @@ export default function MassSender() {
       return;
     }
     
-    createCampaignMutation.mutate({
+    // Crear objeto de campaña con todos los datos necesarios para asegurar el guardado
+    const campaignData = {
       name: campaignName,
       messageTemplate,
       targetGroups: selectedGroups,
       targetTags: selectedTags,
-      config: currentConfig
-    });
+      config: currentConfig,
+      status: 'pending',
+      totalContacts: 0,
+      processedContacts: 0,
+      successfulSends: 0,
+      failedSends: 0,
+      createdAt: new Date().toISOString()
+    };
+    
+    console.log("Guardando campaña:", campaignData);
+    
+    createCampaignMutation.mutate(campaignData);
   };
   
   // Función para manejar el inicio, pausa o reanudación de una campaña
