@@ -49,7 +49,11 @@ export default function SalesPipeline() {
   // Render a lead card with services interests and probability based on conversation analysis
   const renderLeadCard = (lead: Lead) => {
     // Extraer servicios de interés y probabilidades de los tags si están disponibles
-    const serviceTags = lead.tags?.filter(tag => !tag.includes('%')) || [];
+    const serviceTags = lead.tags?.filter(tag => 
+      !tag.includes('%') && 
+      tag !== 'WhatsApp' && 
+      tag !== 'Contacto Real'
+    ) || [];
     
     // Identificar tags de probabilidad (formato: "Interés: 75%")
     const probabilityTag = lead.tags?.find(tag => tag.includes('%'));
@@ -58,8 +62,6 @@ export default function SalesPipeline() {
     if (probabilityTag) {
       const match = probabilityTag.match(/(\d+)%/);
       probability = match ? parseInt(match[1]) : null;
-    } else if (lead.matchPercentage) {
-      probability = lead.matchPercentage;
     }
     
     return (
