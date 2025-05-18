@@ -728,7 +728,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 <div className="flex-1">
                   <h3 className="font-medium">{currentChat.name}</h3>
                   <div className="text-xs text-gray-500 flex items-center gap-1">
-                    {currentChat.id.includes('@g.us') ? 'Grupo' : chatAgent ? `Agente: ${chatAgent.name || chatAgent.username}` : 'Chat sin asignar'}
+                    {currentChat.id.includes('@g.us') ? 'Grupo' : assignedAgent ? `Agente: ${assignedAgent.name}` : 'Chat sin asignar'}
                     <span className="inline-block h-1 w-1 rounded-full bg-gray-300 mx-1"></span>
                     {whatsappStatus?.authenticated ? 'Conectado' : 'Desconectado'}
                   </div>
