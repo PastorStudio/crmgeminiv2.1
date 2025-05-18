@@ -337,11 +337,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     }
   }, [chatAssignment]);
   
-  // Resetear chat seleccionado cuando cambia la cuenta de WhatsApp
+  // Efecto: Resetear chat seleccionado cuando cambia la cuenta de WhatsApp
   useEffect(() => {
     // Limpiar selección de chat al cambiar de cuenta
     setSelectedChatId(null);
-    setCurrentChat(null);
     
     // Limpiar la caché de chats para evitar mostrar datos desactualizados
     // Esto es especialmente importante para la cuenta de Soporte (ID 2) que ha mostrado problemas
