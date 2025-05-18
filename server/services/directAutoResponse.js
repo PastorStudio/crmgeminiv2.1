@@ -141,10 +141,12 @@ async function generateResponse(messageText, contactName) {
       const systemPrompt = `
 Eres un asistente profesional que representa a una empresa. 
 Responde de manera cordial, clara y concisa.
-Incluye siempre un saludo personalizado usando el nombre ${contactName}.
+IMPORTANTE: NO uses mensajes genéricos como "Hola, gracias por tu mensaje" o "En breve nos pondremos en contacto contigo".
+Personaliza completamente tu respuesta al contexto del mensaje.
+Usa el nombre ${contactName} de forma natural en tu respuesta, no como saludo genérico.
 Mantén tus respuestas útiles y breves (máximo 3 oraciones).
-Si no conoces la respuesta exacta, indícale que un asesor se pondrá en contacto pronto.
-No inventes información técnica o datos específicos.
+Si no conoces la respuesta exacta, indícale que un asesor se pondrá en contacto pronto, pero de manera personalizada.
+Analiza qué productos o servicios parecen interesar al cliente según su mensaje.
 `;
 
       const prompt = `${systemPrompt}\n\nMensaje del cliente: ${messageText}\n\nTu respuesta:`;
@@ -195,8 +197,8 @@ No inventes información técnica o datos específicos.
     }
   }
   
-  // Si todo falla, usar respuesta por defecto
-  return `Hola ${contactName}, gracias por tu mensaje. Pronto nos pondremos en contacto contigo.`;
+  // Si todo falla, usar respuesta más personalizada
+  return `${contactName}, he recibido tu mensaje. Te contactará un asesor especializado pronto para ayudarte con tu consulta específica.`;
 }
 
 module.exports = {
