@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
+import { WhatsAppQRCode } from './WhatsAppQRCode';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateAutoResponse } from '@/lib/gemini';
 import { chatContext } from '@/lib/chatContext';
@@ -630,7 +631,12 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                         <p className="text-gray-600 mb-4">Para ver tus chats y mensajes, necesitas conectar WhatsApp escaneando el código QR.</p>
                       </div>
                       
-                      <WhatsAppQRCodeSection currentAccountId={currentAccountId} />
+                      {/* Usamos el componente importado */}
+                      <div className="mt-4">
+                        <div className="flex items-center justify-center">
+                          <WhatsAppQRCode accountId={currentAccountId} />
+                        </div>
+                      </div>
                       
                       <div className="mt-4 text-center text-sm text-gray-500">
                         <p>También puedes ir a la página de cuentas para administrar múltiples conexiones de WhatsApp.</p>
