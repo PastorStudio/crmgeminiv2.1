@@ -118,8 +118,12 @@ const ChatAssignments = () => {
   const { data: assignments = [], isLoading, error, refetch } = useQuery<ChatAssignment[]>({
     queryKey: ['/api/chat-assignments'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/chat-assignments');
-      return await res.json();
+      try {
+        return await apiRequest('/api/chat-assignments');
+      } catch (error) {
+        console.error('Error cargando asignaciones:', error);
+        return [];
+      }
     }
   });
   
@@ -127,8 +131,12 @@ const ChatAssignments = () => {
   const { data: accounts = [] } = useQuery<WhatsAppAccount[]>({
     queryKey: ['/api/whatsapp-accounts'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/whatsapp-accounts');
-      return await res.json();
+      try {
+        return await apiRequest('/api/whatsapp-accounts');
+      } catch (error) {
+        console.error('Error cargando cuentas de WhatsApp:', error);
+        return [];
+      }
     }
   });
   
@@ -136,9 +144,13 @@ const ChatAssignments = () => {
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ['/api/users'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/users');
-      const data = await res.json();
-      return data.success ? data.users : [];
+      try {
+        const data = await apiRequest('/api/users');
+        return data.success ? data.users : [];
+      } catch (error) {
+        console.error('Error cargando usuarios:', error);
+        return [];
+      }
     }
   });
   
@@ -147,8 +159,12 @@ const ChatAssignments = () => {
     queryKey: ['/api/whatsapp-accounts', selectedAccount, 'chats'],
     queryFn: async () => {
       if (!selectedAccount) return [];
-      const res = await apiRequest('GET', `/api/whatsapp-accounts/${selectedAccount}/chats`);
-      return await res.json();
+      try {
+        return await apiRequest(`/api/whatsapp-accounts/${selectedAccount}/chats`);
+      } catch (error) {
+        console.error('Error cargando chats:', error);
+        return [];
+      }
     },
     enabled: !!selectedAccount
   });
@@ -156,8 +172,10 @@ const ChatAssignments = () => {
   // Mutation para crear asignación
   const createAssignmentMutation = useMutation({
     mutationFn: async (data: z.infer<typeof assignmentSchema>) => {
-      const res = await apiRequest('POST', '/api/chat-assignments', data);
-      return await res.json();
+      return await apiRequest('/api/chat-assignments', {
+        method: 'POST',
+        body: data
+      });
     },
     onSuccess: () => {
       toast({
@@ -180,8 +198,9 @@ const ChatAssignments = () => {
   // Mutation para eliminar asignación
   const deleteAssignmentMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest('DELETE', `/api/chat-assignments/${id}`);
-      return await res.json();
+      return await apiRequest(`/api/chat-assignments/${id}`, {
+        method: 'DELETE'
+      });
     },
     onSuccess: () => {
       toast({

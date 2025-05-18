@@ -141,8 +141,9 @@ const WhatsAppAccounts = () => {
   // Mutation para inicializar cuenta
   const initializeAccountMutation = useMutation({
     mutationFn: async (accountId: number) => {
-      const res = await apiRequest('POST', `/api/whatsapp-accounts/${accountId}/initialize`);
-      return await res.json();
+      return await apiRequest(`/api/whatsapp-accounts/${accountId}/initialize`, {
+        method: 'POST'
+      });
     },
     onSuccess: (data, accountId) => {
       toast({
@@ -164,8 +165,9 @@ const WhatsAppAccounts = () => {
   // Mutation para desconectar cuenta
   const disconnectAccountMutation = useMutation({
     mutationFn: async (accountId: number) => {
-      const res = await apiRequest('POST', `/api/whatsapp-accounts/${accountId}/disconnect`);
-      return await res.json();
+      return await apiRequest(`/api/whatsapp-accounts/${accountId}/disconnect`, {
+        method: 'POST'
+      });
     },
     onSuccess: () => {
       toast({
@@ -187,8 +189,9 @@ const WhatsAppAccounts = () => {
   // Mutation para eliminar cuenta
   const deleteAccountMutation = useMutation({
     mutationFn: async (accountId: number) => {
-      const res = await apiRequest('DELETE', `/api/whatsapp-accounts/${accountId}`);
-      return await res.json();
+      return await apiRequest(`/api/whatsapp-accounts/${accountId}`, {
+        method: 'DELETE'
+      });
     },
     onSuccess: () => {
       toast({
