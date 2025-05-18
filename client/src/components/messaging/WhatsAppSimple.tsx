@@ -39,8 +39,12 @@ import {
   Mic,
   Camera,
   Contact,
-  File
+  File,
+  UserPlus,
+  User,
+  Users
 } from 'lucide-react';
+import ChatAssignmentDialog from './ChatAssignmentDialog';
 import { MessageText } from '@/components/ui/message-text';
 // Importar el componente de configuración
 import { GeminiConfig } from '@/components/GeminiConfig';

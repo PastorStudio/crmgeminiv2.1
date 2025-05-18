@@ -1,0 +1,383 @@
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { apiRequest } from '@/lib/queryClient';
+import { UserCheck, Users } from 'lucide-react';
+
+// Esquema para la asignación de chat
+const assignmentSchema = z.object({
+  accountId: z.number().min(1, { message: 'Debe seleccionar una cuenta' }),
+  chatId: z.string().min(1, { message: 'El ID del chat es obligatorio' }),
+  assignedToId: z.number().min(1, { message: 'Debe seleccionar un agente' }),
+  category: z.string().optional(),
+});
+
+type ChatAssignmentDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  chatId: string;
+  accountId: number;
+};
+
+// Tipo para usuario
+type User = {
+  id: number;
+  username: string;
+  fullName: string;
+  role: string;
+  status: string;
+};
+
+// Tipo para cuenta de WhatsApp
+type WhatsAppAccount = {
+  id: number;
+  name: string;
+  status: string;
+};
+
+// Tipo para asignación existente
+type ChatAssignment = {
+  id: number;
+  chatId: string;
+  accountId: number;
+  assignedToId: number;
+  assignedById?: number;
+  category?: string;
+  status: string;
+  assignedTo?: User;
+};
+
+const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAssignmentDialogProps) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [existingAssignment, setExistingAssignment] = useState<ChatAssignment | null>(null);
+  
+  // Consulta para verificar si ya existe una asignación
+  const { data: assignment, isLoading: checkingAssignment } = useQuery({
+    queryKey: ['/api/chat-assignments/by-chat', chatId, accountId],
+    queryFn: async () => {
+      try {
+        const result = await apiRequest(`/api/chat-assignments/by-chat?chatId=${chatId}&accountId=${accountId}`);
+        return result;
+      } catch (error) {
+        // Si devuelve 404, significa que no hay asignación
+        if ((error as any)?.status === 404) {
+          return null;
+        }
+        console.error('Error al verificar asignación:', error);
+        return null;
+      }
+    },
+    enabled: open && !!chatId && !!accountId,
+  });
+  
+  // Cargar usuarios (agentes)
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ['/api/users'],
+    queryFn: async () => {
+      try {
+        const data = await apiRequest('/api/users');
+        return data.success ? data.users : [];
+      } catch (error) {
+        console.error('Error cargando usuarios:', error);
+        return [];
+      }
+    },
+    enabled: open,
+  });
+  
+  // Cargar cuentas de WhatsApp
+  const { data: accounts = [] } = useQuery<WhatsAppAccount[]>({
+    queryKey: ['/api/whatsapp-accounts'],
+    queryFn: async () => {
+      try {
+        return await apiRequest('/api/whatsapp-accounts');
+      } catch (error) {
+        console.error('Error cargando cuentas de WhatsApp:', error);
+        return [];
+      }
+    },
+    enabled: open,
+  });
+
+  // Formulario para crear/actualizar asignación
+  const form = useForm<z.infer<typeof assignmentSchema>>({
+    resolver: zodResolver(assignmentSchema),
+    defaultValues: {
+      accountId: accountId || 0,
+      chatId: chatId || '',
+      assignedToId: 0,
+      category: '',
+    },
+  });
+
+  // Mutation para crear asignación
+  const createAssignmentMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof assignmentSchema>) => {
+      return await apiRequest('/api/chat-assignments', {
+        method: 'POST',
+        body: data,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Chat asignado',
+        description: 'El chat ha sido asignado correctamente',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat', chatId, accountId] });
+      onOpenChange(false);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'No se pudo asignar el chat: ' + (error as any)?.message || 'Error desconocido',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Mutation para actualizar asignación
+  const updateAssignmentMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<z.infer<typeof assignmentSchema>> }) => {
+      return await apiRequest(`/api/chat-assignments/${id}`, {
+        method: 'PUT',
+        body: data,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Asignación actualizada',
+        description: 'La asignación ha sido actualizada correctamente',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat', chatId, accountId] });
+      onOpenChange(false);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar la asignación: ' + (error as any)?.message || 'Error desconocido',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Actualizar el formulario cuando cambia la asignación existente
+  useEffect(() => {
+    if (assignment) {
+      setExistingAssignment(assignment);
+      form.reset({
+        accountId: assignment.accountId,
+        chatId: assignment.chatId,
+        assignedToId: assignment.assignedToId,
+        category: assignment.category || '',
+      });
+    } else {
+      setExistingAssignment(null);
+      form.reset({
+        accountId: accountId || 0,
+        chatId: chatId || '',
+        assignedToId: 0,
+        category: '',
+      });
+    }
+  }, [assignment, form, accountId, chatId]);
+
+  // Manejar envío del formulario
+  const onSubmit = (data: z.infer<typeof assignmentSchema>) => {
+    if (existingAssignment) {
+      // Actualizar asignación existente
+      updateAssignmentMutation.mutate({
+        id: existingAssignment.id,
+        data: {
+          assignedToId: data.assignedToId,
+          category: data.category,
+        },
+      });
+    } else {
+      // Crear nueva asignación
+      createAssignmentMutation.mutate(data);
+    }
+  };
+
+  // Obtener agentes válidos (usuarios activos con rol de agente o supervisor)
+  const agents = users.filter(user => 
+    user.status === 'active' && 
+    ['agent', 'supervisor'].includes(user.role)
+  );
+
+  // Determinar si hay un agente asignado actualmente
+  const currentAgent = existingAssignment?.assignedTo 
+    ? `${existingAssignment.assignedTo.fullName} (${existingAssignment.assignedTo.username})`
+    : 'Sin asignar';
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>
+            {existingAssignment ? 'Actualizar asignación de chat' : 'Asignar chat a agente'}
+          </DialogTitle>
+          <DialogDescription>
+            {existingAssignment 
+              ? `Este chat está asignado a ${currentAgent}`
+              : 'Elija un agente para asignar este chat'}
+          </DialogDescription>
+        </DialogHeader>
+
+        {checkingAssignment ? (
+          <div className="flex items-center justify-center p-6">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div>
+            <span className="ml-2">Verificando asignaciones...</span>
+          </div>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="accountId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cuenta de WhatsApp</FormLabel>
+                    <Select
+                      disabled={true} // No permitir cambiar la cuenta
+                      onValueChange={(value) => field.onChange(parseInt(value))}
+                      defaultValue={field.value.toString()}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar cuenta" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {accounts.map((account) => (
+                          <SelectItem
+                            key={account.id}
+                            value={account.id.toString()}
+                          >
+                            {account.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="assignedToId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Asignar a</FormLabel>
+                    <Select
+                      onValueChange={(value) => field.onChange(parseInt(value))}
+                      defaultValue={field.value ? field.value.toString() : ''}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar agente" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {agents.length > 0 ? (
+                          agents.map((agent) => (
+                            <SelectItem
+                              key={agent.id}
+                              value={agent.id.toString()}
+                            >
+                              {agent.fullName} ({agent.username})
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            No hay agentes disponibles
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoría</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar categoría" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="ventas">Ventas</SelectItem>
+                        <SelectItem value="soporte">Soporte</SelectItem>
+                        <SelectItem value="consulta">Consulta</SelectItem>
+                        <SelectItem value="reclamo">Reclamo</SelectItem>
+                        <SelectItem value="otro">Otro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    createAssignmentMutation.isPending ||
+                    updateAssignmentMutation.isPending
+                  }
+                >
+                  {(createAssignmentMutation.isPending ||
+                    updateAssignmentMutation.isPending) ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <span>Guardando...</span>
+                    </div>
+                  ) : existingAssignment ? (
+                    <div className="flex items-center">
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      <span>Actualizar asignación</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <Users className="h-4 w-4 mr-2" />
+                      <span>Asignar chat</span>
+                    </div>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default ChatAssignmentDialog;
