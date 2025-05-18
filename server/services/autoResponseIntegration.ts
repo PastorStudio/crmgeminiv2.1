@@ -148,6 +148,194 @@ async function saveToConversationHistory(chatId: string, messageText: string, is
 }
 
 /**
+ * Analiza la conversación para extraer información relevante del cliente
+ * @param chatId ID del chat (número de teléfono)
+ * @param conversationHistory Historial de mensajes
+ * @param lastMessage Último mensaje recibido
+ * @returns Objeto con la información extraída
+ */
+async function extractClientInfo(chatId: string, conversationHistory: Array<{message: string, isFromUser: boolean}>, lastMessage: string): Promise<any> {
+  try {
+    // Si no hay cliente Gemini configurado, no podemos extraer información
+    if (!geminiClient) {
+      console.warn('No se puede extraer información del cliente: Gemini no está inicializado');
+      return null;
+    }
+    
+    // Formatear la conversación para el análisis
+    let conversationText = "HISTORIAL DE CONVERSACIÓN:\n";
+    conversationHistory.forEach(entry => {
+      const role = entry.isFromUser ? "Cliente" : "Asistente";
+      conversationText += `${role}: ${entry.message}\n`;
+    });
+    
+    // Añadir el último mensaje
+    conversationText += `Cliente: ${lastMessage}\n`;
+    
+    // Prompt para extraer información
+    const extractionPrompt = `
+Analiza la siguiente conversación y extrae información clave del cliente de forma discreta. 
+Devuelve SOLAMENTE un objeto JSON con estos campos:
+{
+  "phoneNumber": "${chatId.replace('@c.us', '')}", 
+  "clientName": "nombre del cliente (si se menciona)",
+  "company": "empresa del cliente (si se menciona)",
+  "location": "ubicación o dirección (si se menciona)",
+  "serviceInterest": "servicio específico que le interesa (detallado)",
+  "interestLevel": "alto, medio o bajo, basado en el lenguaje y preguntas",
+  "interestPercentage": número entre 0-100 basado en probabilidad de compra,
+  "notes": "información adicional relevante"
+}
+
+Si algún campo no se puede determinar, déjalo como null o como cadena vacía. NO INVENTES INFORMACIÓN.
+Analiza el lenguaje y contexto cuidadosamente para determinar el nivel de interés.
+`;
+
+    console.log('Extrayendo información del cliente con IA...');
+    const result = await geminiClient.generateContent(
+      extractionPrompt + "\n\n" + conversationText,
+      "gemini-pro",
+      {
+        temperature: 0.2,
+        maxOutputTokens: 1024,
+        topP: 0.8,
+        topK: 40
+      }
+    );
+    
+    // Intentar parsear el resultado como JSON
+    try {
+      // Limpiar el resultado para asegurar que solo tengamos JSON
+      let jsonText = result.trim();
+      // A veces Gemini devuelve el JSON con texto adicional, intentamos extraer solo el JSON
+      const jsonStart = jsonText.indexOf('{');
+      const jsonEnd = jsonText.lastIndexOf('}') + 1;
+      if (jsonStart >= 0 && jsonEnd > jsonStart) {
+        jsonText = jsonText.substring(jsonStart, jsonEnd);
+      }
+      
+      const clientInfo = JSON.parse(jsonText);
+      console.log('Información del cliente extraída con éxito:', clientInfo);
+      return clientInfo;
+    } catch (parseError) {
+      console.error('Error al parsear resultado de extracción de información:', parseError);
+      console.log('Texto recibido:', result);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error al extraer información del cliente:', error);
+    return null;
+  }
+}
+
+/**
+ * Actualiza o crea un lead en la base de datos con la información extraída
+ */
+async function updateOrCreateLead(clientInfo: any): Promise<void> {
+  if (!clientInfo) return;
+  
+  try {
+    // Primero buscar si ya existe un lead con este número de teléfono
+    const query = {
+      text: `
+        SELECT id FROM leads 
+        WHERE phone = $1 
+        LIMIT 1
+      `,
+      values: [clientInfo.phoneNumber]
+    };
+    
+    const result = await pool.query(query);
+    
+    if (result.rows.length > 0) {
+      // Actualizar lead existente
+      const leadId = result.rows[0].id;
+      
+      // Preparar datos para actualización
+      const updateQuery = {
+        text: `
+          UPDATE leads 
+          SET 
+            name = COALESCE($1, name),
+            company = COALESCE($2, company),
+            notes = 
+              CASE 
+                WHEN notes IS NULL THEN $3
+                ELSE notes || E'\n\nActualización (' || NOW()::text || '):\n' || $3
+              END,
+            status = 
+              CASE 
+                WHEN $4 >= 70 THEN 'hot'
+                WHEN $4 >= 40 THEN 'warm'
+                ELSE 'cold'
+              END,
+            tags = 
+              CASE 
+                WHEN tags IS NULL THEN ARRAY[$5, $6]::text[]
+                ELSE array_append(array_append(tags, $5), $6)
+              END
+          WHERE id = $7
+          RETURNING id
+        `,
+        values: [
+          clientInfo.clientName || null,
+          clientInfo.company || null,
+          `Ubicación: ${clientInfo.location || 'No especificada'}\nInterés: ${clientInfo.serviceInterest || 'No especificado'}\nNivel de interés: ${clientInfo.interestLevel} (${clientInfo.interestPercentage}%)\nNotas: ${clientInfo.notes || 'Ninguna'}`,
+          clientInfo.interestPercentage || 0,
+          `interés-${clientInfo.interestLevel || 'bajo'}`,
+          `servicio-${clientInfo.serviceInterest?.toLowerCase() || 'general'}`,
+          leadId
+        ]
+      };
+      
+      const updateResult = await pool.query(updateQuery);
+      console.log(`Lead actualizado con ID: ${updateResult.rows[0].id}`);
+    } else {
+      // Crear nuevo lead
+      const insertQuery = {
+        text: `
+          INSERT INTO leads (
+            name, 
+            phone, 
+            company, 
+            source, 
+            status, 
+            notes,
+            tags,
+            created_at
+          )
+          VALUES ($1, $2, $3, 'whatsapp', 
+            CASE 
+              WHEN $4 >= 70 THEN 'hot'
+              WHEN $4 >= 40 THEN 'warm'
+              ELSE 'cold'
+            END, 
+            $5,
+            ARRAY[$6, $7]::text[],
+            NOW()
+          )
+          RETURNING id
+        `,
+        values: [
+          clientInfo.clientName || 'Cliente de WhatsApp',
+          clientInfo.phoneNumber,
+          clientInfo.company || null,
+          clientInfo.interestPercentage || 0,
+          `Ubicación: ${clientInfo.location || 'No especificada'}\nInterés: ${clientInfo.serviceInterest || 'No especificado'}\nNivel de interés: ${clientInfo.interestLevel} (${clientInfo.interestPercentage}%)\nNotas: ${clientInfo.notes || 'Ninguna'}`,
+          `interés-${clientInfo.interestLevel || 'bajo'}`,
+          `servicio-${clientInfo.serviceInterest?.toLowerCase() || 'general'}`
+        ]
+      };
+      
+      const insertResult = await pool.query(insertQuery);
+      console.log(`Nuevo lead creado con ID: ${insertResult.rows[0].id}`);
+    }
+  } catch (error) {
+    console.error('Error al actualizar/crear lead:', error);
+  }
+}
+
+/**
  * Maneja un mensaje de WhatsApp entrante para generar una posible respuesta automática
  */
 export async function handleIncomingMessage(message: any) {
@@ -194,6 +382,16 @@ export async function handleIncomingMessage(message: any) {
   if (config.storeConversationHistory) {
     conversationHistory = await getConversationHistory(message.from, 10);
     console.log(`Recuperado historial de conversación para ${message.from}: ${conversationHistory.length} mensajes`);
+  }
+  
+  // Extraer información del cliente y actualizar lead
+  // Solo lo hacemos cada cierto número de mensajes para no sobrecargar
+  if (conversationHistory.length > 0 && conversationHistory.length % 3 === 0) {
+    console.log('Iniciando extracción de información del cliente...');
+    const clientInfo = await extractClientInfo(message.from, conversationHistory, message.body);
+    if (clientInfo) {
+      await updateOrCreateLead(clientInfo);
+    }
   }
   
   // Generar respuesta con IA, incluyendo historial
