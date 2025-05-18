@@ -213,6 +213,8 @@ async function extractClientInfo(chatId: string, conversationHistory: Array<{mes
     // Prompt para extraer información
     const extractionPrompt = `
 Analiza la siguiente conversación y extrae información clave del cliente de forma discreta. 
+ANALIZA CUIDADOSAMENTE cualquier mención a citas o reuniones.
+
 Devuelve SOLAMENTE un objeto JSON con estos campos:
 {
   "phoneNumber": "${chatId.replace('@c.us', '')}", 
@@ -232,7 +234,8 @@ Devuelve SOLAMENTE un objeto JSON con estos campos:
     "description": "descripción de la cita (si se detecta)",
     "date": "fecha en formato YYYY-MM-DD (si se menciona)",
     "time": "hora en formato HH:MM (si se menciona)",
-    "type": "meeting/call/followup (tipo de cita)"
+    "type": "meeting/call/followup (tipo de cita)",
+    "location": "lugar de la cita (si se menciona)"
   },
   "notes": "información adicional relevante"
 }
@@ -244,6 +247,14 @@ Criterios para determinar el nivel de interés:
 
 Si algún campo no se puede determinar, déjalo como null o como cadena vacía. NO INVENTES INFORMACIÓN.
 Analiza el lenguaje y contexto cuidadosamente para determinar el nivel de interés.
+
+IMPORTANTE PARA CITAS (appointment):
+- La fecha actual es: ${new Date().toISOString().split('T')[0]}
+- Si detectas frases como "mañana", "la próxima semana", "el jueves", convierte a formato YYYY-MM-DD
+- Para "mañana" usa: ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+- Para "pasado mañana" usa: ${new Date(Date.now() + 172800000).toISOString().split('T')[0]}
+- Siempre marca "detected": true si encuentras cualquier referencia a reuniones o citas
+- Si mencionan una cita pero no especifican fecha, marca "detected": true pero deja "date" vacío
 `;
 
     console.log('Extrayendo información del cliente con IA...');
@@ -415,7 +426,7 @@ Notas: ${clientInfo.notes || 'Ninguna'}
           notesText,
           clientInfo.interestPercentage || 0,
           tags,
-          leadId
+          existingLeadId
         ]
       };
       
