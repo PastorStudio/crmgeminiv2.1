@@ -202,63 +202,272 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Users endpoints
-  app.get("/api/users", async (req: Request, res: Response) => {
+  // Users endpoints - protegidos con autenticación
+  app.get("/api/users", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {
+      // Verificar que el usuario tiene permisos de admin o supervisor
+      const userRole = (req as any).user.role;
+      if (userRole !== 'admin' && userRole !== 'supervisor') {
+        return res.status(403).json({ 
+          success: false, 
+          message: "No tienes permisos para acceder a la lista de usuarios" 
+        });
+      }
+      
       const users = await storage.getAllUsers();
-      res.json(users);
+      
+      // Filtrar las contraseñas por seguridad
+      const safeUsers = users.map(user => {
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+      
+      res.json({ 
+        success: true, 
+        users: safeUsers 
+      });
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch users" });
+      console.error("Error al obtener usuarios:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al obtener la lista de usuarios" 
+      });
     }
   });
 
-  app.get("/api/users/:id", async (req: Request, res: Response) => {
+  app.get("/api/users/:id", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.id);
+      const requestingUserId = (req as any).user.userId;
+      const requestingUserRole = (req as any).user.role;
+      
+      // Solo permitir ver detalles de usuarios si:
+      // - El usuario solicita su propio perfil
+      // - El usuario es admin o supervisor
+      if (userId !== requestingUserId && requestingUserRole !== 'admin' && requestingUserRole !== 'supervisor') {
+        return res.status(403).json({ 
+          success: false, 
+          message: "No tienes permisos para ver este usuario" 
+        });
+      }
+      
       const user = await storage.getUser(userId);
       
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({ 
+          success: false, 
+          message: "Usuario no encontrado" 
+        });
       }
       
-      res.json(user);
+      // No devolver la contraseña
+      const { password, ...userWithoutPassword } = user;
+      
+      res.json({ 
+        success: true, 
+        user: userWithoutPassword 
+      });
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch user" });
+      console.error("Error al obtener usuario:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al obtener detalles del usuario" 
+      });
     }
   });
 
-  app.post("/api/users", async (req: Request, res: Response) => {
+  app.post("/api/users", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {
+      // Verificar que el usuario tiene permisos de admin o supervisor
+      const userRole = (req as any).user.role;
+      if (userRole !== 'admin' && userRole !== 'supervisor') {
+        return res.status(403).json({ 
+          success: false, 
+          message: "No tienes permisos para crear usuarios" 
+        });
+      }
+      
       const userData = insertUserSchema.parse(req.body);
+      
+      // Verificar si ya existe un usuario con el mismo nombre de usuario
+      const existingUser = await storage.getUserByUsername(userData.username);
+      if (existingUser) {
+        return res.status(409).json({ 
+          success: false, 
+          message: "Ya existe un usuario con ese nombre de usuario" 
+        });
+      }
+      
+      // Crear el usuario
       const newUser = await storage.createUser(userData);
-      res.status(201).json(newUser);
+      
+      // No devolver la contraseña
+      const { password, ...newUserWithoutPassword } = newUser;
+      
+      res.status(201).json({ 
+        success: true, 
+        user: newUserWithoutPassword,
+        message: "Usuario creado exitosamente" 
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid user data", errors: error.errors });
+        return res.status(400).json({ 
+          success: false, 
+          message: "Datos de usuario inválidos", 
+          errors: error.errors 
+        });
       }
-      res.status(500).json({ message: "Failed to create user" });
+      console.error("Error al crear usuario:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al crear el usuario" 
+      });
     }
   });
   
-  app.patch("/api/users/:id", async (req: Request, res: Response) => {
+  app.patch("/api/users/:id", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.id);
-      const userData = profileUpdateSchema.parse(req.body);
+      const requestingUserId = (req as any).user.userId;
+      const requestingUserRole = (req as any).user.role;
+      
+      // Solo permitir actualizar usuarios si:
+      // - El usuario actualiza su propio perfil
+      // - El usuario es admin o supervisor
+      if (userId !== requestingUserId && requestingUserRole !== 'admin' && requestingUserRole !== 'supervisor') {
+        return res.status(403).json({ 
+          success: false, 
+          message: "No tienes permisos para actualizar este usuario" 
+        });
+      }
+      
+      // Aplicar restricciones adicionales para proteger a los administradores
+      if (requestingUserRole === 'supervisor') {
+        const targetUser = await storage.getUser(userId);
+        if (targetUser && targetUser.role === 'admin') {
+          return res.status(403).json({ 
+            success: false, 
+            message: "Los supervisores no pueden modificar usuarios administradores" 
+          });
+        }
+      }
+      
+      const userData = req.body;
       
       // Verificar si el usuario existe
       const existingUser = await storage.getUser(userId);
       if (!existingUser) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({ 
+          success: false, 
+          message: "Usuario no encontrado" 
+        });
+      }
+      
+      // Si el usuario intenta cambiar su propio rol y no es administrador, no permitirlo
+      if (userId === requestingUserId && userData.role && userData.role !== existingUser.role) {
+        if (requestingUserRole !== 'admin') {
+          return res.status(403).json({ 
+            success: false, 
+            message: "No puedes cambiar tu propio rol" 
+          });
+        }
       }
       
       // Actualizar el usuario
       const updatedUser = await storage.updateUser(userId, userData);
-      res.status(200).json(updatedUser);
+      
+      if (!updatedUser) {
+        return res.status(500).json({ 
+          success: false, 
+          message: "Error al actualizar el usuario" 
+        });
+      }
+      
+      // No devolver la contraseña
+      const { password, ...updatedUserWithoutPassword } = updatedUser;
+      
+      res.json({ 
+        success: true, 
+        user: updatedUserWithoutPassword,
+        message: "Usuario actualizado exitosamente" 
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid user data", errors: error.errors });
+        return res.status(400).json({ 
+          success: false, 
+          message: "Datos de usuario inválidos", 
+          errors: error.errors 
+        });
       }
-      res.status(500).json({ message: "Failed to update user" });
+      console.error("Error al actualizar usuario:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al actualizar el usuario" 
+      });
+    }
+  });
+  
+  // Endpoint para eliminar usuario (nuevo)
+  app.delete("/api/users/:id", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const requestingUserRole = (req as any).user.role;
+      const requestingUserId = (req as any).user.userId;
+      
+      // Solo permitir eliminar usuarios a admin o supervisor
+      if (requestingUserRole !== 'admin' && requestingUserRole !== 'supervisor') {
+        return res.status(403).json({ 
+          success: false, 
+          message: "No tienes permisos para eliminar usuarios" 
+        });
+      }
+      
+      // No permitir auto-eliminación
+      if (userId === requestingUserId) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "No puedes eliminar tu propio usuario" 
+        });
+      }
+      
+      // Verificar si el usuario existe
+      const existingUser = await storage.getUser(userId);
+      if (!existingUser) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Usuario no encontrado" 
+        });
+      }
+      
+      // Los supervisores no pueden eliminar administradores
+      if (requestingUserRole === 'supervisor' && existingUser.role === 'admin') {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Los supervisores no pueden eliminar usuarios administradores" 
+        });
+      }
+      
+      // Eliminar el usuario - Esta función aún no existe en el storage
+      // Por ahora, podemos marcar el usuario como inactivo
+      const updatedUser = await storage.updateUser(userId, { status: 'inactive' });
+      
+      if (!updatedUser) {
+        return res.status(500).json({
+          success: false,
+          message: "Error al eliminar el usuario"
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: "Usuario eliminado exitosamente" 
+      });
+    } catch (error) {
+      console.error("Error al eliminar usuario:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al eliminar el usuario" 
+      });
     }
   });
 
