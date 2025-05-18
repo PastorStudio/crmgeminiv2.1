@@ -89,7 +89,7 @@ export function TemplateManager() {
     mutationFn: (templateData: Omit<Template, "id" | "createdAt" | "updatedAt">) => {
       return apiRequest("/api/message-templates", {
         method: "POST",
-        data: templateData
+        body: templateData // Cambiado de 'data' a 'body' para que coincida con lo que espera apiRequest
       });
     },
     onSuccess: () => {
