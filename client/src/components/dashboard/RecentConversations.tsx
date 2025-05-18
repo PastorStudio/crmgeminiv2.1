@@ -121,14 +121,34 @@ export default function RecentConversations() {
                 whatsappConversations
                   .filter(chat => !chat.isGroup) // Filtrar grupos
                   .slice(0, 5).map((chat) => {
+                  // Intentar obtener el último mensaje de diferentes formas
                   const lastMsg = chat.messages && chat.messages.length > 0 
                     ? chat.messages[chat.messages.length - 1] 
                     : null;
                   
-                  // Si no hay mensaje, usar el lastMessage del objeto chat
-                  const lastMessage = lastMsg || chat.lastMessage || {};
-                  const messageBody = lastMsg?.body || lastMessage?.body || 'Sin mensajes';
-                  const timestamp = lastMsg?.timestamp || lastMessage?.timestamp || null;
+                  // Obtener el último mensaje de la forma más confiable posible
+                  let messageBody = 'Sin mensajes';
+                  let timestamp = null;
+                  
+                  // Prioridad 1: Si tenemos el último mensaje en el array de mensajes
+                  if (lastMsg && lastMsg.body) {
+                    messageBody = lastMsg.body;
+                    timestamp = lastMsg.timestamp;
+                  } 
+                  // Prioridad 2: Si tenemos lastMessage como una propiedad del chat
+                  else if (chat.lastMessage) {
+                    if (typeof chat.lastMessage === 'string') {
+                      messageBody = chat.lastMessage;
+                    } else if (typeof chat.lastMessage === 'object' && chat.lastMessage.body) {
+                      messageBody = chat.lastMessage.body;
+                      timestamp = chat.lastMessage.timestamp;
+                    }
+                  }
+                  // Prioridad 3: Usar timestamp y un mensaje genérico
+                  else if (chat.timestamp) {
+                    messageBody = 'Mensaje reciente';
+                    timestamp = chat.timestamp * 1000; // Convertir a milisegundos
+                  }
                   
                   return (
                     <li key={chat.id}>
