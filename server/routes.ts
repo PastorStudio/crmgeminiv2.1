@@ -848,7 +848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Rutas para gestión automatizada con IA
+  // Rutas para gestión automatizada con IA - EXCLUSIVAMENTE con Gemini
   app.post("/api/auto/manage-lead", async (req: Request, res: Response) => {
     try {
       const { leadId } = req.body;
@@ -860,12 +860,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Importamos el servicio bajo demanda
-      const taskTagServiceModule = await import('./services/taskTagService');
-      // Obtenemos la instancia del servicio
+      // Importamos el servicio Gemini exclusivamente para esta funcionalidad
       const { geminiService } = await import('./services/geminiService');
+      
+      // Validamos que el servicio Gemini esté disponible
+      if (!geminiService || !geminiService.isReady()) {
+        return res.status(400).json({
+          success: false,
+          message: "El servicio de Gemini no está disponible. El auto-movimiento de leads requiere específicamente Gemini."
+        });
+      }
+      
+      // Importamos el servicio de tareas y etiquetas
+      const taskTagServiceModule = await import('./services/taskTagService');
       const taskTagService = new taskTagServiceModule.default(geminiService);
       
+      console.log("Iniciando gestión automática de lead con Gemini (exclusivamente)");
       const result = await taskTagService.manageLead(parseInt(leadId));
       
       // Evitamos duplicar la propiedad success si ya viene en result
@@ -889,7 +899,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Ruta para generar tareas automáticas
+  // Ruta para generar tareas automáticas - EXCLUSIVAMENTE con Gemini
   app.post("/api/auto/generate-tasks", async (req: Request, res: Response) => {
     try {
       const { leadId } = req.body;
@@ -901,12 +911,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Importamos el servicio bajo demanda
-      const taskTagServiceModule = await import('./services/taskTagService');
-      // Obtenemos la instancia del servicio
+      // Importamos el servicio Gemini exclusivamente para esta funcionalidad
       const { geminiService } = await import('./services/geminiService');
+      
+      // Validamos que el servicio Gemini esté disponible
+      if (!geminiService || !geminiService.isReady()) {
+        return res.status(400).json({
+          success: false,
+          message: "El servicio de Gemini no está disponible. La generación automática de tareas requiere específicamente Gemini."
+        });
+      }
+      
+      // Importamos el servicio de tareas y etiquetas
+      const taskTagServiceModule = await import('./services/taskTagService');
       const taskTagService = new taskTagServiceModule.default(geminiService);
       
+      console.log("Iniciando generación automática de tareas con Gemini (exclusivamente)");
       const tasks = await taskTagService.generateTasks(parseInt(leadId));
       
       // Evitamos duplicar la propiedad success si ya viene en tasks
