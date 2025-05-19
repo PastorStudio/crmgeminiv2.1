@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import { WhatsAppQRCode } from './WhatsAppQRCode';
+import { ViewModeToggleButton } from './ViewModeToggleButton';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateAutoResponse } from '@/lib/gemini';
 import { chatContext } from '@/lib/chatContext';
@@ -943,11 +944,12 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
             <div className="border-b p-2">
               {/* Selector de cuentas WhatsApp */}
               <div className="flex items-center justify-between mb-2">
-                <select 
-                  className="flex-1 mr-2 rounded-md border border-gray-300 py-1 px-2 text-sm font-medium"
-                  value={currentAccountId === null ? '' : currentAccountId}
-                  disabled={viewMode === 'all'}
-                  onChange={(e) => {
+                <div className="flex-1 mr-2">
+                  <select 
+                    className="w-full rounded-md border border-gray-300 py-1 px-2 text-sm font-medium"
+                    value={currentAccountId === null ? '' : currentAccountId}
+                    disabled={viewMode === 'all'}
+                    onChange={(e) => {
                     // Si no hay valor seleccionado, no hacer nada
                     if (!e.target.value) return;
                     
