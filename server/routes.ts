@@ -925,7 +925,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Activities endpoints
   app.get("/api/activities", async (req: Request, res: Response) => {
     try {
-      // Devolvemos un array vacío para evitar pantallas en blanco
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const leadId = req.query.leadId ? parseInt(req.query.leadId as string) : undefined;
+      
+      console.log(`Solicitud de actividades recibida - userId: ${userId}, leadId: ${leadId}`);
+      
+      // Filtrar por usuario si se proporciona
+      if (userId) {
+        try {
+          const activities = await storage.getActivitiesByUser(userId);
+          console.log(`Actividades encontradas para usuario ${userId}: ${activities.length}`);
+          return res.json(activities);
+        } catch (error) {
+          console.error(`Error al obtener actividades para usuario ${userId}:`, error);
+          return res.json([]);
+        }
+      }
+      
+      // Filtrar por lead si se proporciona
+      if (leadId) {
+        try {
+          const activities = await storage.getActivitiesByLead(leadId);
+          console.log(`Actividades encontradas para lead ${leadId}: ${activities.length}`);
+          return res.json(activities);
+        } catch (error) {
+          console.error(`Error al obtener actividades para lead ${leadId}:`, error);
+          return res.json([]);
+        }
+      }
+      
+      // Si no se proporciona filtro, intentar devolver todas las actividades
+      try {
+        const activities = await db.execute(sql`
+          SELECT * FROM activities 
+          ORDER BY start_time DESC
+          LIMIT 100
+        `);
+        
+        if (activities.rows) {
+          const formattedActivities = activities.rows.map(activity => ({
+            id: activity.id,
+            leadId: activity.lead_id,
+            userId: activity.user_id,
+            type: activity.type || 'meeting',
+            title: activity.title,
+            description: activity.description,
+            startTime: activity.start_time,
+            endTime: activity.end_time,
+            completed: activity.completed || false,
+            createdAt: activity.created_at,
+            createdBy: activity.created_by,
+            aiGenerated: activity.ai_generated || false
+          }));
+          
+          console.log(`Total de actividades encontradas: ${formattedActivities.length}`);
+          return res.json(formattedActivities);
+        }
+      } catch (error) {
+        console.error("Error al recuperar todas las actividades:", error);
+      }
+      
+      // Si todo lo demás falla, devolvemos un array vacío
       return res.json([]);
     } catch (error) {
       console.error("Error en endpoint de actividades:", error);
