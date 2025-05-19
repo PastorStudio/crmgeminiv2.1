@@ -947,7 +947,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   className="flex-1 mr-2 rounded-md border border-gray-300 py-1 px-2 text-sm font-medium"
                   value={currentAccountId === null ? '' : currentAccountId}
                   disabled={viewMode === 'all'}
-                
                   onChange={(e) => {
                     // Si no hay valor seleccionado, no hacer nada
                     if (!e.target.value) return;
