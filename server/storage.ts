@@ -137,20 +137,17 @@ export class DatabaseStorage implements IStorage {
   async initializeData(): Promise<void> {
     try {
       // Verificar si ya existen usuarios
-      const existingUsers = await this.getAllUsers();
+      // Usar consulta SQL directa para evitar problemas con nombres de columnas
+      const existingUsers = await db.execute(sql`SELECT * FROM users LIMIT 1`);
       
-      if (existingUsers.length === 0) {
+      if (existingUsers.rows.length === 0) {
         console.log("Base de datos lista para recibir datos reales. No se generarán datos de ejemplo.");
         
-        // Crear usuario administrador
-        await db.insert(users).values({
-          username: "admin",
-          password: "admin123",
-          fullName: "Administrador", // Este campo existe como 'fullName' en el esquema
-          email: "admin@geminicrm.com",
-          role: "admin",
-          status: "active"
-        });
+        // Crear usuario administrador usando consulta SQL directa
+        await db.execute(sql`
+          INSERT INTO users (username, password, "fullName", email, role, status)
+          VALUES ('admin', 'admin123', 'Administrador', 'admin@geminicrm.com', 'admin', 'active')
+        `);
         
         // Crear superadministrador
         await db.insert(users).values({
