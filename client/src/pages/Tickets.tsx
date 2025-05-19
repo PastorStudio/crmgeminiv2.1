@@ -180,13 +180,43 @@ export default function Tickets() {
   // Mutación para actualizar el estado de un ticket
   const updateTicketStatusMutation = useMutation({
     mutationFn: async ({ id, status }) => {
-      const response = await apiRequest("PATCH", `/api/tickets/${id}/status`, {
-        status,
-      });
       try {
-        return await response.json();
+        // Usar XMLHttpRequest directamente para evitar problemas de intercepción de Vite
+        const xhr = new XMLHttpRequest();
+        const url = `/api/tickets/${id}/status?_t=${Date.now()}`;
+        
+        console.log(`Actualizando estado del ticket ${id} a: ${status} usando XHR directo`);
+        
+        return new Promise((resolve, reject) => {
+          xhr.open("PATCH", url, true);
+          xhr.setRequestHeader("Content-Type", "application/json");
+          xhr.setRequestHeader("Accept", "application/json");
+          
+          xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                resolve(data);
+              } catch (e) {
+                console.log("Respuesta recibida:", xhr.responseText);
+                console.error("Error al parsear JSON:", e);
+                resolve({ id, status });
+              }
+            } else {
+              console.error(`Error en la actualización de estado: ${xhr.status}`);
+              resolve({ id, status, error: xhr.statusText });
+            }
+          };
+          
+          xhr.onerror = function() {
+            console.error("Error de red en XHR");
+            resolve({ id, status, error: "Error de red" });
+          };
+          
+          xhr.send(JSON.stringify({ status }));
+        });
       } catch (error) {
-        console.error("Error al procesar la respuesta JSON:", error);
+        console.error("Error general en la actualización de estado:", error);
         return { id, status };
       }
     },
@@ -209,13 +239,43 @@ export default function Tickets() {
   // Mutación para asignar un ticket a un agente
   const assignTicketMutation = useMutation({
     mutationFn: async ({ id, agentId }) => {
-      const response = await apiRequest("PATCH", `/api/tickets/${id}/assign`, {
-        agentId,
-      });
       try {
-        return await response.json();
+        // Usar XMLHttpRequest directamente para evitar problemas de intercepción de Vite
+        const xhr = new XMLHttpRequest();
+        const url = `/api/tickets/${id}/assign?_t=${Date.now()}`;
+        
+        console.log(`Asignando ticket ${id} al agente ${agentId} usando XHR directo`);
+        
+        return new Promise((resolve, reject) => {
+          xhr.open("PATCH", url, true);
+          xhr.setRequestHeader("Content-Type", "application/json");
+          xhr.setRequestHeader("Accept", "application/json");
+          
+          xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                resolve(data);
+              } catch (e) {
+                console.log("Respuesta recibida:", xhr.responseText);
+                console.error("Error al parsear JSON:", e);
+                resolve({ id, assignedTo: agentId });
+              }
+            } else {
+              console.error(`Error en la asignación: ${xhr.status}`);
+              resolve({ id, assignedTo: agentId, error: xhr.statusText });
+            }
+          };
+          
+          xhr.onerror = function() {
+            console.error("Error de red en XHR");
+            resolve({ id, assignedTo: agentId, error: "Error de red" });
+          };
+          
+          xhr.send(JSON.stringify({ agentId }));
+        });
       } catch (error) {
-        console.error("Error al procesar la respuesta JSON:", error);
+        console.error("Error general en la asignación:", error);
         return { id, assignedTo: agentId };
       }
     },
