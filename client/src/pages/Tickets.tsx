@@ -106,11 +106,46 @@ export default function Tickets() {
     queryKey: ["/api/agents"],
     queryFn: async () => {
       try {
+        console.log("Iniciando solicitud a /api/agents...");
         const response = await fetch("/api/agents");
+        console.log("Respuesta de /api/agents:", response.status, response.statusText);
+        
         if (!response.ok) {
-          return [];
+          console.warn("Respuesta no válida de /api/agents:", response.status, response.statusText);
+          // Usar XMLHttpRequest como alternativa cuando fetch falla
+          return new Promise((resolve) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", "/api/agents", true);
+            xhr.setRequestHeader("Accept", "application/json");
+            
+            xhr.onload = function() {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                  const data = JSON.parse(xhr.responseText);
+                  console.log("Datos de agentes recibidos vía XHR:", data.length || 0, "agentes");
+                  resolve(data);
+                } catch (e) {
+                  console.error("Error al parsear respuesta XHR:", e);
+                  resolve([]);
+                }
+              } else {
+                console.warn("Error en solicitud XHR de agentes:", xhr.status);
+                resolve([]);
+              }
+            };
+            
+            xhr.onerror = function() {
+              console.error("Error de red en solicitud XHR de agentes");
+              resolve([]);
+            };
+            
+            xhr.send();
+          });
         }
-        return response.json();
+        
+        const data = await response.json();
+        console.log("Datos de agentes recibidos:", data.length || 0, "agentes");
+        return data;
       } catch (error) {
         console.error("Error al cargar agentes:", error);
         return [];
