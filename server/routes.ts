@@ -73,10 +73,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/chat-assignments", chatAssignmentsRouter);
   app.use("/api/agents", agentsRouter);
   
-  // Registrar rutas para cuentas de WhatsApp y asignaciones de chat
-  app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
-  app.use("/api/chat-assignments", chatAssignmentsRouter);
-  
   // Ruta para la página de prueba de la galería de medios
   app.get("/media-gallery-test", (req: Request, res: Response) => {
     res.sendFile(path.join(process.cwd(), "temp", "upload-test.html"));
