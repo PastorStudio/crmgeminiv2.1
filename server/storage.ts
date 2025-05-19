@@ -146,7 +146,7 @@ export class DatabaseStorage implements IStorage {
         await db.insert(users).values({
           username: "admin",
           password: "admin123",
-          fullName: "Administrador",
+          fullName: "Administrador", // Este campo existe como 'fullName' en el esquema
           email: "admin@geminicrm.com",
           role: "admin",
           status: "active"
@@ -373,8 +373,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDashboardStats(): Promise<DashboardStats | undefined> {
-    const [stats] = await db.select().from(dashboardStats);
-    return stats;
+    try {
+      const [stats] = await db.select().from(dashboardStats);
+      return stats;
+    } catch (error) {
+      console.error("Error al obtener estadísticas del dashboard:", error);
+      
+      // Si hay un error en la consulta, intentamos crear una estructura básica
+      return {
+        id: 1,
+        totalLeads: 0,
+        newLeadsThisMonth: 0,
+        activeDeals: 0,
+        closedDealsThisMonth: 0,
+        totalRevenue: 0,
+        revenueThisMonth: 0,
+        leadsDistribution: "{}",
+        conversionRates: "{}",
+        topPerformers: "[]",
+        updatedAt: new Date()
+      };
+    }
   }
 
   async updateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats> {
