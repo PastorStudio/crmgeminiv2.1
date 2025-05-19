@@ -168,10 +168,24 @@ ticketsRouter.patch('/:id/status', async (req: Request, res: Response) => {
     
     const ticket = result.rows[0];
     
-    // Formatear la respuesta
+    // Formatear la respuesta completa del ticket para asegurar que todos los campos se actualicen en el frontend
     const formattedTicket = {
       id: ticket.id,
-      status: ticket.status
+      title: ticket.title,
+      description: ticket.description,
+      status: ticket.status || 'nuevo',
+      priority: ticket.priority || 'media',
+      category: ticket.category || 'consulta',
+      createdAt: ticket.created_at,
+      updatedAt: ticket.updated_at,
+      dueDate: ticket.due_date,
+      assignedTo: ticket.assigned_agent_id,
+      assignedToName: null, // Se actualizará en la siguiente petición GET
+      assignedToEmail: null,
+      createdBy: ticket.created_by,
+      notes: ticket.notes,
+      tags: ticket.tags,
+      isInternal: ticket.is_internal
     };
     
     console.log(`Estado del ticket ${id} actualizado con éxito, retornando:`, formattedTicket);
@@ -219,12 +233,24 @@ ticketsRouter.patch('/:id/assign', async (req: Request, res: Response) => {
     
     const ticket = result.rows[0];
     
-    // Formatear la respuesta
+    // Formatear la respuesta completa del ticket para asegurar que todos los campos se actualicen en el frontend
     const formattedTicket = {
       id: ticket.id,
+      title: ticket.title,
+      description: ticket.description,
+      status: ticket.status || 'nuevo',
+      priority: ticket.priority || 'media',
+      category: ticket.category || 'consulta',
+      createdAt: ticket.created_at,
+      updatedAt: ticket.updated_at,
+      dueDate: ticket.due_date,
       assignedTo: ticket.assigned_agent_id,
       assignedToName: agentInfo ? agentInfo.name : null,
-      assignedToEmail: agentInfo ? agentInfo.email : null
+      assignedToEmail: agentInfo ? agentInfo.email : null,
+      createdBy: ticket.created_by,
+      notes: ticket.notes,
+      tags: ticket.tags,
+      isInternal: ticket.is_internal
     };
     
     console.log(`Ticket ${id} asignado con éxito, retornando:`, formattedTicket);
