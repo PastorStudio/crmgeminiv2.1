@@ -546,63 +546,60 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
         if (totalProcessTime > 2000) {
           console.warn('⚠️ Advertencia: Procesamiento de mensaje superó el objetivo de 2 segundos');
         }
-          
-          // Intentar enviar notificación mediante el servicio de notificaciones
-          try {
-            const { notificationService, NotificationType } = await import('../services/notificationService');
-            if (notificationService && NotificationType) {
-              console.log('Enviando notificación de nuevo mensaje mediante servicio de notificaciones');
-              notificationService.broadcastNotification({
-                id: Date.now().toString(),
-                type: NotificationType.NEW_MESSAGE,
-                timestamp: new Date(),
-                data: {
-                  channel: 'whatsapp',
-                  chatId,
-                  contactId,
-                  contactName,
-                  body: message.body,
-                  timestamp: Date.now(),
-                  messageId: message.id?._serialized || Date.now().toString(),
-                  priority: 'high'
-                }
-              });
-            }
-          } catch (notificationError) {
-            console.warn('No se pudo enviar notificación mediante servicio:', notificationError);
+        
+        // Intentar enviar notificación mediante el servicio de notificaciones
+        try {
+          const { notificationService, NotificationType } = await import('../services/notificationService');
+          if (notificationService && NotificationType) {
+            console.log('Enviando notificación de nuevo mensaje mediante servicio de notificaciones');
+            notificationService.broadcastNotification({
+              id: Date.now().toString(),
+              type: NotificationType.NEW_MESSAGE,
+              timestamp: new Date(),
+              data: {
+                channel: 'whatsapp',
+                chatId,
+                contactId,
+                contactName,
+                body: message.body,
+                timestamp: Date.now(),
+                messageId: message.id?._serialized || Date.now().toString(),
+                priority: 'high'
+              }
+            });
           }
+        } catch (notificationError) {
+          console.warn('No se pudo enviar notificación mediante servicio:', notificationError);
+        }
+        
+        // Procesar respuesta automática si está configurada
+        // Usamos un enfoque más directo para evitar problemas de importación circular
+        try {
+          // Importar el servicio
+          const autoResponseManager = await import('./autoResponseManager');
           
-          // Procesar respuesta automática si está configurada
-          // Usamos un enfoque más directo para evitar problemas de importación circular
-          try {
-            // Importar el servicio
-            const autoResponseManager = await import('./autoResponseManager');
+          if (autoResponseManager && autoResponseManager.autoResponseService) {
+            console.log('Procesando mensaje para respuesta automática');
             
-            if (autoResponseManager && autoResponseManager.autoResponseService) {
-              console.log('Procesando mensaje para respuesta automática');
-              
-              // Reenviar mensaje al controlador de respuestas automáticas
-              setTimeout(async () => {
-                try {
-                  await autoResponseManager.autoResponseService.handleIncomingMessage({
-                    from: contactId,
-                    body: message.body,
-                    getChat: async () => chat,
-                    _data: message._data,
-                    id: message.id
-                  });
-                } catch (innerError) {
-                  console.error('Error en procesamiento asíncrono de respuesta:', innerError);
-                }
-              }, 500); // Pequeño retraso para asegurar que el mensaje se procese correctamente
-            } else {
-              console.log('Servicio de respuesta automática no disponible');
-            }
-          } catch (autoResponseError) {
-            console.error('Error al cargar servicio de respuesta automática:', autoResponseError);
+            // Reenviar mensaje al controlador de respuestas automáticas
+            setTimeout(async () => {
+              try {
+                await autoResponseManager.autoResponseService.handleIncomingMessage({
+                  from: contactId,
+                  body: message.body,
+                  getChat: async () => chat,
+                  _data: message._data,
+                  id: message.id
+                });
+              } catch (innerError) {
+                console.error('Error en procesamiento asíncrono de respuesta:', innerError);
+              }
+            }, 500); // Pequeño retraso para asegurar que el mensaje se procese correctamente
+          } else {
+            console.log('Servicio de respuesta automática no disponible');
           }
-        } catch (dbError) {
-          console.error('Error guardando mensaje en la base de datos:', dbError);
+        } catch (autoResponseError) {
+          console.error('Error al cargar servicio de respuesta automática:', autoResponseError);
         }
       } catch (error) {
         console.error('Error al procesar notificación de mensaje:', error);
