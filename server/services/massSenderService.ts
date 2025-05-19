@@ -2,7 +2,7 @@ import { whatsappService } from './whatsappServiceImpl';
 import { messageTemplateService } from './messageTemplateService';
 import { excelImportService, type ContactData, type TemplateContactBatch } from './excelImportService';
 import { db } from '../db';
-import { marketingCampaigns, type MarketingCampaign } from '@shared/schema';
+import { campaigns, type Campaign as MarketingCampaign } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { EventEmitter } from 'events';
 
@@ -60,7 +60,7 @@ export class MassSenderService extends EventEmitter {
 
   // Obtener todas las campañas
   async getCampaigns(): Promise<MarketingCampaign[]> {
-    return db.select().from(marketingCampaigns).orderBy(marketingCampaigns.createdAt);
+    return db.select().from(campaigns).orderBy(campaigns.createdAt);
   }
 
   // Obtener una campaña por ID

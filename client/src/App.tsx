@@ -9,6 +9,7 @@ import Calendar from './pages/Calendar';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import Tasks from './pages/Tasks';
+import Tickets from './pages/Tickets';
 import MediaGallery from './pages/MediaGallery';
 import MessageTemplates from './pages/MessageTemplates';
 import MassSender from './pages/MassSender';
@@ -194,6 +195,13 @@ const AppRoutes: React.FC = () => {
                 Tareas
               </a>
               
+              <a href="/tickets" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/tickets' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
+                </svg>
+                Tickets
+              </a>
+              
               {/* Análisis y Recursos */}
               <div className="px-3 pt-3 pb-1">
                 <span className="text-xs uppercase font-semibold text-white/70">Análisis y Recursos</span>
@@ -341,6 +349,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/messages" component={() => <PrivateRoute component={Messages} path="/messages" />} />
                 <Route path="/calendar" component={() => <PrivateRoute component={Calendar} path="/calendar" />} />
                 <Route path="/tasks" component={() => <PrivateRoute component={Tasks} path="/tasks" />} />
+                <Route path="/tickets" component={() => <PrivateRoute component={Tickets} path="/tickets" />} />
                 <Route path="/analytics" component={() => <PrivateRoute component={Analytics} path="/analytics" />} />
                 <Route path="/settings" component={() => <PrivateRoute component={Settings} path="/settings" />} />
                 <Route path="/media-gallery" component={() => <PrivateRoute component={MediaGallery} path="/media-gallery" />} />
