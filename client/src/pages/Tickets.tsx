@@ -220,8 +220,19 @@ export default function Tickets() {
         return { id, status };
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Actualizar manualmente la caché con el ticket actualizado
+      const currentData = queryClient.getQueryData<any[]>(["/api/tickets"]);
+      if (currentData) {
+        const updatedData = currentData.map(ticket => 
+          ticket.id === data.id ? { ...ticket, ...data } : ticket
+        );
+        queryClient.setQueryData(["/api/tickets"], updatedData);
+      }
+      
+      // Invalidar la caché para asegurar que se obtengan datos frescos
       queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
+      
       toast({
         title: "Estado actualizado",
         description: "El estado del ticket ha sido actualizado",
@@ -279,8 +290,19 @@ export default function Tickets() {
         return { id, assignedTo: agentId };
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Actualizar manualmente la caché con el ticket actualizado
+      const currentData = queryClient.getQueryData<any[]>(["/api/tickets"]);
+      if (currentData) {
+        const updatedData = currentData.map(ticket => 
+          ticket.id === data.id ? { ...ticket, ...data } : ticket
+        );
+        queryClient.setQueryData(["/api/tickets"], updatedData);
+      }
+      
+      // Invalidar la caché para asegurar que se obtengan datos frescos
       queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
+      
       toast({
         title: "Ticket asignado",
         description: "El ticket ha sido asignado correctamente",
