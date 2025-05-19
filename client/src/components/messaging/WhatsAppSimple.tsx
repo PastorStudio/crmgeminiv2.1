@@ -854,7 +854,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
               <div className="mb-2">
                 <select 
                   className="w-full rounded-md border border-gray-300 py-1 px-2 text-sm font-medium"
-                  value={currentAccountId}
+                  value={currentAccountId === null ? '' : currentAccountId}
                   onChange={(e) => {
                     const newAccountId = Number(e.target.value);
                     const accountName = whatsappAccounts.find(acc => acc.id === newAccountId)?.name || 'seleccionada';
