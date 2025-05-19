@@ -3,6 +3,7 @@ import { messageTemplateService } from './messageTemplateService';
 import { excelImportService, type ContactData, type TemplateContactBatch } from './excelImportService';
 import { db } from '../db';
 import { campaigns, type Campaign as MarketingCampaign } from '@shared/schema';
+import { sql } from 'drizzle-orm';
 import { eq } from 'drizzle-orm';
 import { EventEmitter } from 'events';
 
@@ -60,14 +61,54 @@ export class MassSenderService extends EventEmitter {
 
   // Obtener todas las campañas
   async getCampaigns(): Promise<MarketingCampaign[]> {
-    return db.select().from(campaigns).orderBy(campaigns.createdAt);
+    try {
+      // Comprobar si la tabla existe
+      const tableExists = await db.execute(sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = 'campaigns'
+        );
+      `);
+      
+      const exists = tableExists.rows && tableExists.rows[0] && tableExists.rows[0].exists;
+      
+      if (exists) {
+        return db.select().from(campaigns).orderBy(campaigns.createdAt);
+      } else {
+        console.log("Tabla 'campaigns' no existe, devolviendo lista vacía");
+        return [];
+      }
+    } catch (error) {
+      console.error("Error al obtener campañas:", error);
+      return [];
+    }
   }
 
   // Obtener una campaña por ID
   async getCampaignById(id: number): Promise<MarketingCampaign | undefined> {
-    const result = await db.select().from(marketingCampaigns)
-      .where(eq(marketingCampaigns.id, id));
-    return result[0];
+    try {
+      // Verificar si la tabla existe
+      const tableExists = await db.execute(sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = 'campaigns'
+        );
+      `);
+      
+      const exists = tableExists.rows && tableExists.rows[0] && tableExists.rows[0].exists;
+      
+      if (exists) {
+        const result = await db.select().from(campaigns)
+          .where(eq(campaigns.id, id));
+        return result[0];
+      } else {
+        console.log("Tabla 'campaigns' no existe, devolviendo undefined");
+        return undefined;
+      }
+    } catch (error) {
+      console.error("Error al obtener campaña por ID:", error);
+      return undefined;
+    }
   }
 
   // Crear una nueva campaña

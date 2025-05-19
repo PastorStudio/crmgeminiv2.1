@@ -17,6 +17,7 @@ import { z } from "zod";
 import { apiKeyManager } from "./services/apiKeyManager";
 import { db } from "./db";
 import jwt from "jsonwebtoken";
+import fixRouterTemp from "./routes/routeFixTemp";
 // Importar las rutas de WhatsApp
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
@@ -75,6 +76,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/chat-assignments", chatAssignmentsRouter);
   app.use("/api/agents", agentsRouter);
   app.use("/api/tickets", ticketsRouter);
+  
+  // Herramientas de mantenimiento y correcciones de base de datos
+  app.use("/api/fix", fixRouterTemp);
   
   // Endpoint directo para eliminar todos los leads
   app.delete("/api/leads/delete-all", async (req: Request, res: Response) => {
