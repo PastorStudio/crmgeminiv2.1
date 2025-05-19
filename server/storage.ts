@@ -374,22 +374,42 @@ export class DatabaseStorage implements IStorage {
 
   async getDashboardStats(): Promise<DashboardStats | undefined> {
     try {
-      const [stats] = await db.select().from(dashboardStats);
-      return stats;
-    } catch (error) {
-      console.error("Error al obtener estadísticas del dashboard:", error);
+      // Intentar obtener con SQL directo para evitar problemas de mapeo de columnas
+      try {
+        const result = await db.execute(sql`SELECT * FROM dashboard_stats LIMIT 1`);
+        if (result.rows && result.rows.length > 0) {
+          return result.rows[0] as DashboardStats;
+        }
+      } catch (sqlError) {
+        console.error("Error en SQL directo para dashboard stats:", sqlError);
+      }
       
-      // Si hay un error en la consulta, intentamos crear una estructura básica
+      // Si no hay resultados o hay error, devolver datos predeterminados
       return {
         id: 1,
         totalLeads: 0,
         newLeadsThisMonth: 0,
         activeDeals: 0,
-        closedDealsThisMonth: 0,
-        totalRevenue: 0,
-        revenueThisMonth: 0,
-        leadsDistribution: "{}",
-        conversionRates: "{}",
+        leadsInNegotiation: 0,
+        conversionRate: 0,
+        averageDealSize: 0,
+        revenue: 0,
+        topPerformers: "[]",
+        updatedAt: new Date()
+      };
+    } catch (error) {
+      console.error("Error general al obtener estadísticas del dashboard:", error);
+      
+      // En caso de error, devolver datos predeterminados
+      return {
+        id: 1,
+        totalLeads: 0,
+        newLeadsThisMonth: 0,
+        activeDeals: 0,
+        leadsInNegotiation: 0,
+        conversionRate: 0,
+        averageDealSize: 0,
+        revenue: 0,
         topPerformers: "[]",
         updatedAt: new Date()
       };
