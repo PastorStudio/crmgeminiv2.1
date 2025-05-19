@@ -104,12 +104,31 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   
-  // Hook para WebSockets
+  // Hook para WebSockets con notificaciones en tiempo real (<2s)
   const { 
-    sendMessage: sendWSMessage, 
-    lastMessage, 
-    connectionStatus 
-  } = useWebSocket();
+    isConnected, 
+    lastMessage,
+    connect,
+    disconnect
+  } = useWebSocket({
+    onNotification: (notification) => {
+      // Procesar notificaciones de WhatsApp en tiempo real (<2s)
+      if (notification.type === NotificationType.NEW_MESSAGE) {
+        // Actualizar datos inmediatamente sin esperar al polling
+        if (currentChat && notification.data.chatId === currentChat) {
+          refetchMessages();
+        }
+        // Notificar al usuario de mensajes nuevos solo si no es el chat actual
+        if (currentChat !== notification.data.chatId) {
+          toast({
+            title: "Nuevo mensaje",
+            description: `${notification.data.contactName}: ${notification.data.body}`,
+            variant: "default"
+          });
+        }
+      }
+    }
+  });
   
   // Toast para notificaciones
   const { toast } = useToast();
@@ -330,17 +349,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       refetchChats();
     }, 100); // Pequeño retraso para asegurar que todo está listo
     
-    // Notificar sobre el cambio de cuenta mediante WebSocket si está disponible
-    if (sendWSMessage) {
-      try {
-        sendWSMessage({
-          type: 'ACCOUNT_CHANGED',
-          accountId: currentAccountId
-        });
-      } catch (error) {
-        console.error('Error notificando cambio de cuenta:', error);
-      }
-    }
+    // WebSocket ya está configurado y conectado automáticamente
+    // No es necesario enviar mensajes manualmente para cambio de cuenta
     
     // Actualizar estado en el almacenamiento local para persistencia
     localStorage.setItem('lastWhatsAppAccount', currentAccountId.toString());
