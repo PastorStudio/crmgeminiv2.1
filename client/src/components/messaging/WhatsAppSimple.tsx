@@ -95,8 +95,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [showConfigMenu, setShowConfigMenu] = useState<boolean>(false);
   // Estado para controlar el diálogo de asignación de chat
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState<boolean>(false);
-  // Estado para almacenar el ID de cuenta de WhatsApp actual (por defecto 1)
-  const [currentAccountId, setCurrentAccountId] = useState<number>(1);
+  // Estado para almacenar el ID de cuenta de WhatsApp actual (sin valor predeterminado)
+  const [currentAccountId, setCurrentAccountId] = useState<number | null>(null);
   // Estado para almacenar todas las cuentas de WhatsApp
   const [whatsappAccounts, setWhatsappAccounts] = useState<any[]>([]);
   
@@ -155,12 +155,27 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchInterval: 10000
   });
 
-  // Actualizar el estado de las cuentas cuando se carguen
+  // Actualizar el estado de las cuentas cuando se carguen y seleccionar la primera disponible
   useEffect(() => {
-    if (accountsData && Array.isArray(accountsData)) {
+    if (accountsData && Array.isArray(accountsData) && accountsData.length > 0) {
       setWhatsappAccounts(accountsData);
+      
+      // Si no hay una cuenta seleccionada actualmente y hay cuentas disponibles,
+      // seleccionar automáticamente la primera cuenta
+      if (currentAccountId === null) {
+        const firstAccount = accountsData[0];
+        console.log('Seleccionando automáticamente la primera cuenta disponible:', firstAccount.id, firstAccount.name);
+        setCurrentAccountId(firstAccount.id);
+        
+        // Notificar al usuario
+        toast({
+          title: `Cuenta seleccionada automáticamente`,
+          description: `${firstAccount.name} (ID: ${firstAccount.id})`,
+          variant: "default"
+        });
+      }
     }
-  }, [accountsData]);
+  }, [accountsData, currentAccountId, toast]);
 
   // Query para obtener el estado de WhatsApp para la cuenta actual
   const { 
@@ -170,6 +185,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     queryKey: ['/api/whatsapp-accounts', currentAccountId],
     queryFn: async () => {
       try {
+        // Si no hay cuenta seleccionada, no intentar cargar el estado
+        if (currentAccountId === null) {
+          return { initialized: false, ready: false, authenticated: false };
+        }
+        
         // Importar en línea apiRequest
         const { apiRequest } = await import('@/lib/queryClient');
         const response = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}`);
@@ -183,7 +203,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         return { initialized: false, ready: false, authenticated: false };
       }
     },
-    refetchInterval: 5000
+    refetchInterval: 5000,
+    enabled: currentAccountId !== null // Solo activar la consulta si hay una cuenta seleccionada
   });
 
   // Query para obtener chats reales de WhatsApp para la cuenta específica con optimizaciones
