@@ -36,8 +36,8 @@ import { mediaGalleryService } from "./services/mediaGalleryService";
 import { registerTemplateVariablesRoutes } from "./services/templateVariablesRoutes";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import chatAssignmentsRouter from "./routes/chatAssignments";
-import agentsRouter from "./routes/agents";
-import ticketsRouter from "./routes/tickets";
+import { agentsRouter } from "./routes/agents";
+import { ticketsRouter } from "./routes/tickets";
 import deleteLeadsRouter from "./routes/deleteLeads";
 
 // Configurar middleware para upload de archivos
