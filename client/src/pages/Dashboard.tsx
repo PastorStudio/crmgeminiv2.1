@@ -47,10 +47,16 @@ export default function Dashboard() {
       setIsImporting(true);
       setImportResult(null);
       
-      const response = await apiRequest('POST', '/api/direct/whatsapp/create-leads-from-contacts', {
-        onlyWithActiveChats: true,
-        excludeGroups: true,
-        useRealNames: true // Usar nombres reales de WhatsApp y no nombres de chat
+      const response = await fetch('/api/direct/whatsapp/create-leads-from-contacts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          onlyWithActiveChats: true,
+          excludeGroups: true,
+          useRealNames: true // Usar nombres reales de WhatsApp y no nombres de chat
+        })
       });
       
       if (response.ok) {
@@ -95,7 +101,9 @@ export default function Dashboard() {
       try {
         setIsDeletingLeads(true);
         
-        const response = await apiRequest('DELETE', '/api/leads/delete-all');
+        const response = await fetch('/api/leads/delete-all', {
+          method: 'DELETE'
+        });
         
         if (response.ok) {
           toast({
