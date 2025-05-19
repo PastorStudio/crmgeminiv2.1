@@ -649,6 +649,147 @@ export class DatabaseStorage implements IStorage {
       throw error;
     }
   }
+
+  // Implementación de métodos para Agentes
+  async getAllAgents(): Promise<Agent[]> {
+    try {
+      return await db.select().from(agents);
+    } catch (error) {
+      console.error("Error al obtener todos los agentes:", error);
+      return [];
+    }
+  }
+
+  async getAgent(id: number): Promise<Agent | undefined> {
+    try {
+      const [agent] = await db.select()
+        .from(agents)
+        .where(eq(agents.id, id));
+      return agent;
+    } catch (error) {
+      console.error(`Error al obtener agente con ID ${id}:`, error);
+      return undefined;
+    }
+  }
+
+  async getAgentByUserId(userId: number): Promise<Agent | undefined> {
+    try {
+      const [agent] = await db.select()
+        .from(agents)
+        .where(eq(agents.userId, userId));
+      return agent;
+    } catch (error) {
+      console.error(`Error al obtener agente para usuario ID ${userId}:`, error);
+      return undefined;
+    }
+  }
+
+  async createAgent(agent: InsertAgent): Promise<Agent> {
+    try {
+      // Verificar si ya existe un agente para este usuario
+      if (agent.userId) {
+        const existingAgent = await this.getAgentByUserId(agent.userId);
+        if (existingAgent) {
+          throw new Error(`Ya existe un agente para el usuario con ID ${agent.userId}`);
+        }
+      }
+
+      // Agregar métricas iniciales si no están definidas
+      if (!agent.metrics) {
+        agent.metrics = {
+          responseTime: 0,
+          messagesHandled: 0,
+          clientSatisfaction: 0,
+          conversionRate: 0,
+          activeChats: 0
+        };
+      }
+
+      const [createdAgent] = await db.insert(agents)
+        .values(agent)
+        .returning();
+      
+      return createdAgent;
+    } catch (error) {
+      console.error("Error al crear agente:", error);
+      throw error;
+    }
+  }
+
+  async updateAgent(id: number, data: Partial<InsertAgent>): Promise<Agent | undefined> {
+    try {
+      // No permitir cambiar el userId a uno que ya tenga un agente asignado
+      if (data.userId) {
+        const existingAgent = await this.getAgentByUserId(data.userId);
+        if (existingAgent && existingAgent.id !== id) {
+          throw new Error(`Ya existe un agente para el usuario con ID ${data.userId}`);
+        }
+      }
+
+      const [updatedAgent] = await db.update(agents)
+        .set(data)
+        .where(eq(agents.id, id))
+        .returning();
+      
+      return updatedAgent;
+    } catch (error) {
+      console.error(`Error al actualizar agente con ID ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async updateAgentMetrics(id: number, metrics: any): Promise<Agent | undefined> {
+    try {
+      const currentAgent = await this.getAgent(id);
+      if (!currentAgent) {
+        throw new Error(`Agente con ID ${id} no encontrado`);
+      }
+
+      // Actualizar métricas manteniendo campos existentes
+      const updatedMetrics = {
+        ...currentAgent.metrics,
+        ...metrics,
+        // Actualizar última actualización de métricas
+        lastUpdated: new Date().toISOString()
+      };
+
+      const [updatedAgent] = await db.update(agents)
+        .set({ 
+          metrics: updatedMetrics,
+          updatedAt: new Date()
+        })
+        .where(eq(agents.id, id))
+        .returning();
+      
+      return updatedAgent;
+    } catch (error) {
+      console.error(`Error al actualizar métricas del agente con ID ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteAgent(id: number): Promise<void> {
+    try {
+      // Verificar si el agente existe
+      const agent = await this.getAgent(id);
+      if (!agent) {
+        throw new Error(`Agente con ID ${id} no encontrado`);
+      }
+
+      // Verificar si hay chats asignados a este agente
+      const assignedChats = await this.getChatAssignmentsByAgent(id);
+      if (assignedChats.length > 0) {
+        throw new Error(`No se puede eliminar el agente porque tiene ${assignedChats.length} chats asignados`);
+      }
+
+      // Eliminar el agente
+      await db.delete(agents)
+        .where(eq(agents.id, id));
+    } catch (error) {
+      console.error(`Error al eliminar agente con ID ${id}:`, error);
+      throw error;
+    }
+  }
 }
 
 // Siempre usamos almacenamiento en base de datos real para datos reales

@@ -10,7 +10,8 @@ import {
   insertActivitySchema, 
   insertMessageSchema, 
   insertSurveySchema,
-  insertDashboardStatsSchema
+  insertDashboardStatsSchema,
+  insertAgentSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { apiKeyManager } from "./services/apiKeyManager";
@@ -34,6 +35,7 @@ import { mediaGalleryService } from "./services/mediaGalleryService";
 import { registerTemplateVariablesRoutes } from "./services/templateVariablesRoutes";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import chatAssignmentsRouter from "./routes/chatAssignments";
+import agentsRouter from "./routes/agents";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
