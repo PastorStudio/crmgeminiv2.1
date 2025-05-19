@@ -1,5 +1,11 @@
 /**
  * Script para corregir problemas en la estructura de la base de datos
+ * 
+ * Este script resuelve varios problemas encontrados en la estructura de tablas:
+ * 1. Verifica y corrige inconsistencias de nombres de columnas (fullName vs full_name)
+ * 2. Agrega columnas faltantes a tablas existentes
+ * 3. Crea tablas necesarias si no existen (campaigns)
+ * 4. Agrega columnas GENERATED ALWAYS AS para compatibilidad con código existente
  */
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
