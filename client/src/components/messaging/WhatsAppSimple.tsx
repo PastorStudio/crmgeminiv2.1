@@ -98,13 +98,17 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState<boolean>(false);
   // Estado para almacenar el ID de cuenta de WhatsApp actual (sin valor predeterminado)
   const [currentAccountId, setCurrentAccountId] = useState<number | null>(null);
+  // Estado para controlar la vista de todos los chats (unificada) o solo la cuenta actual
+  const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
+  // Estado para almacenar chats de todas las cuentas
+  const [allAccountsChats, setAllAccountsChats] = useState<{
+    [accountId: string]: {
+      accountName: string;
+      chats: WhatsAppChat[];
+    }
+  }>({});
   // Estado para almacenar todas las cuentas de WhatsApp
   const [whatsappAccounts, setWhatsappAccounts] = useState<any[]>([]);
-  // Estado para el modo de visualización (individual o todas las cuentas)
-  const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
-  
-  // Estado para almacenar todos los chats agrupados por cuenta
-  const [allAccountsChats, setAllAccountsChats] = useState<{[accountId: number]: {chats: WhatsAppChat[], accountName: string}}>({});
   
   // Refs para scroll automático
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -938,9 +942,9 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
           <Tabs defaultValue="chats" className="flex flex-col h-full overflow-hidden">
             <div className="border-b p-2">
               {/* Selector de cuentas WhatsApp */}
-              <div className="mb-2">
+              <div className="flex items-center justify-between mb-2">
                 <select 
-                  className="w-full rounded-md border border-gray-300 py-1 px-2 text-sm font-medium"
+                  className="flex-1 mr-2 rounded-md border border-gray-300 py-1 px-2 text-sm font-medium"
                   value={currentAccountId === null ? '' : currentAccountId}
                   onChange={(e) => {
                     // Si no hay valor seleccionado, no hacer nada
@@ -1088,6 +1092,115 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   {isLoadingChats ? (
                     <div className="flex justify-center p-4">
                       <Spinner />
+                    </div>
+                  ) : viewMode === 'all' ? (
+                    // Vista unificada de todas las cuentas
+                    <div className="divide-y">
+                      <div className="p-3 text-sm font-medium bg-gray-50 sticky top-0 z-10">
+                        Vista unificada - Todas las cuentas
+                      </div>
+                      
+                      {Object.keys(allAccountsChats).length === 0 ? (
+                        <div className="p-8 text-center flex flex-col items-center gap-4">
+                          <div className="text-gray-500">
+                            <LayoutGrid className="h-12 w-12 mx-auto mb-2 text-primary-400" />
+                            <p className="mb-2">No se han cargado chats para todas las cuentas</p>
+                          </div>
+                          <Button 
+                            variant="outline"
+                            onClick={loadAllAccountsChats}
+                            className="flex gap-2 items-center"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            Cargar chats de todas las cuentas
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          {Object.entries(allAccountsChats).map(([accountId, accountData]) => (
+                            <div key={accountId} className="account-group">
+                              <div className="p-2 bg-gray-100 border-t border-b sticky top-0 z-10">
+                                <h3 className="text-sm font-medium flex items-center gap-1">
+                                  <Wifi className="h-3 w-3 text-blue-500" /> 
+                                  Cuenta: {accountData.accountName} 
+                                  <span className="text-xs text-gray-500 ml-1">
+                                    ({accountData.chats.length} chats)
+                                  </span>
+                                </h3>
+                              </div>
+                              
+                              {accountData.chats.map((chat: any) => (
+                                <div
+                                  key={`${accountId}-${chat.id}`}
+                                  className={`p-3 hover:bg-gray-50 cursor-pointer ${
+                                    selectedChatId === chat.id && parseInt(accountId) === currentAccountId ? 'bg-green-50 border-l-4 border-l-green-500' : ''
+                                  }`}
+                                  onClick={() => {
+                                    // Al hacer clic, cambiamos a la cuenta correspondiente y seleccionamos el chat
+                                    const numericAccountId = parseInt(accountId);
+                                    // Solo cambiar de cuenta si es necesario
+                                    if (numericAccountId !== currentAccountId) {
+                                      setViewMode('single');
+                                      handleAccountChange(numericAccountId);
+                                      // Esperamos a que se complete el cambio de cuenta antes de seleccionar el chat
+                                      setTimeout(() => {
+                                        handleChatSelect(chat);
+                                      }, 300);
+                                    } else {
+                                      handleChatSelect(chat);
+                                    }
+                                  }}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="h-11 w-11 flex-shrink-0 border shadow-sm">
+                                      {chat.profilePicUrl ? (
+                                        <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
+                                      ) : null}
+                                      <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+                                        {getInitials(chat.name)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex justify-between items-center">
+                                        <div className="font-medium truncate flex items-center gap-1 max-w-[160px]">
+                                          {chat.name}
+                                          
+                                          {chat.isGroup && (
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200">
+                                              Grupo
+                                            </Badge>
+                                          )}
+                                          
+                                          {!chat.isGroup && (
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1 bg-green-50 text-green-700 border-green-200">
+                                              Chat
+                                            </Badge>
+                                          )}
+                                          {chat.unreadCount > 0 && (
+                                            <span className="inline-flex items-center justify-center ml-1 bg-green-500 text-white text-[11px] w-5 h-5 rounded-full">
+                                              {chat.unreadCount}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="flex justify-between items-center text-sm text-gray-500">
+                                        <p className="truncate w-36">
+                                          {chat.lastMessage || 'Sin mensajes'}
+                                        </p>
+                                        <span className="text-xs whitespace-nowrap">
+                                          {chat.timestamp ? format(new Date(chat.timestamp * 1000), 'HH:mm') : ''}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </>
+                      )}
                     </div>
                   ) : !whatsappStatus?.authenticated ? (
                     <div className="flex flex-col items-center justify-center py-10 px-4 bg-gray-50 rounded-lg">
