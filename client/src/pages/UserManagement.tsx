@@ -545,13 +545,50 @@ export default function UserManagement() {
                       <TableCell>{user.fullName || '-'}</TableCell>
                       <TableCell>{user.email || '-'}</TableCell>
                       <TableCell>
-                        <Badge
-                          variant={user.role === 'admin' ? 'destructive' : user.role === 'supervisor' ? 'default' : 'outline'}
-                        >
-                          {user.role === 'admin' ? 'Administrador' : 
-                           user.role === 'supervisor' ? 'Supervisor' : 
-                           'Agente'}
-                        </Badge>
+                        {(() => {
+                          // Función para determinar el estilo y texto del badge según el rol
+                          let badgeStyle = 'outline';
+                          let badgeText = 'Agente';
+                          let badgeColor = '';
+                          
+                          // Determinar el estilo y color según el rol
+                          if (user.role === 'admin') {
+                            badgeStyle = 'destructive';
+                            badgeText = 'Administrador';
+                          } else if (user.role === 'supervisor') {
+                            badgeStyle = 'default';
+                            badgeText = 'Supervisor';
+                          } else if (user.role === 'team_lead') {
+                            badgeStyle = 'default';
+                            badgeText = 'Líder de Equipo';
+                            badgeColor = 'bg-blue-100 text-blue-800 hover:bg-blue-200';
+                          } else if (user.role === 'coordinator') {
+                            badgeStyle = 'default';
+                            badgeText = 'Coordinador';
+                            badgeColor = 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200';
+                          } else if (user.role === 'agent_senior') {
+                            badgeStyle = 'outline';
+                            badgeText = 'Agente Senior';
+                            badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                          } else if (user.role === 'agent_specialist') {
+                            badgeStyle = 'outline';
+                            badgeText = 'Especialista';
+                            badgeColor = 'bg-teal-50 text-teal-700 border-teal-200';
+                          } else if (user.role === 'super_admin') {
+                            badgeStyle = 'destructive';
+                            badgeText = 'Super Admin';
+                            badgeColor = 'bg-red-700 text-white';
+                          }
+                          
+                          return (
+                            <Badge
+                              variant={badgeStyle as any}
+                              className={badgeColor}
+                            >
+                              {badgeText}
+                            </Badge>
+                          )
+                        })()}
                       </TableCell>
                       <TableCell>
                         {user.status === 'active' ? (
@@ -784,36 +821,92 @@ export default function UserManagement() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="agent">
-                            <div className="flex items-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                              </svg>
-                              <span>Agente de Chat</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="supervisor">
-                            <div className="flex items-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                              </svg>
-                              <span>Supervisor</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="admin">
-                            <div className="flex items-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                              </svg>
-                              <span>Administrador</span>
-                            </div>
-                          </SelectItem>
+                          <SelectGroup>
+                            <SelectLabel>Agentes de Primera Línea</SelectLabel>
+                            <SelectItem value="agent">
+                              <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                </svg>
+                                <span>Agente de Chat</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="agent_senior">
+                              <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                </svg>
+                                <span>Agente Senior</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="agent_specialist">
+                              <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                                </svg>
+                                <span>Especialista</span>
+                              </div>
+                            </SelectItem>
+                          </SelectGroup>
+                          
+                          <SelectGroup>
+                            <SelectLabel>Supervisión y Gestión</SelectLabel>
+                            <SelectItem value="supervisor">
+                              <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                </svg>
+                                <span>Supervisor</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="team_lead">
+                              <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <span>Líder de Equipo</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="coordinator">
+                              <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                                </svg>
+                                <span>Coordinador</span>
+                              </div>
+                            </SelectItem>
+                          </SelectGroup>
+                          
+                          <SelectGroup>
+                            <SelectLabel>Administración</SelectLabel>
+                            <SelectItem value="admin">
+                              <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                                <span>Administrador</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="super_admin" disabled={currentUser?.role !== 'super_admin'}>
+                              <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                                </svg>
+                                <span>Super Administrador</span>
+                              </div>
+                            </SelectItem>
+                          </SelectGroup>
                         </SelectContent>
                       </Select>
                       <FormDescription>
                         {field.value === "agent" && "Los agentes pueden ver y responder chats que les sean asignados."}
+                        {field.value === "agent_senior" && "Los agentes senior tienen prioridad para casos complejos y pueden asesorar a otros agentes."}
+                        {field.value === "agent_specialist" && "Los especialistas manejan consultas técnicas o específicas de un área determinada."}
                         {field.value === "supervisor" && "Los supervisores pueden monitorear a los agentes y sus conversaciones."}
+                        {field.value === "team_lead" && "Los líderes de equipo coordinan grupos de agentes y supervisan su desempeño."}
+                        {field.value === "coordinator" && "Los coordinadores gestionan varios equipos y supervisan los flujos de trabajo entre departamentos."}
                         {field.value === "admin" && "Los administradores tienen acceso completo a todas las funciones del sistema."}
+                        {field.value === "super_admin" && "Los super administradores tienen todos los permisos y pueden configurar roles y permisos del sistema."}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
