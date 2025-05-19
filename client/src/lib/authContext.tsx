@@ -10,6 +10,20 @@ interface User {
   status?: string;
   department?: string;
   avatar?: string;
+  permissions?: UserPermissions;
+}
+
+interface UserPermissions {
+  canViewDashboard: boolean;
+  canManageLeads: boolean;
+  canManageUsers: boolean;
+  canCreateAdmins: boolean;
+  canDeleteUsers: boolean;
+  canManageWhatsAppAccounts: boolean;
+  canAssignChats: boolean;
+  canAccessSettings: boolean;
+  canAccessAllChats: boolean;
+  canViewReports: boolean;
 }
 
 interface AuthContextType {

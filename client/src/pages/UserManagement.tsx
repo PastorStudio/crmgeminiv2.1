@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/authContext';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { apiRequest } from '@/lib/queryClient';
+import { isSuperAdmin, canManageAdmins, hasPermission } from '@/lib/permissions';
 import {
   Table,
   TableBody,
