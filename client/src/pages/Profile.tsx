@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/lib/authContext';
+import { useLocation } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
 const Profile = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
   const { toast } = useToast();
 
   if (!user) {
@@ -25,11 +27,18 @@ const Profile = () => {
 
   const handleLogout = () => {
     if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
-      logout();
+      // Eliminar datos de sesión
+      localStorage.removeItem('crm_auth_token');
+      localStorage.removeItem('crm_user_data');
+      
+      // Mostrar notificación
       toast({
         title: 'Sesión cerrada',
         description: 'Has cerrado sesión correctamente',
       });
+      
+      // Redirigir al login
+      navigate('/login');
     }
   };
 
