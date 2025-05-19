@@ -283,20 +283,22 @@ const AppRoutes: React.FC = () => {
               <div className="mt-auto pt-4 border-t border-white/10">
                 <div className="px-3 py-2">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center">
+                    <a href="/profile" className="flex items-center group">
                       <div className="h-7 w-7 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
                         {user ? user.username?.substring(0, 2).toUpperCase() : "US"}
                       </div>
                       <div className="ml-2">
-                        <p className="text-xs font-medium text-white">{user?.username || "Usuario"}</p>
+                        <p className="text-xs font-medium text-white group-hover:text-white/90">{user?.username || "Usuario"}</p>
                         <p className="text-xs text-white/60">{user?.role || "Rol no disponible"}</p>
                       </div>
-                    </div>
+                    </a>
                     <button
                       onClick={() => {
                         if (confirm("¿Estás seguro de que deseas cerrar sesión?")) {
-                          // Implementar lógica de cierre de sesión aquí
-                          navigate("/login");
+                          // Usar la función de cierre de sesión del contexto de autenticación
+                          window.location.href = '/login';
+                          localStorage.removeItem('crm_auth_token');
+                          localStorage.removeItem('crm_user_data');
                         }
                       }}
                       className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
