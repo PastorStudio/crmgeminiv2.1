@@ -123,3 +123,32 @@ export function isSuperAdmin(user: User | null): boolean {
   if (!user) return false;
   return user.id === 3 && user.username === 'DJP';
 }
+
+/**
+ * Verifica si un usuario tiene un rol específico
+ */
+export function hasRole(user: User | null, role: string): boolean {
+  if (!user) return false;
+  return user.role === role;
+}
+
+/**
+ * Verifica si un usuario es un agente
+ */
+export function isAgent(user: User | null): boolean {
+  return hasRole(user, 'agent');
+}
+
+/**
+ * Verifica si un usuario es un supervisor
+ */
+export function isSupervisor(user: User | null): boolean {
+  return hasRole(user, 'supervisor');
+}
+
+/**
+ * Verifica si un usuario es un administrador
+ */
+export function isAdmin(user: User | null): boolean {
+  return hasRole(user, 'admin');
+}
