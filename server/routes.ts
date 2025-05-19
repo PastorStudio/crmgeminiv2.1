@@ -297,35 +297,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req as any).user.id;
       
-      // Modificación para seleccionar campos específicos (sin incluir settings que causa problemas)
-      const [user] = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          fullName: users.fullName,
-          email: users.email,
-          role: users.role,
-          status: users.status,
-          avatar: users.avatar,
-          department: users.department,
-          // Removido supervisorId que no está en el schema
-          lastLogin: users.lastLogin,
-          createdAt: users.createdAt
-        })
-        .from(users)
-        .where(eq(users.id, userId));
-      
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "Usuario no encontrado"
+      // Si es el superadmin (que está hardcodeado)
+      if (userId === 1000) {
+        const superAdmin = {
+          id: 1000,
+          username: 'DJP',
+          role: 'superadmin',
+          email: 'superadmin@crm.com',
+          fullName: 'Super Administrador',
+          status: 'active',
+          department: 'Dirección',
+          avatar: '/assets/avatars/superadmin.png',
+          lastLogin: new Date()
+        };
+        
+        return res.json({
+          success: true,
+          user: superAdmin
         });
       }
       
-      res.json({
-        success: true,
-        user: user
-      });
+      // Para usuarios normales de la base de datos
+      try {
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId));
+        
+        if (!user) {
+          return res.status(404).json({
+            success: false,
+            message: "Usuario no encontrado"
+          });
+        }
+        
+        res.json({
+          success: true,
+          user: user
+        });
+      } catch (dbError) {
+        console.error("Error específico de base de datos:", dbError);
+        // Si hay error en la consulta, intentamos devolver al menos la información básica
+        const basicUser = {
+          id: userId,
+          username: (req as any).user.username || 'usuario',
+          role: (req as any).user.role || 'agent',
+          status: 'active'
+        };
+        
+        return res.json({
+          success: true,
+          user: basicUser,
+          partialData: true
+        });
+      }
     } catch (error) {
       console.error("Error al obtener perfil:", error);
       res.status(500).json({
@@ -1129,20 +1154,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             stats = await storage.updateDashboardStats({
               totalLeads,
               newLeadsThisMonth: totalLeads, // Por ahora, asumimos todos como nuevos
-              activeLeads: activeChats,
-              messagesThisMonth,
-              conversionRate: 0,
-              averageResponseTime: 0,
-              salesThisMonth: 0,
-              revenue: 0
+              activeDeals: activeChats,
+              closedDealsThisMonth: 0,
+              totalRevenue: 0,
+              revenueThisMonth: 0,
+              conversionRates: JSON.stringify({}),
+              leadsDistribution: JSON.stringify({})
             });
           } else {
             // Actualizamos las estadísticas existentes con datos reales
             stats = await storage.updateDashboardStats({
               ...stats,
               totalLeads,
-              activeLeads: activeChats,
-              messagesThisMonth,
+              activeDeals: activeChats,
               newLeadsThisMonth: totalLeads // Por ahora, asumimos todos como nuevos
             });
           }
