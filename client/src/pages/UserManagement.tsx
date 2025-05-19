@@ -98,6 +98,15 @@ export default function UserManagement() {
   const { user: currentUser } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  
+  // Definir los permisos según el rol del usuario
+  const isSuperAdmin = currentUser?.id === 3 && currentUser?.username === 'DJP';
+  const isAdminRole = currentUser?.role === 'admin';
+  const isSupervisorRole = currentUser?.role === 'supervisor';
+  const canManageUsers = isSuperAdmin || isAdminRole || isSupervisorRole;
+  
+  // Sólo el superadministrador puede crear/eliminar administradores
+  const canManageAdmins = isSuperAdmin;
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Form para crear/editar usuarios
@@ -286,8 +295,7 @@ export default function UserManagement() {
     }
   };
 
-  // Determinar si el usuario actual puede gestionar usuarios
-  const canManageUsers = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  // Esta línea se elimina para evitar conflictos con la declaración anterior
 
   // Renderizado condicional basado en permisos
   if (!canManageUsers) {
@@ -322,16 +330,20 @@ export default function UserManagement() {
             </svg>
             Actualizar Lista
           </Button>
-          <Button onClick={() => {
-            setSelectedUser(null);
-            form.reset({
-              ...defaultValues,
-              role: "agent", // Por defecto, crear un agente
-              status: "active", // Activo por defecto
-              department: "ventas" // Departamento por defecto
-            });
-            setIsDialogOpen(true);
-          }}>
+          <Button 
+            onClick={() => {
+              setSelectedUser(null);
+              form.reset({
+                ...defaultValues,
+                // Si es superadmin, permitir crear cualquier tipo de usuario
+                // Si no es superadmin, solo permitir crear agentes
+                role: "agent",
+                status: "active",
+                department: "ventas"
+              });
+              setIsDialogOpen(true);
+            }}
+          >
             <UserPlus className="mr-2 h-4 w-4" />
             Nuevo Agente
           </Button>
