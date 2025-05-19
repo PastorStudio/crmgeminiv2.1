@@ -10,12 +10,49 @@ export const agentsRouter = Router();
 // Obtener todos los agentes
 agentsRouter.get('/', async (_req: Request, res: Response) => {
   try {
-    // Obtener todos los agentes
+    // Obtener todos los agentes con logging mejorado
+    console.log("Obteniendo lista de agentes...");
     const agents = await db.execute(sql`
       SELECT * FROM agents ORDER BY name ASC
     `);
     
+    console.log(`Número de agentes encontrados: ${agents.rows?.length || 0}`);
+    
+    if (!agents.rows || agents.rows.length === 0) {
+      console.log("No se encontraron agentes en la base de datos");
+      
+      // Verificar si existen usuarios que pueden ser usados como agentes
+      console.log("Buscando usuarios para usar como agentes...");
+      const users = await db.execute(sql`
+        SELECT * FROM users WHERE role != 'viewer' ORDER BY id ASC
+      `);
+      
+      console.log(`Número de usuarios encontrados: ${users.rows?.length || 0}`);
+      
+      if (users.rows && users.rows.length > 0) {
+        // Transformar usuarios a agentes
+        const formattedUsers = users.rows.map(user => ({
+          id: user.id,
+          name: user.fullname || user.username,
+          email: user.email || `${user.username}@geminicrm.com`,
+          status: 'active',
+          department: user.department || 'General',
+          role: user.role || 'agent',
+          avatar: null,
+          phone: null,
+          workload: 0,
+          availability: 'available',
+          createdAt: user.created_at || new Date(),
+          updatedAt: user.updated_at || new Date()
+        }));
+        
+        console.log("Usando usuarios como agentes temporalmente");
+        return res.json(formattedUsers);
+      }
+    }
+    
     // Transformar los datos para que sean compatibles con el cliente
+    console.log("Formateando datos de agentes para el cliente");
     const formattedAgents = agents.rows.map(agent => ({
       id: agent.id,
       name: agent.name,
