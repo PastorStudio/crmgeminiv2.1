@@ -79,6 +79,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint directo para eliminar todos los leads
   app.delete("/api/leads/delete-all", async (req: Request, res: Response) => {
     try {
+      // Primero eliminar relaciones en tablas dependientes
+      await db.delete(activities).where(eq(activities.leadId, sql.raw('ANY(SELECT id FROM leads)')));
+      await db.delete(messages).where(eq(messages.leadId, sql.raw('ANY(SELECT id FROM leads)')));
+      await db.delete(surveys).where(eq(surveys.leadId, sql.raw('ANY(SELECT id FROM leads)')));
+      
+      // Ahora eliminar todos los leads
       await db.delete(leads);
       
       res.json({
@@ -176,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         if (user.id !== 3) { // ID 3 es el superadmin DJP
           await db.update(users)
-            .set({ lastLoginAt: new Date() })
+            .set({ lastLogin: new Date() })
             .where(eq(users.id, user.id));
         }
       } catch (error) {
@@ -302,8 +308,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: users.status,
           avatar: users.avatar,
           department: users.department,
-          supervisorId: users.supervisorId,
-          lastLoginAt: users.lastLoginAt,
+          // Removido supervisorId que no está en el schema
+          lastLogin: users.lastLogin,
           createdAt: users.createdAt
         })
         .from(users)
