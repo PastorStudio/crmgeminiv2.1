@@ -427,7 +427,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Verificar que el usuario tiene permisos de admin o supervisor
       const userRole = (req as any).user.role;
-      if (userRole !== 'admin' && userRole !== 'supervisor') {
+      const userId = (req as any).user.userId;
+      const username = (req as any).user.username;
+      
+      // Verificar si es el superadministrador (DJP, ID 3)
+      const isSuperAdmin = userId === 3 && username === 'DJP';
+      
+      if (!isSuperAdmin && userRole !== 'admin' && userRole !== 'supervisor') {
         return res.status(403).json({ 
           success: false, 
           message: "No tienes permisos para crear usuarios" 
@@ -477,11 +483,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.id);
       const requestingUserId = (req as any).user.userId;
       const requestingUserRole = (req as any).user.role;
+      const requestingUsername = (req as any).user.username;
+      
+      // Verificar si es el superadministrador (DJP, ID 3)
+      const isSuperAdmin = requestingUserId === 3 && requestingUsername === 'DJP';
       
       // Solo permitir actualizar usuarios si:
       // - El usuario actualiza su propio perfil
       // - El usuario es admin o supervisor
-      if (userId !== requestingUserId && requestingUserRole !== 'admin' && requestingUserRole !== 'supervisor') {
+      // - El usuario es el superadministrador
+      if (userId !== requestingUserId && !isSuperAdmin && requestingUserRole !== 'admin' && requestingUserRole !== 'supervisor') {
         return res.status(403).json({ 
           success: false, 
           message: "No tienes permisos para actualizar este usuario" 
@@ -489,7 +500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Aplicar restricciones adicionales para proteger a los administradores
-      if (requestingUserRole === 'supervisor') {
+      if (!isSuperAdmin && requestingUserRole === 'supervisor') {
         const targetUser = await storage.getUser(userId);
         if (targetUser && targetUser.role === 'admin') {
           return res.status(403).json({ 
@@ -497,6 +508,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: "Los supervisores no pueden modificar usuarios administradores" 
           });
         }
+      }
+      
+      // Proteger al superadministrador DJP de ser modificado por otros
+      if (userId === 3 && !isSuperAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "No se puede modificar la cuenta del superadministrador"
+        });
       }
       
       const userData = req.body;
