@@ -51,6 +51,7 @@ export interface IStorage {
   createLead(lead: InsertLead): Promise<Lead>;
   updateLead(id: number, lead: Partial<InsertLead>): Promise<Lead | undefined>;
   updateLeadStatus(id: number, status: string): Promise<Lead | undefined>;
+  deleteAllLeads(): Promise<void>;
 
   // Activity methods
   getActivity(id: number): Promise<Activity | undefined>;
