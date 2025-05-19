@@ -273,6 +273,36 @@ export default function UserManagement() {
 
   // Submit del formulario
   const onSubmit = (values: UserFormValues) => {
+    // Validar permisos antes de crear/editar usuarios administrativos
+    if (values.role === 'admin' && !isSuperAdmin) {
+      toast({
+        title: "Permiso denegado",
+        description: "Solo el superadministrador puede crear o modificar usuarios administrativos.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Super_admin solo puede ser creado o modificado por el superadmin (DJP)
+    if (values.role === 'super_admin' && !isSuperAdmin) {
+      toast({
+        title: "Permiso denegado",
+        description: "No tienes permisos para gestionar superadministradores.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Prevenir modificar el usuario DJP (superadmin fijo)
+    if (selectedUser && selectedUser.id === 3 && selectedUser.username === 'DJP' && currentUser?.id !== 3) {
+      toast({
+        title: "Acción no permitida",
+        description: "No se puede modificar la cuenta de superadministrador.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (selectedUser) {
       // Si no se proporciona contraseña, creamos un objeto nuevo sin ella
       const userData: Partial<UserFormValues> = {};
@@ -288,6 +318,11 @@ export default function UserManagement() {
           (userData as any)[key] = values[key as keyof typeof values];
         }
       });
+      
+      // Si no es superadmin y está intentando editar un admin, mantener el rol
+      if (!isSuperAdmin && selectedUser.role === 'admin') {
+        userData.role = 'admin'; // Preservar el rol administrativo
+      }
       
       updateUserMutation.mutate({ id: selectedUser.id, userData });
     } else {
@@ -705,7 +740,11 @@ export default function UserManagement() {
                             <DropdownMenuItem 
                               onClick={() => openDeleteDialog(user)}
                               className="text-destructive focus:text-destructive"
-                              disabled={user.id === currentUser?.id || user.role === 'super_admin'} // No permitir eliminar al usuario actual o al superadmin
+                              disabled={
+                                user.id === currentUser?.id || // No permitir eliminar al usuario actual
+                                user.role === 'super_admin' || // No permitir eliminar super admins
+                                (user.role === 'admin' && !isSuperAdmin) // Solo superadmin puede eliminar admins
+                              }
                             >
                               <Trash className="mr-2 h-4 w-4" />
                               Eliminar
@@ -1109,8 +1148,22 @@ export default function UserManagement() {
             </Button>
             <Button 
               variant="destructive" 
-              onClick={() => selectedUser && deleteUserMutation.mutate(selectedUser.id)}
-              disabled={deleteUserMutation.isPending}
+              onClick={() => {
+                // Verificar permisos antes de eliminar
+                if (selectedUser?.role === 'admin' && !isSuperAdmin) {
+                  toast({
+                    title: "Permiso denegado",
+                    description: "Solo el superadministrador puede eliminar usuarios administrativos.",
+                    variant: "destructive",
+                  });
+                  setIsDeleteDialogOpen(false);
+                  return;
+                }
+                
+                // Continuar con la eliminación si tiene permisos
+                selectedUser && deleteUserMutation.mutate(selectedUser.id);
+              }}
+              disabled={deleteUserMutation.isPending || (selectedUser?.role === 'admin' && !isSuperAdmin)}
             >
               {deleteUserMutation.isPending ? (
                 <>
