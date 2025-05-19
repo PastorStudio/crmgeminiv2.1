@@ -99,6 +99,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [currentAccountId, setCurrentAccountId] = useState<number | null>(null);
   // Estado para almacenar todas las cuentas de WhatsApp
   const [whatsappAccounts, setWhatsappAccounts] = useState<any[]>([]);
+  // Estado para el modo de visualización (individual o todas las cuentas)
+  const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
+  
+  // Estado para almacenar todos los chats agrupados por cuenta
+  const [allAccountsChats, setAllAccountsChats] = useState<{[accountId: number]: {chats: WhatsAppChat[], accountName: string}}>({});
   
   // Refs para scroll automático
   const messagesEndRef = useRef<HTMLDivElement>(null);
