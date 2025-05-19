@@ -69,23 +69,78 @@ export function useWebSocket(options: WebSocketOptions = {}) {
         if (options.onConnect) options.onConnect();
       });
 
-      // Evento de mensaje
+      // Evento de mensaje - optimizado para respuesta inmediata
       socket.addEventListener('message', (event) => {
         try {
           const data = JSON.parse(event.data);
+          const receiveTime = Date.now();
           
           // Verificar si es una notificación o un mensaje directo
-          if (data.type === 'NOTIFICATION') {
-            // Es una notificación del servicio de notificaciones
-            const notification = data.data as Notification;
-            setLastMessage(notification);
-            console.log('Notificación recibida:', notification);
-            
-            // Procesar notificación según su tipo
-            processNotification(notification);
-            
-            // Llamar al callback si existe
-            if (options.onNotification) options.onNotification(notification);
+          if (data.type === 'notification') {
+            // Primero, procesar notificaciones de alta prioridad inmediatamente
+            if (data.data && data.data.type === 'new_message') {
+              console.log(`⚡ Notificación de mensaje en tiempo real recibida: ${receiveTime}`);
+              
+              // Invalidar consultas inmediatamente para actualización instantánea
+              if (data.data.chatId) {
+                // Actualizar UI inmediatamente sin esperar al siguiente ciclo
+                queryClient.invalidateQueries({ 
+                  queryKey: ['whatsapp-messages-direct', data.data.chatId],
+                  // Modo 'all' para forzar la actualización inmediata
+                  refetchType: 'all'
+                });
+                
+                // También actualizar lista de chats para reflejar nuevos mensajes
+                queryClient.invalidateQueries({ 
+                  queryKey: ['whatsapp-chats-direct'],
+                  refetchType: 'all'
+                });
+                
+                // Para cuentas múltiples, actualizar también por ID de cuenta
+                if (data.data.accountId) {
+                  queryClient.invalidateQueries({
+                    queryKey: [`whatsapp-account-${data.data.accountId}-chats`],
+                    refetchType: 'all'
+                  });
+                }
+              }
+              
+              // Crear objeto de notificación estructurado
+              const notification: Notification = {
+                id: data.data.messageId || `msg-${Date.now()}`,
+                type: NotificationType.NEW_MESSAGE,
+                timestamp: new Date(data.timestamp),
+                data: data.data
+              };
+              
+              // Actualizamos último mensaje
+              setLastMessage(notification);
+              
+              // Llamar al callback si existe (inmediatamente)
+              if (options.onNotification) options.onNotification(notification);
+              
+              console.log(`⏱️ Tiempo de procesamiento: ${Date.now() - receiveTime}ms`);
+            } 
+            // Para otras notificaciones del sistema de prioridad normal
+            else {
+              console.log('Notificación estándar recibida:', data);
+              
+              // Crear objeto de notificación para mantener consistencia
+              const notification: Notification = {
+                id: data.id || `notify-${Date.now()}`,
+                type: data.data?.type as NotificationType || NotificationType.SYSTEM_ALERT,
+                timestamp: new Date(data.timestamp),
+                data: data.data
+              };
+              
+              setLastMessage(notification);
+              
+              // Procesar notificación según su tipo
+              processNotification(notification);
+              
+              // Llamar al callback si existe
+              if (options.onNotification) options.onNotification(notification);
+            }
           } else {
             // Es un mensaje genérico
             console.log('Mensaje WebSocket recibido:', data);

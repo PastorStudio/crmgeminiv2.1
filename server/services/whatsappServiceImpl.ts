@@ -479,21 +479,47 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       }, 60000); // Esperar 1 minuto antes del reinicio final
     });
 
-    // Evento para mensajes entrantes
+    // Evento para mensajes entrantes - optimizado para recepción en tiempo real (<2 segundos)
     this.client.on('message', async (message) => {
-      console.log('Mensaje recibido:', message.body);
+      console.log('⚡ Mensaje recibido en tiempo real:', message.body);
       
       try {
-        // Enviar a través del sistema de eventos del servicio
+        // Capturar el tiempo de inicio para medir latencia
+        const startProcessTime = Date.now();
+        
+        // Enviar inmediatamente a través del sistema de eventos del servicio
         this.emit('message', message);
         
         // Obtener información del chat y contacto para posibles acciones adicionales
+        // Esto es asíncrono pero no bloqueamos la notificación
         const chat = await message.getChat();
         const contactName = chat.name || 'Contacto';
         const contactId = message.from || '';
         const chatId = chat.id._serialized || chat.id;
         
-        // Guardar mensaje en la base de datos para la sección de mensajes
+        // NOTIFICACIÓN INMEDIATA: Primero enviamos la notificación para reducir latencia a <2 segundos
+        // Enviar notificación global vía WebSocket (usando función global)
+        if (global.sendNotification) {
+          console.log('🔄 Enviando notificación inmediata del mensaje');
+          const startNotifyTime = Date.now();
+          
+          // Incluir toda la información necesaria para la interfaz
+          (global as any).sendNotification({
+            type: 'new_message',
+            contactName,
+            contactId,
+            chatId,
+            body: message.body,
+            timestamp: new Date(),
+            messageId: message.id?._serialized || Date.now().toString(),
+            priority: 'high',
+            accountId: this.status.accountId || 0 // Para notificaciones con múltiples cuentas
+          });
+          
+          console.log(`⏱️ Tiempo de notificación WebSocket: ${Date.now() - startNotifyTime}ms`);
+        }
+        
+        // Ahora guardamos en base de datos (esto puede ser más lento pero no afecta la experiencia)
         try {
           // Importamos el almacenamiento bajo demanda
           const { storage } = await import('../storage');
@@ -507,19 +533,19 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
             read: false
           });
           
-          console.log('Mensaje guardado en la base de datos');
-          
-          // Enviar notificación global vía WebSocket (usando función global)
-          if (global.sendNotification) {
-            (global as any).sendNotification({
-              type: 'new_message',
-              contactName,
-              contactId,
-              chatId,
-              body: message.body,
-              timestamp: new Date()
-            });
-          }
+          console.log('✅ Mensaje guardado en la base de datos');
+        } catch (storageError) {
+          console.error('Error guardando mensaje en base de datos:', storageError);
+        }
+        
+        // Reportar tiempo total de procesamiento (objetivo <2s)
+        const totalProcessTime = Date.now() - startProcessTime;
+        console.log(`🚀 Tiempo total de procesamiento del mensaje: ${totalProcessTime}ms`);
+        
+        // Alerta si el tiempo total supera el objetivo de 2 segundos
+        if (totalProcessTime > 2000) {
+          console.warn('⚠️ Advertencia: Procesamiento de mensaje superó el objetivo de 2 segundos');
+        }
           
           // Intentar enviar notificación mediante el servicio de notificaciones
           try {
@@ -536,7 +562,9 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
                   contactId,
                   contactName,
                   body: message.body,
-                  timestamp: Date.now()
+                  timestamp: Date.now(),
+                  messageId: message.id?._serialized || Date.now().toString(),
+                  priority: 'high'
                 }
               });
             }

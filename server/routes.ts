@@ -3183,18 +3183,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Función global para enviar notificaciones a todos los clientes
+  // Optimizada para transmisión de mensajes en tiempo real
   (global as any).sendNotification = (data: any) => {
     const message = JSON.stringify({
       type: 'notification',
       timestamp: Date.now(),
-      data
+      data,
+      priority: data.type === 'new_message' ? 'high' : 'normal' // Prioridad alta para mensajes nuevos
     });
+    
+    console.log(`Enviando notificación en tiempo real: ${data.type}`);
+    
+    // Broadcast inmediato a todos los clientes conectados
+    const startTime = Date.now();
+    let successCount = 0;
     
     clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(message);
+        try {
+          client.send(message);
+          successCount++;
+        } catch (error) {
+          console.error('Error enviando mensaje WebSocket:', error);
+        }
       }
     });
+    
+    const timeElapsed = Date.now() - startTime;
+    console.log(`Notificación enviada a ${successCount} clientes en ${timeElapsed}ms`);
   };
   
   return httpServer;
