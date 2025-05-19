@@ -155,25 +155,49 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchInterval: 10000
   });
 
-  // Actualizar el estado de las cuentas cuando se carguen y seleccionar la primera disponible
+  // Actualizar el estado de las cuentas cuando se carguen y gestionar la selección dinámicamente
   useEffect(() => {
     if (accountsData && Array.isArray(accountsData) && accountsData.length > 0) {
       setWhatsappAccounts(accountsData);
       
-      // Si no hay una cuenta seleccionada actualmente y hay cuentas disponibles,
-      // seleccionar automáticamente la primera cuenta
+      // CASO 1: No hay cuenta seleccionada - Seleccionar automáticamente la primera
       if (currentAccountId === null) {
         const firstAccount = accountsData[0];
         console.log('Seleccionando automáticamente la primera cuenta disponible:', firstAccount.id, firstAccount.name);
         setCurrentAccountId(firstAccount.id);
         
-        // Notificar al usuario
         toast({
           title: `Cuenta seleccionada automáticamente`,
           description: `${firstAccount.name} (ID: ${firstAccount.id})`,
           variant: "default"
         });
+      } 
+      // CASO 2: La cuenta actual ya no existe en la lista - Cambiar a la primera disponible
+      else {
+        const accountExists = accountsData.some(acc => acc.id === currentAccountId);
+        
+        if (!accountExists) {
+          const newAccount = accountsData[0];
+          console.log('La cuenta seleccionada (ID:', currentAccountId, ') ya no existe. Cambiando a:', newAccount.id, newAccount.name);
+          setCurrentAccountId(newAccount.id);
+          
+          toast({
+            title: `Cuenta cambiada automáticamente`,
+            description: `La cuenta anterior (ID: ${currentAccountId}) ya no existe. Usando ahora: ${newAccount.name}`,
+            variant: "default"
+          });
+        }
       }
+    } else if (accountsData && Array.isArray(accountsData) && accountsData.length === 0 && currentAccountId !== null) {
+      // CASO 3: No hay cuentas disponibles pero había una seleccionada - Resetear
+      console.log('No hay cuentas disponibles. Resetenado el ID de cuenta seleccionada.');
+      setCurrentAccountId(null);
+      
+      toast({
+        title: `Sin cuentas disponibles`,
+        description: `No se encontraron cuentas de WhatsApp disponibles.`,
+        variant: "destructive"
+      });
     }
   }, [accountsData, currentAccountId, toast]);
 
@@ -216,6 +240,12 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   } = useQuery({
     queryKey: ['/api/whatsapp-accounts', currentAccountId, 'chats'],
     queryFn: async () => {
+      // Si no hay cuenta seleccionada, no intentar cargar chats
+      if (currentAccountId === null) {
+        console.log('No hay cuenta seleccionada. No se cargarán chats.');
+        return [];
+      }
+      
       // Recuperar cache primero para mostrar datos inmediatos
       const cachedData = localStorage.getItem(`whatsapp_chats_${currentAccountId}`);
       let initialData = [];
@@ -359,10 +389,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     setSelectedChatId(null);
     
     // Limpiar la caché de chats para evitar mostrar datos desactualizados
-    // Esto es especialmente importante para la cuenta de Soporte (ID 2) que ha mostrado problemas
-    if (currentAccountId === 2) {
-      localStorage.removeItem(`whatsapp_chats_2`);
-      console.log("Caché de chats para cuenta de Soporte (ID 2) limpiada al cambiar");
+    // Eliminar la caché de la cuenta actual al cambiar
+    if (currentAccountId !== null) {
+      localStorage.removeItem(`whatsapp_chats_${currentAccountId}`);
+      console.log(`Caché de chats para cuenta ID ${currentAccountId} limpiada al cambiar`);
     }
     
     // Forzar refresco de los chats para la nueva cuenta
@@ -374,7 +404,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     // No es necesario enviar mensajes manualmente para cambio de cuenta
     
     // Actualizar estado en el almacenamiento local para persistencia
-    localStorage.setItem('lastWhatsAppAccount', currentAccountId.toString());
+    if (currentAccountId !== null) {
+      localStorage.setItem('lastWhatsAppAccount', currentAccountId.toString());
+    } else {
+      localStorage.removeItem('lastWhatsAppAccount');
+    }
   }, [currentAccountId, refetchChats]);
   
   // Ya tenemos una consulta para la asignación del chat actual arriba,
@@ -388,7 +422,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   } = useQuery({
     queryKey: ['/api/whatsapp-accounts', currentAccountId, 'messages', selectedChatId],
     queryFn: async () => {
-      if (!selectedChatId) {
+      // Verificar que tengamos tanto un chat seleccionado como una cuenta activa
+      if (!selectedChatId || currentAccountId === null) {
         return [];
       }
       
@@ -856,10 +891,29 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   className="w-full rounded-md border border-gray-300 py-1 px-2 text-sm font-medium"
                   value={currentAccountId === null ? '' : currentAccountId}
                   onChange={(e) => {
+                    // Si no hay valor seleccionado, no hacer nada
                     if (!e.target.value) return;
-                    const newAccountId = Number(e.target.value);
+                    
+                    // Convertir a número con validación
+                    const newAccountId = parseInt(e.target.value, 10);
+                    if (isNaN(newAccountId)) {
+                      console.error('ID de cuenta inválido:', e.target.value);
+                      return;
+                    }
+                    
+                    // Buscar la cuenta en la lista para confirmar que existe
                     const account = whatsappAccounts.find(acc => acc.id === newAccountId);
-                    const accountName = account?.name || 'seleccionada';
+                    if (!account) {
+                      console.error('Cuenta no encontrada con ID:', newAccountId);
+                      toast({
+                        title: "Error al cambiar de cuenta",
+                        description: `No se encontró la cuenta con ID ${newAccountId}`,
+                        variant: "destructive"
+                      });
+                      return;
+                    }
+                    
+                    const accountName = account.name || 'seleccionada';
                     
                     // Mostrar indicador de carga
                     toast({
