@@ -278,6 +278,36 @@ const AppRoutes: React.FC = () => {
                 </svg>
                 Configuración
               </a>
+              
+              {/* Perfil de usuario y cierre de sesión */}
+              <div className="mt-auto pt-4 border-t border-white/10">
+                <div className="px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="h-7 w-7 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
+                        {user ? user.username?.substring(0, 2).toUpperCase() : "US"}
+                      </div>
+                      <div className="ml-2">
+                        <p className="text-xs font-medium text-white">{user?.username || "Usuario"}</p>
+                        <p className="text-xs text-white/60">{user?.role || "Rol no disponible"}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (confirm("¿Estás seguro de que deseas cerrar sesión?")) {
+                          // Implementar lógica de cierre de sesión aquí
+                          navigate("/login");
+                        }
+                      }}
+                      className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </nav>
           </div>
         </aside>
