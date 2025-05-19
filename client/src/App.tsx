@@ -24,6 +24,7 @@ import Login from './pages/Login';
 import UserManagement from './pages/UserManagement';
 import WhatsAppAccounts from './pages/WhatsAppAccounts';
 import ChatAssignments from './pages/ChatAssignments';
+import Profile from './pages/Profile';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
 import { PageTransition } from '@/components/ui/page-transition';
@@ -350,6 +351,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/users" component={() => <PrivateRoute component={UserManagement} path="/users" />} />
                 <Route path="/whatsapp-accounts" component={() => <PrivateRoute component={WhatsAppAccounts} path="/whatsapp-accounts" />} />
                 <Route path="/chat-assignments" component={() => <PrivateRoute component={ChatAssignments} path="/chat-assignments" />} />
+                <Route path="/profile" component={() => <PrivateRoute component={Profile} path="/profile" />} />
                 <Route component={() => <PrivateRoute component={NotFound} path="*" />} />
               </Switch>
             </PageTransition>
