@@ -151,7 +151,17 @@ ticketsRouter.patch('/:id/status', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'El estado es obligatorio' });
     }
     
-    // Actualizar el estado del ticket
+    // Primero obtener el ticket actual para preservar sus campos
+    const currentTicket = await db.execute(sql`
+      SELECT * FROM tickets WHERE id = ${parseInt(id)}
+    `);
+    
+    if (!currentTicket.rows || currentTicket.rows.length === 0) {
+      console.error(`Ticket ${id} no encontrado`);
+      return res.status(404).json({ success: false, message: 'Ticket no encontrado' });
+    }
+    
+    // Actualizar el estado del ticket manteniendo los demás campos
     const result = await db.execute(sql`
       UPDATE tickets
       SET 
@@ -169,6 +179,18 @@ ticketsRouter.patch('/:id/status', async (req: Request, res: Response) => {
     const ticket = result.rows[0];
     
     // Formatear la respuesta completa del ticket para asegurar que todos los campos se actualicen en el frontend
+    // Obtener info del agente asignado si existe
+    let agentInfo = null;
+    if (ticket.assigned_agent_id) {
+      const agentResult = await db.execute(sql`
+        SELECT * FROM agents WHERE id = ${ticket.assigned_agent_id}
+      `);
+      
+      if (agentResult.rows && agentResult.rows.length > 0) {
+        agentInfo = agentResult.rows[0];
+      }
+    }
+    
     const formattedTicket = {
       id: ticket.id,
       title: ticket.title,
@@ -180,8 +202,8 @@ ticketsRouter.patch('/:id/status', async (req: Request, res: Response) => {
       updatedAt: ticket.updated_at,
       dueDate: ticket.due_date,
       assignedTo: ticket.assigned_agent_id,
-      assignedToName: null, // Se actualizará en la siguiente petición GET
-      assignedToEmail: null,
+      assignedToName: agentInfo ? agentInfo.name : null,
+      assignedToEmail: agentInfo ? agentInfo.email : null,
       createdBy: ticket.created_by,
       notes: ticket.notes,
       tags: ticket.tags,
