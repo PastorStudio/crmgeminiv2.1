@@ -152,7 +152,12 @@ export default function Tickets() {
   const updateTicketMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       const response = await apiRequest("PATCH", `/api/tickets/${id}`, data);
-      return response.json();
+      try {
+        return await response.json();
+      } catch (error) {
+        console.error("Error al procesar la respuesta JSON:", error);
+        return { id, ...data };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
@@ -178,7 +183,12 @@ export default function Tickets() {
       const response = await apiRequest("PATCH", `/api/tickets/${id}/status`, {
         status,
       });
-      return response.json();
+      try {
+        return await response.json();
+      } catch (error) {
+        console.error("Error al procesar la respuesta JSON:", error);
+        return { id, status };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
@@ -202,7 +212,12 @@ export default function Tickets() {
       const response = await apiRequest("PATCH", `/api/tickets/${id}/assign`, {
         agentId,
       });
-      return response.json();
+      try {
+        return await response.json();
+      } catch (error) {
+        console.error("Error al procesar la respuesta JSON:", error);
+        return { id, assignedTo: agentId };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });

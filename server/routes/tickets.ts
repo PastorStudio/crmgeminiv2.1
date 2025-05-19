@@ -144,6 +144,8 @@ ticketsRouter.patch('/:id/status', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { status } = req.body;
     
+    console.log(`Actualizando estado del ticket ${id} a: ${status}`);
+    
     // Validación básica
     if (!status) {
       return res.status(400).json({ success: false, message: 'El estado es obligatorio' });
@@ -160,6 +162,7 @@ ticketsRouter.patch('/:id/status', async (req: Request, res: Response) => {
     `);
     
     if (!result.rows || result.rows.length === 0) {
+      console.error(`Ticket ${id} no encontrado`);
       return res.status(404).json({ success: false, message: 'Ticket no encontrado' });
     }
     
@@ -171,10 +174,11 @@ ticketsRouter.patch('/:id/status', async (req: Request, res: Response) => {
       status: ticket.status
     };
     
-    res.json(formattedTicket);
+    console.log(`Estado del ticket ${id} actualizado con éxito, retornando:`, formattedTicket);
+    return res.status(200).json(formattedTicket);
   } catch (error) {
     console.error('Error al actualizar estado del ticket:', error);
-    res.status(500).json({ success: false, message: 'Error al actualizar el estado' });
+    return res.status(500).json({ success: false, message: 'Error al actualizar el estado' });
   }
 });
 
@@ -183,6 +187,8 @@ ticketsRouter.patch('/:id/assign', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { agentId } = req.body;
+    
+    console.log(`Asignando ticket ${id} al agente ${agentId}`);
     
     // Actualizar la asignación del ticket
     const result = await db.execute(sql`
@@ -195,6 +201,7 @@ ticketsRouter.patch('/:id/assign', async (req: Request, res: Response) => {
     `);
     
     if (!result.rows || result.rows.length === 0) {
+      console.error(`Ticket ${id} no encontrado`);
       return res.status(404).json({ success: false, message: 'Ticket no encontrado' });
     }
     
@@ -220,9 +227,10 @@ ticketsRouter.patch('/:id/assign', async (req: Request, res: Response) => {
       assignedToEmail: agentInfo ? agentInfo.email : null
     };
     
-    res.json(formattedTicket);
+    console.log(`Ticket ${id} asignado con éxito, retornando:`, formattedTicket);
+    return res.status(200).json(formattedTicket);
   } catch (error) {
     console.error('Error al asignar ticket:', error);
-    res.status(500).json({ success: false, message: 'Error al asignar el ticket' });
+    return res.status(500).json({ success: false, message: 'Error al asignar el ticket' });
   }
 });
