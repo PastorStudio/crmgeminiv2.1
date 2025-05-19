@@ -924,20 +924,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const upcoming = req.query.upcoming === "true";
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       
-      if (leadId) {
-        const activities = await storage.getActivitiesByLead(leadId);
-        return res.json(activities);
-      } else if (userId && upcoming) {
-        const activities = await storage.getUpcomingActivities(userId, limit);
-        return res.json(activities);
-      } else if (userId) {
-        const activities = await storage.getActivitiesByUser(userId);
-        return res.json(activities);
-      } else {
-        return res.status(400).json({ message: "Missing required parameters" });
+      let activities = [];
+      
+      try {
+        if (leadId) {
+          activities = await storage.getActivitiesByLead(leadId);
+        } else if (userId && upcoming) {
+          activities = await storage.getUpcomingActivities(userId, limit);
+        } else if (userId) {
+          activities = await storage.getActivitiesByUser(userId);
+        } else {
+          return res.status(400).json({ 
+            success: false,
+            message: "Missing required parameters",
+            data: []
+          });
+        }
+      } catch (dbError) {
+        console.error("Error específico en consulta de actividades:", dbError);
+        // No rethrow, continuamos con array vacío
       }
+      
+      // Si llegamos aquí, devolvemos lo que tengamos (puede ser un array vacío)
+      return res.json(activities);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch activities" });
+      console.error("Error general en endpoint de actividades:", error);
+      // En caso de error grave, devolvemos array vacío en lugar de error 500
+      // para evitar pantallas en blanco
+      res.json([]);
     }
   });
 
@@ -1008,17 +1022,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const recent = req.query.recent === "true";
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       
-      if (leadId) {
-        const messages = await storage.getMessagesByLead(leadId);
-        return res.json(messages);
-      } else if (recent) {
-        const messages = await storage.getRecentMessages(limit);
-        return res.json(messages);
-      } else {
-        return res.status(400).json({ message: "Missing required parameters" });
+      let messages = [];
+      
+      try {
+        if (leadId) {
+          messages = await storage.getMessagesByLead(leadId);
+        } else if (recent) {
+          messages = await storage.getRecentMessages(limit);
+        } else {
+          return res.status(400).json({ 
+            success: false,
+            message: "Missing required parameters",
+            data: []
+          });
+        }
+      } catch (dbError) {
+        console.error("Error específico en consulta de mensajes:", dbError);
+        // No rethrow, continuamos con array vacío
       }
+      
+      // Si llegamos aquí, devolvemos lo que tengamos (puede ser un array vacío)
+      return res.json(messages);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch messages" });
+      console.error("Error general en endpoint de mensajes:", error);
+      // En caso de error grave, devolvemos array vacío en lugar de error 500
+      // para evitar pantallas en blanco
+      res.json([]);
     }
   });
 
