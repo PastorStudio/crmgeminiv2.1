@@ -1222,7 +1222,29 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         
         {/* Panel derecho - Mensajes */}
         <div className="col-span-12 md:col-span-8 flex flex-col h-full overflow-hidden">
-          {selectedChatId && currentChat && whatsappStatus?.authenticated ? (
+          {!currentAccountId ? (
+            // Panel de mensaje cuando no hay cuenta seleccionada
+            <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-50">
+              <WifiOff className="h-16 w-16 text-amber-500 mb-4" />
+              <h3 className="text-xl font-bold mb-2">No hay cuenta de WhatsApp seleccionada</h3>
+              <p className="text-gray-500 max-w-md text-center mb-4">
+                {whatsappAccounts && Array.isArray(whatsappAccounts) && whatsappAccounts.length > 0 
+                  ? "Selecciona una cuenta de WhatsApp del menú desplegable para ver los chats."
+                  : "No hay cuentas de WhatsApp disponibles. Debes añadir una cuenta primero."}
+              </p>
+              <Button 
+                variant="outline"
+                className="mt-2"
+                onClick={() => {
+                  // Intentar refrescar la lista de cuentas
+                  queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+                }}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Verificar cuentas disponibles
+              </Button>
+            </div>
+          ) : selectedChatId && currentChat && whatsappStatus?.authenticated ? (
             <>
               {/* Encabezado del chat */}
               <div className="border-b p-3 flex items-center gap-3">
@@ -1414,6 +1436,39 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 </Button>
               </div>
             </>
+          ) : !whatsappStatus?.authenticated ? (
+            <div className="flex flex-col items-center justify-center h-full p-8">
+              <div className="max-w-md text-center space-y-4">
+                <QrCode className="w-12 h-12 mx-auto text-primary mb-2" />
+                <h3 className="text-xl font-bold">Escanea el código QR</h3>
+                <p className="text-gray-500">
+                  Para enviar y recibir mensajes, necesitas conectar WhatsApp escaneando el código QR.
+                </p>
+                <div className="rounded-lg overflow-hidden border-4 border-white shadow-lg bg-white">
+                  <WhatsAppQRCode accountId={currentAccountId} />
+                </div>
+              </div>
+            </div>
+          ) : !selectedChatId ? (
+            <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-50">
+              <MessageSquare className="h-16 w-16 text-primary mb-4" />
+              <h3 className="text-xl font-bold mb-2">Selecciona un chat</h3>
+              <p className="text-gray-500 max-w-md text-center mb-4">
+                {whatsappChats && whatsappChats.length > 0 ? 
+                  "Selecciona un chat de la lista para ver los mensajes."
+                  : "No hay chats disponibles. Espera a que lleguen nuevos mensajes o intenta iniciar una conversación."}
+              </p>
+              <Button 
+                variant="outline"
+                className="mt-2"
+                onClick={() => {
+                  refetchChats();
+                }}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Actualizar chats
+              </Button>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
               <img 
@@ -1423,7 +1478,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
               />
               <h3 className="text-xl font-medium text-gray-700 mb-2">WhatsApp Messenger</h3>
               <p className="text-gray-500 max-w-md">
-                Selecciona un chat para ver los mensajes o escanea el código QR para conectar WhatsApp si aún no lo has hecho.
+                Se ha producido un error al cargar los mensajes. Intenta seleccionar un chat de nuevo.
               </p>
             </div>
           )}
