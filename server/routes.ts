@@ -965,17 +965,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (activities.rows) {
           const formattedActivities = activities.rows.map(activity => ({
             id: activity.id,
-            leadId: activity.lead_id,
-            userId: activity.user_id,
+            leadId: activity.leadid || activity.lead_id, // Compatibilidad con diferentes nombres de columna
+            userId: activity.userid || activity.user_id,
             type: activity.type || 'meeting',
             title: activity.title,
             description: activity.description,
-            startTime: activity.start_time,
-            endTime: activity.end_time,
+            startTime: activity.starttime || activity.start_time,
+            endTime: activity.endtime || activity.end_time,
             completed: activity.completed || false,
-            createdAt: activity.created_at,
-            createdBy: activity.created_by,
-            aiGenerated: activity.ai_generated || false
+            createdAt: activity.createdat || activity.created_at,
+            createdBy: activity.createdby || activity.created_by,
+            aiGenerated: activity.aigenerated || activity.ai_generated || false
           }));
           
           console.log(`Total de actividades encontradas: ${formattedActivities.length}`);
