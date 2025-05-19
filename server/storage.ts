@@ -28,7 +28,7 @@ import {
   type InsertAgent
 } from "@shared/schema";
 import { db } from './db';
-import { eq, desc, or } from 'drizzle-orm';
+import { eq, desc, or, sql } from 'drizzle-orm';
 
 // Interface for storage methods
 export interface IStorage {
