@@ -36,6 +36,8 @@ import { registerTemplateVariablesRoutes } from "./services/templateVariablesRou
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import chatAssignmentsRouter from "./routes/chatAssignments";
 import agentsRouter from "./routes/agents";
+import ticketsRouter from "./routes/tickets";
+import deleteLeadsRouter from "./routes/deleteLeads";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -72,6 +74,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   app.use("/api/chat-assignments", chatAssignmentsRouter);
   app.use("/api/agents", agentsRouter);
+  app.use("/api/tickets", ticketsRouter);
+  
+  // Endpoint directo para eliminar todos los leads
+  app.delete("/api/leads/delete-all", async (req: Request, res: Response) => {
+    try {
+      await db.delete(leads);
+      
+      res.json({
+        success: true,
+        message: "Todos los leads han sido eliminados correctamente"
+      });
+    } catch (error) {
+      console.error("Error eliminando todos los leads:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al eliminar todos los leads"
+      });
+    }
+  });
   
   // Ruta para la página de prueba de la galería de medios
   app.get("/media-gallery-test", (req: Request, res: Response) => {

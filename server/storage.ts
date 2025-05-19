@@ -120,6 +120,17 @@ export interface IStorage {
  * Implementación de almacenamiento que utiliza una base de datos PostgreSQL
  */
 export class DatabaseStorage implements IStorage {
+  
+  // Función para eliminar todos los leads
+  async deleteAllLeads(): Promise<void> {
+    try {
+      await db.delete(leads);
+      console.log("Todos los leads han sido eliminados");
+    } catch (error) {
+      console.error("Error al eliminar todos los leads:", error);
+      throw error;
+    }
+  }
   /**
    * Inicializa la base de datos creando datos de ejemplo si es necesario
    */
