@@ -38,6 +38,7 @@ import {
   QrCode,
   Paperclip,
   Brain,
+  LayoutGrid,
   Smile,
   CheckCheck,
   Image,
@@ -108,6 +109,52 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   // Refs para scroll automático
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Función para cambiar el modo de visualización
+  const handleViewModeChange = (mode: 'single' | 'all') => {
+    setViewMode(mode);
+    
+    if (mode === 'all') {
+      // Si cambiamos a modo "todas las cuentas", cargar chats de todas las cuentas
+      loadAllAccountsChats();
+    } else {
+      // Si volvemos a modo individual, limpiar la selección de chat
+      setSelectedChatId(null);
+    }
+  };
+  
+  // Función para cargar chats de todas las cuentas
+  const loadAllAccountsChats = async () => {
+    if (!whatsappAccounts || whatsappAccounts.length === 0) return;
+    
+    const newAllChats: {[accountId: number]: {chats: WhatsAppChat[], accountName: string}} = {};
+    
+    for (const account of whatsappAccounts) {
+      try {
+        console.log(`Cargando chats para cuenta ${account.id} (${account.name})...`);
+        const { apiRequest } = await import('@/lib/queryClient');
+        const response = await apiRequest(`/api/whatsapp-accounts/${account.id}/chats`);
+        if (!response.ok) {
+          console.error(`Error al cargar chats para cuenta ${account.id}: ${response.status}`);
+          continue;
+        }
+        
+        const chatsData = await response.json();
+        
+        if (Array.isArray(chatsData)) {
+          newAllChats[account.id] = {
+            chats: chatsData,
+            accountName: account.name
+          };
+          console.log(`Cargados ${chatsData.length} chats para cuenta ${account.name}`);
+        }
+      } catch (error) {
+        console.error(`Error al cargar chats para la cuenta ${account.id}:`, error);
+      }
+    }
+    
+    setAllAccountsChats(newAllChats);
+  };
   
   // Hook para WebSockets con notificaciones en tiempo real (<2s)
   const { 
