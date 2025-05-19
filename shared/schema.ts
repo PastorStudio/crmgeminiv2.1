@@ -11,6 +11,7 @@ export const users = pgTable("users", {
   fullName: text("fullName"),
   email: text("email"),
   // Roles: admin, agent, supervisor
+  // Roles: super_admin, admin, supervisor, agent
   role: text("role").default("agent"),
   // Estado: active, inactive, suspended
   status: text("status").default("active"),
