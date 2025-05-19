@@ -68,6 +68,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/media-gallery", mediaGalleryRouter);
   app.use("/api/media", mediaServeRouter);
   
+  // Registrar rutas para cuentas de WhatsApp, asignaciones de chat y agentes
+  app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
+  app.use("/api/chat-assignments", chatAssignmentsRouter);
+  app.use("/api/agents", agentsRouter);
+  
   // Registrar rutas para cuentas de WhatsApp y asignaciones de chat
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   app.use("/api/chat-assignments", chatAssignmentsRouter);
