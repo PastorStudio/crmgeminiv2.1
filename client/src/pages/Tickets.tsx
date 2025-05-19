@@ -331,6 +331,7 @@ export default function Tickets() {
                   <TableHead>Estado</TableHead>
                   <TableHead>Prioridad</TableHead>
                   <TableHead>Categoría</TableHead>
+                  <TableHead>Asignado a</TableHead>
                   <TableHead>Fecha Creación</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -362,6 +363,13 @@ export default function Tickets() {
                       </TableCell>
                       <TableCell>
                         {categoryMap[ticket.category] || ticket.category}
+                      </TableCell>
+                      <TableCell>
+                        {ticket.assignedToName ? (
+                          <span className="font-medium">{ticket.assignedToName}</span>
+                        ) : (
+                          <span className="text-gray-500 italic">Sin asignar</span>
+                        )}
                       </TableCell>
                       <TableCell>{formatDate(ticket.createdAt)}</TableCell>
                       <TableCell className="space-x-2">
