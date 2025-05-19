@@ -7,6 +7,7 @@ import {
   dashboardStats,
   whatsappAccounts,
   chatAssignments,
+  agents,
   type User, 
   type InsertUser,
   type Lead,
@@ -22,7 +23,9 @@ import {
   type WhatsappAccount,
   type InsertWhatsappAccount,
   type ChatAssignment,
-  type InsertChatAssignment
+  type InsertChatAssignment,
+  type Agent,
+  type InsertAgent
 } from "@shared/schema";
 import { db } from './db';
 import { eq, desc, or } from 'drizzle-orm';
@@ -91,6 +94,15 @@ export interface IStorage {
   createChatAssignment(assignment: InsertChatAssignment): Promise<ChatAssignment>;
   updateChatAssignment(id: number, data: Partial<InsertChatAssignment>): Promise<ChatAssignment | undefined>;
   deleteChatAssignment(id: number): Promise<void>;
+  
+  // Agent methods
+  getAllAgents(): Promise<Agent[]>;
+  getAgent(id: number): Promise<Agent | undefined>;
+  getAgentByUserId(userId: number): Promise<Agent | undefined>;
+  createAgent(agent: InsertAgent): Promise<Agent>;
+  updateAgent(id: number, data: Partial<InsertAgent>): Promise<Agent | undefined>;
+  updateAgentMetrics(id: number, metrics: any): Promise<Agent | undefined>;
+  deleteAgent(id: number): Promise<void>;
   
   // WhatsApp methods
   getWhatsAppContact(contactId: string): Promise<any>;

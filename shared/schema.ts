@@ -278,6 +278,38 @@ export const userWhatsappAccounts = pgTable("user_whatsapp_accounts", {
   assignedBy: integer("assignedBy").references(() => users.id),
 });
 
+// Tabla para gestionar agentes del sistema
+export const agents = pgTable("agents", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  // Estado: active, inactive, on_leave, terminated
+  status: text("status").default("active"),
+  // Tipo: sales, support, recovery, admin
+  type: text("type").notNull(),
+  // Usuario asociado con este agente
+  userId: integer("userId").references(() => users.id),
+  // Supervisor o manager a cargo de este agente
+  supervisorId: integer("supervisorId").references(() => agents.id),
+  // Departamento o área
+  department: text("department"),
+  // Métricas de rendimiento
+  metrics: jsonb("metrics").default('{"responseTime": 0, "conversionRate": 0, "customerSatisfaction": 0, "leadsManaged": 0}'),
+  // Cuentas de WhatsApp que puede utilizar
+  allowedAccounts: integer("allowedAccounts").array(),
+  // Cantidad máxima de chats simultáneos
+  maxConcurrentChats: integer("maxConcurrentChats").default(10),
+  // Habilidades o especialidades
+  skills: text("skills").array(),
+  // Información adicional
+  notes: text("notes"),
+  // Fechas
+  hireDate: timestamp("hireDate"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt")
+});
+
 // Chat-Agente para asignación de conversaciones a agentes específicos
 export const chatAssignments = pgTable("chat_assignments", {
   id: serial("id").primaryKey(),
@@ -361,6 +393,21 @@ export const chatCategoriesRelations = relations(chatCategories, ({ one }) => ({
 }));
 
 // Definir relaciones de usuarios
+// Relaciones para agentes
+export const agentsRelations = relations(agents, ({ one, many }) => ({
+  user: one(users, {
+    fields: [agents.userId],
+    references: [users.id]
+  }),
+  supervisor: one(agents, {
+    fields: [agents.supervisorId],
+    references: [agents.id]
+  }),
+  subordinates: many(agents, {
+    relationName: "supervisorRelation"
+  })
+}));
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   supervisor: one(users, {
     fields: [users.supervisorId],
@@ -372,15 +419,18 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   assignedLeads: many(leads),
   activities: many(activities, { relationName: "userActivities" }),
   whatsappAccounts: many(userWhatsappAccounts),
-  chatAssignments: many(chatAssignments, { relationName: "assignedChats" })
+  chatAssignments: many(chatAssignments, { relationName: "assignedChats" }),
+  agent: many(agents)
 }));
 
+export const insertAgentSchema = createInsertSchema(agents).omit({ id: true, createdAt: true, updatedAt: true, metrics: true });
 export const insertMediaGallerySchema = createInsertSchema(mediaGallery).omit({ id: true, uploadedAt: true, lastUsedAt: true, useCount: true });
 export const insertWhatsappAccountSchema = createInsertSchema(whatsappAccounts).omit({ id: true, createdAt: true, lastActiveAt: true });
 export const insertUserWhatsappAccountSchema = createInsertSchema(userWhatsappAccounts).omit({ id: true, assignedAt: true });
 export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
 export const insertChatCategorySchema = createInsertSchema(chatCategories).omit({ id: true, createdAt: true });
 
+export type InsertAgent = z.infer<typeof insertAgentSchema>;
 export type InsertMediaGallery = z.infer<typeof insertMediaGallerySchema>;
 export type InsertWhatsappAccount = z.infer<typeof insertWhatsappAccountSchema>;
 export type InsertUserWhatsappAccount = z.infer<typeof insertUserWhatsappAccountSchema>;
@@ -392,3 +442,4 @@ export type WhatsappAccount = typeof whatsappAccounts.$inferSelect;
 export type UserWhatsappAccount = typeof userWhatsappAccounts.$inferSelect;
 export type ChatAssignment = typeof chatAssignments.$inferSelect;
 export type ChatCategory = typeof chatCategories.$inferSelect;
+export type Agent = typeof agents.$inferSelect;
