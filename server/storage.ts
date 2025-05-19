@@ -266,11 +266,65 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActivitiesByLead(leadId: number): Promise<Activity[]> {
-    return db.select().from(activities).where(eq(activities.leadId, leadId));
+    try {
+      // Usar consulta SQL directa para evitar problemas con nombres de columnas
+      const result = await db.execute(sql`
+        SELECT * FROM activities 
+        WHERE "leadId" = ${leadId}
+        ORDER BY "createdAt" DESC
+      `);
+      
+      if (!result.rows) return [];
+      
+      return result.rows.map(row => ({
+        id: row.id,
+        leadId: row.leadid || row.leadId,
+        userId: row.userid || row.userId,
+        type: row.type || 'meeting',
+        title: row.title || '',
+        description: row.description || '',
+        startTime: row.starttime || row.scheduled,
+        endTime: row.endtime || null,
+        completed: row.completed || false,
+        createdAt: row.createdat || row.createdAt,
+        createdBy: row.createdby || row.userId,
+        aiGenerated: row.aigenerated || row.aiGenerated || false
+      }));
+    } catch (error) {
+      console.error(`Error al obtener actividades para lead ${leadId}:`, error);
+      return [];
+    }
   }
 
   async getActivitiesByUser(userId: number): Promise<Activity[]> {
-    return db.select().from(activities).where(eq(activities.userId, userId));
+    try {
+      // Usar consulta SQL directa para evitar problemas con nombres de columnas
+      const result = await db.execute(sql`
+        SELECT * FROM activities 
+        WHERE "userId" = ${userId}
+        ORDER BY "createdAt" DESC
+      `);
+      
+      if (!result.rows) return [];
+      
+      return result.rows.map(row => ({
+        id: row.id,
+        leadId: row.leadid || row.leadId,
+        userId: row.userid || row.userId,
+        type: row.type || 'meeting',
+        title: row.title || '',
+        description: row.description || '',
+        startTime: row.starttime || row.scheduled,
+        endTime: row.endtime || null,
+        completed: row.completed || false,
+        createdAt: row.createdat || row.createdAt,
+        createdBy: row.createdby || row.userId,
+        aiGenerated: row.aigenerated || row.aiGenerated || false
+      }));
+    } catch (error) {
+      console.error(`Error al obtener actividades para usuario ${userId}:`, error);
+      return [];
+    }
   }
 
   async getUpcomingActivities(userId: number, limit: number = 10): Promise<Activity[]> {
