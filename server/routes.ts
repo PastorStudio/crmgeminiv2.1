@@ -80,9 +80,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/leads/delete-all", async (req: Request, res: Response) => {
     try {
       // Primero eliminar relaciones en tablas dependientes
-      await db.delete(activities).where(eq(activities.leadId, sql.raw('ANY(SELECT id FROM leads)')));
-      await db.delete(messages).where(eq(messages.leadId, sql.raw('ANY(SELECT id FROM leads)')));
-      await db.delete(surveys).where(eq(surveys.leadId, sql.raw('ANY(SELECT id FROM leads)')));
+      try {
+        await db.delete(activities).where(eq(activities.leadId, sql.raw('ANY(SELECT id FROM leads)')));
+      } catch (activityError) {
+        console.error("Error al eliminar actividades:", activityError);
+      }
+      
+      try {
+        await db.delete(messages).where(eq(messages.leadId, sql.raw('ANY(SELECT id FROM leads)')));
+      } catch (messageError) {
+        console.error("Error al eliminar mensajes:", messageError);
+      }
+      
+      try {
+        await db.delete(surveys).where(eq(surveys.leadId, sql.raw('ANY(SELECT id FROM leads)')));
+      } catch (surveyError) {
+        console.error("Error al eliminar encuestas:", surveyError);
+      }
       
       // Ahora eliminar todos los leads
       await db.delete(leads);
