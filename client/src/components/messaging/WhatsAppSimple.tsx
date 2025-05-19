@@ -354,7 +354,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     
     // Actualizar estado en el almacenamiento local para persistencia
     localStorage.setItem('lastWhatsAppAccount', currentAccountId.toString());
-  }, [currentAccountId, refetchChats, sendWSMessage]);
+  }, [currentAccountId, refetchChats]);
   
   // Ya tenemos una consulta para la asignación del chat actual arriba,
   // así que eliminamos esta duplicada
@@ -683,10 +683,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
             <CardTitle className="text-xl font-semibold flex items-center gap-2 text-purple-800">
               <MessageSquare className="h-6 w-6 text-purple-700" />
               GeminiCRM WhatsApp
-              {connectionStatus === 'Connected' && (
+              {isConnected && (
                 <Wifi className="h-5 w-5 text-green-600" />
               )}
-              {connectionStatus !== 'Connected' && (
+              {!isConnected && (
                 <WifiOff className="h-5 w-5 text-red-600 animate-pulse" />
               )}
             </CardTitle>
