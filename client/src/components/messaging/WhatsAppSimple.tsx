@@ -856,8 +856,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   className="w-full rounded-md border border-gray-300 py-1 px-2 text-sm font-medium"
                   value={currentAccountId === null ? '' : currentAccountId}
                   onChange={(e) => {
+                    if (!e.target.value) return;
                     const newAccountId = Number(e.target.value);
-                    const accountName = whatsappAccounts.find(acc => acc.id === newAccountId)?.name || 'seleccionada';
+                    const account = whatsappAccounts.find(acc => acc.id === newAccountId);
+                    const accountName = account?.name || 'seleccionada';
                     
                     // Mostrar indicador de carga
                     toast({
@@ -942,14 +944,15 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   }}
                   disabled={isLoadingAccounts || !Array.isArray(whatsappAccounts) || whatsappAccounts.length === 0}
                 >
+                  <option value="">Seleccionar cuenta</option>
                   {isLoadingAccounts ? (
-                    <option>Cargando cuentas...</option>
+                    <option disabled>Cargando cuentas...</option>
                   ) : whatsappAccounts.length === 0 ? (
-                    <option>No hay cuentas disponibles</option>
+                    <option disabled>No hay cuentas disponibles</option>
                   ) : (
                     whatsappAccounts.map(account => (
                       <option key={account.id} value={account.id}>
-                        {account.name} {account.currentStatus?.authenticated ? '✓' : ''}
+                        {account.name} ({account.id}) {account.currentStatus?.authenticated ? '✓ Conectada' : '• Activa'}
                       </option>
                     ))
                   )}
