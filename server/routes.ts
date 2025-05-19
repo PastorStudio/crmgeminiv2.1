@@ -579,9 +579,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.id);
       const requestingUserRole = (req as any).user.role;
       const requestingUserId = (req as any).user.userId;
+      const requestingUsername = (req as any).user.username;
       
-      // Solo permitir eliminar usuarios a admin o supervisor
-      if (requestingUserRole !== 'admin' && requestingUserRole !== 'supervisor') {
+      // Verificar si es el superadministrador (DJP, ID 3)
+      const isSuperAdmin = requestingUserId === 3 && requestingUsername === 'DJP';
+      
+      // Solo permitir eliminar usuarios a admin, supervisor, o superadministrador
+      if (!isSuperAdmin && requestingUserRole !== 'admin' && requestingUserRole !== 'supervisor') {
         return res.status(403).json({ 
           success: false, 
           message: "No tienes permisos para eliminar usuarios" 
@@ -606,10 +610,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Los supervisores no pueden eliminar administradores
-      if (requestingUserRole === 'supervisor' && existingUser.role === 'admin') {
+      // Solo el superadministrador puede eliminar administradores
+      if (!isSuperAdmin && requestingUserRole === 'supervisor' && existingUser.role === 'admin') {
         return res.status(403).json({ 
           success: false, 
           message: "Los supervisores no pueden eliminar usuarios administradores" 
+        });
+      }
+      
+      // Proteger al superadministrador de ser eliminado por otros
+      if (existingUser.id === 3 && !isSuperAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "No se puede eliminar la cuenta del superadministrador"
         });
       }
       
