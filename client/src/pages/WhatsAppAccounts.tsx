@@ -405,6 +405,54 @@ const WhatsAppAccounts = () => {
           <Button onClick={() => refetch()} size="sm" variant="outline">
             <RefreshCw className="mr-2 h-4 w-4" /> Actualizar
           </Button>
+          
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="destructive" className="flex items-center">
+                <Eraser className="h-4 w-4 mr-2" />
+                <span>Limpiar todas las sesiones</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Limpiar todas las sesiones de WhatsApp</DialogTitle>
+                <DialogDescription>
+                  Esta acción limpiará todas las sesiones de WhatsApp, incluyendo las conexiones fantasma.
+                  Todas las cuentas se desconectarán y tendrás que escanear nuevamente los códigos QR para conectarte.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-3 my-4">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm">
+                    <strong>Importante:</strong> Esto resolverá el problema de las conexiones fantasma que aparecen como conectadas cuando en realidad están desconectadas.
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => {
+                  document.querySelector('[role="dialog"] button')?.dispatchEvent(
+                    new MouseEvent('click', { bubbles: true })
+                  );
+                }}>
+                  Cancelar
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => {
+                    cleanAllSessionsMutation.mutate();
+                    document.querySelector('[role="dialog"] button')?.dispatchEvent(
+                      new MouseEvent('click', { bubbles: true })
+                    );
+                  }}
+                  disabled={cleanAllSessionsMutation.isPending}
+                >
+                  {cleanAllSessionsMutation.isPending ? 'Limpiando...' : 'Sí, limpiar todas las sesiones'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          
           <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
