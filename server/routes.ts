@@ -79,6 +79,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/agents", agentsRouter);
   app.use("/api/tickets", ticketsRouter);
   
+  // Registrar rutas del dashboard
+  dashboardRouter(app);
+  
   // Herramientas de mantenimiento y correcciones de base de datos
   app.use("/api/fix", fixRouterTemp);
   
