@@ -111,6 +111,26 @@ export interface IStorage {
  */
 export class DatabaseStorage implements IStorage {
   /**
+   * Elimina todos los leads y sus datos relacionados (mensajes, actividades, encuestas)
+   */
+  async deleteAllLeads(): Promise<void> {
+    try {
+      // Primero eliminamos las entidades relacionadas para mantener la integridad referencial
+      await db.delete(messages).where(messages.leadId !== null);
+      await db.delete(activities).where(activities.leadId !== null);
+      await db.delete(surveys).where(surveys.leadId !== null);
+      
+      // Finalmente eliminamos todos los leads
+      await db.delete(leads);
+      
+      console.log('Todos los leads y sus datos relacionados han sido eliminados correctamente');
+    } catch (error) {
+      console.error('Error al eliminar todos los leads:', error);
+      throw error;
+    }
+  }
+  
+  /**
    * Inicializa la base de datos creando datos de ejemplo si es necesario
    */
   async initializeData(): Promise<void> {
