@@ -1,8 +1,8 @@
 {
   "accountId": 2,
   "accountName": "Soporte",
-  "activatedAt": "2025-05-20T01:22:57.253Z",
-  "lastCheckedAt": "2025-05-20T01:22:57.253Z",
+  "activatedAt": "2025-05-20T01:27:57.255Z",
+  "lastCheckedAt": "2025-05-20T01:27:57.255Z",
   "status": {
     "initialized": true,
     "ready": true,
