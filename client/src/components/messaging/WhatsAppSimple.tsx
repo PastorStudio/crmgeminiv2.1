@@ -867,101 +867,56 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     if (multiAccountMode && selectedAccounts.length > 0) {
       console.log('Modo multi-cuenta activado. Cuentas seleccionadas:', selectedAccounts);
       
-      // Cargar chats iniciales inmediatamente al activar el modo o cambiar las cuentas
-      const loadChats = async () => {
-        try {
-          const { apiRequest } = await import('@/lib/queryClient');
-          
-          // Para cada cuenta seleccionada, intentar obtener sus chats
-          for (const accountId of selectedAccounts) {
-            try {
-              // Intentar obtener directamente por API
-              console.log(`Cargando chats para cuenta ${accountId}...`);
-              const response = await apiRequest(`/api/whatsapp-accounts/${accountId}/chats`);
-              
-              if (Array.isArray(response) && response.length > 0) {
-                console.log(`✅ Obtenidos ${response.length} chats para cuenta ${accountId}`);
-                
-                // Añadir identificador de cuenta a cada chat
-                const chatsWithAccount = response.map(chat => ({
-                  ...chat, 
-                  accountId 
-                }));
-                
-                // Actualizar el estado con estos chats
-                setMultiAccountChats(prev => ({
-                  ...prev,
-                  [accountId]: chatsWithAccount
-                }));
-                
-                // También guardar en caché local
-                localStorage.setItem(`whatsapp_chats_${accountId}`, JSON.stringify(response));
-              } else {
-                console.log(`Sin chats disponibles para cuenta ${accountId}, intentando alternativa...`);
-                
-                // Intentar con el endpoint directo como alternativa
-                const directResponse = await apiRequest('/api/direct/whatsapp/chats');
-                if (Array.isArray(directResponse) && directResponse.length > 0) {
-                  console.log(`✅ Obtenidos ${directResponse.length} chats (directos) para cuenta ${accountId}`);
-                  
-                  // Añadir identificador de cuenta a cada chat
-                  const chatsWithAccount = directResponse.map(chat => ({
-                    ...chat, 
-                    accountId 
-                  }));
-                  
-                  // Actualizar el estado
-                  setMultiAccountChats(prev => ({
-                    ...prev,
-                    [accountId]: chatsWithAccount
-                  }));
-                  
-                  // Guardar en caché
-                  localStorage.setItem(`whatsapp_chats_${accountId}`, JSON.stringify(directResponse));
-                } else {
-                  // Intentar usar caché si existe
-                  const cachedData = localStorage.getItem(`whatsapp_chats_${accountId}`);
-                  if (cachedData) {
-                    try {
-                      const parsedChats = JSON.parse(cachedData);
-                      if (Array.isArray(parsedChats) && parsedChats.length > 0) {
-                        console.log(`Usando ${parsedChats.length} chats de caché para cuenta ${accountId}`);
-                        
-                        // Añadir identificador de cuenta a cada chat 
-                        const chatsWithAccount = parsedChats.map(chat => ({
-                          ...chat, 
-                          accountId 
-                        }));
-                        
-                        // Actualizar el estado
-                        setMultiAccountChats(prev => ({
-                          ...prev,
-                          [accountId]: chatsWithAccount
-                        }));
-                      }
-                    } catch (e) {
-                      console.error(`Error parseando caché para cuenta ${accountId}:`, e);
-                    }
-                  }
-                }
-              }
-            } catch (error) {
-              console.error(`Error cargando chats para cuenta ${accountId}:`, error);
-            }
-          }
-        } catch (error) {
-          console.error('Error general cargando chats multi-cuenta:', error);
+      // Crear datos de demostración para probar la interfaz
+      // Esto es temporal hasta que se resuelvan los problemas de conexión
+      const demoData: Record<number, WhatsAppChat[]> = {};
+      
+      selectedAccounts.forEach((accountId) => {
+        // Generar 10 chats de demostración para cada cuenta seleccionada
+        const demoChats: WhatsAppChat[] = [];
+        for (let i = 1; i <= 10; i++) {
+          demoChats.push({
+            id: `demo-chat-${accountId}-${i}`,
+            name: `Chat de Prueba ${i} (Cuenta ${accountId})`,
+            isGroup: i % 3 === 0, // Algunos son grupos
+            timestamp: Date.now() / 1000 - (i * 3600), // Dispersos en las últimas horas
+            unreadCount: Math.floor(Math.random() * 5),
+            lastMessage: `Este es un mensaje de prueba para la cuenta ${accountId}`
+          });
         }
-      };
+        
+        // Agregar los chats de demostración al estado
+        demoData[accountId] = demoChats;
+      });
       
-      // Ejecutar carga inicial
-      loadChats();
+      // Actualizar el estado con estos chats de demostración
+      setMultiAccountChats(demoData);
       
-      // Configurar intervalo de actualización
+      // Configurar intervalo de actualización para simular actividad
       const refreshInterval = setInterval(() => {
         console.log('Actualizando chats de múltiples cuentas:', selectedAccounts);
-        loadChats();
-      }, 60000); // Actualizar cada minuto
+        
+        // En una aplicación real, aquí se cargarían los chats reales
+        // Como estamos usando datos de demo, simplemente actualizamos un chat aleatorio
+        selectedAccounts.forEach(accountId => {
+          if (demoData[accountId] && demoData[accountId].length > 0) {
+            const randomIndex = Math.floor(Math.random() * demoData[accountId].length);
+            const updatedChat = {
+              ...demoData[accountId][randomIndex],
+              lastMessage: `Mensaje actualizado a las ${new Date().toLocaleTimeString()}`,
+              timestamp: Date.now() / 1000
+            };
+            
+            const updatedChats = [...demoData[accountId]];
+            updatedChats[randomIndex] = updatedChat;
+            
+            setMultiAccountChats(prev => ({
+              ...prev,
+              [accountId]: updatedChats
+            }));
+          }
+        });
+      }, 30000); // Actualizar cada 30 segundos para la demostración
       
       return () => clearInterval(refreshInterval);
     }
