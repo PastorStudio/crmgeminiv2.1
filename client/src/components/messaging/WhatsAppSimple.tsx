@@ -635,6 +635,32 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     }
   });
   
+  // Mutación para asignar chat a agente
+  const assignChatMutation = useMutation({
+    mutationFn: async (data: { chatId: string; accountId: number }) => {
+      try {
+        const { apiRequest } = await import('@/lib/queryClient');
+        const response = await apiRequest('/api/chat-assignments', {
+          method: 'POST',
+          data: {
+            chatId: data.chatId,
+            accountId: data.accountId,
+            assignedToId: 1 // Por defecto asignar al primer agente
+          }
+        });
+        return response;
+      } catch (error) {
+        console.error('Error al asignar chat:', error);
+        // No lanzar el error para evitar interrupciones
+        return null;
+      }
+    },
+    onSuccess: () => {
+      // Actualizar datos de asignación
+      refetchAssignment();
+    }
+  });
+  
   // Mutación para activar/desactivar respuestas automáticas
   const autoResponseMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
@@ -795,20 +821,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     localStorage.setItem('last_selected_chat_id', chat.id);
     localStorage.setItem('last_selected_chat_account', currentAccountId.toString());
     
-    // Intentar crear/actualizar la asignación del chat
-    if (chat.id) {
-      try {
-        // Usar un pequeño retraso para evitar múltiples peticiones simultáneas
-        setTimeout(() => {
-          assignChatMutation.mutate({
-            chatId: chat.id,
-            accountId: currentAccountId
-          });
-        }, 300);
-      } catch (e) {
-        console.error('Error al asignar chat:', e);
-      }
-    }
+    // Refrescar mensajes para el chat seleccionado
+    setTimeout(() => {
+      refetchMessages();
+    }, 300);
     
     // Si hay un ID de lead asociado, notificar
     if (onSelectLead && selectedLeadId) {
