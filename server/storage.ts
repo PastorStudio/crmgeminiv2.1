@@ -641,22 +641,29 @@ export class DatabaseStorage implements IStorage {
       
       const now = new Date();
       
-      // Usamos SQL directo para la inserción
+      // Convertimos sessionData a formato string si es necesario
+      const sessionDataString = typeof sessionData === 'object' 
+        ? JSON.stringify(sessionData) 
+        : (sessionData || '{}');
+      
+      // Usamos SQL directo para la inserción, incluyendo ambas columnas duplicadas
       const result = await db.query.raw(`
         INSERT INTO whatsapp_accounts (
           name, 
           status, 
-          phone_number, 
-          session_data, 
+          phone_number,
+          phoneNumber, 
+          session_data,
+          sessionData, 
           "createdAt"
         ) VALUES (
-          $1, $2, $3, $4, $5
+          $1, $2, $3, $3, $4, $4, $5
         ) RETURNING id, name, status, phone_number, session_data, "createdAt"
       `, [
         account.name,
         account.status || 'inactive',
         phoneNumber || '',
-        sessionData || '{}',
+        sessionDataString,
         now
       ]);
       
@@ -713,14 +720,21 @@ export class DatabaseStorage implements IStorage {
       }
       
       if (phoneNumber !== undefined) {
-        updateFields += `phone_number = $${paramIndex}, `;
+        // Actualizar ambas columnas duplicadas con el mismo valor
+        updateFields += `phone_number = $${paramIndex}, phoneNumber = $${paramIndex}, `;
         updateValues.push(phoneNumber);
         paramIndex++;
       }
       
       if (sessionData !== undefined) {
-        updateFields += `session_data = $${paramIndex}, `;
-        updateValues.push(sessionData);
+        // Convertir sessionData a string si es un objeto
+        const sessionDataString = typeof sessionData === 'object'
+          ? JSON.stringify(sessionData)
+          : (sessionData || '{}');
+          
+        // Actualizar ambas columnas duplicadas con el mismo valor
+        updateFields += `session_data = $${paramIndex}, sessionData = $${paramIndex}, `;
+        updateValues.push(sessionDataString);
         paramIndex++;
       }
       
