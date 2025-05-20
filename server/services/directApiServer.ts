@@ -184,50 +184,47 @@ export const registerDirectAPIRoutes = (app: any) => {
       // Obtener la implementación específica para usar funcionalidades avanzadas
       const { whatsappService: whatsappImpl } = await import('./whatsappServiceImpl');
       
-      // Intentar enviar mensaje directamente, sin depender de las verificaciones de estado
-      console.log(`Intentando enviar mensaje a ${chatId} en modo forzado`);
+      // Intentar enviar mensaje directamente
+      console.log(`Intentando enviar mensaje a ${chatId}`);
       console.log(`Contenido del mensaje: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
       
       try {
-        // Intentar usar el método mejorado que evita las verificaciones de autenticación
+        // Asegurar que el cliente esté debidamente inicializado
+        if (!whatsappImpl.getClient()) {
+          return res.status(503).json({ 
+            error: 'Cliente de WhatsApp no inicializado correctamente'
+          });
+        }
+        
+        // Enviar mensaje real (no simulación)
         const result = await whatsappImpl.sendMessage(chatId.replace('@c.us', ''), message);
         
         console.log('Respuesta del servidor al enviar mensaje:', result);
         
-        // Si llegamos aquí, el mensaje se envió correctamente
+        // Responder con los datos reales
         return res.json({
           success: true,
-          messageId: result?.messageId || `generated-${Date.now()}`,
-          message: "Mensaje enviado correctamente",
-          isFake: result?.isFake || false
+          messageId: result.messageId,
+          message: "Mensaje enviado correctamente"
         });
       } catch (sendError) {
-        console.error('Error detallado al enviar mensaje de WhatsApp:', sendError);
+        console.error('Error al enviar mensaje de WhatsApp:', sendError);
         
-        // Si hay error, intentar enviar un mensaje "ficticio" para pruebas
-        console.log('Enviando mensaje de prueba debido al error de WhatsApp');
-        
-        // Devolver éxito ficticio para permitir pruebas de la interfaz
-        return res.json({
-          success: true,
-          messageId: `fallback-${Date.now()}`,
-          message: "Mensaje de prueba enviado (modo fallback)",
-          isFake: true,
-          originalError: sendError.message || "Error desconocido"
+        // Devolver error real, no simulación
+        return res.status(500).json({ 
+          success: false,
+          error: 'Error al enviar mensaje de WhatsApp',
+          details: sendError.message || "Error desconocido" 
         });
       }
     } catch (error) {
-      console.error('Error general procesando solicitud de mensaje:', error);
+      console.error('Error procesando solicitud de mensaje:', error);
       
-      // Incluso en caso de error crítico, devolver un "éxito" ficticio
-      // para evitar que la interfaz se bloquee
-      return res.json({
-        success: true,
-        messageId: `critical-fallback-${Date.now()}`,
-        message: "Mensaje enviado en modo de error crítico",
-        isFake: true,
-        criticalError: true,
-        errorDetails: error instanceof Error ? error.message : "Error desconocido" 
+      // Devolver error real, no simulación
+      return res.status(500).json({ 
+        success: false,
+        error: 'Error procesando solicitud de mensaje de WhatsApp',
+        details: error instanceof Error ? error.message : "Error desconocido" 
       });
     }
   });
