@@ -148,6 +148,30 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   
   // Referencias a React Query y Toast ya declaradas anteriormente
   
+  // Función para obtener color según ID de cuenta
+  const getAccountColor = (accountId: number): string => {
+    const colorKey = accountId as keyof typeof accountColors;
+    // Versión simplificada - retornar el color directo para evitar problemas de CSS
+    return accountColors[colorKey] ? `#${getHexForColor(accountColors[colorKey])}` : '#3B82F6';
+  }
+  
+  // Convertir nombres de colores a códigos hex aproximados
+  const getHexForColor = (colorName: string): string => {
+    const colorMap: {[key: string]: string} = {
+      'blue': '3B82F6',
+      'green': '10B981',
+      'purple': '8B5CF6',
+      'orange': 'F59E0B',
+      'red': 'EF4444',
+      'yellow': 'F59E0B',
+      'teal': '14B8A6',
+      'indigo': '6366F1',
+      'pink': 'EC4899',
+      'amber': 'F59E0B'
+    };
+    return colorMap[colorName] || '3B82F6';
+  }
+  
   // Esta función es reemplazada por la implementación en el useEffect
   
   // Query para obtener todas las cuentas de WhatsApp
@@ -1545,16 +1569,57 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                       {/* Mapeo de chats con protección de errores - Versión corregida para evitar bucles */}
                       {multiAccountMode 
                         // Mostrar chats de múltiples cuentas
-                        ? Object.entries(multiAccountChats)
-                            .filter(([accountId]) => selectedAccounts.includes(Number(accountId)))
-                            .flatMap(([accountId, chats]) => 
-                              chats.map((chat: any) => ({
-                                ...chat,
-                                accountId: Number(accountId)
-                              }))
-                            )
-                            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)) // Ordenar por recientes primero
-                            .map((chat: any) => (
+                        ? (() => {
+                            // Recopilar todos los chats de las cuentas seleccionadas
+                            let allChats: any[] = [];
+                            
+                            // Primero intentar con nuestra estructura multi-account
+                            selectedAccounts.forEach(accountId => {
+                              const accountChats = multiAccountChats[accountId] || [];
+                              if (accountChats.length > 0) {
+                                const chatsWithAccount = accountChats.map(chat => ({
+                                  ...chat,
+                                  accountId
+                                }));
+                                allChats = [...allChats, ...chatsWithAccount];
+                              } else if (currentAccountId === accountId && whatsappChats.length > 0) {
+                                // Si no hay chats en la estructura multi-account pero la cuenta actual tiene chats
+                                const chatsWithAccount = whatsappChats.map(chat => ({
+                                  ...chat,
+                                  accountId
+                                }));
+                                allChats = [...allChats, ...chatsWithAccount];
+                              }
+                            });
+                            
+                            // Si aún no hay chats, intentar usar datos desde la caché para cada cuenta
+                            if (allChats.length === 0) {
+                              selectedAccounts.forEach(accountId => {
+                                try {
+                                  const cachedData = localStorage.getItem(`whatsapp_chats_${accountId}`);
+                                  if (cachedData) {
+                                    const parsedChats = JSON.parse(cachedData);
+                                    if (Array.isArray(parsedChats) && parsedChats.length > 0) {
+                                      console.log(`Usando ${parsedChats.length} chats en caché para cuenta ${accountId} (renderizado)`);
+                                      const chatsWithAccount = parsedChats.map(chat => ({
+                                        ...chat,
+                                        accountId
+                                      }));
+                                      allChats = [...allChats, ...chatsWithAccount];
+                                    }
+                                  }
+                                } catch (e) {
+                                  console.error(`Error parseando caché para cuenta ${accountId}:`, e);
+                                }
+                              });
+                            }
+                            
+                            // Ordenar todos los chats por timestamp (más recientes primero)
+                            allChats.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                            
+                            // Si hay chats, renderizarlos
+                            if (allChats.length > 0) {
+                              return allChats.map((chat: any) => (
                               <div
                                 key={`${chat.accountId}-${chat.id}`}
                                 className={`p-3 hover:bg-gray-50 cursor-pointer ${
@@ -1689,10 +1754,33 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                                     </div>
                                   </div>
                                 </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  <span 
+                                    className="inline-flex items-center bg-gray-100 px-1.5 py-0.5 rounded-full text-xs"
+                                    style={{ 
+                                      borderLeft: `3px solid ${getAccountColor(chat.accountId)}`
+                                    }}
+                                  >
+                                    {whatsappAccounts.find(a => a.id === chat.accountId)?.name || `Cuenta ${chat.accountId}`}
+                                  </span>
+                                </div>
                               </div>
-                            ))
-                        // Mostrar chats de una sola cuenta (modo normal)
-                        : whatsappChats.map((chat: WhatsAppChat) => (
+                            ));
+                            } else {
+                              // Si no hay chats, mostrar mensaje
+                              return (
+                                <div className="p-4 text-center text-gray-500">
+                                  <MessageSquare className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                                  <p>No hay chats disponibles en las cuentas seleccionadas.</p>
+                                  <p className="text-xs mt-2">
+                                    Selecciona otras cuentas o espera a que se carguen.
+                                  </p>
+                                </div>
+                              );
+                            }
+                          })()
+                        : // Mostrar chats de una sola cuenta (modo normal)
+                        whatsappChats.map((chat: WhatsAppChat) => (
                           <div
                             key={chat.id}
                             className={`p-3 hover:bg-gray-50 cursor-pointer ${
