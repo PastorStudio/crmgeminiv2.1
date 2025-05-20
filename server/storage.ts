@@ -608,9 +608,9 @@ export class DatabaseStorage implements IStorage {
 
   async getWhatsappAccount(id: number): Promise<WhatsappAccount | undefined> {
     try {
-      // Usamos SQL directo para evitar problemas con discrepancias en el esquema
+      // Usamos pool.query para acceder directamente a la base de datos
       // Incluimos todos los campos de la tabla
-      const result = await db.query.raw(`
+      const result = await pool.query(`
         SELECT id, name, status, phone_number, phoneNumber, session_data, sessionData, 
                "createdAt", "lastActiveAt", "ownerName", "ownerPhone", description
         FROM whatsapp_accounts
@@ -618,11 +618,11 @@ export class DatabaseStorage implements IStorage {
       `, [id]);
       
       // Si no hay resultados, devolver undefined
-      if (!result || result.length === 0) {
+      if (!result.rows || result.rows.length === 0) {
         return undefined;
       }
       
-      const row = result[0] as any;
+      const row = result.rows[0];
       
       // Transformamos a la estructura esperada por la interfaz, con todos los campos
       return {
@@ -657,8 +657,8 @@ export class DatabaseStorage implements IStorage {
         ? JSON.stringify(sessionData) 
         : (sessionData || '{}');
       
-      // Usamos SQL directo para la inserción, adaptado a la estructura real de columnas
-      const result = await db.query.raw(`
+      // Usamos pool.query en lugar de db.query.raw
+      const result = await pool.query(`
         INSERT INTO whatsapp_accounts (
           name, 
           status, 
@@ -684,11 +684,11 @@ export class DatabaseStorage implements IStorage {
         account.description || ''
       ]);
       
-      if (!result || result.length === 0) {
+      if (!result.rows || result.rows.length === 0) {
         throw new Error('Error al crear cuenta de WhatsApp: Sin resultados');
       }
       
-      const row = result[0] as any;
+      const row = result.rows[0];
       
       // Transformar a formato esperado por la interfaz, incluyendo todos los campos
       return {
@@ -803,8 +803,8 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWhatsappAccount(id: number): Promise<void> {
     try {
-      // Usamos SQL directo para asegurar compatibilidad con la estructura real de la base de datos
-      await db.query.raw(`
+      // Usamos pool.query en lugar de db.query.raw porque es el método correcto para ejecutar SQL directo
+      await pool.query(`
         DELETE FROM whatsapp_accounts
         WHERE id = $1
       `, [id]);
