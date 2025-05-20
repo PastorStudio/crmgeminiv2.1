@@ -615,9 +615,50 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedChatId) return;
     
-    // Usar la mutación que ya funciona
-    messageMutation.mutate(newMessage);
+    const msgToSend = newMessage;
+    
+    // Limpiar el campo de texto inmediatamente para mejor experiencia de usuario
     setNewMessage('');
+    
+    // Añadir mensaje directamente a la interfaz para mostrar respuesta inmediata
+    const tempMsg = {
+      id: `temp-${Date.now()}`,
+      body: msgToSend,
+      fromMe: true,
+      timestamp: Date.now(),
+      hasMedia: false
+    };
+    
+    // Añadir mensaje localmente para inmediata presentación en UI
+    if (selectedChatId) {
+      setWhatsappMessages([...whatsappMessages, tempMsg]);
+    }
+    
+    // Intentar enviar el mensaje en segundo plano
+    fetch('/api/direct/whatsapp/sendMessage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chatId: selectedChatId,
+        message: msgToSend,
+        accountId: currentAccountId
+      }),
+    })
+    .then(() => {
+      console.log('Mensaje enviado en segundo plano');
+      // Actualizar mensajes para ver confirmación del servidor
+      setTimeout(() => refetchMessages(), 1000);
+    })
+    .catch(error => {
+      console.error('Error al enviar mensaje:', error);
+      toast({
+        title: 'El mensaje se muestra localmente',
+        description: 'Es posible que no se haya enviado al servidor',
+        variant: 'destructive',
+      });
+    });
   };
 
   // Procesar keydown en el input de mensaje
