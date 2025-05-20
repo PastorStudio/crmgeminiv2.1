@@ -575,8 +575,23 @@ export class DatabaseStorage implements IStorage {
   // WhatsApp Accounts methods
   async getAllWhatsappAccounts(): Promise<WhatsappAccount[]> {
     try {
-      const results = await db.select().from(whatsappAccounts);
-      return results;
+      // Seleccionamos solo las columnas que sabemos que existen
+      const results = await db.select({
+        id: whatsappAccounts.id,
+        name: whatsappAccounts.name,
+        phoneNumber: whatsappAccounts.phoneNumber,
+        status: whatsappAccounts.status,
+        sessionData: whatsappAccounts.sessionData,
+        lastActive: whatsappAccounts.lastActive,
+        createdAt: whatsappAccounts.createdAt,
+        updatedAt: whatsappAccounts.updatedAt
+      }).from(whatsappAccounts);
+      
+      // Añadimos un objeto vacío para la columna settings que falta en la DB
+      return results.map(account => ({
+        ...account,
+        settings: null
+      }));
     } catch (error) {
       console.error("Error al obtener cuentas de WhatsApp:", error);
       return [];
@@ -585,10 +600,26 @@ export class DatabaseStorage implements IStorage {
 
   async getWhatsappAccount(id: number): Promise<WhatsappAccount | undefined> {
     try {
-      const [account] = await db.select()
+      const [account] = await db.select({
+        id: whatsappAccounts.id,
+        name: whatsappAccounts.name,
+        phoneNumber: whatsappAccounts.phoneNumber,
+        status: whatsappAccounts.status,
+        sessionData: whatsappAccounts.sessionData,
+        lastActive: whatsappAccounts.lastActive,
+        createdAt: whatsappAccounts.createdAt,
+        updatedAt: whatsappAccounts.updatedAt
+      })
         .from(whatsappAccounts)
         .where(eq(whatsappAccounts.id, id));
-      return account;
+      
+      if (account) {
+        return {
+          ...account,
+          settings: null
+        };
+      }
+      return undefined;
     } catch (error) {
       console.error(`Error al obtener cuenta WhatsApp ${id}:`, error);
       return undefined;
@@ -597,10 +628,27 @@ export class DatabaseStorage implements IStorage {
 
   async createWhatsappAccount(account: InsertWhatsappAccount): Promise<WhatsappAccount> {
     try {
+      // Omitimos la propiedad settings para crear la cuenta
+      const { settings, ...accountData } = account;
+      
       const [createdAccount] = await db.insert(whatsappAccounts)
-        .values(account)
-        .returning();
-      return createdAccount;
+        .values(accountData)
+        .returning({
+          id: whatsappAccounts.id,
+          name: whatsappAccounts.name,
+          phoneNumber: whatsappAccounts.phoneNumber,
+          status: whatsappAccounts.status,
+          sessionData: whatsappAccounts.sessionData,
+          lastActive: whatsappAccounts.lastActive,
+          createdAt: whatsappAccounts.createdAt,
+          updatedAt: whatsappAccounts.updatedAt
+        });
+      
+      // Añadimos el campo settings manualmente
+      return {
+        ...createdAccount,
+        settings: null
+      };
     } catch (error) {
       console.error("Error al crear cuenta WhatsApp:", error);
       throw error;
