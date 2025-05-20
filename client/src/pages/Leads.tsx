@@ -98,29 +98,6 @@ export default function Leads() {
       toast({
         title: "Error",
         description: "Failed to delete lead",
-      });
-    }
-  };
-  
-  // Handle deletion of all leads
-  const handleDeleteAllLeads = async () => {
-    if (!confirm("¿Estás seguro que deseas eliminar TODOS los leads? Esta acción no se puede deshacer.")) {
-      return;
-    }
-    
-    try {
-      await apiRequest('DELETE', `/api/leads/all`);
-      
-      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
-      
-      toast({
-        title: "Todos los leads eliminados",
-        description: "Todos los leads han sido eliminados permanentemente",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudieron eliminar todos los leads",
         variant: "destructive",
       });
     }
@@ -187,21 +164,13 @@ export default function Leads() {
             Manage and track your leads through the sales pipeline
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="destructive"
-            onClick={handleDeleteAllLeads}
-          >
-            Eliminar todos los leads
-          </Button>
-          <Button 
-            className="bg-primary-600 hover:bg-primary-700 text-white"
-            onClick={() => setEditingLead({ status: 'new' } as Lead)}
-          >
-            <span className="material-icons text-sm mr-1">add</span>
-            New Lead
-          </Button>
-        </div>
+        <Button 
+          className="bg-primary-600 hover:bg-primary-700 text-white self-end"
+          onClick={() => setEditingLead({ status: 'new' } as Lead)}
+        >
+          <span className="material-icons text-sm mr-1">add</span>
+          New Lead
+        </Button>
       </div>
 
       <Card className="mb-6">

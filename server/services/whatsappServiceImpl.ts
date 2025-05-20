@@ -632,18 +632,6 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
    * Obtiene el estado actual del servicio
    */
   getStatus(): WhatsAppStatus {
-    // Para solucionar el problema de "forbidden", forzamos el estado authenticated a true
-    // cuando el cliente está inicializado pero hay problemas con la autenticación
-    if (this.client && this.status.initialized) {
-      // Forzar el estado de autenticación a true para permitir enviar mensajes
-      const forcedStatus = { ...this.status };
-      forcedStatus.authenticated = true;
-      forcedStatus.ready = true;
-      
-      console.log('Estado de WhatsApp forzado a autenticado para permitir el envío de mensajes');
-      return forcedStatus;
-    }
-    
     return this.status;
   }
   
@@ -712,47 +700,27 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
    */
   async sendMessage(phoneNumber: string, message: string): Promise<any> {
     try {
-      if (!this.client) {
-        throw new Error('Cliente de WhatsApp no inicializado');
+      if (!this.client || !this.status.authenticated) {
+        throw new Error('Cliente no inicializado o no autenticado');
       }
 
-      // Verificar si el cliente está listo para enviar mensajes
-      // Eliminamos la verificación de authenticated para permitir el envío aun cuando
-      // el sistema piense que no está autenticado
-      console.log('Intentando enviar mensaje incluso si no estamos autenticados según el estado');
-      
       // Formato estándar para números internacionales en WhatsApp (sin el +)
       let formattedNumber = phoneNumber.replace(/[^0-9]/g, '');
       
       // Añadir @c.us que es el formato que espera WhatsApp Web
       const chatId = `${formattedNumber}@c.us`;
       
-      try {
-        // Enviar el mensaje
-        console.log(`Enviando mensaje a ${chatId}...`);
-        const response = await this.client.sendMessage(chatId, message);
-        
-        console.log(`Mensaje enviado a ${phoneNumber}:`, message);
-        
-        return {
-          success: true,
-          messageId: response.id._serialized,
-          to: phoneNumber,
-          message: message
-        };
-      } catch (sendError) {
-        console.error(`Error específico enviando mensaje a ${chatId}:`, sendError);
-        
-        // Permitir envío de "mensaje ficticio" para pruebas
-        console.log(`Enviando mensaje ficticio para pruebas a ${phoneNumber}`);
-        return {
-          success: true,
-          messageId: `fake-${Date.now()}`,
-          to: phoneNumber,
-          message: message,
-          isFake: true
-        };
-      }
+      // Enviar el mensaje
+      const response = await this.client.sendMessage(chatId, message);
+      
+      console.log(`Mensaje enviado a ${phoneNumber}:`, message);
+      
+      return {
+        success: true,
+        messageId: response.id._serialized,
+        to: phoneNumber,
+        message: message
+      };
       
     } catch (error) {
       console.error(`Error enviando mensaje a ${phoneNumber}:`, error);

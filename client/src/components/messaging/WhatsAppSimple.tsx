@@ -49,7 +49,7 @@ import {
   UserPlus,
   User
 } from 'lucide-react';
-import SimpleAgentAssignment from './SimpleAgentAssignment';
+import ChatAssignmentDialog from './ChatAssignmentDialog';
 import { MessageText } from '@/components/ui/message-text';
 // Importar el componente de configuración
 import { GeminiConfig } from '@/components/GeminiConfig';
@@ -73,11 +73,6 @@ interface WhatsAppMessage {
   hasMedia: boolean;
   mediaUrl?: string;
   caption?: string;
-  fileType?: 'image' | 'video' | 'audio' | 'document' | 'contact' | 'location' | 'unknown';
-  fileName?: string;
-  fileSize?: number;
-  timeZone?: string;
-  agentSignature?: string;
 }
 
 interface WhatsAppInterfaceProps {
@@ -102,8 +97,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState<boolean>(false);
   // Estado para almacenar el ID de cuenta de WhatsApp actual (por defecto 1)
   const [currentAccountId, setCurrentAccountId] = useState<number>(1);
-  // Estado para controlar si se añade firma a los mensajes
-  const [addSignatureToMessage, setAddSignatureToMessage] = useState<boolean>(true);
   // Estado para almacenar todas las cuentas de WhatsApp
   const [whatsappAccounts, setWhatsappAccounts] = useState<any[]>([]);
   
@@ -467,49 +460,22 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     mutationFn: async (message: string) => {
       if (!selectedChatId) throw new Error('No hay chat seleccionado');
       
-      // Obtener información del usuario actual para la firma
-      let messageWithSignature = message;
+      const response = await fetch(`/api/direct/whatsapp/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chatId: selectedChatId,
+          message
+        }),
+      });
       
-      if (addSignatureToMessage) {
-        // Intenta obtener el usuario actual desde sessionStorage o localStorage
-        const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser') || '{}');
-        const agentName = currentUser?.name || 'Agente';
-        
-        // Añadir firma al final del mensaje
-        messageWithSignature = `${message}\n\n_Mensaje enviado por: ${agentName}_`;
+      if (!response.ok) {
+        throw new Error(`Error al enviar mensaje: ${response.statusText}`);
       }
       
-      console.log(`Intentando enviar mensaje a chat ${selectedChatId}`);
-      
-      try {
-        const response = await fetch(`/api/direct/whatsapp/send`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            chatId: selectedChatId,
-            message: messageWithSignature,
-            includeMeta: true, // Incluir metadatos como la firma del agente
-            agentSignature: addSignatureToMessage ? true : undefined
-          }),
-        });
-        
-        // Obtener respuesta detallada del servidor si está disponible
-        const responseData = await response.json().catch(e => ({ error: response.statusText }));
-        
-        if (!response.ok) {
-          // Extraer mensaje detallado si existe
-          const errorMessage = responseData.error || responseData.details || responseData.message || response.statusText;
-          console.error("Error detallado del servidor:", responseData);
-          throw new Error(`Error al enviar mensaje: ${errorMessage}`);
-        }
-        
-        return responseData;
-      } catch (error) {
-        console.error("Error completo al enviar mensaje:", error);
-        throw error;
-      }
+      return await response.json();
     },
     onSuccess: (data) => {
       console.log('Mensaje enviado con éxito', data);
@@ -770,80 +736,18 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     </label>
                   </div>
                   
-                  {/* Control para firmar mensajes */}
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Switch 
-                      id="signature-toggle" 
-                      checked={addSignatureToMessage} 
-                      onCheckedChange={(checked) => setAddSignatureToMessage(checked)} 
-                    />
-                    <label 
-                      htmlFor="signature-toggle" 
-                      className="text-sm font-medium cursor-pointer flex items-center"
-                    >
-                      <UserCheck className="mr-1 h-4 w-4" />
-                      Firmar mensajes
-                    </label>
-                  </div>
-                  
                   {/* Botón para asignar chat a agente */}
                   {selectedChatId && (
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="w-full justify-start bg-purple-50 hover:bg-purple-100 border-purple-200 mb-2"
+                      className="w-full justify-start bg-purple-50 hover:bg-purple-100 border-purple-200"
                       onClick={() => setAssignmentDialogOpen(true)}
                     >
                       <UserPlus className="mr-1 h-4 w-4 text-purple-600" />
                       {assignedAgent ? 'Reasignar chat' : 'Asignar a agente'}
                     </Button>
                   )}
-                  
-                  {/* Botón para limpiar conexión de WhatsApp */}
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full justify-start bg-red-50 hover:bg-red-100 border-red-200 mb-2"
-                    onClick={async () => {
-                      try {
-                        const response = await fetch(`/api/whatsapp-accounts/${currentAccountId}/disconnect`, {
-                          method: 'POST'
-                        });
-                        
-                        if (response.ok) {
-                          toast({
-                            title: "Conexión limpiada",
-                            description: "Se ha limpiado la conexión de WhatsApp correctamente",
-                          });
-                          
-                          // Refrescar datos de la cuenta
-                          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
-                          queryClient.invalidateQueries({ queryKey: ['/api/direct/whatsapp/status'] });
-                          
-                          // Recargar la página después de 1 segundo
-                          setTimeout(() => {
-                            window.location.reload();
-                          }, 1000);
-                        } else {
-                          toast({
-                            title: "Error",
-                            description: "No se pudo limpiar la conexión de WhatsApp",
-                            variant: "destructive"
-                          });
-                        }
-                      } catch (error) {
-                        console.error("Error limpiando conexión:", error);
-                        toast({
-                          title: "Error",
-                          description: "Error al comunicarse con el servidor",
-                          variant: "destructive"
-                        });
-                      }
-                    }}
-                  >
-                    <X className="mr-1 h-4 w-4 text-red-600" />
-                    Limpiar conexión
-                  </Button>
                   
                   <Dialog>
                     <DialogTrigger asChild>
@@ -856,10 +760,32 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                       <DialogHeader>
                         <DialogTitle>Configuración de Gemini AI</DialogTitle>
                       </DialogHeader>
-                      <GeminiConfig chatId={selectedChatId} isOpen={true} onClose={() => {}} />
+                      <GeminiConfig />
                     </DialogContent>
                   </Dialog>
                   
+                  {/* Botón para asignar agente */}
+                  {selectedChatId && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start mb-2"
+                      onClick={() => setAssignmentDialogOpen(true)}
+                    >
+                      <UserCheck className="mr-2 h-4 w-4" />
+                      Asignar a agente
+                    </Button>
+                  )}
+                  
+                  {/* Diálogo de asignación */}
+                  {selectedChatId && (
+                    <ChatAssignmentDialog
+                      open={assignmentDialogOpen}
+                      onOpenChange={setAssignmentDialogOpen}
+                      chatId={selectedChatId}
+                      accountId={currentAccountId}
+                    />
+                  )}
                   
                   {/* Botón de actualizar */}
                   <Button 
@@ -1242,17 +1168,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  {/* Botón para asignar agente (nuevo) */}
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="flex items-center gap-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border-purple-200"
-                    onClick={() => setAssignmentDialogOpen(true)}
-                  >
-                    <UserPlus className="h-3 w-3" />
-                    <span className="text-xs font-medium">Asignar</span>
-                  </Button>
-                
                   <Button 
                     variant="outline" 
                     size="icon" 
@@ -1330,90 +1245,17 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                               {msg.hasMedia && (
                                 <div className="mb-2">
                                   {msg.mediaUrl ? (
-                                    <>
-                                      {msg.fileType === 'image' && (
-                                        <img 
-                                          src={msg.mediaUrl} 
-                                          alt={msg.caption || 'Imagen'} 
-                                          className="rounded mb-1 w-full object-cover max-h-64 cursor-pointer"
-                                          onClick={() => window.open(msg.mediaUrl, '_blank')}
-                                        />
-                                      )}
-                                      {msg.fileType === 'video' && (
-                                        <div className="rounded mb-1 overflow-hidden">
-                                          <video 
-                                            src={msg.mediaUrl} 
-                                            controls 
-                                            className="w-full max-h-64"
-                                          />
-                                        </div>
-                                      )}
-                                      {msg.fileType === 'audio' && (
-                                        <div className="rounded mb-1 bg-gray-100 p-2">
-                                          <audio 
-                                            src={msg.mediaUrl} 
-                                            controls 
-                                            className="w-full"
-                                          />
-                                        </div>
-                                      )}
-                                      {msg.fileType === 'document' && (
-                                        <div className="rounded mb-1 bg-gray-100 p-3 flex items-center gap-2">
-                                          <FileText className={`h-6 w-6 ${msg.fromMe ? 'text-white' : 'text-blue-500'}`} />
-                                          <div className="flex-1 overflow-hidden">
-                                            <div className={`text-sm font-medium truncate ${msg.fromMe ? 'text-white' : 'text-gray-700'}`}>
-                                              {msg.fileName || 'Documento'}
-                                            </div>
-                                            {msg.fileSize && (
-                                              <div className={`text-xs ${msg.fromMe ? 'text-green-100' : 'text-gray-500'}`}>
-                                                {(msg.fileSize / 1024).toFixed(1)} KB
-                                              </div>
-                                            )}
-                                          </div>
-                                          <Button
-                                            size="sm"
-                                            variant={msg.fromMe ? "secondary" : "outline"}
-                                            className="ml-2"
-                                            onClick={() => window.open(msg.mediaUrl, '_blank')}
-                                          >
-                                            Abrir
-                                          </Button>
-                                        </div>
-                                      )}
-                                      {msg.fileType === 'location' && (
-                                        <div className="rounded mb-1 bg-gray-100 p-3 flex flex-col items-center">
-                                          <div className="w-full h-32 bg-gray-200 rounded flex items-center justify-center mb-2">
-                                            <Image className={`h-8 w-8 ${msg.fromMe ? 'text-white' : 'text-blue-500'}`} />
-                                          </div>
-                                          <div className={`text-sm text-center ${msg.fromMe ? 'text-white' : 'text-gray-700'}`}>
-                                            Ubicación compartida
-                                          </div>
-                                        </div>
-                                      )}
-                                      {(!msg.fileType || msg.fileType === 'unknown') && (
-                                        <img 
-                                          src={msg.mediaUrl} 
-                                          alt={msg.caption || 'Archivo multimedia'} 
-                                          className="rounded mb-1 w-full object-cover"
-                                          onError={(e) => {
-                                            e.currentTarget.onerror = null;
-                                            e.currentTarget.style.display = 'none';
-                                            e.currentTarget.parentElement?.querySelector('.fallback-media')?.classList.remove('hidden');
-                                          }}
-                                        />
-                                      )}
-                                      <div className="fallback-media hidden">
-                                        <div className="bg-gray-100 rounded flex items-center justify-center h-32 w-full">
-                                          <File size={30} className={`${msg.fromMe ? 'text-white' : 'text-gray-400'}`} />
-                                        </div>
-                                      </div>
-                                    </>
+                                    <img 
+                                      src={msg.mediaUrl} 
+                                      alt={msg.caption || 'Imagen'} 
+                                      className="rounded mb-1 w-full object-cover"
+                                    />
                                   ) : (
                                     <div className="bg-gray-100 rounded flex items-center justify-center h-32 w-full">
-                                      <MessageSquare size={30} className={`${msg.fromMe ? 'text-white' : 'text-gray-400'}`} />
+                                      <MessageSquare size={30} className="text-gray-400" />
                                     </div>
                                   )}
-                                  {msg.caption && <div className={`text-xs mt-1 ${msg.fromMe ? 'text-white' : 'text-gray-600'}`}>{msg.caption}</div>}
+                                  {msg.caption && <div className="text-xs mt-1">{msg.caption}</div>}
                                 </div>
                               )}
                               
@@ -1422,30 +1264,18 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                                 className="text-sm whitespace-pre-wrap break-words" 
                               />
                               
-                              <div className="text-right mt-1 flex flex-col">
-                                {/* Firma del agente (si existe) */}
-                                {msg.fromMe && msg.agentSignature && (
-                                  <div className="flex justify-end mb-1">
-                                    <span className="text-[10px] bg-green-700/30 text-green-100 px-1.5 py-0.5 rounded-sm font-medium">
-                                      {msg.agentSignature}
-                                    </span>
-                                  </div>
-                                )}
+                              <div className="text-right mt-1 flex justify-end items-center gap-1">
+                                <span className={`text-[10px] ${msg.fromMe ? 'text-green-100' : 'text-gray-500'}`}>
+                                  {new Date(msg.timestamp * 1000).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                                  })}
+                                </span>
                                 
-                                {/* Hora y estado del mensaje */}
-                                <div className="flex justify-end items-center gap-1">
-                                  <span className={`text-[10px] ${msg.fromMe ? 'text-green-100' : 'text-gray-500'}`}>
-                                    {new Date(msg.timestamp * 1000).toLocaleTimeString([], {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      timeZone: msg.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
-                                    })}
-                                  </span>
-                                  
-                                  {msg.fromMe && (
-                                    <CheckCheck size={14} className="text-green-100" />
-                                  )}
-                                </div>
+                                {msg.fromMe && (
+                                  <CheckCheck size={14} className="text-green-100" />
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1465,71 +1295,14 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
               
               {/* Área de entrada de mensaje */}
               <div className="border-t p-2 flex items-center gap-2">
-                {/* Selector de emojis */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Smile className="h-5 w-5 text-gray-500" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64 h-64 p-0" align="start">
-                    <div className="emoji-picker overflow-auto h-full p-2">
-                      <div className="grid grid-cols-8 gap-1">
-                        {/* Emojis comunes */}
-                        {[
-                          '😊', '😂', '🙏', '❤️', '👍', '🎉', '✅', '⭐',
-                          '😁', '😉', '🤔', '😎', '😍', '😢', '😡', '🤩',
-                          '👋', '👌', '👏', '🤝', '🙌', '🤗', '😃', '🥰',
-                          '🌟', '🔥', '💯', '🚀', '📈', '🏆', '💡', '🛠️',
-                          '💪', '🎯', '🏅', '🎁', '💼', '📊', '💰', '📱',
-                          '⏰', '📌', '🔍', '🔑', '📝', '📢', '🔒', '👨‍💻',
-                          '👩‍💻', '🤖', '💻', '🌐', '📱', '📩', '📞', '👥'
-                        ].map((emoji, index) => (
-                          <button
-                            key={index}
-                            className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 rounded text-xl"
-                            onClick={() => {
-                              setNewMessage(prev => prev + emoji);
-                            }}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                <Button variant="ghost" size="icon">
+                  <Smile className="h-5 w-5 text-gray-500" />
+                </Button>
                 
-                {/* Selector de archivos */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Paperclip className="h-5 w-5 text-gray-500" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-48 p-0" align="start">
-                    <div className="p-1">
-                      <button className="w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded flex items-center gap-2">
-                        <Image className="h-4 w-4 text-blue-500" />
-                        <span>Imagen</span>
-                      </button>
-                      <button className="w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded flex items-center gap-2">
-                        <Camera className="h-4 w-4 text-purple-500" />
-                        <span>Video</span>
-                      </button>
-                      <button className="w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-green-500" />
-                        <span>Documento</span>
-                      </button>
-                      <button className="w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded flex items-center gap-2">
-                        <Mic className="h-4 w-4 text-red-500" />
-                        <span>Audio</span>
-                      </button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                <Button variant="ghost" size="icon">
+                  <Paperclip className="h-5 w-5 text-gray-500" />
+                </Button>
                 
-                {/* Campo de entrada de mensaje */}
                 <Input
                   placeholder="Escribe un mensaje"
                   className="flex-1"
@@ -1539,42 +1312,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   disabled={messageMutation.isPending}
                 />
                 
-                {/* Botón para añadir firma al mensaje */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="relative"
-                      disabled={!newMessage.trim()}
-                    >
-                      <UserCheck className="h-4 w-4 text-blue-500" />
-                      {/* Indicador visual cuando hay firma activa */}
-                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full"></span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-56 p-2" align="end">
-                    <p className="text-sm text-gray-500 mb-2">Selecciona una firma para el mensaje:</p>
-                    <div className="space-y-1">
-                      <button 
-                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded flex items-center gap-2"
-                        onClick={() => setAddSignatureToMessage(true)}
-                      >
-                        <UserCheck className="h-4 w-4 text-blue-500" />
-                        <span>Añadir mi firma</span>
-                      </button>
-                      <button 
-                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded flex items-center gap-2"
-                        onClick={() => setAddSignatureToMessage(false)}
-                      >
-                        <X className="h-4 w-4 text-gray-500" />
-                        <span>Sin firma</span>
-                      </button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                
-                {/* Botón de envío */}
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -1608,7 +1345,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       
       {/* Diálogo de asignación de chat */}
       {selectedChatId && (
-        <SimpleAgentAssignment
+        <ChatAssignmentDialog
           open={assignmentDialogOpen}
           onOpenChange={setAssignmentDialogOpen}
           chatId={selectedChatId}

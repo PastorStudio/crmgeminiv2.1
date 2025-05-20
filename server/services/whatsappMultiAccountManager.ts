@@ -615,9 +615,9 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         
         // Realizar una petición sencilla para mantener la sesión activa
         try {
-          // Usar getState() que es el método más confiable y está disponible en todas las versiones
-          const state = await instance.client.getState();
-          console.log(`[Conexión Permanente] Mantener activa cuenta ID ${accountId} - OK (${state})`);
+          // Obtener la información de contacto propio mantiene la sesión activa
+          await instance.client.getWid();
+          console.log(`[Conexión Permanente] Mantener activa cuenta ID ${accountId} - OK`);
         } catch (pingErr) {
           console.warn(`[Conexión Permanente] Error en ping para cuenta ID ${accountId}:`, pingErr);
         }
@@ -976,41 +976,10 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       return [];
     }
     
-    // Verificar estado de la conexión en vez de confiar solo en la bandera de autenticación
-    try {
-      // Si tenemos una cuenta con ID 1 (Ventas), la manejamos de forma especial
-      // ya que sabemos que tiene una configuración que funciona correctamente
-      if (accountId === 1) {
-        if (!instance.status.authenticated) {
-          console.log(`Cliente WhatsApp no autenticado para cuenta ID ${accountId}. No hay datos disponibles.`);
-          return [];
-        }
-      } else {
-        // Para el resto de cuentas, intentamos obtener el estado actual
-        // y forzamos la autenticación si el cliente responde correctamente
-        const state = await instance.client.getState();
-        
-        if (state === 'CONNECTED') {
-          // Si está conectado pero no marcado como autenticado, lo marcamos
-          if (!instance.status.authenticated) {
-            console.log(`Actualizando estado de autenticación para cuenta ID ${accountId}`);
-            instance.status.authenticated = true;
-            instance.status.ready = true;
-            // Guardar estado actualizado
-            this.updateSessionStatusFile(instance);
-          }
-        } else if (!instance.status.authenticated) {
-          console.log(`Cliente WhatsApp no autenticado para cuenta ID ${accountId}. Estado: ${state}`);
-          return [];
-        }
-      }
-    } catch (err) {
-      // Si hay error al verificar el estado pero la cuenta está marcada como autenticada,
-      // permitimos continuar para ser consistente con la cuenta de ventas
-      if (!instance.status.authenticated) {
-        console.log(`Cliente WhatsApp no autenticado para cuenta ID ${accountId}. No hay datos disponibles.`);
-        return [];
-      }
+    // Verificar si el cliente está autenticado
+    if (!instance.status.authenticated) {
+      console.log(`Cliente WhatsApp no autenticado para cuenta ID ${accountId}. No hay datos disponibles.`);
+      return [];
     }
     
     try {
@@ -1023,64 +992,17 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       
       for (const chat of chats) {
         try {
-          // Extraer datos básicos con manejo mejorado para prevenir errores de tipo
-          let chatId = '';
-          try {
-            // Manejar diferentes formatos de ID
-            if (typeof chat.id === 'object' && chat.id !== null && '_serialized' in chat.id) {
-              chatId = chat.id._serialized;
-            } else if (chat.id) {
-              chatId = String(chat.id);
-            } else {
-              chatId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-            }
-          } catch (e) {
-            console.warn(`Error al obtener ID del chat para cuenta ${accountId}:`, e);
-            chatId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-          }
-
-          // Crear objeto de chat con valores seguros
+          // Extraer datos básicos
           const chatInfo: WhatsAppChat = {
-            id: chatId,
+            id: chat.id._serialized || chat.id,
             name: chat.name || '',
             isGroup: !!chat.isGroup,
             timestamp: chat.timestamp || Date.now(),
             unreadCount: chat.unreadCount || 0,
-            lastMessage: '',
+            lastMessage: chat.lastMessage?.body || '',
             profilePicUrl: undefined,
-            participants: []
+            participants: chat.participants?.map((p: any) => p.id._serialized || p.id) || []
           };
-          
-          // Obtener el último mensaje de forma segura
-          try {
-            if (chat.lastMessage && typeof chat.lastMessage === 'object') {
-              chatInfo.lastMessage = chat.lastMessage.body || '';
-            }
-          } catch (e) {
-            console.warn(`Error al obtener último mensaje para chat ${chatId}:`, e);
-          }
-          
-          // Obtener participantes de forma segura
-          try {
-            if (chat.participants && Array.isArray(chat.participants)) {
-              chatInfo.participants = chat.participants.map((p: any) => {
-                try {
-                  if (p && typeof p === 'object' && p.id) {
-                    if (typeof p.id === 'object' && '_serialized' in p.id) {
-                      return p.id._serialized;
-                    } else {
-                      return String(p.id);
-                    }
-                  }
-                  return '';
-                } catch (e) {
-                  return '';
-                }
-              }).filter(id => id); // Filtrar IDs vacíos
-            }
-          } catch (e) {
-            console.warn(`Error al obtener participantes para chat ${chatId}:`, e);
-          }
           
           // Intentar obtener foto de perfil si no es un grupo
           try {
@@ -1190,152 +1112,6 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     }
     
     return result;
-  }
-
-  /**
-   * Limpia una sesión de WhatsApp específica completamente
-   * Desconecta, elimina archivos de sesión y actualiza la base de datos
-   */
-  async clearWhatsAppSession(accountId: number): Promise<boolean> {
-    try {
-      console.log(`Limpiando sesión para cuenta de WhatsApp ID ${accountId}...`);
-      
-      // 1. Desconectar la cuenta si está activa
-      const instance = this.instances.get(accountId);
-      if (instance) {
-        try {
-          // Desactivar timers de conexión
-          this.deactivateConnectionTimers(instance);
-          
-          // Intentar destruir el cliente
-          if (instance.client) {
-            await instance.client.destroy()
-              .catch(err => console.error(`Error al destruir cliente para cuenta ID ${accountId}:`, err));
-          }
-          
-          // Eliminar instancia del mapa
-          this.instances.delete(accountId);
-          console.log(`Cliente desconectado para cuenta ID ${accountId}`);
-        } catch (disconnectErr) {
-          console.error(`Error desconectando cuenta ID ${accountId}:`, disconnectErr);
-          // Continuar con la limpieza aunque falle la desconexión
-        }
-      }
-      
-      // 2. Eliminar archivos de sesión
-      try {
-        // Eliminar archivos específicos de la cuenta
-        const accountDir = path.join(ACCOUNTS_DIR, `account_${accountId}`);
-        if (fs.existsSync(accountDir)) {
-          const files = fs.readdirSync(accountDir);
-          for (const file of files) {
-            fs.unlinkSync(path.join(accountDir, file));
-          }
-          console.log(`Eliminados ${files.length} archivos de sesión para cuenta ID ${accountId}`);
-        }
-      } catch (fileErr) {
-        console.error(`Error eliminando archivos de cuenta ID ${accountId}:`, fileErr);
-      }
-      
-      // 3. Actualizar estado en la base de datos
-      await storage.updateWhatsappAccount(accountId, {
-        status: 'inactive',
-        sessionData: {
-          connectionState: 'DISCONNECTED',
-          disconnectedAt: new Date().toISOString(),
-          disconnectedBy: 'user_forced',
-          sessionCleared: true
-        }
-      });
-      
-      console.log(`Sesión completamente limpiada para cuenta ID ${accountId}`);
-      return true;
-    } catch (error) {
-      console.error(`Error limpiando sesión para cuenta ID ${accountId}:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * Limpia todas las sesiones de WhatsApp (desconecta y elimina los archivos de sesión)
-   */
-  async cleanAllSessions(): Promise<boolean> {
-    try {
-      console.log("Iniciando limpieza completa de todas las sesiones de WhatsApp...");
-      
-      // 1. Desconectar todas las instancias activas
-      const activeInstanceIds = Array.from(this.instances.keys());
-      for (const accountId of activeInstanceIds) {
-        try {
-          console.log(`Desconectando instancia WhatsApp ID ${accountId}...`);
-          await this.disconnectAccount(accountId);
-        } catch (err) {
-          console.error(`Error desconectando instancia WhatsApp ID ${accountId}:`, err);
-          // Continuar con las demás desconexiones aunque falle alguna
-        }
-      }
-      
-      // 2. Limpiar mapa de instancias
-      this.instances.clear();
-      
-      // 3. Eliminar archivos de sesión
-      try {
-        const tempDir = path.join(process.cwd(), 'temp');
-        const sessionPath = path.join(tempDir, 'whatsapp-sessions');
-        
-        // Eliminar archivos en el directorio de sesiones
-        if (fs.existsSync(sessionPath)) {
-          const files = fs.readdirSync(sessionPath);
-          for (const file of files) {
-            fs.unlinkSync(path.join(sessionPath, file));
-          }
-          console.log(`Eliminados ${files.length} archivos de sesión de WhatsApp`);
-        }
-        
-        // Limpiar directorios de cuentas individuales
-        if (fs.existsSync(ACCOUNTS_DIR)) {
-          const accountDirs = fs.readdirSync(ACCOUNTS_DIR);
-          for (const dir of accountDirs) {
-            const fullPath = path.join(ACCOUNTS_DIR, dir);
-            if (fs.statSync(fullPath).isDirectory()) {
-              // Eliminar archivos en cada subdirectorio de cuenta
-              const accountFiles = fs.readdirSync(fullPath);
-              for (const file of accountFiles) {
-                fs.unlinkSync(path.join(fullPath, file));
-              }
-            }
-          }
-          console.log(`Limpiados ${accountDirs.length} directorios de cuentas de WhatsApp`);
-        }
-      } catch (fileErr) {
-        console.error("Error eliminando archivos de sesión:", fileErr);
-      }
-      
-      // 4. Actualizar estado en la base de datos
-      try {
-        const accounts = await storage.getAllWhatsappAccounts();
-        for (const account of accounts) {
-          await storage.updateWhatsappAccount(account.id, {
-            status: 'inactive',
-            sessionData: {
-              connectionState: 'DISCONNECTED',
-              disconnectedAt: new Date().toISOString(),
-              disconnectedBy: 'admin_forced',
-              sessionCleared: true
-            }
-          });
-        }
-        console.log(`Actualizados ${accounts.length} registros de cuentas en la base de datos`);
-      } catch (dbErr) {
-        console.error("Error actualizando estado en la base de datos:", dbErr);
-      }
-      
-      console.log("Limpieza completa de sesiones de WhatsApp finalizada");
-      return true;
-    } catch (error) {
-      console.error("Error en proceso de limpieza de sesiones:", error);
-      return false;
-    }
   }
 }
 
