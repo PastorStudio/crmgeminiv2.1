@@ -38,6 +38,9 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
+  
+  // Nuevo método para eliminar todos los leads
+  deleteAllLeads(): Promise<void>;
 
   // Lead methods
   getLead(id: number): Promise<Lead | undefined>;
