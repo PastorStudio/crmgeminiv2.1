@@ -1,23 +1,29 @@
 /**
- * Servidor de procesamiento de mensajes - Microservicio independiente
+ * Procesador de mensajes - Microservicio independiente
  * 
- * Este servidor procesa los mensajes recibidos de WhatsApp para detectar
- * intenciones, responder automáticamente cuando es necesario y proporcionar
- * análisis usando AI (Gemini).
+ * Este microservicio procesa los mensajes de WhatsApp para:
+ * - Detectar intención del usuario
+ * - Generar respuestas automáticas
+ * - Analizar sentimiento y contenido
+ * - Extraer datos relevantes (fechas, números, etc.)
  */
 
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+
 const app = express();
 const PORT = process.env.MESSAGE_PROCESSOR_PORT || 5002;
-const DATABASE_SERVER = process.env.DATABASE_SERVER_URL || 'http://localhost:5003';
-const WHATSAPP_SERVER = process.env.WHATSAPP_SERVER_URL || 'http://localhost:5001';
-const API_SERVER = process.env.API_SERVER_URL || 'http://localhost:5000';
+const DATABASE_SERVER_URL = process.env.DATABASE_SERVER_URL || 'http://localhost:5003';
+const WHATSAPP_SERVER_URL = process.env.WHATSAPP_SERVER_URL || 'http://localhost:5001';
+
+// Configuración para Google Gemini AI
+let genAI = null;
+let geminiModel = null;
 
 // Middleware para JSON y CORS
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(cors());
 
 // Log de todas las solicitudes
@@ -26,258 +32,259 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configuración de respuestas automáticas (en memoria)
-let autoResponseConfig = {
-  enabled: false,
-  greetingMessage: 'Gracias por contactarnos. En breve un asesor le atenderá.',
-  outOfHoursMessage: 'Gracias por su mensaje. Nuestro horario de atención es de lunes a viernes de 9:00 a 18:00. Le responderemos en cuanto estemos disponibles.',
-  businessHoursStart: '09:00',
-  businessHoursEnd: '18:00',
-  workingDays: '1,2,3,4,5', // Lunes a Viernes
-  settings: {}
-};
-
-// Configuración de Gemini AI
-let geminiConfig = {
-  enabled: false,
-  apiKey: process.env.GEMINI_API_KEY || '',
-  model: 'gemini-pro',
-  temperature: 0.7,
-  maxTokens: 1024,
-  style: 'balanced',
-  settings: {}
-};
-
-// Inicializar Gemini AI
-let genAI = null;
-let geminiModel = null;
-
-function initializeGemini() {
-  if (!geminiConfig.apiKey) {
-    console.warn('No se ha configurado una API key para Gemini AI');
-    return false;
-  }
-
+// Inicializar IA generativa si hay API key disponible
+async function initializeAI() {
   try {
-    genAI = new GoogleGenerativeAI(geminiConfig.apiKey);
-    geminiModel = genAI.getGenerativeModel({ model: geminiConfig.model });
-    console.log('Gemini AI inicializado correctamente');
-    geminiConfig.enabled = true;
-    return true;
+    // Obtener configuración de la base de datos
+    const response = await axios.get(`${DATABASE_SERVER_URL}/auto-response/config`);
+    const config = response.data;
+    
+    // Si hay API key configurada, inicializar
+    if (config && config.geminiApiKey) {
+      genAI = new GoogleGenerativeAI(config.geminiApiKey);
+      geminiModel = genAI.getGenerativeModel({ model: "gemini-pro" });
+      console.log('Google Gemini AI inicializado correctamente');
+      return true;
+    } else {
+      console.log('No se encontró API key para Google Gemini AI');
+      return false;
+    }
   } catch (error) {
-    console.error('Error al inicializar Gemini AI:', error);
-    geminiConfig.enabled = false;
+    console.error('Error al inicializar IA generativa:', error.message);
     return false;
   }
 }
 
-// Intentar inicializar Gemini AI al inicio
-initializeGemini();
+// Verificar si es horario laboral
+function isBusinessHours(config) {
+  if (!config) return true; // Si no hay configuración, asumir que siempre es horario laboral
+  
+  const now = new Date();
+  const currentHour = now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds();
+  const currentDay = now.getDay(); // 0: domingo, 1: lunes, ..., 6: sábado
+  
+  // Verificar si el día actual es un día laboral
+  const workingDays = config.workingDays ? config.workingDays.split(',').map(d => parseInt(d)) : [1, 2, 3, 4, 5];
+  if (!workingDays.includes(currentDay)) {
+    return false;
+  }
+  
+  // Verificar si la hora actual está dentro del horario laboral
+  const businessStart = config.businessHoursStart || '09:00:00';
+  const businessEnd = config.businessHoursEnd || '18:00:00';
+  
+  return currentHour >= businessStart && currentHour <= businessEnd;
+}
 
-// Ruta de salud para verificar que el servicio está funcionando
+// Generar respuesta automática con IA
+async function generateAIResponse(message, contactName) {
+  if (!geminiModel) {
+    console.log('Modelo de IA no inicializado');
+    return null;
+  }
+  
+  try {
+    const prompt = `
+      Eres un asistente virtual profesional para una empresa. Has recibido un mensaje de WhatsApp de un cliente llamado "${contactName || 'Cliente'}".
+      
+      El mensaje es: "${message}"
+      
+      Por favor, genera una respuesta amable, profesional y útil que:
+      1. Salude al cliente por su nombre
+      2. Reconozca el contenido de su mensaje
+      3. Proporcione información preliminar útil
+      4. Mencione que un asesor le atenderá pronto para ayudarle más a fondo
+      5. Agradezca su contacto
+      
+      La respuesta debe ser concisa (máximo 200 palabras) y en español.
+    `;
+    
+    const result = await geminiModel.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+    
+    return text;
+  } catch (error) {
+    console.error('Error al generar respuesta con IA:', error);
+    return null;
+  }
+}
+
+// Analizar mensaje con IA
+async function analyzeMessage(message) {
+  if (!geminiModel) {
+    console.log('Modelo de IA no inicializado');
+    return null;
+  }
+  
+  try {
+    const prompt = `
+      Analiza el siguiente mensaje de WhatsApp: "${message}"
+      
+      Proporciona la siguiente información en formato JSON:
+      1. Sentimiento general (positivo, negativo o neutral)
+      2. Intención principal del cliente (consulta, queja, solicitud, información, otro)
+      3. Si hay alguna fecha mencionada (formato YYYY-MM-DD)
+      4. Si hay alguna cantidad de dinero mencionada (valor numérico)
+      5. Palabras clave importantes (máximo 5)
+      6. Prioridad sugerida (alta, media, baja)
+      7. Si requiere atención inmediata (true/false)
+      8. Categoría sugerida para el mensaje
+      
+      Ejemplo de formato de respuesta:
+      {
+        "sentiment": "positivo",
+        "intent": "consulta",
+        "dates": ["2023-05-20"],
+        "amounts": [1500],
+        "keywords": ["producto", "entrega", "fecha"],
+        "priority": "media",
+        "needsImmediateAttention": false,
+        "category": "ventas"
+      }
+    `;
+    
+    const result = await geminiModel.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+    
+    // Extraer JSON de la respuesta
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch (err) {
+        console.error('Error al parsear JSON de análisis:', err);
+        return null;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error al analizar mensaje con IA:', error);
+    return null;
+  }
+}
+
+// === Rutas API ===
+
+// Ruta de salud
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'message-processor',
     timestamp: new Date().toISOString(),
-    autoResponseEnabled: autoResponseConfig.enabled,
-    geminiEnabled: geminiConfig.enabled
+    aiAvailable: geminiModel !== null
   });
 });
 
-// Obtener configuración de respuestas automáticas
-app.get('/auto-response/config', async (req, res) => {
-  try {
-    // Intentar obtener configuración de la base de datos
-    try {
-      const response = await axios.get(`${DATABASE_SERVER}/auto-response/config`);
-      autoResponseConfig = response.data;
-      console.log('Configuración de respuestas automáticas cargada desde la base de datos');
-    } catch (dbError) {
-      console.warn('Error al obtener configuración desde BD, usando configuración en memoria:', dbError.message);
-    }
-    
-    res.json(autoResponseConfig);
-  } catch (error) {
-    console.error('Error al obtener configuración de respuestas automáticas:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error al obtener configuración de respuestas automáticas',
-      error: error.message
-    });
-  }
-});
-
-// Actualizar configuración de respuestas automáticas
-app.post('/auto-response/config', async (req, res) => {
-  try {
-    const updatedConfig = req.body;
-    
-    // Validar campos mínimos
-    if (updatedConfig.enabled === undefined) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Se requiere el campo enabled'
-      });
-    }
-    
-    // Actualizar configuración
-    autoResponseConfig = {
-      ...autoResponseConfig,
-      ...updatedConfig
-    };
-    
-    // Guardar en la base de datos
-    try {
-      await axios.post(`${DATABASE_SERVER}/auto-response/config`, autoResponseConfig);
-      console.log('Configuración de respuestas automáticas guardada en la base de datos');
-    } catch (dbError) {
-      console.warn('Error al guardar configuración en la base de datos:', dbError.message);
-    }
-    
-    res.json({
-      status: 'ok',
-      message: 'Configuración actualizada correctamente',
-      config: autoResponseConfig
-    });
-  } catch (error) {
-    console.error('Error al actualizar configuración de respuestas automáticas:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error al actualizar configuración de respuestas automáticas',
-      error: error.message
-    });
-  }
-});
-
-// Configurar Gemini AI
-app.post('/ai/config', async (req, res) => {
-  try {
-    const { apiKey, model, temperature, maxTokens, style, enabled } = req.body;
-    
-    // Actualizar configuración
-    if (apiKey !== undefined) geminiConfig.apiKey = apiKey;
-    if (model !== undefined) geminiConfig.model = model;
-    if (temperature !== undefined) geminiConfig.temperature = temperature;
-    if (maxTokens !== undefined) geminiConfig.maxTokens = maxTokens;
-    if (style !== undefined) geminiConfig.style = style;
-    if (enabled !== undefined) geminiConfig.enabled = enabled;
-    
-    // Reinicializar con la nueva configuración
-    const initialized = initializeGemini();
-    
-    res.json({
-      status: 'ok',
-      message: initialized 
-        ? 'Configuración de Gemini AI actualizada correctamente' 
-        : 'Configuración actualizada pero no se pudo inicializar Gemini AI',
-      initialized,
-      config: {
-        ...geminiConfig,
-        apiKey: geminiConfig.apiKey ? '••••••••' : '' // No devolver la API key completa
-      }
-    });
-  } catch (error) {
-    console.error('Error al configurar Gemini AI:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error al configurar Gemini AI',
-      error: error.message
-    });
-  }
-});
-
-// Procesar un mensaje recibido (llamado por el servidor de WhatsApp)
+// Procesar mensaje
 app.post('/process-message', async (req, res) => {
   try {
-    const { accountId, message } = req.body;
+    const { message } = req.body;
     
-    if (!message) {
+    if (!message || !message.chatId || message.from_me === undefined) {
       return res.status(400).json({
         status: 'error',
-        message: 'Se requiere el campo message'
+        message: 'Se requieren los datos del mensaje: chatId y from_me'
       });
     }
     
-    console.log(`Procesando mensaje de cuenta ${accountId}: ${message.content?.substring(0, 50)}${message.content?.length > 50 ? '...' : ''}`);
-    
-    // Realizar análisis rápido del mensaje
-    const analysis = await basicAnalysis(message.content);
-    
-    // Verificar si debemos enviar una respuesta automática
-    let shouldRespond = false;
-    let responseMessage = '';
-    
-    // Solo responder si está habilitado
-    if (autoResponseConfig.enabled) {
-      // Verificar horario de atención
-      const isWithinBusinessHours = checkBusinessHours();
-      const isFirstMessage = await isFirstContactMessage(message.chatId, accountId);
-      
-      if (isFirstMessage) {
-        // Enviar mensaje de bienvenida o fuera de horario
-        shouldRespond = true;
-        responseMessage = isWithinBusinessHours 
-          ? autoResponseConfig.greetingMessage 
-          : autoResponseConfig.outOfHoursMessage;
-      }
-      else if (analysis.isQuestion && analysis.questionType === 'service') {
-        // Responder a preguntas sobre el servicio
-        shouldRespond = true;
-        responseMessage = autoResponseConfig.greetingMessage;
-      }
+    // Solo procesar mensajes entrantes (no enviados por nosotros)
+    if (message.from_me) {
+      return res.json({
+        status: 'success',
+        message: 'Mensaje propio, no requiere procesamiento',
+        processingResult: null
+      });
     }
     
-    // Si hay que responder, enviar mensaje
-    if (shouldRespond && responseMessage) {
-      try {
-        console.log(`Enviando respuesta automática a ${message.chatId} desde cuenta ${accountId}`);
+    // Obtener configuración de respuestas automáticas
+    let autoResponseConfig;
+    try {
+      const configResponse = await axios.get(`${DATABASE_SERVER_URL}/auto-response/config`);
+      autoResponseConfig = configResponse.data;
+    } catch (error) {
+      console.error('Error al obtener configuración de respuestas automáticas:', error.message);
+      autoResponseConfig = null;
+    }
+    
+    // Inicializar resultado de procesamiento
+    const processingResult = {
+      timestamp: new Date().toISOString(),
+      autoResponse: {
+        enabled: autoResponseConfig?.enabled || false,
+        sent: false,
+        message: null,
+        businessHours: isBusinessHours(autoResponseConfig)
+      },
+      analysis: null
+    };
+    
+    // Si las respuestas automáticas están habilitadas, procesar
+    if (autoResponseConfig?.enabled) {
+      // Determinar qué mensaje enviar según horario
+      let responseMessage;
+      
+      if (isBusinessHours(autoResponseConfig)) {
+        // Obtener o generar mensaje de bienvenida
+        const contactName = message.chatId.split('@')[0];
         
-        // Enviar mensaje a través del servidor de WhatsApp
-        await axios.post(`${WHATSAPP_SERVER}/accounts/${accountId}/send`, {
+        // Intentar generar respuesta con IA si está configurada
+        if (geminiModel) {
+          responseMessage = await generateAIResponse(message.content, contactName);
+        }
+        
+        // Si no se pudo generar con IA, usar mensaje predeterminado
+        if (!responseMessage) {
+          responseMessage = autoResponseConfig.greetingMessage || 
+            'Gracias por contactarnos. En breve un asesor le atenderá.';
+        }
+      } else {
+        // Mensaje fuera de horario
+        responseMessage = autoResponseConfig.outOfHoursMessage || 
+          'Gracias por su mensaje. Nuestro horario de atención es de lunes a viernes de 9:00 a 18:00. Le responderemos en cuanto estemos disponibles.';
+      }
+      
+      // Guardar el mensaje de respuesta en el resultado
+      processingResult.autoResponse.message = responseMessage;
+      
+      // Enviar respuesta automática a través del servidor de WhatsApp
+      try {
+        await axios.post(`${WHATSAPP_SERVER_URL}/send-message`, {
+          accountId: message.accountId,
           chatId: message.chatId,
           message: responseMessage
         });
         
-        // Notificar al servidor API
-        try {
-          await axios.post(`${API_SERVER}/internal/auto-response/notification`, {
-            accountId,
-            chatId: message.chatId,
-            originalMessage: message,
-            responseMessage,
-            analysis
-          });
-        } catch (notifyError) {
-          console.warn('Error al notificar respuesta automática:', notifyError.message);
-        }
-      } catch (sendError) {
-        console.error('Error al enviar respuesta automática:', sendError);
+        processingResult.autoResponse.sent = true;
+      } catch (error) {
+        console.error('Error al enviar respuesta automática:', error.message);
+        processingResult.autoResponse.sent = false;
+        processingResult.autoResponse.error = error.message;
       }
     }
     
-    // Guardar análisis en la base de datos junto al mensaje
+    // Analizar mensaje con IA si está disponible
+    if (geminiModel) {
+      const analysis = await analyzeMessage(message.content);
+      processingResult.analysis = analysis;
+    }
+    
+    // Guardar resultado del procesamiento en la base de datos
     try {
-      await axios.post(`${DATABASE_SERVER}/execute-query`, {
-        query: `UPDATE whatsapp_messages 
-                SET metadata = jsonb_set(metadata, '{analysis}', $1::jsonb) 
-                WHERE "messageId" = $2`,
-        params: [JSON.stringify(analysis), message.messageId]
+      await axios.put(`${DATABASE_SERVER_URL}/messages/${message.chatId}/${message.messageId}`, {
+        processingStatus: 'processed',
+        processingResult
       });
     } catch (dbError) {
-      console.warn('Error al guardar análisis en la base de datos:', dbError.message);
+      console.error('Error al guardar resultado de procesamiento:', dbError.message);
     }
     
     res.json({
-      status: 'ok',
+      status: 'success',
       message: 'Mensaje procesado correctamente',
-      analysis,
-      autoResponse: shouldRespond ? {
-        sent: true,
-        message: responseMessage
-      } : {
-        sent: false
-      }
+      processingResult
     });
   } catch (error) {
     console.error('Error al procesar mensaje:', error);
@@ -289,247 +296,168 @@ app.post('/process-message', async (req, res) => {
   }
 });
 
-// Analizar un texto manualmente
-app.post('/analyze', async (req, res) => {
+// Generar respuesta con IA
+app.post('/generate-response', async (req, res) => {
   try {
-    const { text, context } = req.body;
+    const { message, contactName } = req.body;
     
-    if (!text) {
+    if (!message) {
       return res.status(400).json({
         status: 'error',
-        message: 'Se requiere el campo text'
+        message: 'Se requiere el contenido del mensaje'
       });
     }
     
-    // Realizar análisis básico
-    const basicResults = await basicAnalysis(text);
+    // Verificar si IA está inicializada
+    if (!geminiModel) {
+      // Intentar inicializar
+      const initialized = await initializeAI();
+      
+      if (!initialized) {
+        return res.status(500).json({
+          status: 'error',
+          message: 'Google Gemini AI no está configurado correctamente'
+        });
+      }
+    }
     
-    // Si hay contexto y Gemini está habilitado, realizar análisis avanzado
-    let advancedAnalysis = null;
-    if (context && geminiConfig.enabled) {
-      advancedAnalysis = await analyzeMessage(text, context);
+    // Generar respuesta
+    const response = await generateAIResponse(message, contactName);
+    
+    if (!response) {
+      return res.status(500).json({
+        status: 'error',
+        message: 'No se pudo generar una respuesta con IA'
+      });
     }
     
     res.json({
-      status: 'ok',
-      basic: basicResults,
-      advanced: advancedAnalysis,
-      geminiEnabled: geminiConfig.enabled
+      status: 'success',
+      response
     });
   } catch (error) {
-    console.error('Error al analizar texto:', error);
+    console.error('Error al generar respuesta con IA:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Error al analizar texto',
+      message: 'Error al generar respuesta con IA',
       error: error.message
     });
   }
 });
 
-// Función para verificar si es el primer mensaje de un contacto
-async function isFirstContactMessage(chatId, accountId) {
+// Analizar mensaje con IA
+app.post('/analyze-message', async (req, res) => {
   try {
-    // Contar mensajes previos de este chat
-    const response = await axios.get(`${DATABASE_SERVER}/messages/${chatId}?accountId=${accountId}&limit=2`);
-    return response.data.length <= 1; // Si solo hay 1 o 0 mensajes, es el primero
-  } catch (error) {
-    console.warn(`Error al verificar si es primer mensaje de ${chatId}:`, error.message);
-    return false; // En caso de error, asumir que no es el primer mensaje
-  }
-}
-
-// Función para verificar si es horario de atención
-function checkBusinessHours() {
-  const now = new Date();
-  const dayOfWeek = now.getDay(); // 0 = Domingo, 1 = Lunes, ...
-  
-  // Verificar si hoy es día laboral
-  const workingDays = autoResponseConfig.workingDays.split(',').map(d => parseInt(d));
-  if (!workingDays.includes(dayOfWeek)) {
-    return false;
-  }
-  
-  // Obtener hora actual
-  const currentHour = now.getHours();
-  const currentMinutes = now.getMinutes();
-  const currentTime = currentHour * 60 + currentMinutes; // Convertir a minutos desde medianoche
-  
-  // Obtener horarios de trabajo
-  const startTimeParts = autoResponseConfig.businessHoursStart.split(':');
-  const endTimeParts = autoResponseConfig.businessHoursEnd.split(':');
-  
-  const startTime = parseInt(startTimeParts[0]) * 60 + parseInt(startTimeParts[1]);
-  const endTime = parseInt(endTimeParts[0]) * 60 + parseInt(endTimeParts[1]);
-  
-  // Verificar si la hora actual está dentro del horario
-  return currentTime >= startTime && currentTime <= endTime;
-}
-
-// Función para análisis básico de mensaje
-function basicAnalysis(message) {
-  // Análisis simple sin IA
-  const result = {
-    isQuestion: false,
-    questionType: null,
-    hasGreeting: false,
-    hasThanks: false,
-    hasComplaint: false,
-    keywordCategories: [],
-    language: 'es', // Asumimos español por defecto
-    sentiment: 'neutral'
-  };
-  
-  // Detectar si es una pregunta
-  result.isQuestion = message.includes('?') || 
-                     /^(qué|cómo|cuándo|dónde|quién|cuál|cuánto|por qué)/i.test(message);
-  
-  // Detectar tipo de pregunta
-  if (result.isQuestion) {
-    if (/horario|abierto|atienden|están atendiendo|hora/i.test(message)) {
-      result.questionType = 'schedule';
-    } else if (/precio|costo|valor|cuánto cuesta|tarifa/i.test(message)) {
-      result.questionType = 'price';
-    } else if (/producto|servicio|tienen|hay|disponible/i.test(message)) {
-      result.questionType = 'product';
-    } else if (/ayuda|atención|asesor|problema|ayudar/i.test(message)) {
-      result.questionType = 'service';
+    const { message } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Se requiere el contenido del mensaje'
+      });
     }
-  }
-  
-  // Detectar saludos
-  result.hasGreeting = /hola|buenos días|buenas tardes|buenas noches|saludos/i.test(message);
-  
-  // Detectar agradecimientos
-  result.hasThanks = /gracias|agradec|agradezco/i.test(message);
-  
-  // Detectar quejas
-  result.hasComplaint = /queja|molesto|molestia|problema|error|mal servicio|mala atención|no funciona|no sirve/i.test(message);
-  
-  // Categorías de palabras clave
-  if (/compra|pagar|precio|costo|valor|adquirir/i.test(message)) {
-    result.keywordCategories.push('purchase');
-  }
-  if (/envío|entrega|dirección|enviar|llegar|llegada/i.test(message)) {
-    result.keywordCategories.push('shipping');
-  }
-  if (/devolver|devolución|cambio|garantía|reembolso/i.test(message)) {
-    result.keywordCategories.push('return');
-  }
-  if (/producto|artículo|modelo|referencia|catálogo/i.test(message)) {
-    result.keywordCategories.push('product');
-  }
-  if (/ayuda|soporte|asistencia|problema|error/i.test(message)) {
-    result.keywordCategories.push('support');
-  }
-  
-  // Detectar idioma (muy básico)
-  if (/hello|good morning|good afternoon|good evening|thanks|hi there|help|service/i.test(message)) {
-    result.language = 'en';
-  }
-  
-  // Análisis simple de sentimiento
-  const positiveWords = /excelente|bueno|genial|fabuloso|maravilloso|encantado|gracias|feliz|contento|satisfecho/i;
-  const negativeWords = /malo|terrible|pésimo|horrible|problema|queja|molesto|molestia|error|insatisfecho|inconforme/i;
-  
-  if (positiveWords.test(message)) {
-    result.sentiment = 'positive';
-  } else if (negativeWords.test(message)) {
-    result.sentiment = 'negative';
-  }
-  
-  return result;
-}
-
-// Función para análisis avanzado con Gemini AI
-async function analyzeMessage(message, contextMessages = []) {
-  if (!geminiConfig.enabled || !geminiModel) {
-    return {
-      error: 'Gemini AI no está configurado o habilitado'
-    };
-  }
-  
-  try {
-    // Construir prompt para el análisis
-    let prompt = `Analiza el siguiente mensaje de un cliente por WhatsApp y proporciona un resumen de intenciones y sentimiento:
+    
+    // Verificar si IA está inicializada
+    if (!geminiModel) {
+      // Intentar inicializar
+      const initialized = await initializeAI();
       
-Mensaje: "${message}"
-      
-Si es relevante, este es el contexto de mensajes anteriores:
-${contextMessages.map((m, i) => `[${i+1}] ${m.fromMe ? 'Empresa:' : 'Cliente:'} ${m.content}`).join('\n')}
-      
-Por favor proporciona la siguiente información en formato JSON:
-1. Intención principal del usuario (consulta, queja, solicitud, agradecimiento, etc.)
-2. Sentimiento (positivo, negativo, neutral)
-3. Temas clave mencionados
-4. Si requiere atención humana urgente (true/false)
-5. Sugerencia de respuesta breve
-     
-Responde solo con el JSON, sin texto adicional.`;
-    
-    // Configurar la generación
-    const generationConfig = {
-      temperature: geminiConfig.temperature,
-      maxOutputTokens: geminiConfig.maxTokens,
-    };
-    
-    // Realizar la llamada
-    const result = await geminiModel.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig,
-    });
-    
-    const response = result.response;
-    const text = response.text();
-    
-    // Intentar parsear la respuesta como JSON
-    try {
-      // Extraer solo el contenido JSON (puede venir con comillas al inicio o final)
-      const jsonMatch = text.match(/{[\s\S]*}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+      if (!initialized) {
+        return res.status(500).json({
+          status: 'error',
+          message: 'Google Gemini AI no está configurado correctamente'
+        });
       }
-      return { raw: text, error: 'No se pudo extraer JSON válido de la respuesta' };
-    } catch (jsonError) {
-      console.error('Error al parsear respuesta de Gemini:', jsonError);
-      return { raw: text, error: 'Error al parsear respuesta como JSON' };
     }
+    
+    // Analizar mensaje
+    const analysis = await analyzeMessage(message);
+    
+    if (!analysis) {
+      return res.status(500).json({
+        status: 'error',
+        message: 'No se pudo analizar el mensaje con IA'
+      });
+    }
+    
+    res.json({
+      status: 'success',
+      analysis
+    });
   } catch (error) {
-    console.error('Error en análisis con Gemini AI:', error);
-    return {
-      error: `Error al procesar con Gemini AI: ${error.message}`
-    };
-  }
-}
-
-// Iniciar el servidor
-const server = app.listen(PORT, '0.0.0.0', async () => {
-  console.log(`✅ Servidor de procesamiento de mensajes iniciado en http://0.0.0.0:${PORT}`);
-  
-  // Cargar configuración desde la base de datos
-  try {
-    console.log('Cargando configuración desde la base de datos...');
-    const response = await axios.get(`${DATABASE_SERVER}/auto-response/config`);
-    autoResponseConfig = response.data;
-    console.log('Configuración de respuestas automáticas cargada correctamente');
-  } catch (error) {
-    console.warn('No se pudo cargar la configuración desde la base de datos:', error.message);
-    console.log('Usando configuración por defecto');
+    console.error('Error al analizar mensaje con IA:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error al analizar mensaje con IA',
+      error: error.message
+    });
   }
 });
 
-// Manejar señales de cierre
+// Configurar respuestas automáticas
+app.post('/auto-response/config', async (req, res) => {
+  try {
+    const config = req.body;
+    
+    // Intentar actualizar en la base de datos
+    try {
+      const response = await axios.post(`${DATABASE_SERVER_URL}/auto-response/config`, config);
+      
+      // Si se actualizó la API key de Gemini, reinicializar
+      if (config.geminiApiKey) {
+        await initializeAI();
+      }
+      
+      res.json({
+        status: 'success',
+        message: 'Configuración actualizada correctamente',
+        config: response.data
+      });
+    } catch (error) {
+      console.error('Error al actualizar configuración en BD:', error.message);
+      res.status(500).json({
+        status: 'error',
+        message: 'Error al actualizar configuración',
+        error: error.message
+      });
+    }
+  } catch (error) {
+    console.error('Error al configurar respuestas automáticas:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error al configurar respuestas automáticas',
+      error: error.message
+    });
+  }
+});
+
+// Iniciar el servidor
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Procesador de mensajes iniciado en http://0.0.0.0:${PORT}`);
+  
+  // Inicializar IA al arrancar
+  initializeAI().then(success => {
+    if (success) {
+      console.log('Google Gemini AI inicializado correctamente al arrancar');
+    } else {
+      console.log('No se pudo inicializar Google Gemini AI, se intentará más tarde');
+    }
+  });
+});
+
+// Manejar cierre de proceso
 process.on('SIGINT', () => {
-  console.log('Cerrando servidor de procesamiento de mensajes...');
+  console.log('Cerrando procesador de mensajes...');
   server.close(() => {
-    console.log('Servidor detenido');
+    console.log('Procesador de mensajes detenido');
     process.exit(0);
   });
 });
 
 process.on('SIGTERM', () => {
-  console.log('Cerrando servidor de procesamiento de mensajes...');
+  console.log('Cerrando procesador de mensajes...');
   server.close(() => {
-    console.log('Servidor detenido');
+    console.log('Procesador de mensajes detenido');
     process.exit(0);
   });
 });
