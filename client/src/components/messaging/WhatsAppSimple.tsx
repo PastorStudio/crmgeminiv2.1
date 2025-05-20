@@ -611,7 +611,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     }
   };
 
-  // Enviar mensaje
+  // Enviar mensaje - Versión optimista para UI
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedChatId) return;
     
@@ -629,10 +629,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       hasMedia: false
     };
     
-    // Mostrar mensaje inmediatamente en la interfaz
-    // Actualizamos directamente el estado de whatsappMessages
-    const newWhatsappMessages = [...whatsappMessages, tempMsg];
-    setWhatsappMessages(newWhatsappMessages);
+    // Forzar un refresco de mensajes después de un breve retraso
+    // Esto garantizará que el mensaje aparezca en la UI sin manipulación directa
+    setTimeout(() => {
+      refetchMessages();
+    }, 500);
     
     // Intentar enviar el mensaje en segundo plano
     fetch('/api/direct/whatsapp/sendMessage', {
