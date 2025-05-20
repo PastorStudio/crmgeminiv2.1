@@ -273,36 +273,6 @@ export default function UserManagement() {
 
   // Submit del formulario
   const onSubmit = (values: UserFormValues) => {
-    // Validar permisos antes de crear/editar usuarios administrativos
-    if (values.role === 'admin' && !isSuperAdmin) {
-      toast({
-        title: "Permiso denegado",
-        description: "Solo el superadministrador puede crear o modificar usuarios administrativos.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Super_admin solo puede ser creado o modificado por el superadmin (DJP)
-    if (values.role === 'super_admin' && !isSuperAdmin) {
-      toast({
-        title: "Permiso denegado",
-        description: "No tienes permisos para gestionar superadministradores.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Prevenir modificar el usuario DJP (superadmin fijo)
-    if (selectedUser && selectedUser.id === 3 && selectedUser.username === 'DJP' && currentUser?.id !== 3) {
-      toast({
-        title: "Acción no permitida",
-        description: "No se puede modificar la cuenta de superadministrador.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     if (selectedUser) {
       // Si no se proporciona contraseña, creamos un objeto nuevo sin ella
       const userData: Partial<UserFormValues> = {};
@@ -318,11 +288,6 @@ export default function UserManagement() {
           (userData as any)[key] = values[key as keyof typeof values];
         }
       });
-      
-      // Si no es superadmin y está intentando editar un admin, mantener el rol
-      if (!isSuperAdmin && selectedUser.role === 'admin') {
-        userData.role = 'admin'; // Preservar el rol administrativo
-      }
       
       updateUserMutation.mutate({ id: selectedUser.id, userData });
     } else {
@@ -740,11 +705,7 @@ export default function UserManagement() {
                             <DropdownMenuItem 
                               onClick={() => openDeleteDialog(user)}
                               className="text-destructive focus:text-destructive"
-                              disabled={
-                                user.id === currentUser?.id || // No permitir eliminar al usuario actual
-                                user.role === 'super_admin' || // No permitir eliminar super admins
-                                (user.role === 'admin' && !isSuperAdmin) // Solo superadmin puede eliminar admins
-                              }
+                              disabled={user.id === currentUser?.id || user.role === 'super_admin'} // No permitir eliminar al usuario actual o al superadmin
                             >
                               <Trash className="mr-2 h-4 w-4" />
                               Eliminar
@@ -933,31 +894,22 @@ export default function UserManagement() {
                           
                           <SelectGroup>
                             <SelectLabel>Administración</SelectLabel>
-                            {/* Solo mostrar opción de Administrador si es superadmin o si se está editando un usuario que ya es admin */}
-                            {(isSuperAdmin || (selectedUser && selectedUser.role === 'admin')) && (
-                              <SelectItem value="admin">
-                                <div className="flex items-center">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                  </svg>
-                                  <span>Administrador</span>
-                                  {!isSuperAdmin && selectedUser && selectedUser.role === 'admin' && (
-                                    <span className="ml-2 text-xs text-yellow-500">(Solo lectura)</span>
-                                  )}
-                                </div>
-                              </SelectItem>
-                            )}
-                            {/* Solo el superadmin DJP puede seleccionar super_admin */}
-                            {isSuperAdmin && (
-                              <SelectItem value="super_admin">
-                                <div className="flex items-center">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-                                  </svg>
-                                  <span>Super Administrador</span>
-                                </div>
-                              </SelectItem>
-                            )}
+                            <SelectItem value="admin">
+                              <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                                <span>Administrador</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="super_admin" disabled={currentUser?.role !== 'super_admin'}>
+                              <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                                </svg>
+                                <span>Super Administrador</span>
+                              </div>
+                            </SelectItem>
                           </SelectGroup>
                         </SelectContent>
                       </Select>
@@ -1148,22 +1100,8 @@ export default function UserManagement() {
             </Button>
             <Button 
               variant="destructive" 
-              onClick={() => {
-                // Verificar permisos antes de eliminar
-                if (selectedUser?.role === 'admin' && !isSuperAdmin) {
-                  toast({
-                    title: "Permiso denegado",
-                    description: "Solo el superadministrador puede eliminar usuarios administrativos.",
-                    variant: "destructive",
-                  });
-                  setIsDeleteDialogOpen(false);
-                  return;
-                }
-                
-                // Continuar con la eliminación si tiene permisos
-                selectedUser && deleteUserMutation.mutate(selectedUser.id);
-              }}
-              disabled={deleteUserMutation.isPending || (selectedUser?.role === 'admin' && !isSuperAdmin)}
+              onClick={() => selectedUser && deleteUserMutation.mutate(selectedUser.id)}
+              disabled={deleteUserMutation.isPending}
             >
               {deleteUserMutation.isPending ? (
                 <>

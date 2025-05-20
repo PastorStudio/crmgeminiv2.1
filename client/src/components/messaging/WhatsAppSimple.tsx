@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import { WhatsAppQRCode } from './WhatsAppQRCode';
-import { ViewModeToggleButton } from './ViewModeToggleButton';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateAutoResponse } from '@/lib/gemini';
 import { chatContext } from '@/lib/chatContext';
@@ -39,7 +38,6 @@ import {
   QrCode,
   Paperclip,
   Brain,
-  LayoutGrid,
   Smile,
   CheckCheck,
   Image,
@@ -97,17 +95,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [showConfigMenu, setShowConfigMenu] = useState<boolean>(false);
   // Estado para controlar el diálogo de asignación de chat
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState<boolean>(false);
-  // Estado para almacenar el ID de cuenta de WhatsApp actual (sin valor predeterminado)
-  const [currentAccountId, setCurrentAccountId] = useState<number | null>(null);
-  // Estado para controlar la vista de todos los chats (unificada) o solo la cuenta actual
-  const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
-  // Estado para almacenar chats de todas las cuentas
-  const [allAccountsChats, setAllAccountsChats] = useState<{
-    [accountId: string]: {
-      accountName: string;
-      chats: WhatsAppChat[];
-    }
-  }>({});
+  // Estado para almacenar el ID de cuenta de WhatsApp actual (por defecto 1)
+  const [currentAccountId, setCurrentAccountId] = useState<number>(1);
   // Estado para almacenar todas las cuentas de WhatsApp
   const [whatsappAccounts, setWhatsappAccounts] = useState<any[]>([]);
   
@@ -115,77 +104,12 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   
-  // Función para cambiar el modo de visualización
-  const handleViewModeChange = (mode: 'single' | 'all') => {
-    setViewMode(mode);
-    
-    if (mode === 'all') {
-      // Si cambiamos a modo "todas las cuentas", cargar chats de todas las cuentas
-      loadAllAccountsChats();
-    } else {
-      // Si volvemos a modo individual, limpiar la selección de chat
-      setSelectedChatId(null);
-    }
-  };
-  
-  // Función para cargar chats de todas las cuentas
-  const loadAllAccountsChats = async () => {
-    if (!whatsappAccounts || whatsappAccounts.length === 0) return;
-    
-    const newAllChats: {[accountId: number]: {chats: WhatsAppChat[], accountName: string}} = {};
-    
-    for (const account of whatsappAccounts) {
-      try {
-        console.log(`Cargando chats para cuenta ${account.id} (${account.name})...`);
-        const { apiRequest } = await import('@/lib/queryClient');
-        const response = await apiRequest(`/api/whatsapp-accounts/${account.id}/chats`);
-        if (!response.ok) {
-          console.error(`Error al cargar chats para cuenta ${account.id}: ${response.status}`);
-          continue;
-        }
-        
-        const chatsData = await response.json();
-        
-        if (Array.isArray(chatsData)) {
-          newAllChats[account.id] = {
-            chats: chatsData,
-            accountName: account.name
-          };
-          console.log(`Cargados ${chatsData.length} chats para cuenta ${account.name}`);
-        }
-      } catch (error) {
-        console.error(`Error al cargar chats para la cuenta ${account.id}:`, error);
-      }
-    }
-    
-    setAllAccountsChats(newAllChats);
-  };
-  
-  // Hook para WebSockets con notificaciones en tiempo real (<2s)
+  // Hook para WebSockets
   const { 
-    isConnected, 
-    lastMessage,
-    connect,
-    disconnect
-  } = useWebSocket({
-    onNotification: (notification) => {
-      // Procesar notificaciones de WhatsApp en tiempo real (<2s)
-      if (notification.type === NotificationType.NEW_MESSAGE) {
-        // Actualizar datos inmediatamente sin esperar al polling
-        if (currentChat && notification.data.chatId === currentChat) {
-          refetchMessages();
-        }
-        // Notificar al usuario de mensajes nuevos solo si no es el chat actual
-        if (currentChat !== notification.data.chatId) {
-          toast({
-            title: "Nuevo mensaje",
-            description: `${notification.data.contactName}: ${notification.data.body}`,
-            variant: "default"
-          });
-        }
-      }
-    }
-  });
+    sendMessage: sendWSMessage, 
+    lastMessage, 
+    connectionStatus 
+  } = useWebSocket();
   
   // Toast para notificaciones
   const { toast } = useToast();
@@ -212,51 +136,12 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchInterval: 10000
   });
 
-  // Actualizar el estado de las cuentas cuando se carguen y gestionar la selección dinámicamente
+  // Actualizar el estado de las cuentas cuando se carguen
   useEffect(() => {
-    if (accountsData && Array.isArray(accountsData) && accountsData.length > 0) {
+    if (accountsData && Array.isArray(accountsData)) {
       setWhatsappAccounts(accountsData);
-      
-      // CASO 1: No hay cuenta seleccionada - Seleccionar automáticamente la primera
-      if (currentAccountId === null) {
-        const firstAccount = accountsData[0];
-        console.log('Seleccionando automáticamente la primera cuenta disponible:', firstAccount.id, firstAccount.name);
-        setCurrentAccountId(firstAccount.id);
-        
-        toast({
-          title: `Cuenta seleccionada automáticamente`,
-          description: `${firstAccount.name} (ID: ${firstAccount.id})`,
-          variant: "default"
-        });
-      } 
-      // CASO 2: La cuenta actual ya no existe en la lista - Cambiar a la primera disponible
-      else {
-        const accountExists = accountsData.some(acc => acc.id === currentAccountId);
-        
-        if (!accountExists) {
-          const newAccount = accountsData[0];
-          console.log('La cuenta seleccionada (ID:', currentAccountId, ') ya no existe. Cambiando a:', newAccount.id, newAccount.name);
-          setCurrentAccountId(newAccount.id);
-          
-          toast({
-            title: `Cuenta cambiada automáticamente`,
-            description: `La cuenta anterior (ID: ${currentAccountId}) ya no existe. Usando ahora: ${newAccount.name}`,
-            variant: "default"
-          });
-        }
-      }
-    } else if (accountsData && Array.isArray(accountsData) && accountsData.length === 0 && currentAccountId !== null) {
-      // CASO 3: No hay cuentas disponibles pero había una seleccionada - Resetear
-      console.log('No hay cuentas disponibles. Resetenado el ID de cuenta seleccionada.');
-      setCurrentAccountId(null);
-      
-      toast({
-        title: `Sin cuentas disponibles`,
-        description: `No se encontraron cuentas de WhatsApp disponibles.`,
-        variant: "destructive"
-      });
     }
-  }, [accountsData, currentAccountId, toast]);
+  }, [accountsData]);
 
   // Query para obtener el estado de WhatsApp para la cuenta actual
   const { 
@@ -266,11 +151,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     queryKey: ['/api/whatsapp-accounts', currentAccountId],
     queryFn: async () => {
       try {
-        // Si no hay cuenta seleccionada, no intentar cargar el estado
-        if (currentAccountId === null) {
-          return { initialized: false, ready: false, authenticated: false };
-        }
-        
         // Importar en línea apiRequest
         const { apiRequest } = await import('@/lib/queryClient');
         const response = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}`);
@@ -284,8 +164,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         return { initialized: false, ready: false, authenticated: false };
       }
     },
-    refetchInterval: 5000,
-    enabled: currentAccountId !== null // Solo activar la consulta si hay una cuenta seleccionada
+    refetchInterval: 5000
   });
 
   // Query para obtener chats reales de WhatsApp para la cuenta específica con optimizaciones
@@ -297,12 +176,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   } = useQuery({
     queryKey: ['/api/whatsapp-accounts', currentAccountId, 'chats'],
     queryFn: async () => {
-      // Si no hay cuenta seleccionada, no intentar cargar chats
-      if (currentAccountId === null) {
-        console.log('No hay cuenta seleccionada. No se cargarán chats.');
-        return [];
-      }
-      
       // Recuperar cache primero para mostrar datos inmediatos
       const cachedData = localStorage.getItem(`whatsapp_chats_${currentAccountId}`);
       let initialData = [];
@@ -446,10 +319,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     setSelectedChatId(null);
     
     // Limpiar la caché de chats para evitar mostrar datos desactualizados
-    // Eliminar la caché de la cuenta actual al cambiar
-    if (currentAccountId !== null) {
-      localStorage.removeItem(`whatsapp_chats_${currentAccountId}`);
-      console.log(`Caché de chats para cuenta ID ${currentAccountId} limpiada al cambiar`);
+    // Esto es especialmente importante para la cuenta de Soporte (ID 2) que ha mostrado problemas
+    if (currentAccountId === 2) {
+      localStorage.removeItem(`whatsapp_chats_2`);
+      console.log("Caché de chats para cuenta de Soporte (ID 2) limpiada al cambiar");
     }
     
     // Forzar refresco de los chats para la nueva cuenta
@@ -457,16 +330,21 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       refetchChats();
     }, 100); // Pequeño retraso para asegurar que todo está listo
     
-    // WebSocket ya está configurado y conectado automáticamente
-    // No es necesario enviar mensajes manualmente para cambio de cuenta
+    // Notificar sobre el cambio de cuenta mediante WebSocket si está disponible
+    if (sendWSMessage) {
+      try {
+        sendWSMessage({
+          type: 'ACCOUNT_CHANGED',
+          accountId: currentAccountId
+        });
+      } catch (error) {
+        console.error('Error notificando cambio de cuenta:', error);
+      }
+    }
     
     // Actualizar estado en el almacenamiento local para persistencia
-    if (currentAccountId !== null) {
-      localStorage.setItem('lastWhatsAppAccount', currentAccountId.toString());
-    } else {
-      localStorage.removeItem('lastWhatsAppAccount');
-    }
-  }, [currentAccountId, refetchChats]);
+    localStorage.setItem('lastWhatsAppAccount', currentAccountId.toString());
+  }, [currentAccountId, refetchChats, sendWSMessage]);
   
   // Ya tenemos una consulta para la asignación del chat actual arriba,
   // así que eliminamos esta duplicada
@@ -479,8 +357,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   } = useQuery({
     queryKey: ['/api/whatsapp-accounts', currentAccountId, 'messages', selectedChatId],
     queryFn: async () => {
-      // Verificar que tengamos tanto un chat seleccionado como una cuenta activa
-      if (!selectedChatId || currentAccountId === null) {
+      if (!selectedChatId) {
         return [];
       }
       
@@ -796,10 +673,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
             <CardTitle className="text-xl font-semibold flex items-center gap-2 text-purple-800">
               <MessageSquare className="h-6 w-6 text-purple-700" />
               GeminiCRM WhatsApp
-              {isConnected && (
+              {connectionStatus === 'Connected' && (
                 <Wifi className="h-5 w-5 text-green-600" />
               )}
-              {!isConnected && (
+              {connectionStatus !== 'Connected' && (
                 <WifiOff className="h-5 w-5 text-red-600 animate-pulse" />
               )}
             </CardTitle>
@@ -943,36 +820,13 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
           <Tabs defaultValue="chats" className="flex flex-col h-full overflow-hidden">
             <div className="border-b p-2">
               {/* Selector de cuentas WhatsApp */}
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex-1 mr-2">
-                  <select 
-                    className="w-full rounded-md border border-gray-300 py-1 px-2 text-sm font-medium"
-                    value={currentAccountId === null ? '' : currentAccountId}
-                    disabled={viewMode === 'all'}
-                    onChange={(e) => {
-                    // Si no hay valor seleccionado, no hacer nada
-                    if (!e.target.value) return;
-                    
-                    // Convertir a número con validación
-                    const newAccountId = parseInt(e.target.value, 10);
-                    if (isNaN(newAccountId)) {
-                      console.error('ID de cuenta inválido:', e.target.value);
-                      return;
-                    }
-                    
-                    // Buscar la cuenta en la lista para confirmar que existe
-                    const account = whatsappAccounts.find(acc => acc.id === newAccountId);
-                    if (!account) {
-                      console.error('Cuenta no encontrada con ID:', newAccountId);
-                      toast({
-                        title: "Error al cambiar de cuenta",
-                        description: `No se encontró la cuenta con ID ${newAccountId}`,
-                        variant: "destructive"
-                      });
-                      return;
-                    }
-                    
-                    const accountName = account.name || 'seleccionada';
+              <div className="mb-2">
+                <select 
+                  className="w-full rounded-md border border-gray-300 py-1 px-2 text-sm font-medium"
+                  value={currentAccountId}
+                  onChange={(e) => {
+                    const newAccountId = Number(e.target.value);
+                    const accountName = whatsappAccounts.find(acc => acc.id === newAccountId)?.name || 'seleccionada';
                     
                     // Mostrar indicador de carga
                     toast({
@@ -1057,15 +911,14 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   }}
                   disabled={isLoadingAccounts || !Array.isArray(whatsappAccounts) || whatsappAccounts.length === 0}
                 >
-                  <option value="">Seleccionar cuenta</option>
                   {isLoadingAccounts ? (
-                    <option disabled>Cargando cuentas...</option>
+                    <option>Cargando cuentas...</option>
                   ) : whatsappAccounts.length === 0 ? (
-                    <option disabled>No hay cuentas disponibles</option>
+                    <option>No hay cuentas disponibles</option>
                   ) : (
                     whatsappAccounts.map(account => (
                       <option key={account.id} value={account.id}>
-                        {account.name} ({account.id}) {account.currentStatus?.authenticated ? '✓ Conectada' : '• Activa'}
+                        {account.name} {account.currentStatus?.authenticated ? '✓' : ''}
                       </option>
                     ))
                   )}
@@ -1095,115 +948,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   {isLoadingChats ? (
                     <div className="flex justify-center p-4">
                       <Spinner />
-                    </div>
-                  ) : viewMode === 'all' ? (
-                    // Vista unificada de todas las cuentas
-                    <div className="divide-y">
-                      <div className="p-3 text-sm font-medium bg-gray-50 sticky top-0 z-10">
-                        Vista unificada - Todas las cuentas
-                      </div>
-                      
-                      {Object.keys(allAccountsChats).length === 0 ? (
-                        <div className="p-8 text-center flex flex-col items-center gap-4">
-                          <div className="text-gray-500">
-                            <LayoutGrid className="h-12 w-12 mx-auto mb-2 text-primary-400" />
-                            <p className="mb-2">No se han cargado chats para todas las cuentas</p>
-                          </div>
-                          <Button 
-                            variant="outline"
-                            onClick={loadAllAccountsChats}
-                            className="flex gap-2 items-center"
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                            Cargar chats de todas las cuentas
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          {Object.entries(allAccountsChats).map(([accountId, accountData]) => (
-                            <div key={accountId} className="account-group">
-                              <div className="p-2 bg-gray-100 border-t border-b sticky top-0 z-10">
-                                <h3 className="text-sm font-medium flex items-center gap-1">
-                                  <Wifi className="h-3 w-3 text-blue-500" /> 
-                                  Cuenta: {accountData.accountName} 
-                                  <span className="text-xs text-gray-500 ml-1">
-                                    ({accountData.chats.length} chats)
-                                  </span>
-                                </h3>
-                              </div>
-                              
-                              {accountData.chats.map((chat: any) => (
-                                <div
-                                  key={`${accountId}-${chat.id}`}
-                                  className={`p-3 hover:bg-gray-50 cursor-pointer ${
-                                    selectedChatId === chat.id && parseInt(accountId) === currentAccountId ? 'bg-green-50 border-l-4 border-l-green-500' : ''
-                                  }`}
-                                  onClick={() => {
-                                    // Al hacer clic, cambiamos a la cuenta correspondiente y seleccionamos el chat
-                                    const numericAccountId = parseInt(accountId);
-                                    // Solo cambiar de cuenta si es necesario
-                                    if (numericAccountId !== currentAccountId) {
-                                      setViewMode('single');
-                                      handleAccountChange(numericAccountId);
-                                      // Esperamos a que se complete el cambio de cuenta antes de seleccionar el chat
-                                      setTimeout(() => {
-                                        handleChatSelect(chat);
-                                      }, 300);
-                                    } else {
-                                      handleChatSelect(chat);
-                                    }
-                                  }}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <Avatar className="h-11 w-11 flex-shrink-0 border shadow-sm">
-                                      {chat.profilePicUrl ? (
-                                        <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
-                                      ) : null}
-                                      <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-                                        {getInitials(chat.name)}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex justify-between items-center">
-                                        <div className="font-medium truncate flex items-center gap-1 max-w-[160px]">
-                                          {chat.name}
-                                          
-                                          {chat.isGroup && (
-                                            <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200">
-                                              Grupo
-                                            </Badge>
-                                          )}
-                                          
-                                          {!chat.isGroup && (
-                                            <Badge variant="outline" className="text-[10px] h-4 px-1 bg-green-50 text-green-700 border-green-200">
-                                              Chat
-                                            </Badge>
-                                          )}
-                                          {chat.unreadCount > 0 && (
-                                            <span className="inline-flex items-center justify-center ml-1 bg-green-500 text-white text-[11px] w-5 h-5 rounded-full">
-                                              {chat.unreadCount}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                      
-                                      <div className="flex justify-between items-center text-sm text-gray-500">
-                                        <p className="truncate w-36">
-                                          {chat.lastMessage || 'Sin mensajes'}
-                                        </p>
-                                        <span className="text-xs whitespace-nowrap">
-                                          {chat.timestamp ? format(new Date(chat.timestamp * 1000), 'HH:mm') : ''}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ))}
-                        </>
-                      )}
                     </div>
                   ) : !whatsappStatus?.authenticated ? (
                     <div className="flex flex-col items-center justify-center py-10 px-4 bg-gray-50 rounded-lg">
@@ -1390,29 +1134,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         
         {/* Panel derecho - Mensajes */}
         <div className="col-span-12 md:col-span-8 flex flex-col h-full overflow-hidden">
-          {!currentAccountId ? (
-            // Panel de mensaje cuando no hay cuenta seleccionada
-            <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-50">
-              <WifiOff className="h-16 w-16 text-amber-500 mb-4" />
-              <h3 className="text-xl font-bold mb-2">No hay cuenta de WhatsApp seleccionada</h3>
-              <p className="text-gray-500 max-w-md text-center mb-4">
-                {whatsappAccounts && Array.isArray(whatsappAccounts) && whatsappAccounts.length > 0 
-                  ? "Selecciona una cuenta de WhatsApp del menú desplegable para ver los chats."
-                  : "No hay cuentas de WhatsApp disponibles. Debes añadir una cuenta primero."}
-              </p>
-              <Button 
-                variant="outline"
-                className="mt-2"
-                onClick={() => {
-                  // Intentar refrescar la lista de cuentas
-                  queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
-                }}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Verificar cuentas disponibles
-              </Button>
-            </div>
-          ) : selectedChatId && currentChat && whatsappStatus?.authenticated ? (
+          {selectedChatId && currentChat && whatsappStatus?.authenticated ? (
             <>
               {/* Encabezado del chat */}
               <div className="border-b p-3 flex items-center gap-3">
@@ -1604,39 +1326,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 </Button>
               </div>
             </>
-          ) : !whatsappStatus?.authenticated ? (
-            <div className="flex flex-col items-center justify-center h-full p-8">
-              <div className="max-w-md text-center space-y-4">
-                <QrCode className="w-12 h-12 mx-auto text-primary mb-2" />
-                <h3 className="text-xl font-bold">Escanea el código QR</h3>
-                <p className="text-gray-500">
-                  Para enviar y recibir mensajes, necesitas conectar WhatsApp escaneando el código QR.
-                </p>
-                <div className="rounded-lg overflow-hidden border-4 border-white shadow-lg bg-white">
-                  <WhatsAppQRCode accountId={currentAccountId} />
-                </div>
-              </div>
-            </div>
-          ) : !selectedChatId ? (
-            <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-50">
-              <MessageSquare className="h-16 w-16 text-primary mb-4" />
-              <h3 className="text-xl font-bold mb-2">Selecciona un chat</h3>
-              <p className="text-gray-500 max-w-md text-center mb-4">
-                {whatsappChats && whatsappChats.length > 0 ? 
-                  "Selecciona un chat de la lista para ver los mensajes."
-                  : "No hay chats disponibles. Espera a que lleguen nuevos mensajes o intenta iniciar una conversación."}
-              </p>
-              <Button 
-                variant="outline"
-                className="mt-2"
-                onClick={() => {
-                  refetchChats();
-                }}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Actualizar chats
-              </Button>
-            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
               <img 
@@ -1646,7 +1335,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
               />
               <h3 className="text-xl font-medium text-gray-700 mb-2">WhatsApp Messenger</h3>
               <p className="text-gray-500 max-w-md">
-                Se ha producido un error al cargar los mensajes. Intenta seleccionar un chat de nuevo.
+                Selecciona un chat para ver los mensajes o escanea el código QR para conectar WhatsApp si aún no lo has hecho.
               </p>
             </div>
           )}
