@@ -347,22 +347,55 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     }
   }, [chatAssignment]);
   
-  // Efecto: Resetear chat seleccionado cuando cambia la cuenta de WhatsApp
+  // Efecto: Control inteligente de cambio de cuenta con protección anti-bloqueo
   useEffect(() => {
     // Limpiar selección de chat al cambiar de cuenta
     setSelectedChatId(null);
     
-    // Limpiar la caché de chats para evitar mostrar datos desactualizados
-    // Esto es especialmente importante para la cuenta de Soporte (ID 2) que ha mostrado problemas
-    if (currentAccountId === 2) {
-      localStorage.removeItem(`whatsapp_chats_2`);
-      console.log("Caché de chats para cuenta de Soporte (ID 2) limpiada al cambiar");
+    // Registrar el último cambio de cuenta para limitar frecuencia
+    const lastAccountChangeKey = 'last_account_change_time';
+    const now = Date.now();
+    const lastChangeTime = parseInt(localStorage.getItem(lastAccountChangeKey) || '0');
+    const timeSinceLastChange = now - lastChangeTime;
+    
+    // Limitar cambios de cuenta a máximo uno cada 3 minutos para evitar bloqueos
+    const MIN_ACCOUNT_CHANGE_INTERVAL = 3 * 60 * 1000; // 3 minutos
+    
+    if (timeSinceLastChange < MIN_ACCOUNT_CHANGE_INTERVAL) {
+      console.log(`⚠️ PROTECCIÓN ANTI-BLOQUEO: Cambio de cuenta limitado (último cambio hace ${Math.floor(timeSinceLastChange/1000)}s)`);
+      console.log(`Próximo cambio permitido en: ${Math.ceil((MIN_ACCOUNT_CHANGE_INTERVAL - timeSinceLastChange)/1000/60)} minutos`);
+      return; // No hacer nada más si el cambio es demasiado frecuente
     }
     
-    // Forzar refresco de los chats para la nueva cuenta
+    // Registrar este cambio de cuenta
+    localStorage.setItem(lastAccountChangeKey, now.toString());
+    
+    // COMPORTAMIENTO SEGURO: Uso selectivo de caché para evitar peticiones constantes
+    // Solo limpiar caché en casos específicos donde sabemos que hay problemas
+    if (currentAccountId === 2) {
+      // Verificar cuándo fue la última vez que se limpió la caché
+      const lastCacheClearKey = 'last_cache_clear_account_2';
+      const lastClearTime = parseInt(localStorage.getItem(lastCacheClearKey) || '0');
+      const timeSinceLastClear = now - lastClearTime;
+      
+      // Solo limpiar la caché una vez cada 30 minutos como máximo
+      const MIN_CACHE_CLEAR_INTERVAL = 30 * 60 * 1000; // 30 minutos
+      
+      if (timeSinceLastClear > MIN_CACHE_CLEAR_INTERVAL) {
+        localStorage.removeItem(`whatsapp_chats_2`);
+        localStorage.setItem(lastCacheClearKey, now.toString());
+        console.log("Caché de chats para cuenta de Soporte (ID 2) limpiada (limpieza programada)");
+      } else {
+        console.log(`Limpieza de caché omitida (última hace ${Math.floor(timeSinceLastClear/1000)}s)`);
+      }
+    }
+    
+    // Forzar refresco de los chats para la nueva cuenta con un retraso mayor
+    // para prevenir demasiadas peticiones simultáneas
     setTimeout(() => {
+      console.log("Refrescando chats después del cambio de cuenta (con protección anti-bloqueo)");
       refetchChats();
-    }, 100); // Pequeño retraso para asegurar que todo está listo
+    }, 2000); // Mayor retraso para reducir carga en el servidor
     
     // DESACTIVADO TEMPORALMENTE PARA PREVENIR BUCLE INFINITO
     // El mensaje ACCOUNT_CHANGED está causando un bucle infinito
