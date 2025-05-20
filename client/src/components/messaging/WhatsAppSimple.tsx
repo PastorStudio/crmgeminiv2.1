@@ -1036,7 +1036,14 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                       {/* Usamos el componente importado */}
                       <div className="mt-4">
                         <div className="flex items-center justify-center">
-                          <WhatsAppQRCode accountId={currentAccountId} />
+                          <Button 
+                            size="lg"
+                            onClick={() => setShowQRDialog(true)}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            <QrCode className="mr-2 h-5 w-5" />
+                            Escanear código QR para autenticar WhatsApp
+                          </Button>
                         </div>
                       </div>
                       
