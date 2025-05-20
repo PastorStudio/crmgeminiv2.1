@@ -1,8 +1,9 @@
 /**
- * Servidor API - Microservicio independiente
+ * Servidor de API - Microservicio independiente
  * 
- * Este servidor actúa como punto de entrada para todas las solicitudes externas
- * y coordina las comunicaciones entre los demás microservicios.
+ * Este microservicio actúa como punto de entrada centralizado para la aplicación,
+ * proporcionando APIs RESTful para el frontend y coordinando la comunicación
+ * entre todos los demás microservicios.
  */
 
 const express = require('express');
@@ -10,14 +11,15 @@ const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
+
 const app = express();
 const PORT = process.env.API_SERVER_PORT || 5000;
-const DATABASE_SERVER = process.env.DATABASE_SERVER_URL || 'http://localhost:5003';
-const WHATSAPP_SERVER = process.env.WHATSAPP_SERVER_URL || 'http://localhost:5001';
-const PROCESSOR_SERVER = process.env.PROCESSOR_SERVER_URL || 'http://localhost:5002';
+const DATABASE_SERVER_URL = process.env.DATABASE_SERVER_URL || 'http://localhost:5003';
+const WHATSAPP_SERVER_URL = process.env.WHATSAPP_SERVER_URL || 'http://localhost:5001';
+const PROCESSOR_SERVER_URL = process.env.PROCESSOR_SERVER_URL || 'http://localhost:5002';
 
 // Middleware para JSON y CORS
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(cors());
 
 // Log de todas las solicitudes
@@ -26,418 +28,383 @@ app.use((req, res, next) => {
   next();
 });
 
-// Raíz de la API
-app.get('/', (req, res) => {
-  res.json({
-    name: 'CRM WhatsApp API',
-    version: '2.0.0',
-    microserviceArchitecture: true,
-    services: [
-      { name: 'api', url: `/api/health`, port: PORT },
-      { name: 'whatsapp', url: `${WHATSAPP_SERVER}/health`, port: 5001 },
-      { name: 'processor', url: `${PROCESSOR_SERVER}/health`, port: 5002 },
-      { name: 'database', url: `${DATABASE_SERVER}/health`, port: 5003 }
-    ]
-  });
-});
+// Ruta para servir archivos estáticos (frontend)
+app.use(express.static(path.join(__dirname, '..', '..', 'client', 'dist')));
 
-// Ruta de estado
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    service: 'api-server', 
-    timestamp: new Date().toISOString() 
-  });
-});
+// === Rutas de la API ===
 
-// Obtener el estado de todos los microservicios
-app.get('/api/system/status', async (req, res) => {
-  try {
-    const results = await Promise.allSettled([
-      axios.get(`${DATABASE_SERVER}/health`).then(res => ({ name: 'database', status: 'ok', data: res.data })),
-      axios.get(`${WHATSAPP_SERVER}/health`).then(res => ({ name: 'whatsapp', status: 'ok', data: res.data })),
-      axios.get(`${PROCESSOR_SERVER}/health`).then(res => ({ name: 'processor', status: 'ok', data: res.data }))
-    ]);
-    
-    const servicesStatus = results.map((result, index) => {
-      if (result.status === 'fulfilled') {
-        return result.value;
-      } else {
-        const services = ['database', 'whatsapp', 'processor'];
-        return {
-          name: services[index],
-          status: 'error',
-          error: result.reason.message
-        };
-      }
-    });
-    
-    // Añadir este servidor
-    servicesStatus.push({
-      name: 'api',
+// Ruta de salud para verificar todos los servicios
+app.get('/api/health', async (req, res) => {
+  const results = {
+    api: {
       status: 'ok',
-      data: {
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime()
-      }
-    });
-    
-    res.json({
-      system: {
-        status: servicesStatus.every(s => s.status === 'ok') ? 'ok' : 'degraded',
-        timestamp: new Date().toISOString()
-      },
-      services: servicesStatus
-    });
+      service: 'api-server',
+      timestamp: new Date().toISOString()
+    },
+    database: { status: 'unknown' },
+    whatsapp: { status: 'unknown' },
+    processor: { status: 'unknown' }
+  };
+  
+  // Verificar el estado de cada servicio
+  try {
+    const dbRes = await axios.get(`${DATABASE_SERVER_URL}/health`, { timeout: 3000 });
+    results.database = dbRes.data;
   } catch (error) {
-    console.error('Error al verificar estado del sistema:', error);
-    res.status(500).json({
-      system: {
-        status: 'error',
-        timestamp: new Date().toISOString(),
-        error: error.message
-      }
-    });
+    results.database = {
+      status: 'error',
+      message: `No se pudo conectar al servicio de base de datos: ${error.message}`,
+      error: error.code
+    };
   }
+  
+  try {
+    const waRes = await axios.get(`${WHATSAPP_SERVER_URL}/health`, { timeout: 3000 });
+    results.whatsapp = waRes.data;
+  } catch (error) {
+    results.whatsapp = {
+      status: 'error',
+      message: `No se pudo conectar al servicio de WhatsApp: ${error.message}`,
+      error: error.code
+    };
+  }
+  
+  try {
+    const procRes = await axios.get(`${PROCESSOR_SERVER_URL}/health`, { timeout: 3000 });
+    results.processor = procRes.data;
+  } catch (error) {
+    results.processor = {
+      status: 'error',
+      message: `No se pudo conectar al servicio de procesamiento: ${error.message}`,
+      error: error.code
+    };
+  }
+  
+  // Determinar el estado general
+  const allServicesOk = 
+    results.database.status === 'ok' &&
+    results.whatsapp.status === 'ok' &&
+    results.processor.status === 'ok';
+  
+  res.json({
+    status: allServicesOk ? 'ok' : 'partial',
+    timestamp: new Date().toISOString(),
+    services: results
+  });
 });
 
-// *** Rutas proxy hacia los demás microservicios ***
+// === Rutas para cuentas de WhatsApp ===
 
-// API de Cuentas de WhatsApp
+// Obtener todas las cuentas de WhatsApp
 app.get('/api/whatsapp-accounts', async (req, res) => {
   try {
-    const response = await axios.get(`${DATABASE_SERVER}/whatsapp-accounts`);
+    const response = await axios.get(`${DATABASE_SERVER_URL}/whatsapp-accounts`);
     res.json(response.data);
   } catch (error) {
-    console.error('Error al obtener cuentas de WhatsApp:', error);
-    res.status(error.response?.status || 500).json({
-      error: 'Error al obtener cuentas de WhatsApp',
-      details: error.message
+    console.error('Error al obtener cuentas de WhatsApp:', error.message);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error al obtener cuentas de WhatsApp',
+      error: error.message
     });
   }
 });
 
+// Obtener una cuenta específica
 app.get('/api/whatsapp-accounts/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const response = await axios.get(`${DATABASE_SERVER}/whatsapp-accounts/${id}`);
+    const response = await axios.get(`${DATABASE_SERVER_URL}/whatsapp-accounts/${id}`);
     res.json(response.data);
   } catch (error) {
-    console.error(`Error al obtener cuenta de WhatsApp ${req.params.id}:`, error);
+    console.error(`Error al obtener cuenta de WhatsApp ${req.params.id}:`, error.message);
     res.status(error.response?.status || 500).json({
-      error: `Error al obtener cuenta de WhatsApp ${req.params.id}`,
-      details: error.message
+      status: 'error',
+      message: `Error al obtener cuenta de WhatsApp ${req.params.id}`,
+      error: error.message
     });
   }
 });
 
-// Chats de WhatsApp
-app.get('/api/whatsapp-accounts/:accountId/chats', async (req, res) => {
+// Conectar una cuenta de WhatsApp
+app.post('/api/whatsapp/connect', async (req, res) => {
   try {
-    const { accountId } = req.params;
+    const { accountId } = req.body;
     
-    // Inicializar la cuenta si no está inicializada
-    await ensureAccountInitialized(accountId);
-    
-    // Obtener chats
-    const response = await axios.get(`${WHATSAPP_SERVER}/accounts/${accountId}/chats`);
-    res.json(response.data);
-  } catch (error) {
-    console.error(`Error al obtener chats de la cuenta ${req.params.accountId}:`, error);
-    res.status(error.response?.status || 500).json({
-      error: `Error al obtener chats de la cuenta ${req.params.accountId}`,
-      details: error.message
-    });
-  }
-});
-
-// Contactos de WhatsApp
-app.get('/api/whatsapp-accounts/:accountId/contacts', async (req, res) => {
-  try {
-    const { accountId } = req.params;
-    
-    // Intentar obtener contactos, pero si hay error no bloquear la respuesta
-    try {
-      // Asegurar que la cuenta esté inicializada
-      await ensureAccountInitialized(accountId);
-    } catch (initError) {
-      console.warn(`Advertencia: no se pudo inicializar la cuenta ${accountId}:`, initError.message);
+    if (!accountId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Se requiere el ID de la cuenta de WhatsApp'
+      });
     }
     
-    // Devolver simplemente una respuesta vacía si la cuenta no está lista
-    res.json([]);
+    const response = await axios.post(`${WHATSAPP_SERVER_URL}/connect`, { accountId });
+    res.json(response.data);
   } catch (error) {
-    console.error(`Error al obtener contactos de la cuenta ${req.params.accountId}:`, error);
+    console.error('Error al conectar WhatsApp:', error.message);
     res.status(error.response?.status || 500).json({
-      error: `Error al obtener contactos de la cuenta ${req.params.accountId}`,
-      details: error.message
+      status: 'error',
+      message: 'Error al conectar WhatsApp',
+      error: error.message
     });
   }
 });
 
-// Mensajes de WhatsApp - Ruta directa accesible sin autenticación (para depuración)
-app.get('/api/direct/whatsapp/messages/:chatId', async (req, res) => {
+// Obtener código QR para una cuenta
+app.get('/api/whatsapp/qr-code/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const response = await axios.get(`${WHATSAPP_SERVER_URL}/qr-code/${accountId}`);
+    res.json(response.data);
+  } catch (error) {
+    console.error(`Error al obtener código QR para cuenta ${req.params.accountId}:`, error.message);
+    res.status(error.response?.status || 500).json({
+      status: 'error',
+      message: `Error al obtener código QR para cuenta ${req.params.accountId}`,
+      error: error.message
+    });
+  }
+});
+
+// Desconectar una cuenta de WhatsApp
+app.post('/api/whatsapp/disconnect/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const response = await axios.post(`${WHATSAPP_SERVER_URL}/disconnect/${accountId}`);
+    res.json(response.data);
+  } catch (error) {
+    console.error(`Error al desconectar cuenta ${req.params.accountId}:`, error.message);
+    res.status(error.response?.status || 500).json({
+      status: 'error',
+      message: `Error al desconectar cuenta ${req.params.accountId}`,
+      error: error.message
+    });
+  }
+});
+
+// Obtener estado de conexión
+app.get('/api/whatsapp/connection-status/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const response = await axios.get(`${WHATSAPP_SERVER_URL}/connection-status/${accountId}`);
+    res.json(response.data);
+  } catch (error) {
+    console.error(`Error al obtener estado de conexión para cuenta ${req.params.accountId}:`, error.message);
+    res.status(error.response?.status || 500).json({
+      status: 'error',
+      message: `Error al obtener estado de conexión para cuenta ${req.params.accountId}`,
+      error: error.message
+    });
+  }
+});
+
+// === Rutas para mensajes ===
+
+// Enviar mensaje
+app.post('/api/whatsapp/send-message', async (req, res) => {
+  try {
+    const { accountId, chatId, message, mediaUrl } = req.body;
+    
+    if (!accountId || !chatId || (!message && !mediaUrl)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Se requieren accountId, chatId y message o mediaUrl'
+      });
+    }
+    
+    const response = await axios.post(`${WHATSAPP_SERVER_URL}/send-message`, {
+      accountId,
+      chatId,
+      message,
+      mediaUrl
+    });
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error al enviar mensaje:', error.message);
+    res.status(error.response?.status || 500).json({
+      status: 'error',
+      message: 'Error al enviar mensaje',
+      error: error.message
+    });
+  }
+});
+
+// Obtener mensajes por chat
+app.get('/api/messages/:chatId', async (req, res) => {
   try {
     const { chatId } = req.params;
-    const accountId = req.query.accountId || '1';  // Por defecto usar la cuenta 1
-    const limit = parseInt(req.query.limit) || 50;
+    const accountId = req.query.accountId || 1;
+    const limit = req.query.limit || 50;
     
-    // Intentar obtener mensajes del servicio de WhatsApp
-    try {
-      const response = await axios.get(`${WHATSAPP_SERVER}/accounts/${accountId}/chats/${chatId}/messages`, {
-        params: { limit }
-      });
-      res.json(response.data);
-    } catch (whatsappError) {
-      console.warn(`Advertencia: error al obtener mensajes desde WhatsApp para ${chatId}:`, whatsappError.message);
-      res.json([]);
-    }
-  } catch (error) {
-    console.error(`Error al obtener mensajes del chat ${req.params.chatId}:`, error);
-    res.json([]);
-  }
-});
-
-// Mensajes de WhatsApp - Ruta normal que requiere autenticación
-app.get('/api/whatsapp-accounts/:accountId/chats/:chatId/messages', async (req, res) => {
-  try {
-    const { accountId, chatId } = req.params;
-    const limit = parseInt(req.query.limit) || 50;
-    
-    // Inicializar la cuenta si no está inicializada
-    await ensureAccountInitialized(accountId);
-    
-    // Obtener mensajes
-    const response = await axios.get(`${WHATSAPP_SERVER}/accounts/${accountId}/chats/${chatId}/messages`, {
-      params: { limit }
+    const response = await axios.get(`${DATABASE_SERVER_URL}/messages/${chatId}`, {
+      params: {
+        accountId,
+        limit
+      }
     });
+    
     res.json(response.data);
   } catch (error) {
-    console.error(`Error al obtener mensajes del chat ${req.params.chatId}:`, error);
+    console.error(`Error al obtener mensajes para chat ${req.params.chatId}:`, error.message);
     res.status(error.response?.status || 500).json({
-      error: `Error al obtener mensajes del chat ${req.params.chatId}`,
-      details: error.message
+      status: 'error',
+      message: `Error al obtener mensajes para chat ${req.params.chatId}`,
+      error: error.message
     });
   }
 });
 
-// Enviar mensaje de WhatsApp
-app.post('/api/whatsapp-accounts/:accountId/send', async (req, res) => {
+// Obtener chats
+app.get('/api/whatsapp/chats/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
-    const { chatId, message } = req.body;
+    const response = await axios.get(`${WHATSAPP_SERVER_URL}/chats/${accountId}`);
+    res.json(response.data);
+  } catch (error) {
+    console.error(`Error al obtener chats para cuenta ${req.params.accountId}:`, error.message);
+    res.status(error.response?.status || 500).json({
+      status: 'error',
+      message: `Error al obtener chats para cuenta ${req.params.accountId}`,
+      error: error.message
+    });
+  }
+});
+
+// === Rutas para configuración de respuestas automáticas ===
+
+// Obtener configuración actual
+app.get('/api/auto-response/config', async (req, res) => {
+  try {
+    const response = await axios.get(`${DATABASE_SERVER_URL}/auto-response/config`);
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error al obtener configuración de respuestas automáticas:', error.message);
+    res.status(error.response?.status || 500).json({
+      status: 'error',
+      message: 'Error al obtener configuración de respuestas automáticas',
+      error: error.message
+    });
+  }
+});
+
+// Actualizar configuración
+app.post('/api/auto-response/config', async (req, res) => {
+  try {
+    const config = req.body;
     
-    if (!chatId || !message) {
+    // Actualizar en el servicio de procesamiento
+    const processorResponse = await axios.post(`${PROCESSOR_SERVER_URL}/auto-response/config`, config);
+    
+    res.json(processorResponse.data);
+  } catch (error) {
+    console.error('Error al actualizar configuración de respuestas automáticas:', error.message);
+    res.status(error.response?.status || 500).json({
+      status: 'error',
+      message: 'Error al actualizar configuración de respuestas automáticas',
+      error: error.message
+    });
+  }
+});
+
+// === Rutas para análisis de mensajes con IA ===
+
+// Generar respuesta con IA
+app.post('/api/ai/generate-response', async (req, res) => {
+  try {
+    const { message, contactName } = req.body;
+    
+    if (!message) {
       return res.status(400).json({
-        error: 'Se requieren chatId y message en el cuerpo de la solicitud'
+        status: 'error',
+        message: 'Se requiere el contenido del mensaje'
       });
     }
     
-    // Inicializar la cuenta si no está inicializada
-    await ensureAccountInitialized(accountId);
+    const response = await axios.post(`${PROCESSOR_SERVER_URL}/generate-response`, {
+      message,
+      contactName
+    });
     
-    // Enviar mensaje
-    const response = await axios.post(`${WHATSAPP_SERVER}/accounts/${accountId}/send`, {
-      chatId,
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error al generar respuesta con IA:', error.message);
+    res.status(error.response?.status || 500).json({
+      status: 'error',
+      message: 'Error al generar respuesta con IA',
+      error: error.message
+    });
+  }
+});
+
+// Analizar mensaje con IA
+app.post('/api/ai/analyze-message', async (req, res) => {
+  try {
+    const { message } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Se requiere el contenido del mensaje'
+      });
+    }
+    
+    const response = await axios.post(`${PROCESSOR_SERVER_URL}/analyze-message`, {
       message
     });
     
-    // Registrar el mensaje enviado en la base de datos
-    try {
-      await axios.post(`${DATABASE_SERVER}/messages`, {
-        leadId: null, // TODO: Buscar el lead asociado al número
-        content: message,
-        direction: 'outbound',
-        channel: 'whatsapp',
-        read: true,
-        metadata: {
-          whatsappAccountId: accountId,
-          chatId,
-          messageId: response.data.message?.id
-        }
-      });
-    } catch (dbError) {
-      console.error('Error al registrar mensaje enviado en BD:', dbError.message);
-    }
-    
     res.json(response.data);
   } catch (error) {
-    console.error(`Error al enviar mensaje a través de la cuenta ${req.params.accountId}:`, error);
+    console.error('Error al analizar mensaje con IA:', error.message);
     res.status(error.response?.status || 500).json({
-      error: `Error al enviar mensaje a través de la cuenta ${req.params.accountId}`,
-      details: error.message
+      status: 'error',
+      message: 'Error al analizar mensaje con IA',
+      error: error.message
     });
   }
 });
 
-// Obtener código QR para autenticación de WhatsApp
-app.get('/api/whatsapp-accounts/:accountId/qr', async (req, res) => {
-  try {
-    const { accountId } = req.params;
-    
-    // Inicializar la cuenta si no está inicializada
-    await ensureAccountInitialized(accountId);
-    
-    // Redirigir al servicio de WhatsApp para obtener el QR
-    // Usamos axios en lugar de res.redirect para evitar problemas de CORS
-    const response = await axios.get(`${WHATSAPP_SERVER}/accounts/${accountId}/qr`, {
-      responseType: 'arraybuffer'
-    });
-    
-    res.contentType('image/png');
-    res.send(response.data);
-  } catch (error) {
-    console.error(`Error al obtener código QR para la cuenta ${req.params.accountId}:`, error);
-    res.status(error.response?.status || 500).json({
-      error: `Error al obtener código QR para la cuenta ${req.params.accountId}`,
-      details: error.message
-    });
-  }
-});
+// === Rutas para zona horaria ===
 
-// Cerrar sesión de WhatsApp
-app.post('/api/whatsapp-accounts/:accountId/logout', async (req, res) => {
-  try {
-    const { accountId } = req.params;
-    
-    // Enviar solicitud de cierre de sesión
-    const response = await axios.post(`${WHATSAPP_SERVER}/accounts/${accountId}/logout`);
-    
-    // Actualizar estado en la base de datos
-    try {
-      await axios.post(`${DATABASE_SERVER}/execute-query`, {
-        query: 'UPDATE whatsapp_accounts SET status = $1, "lastDisconnected" = NOW() WHERE id = $2',
-        params: ['disconnected', accountId]
-      });
-    } catch (dbError) {
-      console.error('Error al actualizar estado en BD:', dbError.message);
-    }
-    
-    res.json(response.data);
-  } catch (error) {
-    console.error(`Error al cerrar sesión de la cuenta ${req.params.accountId}:`, error);
-    res.status(error.response?.status || 500).json({
-      error: `Error al cerrar sesión de la cuenta ${req.params.accountId}`,
-      details: error.message
-    });
-  }
-});
-
-// Configuración de respuestas automáticas
-app.get('/api/auto-response/config', async (req, res) => {
-  try {
-    const response = await axios.get(`${PROCESSOR_SERVER}/auto-response/config`);
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error al obtener configuración de respuestas automáticas:', error);
-    res.status(error.response?.status || 500).json({
-      error: 'Error al obtener configuración de respuestas automáticas',
-      details: error.message
-    });
-  }
-});
-
-app.post('/api/auto-response/config', async (req, res) => {
-  try {
-    const response = await axios.post(`${PROCESSOR_SERVER}/auto-response/config`, req.body);
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error al actualizar configuración de respuestas automáticas:', error);
-    res.status(error.response?.status || 500).json({
-      error: 'Error al actualizar configuración de respuestas automáticas',
-      details: error.message
-    });
-  }
-});
-
-// Análisis manual de texto
-app.post('/api/analyze-text', async (req, res) => {
-  try {
-    const response = await axios.post(`${PROCESSOR_SERVER}/analyze`, req.body);
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error al analizar texto:', error);
-    res.status(error.response?.status || 500).json({
-      error: 'Error al analizar texto',
-      details: error.message
-    });
-  }
-});
-
-// Endpoint interno para notificaciones de código QR (desde el servidor WhatsApp)
-app.post('/internal/whatsapp/qr-update', (req, res) => {
-  // Este endpoint recibe notificaciones cuando hay un nuevo QR disponible
-  console.log('Nuevo código QR recibido');
+// Obtener información de zona horaria
+app.get('/api/timezone', (req, res) => {
+  const timeZoneInfo = {
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    offset: new Date().getTimezoneOffset() / -60, // Convertir a horas (negativo porque getTimezoneOffset() devuelve inverso)
+    date: new Date().toISOString(),
+    localTime: new Date().toLocaleString(),
+    timestamp: Date.now()
+  };
   
-  // Si la imagen está disponible, verificarlo
-  const { qrImagePath } = req.body;
-  if (qrImagePath && fs.existsSync(qrImagePath)) {
-    console.log(`Código QR guardado en: ${qrImagePath}`);
-  }
-  
-  // Guardar una copia en una ubicación conocida para acceso fácil
-  try {
-    if (qrImagePath && fs.existsSync(qrImagePath)) {
-      const simplePath = path.join(process.cwd(), 'temp', 'whatsapp-qr.txt');
-      fs.copyFileSync(qrImagePath, simplePath);
-      console.log(`Código QR guardado en archivo: ${simplePath}`);
-    } else if (req.body.qrText) {
-      const simplePath = path.join(process.cwd(), 'temp', 'whatsapp-qr.txt');
-      fs.writeFileSync(simplePath, req.body.qrText);
-      console.log(`Código QR guardado en archivo: ${simplePath}`);
-    }
-  } catch (fsError) {
-    console.error('Error al guardar copia del código QR:', fsError);
-  }
-  
-  res.json({ success: true });
+  res.json(timeZoneInfo);
 });
 
-// Endpoint interno para notificaciones de respuestas automáticas (desde el procesador)
-app.post('/internal/auto-response/notification', (req, res) => {
-  // Este endpoint recibe notificaciones cuando se envía una respuesta automática
-  console.log('Notificación de respuesta automática recibida');
-  
-  // Aquí podríamos enviar notificaciones, actualizar interfaces en tiempo real, etc.
-  
-  res.json({ success: true });
+// === Ruta para servir la aplicación frontend ===
+
+// Esto debe ir al final para no interferir con las rutas de la API
+app.get('*', (req, res) => {
+  // Para vistas de SPA (Single Page Application)
+  res.sendFile(path.join(__dirname, '..', '..', 'client', 'dist', 'index.html'));
 });
 
-// Manejador de errores global
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    status: 'error',
-    message: 'Error interno del servidor',
-    error: err.message
+// Iniciar el servidor
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Servidor API iniciado en http://0.0.0.0:${PORT}`);
+});
+
+// Manejar cierre de proceso
+process.on('SIGINT', () => {
+  console.log('Cerrando servidor API...');
+  server.close(() => {
+    console.log('Servidor API detenido');
+    process.exit(0);
   });
 });
 
-// Función de utilidad para asegurar que una cuenta esté inicializada
-async function ensureAccountInitialized(accountId) {
-  try {
-    // Primero verificar el estado
-    try {
-      const statusResponse = await axios.get(`${WHATSAPP_SERVER}/accounts/${accountId}/status`);
-      // Si ya está inicializada, no hacer nada
-      if (statusResponse.data.authenticated) {
-        return;
-      }
-    } catch (statusError) {
-      // Si hay error en el status, probablemente no está inicializada
-      console.log(`Cuenta ${accountId} no inicializada o no accesible, intentando inicializar...`);
-    }
-    
-    // Inicializar la cuenta
-    await axios.post(`${WHATSAPP_SERVER}/accounts/${accountId}/initialize`);
-    console.log(`Cuenta ${accountId} inicializada correctamente`);
-  } catch (error) {
-    console.error(`Error al inicializar cuenta ${accountId}:`, error.message);
-    throw error;
-  }
-}
-
-// Iniciar el servidor
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Servidor API iniciado en http://0.0.0.0:${PORT}`);
+process.on('SIGTERM', () => {
+  console.log('Cerrando servidor API...');
+  server.close(() => {
+    console.log('Servidor API detenido');
+    process.exit(0);
+  });
 });
