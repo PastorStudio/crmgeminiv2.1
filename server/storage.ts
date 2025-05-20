@@ -769,19 +769,19 @@ export class DatabaseStorage implements IStorage {
       // Añadimos el ID para la condición WHERE
       updateValues.push(id);
       
-      // Ejecutamos la consulta SQL directa
-      const result = await db.query.raw(`
+      // Ejecutamos la consulta SQL directa usando pool.query en lugar de db.query.raw
+      const result = await pool.query(`
         UPDATE whatsapp_accounts
         SET ${updateFields}
         WHERE id = $${paramIndex}
         RETURNING id, name, status, phone_number, session_data, "createdAt", "lastActiveAt"
       `, updateValues);
       
-      if (!result || result.length === 0) {
+      if (!result.rows || result.rows.length === 0) {
         return undefined;
       }
       
-      const row = result[0] as any;
+      const row = result.rows[0];
       
       // Transformamos a formato esperado por la interfaz
       return {
