@@ -6,7 +6,8 @@ export default function SimpleWhatsAppDemo() {
   // Datos de demostración
   const demoAccounts = [
     { id: 1, name: "Ventas", description: "Cuenta principal de ventas", status: "CONNECTED" },
-    { id: 2, name: "Soporte", description: "Soporte técnico", status: "CONNECTED" }
+    { id: 2, name: "Soporte", description: "Soporte técnico", status: "CONNECTED" },
+    { id: 3, name: "REp. Dom", description: "República Dominicana", status: "CONNECTED" }
   ];
 
   const demoChats = [
