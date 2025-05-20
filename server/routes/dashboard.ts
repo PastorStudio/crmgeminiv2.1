@@ -69,12 +69,16 @@ export const dashboardRouter = (app: Express) => {
         total_canceled: 0
       };
 
+      // Formatear los resultados para que coincidan con lo que espera el frontend
+      // Asegurarnos de que result sea un array, no solo un objeto con comando SQL
+      const formattedAgentStats = Array.isArray(result) ? result : [];
+      
       // Devolver los datos al cliente
       res.json({
-        agentStats: result || [],
+        agentStats: formattedAgentStats,
         totals: totals,
-        categoryDistribution: categoryDistribution || [],
-        statusDistribution: statusDistribution || []
+        categoryDistribution: Array.isArray(categoryDistribution) ? categoryDistribution : [],
+        statusDistribution: Array.isArray(statusDistribution) ? statusDistribution : []
       });
     } catch (error) {
       console.error("Error al obtener estadísticas de tickets:", error);
@@ -104,24 +108,30 @@ export const dashboardRouter = (app: Express) => {
 
       const result = await db.execute(query);
 
-      // Formatear las propiedades para que coincidan con lo que espera el frontend
-      const formattedResult = result.map(act => ({
-        id: act.id,
-        title: act.title,
-        description: act.description,
-        type: act.type,
-        startTime: act.start_time,
-        endTime: act.end_time,
-        leadId: act.lead_id,
-        leadName: act.lead_name,
-        userId: act.user_id,
-        completed: act.completed,
-        createdAt: act.created_at,
-        updatedAt: act.updated_at,
-        isAutomatic: act.is_automatic
-      }));
+      // Verificar si result es un array y formatearlo
+      if (Array.isArray(result)) {
+        // Formatear las propiedades para que coincidan con lo que espera el frontend
+        const formattedResult = result.map(act => ({
+          id: act.id,
+          title: act.title || act.notes || 'Sin título',
+          description: act.description || act.notes || '',
+          type: act.type || 'task',
+          startTime: act.scheduled || act.createdAt,
+          endTime: null,
+          leadId: act.leadId,
+          leadName: act.lead_name || 'Cliente',
+          userId: act.userId,
+          completed: act.completed || false,
+          createdAt: act.createdAt,
+          updatedAt: null,
+          isAutomatic: act.reminder || false
+        }));
 
-      res.json(formattedResult);
+        res.json(formattedResult);
+      } else {
+        // Si no es un array, devolver un array vacío
+        res.json([]);
+      }
     } catch (error) {
       console.error("Error al obtener próximos eventos:", error);
       res.status(500).json({ error: "Error al obtener próximos eventos" });
