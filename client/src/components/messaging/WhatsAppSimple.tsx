@@ -485,6 +485,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       console.log(`Intentando enviar mensaje a chat ${selectedChatId}`);
       
       try {
+        // Simplificar la solicitud para evitar problemas con metadatos adicionales
         const response = await fetch(`/api/direct/whatsapp/send`, {
           method: 'POST',
           headers: {
@@ -492,9 +493,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
           },
           body: JSON.stringify({
             chatId: selectedChatId,
-            message: messageWithSignature,
-            includeMeta: true, // Incluir metadatos como la firma del agente
-            agentSignature: addSignatureToMessage ? true : undefined
+            message: messageWithSignature
           }),
         });
         
