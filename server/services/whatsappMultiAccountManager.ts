@@ -615,16 +615,9 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         
         // Realizar una petición sencilla para mantener la sesión activa
         try {
-          // Usar un método seguro que existe en todas las versiones de la librería
-          // En lugar de getWid() que no está disponible en todas las instancias
-          if (instance.client.getState) {
-            await instance.client.getState();
-            console.log(`[Conexión Permanente] Mantener activa cuenta ID ${accountId} - OK`);
-          } else {
-            // Como alternativa, podemos intentar obtener la información básica del cliente
-            const info = await instance.client.info || await instance.client.getInfo?.();
-            console.log(`[Conexión Permanente] Mantener activa cuenta ID ${accountId} - OK (info)`);
-          }
+          // Usar getState() que es el método más confiable y está disponible en todas las versiones
+          const state = await instance.client.getState();
+          console.log(`[Conexión Permanente] Mantener activa cuenta ID ${accountId} - OK (${state})`);
         } catch (pingErr) {
           console.warn(`[Conexión Permanente] Error en ping para cuenta ID ${accountId}:`, pingErr);
         }
@@ -983,10 +976,41 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       return [];
     }
     
-    // Verificar si el cliente está autenticado
-    if (!instance.status.authenticated) {
-      console.log(`Cliente WhatsApp no autenticado para cuenta ID ${accountId}. No hay datos disponibles.`);
-      return [];
+    // Verificar estado de la conexión en vez de confiar solo en la bandera de autenticación
+    try {
+      // Si tenemos una cuenta con ID 1 (Ventas), la manejamos de forma especial
+      // ya que sabemos que tiene una configuración que funciona correctamente
+      if (accountId === 1) {
+        if (!instance.status.authenticated) {
+          console.log(`Cliente WhatsApp no autenticado para cuenta ID ${accountId}. No hay datos disponibles.`);
+          return [];
+        }
+      } else {
+        // Para el resto de cuentas, intentamos obtener el estado actual
+        // y forzamos la autenticación si el cliente responde correctamente
+        const state = await instance.client.getState();
+        
+        if (state === 'CONNECTED') {
+          // Si está conectado pero no marcado como autenticado, lo marcamos
+          if (!instance.status.authenticated) {
+            console.log(`Actualizando estado de autenticación para cuenta ID ${accountId}`);
+            instance.status.authenticated = true;
+            instance.status.ready = true;
+            // Guardar estado actualizado
+            this.updateSessionStatusFile(instance);
+          }
+        } else if (!instance.status.authenticated) {
+          console.log(`Cliente WhatsApp no autenticado para cuenta ID ${accountId}. Estado: ${state}`);
+          return [];
+        }
+      }
+    } catch (err) {
+      // Si hay error al verificar el estado pero la cuenta está marcada como autenticada,
+      // permitimos continuar para ser consistente con la cuenta de ventas
+      if (!instance.status.authenticated) {
+        console.log(`Cliente WhatsApp no autenticado para cuenta ID ${accountId}. No hay datos disponibles.`);
+        return [];
+      }
     }
     
     try {
@@ -999,17 +1023,64 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       
       for (const chat of chats) {
         try {
-          // Extraer datos básicos
+          // Extraer datos básicos con manejo mejorado para prevenir errores de tipo
+          let chatId = '';
+          try {
+            // Manejar diferentes formatos de ID
+            if (typeof chat.id === 'object' && chat.id !== null && '_serialized' in chat.id) {
+              chatId = chat.id._serialized;
+            } else if (chat.id) {
+              chatId = String(chat.id);
+            } else {
+              chatId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            }
+          } catch (e) {
+            console.warn(`Error al obtener ID del chat para cuenta ${accountId}:`, e);
+            chatId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+          }
+
+          // Crear objeto de chat con valores seguros
           const chatInfo: WhatsAppChat = {
-            id: chat.id._serialized || chat.id,
+            id: chatId,
             name: chat.name || '',
             isGroup: !!chat.isGroup,
             timestamp: chat.timestamp || Date.now(),
             unreadCount: chat.unreadCount || 0,
-            lastMessage: chat.lastMessage?.body || '',
+            lastMessage: '',
             profilePicUrl: undefined,
-            participants: chat.participants?.map((p: any) => p.id._serialized || p.id) || []
+            participants: []
           };
+          
+          // Obtener el último mensaje de forma segura
+          try {
+            if (chat.lastMessage && typeof chat.lastMessage === 'object') {
+              chatInfo.lastMessage = chat.lastMessage.body || '';
+            }
+          } catch (e) {
+            console.warn(`Error al obtener último mensaje para chat ${chatId}:`, e);
+          }
+          
+          // Obtener participantes de forma segura
+          try {
+            if (chat.participants && Array.isArray(chat.participants)) {
+              chatInfo.participants = chat.participants.map((p: any) => {
+                try {
+                  if (p && typeof p === 'object' && p.id) {
+                    if (typeof p.id === 'object' && '_serialized' in p.id) {
+                      return p.id._serialized;
+                    } else {
+                      return String(p.id);
+                    }
+                  }
+                  return '';
+                } catch (e) {
+                  return '';
+                }
+              }).filter(id => id); // Filtrar IDs vacíos
+            }
+          } catch (e) {
+            console.warn(`Error al obtener participantes para chat ${chatId}:`, e);
+          }
           
           // Intentar obtener foto de perfil si no es un grupo
           try {
