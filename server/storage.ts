@@ -575,62 +575,59 @@ export class DatabaseStorage implements IStorage {
   // WhatsApp Accounts methods
   async getAllWhatsappAccounts(): Promise<WhatsappAccount[]> {
     try {
-      // Seleccionamos solo las columnas que sabemos que existen
-      // Utilizando consulta SQL directa para evitar problemas con el esquema
-      const results = await db.execute(`
-        SELECT 
-          id, 
-          name, 
-          status, 
-          "phoneNumber",
-          "sessionData",
-          "createdAt",
-          "lastActiveAt"
+      // Abordaje más fundamental: consulta directa sin ORM para evitar problemas con el esquema
+      const result = await db.query.raw(`
+        SELECT id, name, status, phone_number, session_data, "createdAt", "lastActiveAt"
         FROM whatsapp_accounts
       `);
       
-      // Mapeamos los resultados a la estructura esperada
-      return results.map(account => ({
-        id: account.id,
-        name: account.name,
-        phoneNumber: account.phoneNumber,
-        status: account.status,
-        sessionData: account.sessionData,
-        createdAt: account.createdAt,
-        // Usamos lastActiveAt que existe en la DB en lugar de lastActive
-        lastActive: account.lastActiveAt,
-        // No existe en la DB pero se espera en la interfaz
-        settings: null,
-        // Añadimos updatedAt para compatibilidad con la interfaz
-        updatedAt: account.createdAt
+      // Transformar resultado a formato esperado por la interfaz
+      return (result as any[]).map(row => ({
+        id: row.id,
+        name: row.name,
+        phoneNumber: row.phone_number || '', 
+        status: row.status || 'inactive',
+        sessionData: row.session_data || '',
+        createdAt: row.createdAt || new Date(),
+        updatedAt: row.createdAt || new Date(),
+        lastActive: row.lastActiveAt || null,
+        settings: null // Campo requerido por la interfaz pero no existe en DB
       }));
     } catch (error) {
       console.error("Error al obtener cuentas de WhatsApp:", error);
+      // En caso de error, devolver array vacío en lugar de fallar
       return [];
     }
   }
 
   async getWhatsappAccount(id: number): Promise<WhatsappAccount | undefined> {
     try {
-      const [account] = await db.select({
-        id: whatsappAccounts.id,
-        name: whatsappAccounts.name,
-        phoneNumber: whatsappAccounts.phoneNumber,
-        status: whatsappAccounts.status,
-        sessionData: whatsappAccounts.sessionData,
-        createdAt: whatsappAccounts.createdAt,
-        updatedAt: whatsappAccounts.updatedAt
-      })
-        .from(whatsappAccounts)
-        .where(eq(whatsappAccounts.id, id));
+      // Usamos SQL directo para evitar problemas con discrepancias en el esquema
+      const result = await db.query.raw(`
+        SELECT id, name, status, phone_number, session_data, "createdAt", "lastActiveAt"
+        FROM whatsapp_accounts
+        WHERE id = $1
+      `, [id]);
       
-      if (account) {
-        return {
-          ...account,
-          settings: null
-        };
+      // Si no hay resultados, devolver undefined
+      if (!result || result.length === 0) {
+        return undefined;
       }
-      return undefined;
+      
+      const row = result[0] as any;
+      
+      // Transformamos a la estructura esperada por la interfaz
+      return {
+        id: row.id,
+        name: row.name,
+        phoneNumber: row.phone_number || '',
+        status: row.status || 'inactive',
+        sessionData: row.session_data || '',
+        createdAt: row.createdAt || new Date(),
+        lastActive: row.lastActiveAt || null,
+        settings: null, // Campo requerido por la interfaz
+        updatedAt: row.createdAt || new Date() // Valor aproximado
+      };
     } catch (error) {
       console.error(`Error al obtener cuenta WhatsApp ${id}:`, error);
       return undefined;
