@@ -780,9 +780,35 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     }
   }, [lastMessage, refetchChats, refetchMessages, selectedChatId, toast]);
 
-  // Manejar selección de chat
+  // Manejar selección de chat - Versión mejorada para evitar bucles
   const handleChatSelect = (chat: WhatsAppChat) => {
+    // Verificar si ya está seleccionado (prevenir bucles infinitos)
+    if (selectedChatId === chat.id) {
+      console.log(`Chat ${chat.id} ya seleccionado, evitando bucle`);
+      return;
+    }
+    
+    console.log(`Seleccionando chat ${chat.id} (${chat.name})`);
     setSelectedChatId(chat.id);
+    
+    // Guardar en localStorage para mantener la selección entre recargas
+    localStorage.setItem('last_selected_chat_id', chat.id);
+    localStorage.setItem('last_selected_chat_account', currentAccountId.toString());
+    
+    // Intentar crear/actualizar la asignación del chat
+    if (chat.id) {
+      try {
+        // Usar un pequeño retraso para evitar múltiples peticiones simultáneas
+        setTimeout(() => {
+          assignChatMutation.mutate({
+            chatId: chat.id,
+            accountId: currentAccountId
+          });
+        }, 300);
+      } catch (e) {
+        console.error('Error al asignar chat:', e);
+      }
+    }
     
     // Si hay un ID de lead asociado, notificar
     if (onSelectLead && selectedLeadId) {
