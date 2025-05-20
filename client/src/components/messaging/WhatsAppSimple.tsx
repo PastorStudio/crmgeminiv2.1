@@ -757,6 +757,22 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     </label>
                   </div>
                   
+                  {/* Control para firmar mensajes */}
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Switch 
+                      id="signature-toggle" 
+                      checked={addSignatureToMessage} 
+                      onCheckedChange={(checked) => setAddSignatureToMessage(checked)} 
+                    />
+                    <label 
+                      htmlFor="signature-toggle" 
+                      className="text-sm font-medium cursor-pointer flex items-center"
+                    >
+                      <UserCheck className="mr-1 h-4 w-4" />
+                      Firmar mensajes
+                    </label>
+                  </div>
+                  
                   {/* Botón para asignar chat a agente */}
                   {selectedChatId && (
                     <Button 
