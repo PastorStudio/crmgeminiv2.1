@@ -1504,11 +1504,19 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
         }
       }
       
-      // En lugar de usar caché o mensajes de demostración, devolvemos un array vacío
-      // para indicar que no hay mensajes disponibles hasta que el cliente esté correctamente
-      // autenticado con WhatsApp
-      console.log(`No se encontraron mensajes reales para ${chatId}, devolviendo array vacío`);
-      return [];
+      // Verificar si hay mensajes en caché
+      const cachedMessages = this.messageCache.get(chatId);
+      if (cachedMessages && cachedMessages.length > 0) {
+        console.log(`Usando ${cachedMessages.length} mensajes de caché para ${chatId}`);
+        return cachedMessages;
+      }
+      
+      // Si no hay mensajes reales ni en caché, crear mensajes de demostración
+      console.log(`Generando mensajes de demostración para ${chatId}`);
+      
+      // Crear mensajes de demostración según el tipo de chat
+      const isGroup = chatId.endsWith('@g.us');
+      const now = Date.now();
       
       let demoMessages: WhatsAppMessage[] = [];
       

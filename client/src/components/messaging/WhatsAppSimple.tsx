@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
-import { WhatsAppQRAuth } from './WhatsAppQRAuth';
+import { WhatsAppQRCode } from './WhatsAppQRCode';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateAutoResponse } from '@/lib/gemini';
 import { chatContext } from '@/lib/chatContext';
@@ -106,9 +106,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [addSignatureToMessage, setAddSignatureToMessage] = useState<boolean>(true);
   // Estado para almacenar todas las cuentas de WhatsApp
   const [whatsappAccounts, setWhatsappAccounts] = useState<any[]>([]);
-  
-  // Estado para controlar el diálogo de código QR
-  const [showQRDialog, setShowQRDialog] = useState<boolean>(false);
   
   // Refs para scroll automático
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -485,7 +482,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       console.log(`Intentando enviar mensaje a chat ${selectedChatId}`);
       
       try {
-        // Simplificar la solicitud para evitar problemas con metadatos adicionales
         const response = await fetch(`/api/direct/whatsapp/send`, {
           method: 'POST',
           headers: {
@@ -493,7 +489,9 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
           },
           body: JSON.stringify({
             chatId: selectedChatId,
-            message: messageWithSignature
+            message: messageWithSignature,
+            includeMeta: true, // Incluir metadatos como la firma del agente
+            agentSignature: addSignatureToMessage ? true : undefined
           }),
         });
         
@@ -1035,14 +1033,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                       {/* Usamos el componente importado */}
                       <div className="mt-4">
                         <div className="flex items-center justify-center">
-                          <Button 
-                            size="lg"
-                            onClick={() => setShowQRDialog(true)}
-                            className="bg-green-600 hover:bg-green-700 text-white"
-                          >
-                            <QrCode className="mr-2 h-5 w-5" />
-                            Escanear código QR para autenticar WhatsApp
-                          </Button>
+                          <WhatsAppQRCode accountId={currentAccountId} />
                         </div>
                       </div>
                       
@@ -1607,19 +1598,9 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 className="w-48 h-auto mx-auto mb-6"
               />
               <h3 className="text-xl font-medium text-gray-700 mb-2">WhatsApp Messenger</h3>
-              <p className="text-gray-500 max-w-md mb-4">
+              <p className="text-gray-500 max-w-md">
                 Selecciona un chat para ver los mensajes o escanea el código QR para conectar WhatsApp si aún no lo has hecho.
               </p>
-              
-              <Button 
-                variant="outline"
-                onClick={() => setShowQRDialog(true)}
-                className="mt-2 text-green-700 border-green-200 hover:bg-green-50"
-                size="sm"
-              >
-                <QrCode className="mr-2 h-4 w-4" />
-                Escanear código QR
-              </Button>
             </div>
           )}
         </div>
@@ -1634,24 +1615,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
           accountId={currentAccountId}
         />
       )}
-      
-      {/* Diálogo de autenticación QR de WhatsApp */}
-      <WhatsAppQRAuth
-        open={showQRDialog}
-        onOpenChange={setShowQRDialog}
-        accountId={currentAccountId}
-        onQRScanned={() => {
-          toast({
-            title: "WhatsApp conectado",
-            description: "La cuenta ha sido conectada exitosamente",
-            variant: "default"
-          });
-          // Refrescar datos
-          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/direct/whatsapp/status'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/direct/whatsapp/chats'] });
-        }}
-      />
     </Card>
   );
 }

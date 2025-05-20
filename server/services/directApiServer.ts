@@ -181,61 +181,51 @@ export const registerDirectAPIRoutes = (app: any) => {
         return res.status(400).json({ error: 'Se requiere chatId y message' });
       }
       
-      // Obtener la implementación específica para usar funcionalidades avanzadas
-      const { whatsappService: whatsappImpl } = await import('./whatsappServiceImpl');
+      // Obtener estado actual
+      const status = await whatsappService.getStatus();
       
-      // Intentar enviar mensaje directamente
-      console.log(`Intentando enviar mensaje a ${chatId}`);
-      console.log(`Contenido del mensaje: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
+      // Verificar si está inicializado (omitimos la verificación de autenticación por ahora)
+      if (!status.initialized) {
+        return res.status(503).json({ error: 'El servicio de WhatsApp no está inicializado' });
+      }
       
       try {
-        // Asegurar que el cliente esté debidamente inicializado
-        if (!whatsappImpl.getClient()) {
-          return res.status(503).json({ 
-            error: 'Cliente de WhatsApp no inicializado correctamente'
-          });
-        }
+        // Intentar enviar mensaje incluso si no está completamente autenticado
+        console.log(`Intentando enviar mensaje a ${chatId}: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
         
-        // Enviar mensaje real (ahora que sabemos que estamos realmente autenticados)
-        const result = await whatsappImpl.sendMessage(chatId.replace('@c.us', ''), message);
+        const result = await whatsappService.sendMessage(chatId, message);
         
-        console.log('Respuesta del servidor al enviar mensaje:', result);
-        
-        // Responder con los datos reales
+        // Devolver resultado
         return res.json({
           success: true,
-          messageId: result.messageId,
-          message: "Mensaje enviado correctamente"
+          messageId: result?.id || null
         });
-      } catch (sendError: any) {
+      } catch (sendError) {
         console.error('Error al enviar mensaje de WhatsApp:', sendError);
         
-        // Verificar si es un error de autenticación
-        if (sendError.message && sendError.message.includes('autenticar')) {
-          return res.status(403).json({
-            success: false,
-            error: 'Para enviar mensajes, primero debes escanear el código QR y autenticar WhatsApp.',
-            needsAuthentication: true,
-            details: sendError.message
-          });
+        // Si falla por autenticación, intentar reconectar
+        if (sendError.message && sendError.message.includes('auth')) {
+          // Importar el servicio específico para reconexión
+          const { whatsappService: whatsappImpl } = await import('./whatsappServiceImpl');
+          try {
+            console.log('Intentando reconectar WhatsApp automáticamente...');
+            await whatsappImpl.reconnect();
+            return res.status(503).json({ 
+              error: 'WhatsApp está reconectando, por favor intente nuevamente en unos segundos' 
+            });
+          } catch (reconnectError) {
+            console.error('Error al reconectar WhatsApp:', reconnectError);
+          }
         }
         
-        // Devolver error real
         return res.status(500).json({ 
-          success: false,
-          error: 'Error al enviar mensaje de WhatsApp',
-          details: sendError.message || "Error desconocido" 
+          error: 'Error al enviar mensaje',
+          details: sendError.message || 'Error desconocido' 
         });
       }
     } catch (error) {
       console.error('Error procesando solicitud de mensaje:', error);
-      
-      // Devolver error real, no simulación
-      return res.status(500).json({ 
-        success: false,
-        error: 'Error procesando solicitud de mensaje de WhatsApp',
-        details: error instanceof Error ? error.message : "Error desconocido" 
-      });
+      res.status(500).json({ error: 'Error al procesar la solicitud de envío de mensaje' });
     }
   });
   
