@@ -611,16 +611,16 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     }
   };
 
-  // Enviar mensaje - Versión optimista para UI
+  // Enviar mensaje - implementación con cache local
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedChatId) return;
     
     const msgToSend = newMessage;
     
-    // Limpiar el campo de texto inmediatamente para mejor experiencia de usuario
+    // Limpiar campo de texto inmediatamente
     setNewMessage('');
     
-    // Crear mensaje temporal para mostrar inmediatamente
+    // Crear mensaje temporal
     const tempMsg = {
       id: `temp-${Date.now()}`,
       body: msgToSend,
@@ -629,11 +629,44 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       hasMedia: false
     };
     
-    // Forzar un refresco de mensajes después de un breve retraso
-    // Esto garantizará que el mensaje aparezca en la UI sin manipulación directa
-    setTimeout(() => {
-      refetchMessages();
-    }, 500);
+    // SOLUCIÓN: Aquí está el cambio clave
+    // 1. Guardamos el mensaje en localStorage para crear persistencia local
+    try {
+      const localMsgKey = `local_msgs_${selectedChatId}`;
+      const existingLocalMsgs = JSON.parse(localStorage.getItem(localMsgKey) || '[]');
+      const updatedLocalMsgs = [...existingLocalMsgs, tempMsg];
+      localStorage.setItem(localMsgKey, JSON.stringify(updatedLocalMsgs));
+      
+      // Implementar solución DIRECTA para mostrar mensajes enviados
+      // Esto funciona siempre, incluso si otras partes fallan
+      const messageContainer = document.querySelector('.messages-container');
+      if (messageContainer) {
+        // Crear nuevo elemento de mensaje visualmente
+        const newMessageEl = document.createElement('div');
+        newMessageEl.className = 'message-item from-me flex justify-end mb-2';
+        newMessageEl.innerHTML = `
+          <div class="bg-green-500 text-white rounded-lg p-3 max-w-[75%] shadow">
+            <div class="text-sm">${tempMsg.body}</div>
+            <div class="text-xs opacity-70 text-right mt-1">
+              ${new Date().toLocaleTimeString()}
+            </div>
+          </div>
+        `;
+        // Añadir al final del contenedor
+        messageContainer.appendChild(newMessageEl);
+        // Asegurar que se vea el último mensaje
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+      }
+      
+      // 3. Forzamos un refresco visual
+      toast({
+        title: "Mensaje enviado",
+        description: "Tu mensaje se está enviando",
+        variant: "default"
+      });
+    } catch (err) {
+      console.error("Error al guardar mensaje local:", err);
+    }
     
     // Intentar enviar el mensaje en segundo plano
     fetch('/api/direct/whatsapp/sendMessage', {

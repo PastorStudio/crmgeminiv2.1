@@ -187,13 +187,13 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     enabled: open,
   });
 
-  // Formulario para crear/actualizar asignación
+  // Formulario para crear/actualizar asignación con valores seguros
   const form = useForm<z.infer<typeof assignmentSchema>>({
     resolver: zodResolver(assignmentSchema),
     defaultValues: {
-      accountId: accountId || 0,
+      accountId: accountId || 1,
       chatId: chatId || '',
-      assignedToId: 0,
+      assignedToId: 1, // Asignar valor predeterminado seguro para evitar valores nulos
       category: '',
     },
   });
