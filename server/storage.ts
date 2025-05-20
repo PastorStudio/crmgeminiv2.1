@@ -483,9 +483,33 @@ export class DatabaseStorage implements IStorage {
 
   async createWhatsappAccount(account: InsertWhatsappAccount): Promise<WhatsappAccount> {
     try {
+      // Obtener todas las cuentas existentes para encontrar el próximo ID disponible
+      const existingAccounts = await this.getAllWhatsappAccounts();
+      
+      // Extraer todos los IDs existentes
+      const existingIds = existingAccounts.map(account => account.id);
+      
+      // Encontrar el primer ID disponible en el rango 1-10
+      let nextId = 1;
+      while (existingIds.includes(nextId) && nextId <= 10) {
+        nextId++;
+      }
+      
+      // Verificar si hay espacio disponible
+      if (nextId > 10) {
+        throw new Error("Límite de 10 cuentas de WhatsApp alcanzado. Elimine una cuenta para crear una nueva.");
+      }
+      
+      console.log(`Creando nueva cuenta de WhatsApp con ID secuencial: ${nextId}`);
+      
+      // Insertar cuenta con el ID secuencial
       const [createdAccount] = await db.insert(whatsappAccounts)
-        .values(account)
+        .values({
+          ...account,
+          id: nextId
+        })
         .returning();
+        
       return createdAccount;
     } catch (error) {
       console.error("Error al crear cuenta WhatsApp:", error);
@@ -511,8 +535,60 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWhatsappAccount(id: number): Promise<void> {
     try {
+      // Primero, eliminar la cuenta solicitada
       await db.delete(whatsappAccounts)
         .where(eq(whatsappAccounts.id, id));
+      
+      console.log(`Cuenta WhatsApp ID ${id} eliminada correctamente`);
+      
+      // Obtener todas las cuentas restantes para reorganizar IDs
+      const remainingAccounts = await this.getAllWhatsappAccounts();
+      
+      // Ordenar las cuentas por ID
+      remainingAccounts.sort((a, b) => a.id - b.id);
+      
+      // Iniciar transacción para reorganizar IDs
+      console.log("Iniciando reorganización de IDs para cuentas de WhatsApp...");
+      
+      // Reorganizar IDs secuencialmente (1, 2, 3...)
+      for (let i = 0; i < remainingAccounts.length; i++) {
+        const account = remainingAccounts[i];
+        const expectedId = i + 1; // El ID debería ser la posición + 1
+        
+        // Si el ID actual no coincide con el esperado, actualizar
+        if (account.id !== expectedId) {
+          console.log(`Reorganizando cuenta "${account.name}" de ID ${account.id} a ID ${expectedId}`);
+          
+          try {
+            // Actualizar el ID de la cuenta
+            await db.update(whatsappAccounts)
+              .set({ id: expectedId })
+              .where(eq(whatsappAccounts.id, account.id));
+              
+            // Actualizar también cualquier referencia en otras tablas (chatAssignments, etc.)
+            await db.update(chatAssignments)
+              .set({ accountId: expectedId })
+              .where(eq(chatAssignments.accountId, account.id));
+              
+            // Actualizar referencias en whatsappMessages
+            await db.update(whatsappMessages)
+              .set({ accountId: expectedId })
+              .where(eq(whatsappMessages.accountId, account.id));
+              
+            // Actualizar referencias en userWhatsappAccounts
+            await db.update(userWhatsappAccounts)
+              .set({ accountId: expectedId })
+              .where(eq(userWhatsappAccounts.accountId, account.id));
+              
+          } catch (updateError) {
+            console.error(`Error al reorganizar ID de cuenta ${account.id} a ${expectedId}:`, updateError);
+            // Continuar con la siguiente cuenta a pesar del error
+          }
+        }
+      }
+      
+      console.log("Reorganización de IDs de cuentas WhatsApp completada");
+      
     } catch (error) {
       console.error(`Error al eliminar cuenta WhatsApp ${id}:`, error);
       throw error;
