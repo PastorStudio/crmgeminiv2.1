@@ -56,7 +56,10 @@ export async function apiRequest<T = any>(
       console.error('Respuesta HTML detectada (interceptada por Vite):', url);
       
       // Para rutas específicas, intentar usar XMLHttpRequest como alternativa
-      if (url.includes('/api/integrations/whatsapp/')) {
+      if (url.includes('/api/integrations/whatsapp/') || 
+          url.includes('/api/tickets/') || 
+          method === 'PATCH') {
+        console.log(`Usando XHR para solicitud ${method} a ${url}`);
         return await makeXhrRequest<T>(urlWithTimestamp, method, headers, body);
       }
       
