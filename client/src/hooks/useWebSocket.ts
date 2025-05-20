@@ -121,28 +121,48 @@ export function useWebSocket(options: WebSocketOptions = {}) {
     }
   };
 
-  // Procesar notificación según su tipo
+  // VERSIÓN OPTIMIZADA: Procesar notificación según su tipo
+  // Con un sistema de limitación para evitar demasiadas solicitudes
+  const lastInvalidations = useRef<Record<string, number>>({});
+  
   const processNotification = (notification: Notification) => {
+    const now = Date.now();
+    
+    // Función para invalidar consultas con limitación de tiempo
+    const throttledInvalidate = (key: string, queryKey: any, minInterval = 10000) => {
+      const lastTime = lastInvalidations.current[key] || 0;
+      if (now - lastTime > minInterval) {
+        console.log(`Invalidando consulta ${key} (última invalidación hace ${now - lastTime}ms)`);
+        queryClient.invalidateQueries({ queryKey });
+        lastInvalidations.current[key] = now;
+      } else {
+        console.log(`Omitiendo invalidación repetida de ${key} (última hace ${now - lastTime}ms)`);
+      }
+    };
+    
     switch (notification.type) {
       case NotificationType.NEW_MESSAGE:
-        // Invalidar consultas relacionadas con mensajes
+        // Invalidar consultas relacionadas con mensajes (máximo 1 vez cada 10 segundos)
         if (notification.data.chatId) {
-          console.log('Invalidando consultas de mensajes debido a nueva notificación');
-          queryClient.invalidateQueries({ queryKey: ['whatsapp-messages-direct', notification.data.chatId] });
-          queryClient.invalidateQueries({ queryKey: ['whatsapp-chats-direct'] });
+          const msgKey = `messages-${notification.data.chatId}`;
+          throttledInvalidate(msgKey, ['whatsapp-messages-direct', notification.data.chatId], 10000);
+          
+          // Solo invalidar los chats cada 30 segundos para evitar ciclos
+          throttledInvalidate('chats', ['whatsapp-chats-direct'], 30000);
         }
         break;
       
       case NotificationType.MESSAGE_STATUS_CHANGE:
-        // Invalidar consultas de mensajes si hay cambio de estado
+        // Invalidar consultas de mensajes si hay cambio de estado (máximo 1 vez cada 15 segundos)
         if (notification.data.chatId) {
-          queryClient.invalidateQueries({ queryKey: ['whatsapp-messages-direct', notification.data.chatId] });
+          const statusKey = `status-${notification.data.chatId}`;
+          throttledInvalidate(statusKey, ['whatsapp-messages-direct', notification.data.chatId], 15000);
         }
         break;
       
       case NotificationType.CONNECTION_STATUS:
-        // Invalidar consulta de estado de WhatsApp
-        queryClient.invalidateQueries({ queryKey: ['whatsapp-status-direct'] });
+        // Invalidar consulta de estado de WhatsApp (máximo 1 vez cada minuto)
+        throttledInvalidate('whatsapp-status', ['whatsapp-status-direct'], 60000);
         break;
       
       default:

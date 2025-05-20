@@ -242,12 +242,14 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         return initialData.length > 0 ? initialData : [];
       }
     },
-    refetchInterval: 5000, // Más frecuente para mejor experiencia en tiempo real
+    // IMPORTANTE: Limitamos las refrescaciones para evitar bucles
+    refetchInterval: 15000, // Reducido para evitar sobrecarga
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    retry: 3,
-    // Usando condicional uniforme para todas las cuentas
-    enabled: !!whatsappStatus?.authenticated
+    refetchOnWindowFocus: false, // Desactivado para evitar múltiples llamadas
+    retry: 2,
+    retryDelay: 3000,
+    // Usando condicional uniforme para todas las cuentas con un ID siempre presente
+    enabled: !!whatsappStatus?.authenticated && !!currentAccountId
   });
 
   // Query para obtener contactos de WhatsApp para la cuenta específica
@@ -419,14 +421,14 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     },
     // Habilitamos la consulta siempre que haya un chatId
     enabled: !!selectedChatId,
-    // Configuración mejorada para rendimiento
-    refetchInterval: 1000, // Actualización cada segundo
+    // Configuración OPTIMIZADA para evitar bucles de solicitudes
+    refetchInterval: 30000, // Solo cada 30 segundos para evitar sobrecarga
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    retry: 3,
-    retryDelay: 500,
-    staleTime: 500,
-    gcTime: 2 * 60 * 1000
+    refetchOnWindowFocus: false, // Desactivado para evitar solicitudes excesivas
+    retry: 1, // Solo un intento para evitar sobrecarga
+    retryDelay: 3000, // Esperar más entre intentos
+    staleTime: 10000, // Mantener datos frescos por más tiempo
+    gcTime: 5 * 60 * 1000 // Mantener en caché por 5 minutos
   });
   
   // Mutación para enviar mensaje
