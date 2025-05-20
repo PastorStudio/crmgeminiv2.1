@@ -49,7 +49,7 @@ import {
   UserPlus,
   User
 } from 'lucide-react';
-import ChatAssignmentDialog from './ChatAssignmentDialog';
+import SimpleAgentAssignment from './SimpleAgentAssignment';
 import { MessageText } from '@/components/ui/message-text';
 // Importar el componente de configuración
 import { GeminiConfig } from '@/components/GeminiConfig';
@@ -1549,7 +1549,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       
       {/* Diálogo de asignación de chat */}
       {selectedChatId && (
-        <ChatAssignmentDialog
+        <SimpleAgentAssignment
           open={assignmentDialogOpen}
           onOpenChange={setAssignmentDialogOpen}
           chatId={selectedChatId}
