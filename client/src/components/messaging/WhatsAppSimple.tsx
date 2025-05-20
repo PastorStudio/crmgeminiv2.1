@@ -73,6 +73,11 @@ interface WhatsAppMessage {
   hasMedia: boolean;
   mediaUrl?: string;
   caption?: string;
+  fileType?: 'image' | 'video' | 'audio' | 'document' | 'contact' | 'location' | 'unknown';
+  fileName?: string;
+  fileSize?: number;
+  timeZone?: string;
+  agentSignature?: string;
 }
 
 interface WhatsAppInterfaceProps {
@@ -1168,6 +1173,17 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 </div>
                 
                 <div className="flex items-center gap-2">
+                  {/* Botón para asignar agente (nuevo) */}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex items-center gap-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border-purple-200"
+                    onClick={() => setAssignmentDialogOpen(true)}
+                  >
+                    <UserPlus className="h-3 w-3" />
+                    <span className="text-xs font-medium">Asignar</span>
+                  </Button>
+                
                   <Button 
                     variant="outline" 
                     size="icon" 
