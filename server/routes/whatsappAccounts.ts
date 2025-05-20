@@ -77,11 +77,13 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Crear cuenta en la base de datos
+    // Configurar campos correctamente adaptados a la estructura de la base de datos
+    // Con mapeo explícito entre el esquema y la estructura real de la DB
     const newAccount = await storage.createWhatsappAccount({
       ...validation.data,
       status: 'inactive',
-      sessionData: {},
+      phoneNumber: validation.data.ownerPhone || '', // Asegurarse de tener un valor para phoneNumber
+      sessionData: JSON.stringify({}), // Convertir a string para session_data
       createdAt: new Date()
     });
     
