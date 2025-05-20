@@ -412,16 +412,13 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
           }
         }
         
-        // Si llegamos aquí sin mensajes, usar la caché si existe
-        if (cachedMessages.length > 0) {
-          return cachedMessages;
-        }
-        
+        // Si llegamos aquí sin mensajes, NO usar caché - solo datos reales
+        console.log(`No se encontraron mensajes reales para el chat ${selectedChatId}`);
         return [];
       } catch (error) {
         console.error(`Error obteniendo mensajes:`, error);
-        // En caso de error grave, usar caché si existe
-        return cachedMessages.length > 0 ? cachedMessages : [];
+        // Incluso en caso de error, devolver array vacío (no usar caché)
+        return [];
       }
     },
     // Habilitamos la consulta siempre que haya un chatId
