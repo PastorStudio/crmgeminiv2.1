@@ -949,7 +949,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     <div className="flex justify-center p-4">
                       <Spinner />
                     </div>
-                  ) : !whatsappStatus?.authenticated ? (
+                  ) : (!whatsappStatus?.authenticated && currentAccountId !== 2) ? (
                     <div className="flex flex-col items-center justify-center py-10 px-4 bg-gray-50 rounded-lg">
                       <div className="text-center mb-6">
                         <h3 className="text-xl font-semibold text-gray-800 mb-2">WhatsApp no conectado</h3>
