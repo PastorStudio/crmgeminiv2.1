@@ -17,7 +17,6 @@ import { z } from "zod";
 import { apiKeyManager } from "./services/apiKeyManager";
 import { db } from "./db";
 import jwt from "jsonwebtoken";
-import fixRouterTemp from "./routes/routeFixTemp";
 // Importar las rutas de WhatsApp
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
@@ -36,8 +35,8 @@ import { mediaGalleryService } from "./services/mediaGalleryService";
 import { registerTemplateVariablesRoutes } from "./services/templateVariablesRoutes";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import chatAssignmentsRouter from "./routes/chatAssignments";
-import { agentsRouter } from "./routes/agents";
-import { ticketsRouter } from "./routes/tickets";
+import agentsRouter from "./routes/agents";
+import ticketsRouter from "./routes/tickets";
 import deleteLeadsRouter from "./routes/deleteLeads";
 
 // Configurar middleware para upload de archivos
@@ -76,9 +75,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/chat-assignments", chatAssignmentsRouter);
   app.use("/api/agents", agentsRouter);
   app.use("/api/tickets", ticketsRouter);
-  
-  // Herramientas de mantenimiento y correcciones de base de datos
-  app.use("/api/fix", fixRouterTemp);
   
   // Endpoint directo para eliminar todos los leads
   app.delete("/api/leads/delete-all", async (req: Request, res: Response) => {
@@ -726,20 +722,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Leads endpoints - usando datos reales de WhatsApp
   app.get("/api/leads", async (req: Request, res: Response) => {
     try {
-      // Devolver un conjunto de datos básico para evitar pantallas en blanco
-      return res.json([
-        {
-          id: 1,
-          name: "Carga temporalmente deshabilitada",
-          company: "Mantenimiento en progreso",
-          email: "",
-          phone: "",
-          status: "nuevo",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          notes: "El sistema está en mantenimiento. Los datos reales estarán disponibles pronto.",
-        }
-      ]);
+      const status = req.query.status as string;
+      const assignedTo = req.query.assignedTo ? parseInt(req.query.assignedTo as string) : undefined;
+      
+      // Primero obtenemos los leads de la base de datos
+      let dbLeads = [];
+      if (status) {
+        dbLeads = await storage.getLeadsByStatus(status);
+      } else if (assignedTo) {
+        dbLeads = await storage.getLeadsByAssignee(assignedTo);
+      } else {
+        dbLeads = await storage.getAllLeads();
+      }
       
       // Obtener mensajes para enriquecer los leads con su último mensaje
       try {
@@ -925,71 +919,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Activities endpoints
   app.get("/api/activities", async (req: Request, res: Response) => {
     try {
-      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
       const leadId = req.query.leadId ? parseInt(req.query.leadId as string) : undefined;
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const upcoming = req.query.upcoming === "true";
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       
-      console.log(`Solicitud de actividades recibida - userId: ${userId}, leadId: ${leadId}`);
+      let activities = [];
       
-      // Filtrar por usuario si se proporciona
-      if (userId) {
-        try {
-          const activities = await storage.getActivitiesByUser(userId);
-          console.log(`Actividades encontradas para usuario ${userId}: ${activities.length}`);
-          return res.json(activities);
-        } catch (error) {
-          console.error(`Error al obtener actividades para usuario ${userId}:`, error);
-          return res.json([]);
-        }
-      }
-      
-      // Filtrar por lead si se proporciona
-      if (leadId) {
-        try {
-          const activities = await storage.getActivitiesByLead(leadId);
-          console.log(`Actividades encontradas para lead ${leadId}: ${activities.length}`);
-          return res.json(activities);
-        } catch (error) {
-          console.error(`Error al obtener actividades para lead ${leadId}:`, error);
-          return res.json([]);
-        }
-      }
-      
-      // Si no se proporciona filtro, intentar devolver todas las actividades
       try {
-        const activities = await db.execute(sql`
-          SELECT * FROM activities 
-          ORDER BY start_time DESC
-          LIMIT 100
-        `);
-        
-        if (activities.rows) {
-          const formattedActivities = activities.rows.map(activity => ({
-            id: activity.id,
-            leadId: activity.leadid || activity.lead_id, // Compatibilidad con diferentes nombres de columna
-            userId: activity.userid || activity.user_id,
-            type: activity.type || 'meeting',
-            title: activity.title,
-            description: activity.description,
-            startTime: activity.starttime || activity.start_time,
-            endTime: activity.endtime || activity.end_time,
-            completed: activity.completed || false,
-            createdAt: activity.createdat || activity.created_at,
-            createdBy: activity.createdby || activity.created_by,
-            aiGenerated: activity.aigenerated || activity.ai_generated || false
-          }));
-          
-          console.log(`Total de actividades encontradas: ${formattedActivities.length}`);
-          return res.json(formattedActivities);
+        if (leadId) {
+          activities = await storage.getActivitiesByLead(leadId);
+        } else if (userId && upcoming) {
+          activities = await storage.getUpcomingActivities(userId, limit);
+        } else if (userId) {
+          activities = await storage.getActivitiesByUser(userId);
+        } else {
+          return res.status(400).json({ 
+            success: false,
+            message: "Missing required parameters",
+            data: []
+          });
         }
-      } catch (error) {
-        console.error("Error al recuperar todas las actividades:", error);
+      } catch (dbError) {
+        console.error("Error específico en consulta de actividades:", dbError);
+        // No rethrow, continuamos con array vacío
       }
       
-      // Si todo lo demás falla, devolvemos un array vacío
-      return res.json([]);
+      // Si llegamos aquí, devolvemos lo que tengamos (puede ser un array vacío)
+      return res.json(activities);
     } catch (error) {
-      console.error("Error en endpoint de actividades:", error);
-      return res.json([]);
+      console.error("Error general en endpoint de actividades:", error);
+      // En caso de error grave, devolvemos array vacío en lugar de error 500
+      // para evitar pantallas en blanco
+      res.json([]);
     }
   });
 
@@ -1056,12 +1018,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Messages endpoints
   app.get("/api/messages", async (req: Request, res: Response) => {
     try {
-      // Si no hay parámetros, devolver un array vacío en lugar de error
-      // Esto evita las pantallas en blanco durante la navegación
-      return res.json([]);
+      const leadId = req.query.leadId ? parseInt(req.query.leadId as string) : undefined;
+      const recent = req.query.recent === "true";
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      
+      let messages = [];
+      
+      try {
+        if (leadId) {
+          messages = await storage.getMessagesByLead(leadId);
+        } else if (recent) {
+          messages = await storage.getRecentMessages(limit);
+        } else {
+          return res.status(400).json({ 
+            success: false,
+            message: "Missing required parameters",
+            data: []
+          });
+        }
+      } catch (dbError) {
+        console.error("Error específico en consulta de mensajes:", dbError);
+        // No rethrow, continuamos con array vacío
+      }
+      
+      // Si llegamos aquí, devolvemos lo que tengamos (puede ser un array vacío)
+      return res.json(messages);
     } catch (error) {
-      console.error("Error en endpoint de mensajes:", error);
-      return res.json([]);
+      console.error("Error general en endpoint de mensajes:", error);
+      // En caso de error grave, devolvemos array vacío en lugar de error 500
+      // para evitar pantallas en blanco
+      res.json([]);
     }
   });
 

@@ -1,284 +1,183 @@
-/**
- * Rutas para la gestión de tickets
- */
-import { Router, Request, Response } from 'express';
-import { db } from '../db';
-import { sql } from 'drizzle-orm';
+import { Router, Request, Response } from "express";
+import { db } from "../db";
+import { tickets, insertTicketSchema } from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
+import { z } from "zod";
 
-export const ticketsRouter = Router();
+// Estados posibles para los tickets
+export enum TicketStatus {
+  NUEVO = "nuevo",
+  EN_PROGRESO = "en_progreso",
+  RESUELTO = "resuelto",
+  CANCELADO = "cancelado",
+  SIN_ASIGNAR = "sin_asignar"
+}
+
+const router = Router();
 
 // Obtener todos los tickets
-ticketsRouter.get('/', async (_req: Request, res: Response) => {
+router.get("/", async (req: Request, res: Response) => {
   try {
-    // Obtener tickets con información del agente asignado
-    const tickets = await db.execute(sql`
-      SELECT t.*, a.name as agent_name, a.email as agent_email
-      FROM tickets t
-      LEFT JOIN agents a ON t.assigned_agent_id = a.id
-      ORDER BY t.created_at DESC
-    `);
-    
-    // Transformar los datos para que sean compatibles con el cliente
-    const formattedTickets = tickets.rows.map(ticket => ({
-      id: ticket.id,
-      title: ticket.title,
-      description: ticket.description,
-      status: ticket.status || 'nuevo',
-      priority: ticket.priority || 'media',
-      category: ticket.category || 'consulta',
-      createdAt: ticket.created_at,
-      updatedAt: ticket.updated_at,
-      dueDate: ticket.due_date,
-      assignedTo: ticket.assigned_agent_id,
-      assignedToName: ticket.agent_name,
-      assignedToEmail: ticket.agent_email,
-      createdBy: ticket.created_by,
-      notes: ticket.notes,
-      tags: ticket.tags,
-      isInternal: ticket.is_internal
-    }));
-
-    res.json(formattedTickets);
+    const result = await db.select().from(tickets).orderBy(desc(tickets.createdAt));
+    res.json(result);
   } catch (error) {
-    console.error('Error al obtener tickets:', error);
-    res.status(500).json({ success: false, message: 'Error al obtener tickets' });
+    console.error("Error obteniendo tickets:", error);
+    res.status(500).json({ error: "Error al obtener tickets" });
   }
 });
 
-// Crear un nuevo ticket
-ticketsRouter.post('/', async (req: Request, res: Response) => {
+// Obtener ticket por ID
+router.get("/:id", async (req: Request, res: Response) => {
   try {
-    const { title, description, priority, category, status } = req.body;
+    const id = parseInt(req.params.id);
+    const [ticket] = await db.select().from(tickets).where(eq(tickets.id, id));
     
-    // Validación básica
-    if (!title) {
-      return res.status(400).json({ success: false, message: 'El título es obligatorio' });
+    if (!ticket) {
+      return res.status(404).json({ error: "Ticket no encontrado" });
     }
     
-    // Insertar el nuevo ticket
-    const result = await db.execute(sql`
-      INSERT INTO tickets 
-        (title, description, priority, category, status, created_at, updated_at)
-      VALUES 
-        (${title}, ${description}, ${priority}, ${category}, ${status}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      RETURNING *
-    `);
-    
-    if (!result.rows || result.rows.length === 0) {
-      throw new Error('Error al crear el ticket');
-    }
-    
-    const ticket = result.rows[0];
-    
-    // Formatear la respuesta
-    const formattedTicket = {
-      id: ticket.id,
-      title: ticket.title,
-      description: ticket.description,
-      status: ticket.status || 'nuevo',
-      priority: ticket.priority || 'media',
-      category: ticket.category || 'consulta',
-      createdAt: ticket.created_at,
-      updatedAt: ticket.updated_at
-    };
-    
-    res.status(201).json(formattedTicket);
+    res.json(ticket);
   } catch (error) {
-    console.error('Error al crear ticket:', error);
-    res.status(500).json({ success: false, message: 'Error al crear el ticket' });
+    console.error(`Error obteniendo ticket ${req.params.id}:`, error);
+    res.status(500).json({ error: "Error al obtener ticket" });
   }
 });
 
-// Actualizar un ticket existente
-ticketsRouter.patch('/:id', async (req: Request, res: Response) => {
+// Crear nuevo ticket
+router.post("/", async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const { title, description, priority, category } = req.body;
+    const validatedData = insertTicketSchema.parse(req.body);
+    const [newTicket] = await db.insert(tickets).values(validatedData).returning();
     
-    // Validación básica
-    if (!title) {
-      return res.status(400).json({ success: false, message: 'El título es obligatorio' });
-    }
-    
-    // Actualizar el ticket
-    const result = await db.execute(sql`
-      UPDATE tickets
-      SET 
-        title = ${title},
-        description = ${description},
-        priority = ${priority},
-        category = ${category},
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${parseInt(id)}
-      RETURNING *
-    `);
-    
-    if (!result.rows || result.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Ticket no encontrado' });
-    }
-    
-    const ticket = result.rows[0];
-    
-    // Formatear la respuesta
-    const formattedTicket = {
-      id: ticket.id,
-      title: ticket.title,
-      description: ticket.description,
-      status: ticket.status,
-      priority: ticket.priority,
-      category: ticket.category,
-      createdAt: ticket.created_at,
-      updatedAt: ticket.updated_at
-    };
-    
-    res.json(formattedTicket);
+    res.status(201).json(newTicket);
   } catch (error) {
-    console.error('Error al actualizar ticket:', error);
-    res.status(500).json({ success: false, message: 'Error al actualizar el ticket' });
+    console.error("Error creando ticket:", error);
+    res.status(400).json({
+      error: error instanceof z.ZodError
+        ? error.errors.map(e => e.message).join(", ")
+        : "Error al crear ticket"
+    });
   }
 });
 
-// Actualizar el estado de un ticket
-ticketsRouter.patch('/:id/status', async (req: Request, res: Response) => {
+// Actualizar ticket existente
+router.patch("/:id", async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = parseInt(req.params.id);
+    const [updatedTicket] = await db
+      .update(tickets)
+      .set({
+        ...req.body,
+        updatedAt: new Date()
+      })
+      .where(eq(tickets.id, id))
+      .returning();
+    
+    if (!updatedTicket) {
+      return res.status(404).json({ error: "Ticket no encontrado" });
+    }
+    
+    res.json(updatedTicket);
+  } catch (error) {
+    console.error(`Error actualizando ticket ${req.params.id}:`, error);
+    res.status(400).json({ error: "Error al actualizar ticket" });
+  }
+});
+
+// Actualizar estado del ticket
+router.patch("/:id/status", async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
     const { status } = req.body;
     
-    console.log(`Actualizando estado del ticket ${id} a: ${status}`);
-    
-    // Validación básica
-    if (!status) {
-      return res.status(400).json({ success: false, message: 'El estado es obligatorio' });
+    if (!Object.values(TicketStatus).includes(status)) {
+      return res.status(400).json({ 
+        error: `Estado inválido. Debe ser uno de: ${Object.values(TicketStatus).join(", ")}` 
+      });
     }
     
-    // Primero obtener el ticket actual para preservar sus campos
-    const currentTicket = await db.execute(sql`
-      SELECT * FROM tickets WHERE id = ${parseInt(id)}
-    `);
+    const [updatedTicket] = await db
+      .update(tickets)
+      .set({
+        status,
+        updatedAt: new Date(),
+        ...(status === TicketStatus.RESUELTO ? { resolvedAt: new Date() } : {})
+      })
+      .where(eq(tickets.id, id))
+      .returning();
     
-    if (!currentTicket.rows || currentTicket.rows.length === 0) {
-      console.error(`Ticket ${id} no encontrado`);
-      return res.status(404).json({ success: false, message: 'Ticket no encontrado' });
+    if (!updatedTicket) {
+      return res.status(404).json({ error: "Ticket no encontrado" });
     }
     
-    // Actualizar el estado del ticket manteniendo los demás campos
-    const result = await db.execute(sql`
-      UPDATE tickets
-      SET 
-        status = ${status},
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${parseInt(id)}
-      RETURNING *
-    `);
-    
-    if (!result.rows || result.rows.length === 0) {
-      console.error(`Ticket ${id} no encontrado`);
-      return res.status(404).json({ success: false, message: 'Ticket no encontrado' });
-    }
-    
-    const ticket = result.rows[0];
-    
-    // Formatear la respuesta completa del ticket para asegurar que todos los campos se actualicen en el frontend
-    // Obtener info del agente asignado si existe
-    let agentInfo = null;
-    if (ticket.assigned_agent_id) {
-      const agentResult = await db.execute(sql`
-        SELECT * FROM agents WHERE id = ${ticket.assigned_agent_id}
-      `);
-      
-      if (agentResult.rows && agentResult.rows.length > 0) {
-        agentInfo = agentResult.rows[0];
-      }
-    }
-    
-    const formattedTicket = {
-      id: ticket.id,
-      title: ticket.title,
-      description: ticket.description,
-      status: ticket.status || 'nuevo',
-      priority: ticket.priority || 'media',
-      category: ticket.category || 'consulta',
-      createdAt: ticket.created_at,
-      updatedAt: ticket.updated_at,
-      dueDate: ticket.due_date,
-      assignedTo: ticket.assigned_agent_id,
-      assignedToName: agentInfo ? agentInfo.name : null,
-      assignedToEmail: agentInfo ? agentInfo.email : null,
-      createdBy: ticket.created_by,
-      notes: ticket.notes,
-      tags: ticket.tags,
-      isInternal: ticket.is_internal
-    };
-    
-    console.log(`Estado del ticket ${id} actualizado con éxito, retornando:`, formattedTicket);
-    return res.status(200).json(formattedTicket);
+    res.json(updatedTicket);
   } catch (error) {
-    console.error('Error al actualizar estado del ticket:', error);
-    return res.status(500).json({ success: false, message: 'Error al actualizar el estado' });
+    console.error(`Error actualizando estado del ticket ${req.params.id}:`, error);
+    res.status(500).json({ error: "Error al actualizar estado del ticket" });
   }
 });
 
-// Asignar un ticket a un agente
-ticketsRouter.patch('/:id/assign', async (req: Request, res: Response) => {
+// Asignar ticket a un agente
+router.patch("/:id/assign", async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = parseInt(req.params.id);
     const { agentId } = req.body;
     
-    console.log(`Asignando ticket ${id} al agente ${agentId}`);
+    const [updatedTicket] = await db
+      .update(tickets)
+      .set({
+        assignedTo: agentId ? agentId : null,
+        status: agentId ? TicketStatus.EN_PROGRESO : TicketStatus.SIN_ASIGNAR,
+        updatedAt: new Date()
+      })
+      .where(eq(tickets.id, id))
+      .returning();
     
-    // Actualizar la asignación del ticket
-    const result = await db.execute(sql`
-      UPDATE tickets
-      SET 
-        assigned_agent_id = ${agentId === null ? sql`NULL` : agentId},
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${parseInt(id)}
-      RETURNING *
-    `);
-    
-    if (!result.rows || result.rows.length === 0) {
-      console.error(`Ticket ${id} no encontrado`);
-      return res.status(404).json({ success: false, message: 'Ticket no encontrado' });
+    if (!updatedTicket) {
+      return res.status(404).json({ error: "Ticket no encontrado" });
     }
     
-    // Si se asignó a un agente, obtener la información del agente
-    let agentInfo = null;
-    if (agentId !== null) {
-      const agentResult = await db.execute(sql`
-        SELECT * FROM agents WHERE id = ${agentId}
-      `);
-      
-      if (agentResult.rows && agentResult.rows.length > 0) {
-        agentInfo = agentResult.rows[0];
-      }
-    }
-    
-    const ticket = result.rows[0];
-    
-    // Formatear la respuesta completa del ticket para asegurar que todos los campos se actualicen en el frontend
-    const formattedTicket = {
-      id: ticket.id,
-      title: ticket.title,
-      description: ticket.description,
-      status: ticket.status || 'nuevo',
-      priority: ticket.priority || 'media',
-      category: ticket.category || 'consulta',
-      createdAt: ticket.created_at,
-      updatedAt: ticket.updated_at,
-      dueDate: ticket.due_date,
-      assignedTo: ticket.assigned_agent_id,
-      assignedToName: agentInfo ? agentInfo.name : null,
-      assignedToEmail: agentInfo ? agentInfo.email : null,
-      createdBy: ticket.created_by,
-      notes: ticket.notes,
-      tags: ticket.tags,
-      isInternal: ticket.is_internal
-    };
-    
-    console.log(`Ticket ${id} asignado con éxito, retornando:`, formattedTicket);
-    return res.status(200).json(formattedTicket);
+    res.json(updatedTicket);
   } catch (error) {
-    console.error('Error al asignar ticket:', error);
-    return res.status(500).json({ success: false, message: 'Error al asignar el ticket' });
+    console.error(`Error asignando ticket ${req.params.id}:`, error);
+    res.status(500).json({ error: "Error al asignar ticket" });
   }
 });
+
+// Generar ticket desde un mensaje de chat
+router.post("/generate-from-message", async (req: Request, res: Response) => {
+  try {
+    const { leadId, chatId, message, contactName } = req.body;
+    
+    if (!leadId || !chatId || !message) {
+      return res.status(400).json({ error: "Faltan datos obligatorios (leadId, chatId, message)" });
+    }
+    
+    // Analizar el mensaje para determinar categoría, prioridad, etc.
+    // En un caso real, aquí se usaría IA para procesar el mensaje
+    const title = `Ticket para ${contactName || 'Cliente'}`;
+    const description = message.length > 500 ? message.substring(0, 497) + "..." : message;
+    
+    const newTicket = {
+      title,
+      description,
+      status: TicketStatus.NUEVO,
+      priority: "media",
+      category: "consulta",
+      leadId,
+      chatId,
+      source: "whatsapp",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    const [createdTicket] = await db.insert(tickets).values(newTicket).returning();
+    
+    res.status(201).json(createdTicket);
+  } catch (error) {
+    console.error("Error generando ticket desde mensaje:", error);
+    res.status(500).json({ error: "Error al generar ticket desde mensaje" });
+  }
+});
+
+export default router;
