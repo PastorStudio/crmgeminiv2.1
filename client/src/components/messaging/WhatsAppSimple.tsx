@@ -592,20 +592,40 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
 
   // Actualizar cuando llega una notificación por WebSocket
   useEffect(() => {
-    if (lastMessage && lastMessage.type === NotificationType.NewMessage) {
-      console.log('Nueva notificación de mensaje:', lastMessage);
-      // Refrescar chats y mensajes
-      refetchChats();
-      if (selectedChatId) {
-        refetchMessages();
-      }
+    if (lastMessage) {
+      console.log('Notificación recibida por WebSocket:', lastMessage);
       
-      // Mostrar notificación
-      toast({
-        title: 'Nuevo mensaje',
-        description: `De: ${lastMessage.sender || 'Desconocido'}`,
-        variant: 'default'
-      });
+      // Comprobar si es un mensaje nuevo
+      if (lastMessage.type === NotificationType.NEW_MESSAGE) {
+        console.log('Nueva notificación de mensaje:', lastMessage);
+        
+        // Refrescar chats siempre que llegue un mensaje nuevo
+        refetchChats();
+        
+        // Refrescar mensajes solo si el chat seleccionado coincide con el del mensaje
+        if (selectedChatId && lastMessage.data && lastMessage.data.chatId === selectedChatId) {
+          console.log('Actualizando mensajes para el chat actual');
+          refetchMessages();
+          
+          // Si el mensaje es uno que acabamos de enviar, no mostrar notificación
+          if (lastMessage.data.message && !lastMessage.data.message.fromMe) {
+            // Reproducir sonido de notificación 
+            try {
+              const audio = new Audio('/sounds/notification.mp3');
+              audio.play().catch(e => console.log('No se pudo reproducir sonido:', e));
+            } catch (error) {
+              console.log('Error al reproducir sonido de notificación');
+            }
+            
+            // Mostrar notificación visual
+            toast({
+              title: 'Nuevo mensaje',
+              description: `De: ${lastMessage.data.message.caption || 'Contacto'}`,
+              variant: 'default'
+            });
+          }
+        }
+      }
     }
   }, [lastMessage, refetchChats, refetchMessages, selectedChatId, toast]);
 

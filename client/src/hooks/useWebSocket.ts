@@ -160,12 +160,42 @@ export function useWebSocket(options: WebSocketOptions = {}) {
     }
   };
 
-  // Conectar al montar el componente y desconectar al desmontarlo
+  // Conectar al montar el componente y mantener conexión activa
   useEffect(() => {
     connect();
     
+    // Agregar listener para reconectar automáticamente si la página pierde conexión
+    const handleOnline = () => {
+      console.log('La conexión a internet se ha restaurado, reconectando WebSocket...');
+      disconnect(); // Cerrar cualquier conexión previa que pudiera estar en estado inconsistente
+      setTimeout(connect, 1000); // Reconectar después de un segundo
+    };
+    
+    window.addEventListener('online', handleOnline);
+    
+    // Establecer un ping periódico para mantener activa la conexión
+    const pingInterval = setInterval(() => {
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
+        try {
+          console.log('Enviando ping para mantener conexión activa');
+          socketRef.current.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+        } catch (error) {
+          console.error('Error al enviar ping', error);
+          // Si hay error al enviar ping, intentar reconectar
+          disconnect();
+          setTimeout(connect, 1000);
+        }
+      } else if (!socketRef.current || socketRef.current.readyState !== WebSocket.CONNECTING) {
+        // Si no hay conexión y no está en proceso de conexión, intentar reconectar
+        console.log('WebSocket no conectado, intentando reconexión...');
+        connect();
+      }
+    }, 30000); // cada 30 segundos
+    
     // Limpiar al desmontar
     return () => {
+      window.removeEventListener('online', handleOnline);
+      clearInterval(pingInterval);
       disconnect();
     };
   }, []);
