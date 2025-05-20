@@ -170,11 +170,26 @@ export function useWebSocket(options: WebSocketOptions = {}) {
     };
   }, []);
 
+  // Función para enviar un mensaje a través de WebSocket
+  const sendMessage = (message: any) => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      const messageStr = JSON.stringify(message);
+      console.log('Enviando mensaje por WebSocket:', messageStr);
+      socketRef.current.send(messageStr);
+      return true;
+    } else {
+      console.error('WebSocket no está conectado, no se puede enviar el mensaje');
+      return false;
+    }
+  };
+
   // Retornar estado y funciones
   return {
     isConnected,
     lastMessage,
     connect,
-    disconnect
+    disconnect,
+    sendMessage,
+    connectionStatus: isConnected ? 'Connected' : 'Disconnected'
   };
 }
