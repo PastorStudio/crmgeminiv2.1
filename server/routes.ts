@@ -352,13 +352,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Users endpoints - protegidos con autenticación
   app.get("/api/users", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {
-      // Verificar que el usuario tiene permisos de admin o supervisor
-      const userRole = (req as any).user.role;
-      if (userRole !== 'admin' && userRole !== 'supervisor') {
-        return res.status(403).json({ 
-          success: false, 
-          message: "No tienes permisos para acceder a la lista de usuarios" 
-        });
+      // Permitir obtener usuarios para asignación de chat sin importar el rol
+      const forChatAssignment = req.query.forChatAssignment === 'true';
+      
+      // Si no es para asignación de chat, verificar permisos
+      if (!forChatAssignment) {
+        // Verificar que el usuario tiene permisos de admin o supervisor
+        const userRole = (req as any).user.role;
+        if (userRole !== 'admin' && userRole !== 'supervisor') {
+          return res.status(403).json({ 
+            success: false, 
+            message: "No tienes permisos para acceder a la lista de usuarios" 
+          });
+        }
       }
       
       const users = await storage.getAllUsers();

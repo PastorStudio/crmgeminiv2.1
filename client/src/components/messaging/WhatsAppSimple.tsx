@@ -1124,7 +1124,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                       assignedAgent ? (
                         <Badge variant="outline" className="text-[10px] h-5 px-1 bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center">
                           <UserCheck className="mr-1 h-3 w-3" />
-                          Asignado a: {assignedAgent.name}
+                          Asignado a: {assignedAgent.fullName || assignedAgent.username || assignedAgent.name || 'Agente'}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-[10px] h-5 px-1 bg-amber-50 text-amber-700 border-amber-200">
