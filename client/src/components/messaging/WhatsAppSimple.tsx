@@ -107,6 +107,9 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   // Estado para almacenar todas las cuentas de WhatsApp
   const [whatsappAccounts, setWhatsappAccounts] = useState<any[]>([]);
   
+  // Estado para controlar el diálogo de código QR
+  const [showQRDialog, setShowQRDialog] = useState<boolean>(false);
+  
   // Refs para scroll automático
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
