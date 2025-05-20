@@ -77,13 +77,11 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Configurar campos correctamente adaptados a la estructura de la base de datos
-    // Con mapeo explícito entre el esquema y la estructura real de la DB
+    // Crear cuenta en la base de datos
     const newAccount = await storage.createWhatsappAccount({
       ...validation.data,
       status: 'inactive',
-      phoneNumber: validation.data.ownerPhone || '', // Asegurarse de tener un valor para phoneNumber
-      sessionData: JSON.stringify({}), // Convertir a string para session_data
+      sessionData: {},
       createdAt: new Date()
     });
     
@@ -169,15 +167,9 @@ router.post('/:id/initialize', async (req, res) => {
     const status = whatsappServiceMulti.getStatus(id);
     
     // Actualizar estado en base de datos
-    // Convertir el estado a cadena JSON para almacenamiento adecuado
-    const sessionDataForStorage = typeof status === 'object' 
-      ? JSON.stringify(status) 
-      : status;
-    
-    console.log(`Actualizando estado de cuenta WhatsApp ID ${id} a pending_auth`);
     await storage.updateWhatsappAccount(id, {
       status: 'pending_auth',
-      sessionData: sessionDataForStorage
+      sessionData: status
     });
     
     res.json({ success: true, status });

@@ -300,9 +300,6 @@ export const ticketsRelations = relations(tickets, ({ one }) => ({
   }),
 }));
 
-// Ya existe una definición de dashboardStats más arriba
-// Dejamos este comentario para documentar
-
 // Campañas de marketing
 // Galería de medios
 export const mediaGallery = pgTable("media_gallery", {

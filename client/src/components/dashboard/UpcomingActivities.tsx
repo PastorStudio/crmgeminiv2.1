@@ -11,17 +11,17 @@ import { Activity } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 
 export default function UpcomingActivities() {
-  // Fetch upcoming activities - now using the dashboard endpoint that limits to 5 events with 1 per client
+  // Fetch upcoming activities for the current user (using a hardcoded ID for now)
+  const userId = 1; // Current user ID
   const { data: activities, isLoading } = useQuery<Activity[]>({
-    queryKey: ["/api/dashboard/upcoming-events"],
+    queryKey: ["/api/activities", { userId, upcoming: true }],
     queryFn: async () => {
-      const response = await fetch(`/api/dashboard/upcoming-events`);
+      const response = await fetch(`/api/activities?userId=${userId}&upcoming=true`);
       if (!response.ok) {
-        throw new Error('Failed to fetch upcoming events');
+        throw new Error('Failed to fetch activities');
       }
       return response.json();
-    },
-    refetchInterval: 30000 // Refresh every 30 seconds
+    }
   });
 
   // Get activity icon based on type
@@ -131,7 +131,7 @@ export default function UpcomingActivities() {
                           {activity.leadId && (
                             <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
                               <span className="material-icons text-sm mr-1">business</span>
-                              {activity.leadName || `Lead #${activity.leadId}`}
+                              Lead #{activity.leadId}
                             </p>
                           )}
                         </div>
