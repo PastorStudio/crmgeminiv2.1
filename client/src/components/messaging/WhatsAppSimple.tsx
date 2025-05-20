@@ -1268,7 +1268,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                                 <span className={`text-[10px] ${msg.fromMe ? 'text-green-100' : 'text-gray-500'}`}>
                                   {new Date(msg.timestamp * 1000).toLocaleTimeString([], {
                                     hour: '2-digit',
-                                    minute: '2-digit'
+                                    minute: '2-digit',
+                                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
                                   })}
                                 </span>
                                 
