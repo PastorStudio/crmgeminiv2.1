@@ -1531,12 +1531,12 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
             }
           ];
         } else if (chatId === "555555555@c.us") {
-          demoMessages = [
+          const demoMessages = [
             {
               id: `demo-msg-1-${chatId}`,
               body: "¿Recibiste mi correo sobre la propuesta?",
               fromMe: false,
-              timestamp: Math.floor((now - 3600000 * 5) / 1000),
+              timestamp: Math.floor((Date.now() - 3600000 * 5) / 1000),
               hasMedia: false
             },
             {

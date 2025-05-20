@@ -12,4 +12,4 @@ console.log('Iniciando microservicios para el sistema de integración WhatsApp..
 console.log('Presiona Ctrl+C para detener todos los servicios');
 
 // Ejecutar start-microservices.js usando el node actual
-import './start-microservices.js';
+require('./start-microservices.cjs');

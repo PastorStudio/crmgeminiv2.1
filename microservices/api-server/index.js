@@ -1,9 +1,8 @@
 /**
- * Servidor de API - Microservicio independiente
+ * Servidor API - Microservicio independiente
  * 
- * Este microservicio actúa como punto de entrada centralizado para la aplicación,
- * proporcionando APIs RESTful para el frontend y coordinando la comunicación
- * entre todos los demás microservicios.
+ * Este servidor gestiona todas las solicitudes HTTP,
+ * sirviendo como punto de entrada principal para el sistema.
  */
 
 const express = require('express');
@@ -11,16 +10,23 @@ const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
-
 const app = express();
 const PORT = process.env.API_SERVER_PORT || 5000;
-const DATABASE_SERVER_URL = process.env.DATABASE_SERVER_URL || 'http://localhost:5003';
-const WHATSAPP_SERVER_URL = process.env.WHATSAPP_SERVER_URL || 'http://localhost:5001';
-const PROCESSOR_SERVER_URL = process.env.PROCESSOR_SERVER_URL || 'http://localhost:5002';
 
 // Middleware para JSON y CORS
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json());
 app.use(cors());
+
+// Configuración de URLs de los microservicios
+const WHATSAPP_SERVER_URL = process.env.WHATSAPP_SERVER_URL || 'http://localhost:5001';
+const PROCESSOR_SERVER_URL = process.env.PROCESSOR_SERVER_URL || 'http://localhost:5002';
+const DATABASE_SERVER_URL = process.env.DATABASE_SERVER_URL || 'http://localhost:5003';
+
+// Crear directorios temporales si no existen
+const TEMP_DIR = path.join(__dirname, '..', 'temp');
+if (!fs.existsSync(TEMP_DIR)) {
+  fs.mkdirSync(TEMP_DIR, { recursive: true });
+}
 
 // Log de todas las solicitudes
 app.use((req, res, next) => {
@@ -28,121 +34,95 @@ app.use((req, res, next) => {
   next();
 });
 
-// Ruta para servir archivos estáticos (frontend)
-app.use(express.static(path.join(__dirname, '..', '..', 'client', 'dist')));
-
-// === Rutas de la API ===
-
-// Ruta de salud para verificar todos los servicios
-app.get('/api/health', async (req, res) => {
-  const results = {
-    api: {
-      status: 'ok',
-      service: 'api-server',
-      timestamp: new Date().toISOString()
-    },
-    database: { status: 'unknown' },
-    whatsapp: { status: 'unknown' },
-    processor: { status: 'unknown' }
-  };
-  
-  // Verificar el estado de cada servicio
-  try {
-    const dbRes = await axios.get(`${DATABASE_SERVER_URL}/health`, { timeout: 3000 });
-    results.database = dbRes.data;
-  } catch (error) {
-    results.database = {
-      status: 'error',
-      message: `No se pudo conectar al servicio de base de datos: ${error.message}`,
-      error: error.code
-    };
-  }
-  
-  try {
-    const waRes = await axios.get(`${WHATSAPP_SERVER_URL}/health`, { timeout: 3000 });
-    results.whatsapp = waRes.data;
-  } catch (error) {
-    results.whatsapp = {
-      status: 'error',
-      message: `No se pudo conectar al servicio de WhatsApp: ${error.message}`,
-      error: error.code
-    };
-  }
-  
-  try {
-    const procRes = await axios.get(`${PROCESSOR_SERVER_URL}/health`, { timeout: 3000 });
-    results.processor = procRes.data;
-  } catch (error) {
-    results.processor = {
-      status: 'error',
-      message: `No se pudo conectar al servicio de procesamiento: ${error.message}`,
-      error: error.code
-    };
-  }
-  
-  // Determinar el estado general
-  const allServicesOk = 
-    results.database.status === 'ok' &&
-    results.whatsapp.status === 'ok' &&
-    results.processor.status === 'ok';
-  
-  res.json({
-    status: allServicesOk ? 'ok' : 'partial',
-    timestamp: new Date().toISOString(),
-    services: results
+// Middleware para manejar errores
+app.use((err, req, res, next) => {
+  console.error(`Error en ${req.method} ${req.url}:`, err);
+  res.status(500).json({
+    status: 'error',
+    message: 'Error interno del servidor',
+    error: err.message
   });
 });
 
-// === Rutas para cuentas de WhatsApp ===
-
-// Obtener todas las cuentas de WhatsApp
-app.get('/api/whatsapp-accounts', async (req, res) => {
-  try {
-    const response = await axios.get(`${DATABASE_SERVER_URL}/whatsapp-accounts`);
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error al obtener cuentas de WhatsApp:', error.message);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error al obtener cuentas de WhatsApp',
-      error: error.message
-    });
-  }
+// Ruta de salud para verificar que el servicio está funcionando
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'api-server',
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Obtener una cuenta específica
-app.get('/api/whatsapp-accounts/:id', async (req, res) => {
+// Ruta de estado general del sistema
+app.get('/system/status', async (req, res) => {
   try {
-    const { id } = req.params;
-    const response = await axios.get(`${DATABASE_SERVER_URL}/whatsapp-accounts/${id}`);
-    res.json(response.data);
-  } catch (error) {
-    console.error(`Error al obtener cuenta de WhatsApp ${req.params.id}:`, error.message);
-    res.status(error.response?.status || 500).json({
-      status: 'error',
-      message: `Error al obtener cuenta de WhatsApp ${req.params.id}`,
-      error: error.message
-    });
-  }
-});
-
-// Conectar una cuenta de WhatsApp
-app.post('/api/whatsapp/connect', async (req, res) => {
-  try {
-    const { accountId } = req.body;
+    const status = {
+      api: { status: 'ok', timestamp: new Date().toISOString() },
+      whatsapp: null,
+      processor: null,
+      database: null
+    };
     
-    if (!accountId) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Se requiere el ID de la cuenta de WhatsApp'
-      });
+    // Verificar estado de WhatsApp
+    try {
+      const whatsappRes = await axios.get(`${WHATSAPP_SERVER_URL}/health`, { timeout: 2000 });
+      status.whatsapp = whatsappRes.data;
+    } catch (error) {
+      status.whatsapp = { status: 'error', message: error.message };
     }
     
-    const response = await axios.post(`${WHATSAPP_SERVER_URL}/connect`, { accountId });
+    // Verificar estado del procesador
+    try {
+      const processorRes = await axios.get(`${PROCESSOR_SERVER_URL}/health`, { timeout: 2000 });
+      status.processor = processorRes.data;
+    } catch (error) {
+      status.processor = { status: 'error', message: error.message };
+    }
+    
+    // Verificar estado de la base de datos
+    try {
+      const databaseRes = await axios.get(`${DATABASE_SERVER_URL}/health`, { timeout: 2000 });
+      status.database = databaseRes.data;
+    } catch (error) {
+      status.database = { status: 'error', message: error.message };
+    }
+    
+    res.json(status);
+  } catch (error) {
+    console.error('Error al obtener estado del sistema:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error al obtener estado del sistema',
+      error: error.message
+    });
+  }
+});
+
+// === API proxy para WhatsApp ===
+
+// Obtener estado de conexión de WhatsApp
+app.get('/api/whatsapp/status', async (req, res) => {
+  try {
+    const response = await axios.get(`${WHATSAPP_SERVER_URL}/status`);
     res.json(response.data);
   } catch (error) {
-    console.error('Error al conectar WhatsApp:', error.message);
-    res.status(error.response?.status || 500).json({
+    console.error('Error al obtener estado de WhatsApp:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error al obtener estado de WhatsApp',
+      error: error.message
+    });
+  }
+});
+
+// Iniciar conexión de WhatsApp
+app.post('/api/whatsapp/connect', async (req, res) => {
+  try {
+    const response = await axios.post(`${WHATSAPP_SERVER_URL}/connect`);
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error al conectar WhatsApp:', error);
+    res.status(500).json({
       status: 'error',
       message: 'Error al conectar WhatsApp',
       error: error.message
@@ -150,79 +130,84 @@ app.post('/api/whatsapp/connect', async (req, res) => {
   }
 });
 
-// Obtener código QR para una cuenta
-app.get('/api/whatsapp/qr-code/:accountId', async (req, res) => {
+// Desconectar WhatsApp
+app.post('/api/whatsapp/disconnect', async (req, res) => {
   try {
-    const { accountId } = req.params;
-    const response = await axios.get(`${WHATSAPP_SERVER_URL}/qr-code/${accountId}`);
+    const response = await axios.post(`${WHATSAPP_SERVER_URL}/disconnect`);
     res.json(response.data);
   } catch (error) {
-    console.error(`Error al obtener código QR para cuenta ${req.params.accountId}:`, error.message);
-    res.status(error.response?.status || 500).json({
+    console.error('Error al desconectar WhatsApp:', error);
+    res.status(500).json({
       status: 'error',
-      message: `Error al obtener código QR para cuenta ${req.params.accountId}`,
+      message: 'Error al desconectar WhatsApp',
       error: error.message
     });
   }
 });
 
-// Desconectar una cuenta de WhatsApp
-app.post('/api/whatsapp/disconnect/:accountId', async (req, res) => {
+// Obtener código QR para conexión
+app.get('/api/whatsapp/qr', async (req, res) => {
   try {
-    const { accountId } = req.params;
-    const response = await axios.post(`${WHATSAPP_SERVER_URL}/disconnect/${accountId}`);
-    res.json(response.data);
+    const response = await axios.get(`${WHATSAPP_SERVER_URL}/qr`);
+    res.send(response.data);
   } catch (error) {
-    console.error(`Error al desconectar cuenta ${req.params.accountId}:`, error.message);
-    res.status(error.response?.status || 500).json({
+    console.error('Error al obtener código QR:', error);
+    res.status(500).json({
       status: 'error',
-      message: `Error al desconectar cuenta ${req.params.accountId}`,
+      message: 'Error al obtener código QR',
       error: error.message
     });
   }
 });
 
-// Obtener estado de conexión
-app.get('/api/whatsapp/connection-status/:accountId', async (req, res) => {
+// Obtener chats de WhatsApp
+app.get('/api/whatsapp/chats', async (req, res) => {
   try {
-    const { accountId } = req.params;
-    const response = await axios.get(`${WHATSAPP_SERVER_URL}/connection-status/${accountId}`);
+    const response = await axios.get(`${WHATSAPP_SERVER_URL}/chats`);
     res.json(response.data);
   } catch (error) {
-    console.error(`Error al obtener estado de conexión para cuenta ${req.params.accountId}:`, error.message);
-    res.status(error.response?.status || 500).json({
+    console.error('Error al obtener chats de WhatsApp:', error);
+    res.status(500).json({
       status: 'error',
-      message: `Error al obtener estado de conexión para cuenta ${req.params.accountId}`,
+      message: 'Error al obtener chats de WhatsApp',
       error: error.message
     });
   }
 });
 
-// === Rutas para mensajes ===
+// Obtener mensajes de un chat específico
+app.get('/api/whatsapp/chats/:chatId/messages', async (req, res) => {
+  try {
+    const chatId = req.params.chatId;
+    const response = await axios.get(`${WHATSAPP_SERVER_URL}/chats/${chatId}/messages`);
+    res.json(response.data);
+  } catch (error) {
+    console.error(`Error al obtener mensajes del chat ${req.params.chatId}:`, error);
+    res.status(500).json({
+      status: 'error',
+      message: `Error al obtener mensajes del chat ${req.params.chatId}`,
+      error: error.message
+    });
+  }
+});
 
 // Enviar mensaje
-app.post('/api/whatsapp/send-message', async (req, res) => {
+app.post('/api/whatsapp/send', async (req, res) => {
   try {
-    const { accountId, chatId, message, mediaUrl } = req.body;
+    const { chatId, message } = req.body;
     
-    if (!accountId || !chatId || (!message && !mediaUrl)) {
+    if (!chatId || !message) {
       return res.status(400).json({
         status: 'error',
-        message: 'Se requieren accountId, chatId y message o mediaUrl'
+        message: 'Se requieren los campos chatId y message'
       });
     }
     
-    const response = await axios.post(`${WHATSAPP_SERVER_URL}/send-message`, {
-      accountId,
-      chatId,
-      message,
-      mediaUrl
-    });
-    
+    const response = await axios.post(`${WHATSAPP_SERVER_URL}/send`, { chatId, message });
     res.json(response.data);
   } catch (error) {
-    console.error('Error al enviar mensaje:', error.message);
-    res.status(error.response?.status || 500).json({
+    console.error('Error al enviar mensaje:', error);
+    res.status(500).json({
       status: 'error',
       message: 'Error al enviar mensaje',
       error: error.message
@@ -230,57 +215,32 @@ app.post('/api/whatsapp/send-message', async (req, res) => {
   }
 });
 
-// Obtener mensajes por chat
-app.get('/api/messages/:chatId', async (req, res) => {
+// Marcar chat como leído
+app.post('/api/whatsapp/read/:chatId', async (req, res) => {
   try {
-    const { chatId } = req.params;
-    const accountId = req.query.accountId || 1;
-    const limit = req.query.limit || 50;
-    
-    const response = await axios.get(`${DATABASE_SERVER_URL}/messages/${chatId}`, {
-      params: {
-        accountId,
-        limit
-      }
-    });
-    
+    const chatId = req.params.chatId;
+    const response = await axios.post(`${WHATSAPP_SERVER_URL}/read/${chatId}`);
     res.json(response.data);
   } catch (error) {
-    console.error(`Error al obtener mensajes para chat ${req.params.chatId}:`, error.message);
-    res.status(error.response?.status || 500).json({
+    console.error(`Error al marcar chat ${req.params.chatId} como leído:`, error);
+    res.status(500).json({
       status: 'error',
-      message: `Error al obtener mensajes para chat ${req.params.chatId}`,
+      message: `Error al marcar chat ${req.params.chatId} como leído`,
       error: error.message
     });
   }
 });
 
-// Obtener chats
-app.get('/api/whatsapp/chats/:accountId', async (req, res) => {
-  try {
-    const { accountId } = req.params;
-    const response = await axios.get(`${WHATSAPP_SERVER_URL}/chats/${accountId}`);
-    res.json(response.data);
-  } catch (error) {
-    console.error(`Error al obtener chats para cuenta ${req.params.accountId}:`, error.message);
-    res.status(error.response?.status || 500).json({
-      status: 'error',
-      message: `Error al obtener chats para cuenta ${req.params.accountId}`,
-      error: error.message
-    });
-  }
-});
+// === API proxy para respuestas automáticas ===
 
-// === Rutas para configuración de respuestas automáticas ===
-
-// Obtener configuración actual
+// Obtener configuración de respuestas automáticas
 app.get('/api/auto-response/config', async (req, res) => {
   try {
     const response = await axios.get(`${DATABASE_SERVER_URL}/auto-response/config`);
     res.json(response.data);
   } catch (error) {
-    console.error('Error al obtener configuración de respuestas automáticas:', error.message);
-    res.status(error.response?.status || 500).json({
+    console.error('Error al obtener configuración de respuestas automáticas:', error);
+    res.status(500).json({
       status: 'error',
       message: 'Error al obtener configuración de respuestas automáticas',
       error: error.message
@@ -288,18 +248,14 @@ app.get('/api/auto-response/config', async (req, res) => {
   }
 });
 
-// Actualizar configuración
+// Actualizar configuración de respuestas automáticas
 app.post('/api/auto-response/config', async (req, res) => {
   try {
-    const config = req.body;
-    
-    // Actualizar en el servicio de procesamiento
-    const processorResponse = await axios.post(`${PROCESSOR_SERVER_URL}/auto-response/config`, config);
-    
-    res.json(processorResponse.data);
+    const response = await axios.post(`${DATABASE_SERVER_URL}/auto-response/config`, req.body);
+    res.json(response.data);
   } catch (error) {
-    console.error('Error al actualizar configuración de respuestas automáticas:', error.message);
-    res.status(error.response?.status || 500).json({
+    console.error('Error al actualizar configuración de respuestas automáticas:', error);
+    res.status(500).json({
       status: 'error',
       message: 'Error al actualizar configuración de respuestas automáticas',
       error: error.message
@@ -307,92 +263,71 @@ app.post('/api/auto-response/config', async (req, res) => {
   }
 });
 
-// === Rutas para análisis de mensajes con IA ===
-
-// Generar respuesta con IA
-app.post('/api/ai/generate-response', async (req, res) => {
+// Generar respuesta automática para un mensaje
+app.post('/api/auto-response/generate', async (req, res) => {
   try {
     const { message, contactName } = req.body;
     
     if (!message) {
       return res.status(400).json({
         status: 'error',
-        message: 'Se requiere el contenido del mensaje'
+        message: 'Se requiere el campo message'
       });
     }
     
-    const response = await axios.post(`${PROCESSOR_SERVER_URL}/generate-response`, {
-      message,
-      contactName
+    const response = await axios.post(`${PROCESSOR_SERVER_URL}/generate-response`, { 
+      message, 
+      contactName: contactName || 'Cliente'
     });
     
     res.json(response.data);
   } catch (error) {
-    console.error('Error al generar respuesta con IA:', error.message);
-    res.status(error.response?.status || 500).json({
+    console.error('Error al generar respuesta automática:', error);
+    res.status(500).json({
       status: 'error',
-      message: 'Error al generar respuesta con IA',
+      message: 'Error al generar respuesta automática',
       error: error.message
     });
   }
 });
 
-// Analizar mensaje con IA
-app.post('/api/ai/analyze-message', async (req, res) => {
-  try {
-    const { message } = req.body;
-    
-    if (!message) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Se requiere el contenido del mensaje'
-      });
-    }
-    
-    const response = await axios.post(`${PROCESSOR_SERVER_URL}/analyze-message`, {
-      message
-    });
-    
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error al analizar mensaje con IA:', error.message);
-    res.status(error.response?.status || 500).json({
-      status: 'error',
-      message: 'Error al analizar mensaje con IA',
-      error: error.message
-    });
-  }
+// Ruta para servir la aplicación frontend
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'API del Sistema de Integración WhatsApp lista',
+    docs: '/docs'
+  });
 });
 
-// === Rutas para zona horaria ===
-
-// Obtener información de zona horaria
-app.get('/api/timezone', (req, res) => {
-  const timeZoneInfo = {
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    offset: new Date().getTimezoneOffset() / -60, // Convertir a horas (negativo porque getTimezoneOffset() devuelve inverso)
-    date: new Date().toISOString(),
-    localTime: new Date().toLocaleString(),
-    timestamp: Date.now()
-  };
-  
-  res.json(timeZoneInfo);
-});
-
-// === Ruta para servir la aplicación frontend ===
-
-// Esto debe ir al final para no interferir con las rutas de la API
-app.get('*', (req, res) => {
-  // Para vistas de SPA (Single Page Application)
-  res.sendFile(path.join(__dirname, '..', '..', 'client', 'dist', 'index.html'));
+// Documentación de la API
+app.get('/docs', (req, res) => {
+  res.json({
+    api_version: '1.0',
+    endpoints: [
+      { path: '/api/whatsapp/status', method: 'GET', description: 'Obtiene el estado de conexión de WhatsApp' },
+      { path: '/api/whatsapp/connect', method: 'POST', description: 'Inicia la conexión de WhatsApp' },
+      { path: '/api/whatsapp/disconnect', method: 'POST', description: 'Cierra la conexión de WhatsApp' },
+      { path: '/api/whatsapp/qr', method: 'GET', description: 'Obtiene el código QR para conexión (formato de texto)' },
+      { path: '/api/whatsapp/chats', method: 'GET', description: 'Obtiene la lista de chats disponibles' },
+      { path: '/api/whatsapp/chats/:chatId/messages', method: 'GET', description: 'Obtiene los mensajes de un chat específico' },
+      { path: '/api/whatsapp/send', method: 'POST', description: 'Envía un mensaje de WhatsApp (body: {chatId, message})' },
+      { path: '/api/whatsapp/read/:chatId', method: 'POST', description: 'Marca un chat como leído' },
+      { path: '/api/auto-response/config', method: 'GET', description: 'Obtiene la configuración de respuestas automáticas' },
+      { path: '/api/auto-response/config', method: 'POST', description: 'Actualiza la configuración de respuestas automáticas' },
+      { path: '/api/auto-response/generate', method: 'POST', description: 'Genera una respuesta automática (body: {message, contactName})' },
+      { path: '/system/status', method: 'GET', description: 'Obtiene el estado de todos los microservicios' }
+    ]
+  });
 });
 
 // Iniciar el servidor
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor API iniciado en http://0.0.0.0:${PORT}`);
+  console.log(`📚 Documentación disponible en http://0.0.0.0:${PORT}/docs`);
 });
 
-// Manejar cierre de proceso
+// Manejar señales de cierre
 process.on('SIGINT', () => {
   console.log('Cerrando servidor API...');
   server.close(() => {

@@ -15,7 +15,7 @@ const PORT = process.env.DATABASE_SERVER_PORT || 5003;
 // Verificar que DATABASE_URL está configurado
 if (!process.env.DATABASE_URL) {
   console.error('ERROR: La variable de entorno DATABASE_URL no está configurada.');
-  console.error('Sin embargo, continuaremos para pruebas sin base de datos real.');
+  console.error('Continuando en modo simulado (sin base de datos real).');
 }
 
 // Conexión a la base de datos PostgreSQL (o memoria si no está disponible)
@@ -460,7 +460,8 @@ app.post('/auto-response/config', async (req, res) => {
       businessHoursStart,
       businessHoursEnd,
       workingDays,
-      settings
+      settings,
+      geminiApiKey
     } = req.body;
     
     if (dbConnected) {
@@ -502,6 +503,11 @@ app.post('/auto-response/config', async (req, res) => {
       if (settings !== undefined) {
         updateFields.push(`settings = $${paramIndex++}`);
         params.push(settings);
+      }
+      
+      if (geminiApiKey !== undefined) {
+        updateFields.push(`"geminiApiKey" = $${paramIndex++}`);
+        params.push(geminiApiKey);
       }
       
       // Siempre actualizar la fecha de actualización
@@ -552,6 +558,7 @@ app.post('/auto-response/config', async (req, res) => {
       if (businessHoursEnd !== undefined) updatedConfig.businessHoursEnd = businessHoursEnd;
       if (workingDays !== undefined) updatedConfig.workingDays = workingDays;
       if (settings !== undefined) updatedConfig.settings = settings;
+      if (geminiApiKey !== undefined) updatedConfig.geminiApiKey = geminiApiKey;
       
       updatedConfig.updatedAt = new Date().toISOString();
       
