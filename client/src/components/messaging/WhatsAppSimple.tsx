@@ -1441,34 +1441,48 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   <div className="space-y-2">
                     <div className="text-sm font-medium mb-1">Selecciona las cuentas que deseas ver:</div>
                     <div className="flex flex-wrap gap-2">
-                      {whatsappAccounts.map(account => (
-                        <div 
-                          key={account.id}
-                          className={`p-1 px-2 rounded-md border cursor-pointer text-sm flex items-center gap-1 
-                            ${selectedAccounts.includes(account.id) 
-                              ? `bg-${accountColors[account.id as keyof typeof accountColors]}-100 border-${accountColors[account.id as keyof typeof accountColors]}-300 text-${accountColors[account.id as keyof typeof accountColors]}-700` 
-                              : 'bg-gray-50 border-gray-200 text-gray-700'}`}
-                          onClick={() => {
-                            // Toggle de selección
-                            if (selectedAccounts.includes(account.id)) {
-                              // Si ya está seleccionada, la quitamos (solo si no es la última)
-                              if (selectedAccounts.length > 1) {
-                                setSelectedAccounts(selectedAccounts.filter(id => id !== account.id));
+                      {/* Filtrar para mostrar solo cuentas activas en el selector */}
+                      {whatsappAccounts
+                        .filter(account => account.currentStatus?.authenticated) // Solo mostrar cuentas activas (autenticadas)
+                        .map(account => (
+                          <div 
+                            key={account.id}
+                            className={`p-1 px-2 rounded-md border cursor-pointer text-sm flex items-center gap-1 
+                              ${selectedAccounts.includes(account.id) 
+                                ? `bg-${accountColors[account.id as keyof typeof accountColors]}-100 border-${accountColors[account.id as keyof typeof accountColors]}-300 text-${accountColors[account.id as keyof typeof accountColors]}-700` 
+                                : 'bg-gray-50 border-gray-200 text-gray-700'}`}
+                            onClick={() => {
+                              // Toggle de selección
+                              if (selectedAccounts.includes(account.id)) {
+                                // Si ya está seleccionada, la quitamos (solo si no es la última)
+                                if (selectedAccounts.length > 1) {
+                                  setSelectedAccounts(selectedAccounts.filter(id => id !== account.id));
+                                }
+                              } else {
+                                // Si no está seleccionada, la agregamos
+                                const newSelectedAccounts = [...selectedAccounts, account.id];
+                                setSelectedAccounts(newSelectedAccounts);
+                                // Cargar chats de esta cuenta
+                                // La carga de chats se manejará automáticamente por el efecto
                               }
-                            } else {
-                              // Si no está seleccionada, la agregamos
-                              const newSelectedAccounts = [...selectedAccounts, account.id];
-                              setSelectedAccounts(newSelectedAccounts);
-                              // Cargar chats de esta cuenta
-                              // La carga de chats se manejará automáticamente por el efecto
-                            }
-                          }}
-                        >
-                          <div className={`w-4 h-4 rounded-full bg-${accountColors[account.id as keyof typeof accountColors]}-500 flex-shrink-0`}></div>
-                          <span>{account.id}. {account.name}</span>
-                          {account.currentStatus?.authenticated && <span className="text-green-600 ml-1">✓</span>}
+                            }}
+                          >
+                            <div className={`w-3 h-3 rounded-full bg-${accountColors[account.id as keyof typeof accountColors]}-500 flex-shrink-0`}></div>
+                            <span>{account.id}. {account.name}</span>
+                            <span className="text-green-600 ml-1">✓</span>
+                          </div>
+                        ))}
+                      
+                      {/* Mensaje si no hay cuentas activas */}
+                      {whatsappAccounts.filter(account => account.currentStatus?.authenticated).length === 0 && (
+                        <div className="w-full p-2 bg-amber-50 border border-amber-200 rounded-md text-amber-700 text-sm">
+                          <div className="font-medium mb-1">No hay cuentas activas disponibles</div>
+                          <div className="text-xs text-amber-600">
+                            Para usar el modo multi-cuenta, debes tener al menos una cuenta conectada.
+                            <div className="mt-1">Ve a la página de "Cuentas de WhatsApp" para conectar cuentas.</div>
+                          </div>
                         </div>
-                      ))}
+                      )}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       {selectedAccounts.length === 0 
