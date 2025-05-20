@@ -28,7 +28,7 @@ import {
   type InsertAgent
 } from "@shared/schema";
 import { db } from './db';
-import { eq, desc, or, sql } from 'drizzle-orm';
+import { eq, desc, or } from 'drizzle-orm';
 
 // Interface for storage methods
 export interface IStorage {
@@ -137,17 +137,20 @@ export class DatabaseStorage implements IStorage {
   async initializeData(): Promise<void> {
     try {
       // Verificar si ya existen usuarios
-      // Usar consulta SQL directa para evitar problemas con nombres de columnas
-      const existingUsers = await db.execute(sql`SELECT * FROM users LIMIT 1`);
+      const existingUsers = await this.getAllUsers();
       
-      if (existingUsers.rows.length === 0) {
+      if (existingUsers.length === 0) {
         console.log("Base de datos lista para recibir datos reales. No se generarán datos de ejemplo.");
         
-        // Crear usuario administrador usando consulta SQL directa
-        await db.execute(sql`
-          INSERT INTO users (username, password, "fullName", email, role, status)
-          VALUES ('admin', 'admin123', 'Administrador', 'admin@geminicrm.com', 'admin', 'active')
-        `);
+        // Crear usuario administrador
+        await db.insert(users).values({
+          username: "admin",
+          password: "admin123",
+          fullName: "Administrador", // Este campo existe como 'fullName' en el esquema
+          email: "admin@geminicrm.com",
+          role: "admin",
+          status: "active"
+        });
         
         // Crear superadministrador
         await db.insert(users).values({
@@ -266,65 +269,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActivitiesByLead(leadId: number): Promise<Activity[]> {
-    try {
-      // Usar consulta SQL directa para evitar problemas con nombres de columnas
-      const result = await db.execute(sql`
-        SELECT * FROM activities 
-        WHERE "leadId" = ${leadId}
-        ORDER BY "createdAt" DESC
-      `);
-      
-      if (!result.rows) return [];
-      
-      return result.rows.map(row => ({
-        id: row.id,
-        leadId: row.leadid || row.leadId,
-        userId: row.userid || row.userId,
-        type: row.type || 'meeting',
-        title: row.title || '',
-        description: row.description || '',
-        startTime: row.starttime || row.scheduled,
-        endTime: row.endtime || null,
-        completed: row.completed || false,
-        createdAt: row.createdat || row.createdAt,
-        createdBy: row.createdby || row.userId,
-        aiGenerated: row.aigenerated || row.aiGenerated || false
-      }));
-    } catch (error) {
-      console.error(`Error al obtener actividades para lead ${leadId}:`, error);
-      return [];
-    }
+    return db.select().from(activities).where(eq(activities.leadId, leadId));
   }
 
   async getActivitiesByUser(userId: number): Promise<Activity[]> {
-    try {
-      // Usar consulta SQL directa para evitar problemas con nombres de columnas
-      const result = await db.execute(sql`
-        SELECT * FROM activities 
-        WHERE "userId" = ${userId}
-        ORDER BY "createdAt" DESC
-      `);
-      
-      if (!result.rows) return [];
-      
-      return result.rows.map(row => ({
-        id: row.id,
-        leadId: row.leadid || row.leadId,
-        userId: row.userid || row.userId,
-        type: row.type || 'meeting',
-        title: row.title || '',
-        description: row.description || '',
-        startTime: row.starttime || row.scheduled,
-        endTime: row.endtime || null,
-        completed: row.completed || false,
-        createdAt: row.createdat || row.createdAt,
-        createdBy: row.createdby || row.userId,
-        aiGenerated: row.aigenerated || row.aiGenerated || false
-      }));
-    } catch (error) {
-      console.error(`Error al obtener actividades para usuario ${userId}:`, error);
-      return [];
-    }
+    return db.select().from(activities).where(eq(activities.userId, userId));
   }
 
   async getUpcomingActivities(userId: number, limit: number = 10): Promise<Activity[]> {
@@ -425,42 +374,22 @@ export class DatabaseStorage implements IStorage {
 
   async getDashboardStats(): Promise<DashboardStats | undefined> {
     try {
-      // Intentar obtener con SQL directo para evitar problemas de mapeo de columnas
-      try {
-        const result = await db.execute(sql`SELECT * FROM dashboard_stats LIMIT 1`);
-        if (result.rows && result.rows.length > 0) {
-          return result.rows[0] as DashboardStats;
-        }
-      } catch (sqlError) {
-        console.error("Error en SQL directo para dashboard stats:", sqlError);
-      }
-      
-      // Si no hay resultados o hay error, devolver datos predeterminados
-      return {
-        id: 1,
-        totalLeads: 0,
-        newLeadsThisMonth: 0,
-        activeDeals: 0,
-        leadsInNegotiation: 0,
-        conversionRate: 0,
-        averageDealSize: 0,
-        revenue: 0,
-        topPerformers: "[]",
-        updatedAt: new Date()
-      };
+      const [stats] = await db.select().from(dashboardStats);
+      return stats;
     } catch (error) {
-      console.error("Error general al obtener estadísticas del dashboard:", error);
+      console.error("Error al obtener estadísticas del dashboard:", error);
       
-      // En caso de error, devolver datos predeterminados
+      // Si hay un error en la consulta, intentamos crear una estructura básica
       return {
         id: 1,
         totalLeads: 0,
         newLeadsThisMonth: 0,
         activeDeals: 0,
-        leadsInNegotiation: 0,
-        conversionRate: 0,
-        averageDealSize: 0,
-        revenue: 0,
+        closedDealsThisMonth: 0,
+        totalRevenue: 0,
+        revenueThisMonth: 0,
+        leadsDistribution: "{}",
+        conversionRates: "{}",
         topPerformers: "[]",
         updatedAt: new Date()
       };

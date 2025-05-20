@@ -106,46 +106,11 @@ export default function Tickets() {
     queryKey: ["/api/agents"],
     queryFn: async () => {
       try {
-        console.log("Iniciando solicitud a /api/agents...");
         const response = await fetch("/api/agents");
-        console.log("Respuesta de /api/agents:", response.status, response.statusText);
-        
         if (!response.ok) {
-          console.warn("Respuesta no válida de /api/agents:", response.status, response.statusText);
-          // Usar XMLHttpRequest como alternativa cuando fetch falla
-          return new Promise((resolve) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open("GET", "/api/agents", true);
-            xhr.setRequestHeader("Accept", "application/json");
-            
-            xhr.onload = function() {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                  const data = JSON.parse(xhr.responseText);
-                  console.log("Datos de agentes recibidos vía XHR:", data.length || 0, "agentes");
-                  resolve(data);
-                } catch (e) {
-                  console.error("Error al parsear respuesta XHR:", e);
-                  resolve([]);
-                }
-              } else {
-                console.warn("Error en solicitud XHR de agentes:", xhr.status);
-                resolve([]);
-              }
-            };
-            
-            xhr.onerror = function() {
-              console.error("Error de red en solicitud XHR de agentes");
-              resolve([]);
-            };
-            
-            xhr.send();
-          });
+          return [];
         }
-        
-        const data = await response.json();
-        console.log("Datos de agentes recibidos:", data.length || 0, "agentes");
-        return data;
+        return response.json();
       } catch (error) {
         console.error("Error al cargar agentes:", error);
         return [];
@@ -187,12 +152,7 @@ export default function Tickets() {
   const updateTicketMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       const response = await apiRequest("PATCH", `/api/tickets/${id}`, data);
-      try {
-        return await response.json();
-      } catch (error) {
-        console.error("Error al procesar la respuesta JSON:", error);
-        return { id, ...data };
-      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
@@ -215,59 +175,13 @@ export default function Tickets() {
   // Mutación para actualizar el estado de un ticket
   const updateTicketStatusMutation = useMutation({
     mutationFn: async ({ id, status }) => {
-      try {
-        // Usar XMLHttpRequest directamente para evitar problemas de intercepción de Vite
-        const xhr = new XMLHttpRequest();
-        const url = `/api/tickets/${id}/status?_t=${Date.now()}`;
-        
-        console.log(`Actualizando estado del ticket ${id} a: ${status} usando XHR directo`);
-        
-        return new Promise((resolve, reject) => {
-          xhr.open("PATCH", url, true);
-          xhr.setRequestHeader("Content-Type", "application/json");
-          xhr.setRequestHeader("Accept", "application/json");
-          
-          xhr.onload = function() {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const data = JSON.parse(xhr.responseText);
-                resolve(data);
-              } catch (e) {
-                console.log("Respuesta recibida:", xhr.responseText);
-                console.error("Error al parsear JSON:", e);
-                resolve({ id, status });
-              }
-            } else {
-              console.error(`Error en la actualización de estado: ${xhr.status}`);
-              resolve({ id, status, error: xhr.statusText });
-            }
-          };
-          
-          xhr.onerror = function() {
-            console.error("Error de red en XHR");
-            resolve({ id, status, error: "Error de red" });
-          };
-          
-          xhr.send(JSON.stringify({ status }));
-        });
-      } catch (error) {
-        console.error("Error general en la actualización de estado:", error);
-        return { id, status };
-      }
+      const response = await apiRequest("PATCH", `/api/tickets/${id}/status`, {
+        status,
+      });
+      return response.json();
     },
-    onSuccess: (data) => {
-      // Actualizar manualmente la caché con el ticket actualizado
-      const currentData = queryClient.getQueryData<any[]>(["/api/tickets"]);
-      if (currentData) {
-        const updatedData = currentData.map(ticket => 
-          ticket.id === data.id ? { ...ticket, ...data } : ticket
-        );
-        queryClient.setQueryData(["/api/tickets"], updatedData);
-      }
-      
-      // Invalidar la caché para asegurar que se obtengan datos frescos
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
-      
       toast({
         title: "Estado actualizado",
         description: "El estado del ticket ha sido actualizado",
@@ -285,59 +199,13 @@ export default function Tickets() {
   // Mutación para asignar un ticket a un agente
   const assignTicketMutation = useMutation({
     mutationFn: async ({ id, agentId }) => {
-      try {
-        // Usar XMLHttpRequest directamente para evitar problemas de intercepción de Vite
-        const xhr = new XMLHttpRequest();
-        const url = `/api/tickets/${id}/assign?_t=${Date.now()}`;
-        
-        console.log(`Asignando ticket ${id} al agente ${agentId} usando XHR directo`);
-        
-        return new Promise((resolve, reject) => {
-          xhr.open("PATCH", url, true);
-          xhr.setRequestHeader("Content-Type", "application/json");
-          xhr.setRequestHeader("Accept", "application/json");
-          
-          xhr.onload = function() {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const data = JSON.parse(xhr.responseText);
-                resolve(data);
-              } catch (e) {
-                console.log("Respuesta recibida:", xhr.responseText);
-                console.error("Error al parsear JSON:", e);
-                resolve({ id, assignedTo: agentId });
-              }
-            } else {
-              console.error(`Error en la asignación: ${xhr.status}`);
-              resolve({ id, assignedTo: agentId, error: xhr.statusText });
-            }
-          };
-          
-          xhr.onerror = function() {
-            console.error("Error de red en XHR");
-            resolve({ id, assignedTo: agentId, error: "Error de red" });
-          };
-          
-          xhr.send(JSON.stringify({ agentId }));
-        });
-      } catch (error) {
-        console.error("Error general en la asignación:", error);
-        return { id, assignedTo: agentId };
-      }
+      const response = await apiRequest("PATCH", `/api/tickets/${id}/assign`, {
+        agentId,
+      });
+      return response.json();
     },
-    onSuccess: (data) => {
-      // Actualizar manualmente la caché con el ticket actualizado
-      const currentData = queryClient.getQueryData<any[]>(["/api/tickets"]);
-      if (currentData) {
-        const updatedData = currentData.map(ticket => 
-          ticket.id === data.id ? { ...ticket, ...data } : ticket
-        );
-        queryClient.setQueryData(["/api/tickets"], updatedData);
-      }
-      
-      // Invalidar la caché para asegurar que se obtengan datos frescos
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
-      
       toast({
         title: "Ticket asignado",
         description: "El ticket ha sido asignado correctamente",
@@ -463,7 +331,6 @@ export default function Tickets() {
                   <TableHead>Estado</TableHead>
                   <TableHead>Prioridad</TableHead>
                   <TableHead>Categoría</TableHead>
-                  <TableHead>Asignado a</TableHead>
                   <TableHead>Fecha Creación</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -495,13 +362,6 @@ export default function Tickets() {
                       </TableCell>
                       <TableCell>
                         {categoryMap[ticket.category] || ticket.category}
-                      </TableCell>
-                      <TableCell>
-                        {ticket.assignedToName ? (
-                          <span className="font-medium">{ticket.assignedToName}</span>
-                        ) : (
-                          <span className="text-gray-500 italic">Sin asignar</span>
-                        )}
                       </TableCell>
                       <TableCell>{formatDate(ticket.createdAt)}</TableCell>
                       <TableCell className="space-x-2">

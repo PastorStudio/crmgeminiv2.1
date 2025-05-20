@@ -1,115 +1,156 @@
-/**
- * Rutas para la gestión de agentes
- */
-import { Router, Request, Response } from 'express';
-import { db } from '../db';
-import { sql } from 'drizzle-orm';
+import express, { Request, Response } from 'express';
+import { storage } from '../storage';
+import { insertAgentSchema } from '@shared/schema';
+import { z } from 'zod';
 
-export const agentsRouter = Router();
+const router = express.Router();
+
+// Schema para actualización parcial de agentes
+const updateAgentSchema = insertAgentSchema.partial();
 
 // Obtener todos los agentes
-agentsRouter.get('/', async (_req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    // Obtener todos los agentes con logging mejorado
-    console.log("Obteniendo lista de agentes...");
-    const agents = await db.execute(sql`
-      SELECT * FROM agents ORDER BY name ASC
-    `);
-    
-    console.log(`Número de agentes encontrados: ${agents.rows?.length || 0}`);
-    
-    if (!agents.rows || agents.rows.length === 0) {
-      console.log("No se encontraron agentes en la base de datos");
-      
-      // Verificar si existen usuarios que pueden ser usados como agentes
-      console.log("Buscando usuarios para usar como agentes...");
-      const users = await db.execute(sql`
-        SELECT * FROM users WHERE role != 'viewer' ORDER BY id ASC
-      `);
-      
-      console.log(`Número de usuarios encontrados: ${users.rows?.length || 0}`);
-      
-      if (users.rows && users.rows.length > 0) {
-        // Transformar usuarios a agentes
-        const formattedUsers = users.rows.map(user => ({
-          id: user.id,
-          name: user.fullname || user.username,
-          email: user.email || `${user.username}@geminicrm.com`,
-          status: 'active',
-          department: user.department || 'General',
-          role: user.role || 'agent',
-          avatar: null,
-          phone: null,
-          workload: 0,
-          availability: 'available',
-          createdAt: user.created_at || new Date(),
-          updatedAt: user.updated_at || new Date()
-        }));
-        
-        console.log("Usando usuarios como agentes temporalmente");
-        return res.json(formattedUsers);
-      }
-    }
-    
-    // Transformar los datos para que sean compatibles con el cliente
-    console.log("Formateando datos de agentes para el cliente");
-    const formattedAgents = agents.rows.map(agent => ({
-      id: agent.id,
-      name: agent.name,
-      email: agent.email,
-      status: agent.status || 'active',
-      department: agent.department,
-      role: agent.role || 'agent',
-      avatar: agent.avatar,
-      phone: agent.phone,
-      workload: agent.workload || 0,
-      availability: agent.availability || 'available',
-      createdAt: agent.created_at,
-      updatedAt: agent.updated_at
-    }));
-
-    res.json(formattedAgents);
+    const agents = await storage.getAllAgents();
+    res.json(agents);
   } catch (error) {
     console.error('Error al obtener agentes:', error);
-    res.status(500).json({ success: false, message: 'Error al obtener agentes' });
+    res.status(500).json({ error: 'Error al obtener agentes' });
   }
 });
 
-// Obtener un agente específico
-agentsRouter.get('/:id', async (req: Request, res: Response) => {
+// Obtener un agente por ID
+router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    
-    // Obtener el agente
-    const result = await db.execute(sql`
-      SELECT * FROM agents WHERE id = ${parseInt(id)}
-    `);
-    
-    if (!result.rows || result.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Agente no encontrado' });
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID de agente inválido' });
     }
-    
-    const agent = result.rows[0];
-    
-    // Formatear la respuesta
-    const formattedAgent = {
-      id: agent.id,
-      name: agent.name,
-      email: agent.email,
-      status: agent.status || 'active',
-      department: agent.department,
-      role: agent.role || 'agent',
-      avatar: agent.avatar,
-      phone: agent.phone,
-      workload: agent.workload || 0,
-      availability: agent.availability || 'available',
-      createdAt: agent.created_at,
-      updatedAt: agent.updated_at
-    };
-    
-    res.json(formattedAgent);
+
+    const agent = await storage.getAgent(id);
+    if (!agent) {
+      return res.status(404).json({ error: 'Agente no encontrado' });
+    }
+
+    res.json(agent);
   } catch (error) {
-    console.error('Error al obtener agente:', error);
-    res.status(500).json({ success: false, message: 'Error al obtener el agente' });
+    console.error(`Error al obtener agente ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Error al obtener agente' });
   }
 });
+
+// Obtener un agente por ID de usuario
+router.get('/by-user/:userId', async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: 'ID de usuario inválido' });
+    }
+
+    const agent = await storage.getAgentByUserId(userId);
+    if (!agent) {
+      return res.status(404).json({ error: 'Agente no encontrado para este usuario' });
+    }
+
+    res.json(agent);
+  } catch (error) {
+    console.error(`Error al obtener agente para usuario ${req.params.userId}:`, error);
+    res.status(500).json({ error: 'Error al obtener agente por usuario' });
+  }
+});
+
+// Crear un nuevo agente
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    // Validar los datos de entrada con el schema
+    const validationResult = insertAgentSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        error: 'Datos de agente inválidos', 
+        details: validationResult.error.format() 
+      });
+    }
+
+    const newAgent = await storage.createAgent(validationResult.data);
+    res.status(201).json(newAgent);
+  } catch (error) {
+    console.error('Error al crear agente:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    res.status(500).json({ error: 'Error al crear agente', message: errorMessage });
+  }
+});
+
+// Actualizar un agente existente
+router.patch('/:id', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID de agente inválido' });
+    }
+
+    // Validar los datos de actualización con el schema parcial
+    const validationResult = updateAgentSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        error: 'Datos de actualización inválidos', 
+        details: validationResult.error.format() 
+      });
+    }
+
+    const updatedAgent = await storage.updateAgent(id, validationResult.data);
+    if (!updatedAgent) {
+      return res.status(404).json({ error: 'Agente no encontrado' });
+    }
+
+    res.json(updatedAgent);
+  } catch (error) {
+    console.error(`Error al actualizar agente ${req.params.id}:`, error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    res.status(500).json({ error: 'Error al actualizar agente', message: errorMessage });
+  }
+});
+
+// Actualizar métricas de un agente
+router.patch('/:id/metrics', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID de agente inválido' });
+    }
+
+    // Validación básica de métricas
+    if (!req.body || typeof req.body !== 'object') {
+      return res.status(400).json({ error: 'Métricas inválidas' });
+    }
+
+    const updatedAgent = await storage.updateAgentMetrics(id, req.body);
+    if (!updatedAgent) {
+      return res.status(404).json({ error: 'Agente no encontrado' });
+    }
+
+    res.json(updatedAgent);
+  } catch (error) {
+    console.error(`Error al actualizar métricas del agente ${req.params.id}:`, error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    res.status(500).json({ error: 'Error al actualizar métricas', message: errorMessage });
+  }
+});
+
+// Eliminar un agente
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID de agente inválido' });
+    }
+
+    await storage.deleteAgent(id);
+    res.status(204).end(); // 204 No Content para operaciones de eliminación exitosas
+  } catch (error) {
+    console.error(`Error al eliminar agente ${req.params.id}:`, error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    res.status(500).json({ error: 'Error al eliminar agente', message: errorMessage });
+  }
+});
+
+export default router;

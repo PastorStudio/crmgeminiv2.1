@@ -52,10 +52,6 @@ app.use((req, res, next) => {
   // Registramos rutas directas para evitar la interceptación de Vite
   registerDirectAPIRoutes(app);
   
-  // Importamos el router de autenticación corregido
-  const { authRouter } = await import('./routes/authRoutesFix');
-  app.use('/api/auth', authRouter);
-  
   // Registramos las rutas normales de la API
   const server = await registerRoutes(app);
   
