@@ -1295,11 +1295,13 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                         msg.fromMe === whatsappMessages[index - 1].fromMe;
                       
                       return (
-                        <React.Fragment key={msg.id}>
+                        <React.Fragment key={msg.id || `temp-${Date.now()}-${index}`}>
                           {showDateSeparator && (
                             <div className="flex justify-center my-4">
                               <div className="bg-gray-100 text-gray-500 text-xs rounded-full px-3 py-1 font-medium">
-                                {format(new Date(msg.timestamp * 1000), 'EEEE, d MMMM', { locale: es })}
+                                {format(new Date(typeof msg.timestamp === 'number' ? 
+                                  (msg.timestamp > 9999999999 ? msg.timestamp : msg.timestamp * 1000) : 
+                                  Date.now()), 'EEEE, d MMMM', { locale: es })}
                               </div>
                             </div>
                           )}
