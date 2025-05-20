@@ -781,32 +781,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                       <DialogHeader>
                         <DialogTitle>Configuración de Gemini AI</DialogTitle>
                       </DialogHeader>
-                      <GeminiConfig />
+                      <GeminiConfig chatId={selectedChatId} isOpen={true} onClose={() => {}} />
                     </DialogContent>
                   </Dialog>
                   
-                  {/* Botón para asignar agente */}
-                  {selectedChatId && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full justify-start mb-2"
-                      onClick={() => setAssignmentDialogOpen(true)}
-                    >
-                      <UserCheck className="mr-2 h-4 w-4" />
-                      Asignar a agente
-                    </Button>
-                  )}
-                  
-                  {/* Diálogo de asignación */}
-                  {selectedChatId && (
-                    <ChatAssignmentDialog
-                      open={assignmentDialogOpen}
-                      onOpenChange={setAssignmentDialogOpen}
-                      chatId={selectedChatId}
-                      accountId={currentAccountId}
-                    />
-                  )}
                   
                   {/* Botón de actualizar */}
                   <Button 
