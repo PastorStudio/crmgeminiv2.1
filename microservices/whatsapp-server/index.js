@@ -1,18 +1,22 @@
 /**
  * Servidor de WhatsApp - Microservicio independiente
  * 
- * Este microservicio gestiona todas las conexiones con WhatsApp Web,
- * manteniendo sesiones activas, procesando mensajes y proporcionando
- * una API para interactuar con WhatsApp.
+ * Este servidor gestiona las conexiones de WhatsApp Web
+ * y proporciona una interfaz para interactuar con ellas.
  */
 
-const express = require('express');
-const cors = require('cors');
-const qrcode = require('qrcode');
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
-const path = require('path');
-const fs = require('fs');
-const axios = require('axios');
+import express from 'express';
+import cors from 'cors';
+import pkg from 'whatsapp-web.js';
+const { Client, LocalAuth } = pkg;
+import qrcode from 'qrcode-terminal';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.WHATSAPP_SERVER_PORT || 5001;
 
@@ -20,46 +24,93 @@ const PORT = process.env.WHATSAPP_SERVER_PORT || 5001;
 app.use(express.json());
 app.use(cors());
 
-// Crear directorios necesarios
-const TEMP_DIR = path.join(__dirname, '..', 'temp');
-const QR_PATH = path.join(TEMP_DIR, 'qrcode.png');
-const SESSION_DIR = path.join(TEMP_DIR, 'whatsapp-session');
-
-if (!fs.existsSync(TEMP_DIR)) {
-  fs.mkdirSync(TEMP_DIR, { recursive: true });
-}
-
-if (!fs.existsSync(SESSION_DIR)) {
-  fs.mkdirSync(SESSION_DIR, { recursive: true });
-}
-
-// URL del servidor de base de datos
-const DATABASE_SERVER_URL = process.env.DATABASE_SERVER_URL || 'http://localhost:5003';
-
 // Cliente de WhatsApp
-let whatsappClient = null;
-let qrCode = null;
-let connectionAttempts = 0;
-const MAX_CONNECTION_ATTEMPTS = 5;
-let reconnectionTimeout = null;
+let client = null;
+let qrCodeData = null;
+let connectionStatus = 'disconnected';
+let lastQrTimestamp = null;
 
-const whatsappStatus = {
-  connected: false,
-  qr: null,
-  lastQR: null,
-  connecting: false,
-  lastError: null,
-  lastConnection: null,
-  lastDisconnection: null,
-  clientInfo: null,
-  permanentConnection: {
-    active: false,
-    lastKeepAlive: null,
-    autoReconnect: true
+// Función para inicializar el cliente de WhatsApp
+function initializeClient() {
+  // Crear directorios si no existen
+  const sessionDir = path.join(__dirname, '..', 'temp', '.wwebjs_auth');
+  if (!fs.existsSync(sessionDir)) {
+    fs.mkdirSync(sessionDir, { recursive: true });
   }
-};
 
-// Middleware para log de solicitudes
+  // Crear cliente con autenticación local para mantener la sesión
+  client = new Client({
+    authStrategy: new LocalAuth({
+      dataPath: sessionDir
+    }),
+    puppeteer: {
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ],
+      headless: true
+    }
+  });
+
+  // Evento al recibir un código QR
+  client.on('qr', (qr) => {
+    console.log('QR Code recibido:');
+    qrCodeData = qr;
+    lastQrTimestamp = Date.now();
+    
+    // Mostrar código QR en la terminal (solo para depuración)
+    qrcode.generate(qr, { small: true });
+    
+    console.log('Escanea el código QR para conectar WhatsApp');
+  });
+
+  // Evento al autenticarse
+  client.on('authenticated', () => {
+    console.log('Cliente autenticado');
+    connectionStatus = 'authenticated';
+  });
+
+  // Evento al iniciar sesión
+  client.on('ready', () => {
+    console.log('Cliente listo para usar');
+    connectionStatus = 'connected';
+  });
+
+  // Evento al desconectarse
+  client.on('disconnected', (reason) => {
+    console.log('Cliente desconectado:', reason);
+    connectionStatus = 'disconnected';
+    
+    // Reiniciar el cliente solo si la desconexión fue por error
+    if (reason !== 'manual_disconnect') {
+      console.log('Intentando reconectar automáticamente...');
+      client = null;
+      // Reiniciar después de un breve retraso
+      setTimeout(initializeClient, 5000);
+    }
+  });
+
+  // Evento al recibir un mensaje
+  client.on('message', async (message) => {
+    console.log(`Mensaje recibido de ${message.from}: ${message.body}`);
+    
+    // Aquí puedes implementar alguna lógica para procesar los mensajes
+    // Por ejemplo, notificar al servidor de procesamiento
+  });
+
+  // Iniciar cliente
+  client.initialize().catch((error) => {
+    console.error('Error al inicializar el cliente:', error);
+    connectionStatus = 'error';
+  });
+}
+
+// Log de todas las solicitudes
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
@@ -75,444 +126,74 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Función para generar código QR
-async function generateQRCode(qrCodeData) {
-  try {
-    // Guardar el código QR como archivo PNG
-    await qrcode.toFile(QR_PATH, qrCodeData);
-    
-    // También generar como texto para consola
-    const qrText = await qrcode.toString(qrCodeData, { type: 'terminal' });
-    console.log('\nCódigo QR generado:\n');
-    console.log(qrText);
-    
-    // Actualizar estado
-    whatsappStatus.qr = qrCodeData;
-    whatsappStatus.lastQR = new Date().toISOString();
-    
-    return qrCodeData;
-  } catch (error) {
-    console.error('Error al generar código QR:', error);
-    throw error;
-  }
-}
-
-// Función para inicializar el cliente de WhatsApp
-function initializeWhatsAppClient() {
-  if (whatsappClient) {
-    console.log('Ya existe un cliente de WhatsApp, cerrando sesión antes de reiniciar...');
-    try {
-      whatsappClient.destroy();
-    } catch (error) {
-      console.error('Error al cerrar cliente existente:', error);
-    }
-    whatsappClient = null;
-  }
-  
-  console.log('Iniciando cliente de WhatsApp...');
-  whatsappStatus.connecting = true;
-  
-  // Configurar cliente con autenticación local
-  const clientOptions = {
-    puppeteer: {
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
-      ]
-    },
-    authStrategy: new LocalAuth({
-      clientId: 'whatsapp-integration',
-      dataPath: SESSION_DIR
-    }),
-    webVersionCache: {
-      type: 'remote',
-      remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2409.2.html'
-    }
-  };
-  
-  whatsappClient = new Client(clientOptions);
-  
-  // Eventos del cliente
-  whatsappClient.on('qr', async (qr) => {
-    console.log('QR Code recibido, generando imagen...');
-    qrCode = qr;
-    await generateQRCode(qr);
-    
-    // Actualizar estado en la base de datos
-    try {
-      await axios.put(`${DATABASE_SERVER_URL}/whatsapp-accounts/1`, {
-        status: 'awaiting_connection',
-        qrCode: qrCode
-      });
-    } catch (error) {
-      console.error('Error al actualizar estado en base de datos:', error);
-    }
-  });
-  
-  whatsappClient.on('ready', async () => {
-    console.log('Cliente de WhatsApp listo');
-    whatsappStatus.connected = true;
-    whatsappStatus.connecting = false;
-    whatsappStatus.lastConnection = new Date().toISOString();
-    whatsappStatus.lastError = null;
-    connectionAttempts = 0;
-    
-    // Obtener información del cliente
-    try {
-      const info = await whatsappClient.getWWebVersion();
-      whatsappStatus.clientInfo = {
-        version: info,
-        phone: (await whatsappClient.getInfo()).wid.user
-      };
-    } catch (error) {
-      console.error('Error al obtener información del cliente:', error);
-    }
-    
-    // Actualizar estado en la base de datos
-    try {
-      await axios.put(`${DATABASE_SERVER_URL}/whatsapp-accounts/1`, {
-        status: 'connected',
-        qrCode: null
-      });
-    } catch (error) {
-      console.error('Error al actualizar estado en base de datos:', error);
-    }
-    
-    // Activar conexión permanente
-    activatePermanentConnection();
-  });
-  
-  whatsappClient.on('authenticated', () => {
-    console.log('Cliente autenticado');
-    whatsappStatus.qr = null;
-  });
-  
-  whatsappClient.on('auth_failure', (error) => {
-    console.error('Error de autenticación:', error);
-    whatsappStatus.lastError = {
-      message: 'Error de autenticación',
-      error: error.toString(),
-      timestamp: new Date().toISOString()
-    };
-    
-    // Si se configuró reconexión automática, intentar de nuevo
-    if (whatsappStatus.permanentConnection.autoReconnect && connectionAttempts < MAX_CONNECTION_ATTEMPTS) {
-      connectionAttempts++;
-      console.log(`Intentando reconectar (intento ${connectionAttempts} de ${MAX_CONNECTION_ATTEMPTS})...`);
-      reconnectionTimeout = setTimeout(() => {
-        initializeWhatsAppClient();
-      }, 5000 * connectionAttempts); // Aumentar el tiempo entre intentos
-    } else {
-      console.log('Se alcanzó el número máximo de intentos de reconexión');
-      whatsappStatus.connecting = false;
-    }
-  });
-  
-  whatsappClient.on('disconnected', async (reason) => {
-    console.log('Cliente desconectado:', reason);
-    whatsappStatus.connected = false;
-    whatsappStatus.lastDisconnection = new Date().toISOString();
-    
-    // Actualizar estado en la base de datos
-    try {
-      await axios.put(`${DATABASE_SERVER_URL}/whatsapp-accounts/1`, {
-        status: 'disconnected'
-      });
-    } catch (error) {
-      console.error('Error al actualizar estado en base de datos:', error);
-    }
-    
-    // Si se configuró reconexión automática, intentar de nuevo
-    if (whatsappStatus.permanentConnection.autoReconnect && connectionAttempts < MAX_CONNECTION_ATTEMPTS) {
-      connectionAttempts++;
-      console.log(`Intentando reconectar (intento ${connectionAttempts} de ${MAX_CONNECTION_ATTEMPTS})...`);
-      reconnectionTimeout = setTimeout(() => {
-        initializeWhatsAppClient();
-      }, 5000 * connectionAttempts); // Aumentar el tiempo entre intentos
-    } else {
-      console.log('Se alcanzó el número máximo de intentos de reconexión o reconexión automática desactivada');
-      whatsappStatus.connecting = false;
-    }
-  });
-  
-  whatsappClient.on('message', async (message) => {
-    try {
-      console.log(`Nuevo mensaje recibido de ${message.from}: ${message.body}`);
-      
-      // Preparar datos del mensaje
-      const messageData = {
-        accountId: 1, // Cuenta por defecto
-        chatId: message.from,
-        messageId: message.id._serialized,
-        from_me: false,
-        content: message.body,
-        timestamp: new Date(message.timestamp * 1000).toISOString(),
-        hasMedia: message.hasMedia,
-        mediaUrl: null,
-        mediaType: null,
-        metadata: {
-          notifyName: message._data.notifyName || '',
-          type: message.type,
-          isForwarded: message.isForwarded,
-          isStatus: message.isStatus,
-          isGroup: message.chat.isGroup
-        }
-      };
-      
-      // Si tiene media, obtenerla
-      if (message.hasMedia) {
-        try {
-          const media = await message.downloadMedia();
-          messageData.mediaType = media.mimetype;
-          messageData.mediaUrl = `data:${media.mimetype};base64,${media.data}`;
-        } catch (mediaError) {
-          console.error('Error al descargar media:', mediaError);
-        }
-      }
-      
-      // Guardar mensaje en la base de datos
-      try {
-        await axios.post(`${DATABASE_SERVER_URL}/messages`, messageData);
-      } catch (dbError) {
-        console.error('Error al guardar mensaje en la base de datos:', dbError);
-      }
-      
-      // Verificar si se debe enviar respuesta automática
-      try {
-        const configResponse = await axios.get(`${DATABASE_SERVER_URL}/auto-response/config`);
-        const autoConfig = configResponse.data;
-        
-        if (autoConfig.enabled) {
-          // Obtener horario actual
-          const now = new Date();
-          const currentHour = now.getHours();
-          const currentMinutes = now.getMinutes();
-          const currentTime = `${currentHour.toString().padStart(2, '0')}:${currentMinutes.toString().padStart(2, '0')}:00`;
-          const currentDay = now.getDay(); // 0 = domingo, 1 = lunes, ...
-          
-          // Verificar si estamos en horario laboral
-          const businessHoursStart = autoConfig.businessHoursStart || '09:00:00';
-          const businessHoursEnd = autoConfig.businessHoursEnd || '18:00:00';
-          const workingDays = (autoConfig.workingDays || '1,2,3,4,5').split(',').map(d => parseInt(d));
-          
-          const isWorkingDay = workingDays.includes(currentDay);
-          const isBusinessHours = currentTime >= businessHoursStart && currentTime <= businessHoursEnd;
-          
-          if (isWorkingDay && isBusinessHours) {
-            console.log('Enviando mensaje de bienvenida (horario laboral)');
-            await whatsappClient.sendMessage(message.from, autoConfig.greetingMessage);
-          } else {
-            console.log('Enviando mensaje fuera de horario');
-            await whatsappClient.sendMessage(message.from, autoConfig.outOfHoursMessage);
-          }
-        }
-      } catch (autoError) {
-        console.error('Error al procesar respuesta automática:', autoError);
-      }
-    } catch (error) {
-      console.error('Error al procesar mensaje:', error);
-    }
-  });
-  
-  // Iniciar cliente
-  console.log('Iniciando cliente de WhatsApp...');
-  whatsappClient.initialize()
-    .catch(error => {
-      console.error('Error al inicializar cliente:', error);
-      whatsappStatus.lastError = {
-        message: 'Error al inicializar cliente',
-        error: error.toString(),
-        timestamp: new Date().toISOString()
-      };
-      whatsappStatus.connecting = false;
-    });
-  
-  return whatsappClient;
-}
-
-// Función para mantener la conexión activa
-function activatePermanentConnection() {
-  whatsappStatus.permanentConnection.active = true;
-  
-  // Función para realizar ping periódico para mantener conexión activa
-  const keepAlive = async () => {
-    if (whatsappStatus.connected && whatsappClient) {
-      try {
-        // Obtener estado para mantener conexión activa
-        await whatsappClient.getState();
-        whatsappStatus.permanentConnection.lastKeepAlive = new Date().toISOString();
-        console.log('Conexión de WhatsApp: Activa');
-      } catch (error) {
-        console.error('Error al verificar estado de WhatsApp:', error);
-      }
-    }
-    
-    // Programar próximo ping
-    setTimeout(keepAlive, 60000); // Cada minuto
-  };
-  
-  // Iniciar ping periódico
-  keepAlive();
-  console.log('Conexión permanente activada');
-}
-
-// Función para convertir un objeto de mensaje de WhatsApp a nuestro formato
-function convertWhatsAppMessage(message) {
-  try {
-    const timestamp = message.timestamp ? new Date(message.timestamp * 1000) : new Date();
-    
-    return {
-      id: message.id._serialized,
-      chatId: message.from,
-      fromMe: message.fromMe,
-      content: message.body,
-      timestamp: timestamp.toISOString(),
-      contact: message._data.notifyName || '',
-      isRead: message.isStatus,
-      hasMedia: message.hasMedia,
-      mediaType: message.type !== 'chat' ? message.type : null,
-      metadata: {
-        type: message.type,
-        isForwarded: message.isForwarded,
-        isStatus: message.isStatus,
-        isGroup: message.chat.isGroup
-      }
-    };
-  } catch (error) {
-    console.error('Error al convertir mensaje:', error);
-    return {
-      id: message.id ? message.id._serialized : `error-${Date.now()}`,
-      content: 'Error al procesar mensaje',
-      timestamp: new Date().toISOString(),
-      fromMe: false,
-      chatId: message.from || 'unknown',
-      hasError: true
-    };
-  }
-}
-
-// Función para convertir un objeto de chat de WhatsApp a nuestro formato
-function convertWhatsAppChat(chat) {
-  try {
-    return {
-      id: chat.id._serialized,
-      name: chat.name,
-      isGroup: chat.isGroup,
-      timestamp: chat.timestamp ? new Date(chat.timestamp * 1000).toISOString() : new Date().toISOString(),
-      unreadCount: chat.unreadCount,
-      lastMessage: chat.lastMessage ? {
-        body: chat.lastMessage.body,
-        fromMe: chat.lastMessage.fromMe,
-        timestamp: chat.lastMessage.timestamp ? new Date(chat.lastMessage.timestamp * 1000).toISOString() : new Date().toISOString()
-      } : null
-    };
-  } catch (error) {
-    console.error('Error al convertir chat:', error);
-    return {
-      id: chat.id ? chat.id._serialized : `error-${Date.now()}`,
-      name: chat.name || 'Error',
-      isGroup: chat.isGroup || false,
-      timestamp: new Date().toISOString(),
-      unreadCount: chat.unreadCount || 0,
-      hasError: true
-    };
-  }
-}
-
 // Ruta de salud para verificar que el servicio está funcionando
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'whatsapp-server',
-    timestamp: new Date().toISOString(),
-    connected: whatsappStatus.connected
-  });
-});
-
-// Ruta para obtener el estado actual de WhatsApp
-app.get('/status', (req, res) => {
-  res.json({
-    ...whatsappStatus,
     timestamp: new Date().toISOString()
   });
 });
 
-// Ruta para conectar WhatsApp
-app.post('/connect', (req, res) => {
-  if (whatsappStatus.connecting) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Ya hay una conexión en proceso'
-    });
-  }
-  
-  try {
-    initializeWhatsAppClient();
-    
-    res.json({
-      status: 'success',
-      message: 'Iniciando conexión a WhatsApp',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error al iniciar conexión:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error al iniciar conexión',
-      error: error.message
-    });
-  }
+// Ruta para obtener el estado de conexión
+app.get('/status', (req, res) => {
+  res.json({
+    status: connectionStatus,
+    authenticated: connectionStatus === 'connected' || connectionStatus === 'authenticated',
+    hasQrCode: qrCodeData !== null && (Date.now() - lastQrTimestamp < 60000),
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Ruta para desconectar WhatsApp
+// Ruta para iniciar la conexión
+app.post('/connect', (req, res) => {
+  if (client && connectionStatus === 'connected') {
+    return res.json({
+      status: 'warning',
+      message: 'Cliente ya conectado'
+    });
+  }
+  
+  if (!client) {
+    initializeClient();
+  } else {
+    client.initialize().catch((error) => {
+      console.error('Error al inicializar el cliente:', error);
+    });
+  }
+  
+  res.json({
+    status: 'success',
+    message: 'Inicializando cliente de WhatsApp',
+    action: 'check_qr'
+  });
+});
+
+// Ruta para desconectar
 app.post('/disconnect', async (req, res) => {
-  if (!whatsappClient || !whatsappStatus.connected) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'No hay conexión activa'
+  if (!client || connectionStatus === 'disconnected') {
+    return res.json({
+      status: 'warning',
+      message: 'Cliente no conectado'
     });
   }
   
   try {
-    // Detener reconexión automática
-    whatsappStatus.permanentConnection.autoReconnect = false;
-    if (reconnectionTimeout) {
-      clearTimeout(reconnectionTimeout);
-      reconnectionTimeout = null;
-    }
-    
-    // Actualizar estado en la base de datos antes de desconectar
-    try {
-      await axios.put(`${DATABASE_SERVER_URL}/whatsapp-accounts/1`, {
-        status: 'disconnecting'
-      });
-    } catch (error) {
-      console.error('Error al actualizar estado en base de datos:', error);
-    }
-    
-    // Desconectar cliente
-    await whatsappClient.destroy();
-    whatsappClient = null;
-    whatsappStatus.connected = false;
-    whatsappStatus.lastDisconnection = new Date().toISOString();
+    // Marcar razón de desconexión como manual
+    connectionStatus = 'disconnecting';
+    await client.destroy();
+    client = null;
+    connectionStatus = 'disconnected';
     
     res.json({
       status: 'success',
-      message: 'Desconectado de WhatsApp',
-      timestamp: new Date().toISOString()
+      message: 'Cliente desconectado exitosamente'
     });
   } catch (error) {
-    console.error('Error al desconectar:', error);
+    console.error('Error al desconectar cliente:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Error al desconectar',
+      message: 'Error al desconectar cliente',
       error: error.message
     });
   }
@@ -520,72 +201,68 @@ app.post('/disconnect', async (req, res) => {
 
 // Ruta para obtener el código QR
 app.get('/qr', (req, res) => {
-  if (whatsappStatus.qr) {
-    res.send(`<html>
-      <head>
-        <title>Código QR de WhatsApp</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-          .qr-container { max-width: 300px; margin: 0 auto; }
-          .qr-code { width: 100%; height: auto; }
-          .instructions { margin-top: 20px; text-align: left; }
-          .timestamp { font-size: 12px; color: #666; margin-top: 10px; }
-        </style>
-      </head>
-      <body>
-        <h1>Conectar WhatsApp</h1>
-        <div class="qr-container">
-          <img src="data:image/png;base64,${fs.readFileSync(QR_PATH).toString('base64')}" class="qr-code" alt="Código QR de WhatsApp">
-        </div>
-        <div class="instructions">
-          <h3>Instrucciones:</h3>
-          <ol>
-            <li>Abra WhatsApp en su teléfono</li>
-            <li>Toque Menú o Configuración y seleccione WhatsApp Web</li>
-            <li>Apunte su teléfono a esta pantalla para capturar el código</li>
-          </ol>
-        </div>
-        <div class="timestamp">
-          QR generado: ${new Date(whatsappStatus.lastQR).toLocaleString()}
-        </div>
-      </body>
-    </html>`);
-  } else {
-    res.status(404).json({
+  if (!qrCodeData || (Date.now() - lastQrTimestamp > 60000)) {
+    return res.status(404).json({
       status: 'error',
-      message: 'No hay código QR disponible. Inicie una conexión primero.'
+      message: 'Código QR no disponible o expirado, inicie la conexión primero'
     });
   }
-});
-
-// Ruta para obtener código QR como texto (para clientes no navegador)
-app.get('/qr/raw', (req, res) => {
-  if (whatsappStatus.qr) {
-    res.json({
-      qr: whatsappStatus.qr,
-      timestamp: whatsappStatus.lastQR
-    });
-  } else {
-    res.status(404).json({
-      status: 'error',
-      message: 'No hay código QR disponible. Inicie una conexión primero.'
-    });
-  }
+  
+  res.send(qrCodeData);
 });
 
 // Ruta para obtener chats
 app.get('/chats', async (req, res) => {
-  if (!whatsappClient || !whatsappStatus.connected) {
+  if (!client || connectionStatus !== 'connected') {
     return res.status(400).json({
       status: 'error',
-      message: 'No hay conexión activa a WhatsApp'
+      message: 'Cliente no conectado'
     });
   }
   
   try {
-    const chats = await whatsappClient.getChats();
-    const formattedChats = chats.map(chat => convertWhatsAppChat(chat));
+    const chats = await client.getChats();
+    
+    // Formatear los chats para la respuesta
+    const formattedChats = await Promise.all(chats.map(async (chat) => {
+      let contact = {};
+      
+      try {
+        // Intentar obtener información de contacto
+        if (chat.isGroup) {
+          contact = {
+            name: chat.name,
+            isGroup: true
+          };
+        } else {
+          const contactInfo = await client.getContactById(chat.id._serialized);
+          contact = {
+            name: contactInfo.name || contactInfo.pushname || 'Desconocido',
+            number: contactInfo.number,
+            isGroup: false
+          };
+        }
+      } catch (error) {
+        console.error(`Error al obtener contacto para chat ${chat.id._serialized}:`, error);
+        contact = {
+          name: 'Contacto desconocido',
+          isGroup: chat.isGroup
+        };
+      }
+      
+      return {
+        id: chat.id._serialized,
+        name: contact.name,
+        isGroup: chat.isGroup,
+        unreadCount: chat.unreadCount,
+        timestamp: chat.timestamp ? new Date(chat.timestamp * 1000).toISOString() : null,
+        lastMessage: chat.lastMessage ? {
+          body: chat.lastMessage.body,
+          fromMe: chat.lastMessage.fromMe,
+          timestamp: chat.lastMessage.timestamp ? new Date(chat.lastMessage.timestamp * 1000).toISOString() : null
+        } : null
+      };
+    }));
     
     res.json(formattedChats);
   } catch (error) {
@@ -600,20 +277,32 @@ app.get('/chats', async (req, res) => {
 
 // Ruta para obtener mensajes de un chat
 app.get('/chats/:chatId/messages', async (req, res) => {
-  if (!whatsappClient || !whatsappStatus.connected) {
+  if (!client || connectionStatus !== 'connected') {
     return res.status(400).json({
       status: 'error',
-      message: 'No hay conexión activa a WhatsApp'
+      message: 'Cliente no conectado'
     });
   }
   
   try {
-    const { chatId } = req.params;
-    const limit = parseInt(req.query.limit) || 50;
+    const chatId = req.params.chatId;
+    const chat = await client.getChatById(chatId);
     
-    const chat = await whatsappClient.getChatById(chatId);
-    const messages = await chat.fetchMessages({ limit });
-    const formattedMessages = messages.map(msg => convertWhatsAppMessage(msg));
+    // Obtener mensajes (limitado a los últimos 50)
+    const messages = await chat.fetchMessages({ limit: 50 });
+    
+    // Formatear los mensajes para la respuesta
+    const formattedMessages = messages.map((message) => {
+      return {
+        id: message.id._serialized,
+        body: message.body,
+        timestamp: message.timestamp ? new Date(message.timestamp * 1000).toISOString() : null,
+        fromMe: message.fromMe,
+        author: message.author || message.from,
+        hasMedia: message.hasMedia,
+        type: message.type
+      };
+    });
     
     res.json(formattedMessages);
   } catch (error) {
@@ -626,12 +315,12 @@ app.get('/chats/:chatId/messages', async (req, res) => {
   }
 });
 
-// Ruta para enviar un mensaje
+// Ruta para enviar mensaje
 app.post('/send', async (req, res) => {
-  if (!whatsappClient || !whatsappStatus.connected) {
+  if (!client || connectionStatus !== 'connected') {
     return res.status(400).json({
       status: 'error',
-      message: 'No hay conexión activa a WhatsApp'
+      message: 'Cliente no conectado'
     });
   }
   
@@ -645,30 +334,13 @@ app.post('/send', async (req, res) => {
       });
     }
     
-    const result = await whatsappClient.sendMessage(chatId, message);
-    
-    // Guardar mensaje en la base de datos
-    try {
-      const messageData = {
-        accountId: 1,
-        chatId,
-        messageId: result.id._serialized,
-        from_me: true,
-        content: message,
-        timestamp: new Date().toISOString(),
-        hasMedia: false
-      };
-      
-      await axios.post(`${DATABASE_SERVER_URL}/messages`, messageData);
-    } catch (dbError) {
-      console.error('Error al guardar mensaje en la base de datos:', dbError);
-    }
+    // Enviar mensaje
+    const sentMessage = await client.sendMessage(chatId, message);
     
     res.json({
       status: 'success',
-      message: 'Mensaje enviado correctamente',
-      messageId: result.id._serialized,
-      timestamp: new Date().toISOString()
+      message: 'Mensaje enviado exitosamente',
+      messageId: sentMessage.id._serialized
     });
   } catch (error) {
     console.error('Error al enviar mensaje:', error);
@@ -682,23 +354,23 @@ app.post('/send', async (req, res) => {
 
 // Ruta para marcar un chat como leído
 app.post('/read/:chatId', async (req, res) => {
-  if (!whatsappClient || !whatsappStatus.connected) {
+  if (!client || connectionStatus !== 'connected') {
     return res.status(400).json({
       status: 'error',
-      message: 'No hay conexión activa a WhatsApp'
+      message: 'Cliente no conectado'
     });
   }
   
   try {
-    const { chatId } = req.params;
+    const chatId = req.params.chatId;
+    const chat = await client.getChatById(chatId);
     
-    const chat = await whatsappClient.getChatById(chatId);
+    // Marcar como leído
     await chat.sendSeen();
     
     res.json({
       status: 'success',
-      message: `Chat ${chatId} marcado como leído`,
-      timestamp: new Date().toISOString()
+      message: 'Chat marcado como leído'
     });
   } catch (error) {
     console.error(`Error al marcar chat ${req.params.chatId} como leído:`, error);
@@ -716,36 +388,26 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 });
 
 // Manejar señales de cierre
-process.on('SIGINT', async () => {
-  console.log('\nSeñal de interrupción recibida');
-  
-  if (whatsappClient && whatsappStatus.connected) {
-    console.log('Cerrando conexión de WhatsApp...');
-    try {
-      await whatsappClient.destroy();
-    } catch (error) {
-      console.error('Error al cerrar cliente de WhatsApp:', error);
-    }
+process.on('SIGINT', () => {
+  console.log('Cerrando servidor de WhatsApp...');
+  if (client) {
+    console.log('Desconectando cliente...');
+    connectionStatus = 'disconnecting';
+    client.destroy().catch((err) => console.error('Error al desconectar:', err));
   }
-  
   server.close(() => {
     console.log('Servidor de WhatsApp detenido');
     process.exit(0);
   });
 });
 
-process.on('SIGTERM', async () => {
-  console.log('\nSeñal de terminación recibida');
-  
-  if (whatsappClient && whatsappStatus.connected) {
-    console.log('Cerrando conexión de WhatsApp...');
-    try {
-      await whatsappClient.destroy();
-    } catch (error) {
-      console.error('Error al cerrar cliente de WhatsApp:', error);
-    }
+process.on('SIGTERM', () => {
+  console.log('Cerrando servidor de WhatsApp...');
+  if (client) {
+    console.log('Desconectando cliente...');
+    connectionStatus = 'disconnecting';
+    client.destroy().catch((err) => console.error('Error al desconectar:', err));
   }
-  
   server.close(() => {
     console.log('Servidor de WhatsApp detenido');
     process.exit(0);
