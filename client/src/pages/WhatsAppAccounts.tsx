@@ -468,6 +468,74 @@ const WhatsAppAccounts = () => {
         </div>
       </div>
       
+      {/* Lista de posiciones fijas del 1 al 10 */}
+      <div className="mb-6 p-4 bg-gray-50 border rounded-lg">
+        <h2 className="text-xl font-semibold mb-4">Posiciones disponibles</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Las cuentas de WhatsApp se asignan a posiciones fijas del 1 al 10. Seleccione una posición vacía para crear una nueva cuenta o administre las existentes.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {/* Generar 10 posiciones fijas */}
+          {Array.from({ length: 10 }, (_, index) => {
+            const position = index + 1;
+            const existingAccount = accounts.find(acc => acc.id === position);
+            const isOccupied = !!existingAccount;
+            
+            return (
+              <div 
+                key={position}
+                className={`
+                  relative p-3 border rounded-md flex flex-col items-center justify-center
+                  ${isOccupied ? 'bg-white shadow-sm cursor-pointer hover:shadow' : 'bg-gray-100 border-dashed'}
+                  transition-all
+                `}
+                onClick={() => {
+                  if (isOccupied && existingAccount) {
+                    // Si hay una cuenta en esta posición, abre su QR
+                    handleShowQR(existingAccount);
+                  } else {
+                    // Si está vacía, abre el diálogo para crear cuenta
+                    form.reset();
+                    // Muestra un mensaje para que el usuario sepa qué posición está seleccionando
+                    toast({
+                      title: `Posición ${position} seleccionada`,
+                      description: 'Crear una nueva cuenta de WhatsApp para esta posición',
+                      duration: 3000
+                    });
+                    setAddDialogOpen(true);
+                  }
+                }}
+              >
+                <div className={`
+                  w-10 h-10 rounded-full flex items-center justify-center mb-2
+                  ${isOccupied ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}
+                  font-semibold text-lg
+                `}>
+                  {position}
+                </div>
+                
+                {isOccupied ? (
+                  <>
+                    <div className="font-medium text-sm line-clamp-1 text-center mb-1">{existingAccount.name}</div>
+                    <div className="absolute top-2 right-2">
+                      {existingAccount.currentStatus?.authenticated ? (
+                        <div className="w-3 h-3 bg-green-500 rounded-full" title="Conectada"></div>
+                      ) : (
+                        <div className="w-3 h-3 bg-red-500 rounded-full" title="Desconectada"></div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-gray-500 text-xs font-medium">Disponible</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Lista de cuentas actuales */}
+      <h2 className="text-xl font-semibold mb-4">Detalles de cuentas</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {accounts.length > 0 ? (
           accounts.map((account) => (
