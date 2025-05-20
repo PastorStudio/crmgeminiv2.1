@@ -68,7 +68,7 @@ export default function TicketsByAgent() {
     );
   }
 
-  if (error || !data || !data.totals) {
+  if (error || !data) {
     return (
       <Card className="col-span-full">
         <CardHeader>
@@ -83,6 +83,17 @@ export default function TicketsByAgent() {
       </Card>
     );
   }
+  
+  // Asegurar que agentStats sea un array si no lo es
+  const agentStats = Array.isArray(data.agentStats) ? data.agentStats : [];
+  const totals = data.totals || {
+    total_tickets: 0,
+    total_pending: 0,
+    total_resolved: 0,
+    total_canceled: 0
+  };
+  const categoryDistribution = Array.isArray(data.categoryDistribution) ? data.categoryDistribution : [];
+  const statusDistribution = Array.isArray(data.statusDistribution) ? data.statusDistribution : [];
 
   return (
     <Card className="col-span-full">
@@ -139,14 +150,14 @@ export default function TicketsByAgent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.agentStats.length === 0 ? (
+              {agentStats.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-4">
                     No hay datos disponibles
                   </TableCell>
                 </TableRow>
               ) : (
-                data.agentStats.map((stat) => {
+                agentStats.map((stat) => {
                   const resolutionRate = Math.round(
                     (stat.resolved_tickets / (stat.total_tickets || 1)) * 100
                   );
@@ -177,7 +188,7 @@ export default function TicketsByAgent() {
           <div>
             <h3 className="text-lg font-semibold mb-3">Por Categoría</h3>
             <div className="space-y-2">
-              {data.categoryDistribution.map(({ category, count }) => (
+              {categoryDistribution.map(({ category, count }) => (
                 <div key={category} className="flex justify-between items-center">
                   <span>{categoryLabels[category] || category}</span>
                   <Badge variant="outline">{count}</Badge>
@@ -190,7 +201,7 @@ export default function TicketsByAgent() {
           <div>
             <h3 className="text-lg font-semibold mb-3">Por Estado</h3>
             <div className="space-y-2">
-              {data.statusDistribution.map(({ status, count }) => (
+              {statusDistribution.map(({ status, count }) => (
                 <div key={status} className="flex justify-between items-center">
                   <span>{statusLabels[status] || status}</span>
                   <Badge variant="outline">{count}</Badge>
