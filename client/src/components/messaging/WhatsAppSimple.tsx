@@ -262,14 +262,14 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         return initialData.length > 0 ? initialData : [];
       }
     },
-    // IMPORTANTE: Limitamos las refrescaciones para evitar bucles
-    refetchInterval: 15000, // Reducido para evitar sobrecarga
+    // PROTECCIÓN ANTI-BLOQUEO: Ajustes muy conservadores para evitar bloqueos de WhatsApp
+    refetchInterval: 60000, // Solo cada minuto para evitar sobrecarga y bloqueos
     refetchOnMount: true,
     refetchOnWindowFocus: false, // Desactivado para evitar múltiples llamadas
-    retry: 2,
-    retryDelay: 3000,
-    // Usando condicional uniforme para todas las cuentas con un ID siempre presente
-    enabled: !!whatsappStatus?.authenticated && !!currentAccountId
+    retry: 1, // Solo un intento
+    retryDelay: 10000, // 10 segundos entre intentos
+    // Usando condicional muy restrictivo para permitir consultas solo cuando es seguro
+    enabled: !!whatsappStatus?.authenticated && !!currentAccountId && !!selectedChatId
   });
 
   // Query para obtener contactos de WhatsApp para la cuenta específica
