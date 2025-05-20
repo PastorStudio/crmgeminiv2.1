@@ -180,6 +180,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   });
 
   // Query para obtener chats reales de WhatsApp para la cuenta específica con optimizaciones
+  // VERSIÓN ANTI-BLOQUEO: No hace peticiones excesivas para evitar bloqueos de cuentas
   const { 
     data: whatsappChats = [],
     isLoading: isLoadingChats,
@@ -188,7 +189,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   } = useQuery({
     queryKey: ['/api/whatsapp-accounts', currentAccountId, 'chats'],
     queryFn: async () => {
-      // Recuperar cache primero para mostrar datos inmediatos
+      // SEGURIDAD ANTI-BLOQUEO: Siempre intentar primero con caché local
       const cachedData = localStorage.getItem(`whatsapp_chats_${currentAccountId}`);
       let initialData = [];
       
@@ -196,6 +197,23 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         try {
           initialData = JSON.parse(cachedData);
           console.log(`Usando ${initialData.length} chats en cache para cuenta ${currentAccountId}`);
+          
+          // IMPORTANTE: Si tenemos datos en caché, limitar las reconexiones
+          // Verificamos cuando fue la última vez que se actualizó la caché
+          const lastChatUpdateKey = `last_chat_update_${currentAccountId}`;
+          const lastUpdateTime = parseInt(localStorage.getItem(lastChatUpdateKey) || '0');
+          const now = Date.now();
+          const timeSinceLastUpdate = now - lastUpdateTime;
+          
+          // Si la última actualización fue hace menos de 10 minutos, usar caché
+          // Esto es crítico para prevenir bloqueos por conexiones frecuentes
+          const MIN_UPDATE_INTERVAL = 10 * 60 * 1000; // 10 minutos
+          
+          if (timeSinceLastUpdate < MIN_UPDATE_INTERVAL && initialData.length > 0) {
+            console.log(`⚠️ PROTECCIÓN ANTI-BLOQUEO: Usando caché (última actualización hace ${Math.floor(timeSinceLastUpdate/1000)}s)`);
+            console.log(`Próxima actualización en: ${Math.ceil((MIN_UPDATE_INTERVAL - timeSinceLastUpdate)/1000/60)} minutos`);
+            return initialData;
+          }
         } catch (e) {}
       }
       
@@ -204,7 +222,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         const { apiRequest } = await import('@/lib/queryClient');
         
         try {
-          // Intentar con la API específica de la cuenta
+          // Intentar con la API específica de la cuenta SOLO si es seguro hacerlo
           const response = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/chats`);
           
           if (Array.isArray(response) && response.length > 0) {
@@ -212,10 +230,12 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
             
             // Guardar en cache para acceso rápido futuro
             localStorage.setItem(`whatsapp_chats_${currentAccountId}`, JSON.stringify(response));
+            // Registrar el momento de la actualización
+            localStorage.setItem(`last_chat_update_${currentAccountId}`, Date.now().toString());
             
             return response;
           } else {
-            console.warn(`Sin chats para cuenta ${currentAccountId}, intentando alternativa...`);
+            console.warn(`Sin chats para cuenta ${currentAccountId}, usando alternativa...`);
           }
         } catch (apiError) {
           console.error(`Error en API para cuenta ${currentAccountId}:`, apiError);
