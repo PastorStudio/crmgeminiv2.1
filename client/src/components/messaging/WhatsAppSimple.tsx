@@ -148,97 +148,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   
   // Referencias a React Query y Toast ya declaradas anteriormente
   
-  // Función para cargar chats de múltiples cuentas
-  const loadMultiAccountChats = async (accountIds: number[]) => {
-    const { apiRequest } = await import('@/lib/queryClient');
-    
-    // Para cada cuenta, cargar sus chats
-    for (const accountId of accountIds) {
-      try {
-        // Primero intentar con la caché
-        const cachedData = localStorage.getItem(`whatsapp_chats_${accountId}`);
-        if (cachedData) {
-          try {
-            const parsedChats = JSON.parse(cachedData);
-            if (Array.isArray(parsedChats) && parsedChats.length > 0) {
-              console.log(`Usando ${parsedChats.length} chats en caché para cuenta ${accountId}`);
-              
-              // Marcar cada chat con la cuenta a la que pertenece
-              const chatsWithAccount = parsedChats.map(chat => ({
-                ...chat,
-                accountId: accountId
-              }));
-              
-              // Actualizar el estado con los chats de esta cuenta
-              setMultiAccountChats(prev => ({
-                ...prev,
-                [accountId]: chatsWithAccount
-              }));
-              
-              continue; // Pasar a la siguiente cuenta
-            }
-          } catch (e) {
-            console.error(`Error al parsear caché para cuenta ${accountId}:`, e);
-          }
-        }
-        
-        // Si no hay caché o falló, consultar la API
-        // Intentar con el endpoint específico de la cuenta
-        try {
-          const response = await apiRequest(`/api/whatsapp-accounts/${accountId}/chats`);
-          if (Array.isArray(response) && response.length > 0) {
-            console.log(`Obtenidos ${response.length} chats para cuenta ${accountId}`);
-            
-            // Marcar cada chat con la cuenta a la que pertenece
-            const chatsWithAccount = response.map(chat => ({
-              ...chat,
-              accountId: accountId
-            }));
-            
-            // Guardar en caché
-            localStorage.setItem(`whatsapp_chats_${accountId}`, JSON.stringify(response));
-            
-            // Actualizar el estado
-            setMultiAccountChats(prev => ({
-              ...prev,
-              [accountId]: chatsWithAccount
-            }));
-            
-            continue; // Pasar a la siguiente cuenta
-          }
-        } catch (apiError) {
-          console.error(`Error en API para cuenta ${accountId}:`, apiError);
-        }
-        
-        // Si todo falla, usar el endpoint directo como respaldo
-        try {
-          const fallbackResponse = await apiRequest('/api/direct/whatsapp/chats');
-          if (Array.isArray(fallbackResponse) && fallbackResponse.length > 0) {
-            console.log(`Usando fallback: ${fallbackResponse.length} chats obtenidos para cuenta ${accountId}`);
-            
-            // Marcar cada chat con la cuenta a la que pertenece
-            const chatsWithAccount = fallbackResponse.map(chat => ({
-              ...chat,
-              accountId: accountId
-            }));
-            
-            // Guardar en caché
-            localStorage.setItem(`whatsapp_chats_${accountId}`, JSON.stringify(fallbackResponse));
-            
-            // Actualizar el estado
-            setMultiAccountChats(prev => ({
-              ...prev,
-              [accountId]: chatsWithAccount
-            }));
-          }
-        } catch (fallbackError) {
-          console.error(`Error en fallback de chats para cuenta ${accountId}:`, fallbackError);
-        }
-      } catch (error) {
-        console.error(`Error general al cargar chats para cuenta ${accountId}:`, error);
-      }
-    }
-  };
+  // Esta función es reemplazada por la implementación en el useEffect
   
   // Query para obtener todas las cuentas de WhatsApp
   const {
@@ -931,18 +841,107 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   // Efecto para actualizar periódicamente los chats en modo multi-cuenta
   useEffect(() => {
     if (multiAccountMode && selectedAccounts.length > 0) {
-      // Cargar chats iniciales
-      loadMultiAccountChats(selectedAccounts);
+      console.log('Modo multi-cuenta activado. Cuentas seleccionadas:', selectedAccounts);
+      
+      // Cargar chats iniciales inmediatamente al activar el modo o cambiar las cuentas
+      const loadChats = async () => {
+        try {
+          const { apiRequest } = await import('@/lib/queryClient');
+          
+          // Para cada cuenta seleccionada, intentar obtener sus chats
+          for (const accountId of selectedAccounts) {
+            try {
+              // Intentar obtener directamente por API
+              console.log(`Cargando chats para cuenta ${accountId}...`);
+              const response = await apiRequest(`/api/whatsapp-accounts/${accountId}/chats`);
+              
+              if (Array.isArray(response) && response.length > 0) {
+                console.log(`✅ Obtenidos ${response.length} chats para cuenta ${accountId}`);
+                
+                // Añadir identificador de cuenta a cada chat
+                const chatsWithAccount = response.map(chat => ({
+                  ...chat, 
+                  accountId 
+                }));
+                
+                // Actualizar el estado con estos chats
+                setMultiAccountChats(prev => ({
+                  ...prev,
+                  [accountId]: chatsWithAccount
+                }));
+                
+                // También guardar en caché local
+                localStorage.setItem(`whatsapp_chats_${accountId}`, JSON.stringify(response));
+              } else {
+                console.log(`Sin chats disponibles para cuenta ${accountId}, intentando alternativa...`);
+                
+                // Intentar con el endpoint directo como alternativa
+                const directResponse = await apiRequest('/api/direct/whatsapp/chats');
+                if (Array.isArray(directResponse) && directResponse.length > 0) {
+                  console.log(`✅ Obtenidos ${directResponse.length} chats (directos) para cuenta ${accountId}`);
+                  
+                  // Añadir identificador de cuenta a cada chat
+                  const chatsWithAccount = directResponse.map(chat => ({
+                    ...chat, 
+                    accountId 
+                  }));
+                  
+                  // Actualizar el estado
+                  setMultiAccountChats(prev => ({
+                    ...prev,
+                    [accountId]: chatsWithAccount
+                  }));
+                  
+                  // Guardar en caché
+                  localStorage.setItem(`whatsapp_chats_${accountId}`, JSON.stringify(directResponse));
+                } else {
+                  // Intentar usar caché si existe
+                  const cachedData = localStorage.getItem(`whatsapp_chats_${accountId}`);
+                  if (cachedData) {
+                    try {
+                      const parsedChats = JSON.parse(cachedData);
+                      if (Array.isArray(parsedChats) && parsedChats.length > 0) {
+                        console.log(`Usando ${parsedChats.length} chats de caché para cuenta ${accountId}`);
+                        
+                        // Añadir identificador de cuenta a cada chat 
+                        const chatsWithAccount = parsedChats.map(chat => ({
+                          ...chat, 
+                          accountId 
+                        }));
+                        
+                        // Actualizar el estado
+                        setMultiAccountChats(prev => ({
+                          ...prev,
+                          [accountId]: chatsWithAccount
+                        }));
+                      }
+                    } catch (e) {
+                      console.error(`Error parseando caché para cuenta ${accountId}:`, e);
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error(`Error cargando chats para cuenta ${accountId}:`, error);
+            }
+          }
+        } catch (error) {
+          console.error('Error general cargando chats multi-cuenta:', error);
+        }
+      };
+      
+      // Ejecutar carga inicial
+      loadChats();
       
       // Configurar intervalo de actualización
       const refreshInterval = setInterval(() => {
         console.log('Actualizando chats de múltiples cuentas:', selectedAccounts);
-        loadMultiAccountChats(selectedAccounts);
+        loadChats();
       }, 60000); // Actualizar cada minuto
       
       return () => clearInterval(refreshInterval);
     }
-  }, [multiAccountMode, selectedAccounts.length]);
+  }, [multiAccountMode, selectedAccounts.join(',')]);
 
   // Actualizar cuando llega una notificación por WebSocket
   useEffect(() => {
@@ -1303,9 +1302,19 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                         setMultiAccountMode(checked);
                         if (checked) {
                           // Al activar modo multi-cuenta, comenzamos con la cuenta actual seleccionada
-                          setSelectedAccounts([currentAccountId]);
-                          // Cargar chats iniciales
-                          loadMultiAccountChats([currentAccountId]);
+                          // Y también agregamos todas las cuentas disponibles que estén conectadas
+                          const connectedAccounts = whatsappAccounts
+                            .filter(acc => acc.currentStatus?.authenticated)
+                            .map(acc => acc.id);
+                          
+                          // Si no hay ninguna cuenta conectada, al menos agregar la cuenta actual
+                          const accountsToSelect = connectedAccounts.length > 0 ? 
+                            connectedAccounts : [currentAccountId];
+                          
+                          console.log('Activando modo multi-cuenta con cuentas:', accountsToSelect);
+                          setSelectedAccounts(accountsToSelect);
+                          
+                          // La carga de chats ocurrirá automáticamente por el efecto
                         } else {
                           // Al desactivar, volvemos a mostrar solo la cuenta actual
                           setSelectedAccounts([]);
@@ -1442,7 +1451,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                               const newSelectedAccounts = [...selectedAccounts, account.id];
                               setSelectedAccounts(newSelectedAccounts);
                               // Cargar chats de esta cuenta
-                              loadMultiAccountChats([account.id]);
+                              // La carga de chats se manejará automáticamente por el efecto
                             }
                           }}
                         >
