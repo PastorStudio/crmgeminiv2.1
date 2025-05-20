@@ -656,8 +656,13 @@ export class DatabaseStorage implements IStorage {
       const sessionDataString = typeof sessionData === 'object' 
         ? JSON.stringify(sessionData) 
         : (sessionData || '{}');
+        
+      console.log(`Creando cuenta WhatsApp con datos de sesión:`, {
+        tipo: typeof sessionData,
+        formato: sessionDataString.substring(0, 100) + (sessionDataString.length > 100 ? '...' : '')
+      });
       
-      // Usamos pool.query en lugar de db.query.raw
+      // Usamos pool.query en lugar de db.query.raw y manejamos las diferentes columnas con tipos apropiados
       const result = await pool.query(`
         INSERT INTO whatsapp_accounts (
           name, 
@@ -671,7 +676,7 @@ export class DatabaseStorage implements IStorage {
           "ownerPhone",
           description
         ) VALUES (
-          $1, $2, $3, $3, $4, $4, $5, $6, $7, $8
+          $1, $2, $3, $3, $4, CAST($4 AS JSONB), $5, $6, $7, $8
         ) RETURNING id, name, status, phone_number, phoneNumber, session_data, sessionData, "createdAt", "ownerName", "ownerPhone", description
       `, [
         account.name,
@@ -752,10 +757,27 @@ export class DatabaseStorage implements IStorage {
           ? JSON.stringify(sessionData)
           : (sessionData || '{}');
           
-        // Actualizar ambas columnas duplicadas con el mismo valor
-        updateFields += `session_data = $${paramIndex}, sessionData = $${paramIndex}, `;
+        console.log(`Actualizando datos de sesión para cuenta WhatsApp ID ${id}:`, {
+          tipo: typeof sessionData,
+          formato: sessionDataString.substring(0, 100) + (sessionDataString.length > 100 ? '...' : '')
+        });
+        
+        // Para la columna session_data (tipo text), usamos siempre la versión string
+        updateFields += `session_data = $${paramIndex}, `;
         updateValues.push(sessionDataString);
         paramIndex++;
+        
+        // Para la columna sessionData (tipo jsonb), debemos usar un valor jsonb válido
+        try {
+          // Si ya es un objeto, usamos CAST para convertirlo a JSONB
+          updateFields += `sessionData = CAST($${paramIndex} AS JSONB), `;
+          updateValues.push(sessionDataString);
+          paramIndex++;
+        } catch (jsonErr) {
+          console.error("Error al convertir sessionData a JSONB:", jsonErr);
+          // En caso de error, usamos un objeto JSON vacío como fallback
+          updateFields += `sessionData = '{}', `;
+        }
       }
       
       // Si no hay campos para actualizar, devolvemos la cuenta existente
