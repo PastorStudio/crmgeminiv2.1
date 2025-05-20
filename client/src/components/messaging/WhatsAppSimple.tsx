@@ -1607,9 +1607,19 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 className="w-48 h-auto mx-auto mb-6"
               />
               <h3 className="text-xl font-medium text-gray-700 mb-2">WhatsApp Messenger</h3>
-              <p className="text-gray-500 max-w-md">
+              <p className="text-gray-500 max-w-md mb-4">
                 Selecciona un chat para ver los mensajes o escanea el código QR para conectar WhatsApp si aún no lo has hecho.
               </p>
+              
+              <Button 
+                variant="outline"
+                onClick={() => setShowQRDialog(true)}
+                className="mt-2 text-green-700 border-green-200 hover:bg-green-50"
+                size="sm"
+              >
+                <QrCode className="mr-2 h-4 w-4" />
+                Escanear código QR
+              </Button>
             </div>
           )}
         </div>
