@@ -1,0 +1,13 @@
+{
+  "timeZone": "America/Los_Angeles",
+  "offset": -420,
+  "daylightSaving": false,
+  "source": "auto",
+  "detectedAt": "2025-05-20T12:17:15.398Z",
+  "location": {
+    "country": "United States",
+    "city": "The Dalles",
+    "latitude": 45.5945,
+    "longitude": -121.1786
+  }
+}
