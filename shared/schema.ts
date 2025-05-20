@@ -257,6 +257,56 @@ export const mediaGallery = pgTable("media_gallery", {
   useCount: integer("use_count").default(0),
 });
 
+// Configuración de AI para respuestas automáticas
+export const aiConfig = pgTable("ai_config", {
+  id: serial("id").primaryKey(),
+  autoResponse: boolean("auto_response").default(false),
+  defaultModel: text("default_model").default("gemini"), // 'gemini', 'openai'
+  confidenceThreshold: doublePrecision("confidence_threshold").default(0.75),
+  geminiApiKey: text("gemini_api_key"),
+  openaiApiKey: text("openai_api_key"),
+  additionalPrompt: text("additional_prompt"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+});
+
+// Configuración de zona horaria para mensajes
+export const timeZoneConfig = pgTable("time_zone_config", {
+  id: serial("id").primaryKey(),
+  timeZone: text("time_zone").default("UTC"),
+  offset: integer("offset").default(0), // Offset en horas
+  source: text("source").default("manual"), // 'manual', 'auto', 'geolocation'
+  location: jsonb("location"), // {latitude, longitude} si se detectó por geolocalización
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+});
+
+// Mensajes de WhatsApp extendidos para microservicios
+export const whatsappMessages = pgTable("whatsapp_messages", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id").references(() => whatsappAccounts.id),
+  messageId: text("message_id").notNull(), // ID original del mensaje de WhatsApp
+  chatId: text("chat_id").notNull(), // ID del chat (número@c.us o grupo@g.us)
+  body: text("body"), // Contenido del mensaje
+  from: text("from"), // Remitente
+  to: text("to"), // Destinatario
+  fromMe: boolean("from_me").default(false), // Si fue enviado por nosotros
+  timestamp: timestamp("timestamp").defaultNow(), // Timestamp del mensaje
+  hasMedia: boolean("has_media").default(false), // Si tiene contenido multimedia
+  mediaType: text("media_type"), // Tipo de contenido multimedia
+  mediaUrl: text("media_url"), // URL del contenido multimedia
+  caption: text("caption"), // Leyenda del contenido multimedia
+  isForwarded: boolean("is_forwarded").default(false), // Si es un mensaje reenviado
+  isStatus: boolean("is_status").default(false), // Si es un mensaje de estado
+  isStarred: boolean("is_starred").default(false), // Si está destacado
+  containsEmoji: boolean("contains_emoji").default(false), // Si contiene emojis
+  timeZoneInfo: jsonb("time_zone_info"), // Información de zona horaria
+  processingStatus: text("processing_status").default("pending"), // pending, processed, failed
+  processorResult: jsonb("processor_result"), // Resultado del procesador de mensajes
+  leadId: integer("lead_id").references(() => leads.id), // ID del lead si está asociado
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relaciones para galería de medios
 export const mediaGalleryRelations = relations(mediaGallery, ({ one }) => ({
   uploader: one(users, {
@@ -317,7 +367,36 @@ export const whatsappAccountsRelations = relations(whatsappAccounts, ({ one, man
     references: [users.id]
   }),
   assignedUsers: many(userWhatsappAccounts),
-  chatAssignments: many(chatAssignments)
+  chatAssignments: many(chatAssignments),
+  messages: many(whatsappMessages)
+}));
+
+// Relaciones para mensajes de WhatsApp
+export const whatsappMessagesRelations = relations(whatsappMessages, ({ one }) => ({
+  account: one(whatsappAccounts, {
+    fields: [whatsappMessages.accountId],
+    references: [whatsappAccounts.id]
+  }),
+  lead: one(leads, {
+    fields: [whatsappMessages.leadId],
+    references: [leads.id]
+  })
+}));
+
+// Relaciones para configuración de AI
+export const aiConfigRelations = relations(aiConfig, ({ one }) => ({
+  updatedByUser: one(users, {
+    fields: [aiConfig.updatedBy],
+    references: [users.id]
+  })
+}));
+
+// Relaciones para configuración de zona horaria
+export const timeZoneConfigRelations = relations(timeZoneConfig, ({ one }) => ({
+  updatedByUser: one(users, {
+    fields: [timeZoneConfig.updatedBy],
+    references: [users.id]
+  })
 }));
 
 // Relaciones para usuario-cuenta
@@ -380,15 +459,24 @@ export const insertWhatsappAccountSchema = createInsertSchema(whatsappAccounts).
 export const insertUserWhatsappAccountSchema = createInsertSchema(userWhatsappAccounts).omit({ id: true, assignedAt: true });
 export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
 export const insertChatCategorySchema = createInsertSchema(chatCategories).omit({ id: true, createdAt: true });
+export const insertAiConfigSchema = createInsertSchema(aiConfig).omit({ id: true, updatedAt: true });
+export const insertTimeZoneConfigSchema = createInsertSchema(timeZoneConfig).omit({ id: true, updatedAt: true });
+export const insertWhatsappMessageSchema = createInsertSchema(whatsappMessages).omit({ id: true, createdAt: true });
 
 export type InsertMediaGallery = z.infer<typeof insertMediaGallerySchema>;
 export type InsertWhatsappAccount = z.infer<typeof insertWhatsappAccountSchema>;
 export type InsertUserWhatsappAccount = z.infer<typeof insertUserWhatsappAccountSchema>;
 export type InsertChatAssignment = z.infer<typeof insertChatAssignmentSchema>;
 export type InsertChatCategory = z.infer<typeof insertChatCategorySchema>;
+export type InsertAiConfig = z.infer<typeof insertAiConfigSchema>;
+export type InsertTimeZoneConfig = z.infer<typeof insertTimeZoneConfigSchema>;
+export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
 
 export type MediaGallery = typeof mediaGallery.$inferSelect;
 export type WhatsappAccount = typeof whatsappAccounts.$inferSelect;
 export type UserWhatsappAccount = typeof userWhatsappAccounts.$inferSelect;
 export type ChatAssignment = typeof chatAssignments.$inferSelect;
 export type ChatCategory = typeof chatCategories.$inferSelect;
+export type AiConfig = typeof aiConfig.$inferSelect;
+export type TimeZoneConfig = typeof timeZoneConfig.$inferSelect;
+export type WhatsappMessage = typeof whatsappMessages.$inferSelect;
