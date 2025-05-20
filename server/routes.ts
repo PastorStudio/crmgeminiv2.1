@@ -619,6 +619,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Leads endpoints - usando datos reales de WhatsApp
+  // Endpoint para eliminar todos los leads
+  app.delete("/api/leads/all", async (req: Request, res: Response) => {
+    try {
+      // Eliminar todos los leads de la base de datos
+      await storage.deleteAllLeads();
+      
+      // Responder con éxito
+      return res.json({ success: true, message: "Todos los leads han sido eliminados" });
+    } catch (error) {
+      console.error('Error eliminando todos los leads:', error);
+      res.status(500).json({ success: false, message: "Error al eliminar los leads" });
+    }
+  });
+
   app.get("/api/leads", async (req: Request, res: Response) => {
     try {
       const status = req.query.status as string;
