@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import {
   Badge,
@@ -42,8 +42,6 @@ import {
   UserPlus,
   CheckCircle,
   XCircle,
-  Eraser,
-  AlertTriangle
 } from 'lucide-react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -124,7 +122,6 @@ const WhatsAppAccounts = () => {
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newlyCreatedAccountId, setNewlyCreatedAccountId] = useState<number | null>(null);
-  const [cleanAllDialogOpen, setCleanAllDialogOpen] = useState(false);
   
   // Consulta para obtener cuentas
   const { data: accounts = [], isLoading, error, refetch } = useQuery<WhatsAppAccount[]>({
@@ -265,35 +262,6 @@ const WhatsAppAccounts = () => {
     }
   });
   
-  // Mutation para limpiar todas las sesiones de WhatsApp
-  const cleanAllSessionsMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest('/api/whatsapp-accounts/clear-all-sessions', {
-        method: 'POST'
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Sesiones limpiadas',
-        description: 'Todas las sesiones de WhatsApp han sido limpiadas correctamente.',
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
-      // Recargar la página para asegurar que todo se actualice correctamente
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-    },
-    onError: () => {
-      toast({
-        title: 'Error',
-        description: 'No se pudieron limpiar las sesiones de WhatsApp.',
-        variant: 'destructive',
-      });
-    }
-  });
-  
-
-  
   // Formulario para crear cuenta
   const form = useForm<z.infer<typeof accountSchema>>({
     resolver: zodResolver(accountSchema),
@@ -405,54 +373,6 @@ const WhatsAppAccounts = () => {
           <Button onClick={() => refetch()} size="sm" variant="outline">
             <RefreshCw className="mr-2 h-4 w-4" /> Actualizar
           </Button>
-          
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="destructive" className="flex items-center">
-                <Eraser className="h-4 w-4 mr-2" />
-                <span>Limpiar todas las sesiones</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Limpiar todas las sesiones de WhatsApp</DialogTitle>
-                <DialogDescription>
-                  Esta acción limpiará todas las sesiones de WhatsApp, incluyendo las conexiones fantasma.
-                  Todas las cuentas se desconectarán y tendrás que escanear nuevamente los códigos QR para conectarte.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-3 my-4">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm">
-                    <strong>Importante:</strong> Esto resolverá el problema de las conexiones fantasma que aparecen como conectadas cuando en realidad están desconectadas.
-                  </p>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => {
-                  document.querySelector('[role="dialog"] button')?.dispatchEvent(
-                    new MouseEvent('click', { bubbles: true })
-                  );
-                }}>
-                  Cancelar
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={() => {
-                    cleanAllSessionsMutation.mutate();
-                    document.querySelector('[role="dialog"] button')?.dispatchEvent(
-                      new MouseEvent('click', { bubbles: true })
-                    );
-                  }}
-                  disabled={cleanAllSessionsMutation.isPending}
-                >
-                  {cleanAllSessionsMutation.isPending ? 'Limpiando...' : 'Sí, limpiar todas las sesiones'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          
           <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -594,80 +514,18 @@ const WhatsAppAccounts = () => {
                 </div>
                 <div className="flex gap-1">
                   {account.currentStatus?.authenticated ? (
-                    <>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="text-red-500 border-red-500 hover:bg-red-50"
-                        onClick={() => {
-                          setSelectedAccount(account);
-                          disconnectAccountMutation.mutate(account.id);
-                        }}
-                      >
-                        <PowerOff className="h-4 w-4 mr-2" />
-                        Desconectar
-                      </Button>
-                      
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="text-orange-500 border-orange-500 hover:bg-orange-50"
-                        onClick={async () => {
-                          try {
-                            setSelectedAccount(account);
-                            
-                            // Primero intentar desconexión normal
-                            const response = await fetch(`/api/whatsapp-accounts/${account.id}/disconnect`, {
-                              method: 'POST'
-                            });
-                            
-                            if (response.ok) {
-                              // Luego forzar limpieza de sesión
-                              const cleanupResponse = await fetch(`/api/whatsapp-accounts/${account.id}/clear-session`, {
-                                method: 'POST'
-                              });
-                              
-                              if (cleanupResponse.ok) {
-                                toast({
-                                  title: "Conexión limpiada",
-                                  description: "Se ha limpiado completamente la sesión de WhatsApp",
-                                });
-                                
-                                // Recargar datos de cuentas
-                                queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
-                                
-                                // Recargar la página después de 1 segundo
-                                setTimeout(() => {
-                                  window.location.reload();
-                                }, 1000);
-                              } else {
-                                toast({
-                                  title: "Advertencia",
-                                  description: "Se desconectó pero no se pudo limpiar completamente la sesión",
-                                  variant: "warning"
-                                });
-                              }
-                            } else {
-                              toast({
-                                title: "Error",
-                                description: "No se pudo desconectar correctamente la cuenta",
-                                variant: "destructive"
-                              });
-                            }
-                          } catch (error) {
-                            console.error("Error en limpieza de conexión:", error);
-                            toast({
-                              title: "Error",
-                              description: "Error al comunicarse con el servidor",
-                              variant: "destructive"
-                            });
-                          }
-                        }}
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Limpiar sesión
-                      </Button>
-                    </>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="text-red-500 border-red-500 hover:bg-red-50"
+                      onClick={() => {
+                        setSelectedAccount(account);
+                        disconnectAccountMutation.mutate(account.id);
+                      }}
+                    >
+                      <PowerOff className="h-4 w-4 mr-2" />
+                      Desconectar
+                    </Button>
                   ) : (
                     <Button 
                       size="sm" 
