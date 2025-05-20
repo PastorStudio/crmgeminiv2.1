@@ -85,6 +85,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Herramientas de mantenimiento y correcciones de base de datos
   app.use("/api/fix", fixRouterTemp);
   
+  // Añadimos una ruta simple de prueba directamente aquí para WhatsApp
+  app.get("/api/whatsapp-test", async (req: Request, res: Response) => {
+    try {
+      console.log('Ejecutando ruta de prueba para obtener cuentas WhatsApp');
+      const accounts = await storage.getAllWhatsappAccounts();
+      console.log('Cuentas obtenidas:', accounts.length);
+      res.json(accounts);
+    } catch (error) {
+      console.error('Error en ruta de prueba de cuentas WhatsApp:', error);
+      res.status(500).json({ error: 'Error al obtener cuentas de WhatsApp', details: error.message });
+    }
+  });
+  
   // Endpoint directo para eliminar todos los leads
   app.delete("/api/leads/delete-all", async (req: Request, res: Response) => {
     try {

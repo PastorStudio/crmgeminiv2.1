@@ -577,14 +577,14 @@ export class DatabaseStorage implements IStorage {
     try {
       // Abordaje más fundamental: consulta directa sin ORM para evitar problemas con el esquema
       // Incluimos todos los campos necesarios de la tabla
-      const result = await db.query.raw(`
+      const result = await pool.query(`
         SELECT id, name, status, phone_number, phoneNumber, session_data, sessionData, 
                "createdAt", "lastActiveAt", "ownerName", "ownerPhone", description
         FROM whatsapp_accounts
       `);
       
       // Transformar resultado a formato esperado por la interfaz
-      return (result as any[]).map(row => ({
+      return (result.rows as any[]).map(row => ({
         id: row.id,
         name: row.name,
         phoneNumber: row.phone_number || row.phoneNumber || '', 
