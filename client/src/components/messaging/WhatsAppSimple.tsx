@@ -269,8 +269,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     refetchOnWindowFocus: false, // Desactivado para evitar múltiples llamadas
     retry: 1, // Solo un intento
     retryDelay: 10000, // 10 segundos entre intentos
-    // Usando condicional muy restrictivo para permitir consultas solo cuando es seguro
-    enabled: !!whatsappStatus?.authenticated && !!currentAccountId && !!selectedChatId
+    // Modificando la condición para que cargue chats tan pronto como se autentique
+    enabled: !!whatsappStatus?.authenticated && !!currentAccountId
   });
 
   // Query para obtener contactos de WhatsApp para la cuenta específica
