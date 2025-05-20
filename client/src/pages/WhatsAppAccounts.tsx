@@ -474,7 +474,12 @@ const WhatsAppAccounts = () => {
             <Card key={account.id} className="overflow-hidden">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
-                  <CardTitle className="text-xl">{account.name}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs border border-blue-300">
+                      {account.id}
+                    </div>
+                    <CardTitle className="text-xl">{account.name}</CardTitle>
+                  </div>
                   {renderStatusBadge(account.status, account.currentStatus?.authenticated)}
                 </div>
                 <CardDescription className="line-clamp-2">
