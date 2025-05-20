@@ -576,8 +576,10 @@ export class DatabaseStorage implements IStorage {
   async getAllWhatsappAccounts(): Promise<WhatsappAccount[]> {
     try {
       // Abordaje más fundamental: consulta directa sin ORM para evitar problemas con el esquema
+      // Incluimos todos los campos necesarios de la tabla
       const result = await db.query.raw(`
-        SELECT id, name, status, phone_number, session_data, "createdAt", "lastActiveAt"
+        SELECT id, name, status, phone_number, phoneNumber, session_data, sessionData, 
+               "createdAt", "lastActiveAt", "ownerName", "ownerPhone", description
         FROM whatsapp_accounts
       `);
       
@@ -585,12 +587,15 @@ export class DatabaseStorage implements IStorage {
       return (result as any[]).map(row => ({
         id: row.id,
         name: row.name,
-        phoneNumber: row.phone_number || '', 
+        phoneNumber: row.phone_number || row.phoneNumber || '', 
         status: row.status || 'inactive',
-        sessionData: row.session_data || '',
+        sessionData: row.session_data || row.sessionData || '',
         createdAt: row.createdAt || new Date(),
         updatedAt: row.createdAt || new Date(),
         lastActive: row.lastActiveAt || null,
+        ownerName: row.ownerName || '',
+        ownerPhone: row.ownerPhone || '',
+        description: row.description || '',
         settings: null // Campo requerido por la interfaz pero no existe en DB
       }));
     } catch (error) {
@@ -603,8 +608,10 @@ export class DatabaseStorage implements IStorage {
   async getWhatsappAccount(id: number): Promise<WhatsappAccount | undefined> {
     try {
       // Usamos SQL directo para evitar problemas con discrepancias en el esquema
+      // Incluimos todos los campos de la tabla
       const result = await db.query.raw(`
-        SELECT id, name, status, phone_number, session_data, "createdAt", "lastActiveAt"
+        SELECT id, name, status, phone_number, phoneNumber, session_data, sessionData, 
+               "createdAt", "lastActiveAt", "ownerName", "ownerPhone", description
         FROM whatsapp_accounts
         WHERE id = $1
       `, [id]);
@@ -616,15 +623,18 @@ export class DatabaseStorage implements IStorage {
       
       const row = result[0] as any;
       
-      // Transformamos a la estructura esperada por la interfaz
+      // Transformamos a la estructura esperada por la interfaz, con todos los campos
       return {
         id: row.id,
         name: row.name,
-        phoneNumber: row.phone_number || '',
+        phoneNumber: row.phone_number || row.phoneNumber || '',
         status: row.status || 'inactive',
-        sessionData: row.session_data || '',
+        sessionData: row.session_data || row.sessionData || '',
         createdAt: row.createdAt || new Date(),
         lastActive: row.lastActiveAt || null,
+        ownerName: row.ownerName || '',
+        ownerPhone: row.ownerPhone || '',
+        description: row.description || '',
         settings: null, // Campo requerido por la interfaz
         updatedAt: row.createdAt || new Date() // Valor aproximado
       };
@@ -646,7 +656,7 @@ export class DatabaseStorage implements IStorage {
         ? JSON.stringify(sessionData) 
         : (sessionData || '{}');
       
-      // Usamos SQL directo para la inserción, incluyendo ambas columnas duplicadas
+      // Usamos SQL directo para la inserción, adaptado a la estructura real de columnas
       const result = await db.query.raw(`
         INSERT INTO whatsapp_accounts (
           name, 
@@ -655,16 +665,22 @@ export class DatabaseStorage implements IStorage {
           phoneNumber, 
           session_data,
           sessionData, 
-          "createdAt"
+          "createdAt",
+          "ownerName",
+          "ownerPhone",
+          description
         ) VALUES (
-          $1, $2, $3, $3, $4, $4, $5
-        ) RETURNING id, name, status, phone_number, session_data, "createdAt"
+          $1, $2, $3, $3, $4, $4, $5, $6, $7, $8
+        ) RETURNING id, name, status, phone_number, phoneNumber, session_data, sessionData, "createdAt", "ownerName", "ownerPhone", description
       `, [
         account.name,
         account.status || 'inactive',
         phoneNumber || '',
         sessionDataString,
-        now
+        now,
+        account.ownerName || '',
+        account.ownerPhone || '',
+        account.description || ''
       ]);
       
       if (!result || result.length === 0) {
@@ -673,15 +689,18 @@ export class DatabaseStorage implements IStorage {
       
       const row = result[0] as any;
       
-      // Transformar a formato esperado por la interfaz
+      // Transformar a formato esperado por la interfaz, incluyendo todos los campos
       return {
         id: row.id,
         name: row.name,
-        phoneNumber: row.phone_number || '',
+        phoneNumber: row.phone_number || row.phoneNumber || '',
         status: row.status || 'inactive',
-        sessionData: row.session_data || '{}',
+        sessionData: row.session_data || row.sessionData || '{}',
         createdAt: row.createdAt || now,
-        lastActive: null,
+        lastActive: row.lastActiveAt || null,
+        ownerName: row.ownerName || '',
+        ownerPhone: row.ownerPhone || '',
+        description: row.description || '',
         settings: null, // Campo requerido por la interfaz
         updatedAt: row.createdAt || now
       };
