@@ -191,17 +191,8 @@ export const registerDirectAPIRoutes = (app: any) => {
       try {
         // Asegurar que el cliente esté debidamente inicializado
         if (!whatsappImpl.getClient()) {
-          return res.status(403).json({ 
-            error: 'Cliente de WhatsApp no inicializado correctamente. Por favor escanea el código QR para autenticar.'
-          });
-        }
-        
-        // Verificar el estado real de la conexión
-        const clientState = await whatsappImpl.getClientState();
-        if (clientState !== 'CONNECTED') {
-          return res.status(403).json({
-            error: 'WhatsApp no está correctamente autenticado. Por favor escanea el código QR para autenticar tu cuenta de WhatsApp.',
-            needsAuthentication: true
+          return res.status(503).json({ 
+            error: 'Cliente de WhatsApp no inicializado correctamente'
           });
         }
         
