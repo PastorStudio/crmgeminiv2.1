@@ -30,6 +30,7 @@ import SimpleWhatsApp from './pages/SimpleWhatsApp';
 import UltraSimpleChat from './pages/UltraSimpleChat';
 import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import CombinedWhatsApp from './pages/CombinedWhatsApp';
+import DirectAccess from './pages/DirectAccess';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
 import { PageTransition } from '@/components/ui/page-transition';
