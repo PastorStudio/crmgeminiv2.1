@@ -151,12 +151,37 @@ const SimpleWhatsApp = () => {
     if (!chatId) return;
     
     setIsLoading(true);
+    console.log(`🔄 Intentando cargar mensajes para chat ${chatId}...`);
     
     try {
-      console.log(`Cargando mensajes para chat ${chatId}`);
-      const response = await fetch(`/api/direct/whatsapp/messages/${chatId}`);
+      // Usar múltiples endpoints para asegurar que obtenemos los mensajes
+      let endpoint = `/api/direct/whatsapp/messages/${chatId}`;
+      console.log(`Intentando cargar desde: ${endpoint}`);
       
-      if (!response.ok) throw new Error('Error cargando mensajes');
+      let response = await fetch(endpoint);
+      
+      // Si falla el primer endpoint, intentar con el segundo
+      if (!response.ok) {
+        console.log("Primer endpoint falló, intentando alternativa...");
+        endpoint = `/api/whatsapp-accounts/${selectedAccount}/messages/${chatId}`;
+        console.log(`Intentando cargar desde: ${endpoint}`);
+        response = await fetch(endpoint);
+      }
+      
+      // Si aún no hay respuesta adecuada, probar otro formato
+      if (!response.ok) {
+        console.log("Segundo endpoint falló, intentando formato alternativo...");
+        // Formatear chatId si tiene formato especial
+        const formattedChatId = chatId.includes('@') 
+          ? chatId 
+          : `${chatId}@c.us`;
+          
+        endpoint = `/api/whatsapp-accounts/${selectedAccount}/messages/${formattedChatId}`;
+        console.log(`Intentando cargar desde: ${endpoint}`);
+        response = await fetch(endpoint);
+      }
+      
+      if (!response.ok) throw new Error('Error cargando mensajes en todos los endpoints');
       
       const data = await response.json();
       
