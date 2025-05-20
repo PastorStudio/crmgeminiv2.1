@@ -667,6 +667,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
   /**
    * Convierte un mensaje de la librería whatsapp-web.js a nuestro formato interno
+   * Ajusta el timestamp para usar la zona horaria local del sistema
    */
   private convertToWhatsAppMessage(message: any): WhatsAppMessage {
     if (!message || !message.id) {
@@ -688,13 +689,17 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     }
     
     try {
+      // Convertir el timestamp a milisegundos para la zona horaria local
+      const timestamp = message.timestamp || Date.now() / 1000;
+      const timestampMs = timestamp * 1000; // Convertir a milisegundos
+      
       return {
         id: message.id._serialized || message.id,
         body: message.body || '',
         from: message.from || '',
         to: message.to || '',
         fromMe: !!message.fromMe,
-        timestamp: (message.timestamp || Date.now() / 1000) * 1000, // Convertir a milisegundos
+        timestamp: timestampMs, // Ya ajustado a milisegundos
         hasMedia: !!message.hasMedia,
         type: message.type || 'unknown',
         isStatus: !!message.isStatus,
