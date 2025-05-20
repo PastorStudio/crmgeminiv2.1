@@ -342,7 +342,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       refetchChats();
     }, 100); // Pequeño retraso para asegurar que todo está listo
     
-    // Notificar sobre el cambio de cuenta mediante WebSocket si está disponible
+    // DESACTIVADO TEMPORALMENTE PARA PREVENIR BUCLE INFINITO
+    // El mensaje ACCOUNT_CHANGED está causando un bucle infinito
+    // Solo se enviará cuando sea realmente necesario, no en cada renderizado
+    /*
     if (sendWSMessage) {
       try {
         sendWSMessage({
@@ -353,6 +356,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         console.error('Error notificando cambio de cuenta:', error);
       }
     }
+    */
     
     // Actualizar estado en el almacenamiento local para persistencia
     localStorage.setItem('lastWhatsAppAccount', currentAccountId.toString());
