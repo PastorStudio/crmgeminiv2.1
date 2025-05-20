@@ -576,21 +576,33 @@ export class DatabaseStorage implements IStorage {
   async getAllWhatsappAccounts(): Promise<WhatsappAccount[]> {
     try {
       // Seleccionamos solo las columnas que sabemos que existen
-      const results = await db.select({
-        id: whatsappAccounts.id,
-        name: whatsappAccounts.name,
-        phoneNumber: whatsappAccounts.phoneNumber,
-        status: whatsappAccounts.status,
-        sessionData: whatsappAccounts.sessionData,
-        lastActive: whatsappAccounts.lastActive,
-        createdAt: whatsappAccounts.createdAt,
-        updatedAt: whatsappAccounts.updatedAt
-      }).from(whatsappAccounts);
+      // Utilizando consulta SQL directa para evitar problemas con el esquema
+      const results = await db.execute(`
+        SELECT 
+          id, 
+          name, 
+          status, 
+          "phoneNumber",
+          "sessionData",
+          "createdAt",
+          "lastActiveAt"
+        FROM whatsapp_accounts
+      `);
       
-      // Añadimos un objeto vacío para la columna settings que falta en la DB
+      // Mapeamos los resultados a la estructura esperada
       return results.map(account => ({
-        ...account,
-        settings: null
+        id: account.id,
+        name: account.name,
+        phoneNumber: account.phoneNumber,
+        status: account.status,
+        sessionData: account.sessionData,
+        createdAt: account.createdAt,
+        // Usamos lastActiveAt que existe en la DB en lugar de lastActive
+        lastActive: account.lastActiveAt,
+        // No existe en la DB pero se espera en la interfaz
+        settings: null,
+        // Añadimos updatedAt para compatibilidad con la interfaz
+        updatedAt: account.createdAt
       }));
     } catch (error) {
       console.error("Error al obtener cuentas de WhatsApp:", error);
@@ -606,7 +618,6 @@ export class DatabaseStorage implements IStorage {
         phoneNumber: whatsappAccounts.phoneNumber,
         status: whatsappAccounts.status,
         sessionData: whatsappAccounts.sessionData,
-        lastActive: whatsappAccounts.lastActive,
         createdAt: whatsappAccounts.createdAt,
         updatedAt: whatsappAccounts.updatedAt
       })
@@ -639,7 +650,6 @@ export class DatabaseStorage implements IStorage {
           phoneNumber: whatsappAccounts.phoneNumber,
           status: whatsappAccounts.status,
           sessionData: whatsappAccounts.sessionData,
-          lastActive: whatsappAccounts.lastActive,
           createdAt: whatsappAccounts.createdAt,
           updatedAt: whatsappAccounts.updatedAt
         });
@@ -657,14 +667,27 @@ export class DatabaseStorage implements IStorage {
 
   async updateWhatsappAccount(id: number, data: Partial<InsertWhatsappAccount>): Promise<WhatsappAccount | undefined> {
     try {
+      // Eliminamos la propiedad settings si existe
+      const { settings, ...cleanData } = data;
+      
+      // No actualizamos lastActiveAt ya que no existe en la base de datos
       const [updatedAccount] = await db.update(whatsappAccounts)
-        .set({
-          ...data,
-          ...(data.status === 'active' ? { lastActiveAt: new Date() } : {})
-        })
+        .set(cleanData)
         .where(eq(whatsappAccounts.id, id))
-        .returning();
-      return updatedAccount;
+        .returning({
+          id: whatsappAccounts.id,
+          name: whatsappAccounts.name,
+          phoneNumber: whatsappAccounts.phoneNumber,
+          status: whatsappAccounts.status,
+          sessionData: whatsappAccounts.sessionData,
+          createdAt: whatsappAccounts.createdAt,
+          updatedAt: whatsappAccounts.updatedAt
+        });
+      // Añadimos la propiedad settings manualmente
+      return {
+        ...updatedAccount,
+        settings: null
+      };
     } catch (error) {
       console.error(`Error al actualizar cuenta WhatsApp ${id}:`, error);
       throw error;
