@@ -38,6 +38,7 @@ import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import chatAssignmentsRouter from "./routes/chatAssignments";
 import { agentsRouter } from "./routes/agents";
 import { ticketsRouter } from "./routes/tickets";
+import { dashboardRouter } from "./routes/dashboard";
 import deleteLeadsRouter from "./routes/deleteLeads";
 
 // Configurar middleware para upload de archivos

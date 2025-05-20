@@ -461,7 +461,6 @@ export default function Tickets() {
                   <TableHead>ID</TableHead>
                   <TableHead>Título</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Prioridad</TableHead>
                   <TableHead>Categoría</TableHead>
                   <TableHead>Asignado a</TableHead>
                   <TableHead>Fecha Creación</TableHead>
@@ -483,16 +482,7 @@ export default function Tickets() {
                           {ticketStatusMap[ticket.status]?.label || ticket.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            priorityMap[ticket.priority]?.color || "bg-gray-200"
-                          }
-                        >
-                          {priorityMap[ticket.priority]?.label || ticket.priority}
-                        </Badge>
-                      </TableCell>
+
                       <TableCell>
                         {categoryMap[ticket.category] || ticket.category}
                       </TableCell>
