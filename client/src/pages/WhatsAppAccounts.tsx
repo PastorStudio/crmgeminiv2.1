@@ -27,14 +27,9 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  Alert,
+  AlertDescription,
+  AlertTitle,
 } from '@/components/ui';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -130,6 +125,7 @@ const WhatsAppAccounts = () => {
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newlyCreatedAccountId, setNewlyCreatedAccountId] = useState<number | null>(null);
+  const [cleanAllDialogOpen, setCleanAllDialogOpen] = useState(false);
   
   // Consulta para obtener cuentas
   const { data: accounts = [], isLoading, error, refetch } = useQuery<WhatsAppAccount[]>({
@@ -265,6 +261,33 @@ const WhatsAppAccounts = () => {
       toast({
         title: 'Error',
         description: 'No se pudo eliminar la cuenta.',
+        variant: 'destructive',
+      });
+    }
+  });
+  
+  // Mutation para limpiar todas las sesiones de WhatsApp
+  const cleanAllSessionsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('/api/whatsapp-accounts/clear-all-sessions', {
+        method: 'POST'
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Sesiones limpiadas',
+        description: 'Todas las sesiones de WhatsApp han sido limpiadas correctamente.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+      // Recargar la página para asegurar que todo se actualice correctamente
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'No se pudieron limpiar las sesiones de WhatsApp.',
         variant: 'destructive',
       });
     }
