@@ -191,12 +191,21 @@ export const registerDirectAPIRoutes = (app: any) => {
       try {
         // Asegurar que el cliente esté debidamente inicializado
         if (!whatsappImpl.getClient()) {
-          return res.status(503).json({ 
-            error: 'Cliente de WhatsApp no inicializado correctamente'
+          return res.status(403).json({ 
+            error: 'Cliente de WhatsApp no inicializado correctamente. Por favor escanea el código QR para autenticar.'
           });
         }
         
-        // Enviar mensaje real (no simulación)
+        // Verificar el estado real de la conexión
+        const clientState = await whatsappImpl.getClientState();
+        if (clientState !== 'CONNECTED') {
+          return res.status(403).json({
+            error: 'WhatsApp no está correctamente autenticado. Por favor escanea el código QR para autenticar tu cuenta de WhatsApp.',
+            needsAuthentication: true
+          });
+        }
+        
+        // Enviar mensaje real (ahora que sabemos que estamos realmente autenticados)
         const result = await whatsappImpl.sendMessage(chatId.replace('@c.us', ''), message);
         
         console.log('Respuesta del servidor al enviar mensaje:', result);
@@ -207,10 +216,20 @@ export const registerDirectAPIRoutes = (app: any) => {
           messageId: result.messageId,
           message: "Mensaje enviado correctamente"
         });
-      } catch (sendError) {
+      } catch (sendError: any) {
         console.error('Error al enviar mensaje de WhatsApp:', sendError);
         
-        // Devolver error real, no simulación
+        // Verificar si es un error de autenticación
+        if (sendError.message && sendError.message.includes('autenticar')) {
+          return res.status(403).json({
+            success: false,
+            error: 'Para enviar mensajes, primero debes escanear el código QR y autenticar WhatsApp.',
+            needsAuthentication: true,
+            details: sendError.message
+          });
+        }
+        
+        // Devolver error real
         return res.status(500).json({ 
           success: false,
           error: 'Error al enviar mensaje de WhatsApp',
