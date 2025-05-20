@@ -89,10 +89,6 @@ interface WhatsAppInterfaceProps {
 // Sin datos de demostración - Sólo se utilizarán datos reales
 
 export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfaceProps) {
-  // Acceso a React Query para manipulación de caché
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  
   // Estado local
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
@@ -127,9 +123,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     connectionStatus 
   } = useWebSocket();
   
-  // Toast para notificaciones
-  const { toast } = useToast();
-
   // Obtener QueryClient para poder usarlo en funciones
   const queryClient = useQueryClient();
   
