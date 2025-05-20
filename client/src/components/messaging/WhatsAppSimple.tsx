@@ -893,6 +893,35 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       // Actualizar el estado con estos chats de demostración
       setMultiAccountChats(demoData);
       
+      // Generar mensajes demo para el chat seleccionado (si existe)
+      if (selectedChatId && selectedChatId.startsWith('demo-chat-')) {
+        const parts = selectedChatId.split('-');
+        const accountId = parts[2];
+        const chatNum = parts[3];
+        
+        // Generar mensajes de demostración
+        const demoMessages = [];
+        for (let i = 1; i <= 15; i++) {
+          const isFromMe = i % 3 === 0;
+          const timestamp = Date.now() / 1000 - (15 - i) * 3600;
+          
+          demoMessages.push({
+            id: `demo-msg-${accountId}-${chatNum}-${i}`,
+            body: isFromMe 
+              ? `Este es un mensaje enviado desde la cuenta ${accountId} al chat ${chatNum}` 
+              : `Este es un mensaje recibido en la cuenta ${accountId} del chat ${chatNum}`,
+            fromMe: isFromMe,
+            timestamp: timestamp,
+            hasMedia: false
+          });
+        }
+        
+        // Ordenar y establecer mensajes
+        const sortedMessages = demoMessages.sort((a, b) => a.timestamp - b.timestamp);
+        console.log('Cargando mensajes de demostración para chat seleccionado:', selectedChatId);
+        setMessagesState(sortedMessages);
+      }
+      
       // Configurar intervalo de actualización para simular actividad
       const refreshInterval = setInterval(() => {
         console.log('Actualizando chats de múltiples cuentas:', selectedAccounts);
@@ -921,7 +950,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       
       return () => clearInterval(refreshInterval);
     }
-  }, [multiAccountMode, selectedAccounts.join(',')]);
+  }, [multiAccountMode, selectedAccounts.join(','), selectedChatId]);
 
   // Actualizar cuando llega una notificación por WebSocket
   useEffect(() => {
@@ -1585,7 +1614,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                                   console.log('Seleccionando chat multi-cuenta:', chat.name, chat.id, 'de cuenta:', chat.accountId);
                                   
                                   // Verificar si es un chat de demostración
-                                  if (chat.id.startsWith('demo-chat-')) {
+                                  if (chat.id && chat.id.startsWith && chat.id.startsWith('demo-chat-')) {
                                     console.log('Detectado chat de demostración, preparando visualización...');
                                     
                                     // Extraer partes del ID
@@ -1593,17 +1622,38 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                                     const accountId = parts[2];
                                     const chatNum = parts[3];
                                     
-                                    // Generar mensajes de demostración
+                                    // Generar mensajes de demostración personalizados para cada cuenta y chat
                                     const demoMessages = [];
                                     for (let i = 1; i <= 15; i++) {
                                       const isFromMe = i % 3 === 0;
                                       const timestamp = Date.now() / 1000 - (15 - i) * 3600;
                                       
+                                      // Personalizar el texto del mensaje según el índice
+                                      let messageText = '';
+                                      if (isFromMe) {
+                                        if (i === 3) messageText = `Hola, ¿en qué puedo ayudarte desde la cuenta ${accountId}?`;
+                                        else if (i === 6) messageText = `Claro, revisaré esa información para ti.`;
+                                        else if (i === 9) messageText = `Te enviaré los detalles por correo electrónico también.`;
+                                        else if (i === 12) messageText = `¿Necesitas algo más por ahora?`;
+                                        else if (i === 15) messageText = `Perfecto, quedamos a la orden para lo que necesites.`;
+                                        else messageText = `Este es un mensaje enviado desde la cuenta ${accountId} al chat ${chatNum}`;
+                                      } else {
+                                        if (i === 1) messageText = `Hola, ¿me podrías ayudar con una consulta?`;
+                                        else if (i === 2) messageText = `Necesito información sobre sus servicios`;
+                                        else if (i === 4) messageText = `Gracias por responder tan rápido`;
+                                        else if (i === 5) messageText = `Quisiera saber los precios actualizados`;
+                                        else if (i === 7) messageText = `Excelente, muchas gracias`;
+                                        else if (i === 8) messageText = `¿Tienen algún documento con toda la información?`;
+                                        else if (i === 10) messageText = `Perfecto, lo revisaré cuando llegue`;
+                                        else if (i === 11) messageText = `Una última consulta sobre las formas de pago`;
+                                        else if (i === 13) messageText = `No, por ahora eso es todo`;
+                                        else if (i === 14) messageText = `Gracias por tu atención`;
+                                        else messageText = `Este es un mensaje recibido en la cuenta ${accountId} del chat ${chatNum}`;
+                                      }
+                                      
                                       demoMessages.push({
                                         id: `demo-msg-${accountId}-${chatNum}-${i}`,
-                                        body: isFromMe 
-                                          ? `Este es un mensaje enviado desde la cuenta ${accountId} al chat ${chatNum}` 
-                                          : `Este es un mensaje recibido en la cuenta ${accountId} del chat ${chatNum}`,
+                                        body: messageText,
                                         fromMe: isFromMe,
                                         timestamp: timestamp,
                                         hasMedia: false
@@ -1613,6 +1663,18 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                                     // Ordenar y establecer mensajes
                                     const sortedMessages = demoMessages.sort((a, b) => a.timestamp - b.timestamp);
                                     setMessagesState(sortedMessages);
+                                    
+                                    // Actualizar estado del chat actual para mostrar correctamente la cabecera
+                                    const selectedChat = {
+                                      id: chat.id,
+                                      name: chat.name,
+                                      isGroup: chat.isGroup || false,
+                                      timestamp: chat.timestamp,
+                                      lastMessage: chat.lastMessage || '',
+                                      unreadCount: chat.unreadCount || 0,
+                                      accountId: chat.accountId
+                                    };
+                                    setCurrentChat(selectedChat);
                                   }
                                   
                                   // Actualizar chat seleccionado
