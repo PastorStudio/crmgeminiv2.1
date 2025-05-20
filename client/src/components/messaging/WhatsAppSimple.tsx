@@ -98,6 +98,24 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [activeTab, setActiveTab] = useState('chats');
+  // Estado para multi-selección de cuentas
+  const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
+  const [multiAccountMode, setMultiAccountMode] = useState<boolean>(false);
+  // Estado para almacenar chats de múltiples cuentas
+  const [multiAccountChats, setMultiAccountChats] = useState<{[accountId: number]: WhatsAppChat[]}>({});
+  // Mapeo de colores para cuentas
+  const accountColors = {
+    1: 'blue',
+    2: 'green',
+    3: 'purple',
+    4: 'orange',
+    5: 'red',
+    6: 'yellow',
+    7: 'teal',
+    8: 'indigo',
+    9: 'pink',
+    10: 'amber'
+  };
   // Estado para el agente asignado al chat actual
   const [assignedAgent, setAssignedAgent] = useState<{name: string, username: string} | null>(null);
   const [chatFilter, setChatFilter] = useState('');
@@ -129,6 +147,98 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   } = useWebSocket();
   
   // Referencias a React Query y Toast ya declaradas anteriormente
+  
+  // Función para cargar chats de múltiples cuentas
+  const loadMultiAccountChats = async (accountIds: number[]) => {
+    const { apiRequest } = await import('@/lib/queryClient');
+    
+    // Para cada cuenta, cargar sus chats
+    for (const accountId of accountIds) {
+      try {
+        // Primero intentar con la caché
+        const cachedData = localStorage.getItem(`whatsapp_chats_${accountId}`);
+        if (cachedData) {
+          try {
+            const parsedChats = JSON.parse(cachedData);
+            if (Array.isArray(parsedChats) && parsedChats.length > 0) {
+              console.log(`Usando ${parsedChats.length} chats en caché para cuenta ${accountId}`);
+              
+              // Marcar cada chat con la cuenta a la que pertenece
+              const chatsWithAccount = parsedChats.map(chat => ({
+                ...chat,
+                accountId: accountId
+              }));
+              
+              // Actualizar el estado con los chats de esta cuenta
+              setMultiAccountChats(prev => ({
+                ...prev,
+                [accountId]: chatsWithAccount
+              }));
+              
+              continue; // Pasar a la siguiente cuenta
+            }
+          } catch (e) {
+            console.error(`Error al parsear caché para cuenta ${accountId}:`, e);
+          }
+        }
+        
+        // Si no hay caché o falló, consultar la API
+        // Intentar con el endpoint específico de la cuenta
+        try {
+          const response = await apiRequest(`/api/whatsapp-accounts/${accountId}/chats`);
+          if (Array.isArray(response) && response.length > 0) {
+            console.log(`Obtenidos ${response.length} chats para cuenta ${accountId}`);
+            
+            // Marcar cada chat con la cuenta a la que pertenece
+            const chatsWithAccount = response.map(chat => ({
+              ...chat,
+              accountId: accountId
+            }));
+            
+            // Guardar en caché
+            localStorage.setItem(`whatsapp_chats_${accountId}`, JSON.stringify(response));
+            
+            // Actualizar el estado
+            setMultiAccountChats(prev => ({
+              ...prev,
+              [accountId]: chatsWithAccount
+            }));
+            
+            continue; // Pasar a la siguiente cuenta
+          }
+        } catch (apiError) {
+          console.error(`Error en API para cuenta ${accountId}:`, apiError);
+        }
+        
+        // Si todo falla, usar el endpoint directo como respaldo
+        try {
+          const fallbackResponse = await apiRequest('/api/direct/whatsapp/chats');
+          if (Array.isArray(fallbackResponse) && fallbackResponse.length > 0) {
+            console.log(`Usando fallback: ${fallbackResponse.length} chats obtenidos para cuenta ${accountId}`);
+            
+            // Marcar cada chat con la cuenta a la que pertenece
+            const chatsWithAccount = fallbackResponse.map(chat => ({
+              ...chat,
+              accountId: accountId
+            }));
+            
+            // Guardar en caché
+            localStorage.setItem(`whatsapp_chats_${accountId}`, JSON.stringify(fallbackResponse));
+            
+            // Actualizar el estado
+            setMultiAccountChats(prev => ({
+              ...prev,
+              [accountId]: chatsWithAccount
+            }));
+          }
+        } catch (fallbackError) {
+          console.error(`Error en fallback de chats para cuenta ${accountId}:`, fallbackError);
+        }
+      } catch (error) {
+        console.error(`Error general al cargar chats para cuenta ${accountId}:`, error);
+      }
+    }
+  };
   
   // Query para obtener todas las cuentas de WhatsApp
   const {
@@ -1165,110 +1275,174 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         <div className="col-span-12 md:col-span-4 flex flex-col border-r h-full overflow-hidden">
           <Tabs defaultValue="chats" className="flex flex-col h-full overflow-hidden">
             <div className="border-b p-2">
-              {/* Selector de cuentas WhatsApp */}
+              {/* Selector de cuentas WhatsApp con modo multi-selección */}
               <div className="mb-2">
-                <select 
-                  className="w-full rounded-md border border-gray-300 py-1 px-2 text-sm font-medium"
-                  value={currentAccountId}
-                  onChange={(e) => {
-                    const newAccountId = Number(e.target.value);
-                    const accountName = whatsappAccounts.find(acc => acc.id === newAccountId)?.name || 'seleccionada';
-                    
-                    // Mostrar indicador de carga
-                    toast({
-                      title: "Cambiando cuenta",
-                      description: `Preparando cuenta ${accountName}...`,
-                      variant: "default"
-                    });
-                    
-                    // Guardar el chat seleccionado actual para la cuenta anterior
-                    if (selectedChatId && currentAccountId) {
-                      localStorage.setItem(`last_chat_${currentAccountId}`, selectedChatId);
-                    }
-                    
-                    // Limpiar selección actual inmediatamente
-                    setSelectedChatId(null);
-                    
-                    // Limpiar caché de consultas anteriores para evitar mezclar datos
-                    queryClient.invalidateQueries({
-                      queryKey: ['/api/whatsapp-accounts', currentAccountId]
-                    });
-                    
-                    // Actualizar la cuenta seleccionada
-                    setCurrentAccountId(newAccountId);
-                    
-                    // Iniciar precarga de datos para la nueva cuenta
-                    setTimeout(async () => {
-                      try {
-                        // Precarga cuenta independientemente de su estado
-                        const { apiRequest } = await import('@/lib/queryClient');
-                        
-                        // Cargar información de la cuenta
-                        apiRequest(`/api/whatsapp-accounts/${newAccountId}`).catch(() => {});
-                        
-                        // Intentar cargar chats inmediatamente
-                        apiRequest(`/api/whatsapp-accounts/${newAccountId}/chats`).catch(() => {});
-                        
-                        // Tratamiento especial para la cuenta de Soporte (ID 2)
-                        if (newAccountId === 2) {
-                          // Limpiar caché para evitar confusiones
-                          queryClient.invalidateQueries({
-                            queryKey: ['/api/whatsapp-accounts', 2]
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-600">Modo de visualización</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs">Una cuenta</span>
+                    <Switch 
+                      checked={multiAccountMode} 
+                      onCheckedChange={(checked) => {
+                        setMultiAccountMode(checked);
+                        if (checked) {
+                          // Al activar modo multi-cuenta, comenzamos con la cuenta actual seleccionada
+                          setSelectedAccounts([currentAccountId]);
+                          // Cargar chats iniciales
+                          loadMultiAccountChats([currentAccountId]);
+                        } else {
+                          // Al desactivar, volvemos a mostrar solo la cuenta actual
+                          setSelectedAccounts([]);
+                        }
+                      }}
+                    />
+                    <span className="text-xs">Multi-cuentas</span>
+                  </div>
+                </div>
+                
+                {!multiAccountMode ? (
+                  <select 
+                    className="w-full rounded-md border border-gray-300 py-1 px-2 text-sm font-medium"
+                    value={currentAccountId}
+                    onChange={(e) => {
+                      const newAccountId = Number(e.target.value);
+                      const accountName = whatsappAccounts.find(acc => acc.id === newAccountId)?.name || 'seleccionada';
+                      
+                      // Mostrar indicador de carga
+                      toast({
+                        title: "Cambiando cuenta",
+                        description: `Preparando cuenta ${accountName}...`,
+                        variant: "default"
+                      });
+                      
+                      // Guardar el chat seleccionado actual para la cuenta anterior
+                      if (selectedChatId && currentAccountId) {
+                        localStorage.setItem(`last_chat_${currentAccountId}`, selectedChatId);
+                      }
+                      
+                      // Limpiar selección actual inmediatamente
+                      setSelectedChatId(null);
+                      
+                      // Limpiar caché de consultas anteriores para evitar mezclar datos
+                      queryClient.invalidateQueries({
+                        queryKey: ['/api/whatsapp-accounts', currentAccountId]
+                      });
+                      
+                      // Actualizar la cuenta seleccionada
+                      setCurrentAccountId(newAccountId);
+                      
+                      // Iniciar precarga de datos para la nueva cuenta
+                      setTimeout(async () => {
+                        try {
+                          // Precarga cuenta independientemente de su estado
+                          const { apiRequest } = await import('@/lib/queryClient');
+                          
+                          // Cargar información de la cuenta
+                          apiRequest(`/api/whatsapp-accounts/${newAccountId}`).catch(() => {});
+                          
+                          // Intentar cargar chats inmediatamente
+                          apiRequest(`/api/whatsapp-accounts/${newAccountId}/chats`).catch(() => {});
+                          
+                          // Tratamiento especial para la cuenta de Soporte (ID 2)
+                          if (newAccountId === 2) {
+                            // Limpiar caché para evitar confusiones
+                            queryClient.invalidateQueries({
+                              queryKey: ['/api/whatsapp-accounts', 2]
+                            });
+                            
+                            // Usar endpoint directo que funciona con todas las cuentas
+                            apiRequest('/api/direct/whatsapp/chats').catch(() => {});
+                            
+                            // Precargar algunos mensajes de ejemplo para tener datos
+                            const lastChats = localStorage.getItem('whatsapp_chats_2');
+                            if (lastChats) {
+                              try {
+                                const parsedChats = JSON.parse(lastChats);
+                                if (Array.isArray(parsedChats) && parsedChats.length > 0) {
+                                  // Precargar mensajes del primer chat para tener algo rápido
+                                  const firstChatId = parsedChats[0]?.id;
+                                  if (firstChatId) {
+                                    apiRequest(`/api/direct/whatsapp/messages/${firstChatId}`).catch(() => {});
+                                  }
+                                }
+                              } catch (e) {}
+                            }
+                          }
+                          
+                          // Notificar completado
+                          toast({
+                            title: `Cuenta ${accountName} cargada`,
+                            description: "Puedes empezar a usar esta cuenta ahora",
+                            variant: "default"
                           });
                           
-                          // Usar endpoint directo que funciona con todas las cuentas
-                          apiRequest('/api/direct/whatsapp/chats').catch(() => {});
-                          
-                          // Precargar algunos mensajes de ejemplo para tener datos
-                          const lastChats = localStorage.getItem('whatsapp_chats_2');
-                          if (lastChats) {
-                            try {
-                              const parsedChats = JSON.parse(lastChats);
-                              if (Array.isArray(parsedChats) && parsedChats.length > 0) {
-                                // Precargar mensajes del primer chat para tener algo rápido
-                                const firstChatId = parsedChats[0]?.id;
-                                if (firstChatId) {
-                                  apiRequest(`/api/direct/whatsapp/messages/${firstChatId}`).catch(() => {});
-                                }
-                              }
-                            } catch (e) {}
+                          // Restaurar último chat usado
+                          const lastChatForAccount = localStorage.getItem(`last_chat_${newAccountId}`);
+                          if (lastChatForAccount) {
+                            setSelectedChatId(lastChatForAccount);
                           }
+                          
+                          // Forzar refresco
+                          refetchChats();
+                        } catch (error) {
+                          console.error("Error en precarga de cuenta:", error);
                         }
-                        
-                        // Notificar completado
-                        toast({
-                          title: `Cuenta ${accountName} cargada`,
-                          description: "Puedes empezar a usar esta cuenta ahora",
-                          variant: "default"
-                        });
-                        
-                        // Restaurar último chat usado
-                        const lastChatForAccount = localStorage.getItem(`last_chat_${newAccountId}`);
-                        if (lastChatForAccount) {
-                          setSelectedChatId(lastChatForAccount);
-                        }
-                        
-                        // Forzar refresco
-                        refetchChats();
-                      } catch (error) {
-                        console.error("Error en precarga de cuenta:", error);
-                      }
-                    }, 100);
-                  }}
-                  disabled={isLoadingAccounts || !Array.isArray(whatsappAccounts) || whatsappAccounts.length === 0}
-                >
-                  {isLoadingAccounts ? (
-                    <option>Cargando cuentas...</option>
-                  ) : whatsappAccounts.length === 0 ? (
-                    <option>No hay cuentas disponibles</option>
-                  ) : (
-                    whatsappAccounts.map(account => (
-                      <option key={account.id} value={account.id}>
-                        {account.name} {account.currentStatus?.authenticated ? '✓' : ''}
-                      </option>
-                    ))
-                  )}
-                </select>
+                      }, 100);
+                    }}
+                    disabled={isLoadingAccounts || !Array.isArray(whatsappAccounts) || whatsappAccounts.length === 0}
+                  >
+                    {isLoadingAccounts ? (
+                      <option>Cargando cuentas...</option>
+                    ) : whatsappAccounts.length === 0 ? (
+                      <option>No hay cuentas disponibles</option>
+                    ) : (
+                      whatsappAccounts.map(account => (
+                        <option key={account.id} value={account.id}>
+                          {account.name} {account.currentStatus?.authenticated ? '✓' : ''}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium mb-1">Selecciona las cuentas que deseas ver:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {whatsappAccounts.map(account => (
+                        <div 
+                          key={account.id}
+                          className={`p-1 px-2 rounded-md border cursor-pointer text-sm flex items-center gap-1 
+                            ${selectedAccounts.includes(account.id) 
+                              ? `bg-${accountColors[account.id as keyof typeof accountColors]}-100 border-${accountColors[account.id as keyof typeof accountColors]}-300 text-${accountColors[account.id as keyof typeof accountColors]}-700` 
+                              : 'bg-gray-50 border-gray-200 text-gray-700'}`}
+                          onClick={() => {
+                            // Toggle de selección
+                            if (selectedAccounts.includes(account.id)) {
+                              // Si ya está seleccionada, la quitamos (solo si no es la última)
+                              if (selectedAccounts.length > 1) {
+                                setSelectedAccounts(selectedAccounts.filter(id => id !== account.id));
+                              }
+                            } else {
+                              // Si no está seleccionada, la agregamos
+                              const newSelectedAccounts = [...selectedAccounts, account.id];
+                              setSelectedAccounts(newSelectedAccounts);
+                              // Cargar chats de esta cuenta
+                              loadMultiAccountChats([account.id]);
+                            }
+                          }}
+                        >
+                          <div className={`w-4 h-4 rounded-full bg-${accountColors[account.id as keyof typeof accountColors]}-500 flex-shrink-0`}></div>
+                          <span>{account.id}. {account.name}</span>
+                          {account.currentStatus?.authenticated && <span className="text-green-600 ml-1">✓</span>}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {selectedAccounts.length === 0 
+                        ? 'Selecciona al menos una cuenta' 
+                        : `${selectedAccounts.length} cuenta(s) seleccionada(s)`}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="relative mb-2">
@@ -1317,115 +1491,288 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     <div className="divide-y">
                       {/* Mostramos un mensaje de depuración antes del mapeo */}
                       <div className="p-3 text-sm text-gray-500">
-                        Chats disponibles: {whatsappChats.length}
+                        {multiAccountMode ? (
+                          <div className="flex flex-col">
+                            <span>Chats disponibles en {selectedAccounts.length} cuenta(s):</span>
+                            <div className="text-xs mt-1 space-y-1">
+                              {selectedAccounts.map(accountId => {
+                                const accountChats = multiAccountChats[accountId] || [];
+                                const accountName = whatsappAccounts.find(a => a.id === accountId)?.name || `Cuenta ${accountId}`;
+                                return (
+                                  <div key={accountId} className="flex items-center gap-1">
+                                    <div className={`w-3 h-3 rounded-full bg-${accountColors[accountId as keyof typeof accountColors]}-500`}></div>
+                                    <span>
+                                      {accountName}: {accountChats.length} chats
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                              {Object.values(multiAccountChats).flat().length === 0 && (
+                                <span className="text-amber-600 font-medium">No hay chats cargados. Selecciona al menos una cuenta para ver sus chats.</span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <span>Chats disponibles: {whatsappChats.length}</span>
+                        )}
                       </div>
                       
                       {/* Mapeo de chats con protección de errores - Versión corregida para evitar bucles */}
-                      {whatsappChats.map((chat: WhatsAppChat) => (
-                        <div
-                          key={chat.id}
-                          className={`p-3 hover:bg-gray-50 cursor-pointer ${
-                            selectedChatId === chat.id ? 'bg-green-50 border-l-4 border-l-green-500' : ''
-                          }`}
-                          onClick={() => {
-                            // SOLUCIÓN ULTRA SIMPLIFICADA: Cargamos directamente en el estado de mensajes
-                            console.log('Seleccionando chat directo:', chat.name, chat.id);
-                            
-                            // Actualizar chat seleccionado
-                            setSelectedChatId(chat.id);
-                            
-                            // Guardar en localStorage
-                            localStorage.setItem('last_selected_chat_id', chat.id);
-                            localStorage.setItem('last_selected_chat_account', currentAccountId.toString());
-                            
-                            // NUEVO: Cargar mensajes directamente en el estado
-                            fetch(`/api/direct/whatsapp/messages/${chat.id}`)
-                              .then(res => res.json())
-                              .then(data => {
-                                if (Array.isArray(data) && data.length > 0) {
-                                  console.log(`✅ Cargados ${data.length} mensajes reales para chat ${chat.id}`);
-                                  setMessagesState(data);
-                                  localStorage.setItem(`messages_${chat.id}`, JSON.stringify(data));
-                                } else {
-                                  console.log('No hay mensajes disponibles, intentando cargar desde caché...');
-                                  const cachedMessages = localStorage.getItem(`messages_${chat.id}`);
-                                  if (cachedMessages) {
-                                    try {
-                                      const parsed = JSON.parse(cachedMessages);
-                                      if (Array.isArray(parsed) && parsed.length > 0) {
-                                        console.log(`🔄 Usando ${parsed.length} mensajes de caché local`);
-                                        setMessagesState(parsed);
+                      {multiAccountMode 
+                        // Mostrar chats de múltiples cuentas
+                        ? Object.entries(multiAccountChats)
+                            .filter(([accountId]) => selectedAccounts.includes(Number(accountId)))
+                            .flatMap(([accountId, chats]) => 
+                              chats.map((chat: any) => ({
+                                ...chat,
+                                accountId: Number(accountId)
+                              }))
+                            )
+                            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)) // Ordenar por recientes primero
+                            .map((chat: any) => (
+                              <div
+                                key={`${chat.accountId}-${chat.id}`}
+                                className={`p-3 hover:bg-gray-50 cursor-pointer ${
+                                  selectedChatId === chat.id ? 'bg-green-50 border-l-4 border-l-green-500' : ''
+                                }`}
+                                onClick={() => {
+                                  console.log('Seleccionando chat multi-cuenta:', chat.name, chat.id, 'de cuenta:', chat.accountId);
+                                  
+                                  // Actualizar chat seleccionado
+                                  setSelectedChatId(chat.id);
+                                  // También actualizar la cuenta actual para poder enviar mensajes desde ella
+                                  setCurrentAccountId(chat.accountId);
+                                  
+                                  // Guardar en localStorage
+                                  localStorage.setItem('last_selected_chat_id', chat.id);
+                                  localStorage.setItem('last_selected_chat_account', chat.accountId.toString());
+                                  
+                                  // Cargar mensajes directamente en el estado
+                                  fetch(`/api/whatsapp-accounts/${chat.accountId}/messages/${chat.id}`)
+                                    .then(res => res.json())
+                                    .then(data => {
+                                      if (Array.isArray(data) && data.length > 0) {
+                                        console.log(`✅ Cargados ${data.length} mensajes para chat ${chat.id} de cuenta ${chat.accountId}`);
+                                        setMessagesState(data);
+                                        localStorage.setItem(`messages_${chat.id}_${chat.accountId}`, JSON.stringify(data));
+                                      } else {
+                                        // Intentar con endpoint directo
+                                        fetch(`/api/direct/whatsapp/messages/${chat.id}`)
+                                          .then(res => res.json())
+                                          .then(directData => {
+                                            if (Array.isArray(directData) && directData.length > 0) {
+                                              console.log(`✅ Cargados ${directData.length} mensajes directos para chat ${chat.id}`);
+                                              setMessagesState(directData);
+                                              localStorage.setItem(`messages_${chat.id}_${chat.accountId}`, JSON.stringify(directData));
+                                            } else {
+                                              // Intentar con caché
+                                              const cachedMessages = localStorage.getItem(`messages_${chat.id}_${chat.accountId}`);
+                                              if (cachedMessages) {
+                                                try {
+                                                  const parsed = JSON.parse(cachedMessages);
+                                                  if (Array.isArray(parsed) && parsed.length > 0) {
+                                                    console.log(`🔄 Usando ${parsed.length} mensajes de caché local`);
+                                                    setMessagesState(parsed);
+                                                  }
+                                                } catch (e) {
+                                                  console.error('Error al parsear caché:', e);
+                                                }
+                                              } else {
+                                                // Crear mensaje de sistema
+                                                setMessagesState([{
+                                                  id: `system_${Date.now()}`,
+                                                  body: "No hay mensajes disponibles para este chat. Si acabas de conectar la cuenta, intenta refrescar la página.",
+                                                  fromMe: false,
+                                                  timestamp: Date.now() / 1000,
+                                                  hasMedia: false
+                                                }]);
+                                              }
+                                            }
+                                          })
+                                          .catch(err => {
+                                            console.error('Error cargando mensajes directos:', err);
+                                            setMessagesState([{
+                                              id: `error_${Date.now()}`,
+                                              body: "Error al cargar mensajes. Intente nuevamente o escanee el código QR para reconectar la cuenta.",
+                                              fromMe: false,
+                                              timestamp: Date.now() / 1000,
+                                              hasMedia: false
+                                            }]);
+                                          });
                                       }
-                                    } catch (e) {
-                                      console.error('Error al parsear caché:', e);
-                                    }
-                                  } else {
-                                    // Crear mensaje de sistema
-                                    setMessagesState([{
-                                      id: `system_${Date.now()}`,
-                                      body: "No hay mensajes disponibles para este chat. Si acabas de conectar la cuenta, intenta refrescar la página.",
-                                      fromMe: false,
-                                      timestamp: Date.now() / 1000,
-                                      hasMedia: false
-                                    }]);
-                                  }
-                                }
-                              })
-                              .catch(err => {
-                                console.error('Error cargando mensajes:', err);
-                                // Mensaje de error
-                                setMessagesState([{
-                                  id: `error_${Date.now()}`,
-                                  body: "Error al cargar mensajes. Intente nuevamente o escanee el código QR para reconectar la cuenta.",
-                                  fromMe: false,
-                                  timestamp: Date.now() / 1000,
-                                  hasMedia: false
-                                }]);
-                              });
-                          }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-11 w-11 flex-shrink-0 border shadow-sm">
-                              {chat.profilePicUrl ? (
-                                <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
-                              ) : null}
-                              <AvatarFallback className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">
-                                {getInitials(chat.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            
-                            <div className="flex-1 min-w-0 overflow-hidden">
-                              <div className="flex items-center gap-1">
-                                <span className="font-medium truncate">{chat.name}</span>
-                                {chat.id.includes('@g.us') && (
-                                  <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200">
-                                    Grupo
-                                  </Badge>
-                                )}
-                                {!chat.id.includes('@g.us') && (
-                                  <Badge variant="outline" className="text-[10px] h-4 px-1 bg-green-50 text-green-700 border-green-200">
-                                    Chat
-                                  </Badge>
-                                )}
-                                {chat.unreadCount > 0 && (
-                                  <span className="inline-flex items-center justify-center ml-1 bg-green-500 text-white text-[11px] w-5 h-5 rounded-full">
-                                    {chat.unreadCount}
-                                  </span>
-                                )}
+                                    })
+                                    .catch(err => {
+                                      console.error('Error cargando mensajes:', err);
+                                      setMessagesState([{
+                                        id: `error_${Date.now()}`,
+                                        body: "Error al cargar mensajes. Intente nuevamente o escanee el código QR para reconectar la cuenta.",
+                                        fromMe: false,
+                                        timestamp: Date.now() / 1000,
+                                        hasMedia: false
+                                      }]);
+                                    });
+                                }}
+                              >
+                                <div className="flex items-center gap-3">
+                                  {/* Indicador de cuenta */}
+                                  <div 
+                                    className={`w-4 h-4 rounded-full flex-shrink-0 bg-${accountColors[chat.accountId as keyof typeof accountColors]}-500`}
+                                    title={`Cuenta ${chat.accountId}: ${whatsappAccounts.find(a => a.id === chat.accountId)?.name || 'Desconocida'}`}
+                                  ></div>
+                                  <Avatar className="h-11 w-11 flex-shrink-0 border shadow-sm">
+                                    {chat.profilePicUrl ? (
+                                      <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
+                                    ) : null}
+                                    <AvatarFallback className={`bg-gradient-to-r from-${accountColors[chat.accountId as keyof typeof accountColors]}-500 to-${accountColors[chat.accountId as keyof typeof accountColors]}-600 text-white`}>
+                                      {getInitials(chat.name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  
+                                  <div className="flex-1 min-w-0 overflow-hidden">
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-medium truncate">{chat.name}</span>
+                                      <Badge 
+                                        variant="outline" 
+                                        className={`text-[10px] h-4 px-1 ml-1 bg-${accountColors[chat.accountId as keyof typeof accountColors]}-50 text-${accountColors[chat.accountId as keyof typeof accountColors]}-700 border-${accountColors[chat.accountId as keyof typeof accountColors]}-200`}
+                                      >
+                                        {whatsappAccounts.find(a => a.id === chat.accountId)?.name || `Cuenta ${chat.accountId}`}
+                                      </Badge>
+                                      {chat.id.includes('@g.us') && (
+                                        <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200">
+                                          Grupo
+                                        </Badge>
+                                      )}
+                                      {!chat.id.includes('@g.us') && (
+                                        <Badge variant="outline" className="text-[10px] h-4 px-1 bg-green-50 text-green-700 border-green-200">
+                                          Chat
+                                        </Badge>
+                                      )}
+                                      {chat.unreadCount > 0 && (
+                                        <span className="inline-flex items-center justify-center ml-1 bg-green-500 text-white text-[11px] w-5 h-5 rounded-full">
+                                          {chat.unreadCount}
+                                        </span>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="flex justify-between items-center text-sm text-gray-500">
+                                      <p className="truncate w-28">
+                                        {chat.lastMessage || 'Sin mensajes'}
+                                      </p>
+                                      <span className="text-xs whitespace-nowrap">
+                                        {chat.timestamp ? format(new Date(chat.timestamp * 1000), 'HH:mm') : ''}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
+                            ))
+                        // Mostrar chats de una sola cuenta (modo normal)
+                        : whatsappChats.map((chat: WhatsAppChat) => (
+                          <div
+                            key={chat.id}
+                            className={`p-3 hover:bg-gray-50 cursor-pointer ${
+                              selectedChatId === chat.id ? 'bg-green-50 border-l-4 border-l-green-500' : ''
+                            }`}
+                            onClick={() => {
+                              // SOLUCIÓN ULTRA SIMPLIFICADA: Cargamos directamente en el estado de mensajes
+                              console.log('Seleccionando chat directo:', chat.name, chat.id);
                               
-                              <div className="flex justify-between items-center text-sm text-gray-500">
-                                <p className="truncate w-36">
-                                  {chat.lastMessage || 'Sin mensajes'}
-                                </p>
-                                <span className="text-xs whitespace-nowrap">
-                                  {chat.timestamp ? format(new Date(chat.timestamp * 1000), 'HH:mm') : ''}
-                                </span>
+                              // Actualizar chat seleccionado
+                              setSelectedChatId(chat.id);
+                              
+                              // Guardar en localStorage
+                              localStorage.setItem('last_selected_chat_id', chat.id);
+                              localStorage.setItem('last_selected_chat_account', currentAccountId.toString());
+                              
+                              // NUEVO: Cargar mensajes directamente en el estado
+                              fetch(`/api/direct/whatsapp/messages/${chat.id}`)
+                                .then(res => res.json())
+                                .then(data => {
+                                  if (Array.isArray(data) && data.length > 0) {
+                                    console.log(`✅ Cargados ${data.length} mensajes reales para chat ${chat.id}`);
+                                    setMessagesState(data);
+                                    localStorage.setItem(`messages_${chat.id}`, JSON.stringify(data));
+                                  } else {
+                                    console.log('No hay mensajes disponibles, intentando cargar desde caché...');
+                                    const cachedMessages = localStorage.getItem(`messages_${chat.id}`);
+                                    if (cachedMessages) {
+                                      try {
+                                        const parsed = JSON.parse(cachedMessages);
+                                        if (Array.isArray(parsed) && parsed.length > 0) {
+                                          console.log(`🔄 Usando ${parsed.length} mensajes de caché local`);
+                                          setMessagesState(parsed);
+                                        }
+                                      } catch (e) {
+                                        console.error('Error al parsear caché:', e);
+                                      }
+                                    } else {
+                                      // Crear mensaje de sistema
+                                      setMessagesState([{
+                                        id: `system_${Date.now()}`,
+                                        body: "No hay mensajes disponibles para este chat. Si acabas de conectar la cuenta, intenta refrescar la página.",
+                                        fromMe: false,
+                                        timestamp: Date.now() / 1000,
+                                        hasMedia: false
+                                      }]);
+                                    }
+                                  }
+                                })
+                                .catch(err => {
+                                  console.error('Error cargando mensajes:', err);
+                                  // Mensaje de error
+                                  setMessagesState([{
+                                    id: `error_${Date.now()}`,
+                                    body: "Error al cargar mensajes. Intente nuevamente o escanee el código QR para reconectar la cuenta.",
+                                    fromMe: false,
+                                    timestamp: Date.now() / 1000,
+                                    hasMedia: false
+                                  }]);
+                                });
+                            }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-11 w-11 flex-shrink-0 border shadow-sm">
+                                {chat.profilePicUrl ? (
+                                  <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
+                                ) : null}
+                                <AvatarFallback className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">
+                                  {getInitials(chat.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              
+                              <div className="flex-1 min-w-0 overflow-hidden">
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium truncate">{chat.name}</span>
+                                  {chat.id.includes('@g.us') && (
+                                    <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200">
+                                      Grupo
+                                    </Badge>
+                                  )}
+                                  {!chat.id.includes('@g.us') && (
+                                    <Badge variant="outline" className="text-[10px] h-4 px-1 bg-green-50 text-green-700 border-green-200">
+                                      Chat
+                                    </Badge>
+                                  )}
+                                  {chat.unreadCount > 0 && (
+                                    <span className="inline-flex items-center justify-center ml-1 bg-green-500 text-white text-[11px] w-5 h-5 rounded-full">
+                                      {chat.unreadCount}
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                <div className="flex justify-between items-center text-sm text-gray-500">
+                                  <p className="truncate w-36">
+                                    {chat.lastMessage || 'Sin mensajes'}
+                                  </p>
+                                  <span className="text-xs whitespace-nowrap">
+                                    {chat.timestamp ? format(new Date(chat.timestamp * 1000), 'HH:mm') : ''}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      }
                     </div>
                   ) : (
                     <div className="p-4 text-center text-gray-500 text-sm">
