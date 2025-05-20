@@ -68,7 +68,7 @@ export default function TicketsByAgent() {
     );
   }
 
-  if (error || !data) {
+  if (error || !data || !data.totals) {
     return (
       <Card className="col-span-full">
         <CardHeader>
