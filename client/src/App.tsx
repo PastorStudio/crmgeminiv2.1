@@ -26,6 +26,7 @@ import WhatsAppAccounts from './pages/WhatsAppAccounts';
 import ChatAssignments from './pages/ChatAssignments';
 import Profile from './pages/Profile';
 import WhatsAppManager from './pages/WhatsAppManager';
+import SimpleWhatsApp from './pages/SimpleWhatsApp';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
 import { PageTransition } from '@/components/ui/page-transition';
@@ -357,6 +358,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/qr-text" component={() => <PrivateRoute component={QrTextViewer} path="/qr-text" />} />
                 <Route path="/whatsapp-manager" component={() => <PrivateRoute component={WhatsAppManager} path="/whatsapp-manager" />} />
                 <Route path="/raw-qr" component={() => <PrivateRoute component={RawQrViewer} path="/raw-qr" />} />
+                <Route path="/simple-whatsapp" component={() => <PrivateRoute component={SimpleWhatsApp} path="/simple-whatsapp" />} />
                 <Route path="/users" component={() => <PrivateRoute component={UserManagement} path="/users" />} />
                 <Route path="/whatsapp-accounts" component={() => <PrivateRoute component={WhatsAppAccounts} path="/whatsapp-accounts" />} />
                 <Route path="/chat-assignments" component={() => <PrivateRoute component={ChatAssignments} path="/chat-assignments" />} />
