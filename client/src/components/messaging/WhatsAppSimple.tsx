@@ -349,7 +349,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   // Ya tenemos una consulta para la asignación del chat actual arriba,
   // así que eliminamos esta duplicada
 
-  // Query para obtener mensajes del chat seleccionado para la cuenta específica con optimizaciones
+  // Query para obtener mensajes del chat seleccionado - siempre datos frescos, sin usar caché
   const { 
     data: apiMessages = [],
     isLoading: isLoadingMessages,
@@ -361,50 +361,31 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         return [];
       }
       
-      // Siempre obtener datos frescos del servidor
       try {
         // Usar importación dinámica para asegurar que tenemos la última versión
         const { apiRequest } = await import('@/lib/queryClient');
         
-        // Siempre intentar obtener los mensajes reales primero
-        console.log(`Obteniendo mensajes reales para cuenta ${currentAccountId}, chat ${selectedChatId}...`);
+        console.log(`Obteniendo mensajes frescos para chat ${selectedChatId}...`);
         
-        // Usar método directo que funciona para todas las cuentas
+        // Intentar primero con el método directo que es más fiable
         try {
           const directResponse = await apiRequest(`/api/direct/whatsapp/messages/${selectedChatId}`);
           
           if (Array.isArray(directResponse) && directResponse.length > 0) {
-            console.log(`Cargados ${directResponse.length} mensajes reales para chat ${selectedChatId}`);
-            // Guardar en caché solo como respaldo, pero no los usamos por defecto
-            const cacheKey = `whatsapp_messages_${currentAccountId}_${selectedChatId}`;
-            localStorage.setItem(cacheKey, JSON.stringify(directResponse));
+            console.log(`✓ Cargados ${directResponse.length} mensajes reales para chat ${selectedChatId}`);
             return directResponse;
           }
         } catch (directError) {
           console.warn(`Error obteniendo mensajes directos:`, directError);
         }
         
-        // Usar método directo que funciona para todas las cuentas
-        try {
-          const directResponse = await apiRequest(`/api/direct/whatsapp/messages/${selectedChatId}`);
-          
-          if (Array.isArray(directResponse) && directResponse.length > 0) {
-            // Guardar en caché para futuros accesos rápidos
-            localStorage.setItem(cacheKey, JSON.stringify(directResponse));
-            console.log(`Mensajes obtenidos directamente para chat ${selectedChatId}:`, directResponse.length);
-            return directResponse;
-          }
-        } catch (directError) {
-          console.warn(`Error obteniendo mensajes directos:`, directError);
-        }
-        
-        // Si el método directo falló, intentar con el método específico de cuenta
+        // Si el primer intento falló, intentar con el método específico de cuenta (excepto para cuenta 2)
         if (currentAccountId !== 2) { // Evitar para cuenta de soporte que sabemos falla
           try {
             const accountResponse = await apiRequest(`/api/whatsapp-accounts/${currentAccountId}/messages/${selectedChatId}`);
             
             if (Array.isArray(accountResponse) && accountResponse.length > 0) {
-              localStorage.setItem(cacheKey, JSON.stringify(accountResponse));
+              console.log(`✓ Obtenidos ${accountResponse.length} mensajes por API de cuenta para chat ${selectedChatId}`);
               return accountResponse;
             }
           } catch (accountError) {
@@ -412,12 +393,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
           }
         }
         
-        // Si llegamos aquí sin mensajes, NO usar caché - solo datos reales
-        console.log(`No se encontraron mensajes reales para el chat ${selectedChatId}`);
+        // Si no se encontraron mensajes, devolver array vacío
+        console.log(`No se encontraron mensajes para el chat ${selectedChatId}`);
         return [];
       } catch (error) {
         console.error(`Error obteniendo mensajes:`, error);
-        // Incluso en caso de error, devolver array vacío (no usar caché)
         return [];
       }
     },
