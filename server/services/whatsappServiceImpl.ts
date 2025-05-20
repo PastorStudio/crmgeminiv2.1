@@ -10,6 +10,7 @@ import { Client, Message, MessageMedia } from 'whatsapp-web.js';
 import * as qrcode from 'qrcode';
 import { IWhatsAppService, WhatsAppStatus, WhatsAppMessage, WhatsAppChat } from './whatsappInterface';
 import { EventEmitter } from 'events';
+import { convertWhatsAppTimestamp, getTimeZoneConfig } from '../utils/timeZoneDetector';
 
 // Directorio temporal para archivos
 const TEMP_DIR = path.join(process.cwd(), 'temp');

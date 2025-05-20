@@ -42,6 +42,20 @@ export interface WhatsAppMessage {
   };
   vcard?: string;
   containsEmoji: boolean;
+  timeZoneInfo?: {
+    detected?: boolean;
+    timeZone?: string;
+    offset?: number;
+    formattedTime?: string;
+    source?: string;
+    location?: {
+      country?: string;
+      city?: string;
+      latitude?: number;
+      longitude?: number;
+    };
+    error?: boolean;
+  };
 }
 
 /**
