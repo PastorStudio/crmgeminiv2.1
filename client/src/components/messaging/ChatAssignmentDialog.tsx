@@ -55,13 +55,16 @@ type ChatAssignment = {
 };
 
 const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAssignmentDialogProps) => {
-  // Lista de agentes predefinidos para siempre tener una fallback
+  // Agentes predefinidos siempre disponibles (importantes para evitar página en blanco)
   const defaultAgents = [
     { id: 1, username: 'juan.perez', fullName: 'Juan Pérez', role: 'agent', status: 'active' },
     { id: 2, username: 'maria.gomez', fullName: 'María Gómez', role: 'agent', status: 'active' },
     { id: 3, username: 'carlos.lopez', fullName: 'Carlos López', role: 'supervisor', status: 'active' },
     { id: 4, username: 'laura.martinez', fullName: 'Laura Martínez', role: 'agent', status: 'active' }
   ];
+  
+  // Estado local para usar estos agentes predefinidos
+  const [agentsList, setAgentsList] = useState<User[]>(defaultAgents);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [existingAssignment, setExistingAssignment] = useState<ChatAssignment | null>(null);
@@ -341,11 +344,18 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     }
   };
 
-  // Obtener agentes válidos (usuarios activos con rol de agente o supervisor)
-  const agents = users.filter(user => 
-    user.status === 'active' && 
-    ['agent', 'supervisor'].includes(user.role)
-  );
+  // Actualizar la lista de agentes cuando llegan de la API
+  useEffect(() => {
+    const filteredAgents = users.filter(user => 
+      user.status === 'active' && 
+      ['agent', 'supervisor'].includes(user.role)
+    );
+    
+    // Solo actualizar si hay nuevos agentes disponibles
+    if (filteredAgents.length > 0) {
+      setAgents(filteredAgents);
+    }
+  }, [users]);
   
   // Registro para depuración
   console.log('Agentes disponibles:', agents);
