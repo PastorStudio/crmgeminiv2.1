@@ -1113,6 +1113,152 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     
     return result;
   }
+
+  /**
+   * Limpia una sesión de WhatsApp específica completamente
+   * Desconecta, elimina archivos de sesión y actualiza la base de datos
+   */
+  async clearWhatsAppSession(accountId: number): Promise<boolean> {
+    try {
+      console.log(`Limpiando sesión para cuenta de WhatsApp ID ${accountId}...`);
+      
+      // 1. Desconectar la cuenta si está activa
+      const instance = this.instances.get(accountId);
+      if (instance) {
+        try {
+          // Desactivar timers de conexión
+          this.deactivateConnectionTimers(instance);
+          
+          // Intentar destruir el cliente
+          if (instance.client) {
+            await instance.client.destroy()
+              .catch(err => console.error(`Error al destruir cliente para cuenta ID ${accountId}:`, err));
+          }
+          
+          // Eliminar instancia del mapa
+          this.instances.delete(accountId);
+          console.log(`Cliente desconectado para cuenta ID ${accountId}`);
+        } catch (disconnectErr) {
+          console.error(`Error desconectando cuenta ID ${accountId}:`, disconnectErr);
+          // Continuar con la limpieza aunque falle la desconexión
+        }
+      }
+      
+      // 2. Eliminar archivos de sesión
+      try {
+        // Eliminar archivos específicos de la cuenta
+        const accountDir = path.join(ACCOUNTS_DIR, `account_${accountId}`);
+        if (fs.existsSync(accountDir)) {
+          const files = fs.readdirSync(accountDir);
+          for (const file of files) {
+            fs.unlinkSync(path.join(accountDir, file));
+          }
+          console.log(`Eliminados ${files.length} archivos de sesión para cuenta ID ${accountId}`);
+        }
+      } catch (fileErr) {
+        console.error(`Error eliminando archivos de cuenta ID ${accountId}:`, fileErr);
+      }
+      
+      // 3. Actualizar estado en la base de datos
+      await storage.updateWhatsappAccount(accountId, {
+        status: 'inactive',
+        sessionData: {
+          connectionState: 'DISCONNECTED',
+          disconnectedAt: new Date().toISOString(),
+          disconnectedBy: 'user_forced',
+          sessionCleared: true
+        }
+      });
+      
+      console.log(`Sesión completamente limpiada para cuenta ID ${accountId}`);
+      return true;
+    } catch (error) {
+      console.error(`Error limpiando sesión para cuenta ID ${accountId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Limpia todas las sesiones de WhatsApp (desconecta y elimina los archivos de sesión)
+   */
+  async cleanAllSessions(): Promise<boolean> {
+    try {
+      console.log("Iniciando limpieza completa de todas las sesiones de WhatsApp...");
+      
+      // 1. Desconectar todas las instancias activas
+      const activeInstanceIds = Array.from(this.instances.keys());
+      for (const accountId of activeInstanceIds) {
+        try {
+          console.log(`Desconectando instancia WhatsApp ID ${accountId}...`);
+          await this.disconnectAccount(accountId);
+        } catch (err) {
+          console.error(`Error desconectando instancia WhatsApp ID ${accountId}:`, err);
+          // Continuar con las demás desconexiones aunque falle alguna
+        }
+      }
+      
+      // 2. Limpiar mapa de instancias
+      this.instances.clear();
+      
+      // 3. Eliminar archivos de sesión
+      try {
+        const tempDir = path.join(process.cwd(), 'temp');
+        const sessionPath = path.join(tempDir, 'whatsapp-sessions');
+        
+        // Eliminar archivos en el directorio de sesiones
+        if (fs.existsSync(sessionPath)) {
+          const files = fs.readdirSync(sessionPath);
+          for (const file of files) {
+            fs.unlinkSync(path.join(sessionPath, file));
+          }
+          console.log(`Eliminados ${files.length} archivos de sesión de WhatsApp`);
+        }
+        
+        // Limpiar directorios de cuentas individuales
+        if (fs.existsSync(ACCOUNTS_DIR)) {
+          const accountDirs = fs.readdirSync(ACCOUNTS_DIR);
+          for (const dir of accountDirs) {
+            const fullPath = path.join(ACCOUNTS_DIR, dir);
+            if (fs.statSync(fullPath).isDirectory()) {
+              // Eliminar archivos en cada subdirectorio de cuenta
+              const accountFiles = fs.readdirSync(fullPath);
+              for (const file of accountFiles) {
+                fs.unlinkSync(path.join(fullPath, file));
+              }
+            }
+          }
+          console.log(`Limpiados ${accountDirs.length} directorios de cuentas de WhatsApp`);
+        }
+      } catch (fileErr) {
+        console.error("Error eliminando archivos de sesión:", fileErr);
+      }
+      
+      // 4. Actualizar estado en la base de datos
+      try {
+        const accounts = await storage.getAllWhatsappAccounts();
+        for (const account of accounts) {
+          await storage.updateWhatsappAccount(account.id, {
+            status: 'inactive',
+            sessionData: {
+              connectionState: 'DISCONNECTED',
+              disconnectedAt: new Date().toISOString(),
+              disconnectedBy: 'admin_forced',
+              sessionCleared: true
+            }
+          });
+        }
+        console.log(`Actualizados ${accounts.length} registros de cuentas en la base de datos`);
+      } catch (dbErr) {
+        console.error("Error actualizando estado en la base de datos:", dbErr);
+      }
+      
+      console.log("Limpieza completa de sesiones de WhatsApp finalizada");
+      return true;
+    } catch (error) {
+      console.error("Error en proceso de limpieza de sesiones:", error);
+      return false;
+    }
+  }
 }
 
 // Exportar instancia única
