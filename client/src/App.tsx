@@ -31,6 +31,7 @@ import UltraSimpleChat from './pages/UltraSimpleChat';
 import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import CombinedWhatsApp from './pages/CombinedWhatsApp';
 import DirectAccess from './pages/DirectAccess';
+import AllAccounts from './pages/AllAccounts';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
 import { PageTransition } from '@/components/ui/page-transition';
@@ -373,6 +374,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/ultra-whatsapp" component={() => <PrivateRoute component={UltraSimpleChat} path="/ultra-whatsapp" />} />
                 <Route path="/whatsapp-demo" component={() => <PrivateRoute component={SimpleWhatsAppDemo} path="/whatsapp-demo" />} />
                 <Route path="/combined-whatsapp" component={() => <PrivateRoute component={CombinedWhatsApp} path="/combined-whatsapp" />} />
+                <Route path="/all-accounts" component={() => <PrivateRoute component={AllAccounts} path="/all-accounts" />} />
                 <Route path="/users" component={() => <PrivateRoute component={UserManagement} path="/users" />} />
                 <Route path="/whatsapp-accounts" component={() => <PrivateRoute component={WhatsAppAccounts} path="/whatsapp-accounts" />} />
                 <Route path="/chat-assignments" component={() => <PrivateRoute component={ChatAssignments} path="/chat-assignments" />} />
