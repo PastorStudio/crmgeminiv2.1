@@ -429,23 +429,40 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const messageMutation = useMutation({
     mutationFn: async (message: string) => {
       if (!selectedChatId) throw new Error('No hay chat seleccionado');
+      if (!currentAccountId) throw new Error('No hay cuenta seleccionada');
       
-      const response = await fetch(`/api/direct/whatsapp/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chatId: selectedChatId,
-          message
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Error al enviar mensaje: ${response.statusText}`);
+      try {
+        // Usar la ruta completa de la API con el ID de la cuenta
+        const response = await fetch(`/api/whatsapp-accounts/${currentAccountId}/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            chatId: selectedChatId,
+            message
+          }),
+        });
+        
+        // Verificar el tipo de contenido de la respuesta antes de intentar parsear JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          console.error('Respuesta no es JSON:', text);
+          throw new Error('La respuesta del servidor no es JSON válido');
+        }
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Error al enviar mensaje: ${response.statusText}`);
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error('Error al enviar mensaje:', error);
+        throw error;
       }
-      
-      return await response.json();
     },
     onSuccess: (data) => {
       console.log('Mensaje enviado con éxito', data);
