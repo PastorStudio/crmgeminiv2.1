@@ -727,8 +727,58 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       })
     : [];
   
-  // Solo usar mensajes reales de la API
-  const whatsappMessages = selectedChatId && Array.isArray(apiMessages) ? apiMessages : [];
+    // Solución simplificada para los mensajes con estado local
+  const [messagesState, setMessagesState] = useState<any[]>([]);
+  
+  // Cargar mensajes al cambiar de chat seleccionado
+  useEffect(() => {
+    if (!selectedChatId) return;
+    
+    console.log(`Cargando mensajes para chat ${selectedChatId}...`);
+    
+    // Cargar directamente desde API
+    fetch(`/api/direct/whatsapp/messages/${selectedChatId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          console.log(`✓ Cargados ${data.length} mensajes reales`);
+          setMessagesState(data);
+          // Guardar en caché local
+          localStorage.setItem(`messages_${selectedChatId}`, JSON.stringify(data));
+        } else {
+          console.log('No se encontraron mensajes, intentando cargar desde caché local');
+          const cachedMessages = localStorage.getItem(`messages_${selectedChatId}`);
+          if (cachedMessages) {
+            const parsedMessages = JSON.parse(cachedMessages);
+            console.log(`Usando ${parsedMessages.length} mensajes de caché local`);
+            setMessagesState(parsedMessages);
+          } else {
+            // Mensaje de sistema
+            setMessagesState([{
+              id: `system_${Date.now()}`,
+              body: "No hay mensajes disponibles para este chat.",
+              fromMe: false,
+              timestamp: Date.now() / 1000,
+              hasMedia: false
+            }]);
+          }
+        }
+      })
+      .catch(err => {
+        console.error('Error cargando mensajes:', err);
+        // Mensaje de error
+        setMessagesState([{
+          id: `error_${Date.now()}`,
+          body: "Error al cargar mensajes. Intente nuevamente o escanee el código QR para reconectar.",
+          fromMe: false,
+          timestamp: Date.now() / 1000,
+          hasMedia: false
+        }]);
+      });
+  }, [selectedChatId]);
+  
+  // Usar el estado local en vez de apiMessages
+  const whatsappMessages = messagesState;
   
   // Obtener el chat actual
   const currentChat = selectedChatId && Array.isArray(whatsappChats) 
@@ -1277,11 +1327,30 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                             selectedChatId === chat.id ? 'bg-green-50 border-l-4 border-l-green-500' : ''
                           }`}
                           onClick={() => {
-                            // Evitar cambios repetitivos que causan bucles
-                            if (selectedChatId !== chat.id) {
-                              console.log('Seleccionando chat:', chat.name, chat.id);
-                              handleChatSelect(chat);
-                            }
+                            // SIMPLIFICACIÓN IMPORTANTE: Evitar toda la lógica compleja que causa problemas
+                            // Esta implementación directa evita cualquier problema de bucle
+                            console.log('Seleccionando chat directo:', chat.name, chat.id);
+                            setSelectedChatId(chat.id);
+                            
+                            // Usar setTimeout para darle tiempo al estado a actualizarse
+                            setTimeout(() => {
+                              // Forzar recarga explícita de mensajes tras seleccionar chat
+                              console.log('Refrescando mensajes para chat:', chat.id);
+                              
+                              // Intentar con el endpoint directo que es más fiable
+                              fetch(`/api/direct/whatsapp/messages/${chat.id}`)
+                                .then(res => res.json())
+                                .then(messages => {
+                                  if (Array.isArray(messages) && messages.length > 0) {
+                                    console.log(`Cargados ${messages.length} mensajes reales para chat ${chat.id}`);
+                                    // Almacenar mensajes en localStorage como caché
+                                    localStorage.setItem(`messages_${chat.id}`, JSON.stringify(messages));
+                                  }
+                                })
+                                .catch(err => {
+                                  console.error('Error cargando mensajes directamente:', err);
+                                });
+                            }, 500);
                           }}
                         >
                           <div className="flex items-center gap-3">
