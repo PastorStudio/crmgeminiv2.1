@@ -94,7 +94,11 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
   /**
    * Convierte un mensaje de whatsapp-web.js al formato de nuestra aplicación
    */
-  private convertToWhatsAppMessage(message: any): WhatsAppMessage {
+  /**
+   * Convierte un mensaje de WhatsApp a nuestro formato interno
+   * Utiliza la detección de zona horaria por geolocalización para mostrar las horas correctamente
+   */
+  private async convertToWhatsAppMessage(message: any): Promise<WhatsAppMessage> {
     if (!message || !message.id) {
       console.error('Mensaje inválido en convertToWhatsAppMessage');
       return {
@@ -109,18 +113,58 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
         isStatus: false,
         isForwarded: false,
         isStarred: false,
-        containsEmoji: false
+        containsEmoji: false,
+        timeZoneInfo: { detected: false }
       };
     }
     
     try {
+      // Detectar la zona horaria usando el servicio de geolocalización
+      let timeZoneInfo: any = { detected: false };
+      
+      try {
+        const timeZoneConfig = await getTimeZoneConfig();
+        
+        if (timeZoneConfig) {
+          // Convertir el timestamp usando la información de zona horaria detectada
+          const localDate = convertWhatsAppTimestamp(message.timestamp || Date.now() / 1000);
+          
+          // Formatear la hora según la zona horaria detectada
+          const formattedTime = localDate.toLocaleString(undefined, { 
+            timeZone: timeZoneConfig.timeZone,
+            hour: '2-digit', 
+            minute: '2-digit',
+            month: 'short',
+            day: 'numeric'
+          });
+          
+          timeZoneInfo = {
+            detected: true,
+            timeZone: timeZoneConfig.timeZone,
+            offset: timeZoneConfig.offset,
+            formattedTime: formattedTime,
+            source: timeZoneConfig.source,
+            location: timeZoneConfig.location
+          };
+          
+          // Log para depuración
+          console.log(`[Zona Horaria] Mensaje procesado con zona: ${timeZoneConfig.timeZone}`);
+        }
+      } catch (tzError) {
+        console.error('Error detectando zona horaria:', tzError);
+      }
+      
+      // Convertir timestamp a milisegundos para la zona horaria local
+      const timestamp = message.timestamp || Date.now() / 1000;
+      const timestampMs = timestamp * 1000; // Convertir a milisegundos
+      
       return {
         id: message.id._serialized || message.id,
         body: message.body || '',
         from: message.from || '',
         to: message.to || '',
         fromMe: !!message.fromMe,
-        timestamp: (message.timestamp || Date.now() / 1000) * 1000, // Convertir a milisegundos
+        timestamp: timestampMs, // Ya ajustado a milisegundos
         hasMedia: !!message.hasMedia,
         type: message.type || 'unknown',
         isStatus: !!message.isStatus,
@@ -128,7 +172,8 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
         isStarred: !!message.isStarred,
         mediaUrl: undefined, // Se cargará bajo demanda
         caption: message.caption || '',
-        containsEmoji: message.body ? /\p{Emoji}/u.test(message.body) : false
+        containsEmoji: message.body ? /\p{Emoji}/u.test(message.body) : false,
+        timeZoneInfo: timeZoneInfo
       };
     } catch (error) {
       console.error('Error convirtiendo mensaje:', error);
@@ -1409,8 +1454,11 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
           
           console.log(`Recuperados ${messages.length} mensajes para el chat ${chatId}`);
           
-          // Convertir a nuestro formato
-          const convertedMessages: WhatsAppMessage[] = messages.map(msg => this.convertToWhatsAppMessage(msg));
+          // Convertir a nuestro formato con zona horaria
+          // Usamos Promise.all ya que ahora convertToWhatsAppMessage es asíncrono
+          const convertedMessages: WhatsAppMessage[] = await Promise.all(
+            messages.map(msg => this.convertToWhatsAppMessage(msg))
+          );
           
           // Actualizar caché
           this.messageCache.set(chatId, convertedMessages);
