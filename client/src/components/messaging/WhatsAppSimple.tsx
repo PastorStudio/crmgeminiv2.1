@@ -1349,6 +1349,85 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
             </div>
           )}
         </div>
+        
+        {/* Modal para visualizar y descargar archivos multimedia */}
+        <Dialog open={isMediaPreviewOpen} onOpenChange={setIsMediaPreviewOpen}>
+          <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Vista previa de archivo</DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto py-4">
+              {mediaType?.startsWith('image/') && (
+                <div className="flex flex-col items-center">
+                  <img 
+                    src={mediaPreviewUrl} 
+                    alt={mediaCaption || 'Imagen'} 
+                    className="max-h-[70vh] object-contain rounded-md shadow-md"
+                  />
+                </div>
+              )}
+              {mediaType?.startsWith('video/') && (
+                <div className="flex flex-col items-center">
+                  <video 
+                    src={mediaPreviewUrl} 
+                    controls 
+                    className="max-h-[70vh] max-w-full rounded-md shadow-md"
+                  >
+                    Tu navegador no soporta la reproducción de videos.
+                  </video>
+                </div>
+              )}
+              {mediaType?.startsWith('audio/') && (
+                <div className="flex flex-col items-center bg-gray-100 p-6 rounded-md shadow-md">
+                  <Mic size={48} className="text-primary mb-4" />
+                  <audio 
+                    src={mediaPreviewUrl} 
+                    controls 
+                    className="w-full"
+                  >
+                    Tu navegador no soporta la reproducción de audio.
+                  </audio>
+                </div>
+              )}
+              {(!mediaType?.startsWith('image/') && 
+                !mediaType?.startsWith('video/') && 
+                !mediaType?.startsWith('audio/')) && (
+                <div className="flex flex-col items-center bg-gray-100 p-10 rounded-md shadow-md">
+                  <FileText size={64} className="text-primary mb-6" />
+                  <p className="text-center text-gray-700 mb-2">Archivo no previsualizable</p>
+                  <p className="text-center text-gray-500 text-sm mb-4">Utiliza el botón de descarga para guardar el archivo</p>
+                </div>
+              )}
+              {mediaCaption && (
+                <div className="mt-4 p-3 bg-gray-50 rounded border">
+                  <p className="text-sm text-gray-700">{mediaCaption}</p>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Descargar el archivo
+                  const a = document.createElement('a');
+                  a.href = mediaPreviewUrl;
+                  a.download = mediaPreviewUrl.split('/').pop() || 'archivo';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                }}
+              >
+                <Download className="mr-2 h-4 w-4" /> Descargar
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setIsMediaPreviewOpen(false)}
+              >
+                Cerrar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
       
       {/* Diálogo de asignación de chat */}
