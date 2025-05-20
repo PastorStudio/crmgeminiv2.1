@@ -110,6 +110,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [currentAccountId, setCurrentAccountId] = useState<number>(1);
   // Estado para almacenar todas las cuentas de WhatsApp
   const [whatsappAccounts, setWhatsappAccounts] = useState<any[]>([]);
+  // Estados para vista combinada de todas las cuentas
+  const [isViewingAllAccounts, setIsViewingAllAccounts] = useState<boolean>(false);
+  const [combinedChats, setCombinedChats] = useState<WhatsAppChat[]>([]);
+  const [authenticatedAccounts, setAuthenticatedAccounts] = useState<any[]>([]);
   
   // Estados para previsualización de archivos multimedia
   const [isMediaPreviewOpen, setIsMediaPreviewOpen] = useState(false);
@@ -1171,7 +1175,103 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   className="w-full rounded-md border border-gray-300 py-1 px-2 text-sm font-medium"
                   value={currentAccountId}
                   onChange={(e) => {
-                    const newAccountId = Number(e.target.value);
+                    const value = e.target.value;
+                    const newAccountId = Number(value);
+                    
+                    // Si seleccionó "todas las cuentas" (valor especial "all")
+                    if (value === "all") {
+                      setIsViewingAllAccounts(true);
+                      
+                      // Mostrar indicador de carga
+                      toast({
+                        title: "Cargando todas las cuentas",
+                        description: "Preparando vista de todas las cuentas conectadas...",
+                        variant: "default"
+                      });
+                      
+                      // Limpiar selección actual
+                      setSelectedChatId(null);
+                      
+                      // Cargar chats de todas las cuentas
+                      const loadAllAccountChats = async () => {
+                        try {
+                          // Importar apiRequest
+                          const { apiRequest } = await import('@/lib/queryClient');
+                          
+                          // Primero cargar todas las cuentas
+                          const accounts = await apiRequest('/api/whatsapp-accounts');
+                          
+                          if (Array.isArray(accounts) && accounts.length > 0) {
+                            // Filtrar solo cuentas autenticadas
+                            const authenticatedAccounts = accounts.filter(
+                              acc => acc.currentStatus?.authenticated
+                            );
+                            
+                            // Almacenar para uso posterior
+                            setAuthenticatedAccounts(authenticatedAccounts);
+                            
+                            // Crear array para almacenar todos los chats combinados
+                            let allChats: WhatsAppChat[] = [];
+                            
+                            // Para cada cuenta autenticada, cargar sus chats
+                            for (const acc of authenticatedAccounts) {
+                              try {
+                                const accountChats = await apiRequest(`/api/whatsapp-accounts/${acc.id}/chats`);
+                                
+                                if (Array.isArray(accountChats) && accountChats.length > 0) {
+                                  // Añadir identificador de cuenta a cada chat
+                                  const chatWithAccountInfo = accountChats.map(chat => ({
+                                    ...chat,
+                                    accountId: acc.id,
+                                    accountName: acc.name
+                                  }));
+                                  
+                                  // Añadir a la lista combinada
+                                  allChats = [...allChats, ...chatWithAccountInfo];
+                                }
+                              } catch (error) {
+                                console.error(`Error cargando chats de cuenta ${acc.id}:`, error);
+                              }
+                            }
+                            
+                            // Ordenar por cuenta (ID secuencial)
+                            allChats.sort((a, b) => {
+                              // Primero por ID de cuenta
+                              if (a.accountId !== b.accountId) {
+                                return (a.accountId || 0) - (b.accountId || 0);
+                              }
+                              // Luego por nombre de chat
+                              return a.name.localeCompare(b.name);
+                            });
+                            
+                            // Guardar todos los chats combinados
+                            setCombinedChats(allChats);
+                            
+                            // Notificar completado
+                            toast({
+                              title: `Todas las cuentas cargadas`,
+                              description: `Se cargaron ${allChats.length} chats de ${authenticatedAccounts.length} cuentas`,
+                              variant: "default"
+                            });
+                          }
+                        } catch (error) {
+                          console.error("Error cargando todas las cuentas:", error);
+                          toast({
+                            title: "Error",
+                            description: "No se pudieron cargar todas las cuentas",
+                            variant: "destructive"
+                          });
+                        }
+                      };
+                      
+                      loadAllAccountChats();
+                      return;
+                    }
+                    
+                    // Si es una cuenta individual (comportamiento normal)
+                    setIsViewingAllAccounts(false);
+                    setCombinedChats([]);
+                    
                     const accountName = whatsappAccounts.find(acc => acc.id === newAccountId)?.name || 'seleccionada';
                     
                     // Mostrar indicador de carga
@@ -1262,11 +1362,14 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   ) : whatsappAccounts.length === 0 ? (
                     <option>No hay cuentas disponibles</option>
                   ) : (
-                    whatsappAccounts.map(account => (
-                      <option key={account.id} value={account.id}>
-                        {account.name} {account.currentStatus?.authenticated ? '✓' : ''}
-                      </option>
-                    ))
+                    <>
+                      <option value="all">🔄 Todas las cuentas conectadas</option>
+                      {whatsappAccounts.map(account => (
+                        <option key={account.id} value={account.id}>
+                          ID {account.id} - {account.name} {account.currentStatus?.authenticated ? '✓' : ''}
+                        </option>
+                      ))}
+                    </>
                   )}
                 </select>
               </div>
@@ -1317,11 +1420,13 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     <div className="divide-y">
                       {/* Mostramos un mensaje de depuración antes del mapeo */}
                       <div className="p-3 text-sm text-gray-500">
-                        Chats disponibles: {whatsappChats.length}
+                        Chats disponibles: {isViewingAllAccounts ? combinedChats.length : (whatsappChats?.length || 0)}
                       </div>
                       
-                      {/* Mapeo de chats con protección de errores - Versión corregida para evitar bucles */}
-                      {whatsappChats.map((chat: WhatsAppChat) => (
+                      {/* Mapeo de chats con protección de errores */}
+                      {isViewingAllAccounts ? (
+                        // Si estamos viendo todas las cuentas
+                        combinedChats.map((chat: any) => (
                         <div
                           key={chat.id}
                           className={`p-3 hover:bg-gray-50 cursor-pointer ${
