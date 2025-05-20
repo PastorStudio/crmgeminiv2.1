@@ -636,25 +636,47 @@ export class DatabaseStorage implements IStorage {
 
   async createWhatsappAccount(account: InsertWhatsappAccount): Promise<WhatsappAccount> {
     try {
-      // Omitimos la propiedad settings para crear la cuenta
-      const { settings, ...accountData } = account;
+      // Adaptamos los nombres de campos al formato de la base de datos real
+      const { settings, phoneNumber, sessionData, ...restData } = account;
       
-      const [createdAccount] = await db.insert(whatsappAccounts)
-        .values(accountData)
-        .returning({
-          id: whatsappAccounts.id,
-          name: whatsappAccounts.name,
-          phoneNumber: whatsappAccounts.phoneNumber,
-          status: whatsappAccounts.status,
-          sessionData: whatsappAccounts.sessionData,
-          createdAt: whatsappAccounts.createdAt,
-          updatedAt: whatsappAccounts.updatedAt
-        });
+      const now = new Date();
       
-      // Añadimos el campo settings manualmente
+      // Usamos SQL directo para la inserción
+      const result = await db.query.raw(`
+        INSERT INTO whatsapp_accounts (
+          name, 
+          status, 
+          phone_number, 
+          session_data, 
+          "createdAt"
+        ) VALUES (
+          $1, $2, $3, $4, $5
+        ) RETURNING id, name, status, phone_number, session_data, "createdAt"
+      `, [
+        account.name,
+        account.status || 'inactive',
+        phoneNumber || '',
+        sessionData || '{}',
+        now
+      ]);
+      
+      if (!result || result.length === 0) {
+        throw new Error('Error al crear cuenta de WhatsApp: Sin resultados');
+      }
+      
+      const row = result[0] as any;
+      
+      // Transformar a formato esperado por la interfaz
       return {
-        ...createdAccount,
-        settings: null
+        id: row.id,
+        name: row.name,
+        phoneNumber: row.phone_number || '',
+        status: row.status || 'inactive',
+        sessionData: row.session_data || '{}',
+        createdAt: row.createdAt || now,
+        lastActive: null,
+        settings: null, // Campo requerido por la interfaz
+        updatedAt: row.createdAt || now
       };
     } catch (error) {
       console.error("Error al crear cuenta WhatsApp:", error);
@@ -664,37 +686,94 @@ export class DatabaseStorage implements IStorage {
 
   async updateWhatsappAccount(id: number, data: Partial<InsertWhatsappAccount>): Promise<WhatsappAccount | undefined> {
     try {
-      // Eliminamos la propiedad settings si existe
-      const { settings, ...cleanData } = data;
+      // Primero verificamos que la cuenta existe
+      const existingAccount = await this.getWhatsappAccount(id);
+      if (!existingAccount) {
+        return undefined;
+      }
       
-      // No actualizamos lastActiveAt ya que no existe en la base de datos
-      const [updatedAccount] = await db.update(whatsappAccounts)
-        .set(cleanData)
-        .where(eq(whatsappAccounts.id, id))
-        .returning({
-          id: whatsappAccounts.id,
-          name: whatsappAccounts.name,
-          phoneNumber: whatsappAccounts.phoneNumber,
-          status: whatsappAccounts.status,
-          sessionData: whatsappAccounts.sessionData,
-          createdAt: whatsappAccounts.createdAt,
-          updatedAt: whatsappAccounts.updatedAt
-        });
-      // Añadimos la propiedad settings manualmente
+      // Adaptamos los nombres de campos al formato de la base de datos real
+      const { settings, phoneNumber, sessionData, ...restData } = data;
+      
+      // Construimos la consulta SQL dinámica para la actualización
+      let updateFields = '';
+      const updateValues: any[] = [];
+      let paramIndex = 1;
+      
+      if (restData.name !== undefined) {
+        updateFields += `name = $${paramIndex}, `;
+        updateValues.push(restData.name);
+        paramIndex++;
+      }
+      
+      if (restData.status !== undefined) {
+        updateFields += `status = $${paramIndex}, `;
+        updateValues.push(restData.status);
+        paramIndex++;
+      }
+      
+      if (phoneNumber !== undefined) {
+        updateFields += `phone_number = $${paramIndex}, `;
+        updateValues.push(phoneNumber);
+        paramIndex++;
+      }
+      
+      if (sessionData !== undefined) {
+        updateFields += `session_data = $${paramIndex}, `;
+        updateValues.push(sessionData);
+        paramIndex++;
+      }
+      
+      // Si no hay campos para actualizar, devolvemos la cuenta existente
+      if (!updateFields) {
+        return existingAccount;
+      }
+      
+      // Eliminamos la coma final
+      updateFields = updateFields.slice(0, -2);
+      
+      // Añadimos el ID para la condición WHERE
+      updateValues.push(id);
+      
+      // Ejecutamos la consulta SQL directa
+      const result = await db.query.raw(`
+        UPDATE whatsapp_accounts
+        SET ${updateFields}
+        WHERE id = $${paramIndex}
+        RETURNING id, name, status, phone_number, session_data, "createdAt", "lastActiveAt"
+      `, updateValues);
+      
+      if (!result || result.length === 0) {
+        return undefined;
+      }
+      
+      const row = result[0] as any;
+      
+      // Transformamos a formato esperado por la interfaz
       return {
-        ...updatedAccount,
-        settings: null
+        id: row.id,
+        name: row.name,
+        phoneNumber: row.phone_number || '',
+        status: row.status || 'inactive',
+        sessionData: row.session_data || '{}',
+        createdAt: row.createdAt || new Date(),
+        lastActive: row.lastActiveAt || null,
+        settings: null,
+        updatedAt: row.createdAt || new Date()
       };
     } catch (error) {
       console.error(`Error al actualizar cuenta WhatsApp ${id}:`, error);
-      throw error;
+      return undefined;
     }
   }
 
   async deleteWhatsappAccount(id: number): Promise<void> {
     try {
-      await db.delete(whatsappAccounts)
-        .where(eq(whatsappAccounts.id, id));
+      // Usamos SQL directo para asegurar compatibilidad con la estructura real de la base de datos
+      await db.query.raw(`
+        DELETE FROM whatsapp_accounts
+        WHERE id = $1
+      `, [id]);
     } catch (error) {
       console.error(`Error al eliminar cuenta WhatsApp ${id}:`, error);
       throw error;
