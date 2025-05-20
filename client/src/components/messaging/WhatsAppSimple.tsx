@@ -927,6 +927,22 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [whatsappMessages]);
+  
+  // Efecto para actualizar periódicamente los chats en modo multi-cuenta
+  useEffect(() => {
+    if (multiAccountMode && selectedAccounts.length > 0) {
+      // Cargar chats iniciales
+      loadMultiAccountChats(selectedAccounts);
+      
+      // Configurar intervalo de actualización
+      const refreshInterval = setInterval(() => {
+        console.log('Actualizando chats de múltiples cuentas:', selectedAccounts);
+        loadMultiAccountChats(selectedAccounts);
+      }, 60000); // Actualizar cada minuto
+      
+      return () => clearInterval(refreshInterval);
+    }
+  }, [multiAccountMode, selectedAccounts.length]);
 
   // Actualizar cuando llega una notificación por WebSocket
   useEffect(() => {
