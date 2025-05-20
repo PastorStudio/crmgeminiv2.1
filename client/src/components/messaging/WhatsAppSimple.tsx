@@ -89,6 +89,10 @@ interface WhatsAppInterfaceProps {
 // Sin datos de demostración - Sólo se utilizarán datos reales
 
 export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfaceProps) {
+  // Acceso a React Query para manipulación de caché
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
   // Estado local
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
@@ -629,9 +633,15 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       hasMedia: false
     };
     
-    // Añadir mensaje localmente para inmediata presentación en UI
+    // Añadir mensaje a la lista y actualizar UI inmediatamente
     if (selectedChatId) {
-      setWhatsappMessages([...whatsappMessages, tempMsg]);
+      // Modificar directamente los datos del hook de React Query
+      const updatedMessages = [...apiMessages, tempMsg];
+      // Forzar React Query a usar estos datos actualizados
+      queryClient.setQueryData(
+        ['/api/whatsapp-accounts', currentAccountId, 'messages', selectedChatId],
+        updatedMessages
+      );
     }
     
     // Intentar enviar el mensaje en segundo plano
