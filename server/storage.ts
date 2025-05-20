@@ -28,6 +28,7 @@ import {
   type InsertAgent
 } from "@shared/schema";
 import { db } from './db';
+import { pool } from './db';
 import { eq, desc, or, sql } from 'drizzle-orm';
 
 // Interface for storage methods
@@ -576,9 +577,9 @@ export class DatabaseStorage implements IStorage {
   async getAllWhatsappAccounts(): Promise<WhatsappAccount[]> {
     try {
       // Abordaje más fundamental: consulta directa sin ORM para evitar problemas con el esquema
-      // Incluimos todos los campos necesarios de la tabla
+      // Solo incluimos campos que sabemos que existen en la tabla
       const result = await pool.query(`
-        SELECT id, name, status, phone_number, phoneNumber, session_data, sessionData, 
+        SELECT id, name, status, phone_number, session_data, 
                "createdAt", "lastActiveAt", "ownerName", "ownerPhone", description
         FROM whatsapp_accounts
       `);
@@ -587,7 +588,7 @@ export class DatabaseStorage implements IStorage {
       return (result.rows as any[]).map(row => ({
         id: row.id,
         name: row.name,
-        phoneNumber: row.phone_number || row.phoneNumber || '', 
+        phoneNumber: row.phone_number || '', 
         status: row.status || 'inactive',
         sessionData: row.session_data || row.sessionData || '',
         createdAt: row.createdAt || new Date(),
