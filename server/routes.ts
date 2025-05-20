@@ -10,8 +10,7 @@ import {
   insertActivitySchema, 
   insertMessageSchema, 
   insertSurveySchema,
-  insertDashboardStatsSchema,
-  insertAgentSchema
+  insertDashboardStatsSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { apiKeyManager } from "./services/apiKeyManager";
@@ -35,9 +34,6 @@ import { mediaGalleryService } from "./services/mediaGalleryService";
 import { registerTemplateVariablesRoutes } from "./services/templateVariablesRoutes";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import chatAssignmentsRouter from "./routes/chatAssignments";
-import agentsRouter from "./routes/agents";
-import ticketsRouter from "./routes/tickets";
-import deleteLeadsRouter from "./routes/deleteLeads";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -70,49 +66,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/media-gallery", mediaGalleryRouter);
   app.use("/api/media", mediaServeRouter);
   
-  // Registrar rutas para cuentas de WhatsApp, asignaciones de chat y agentes
+  // Registrar rutas para cuentas de WhatsApp y asignaciones de chat
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   app.use("/api/chat-assignments", chatAssignmentsRouter);
-  app.use("/api/agents", agentsRouter);
-  app.use("/api/tickets", ticketsRouter);
-  
-  // Endpoint directo para eliminar todos los leads
-  app.delete("/api/leads/delete-all", async (req: Request, res: Response) => {
-    try {
-      // Primero eliminar relaciones en tablas dependientes
-      try {
-        await db.delete(activities).where(eq(activities.leadId, sql.raw('ANY(SELECT id FROM leads)')));
-      } catch (activityError) {
-        console.error("Error al eliminar actividades:", activityError);
-      }
-      
-      try {
-        await db.delete(messages).where(eq(messages.leadId, sql.raw('ANY(SELECT id FROM leads)')));
-      } catch (messageError) {
-        console.error("Error al eliminar mensajes:", messageError);
-      }
-      
-      try {
-        await db.delete(surveys).where(eq(surveys.leadId, sql.raw('ANY(SELECT id FROM leads)')));
-      } catch (surveyError) {
-        console.error("Error al eliminar encuestas:", surveyError);
-      }
-      
-      // Ahora eliminar todos los leads
-      await db.delete(leads);
-      
-      res.json({
-        success: true,
-        message: "Todos los leads han sido eliminados correctamente"
-      });
-    } catch (error) {
-      console.error("Error eliminando todos los leads:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al eliminar todos los leads"
-      });
-    }
-  });
   
   // Ruta para la página de prueba de la galería de medios
   app.get("/media-gallery-test", (req: Request, res: Response) => {
@@ -196,7 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         if (user.id !== 3) { // ID 3 es el superadmin DJP
           await db.update(users)
-            .set({ lastLogin: new Date() })
+            .set({ lastLoginAt: new Date() })
             .where(eq(users.id, user.id));
         }
       } catch (error) {
@@ -311,60 +267,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req as any).user.id;
       
-      // Si es el superadmin (que está hardcodeado)
-      if (userId === 1000) {
-        const superAdmin = {
-          id: 1000,
-          username: 'DJP',
-          role: 'superadmin',
-          email: 'superadmin@crm.com',
-          fullName: 'Super Administrador',
-          status: 'active',
-          department: 'Dirección',
-          avatar: '/assets/avatars/superadmin.png',
-          lastLogin: new Date()
-        };
-        
-        return res.json({
-          success: true,
-          user: superAdmin
+      // Modificación para seleccionar campos específicos (sin incluir settings que causa problemas)
+      const [user] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          email: users.email,
+          role: users.role,
+          status: users.status,
+          avatar: users.avatar,
+          department: users.department,
+          supervisorId: users.supervisorId,
+          lastLoginAt: users.lastLoginAt,
+          createdAt: users.createdAt
+        })
+        .from(users)
+        .where(eq(users.id, userId));
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "Usuario no encontrado"
         });
       }
       
-      // Para usuarios normales de la base de datos
-      try {
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, userId));
-        
-        if (!user) {
-          return res.status(404).json({
-            success: false,
-            message: "Usuario no encontrado"
-          });
-        }
-        
-        res.json({
-          success: true,
-          user: user
-        });
-      } catch (dbError) {
-        console.error("Error específico de base de datos:", dbError);
-        // Si hay error en la consulta, intentamos devolver al menos la información básica
-        const basicUser = {
-          id: userId,
-          username: (req as any).user.username || 'usuario',
-          role: (req as any).user.role || 'agent',
-          status: 'active'
-        };
-        
-        return res.json({
-          success: true,
-          user: basicUser,
-          partialData: true
-        });
-      }
+      res.json({
+        success: true,
+        user: user
+      });
     } catch (error) {
       console.error("Error al obtener perfil:", error);
       res.status(500).json({
@@ -496,13 +427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Verificar que el usuario tiene permisos de admin o supervisor
       const userRole = (req as any).user.role;
-      const userId = (req as any).user.userId;
-      const username = (req as any).user.username;
-      
-      // Verificar si es el superadministrador (DJP, ID 3)
-      const isSuperAdmin = userId === 3 && username === 'DJP';
-      
-      if (!isSuperAdmin && userRole !== 'admin' && userRole !== 'supervisor') {
+      if (userRole !== 'admin' && userRole !== 'supervisor') {
         return res.status(403).json({ 
           success: false, 
           message: "No tienes permisos para crear usuarios" 
@@ -552,16 +477,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.id);
       const requestingUserId = (req as any).user.userId;
       const requestingUserRole = (req as any).user.role;
-      const requestingUsername = (req as any).user.username;
-      
-      // Verificar si es el superadministrador (DJP, ID 3)
-      const isSuperAdmin = requestingUserId === 3 && requestingUsername === 'DJP';
       
       // Solo permitir actualizar usuarios si:
       // - El usuario actualiza su propio perfil
       // - El usuario es admin o supervisor
-      // - El usuario es el superadministrador
-      if (userId !== requestingUserId && !isSuperAdmin && requestingUserRole !== 'admin' && requestingUserRole !== 'supervisor') {
+      if (userId !== requestingUserId && requestingUserRole !== 'admin' && requestingUserRole !== 'supervisor') {
         return res.status(403).json({ 
           success: false, 
           message: "No tienes permisos para actualizar este usuario" 
@@ -569,7 +489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Aplicar restricciones adicionales para proteger a los administradores
-      if (!isSuperAdmin && requestingUserRole === 'supervisor') {
+      if (requestingUserRole === 'supervisor') {
         const targetUser = await storage.getUser(userId);
         if (targetUser && targetUser.role === 'admin') {
           return res.status(403).json({ 
@@ -577,14 +497,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: "Los supervisores no pueden modificar usuarios administradores" 
           });
         }
-      }
-      
-      // Proteger al superadministrador DJP de ser modificado por otros
-      if (userId === 3 && !isSuperAdmin) {
-        return res.status(403).json({
-          success: false,
-          message: "No se puede modificar la cuenta del superadministrador"
-        });
       }
       
       const userData = req.body;
@@ -648,13 +560,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.id);
       const requestingUserRole = (req as any).user.role;
       const requestingUserId = (req as any).user.userId;
-      const requestingUsername = (req as any).user.username;
       
-      // Verificar si es el superadministrador (DJP, ID 3)
-      const isSuperAdmin = requestingUserId === 3 && requestingUsername === 'DJP';
-      
-      // Solo permitir eliminar usuarios a admin, supervisor, o superadministrador
-      if (!isSuperAdmin && requestingUserRole !== 'admin' && requestingUserRole !== 'supervisor') {
+      // Solo permitir eliminar usuarios a admin o supervisor
+      if (requestingUserRole !== 'admin' && requestingUserRole !== 'supervisor') {
         return res.status(403).json({ 
           success: false, 
           message: "No tienes permisos para eliminar usuarios" 
@@ -679,19 +587,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Los supervisores no pueden eliminar administradores
-      // Solo el superadministrador puede eliminar administradores
-      if (!isSuperAdmin && requestingUserRole === 'supervisor' && existingUser.role === 'admin') {
+      if (requestingUserRole === 'supervisor' && existingUser.role === 'admin') {
         return res.status(403).json({ 
           success: false, 
           message: "Los supervisores no pueden eliminar usuarios administradores" 
-        });
-      }
-      
-      // Proteger al superadministrador de ser eliminado por otros
-      if (existingUser.id === 3 && !isSuperAdmin) {
-        return res.status(403).json({
-          success: false,
-          message: "No se puede eliminar la cuenta del superadministrador"
         });
       }
       
@@ -924,34 +823,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const upcoming = req.query.upcoming === "true";
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       
-      let activities = [];
-      
-      try {
-        if (leadId) {
-          activities = await storage.getActivitiesByLead(leadId);
-        } else if (userId && upcoming) {
-          activities = await storage.getUpcomingActivities(userId, limit);
-        } else if (userId) {
-          activities = await storage.getActivitiesByUser(userId);
-        } else {
-          return res.status(400).json({ 
-            success: false,
-            message: "Missing required parameters",
-            data: []
-          });
-        }
-      } catch (dbError) {
-        console.error("Error específico en consulta de actividades:", dbError);
-        // No rethrow, continuamos con array vacío
+      if (leadId) {
+        const activities = await storage.getActivitiesByLead(leadId);
+        return res.json(activities);
+      } else if (userId && upcoming) {
+        const activities = await storage.getUpcomingActivities(userId, limit);
+        return res.json(activities);
+      } else if (userId) {
+        const activities = await storage.getActivitiesByUser(userId);
+        return res.json(activities);
+      } else {
+        return res.status(400).json({ message: "Missing required parameters" });
       }
-      
-      // Si llegamos aquí, devolvemos lo que tengamos (puede ser un array vacío)
-      return res.json(activities);
     } catch (error) {
-      console.error("Error general en endpoint de actividades:", error);
-      // En caso de error grave, devolvemos array vacío en lugar de error 500
-      // para evitar pantallas en blanco
-      res.json([]);
+      res.status(500).json({ message: "Failed to fetch activities" });
     }
   });
 
@@ -1022,32 +907,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const recent = req.query.recent === "true";
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       
-      let messages = [];
-      
-      try {
-        if (leadId) {
-          messages = await storage.getMessagesByLead(leadId);
-        } else if (recent) {
-          messages = await storage.getRecentMessages(limit);
-        } else {
-          return res.status(400).json({ 
-            success: false,
-            message: "Missing required parameters",
-            data: []
-          });
-        }
-      } catch (dbError) {
-        console.error("Error específico en consulta de mensajes:", dbError);
-        // No rethrow, continuamos con array vacío
+      if (leadId) {
+        const messages = await storage.getMessagesByLead(leadId);
+        return res.json(messages);
+      } else if (recent) {
+        const messages = await storage.getRecentMessages(limit);
+        return res.json(messages);
+      } else {
+        return res.status(400).json({ message: "Missing required parameters" });
       }
-      
-      // Si llegamos aquí, devolvemos lo que tengamos (puede ser un array vacío)
-      return res.json(messages);
     } catch (error) {
-      console.error("Error general en endpoint de mensajes:", error);
-      // En caso de error grave, devolvemos array vacío en lugar de error 500
-      // para evitar pantallas en blanco
-      res.json([]);
+      res.status(500).json({ message: "Failed to fetch messages" });
     }
   });
 
@@ -1197,19 +1067,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             stats = await storage.updateDashboardStats({
               totalLeads,
               newLeadsThisMonth: totalLeads, // Por ahora, asumimos todos como nuevos
-              activeDeals: activeChats,
-              closedDealsThisMonth: 0,
-              totalRevenue: 0,
-              revenueThisMonth: 0,
-              conversionRates: JSON.stringify({}),
-              leadsDistribution: JSON.stringify({})
+              activeLeads: activeChats,
+              messagesThisMonth,
+              conversionRate: 0,
+              averageResponseTime: 0,
+              salesThisMonth: 0,
+              revenue: 0
             });
           } else {
             // Actualizamos las estadísticas existentes con datos reales
             stats = await storage.updateDashboardStats({
               ...stats,
               totalLeads,
-              activeDeals: activeChats,
+              activeLeads: activeChats,
+              messagesThisMonth,
               newLeadsThisMonth: totalLeads // Por ahora, asumimos todos como nuevos
             });
           }
@@ -3280,34 +3151,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Función global para enviar notificaciones a todos los clientes
-  // Optimizada para transmisión de mensajes en tiempo real
   (global as any).sendNotification = (data: any) => {
     const message = JSON.stringify({
       type: 'notification',
       timestamp: Date.now(),
-      data,
-      priority: data.type === 'new_message' ? 'high' : 'normal' // Prioridad alta para mensajes nuevos
+      data
     });
-    
-    console.log(`Enviando notificación en tiempo real: ${data.type}`);
-    
-    // Broadcast inmediato a todos los clientes conectados
-    const startTime = Date.now();
-    let successCount = 0;
     
     clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN) {
-        try {
-          client.send(message);
-          successCount++;
-        } catch (error) {
-          console.error('Error enviando mensaje WebSocket:', error);
-        }
+        client.send(message);
       }
     });
-    
-    const timeElapsed = Date.now() - startTime;
-    console.log(`Notificación enviada a ${successCount} clientes en ${timeElapsed}ms`);
   };
   
   return httpServer;

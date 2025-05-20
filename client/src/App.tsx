@@ -9,7 +9,6 @@ import Calendar from './pages/Calendar';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import Tasks from './pages/Tasks';
-import Tickets from './pages/Tickets';
 import MediaGallery from './pages/MediaGallery';
 import MessageTemplates from './pages/MessageTemplates';
 import MassSender from './pages/MassSender';
@@ -45,15 +44,12 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<any>, path: string
     return <Component />;
   }
   
-  // Mostrar indicador más discreto mientras se verifica la autenticación
+  // Mostrar cargando mientras se verifica la autenticación
   if (isLoading) {
     return (
-      <div>
-        <div className="fixed top-0 right-0 mt-4 mr-4 bg-white/90 p-2 rounded-lg shadow-sm flex items-center z-30">
-          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-          <span className="ml-2 text-xs text-gray-800">Verificando...</span>
-        </div>
-        <Component />
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <span className="ml-2 text-gray-600">Verificando sesión...</span>
       </div>
     );
   }
@@ -191,13 +187,6 @@ const AppRoutes: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
                 Tareas
-              </a>
-              
-              <a href="/tickets" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/tickets' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
-                </svg>
-                Tickets
               </a>
               
               {/* Análisis y Recursos */}
@@ -347,7 +336,6 @@ const AppRoutes: React.FC = () => {
                 <Route path="/messages" component={() => <PrivateRoute component={Messages} path="/messages" />} />
                 <Route path="/calendar" component={() => <PrivateRoute component={Calendar} path="/calendar" />} />
                 <Route path="/tasks" component={() => <PrivateRoute component={Tasks} path="/tasks" />} />
-                <Route path="/tickets" component={() => <PrivateRoute component={Tickets} path="/tickets" />} />
                 <Route path="/analytics" component={() => <PrivateRoute component={Analytics} path="/analytics" />} />
                 <Route path="/settings" component={() => <PrivateRoute component={Settings} path="/settings" />} />
                 <Route path="/media-gallery" component={() => <PrivateRoute component={MediaGallery} path="/media-gallery" />} />

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
-import { WhatsAppSimple } from "@/components/messaging/WhatsAppSimpleFixed";
+import { WhatsAppSimple } from "@/components/messaging/WhatsAppSimple";
 
 export default function Messages() {
   const [selectedLeadId, setSelectedLeadId] = useState<number | undefined>(undefined);

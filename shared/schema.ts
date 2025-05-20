@@ -1,408 +1,394 @@
-import { relations, sql } from "drizzle-orm";
-import { text, integer, pgTable, serial, varchar, timestamp, boolean, pgEnum } from "drizzle-orm/pg-core";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { pgTable, text, serial, integer, boolean, timestamp, json, jsonb, doublePrecision } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Enums
-export const userRoleEnum = pgEnum("user_role", ["admin", "supervisor", "agent", "viewer", "superadmin"]);
-export const userStatusEnum = pgEnum("user_status", ["active", "inactive", "pending"]);
-export const leadStatusEnum = pgEnum("lead_status", ["nuevo", "contactado", "calificado", "negociacion", "ganado", "perdido"]);
-export const activityTypeEnum = pgEnum("activity_type", ["call", "meeting", "email", "task", "note"]);
-export const ticketStatusEnum = pgEnum("ticket_status", ["nuevo", "en_progreso", "resuelto", "cancelado", "sin_asignar"]);
-export const ticketPriorityEnum = pgEnum("ticket_priority", ["baja", "media", "alta", "critica"]);
-export const ticketCategoryEnum = pgEnum("ticket_category", ["soporte", "ventas", "facturacion", "tecnico", "consulta"]);
-
-// Tablas
+// Base user table - con roles mejorados y campos adicionales
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: varchar("username", { length: 50 }).notNull().unique(),
-  password: varchar("password", { length: 255 }).notNull(),
-  fullName: varchar("full_name", { length: 100 }),
-  email: varchar("email", { length: 100 }),
-  role: userRoleEnum("role").default("agent"),
-  status: userStatusEnum("status").default("active"),
-  avatar: varchar("avatar", { length: 255 }),
-  department: varchar("department", { length: 100 }),
-  phone: varchar("phone", { length: 20 }),
-  lastLogin: timestamp("last_login"),
-  preferences: text("preferences"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  fullName: text("fullName"),
+  email: text("email"),
+  // Roles: admin, agent, supervisor
+  // Roles: super_admin, admin, supervisor, agent
+  role: text("role").default("agent"),
+  // Estado: active, inactive, suspended
+  status: text("status").default("active"),
+  avatar: text("avatar"),
+  // Departamento o área del usuario (ventas, soporte, marketing, etc.)
+  department: text("department"),
+  // El ID del supervisor o gerente de este usuario
+  supervisorId: integer("supervisorId").references(() => users.id),
+  // Ajustes personalizados para este usuario (tema, notificaciones, etc.)
+  settings: jsonb("settings"),
+  lastLoginAt: timestamp("lastLoginAt"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedat"), // Nota: en PostgreSQL los nombres se convierten a minúsculas
 });
 
-export const usersRelations = relations(users, ({ many }) => ({
-  agentLeads: many(leads),
-  agentActivities: many(activities),
-  assignedTickets: many(tickets),
-  whatsappAccounts: many(userWhatsappAccounts),
-}));
+// WhatsApp Accounts - para manejar múltiples cuentas
+export const whatsappAccounts = pgTable("whatsapp_accounts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  // Información del propietario o usuario principal
+  ownerName: text("ownerName"),
+  ownerPhone: text("ownerPhone"),
+  // JSON con datos de configuración y estado
+  sessionData: jsonb("sessionData"),
+  // Estado de la conexión: active, inactive, pending_auth
+  status: text("status").default("inactive"),
+  // Usuario asignado como administrador de esta cuenta
+  adminId: integer("adminId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow(),
+  lastActiveAt: timestamp("lastActiveAt"),
+});
 
+// Lead model - represents potential customers
 export const leads = pgTable("leads", {
   id: serial("id").primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
-  email: varchar("email", { length: 100 }),
-  phone: varchar("phone", { length: 20 }),
-  company: varchar("company", { length: 100 }),
-  position: varchar("position", { length: 100 }),
-  status: leadStatusEnum("status").default("nuevo"),
-  source: varchar("source", { length: 50 }),
-  assignedTo: integer("assigned_to").references(() => users.id),
-  tags: text("tags").array(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  company: text("company"),
+  source: text("source"), // where the lead came from
+  status: text("status").default("new"), // new, contacted, meeting, closed-won, closed-lost
   notes: text("notes"),
-  interestLevel: integer("interest_level"), // 1-5
-  budget: integer("budget"),
-  timeline: varchar("timeline", { length: 50 }),
-  lastContact: timestamp("last_contact"),
-  nextContact: timestamp("next_contact"),
-  chatId: varchar("chat_id", { length: 255 }),
-  aiSummary: text("ai_summary"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  assigneeId: integer("assigneeId").references(() => users.id),
+  budget: doublePrecision("budget"),
+  priority: text("priority"),
+  tags: text("tags").array(), // tags applied to the lead
+  createdAt: timestamp("createdAt").defaultNow(),
 });
 
+// Activities model - represents meetings, calls, emails, tasks
+export const activities = pgTable("activities", {
+  id: serial("id").primaryKey(),
+  leadId: integer("leadId").references(() => leads.id),
+  userId: integer("userId").references(() => users.id),
+  type: text("type").notNull(), // meeting, call, email, task, etc.
+  scheduled: timestamp("scheduled").notNull(),
+  notes: text("notes"),
+  completed: boolean("completed").default(false),
+  priority: text("priority"),
+  reminder: timestamp("reminder"),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+// Messages model - represents conversations with leads
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  leadId: integer("leadId").references(() => leads.id),
+  content: text("content").notNull(),
+  direction: text("direction").notNull(), // incoming, outgoing
+  channel: text("channel").notNull(), // email, whatsapp, chat, system
+  read: boolean("read").default(false),
+  sentAt: timestamp("sentAt").defaultNow(),
+});
+
+// Surveys model - represents feedback forms sent to leads/customers
+export const surveys = pgTable("surveys", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id").references(() => leads.id),
+  title: text("title").notNull(),
+  questions: json("questions").notNull(), // array of question objects
+  responses: json("responses"), // array of response objects
+  sentAt: timestamp("sent_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  aiAnalysis: json("ai_analysis"), // results of AI analyzing the responses
+  createdBy: integer("created_by").references(() => users.id),
+});
+
+// Dashboard KPIs model - for dashboard statistics
+export const dashboardStats = pgTable("dashboard_stats", {
+  id: serial("id").primaryKey(),
+  totalLeads: integer("totalLeads").default(0),
+  newLeadsThisMonth: integer("newLeadsThisMonth").default(0),
+  activeLeads: integer("activeLeads").default(0),
+  convertedLeads: integer("convertedLeads").default(0),
+  totalSales: doublePrecision("totalSales").default(0),
+  salesThisMonth: doublePrecision("salesThisMonth").default(0),
+  pendingActivities: integer("pendingActivities").default(0),
+  completedActivities: integer("completedActivities").default(0),
+  performanceMetrics: jsonb("performanceMetrics").default('{"responseTime": 0, "conversionRate": 0, "customerSatisfaction": 0}'),
+  updatedAt: timestamp("updatedAt").defaultNow(),
+});
+
+// Plantillas de mensajes - para reutilizar contenido en campañas
+export const messageTemplates = pgTable("message_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  content: text("content").notNull(),
+  category: text("category"), // ventas, soporte, bienvenida, etc.
+  tags: text("tags").array(),
+  variables: jsonb("variables"), // JSON con variables disponibles y ejemplos
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
+  createdBy: integer("createdBy").references(() => users.id),
+  isActive: boolean("isActive").default(true),
+});
+
+// Campañas de marketing - para envío masivo de mensajes
+export const marketingCampaigns = pgTable("marketing_campaigns", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  templateId: integer("templateId").references(() => messageTemplates.id),
+  status: text("status").default("draft"), // draft, scheduled, running, paused, completed
+  scheduledStart: timestamp("scheduledStart"),
+  scheduledEnd: timestamp("scheduledEnd"),
+  recipientList: jsonb("recipientList"), // JSON con información de destinatarios o criterios
+  importedContacts: jsonb("importedContacts"), // JSON con contactos importados desde Excel
+  sendingConfig: jsonb("sendingConfig"), // JSON con configuración de envío (velocidad, pausas, etc.)
+  stats: jsonb("stats").default('{"total": 0, "sent": 0, "delivered": 0, "read": 0, "responses": 0, "failed": 0}'),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
+  createdBy: integer("createdBy").references(() => users.id),
+});
+
+// Insert schemas for each model
+
 export const leadsRelations = relations(leads, ({ one, many }) => ({
-  assignedTo: one(users, {
-    fields: [leads.assignedTo],
-    references: [users.id],
+  assignee: one(users, {
+    fields: [leads.assigneeId],
+    references: [users.id]
   }),
   activities: many(activities),
   messages: many(messages),
-  surveys: many(surveys),
-  tickets: many(tickets),
+  surveys: many(surveys)
 }));
-
-export const activities = pgTable("activities", {
-  id: serial("id").primaryKey(),
-  leadId: integer("lead_id").references(() => leads.id),
-  userId: integer("user_id").references(() => users.id),
-  type: activityTypeEnum("type").notNull(),
-  title: varchar("title", { length: 100 }).notNull(),
-  description: text("description"),
-  dueDate: timestamp("due_date"),
-  completed: boolean("completed").default(false),
-  completedAt: timestamp("completed_at"),
-  outcome: text("outcome"),
-  reminderTime: timestamp("reminder_time"),
-  isAutomatic: boolean("is_automatic").default(false), // Para actividades generadas por IA
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
 
 export const activitiesRelations = relations(activities, ({ one }) => ({
   lead: one(leads, {
     fields: [activities.leadId],
-    references: [leads.id],
+    references: [leads.id]
   }),
   user: one(users, {
     fields: [activities.userId],
     references: [users.id],
-  }),
+    relationName: "userActivities"
+  })
 }));
-
-export const messages = pgTable("messages", {
-  id: serial("id").primaryKey(),
-  leadId: integer("lead_id").references(() => leads.id),
-  content: text("content").notNull(),
-  fromLead: boolean("from_lead").default(false),
-  read: boolean("read").default(false),
-  readAt: timestamp("read_at"),
-  attachments: text("attachments").array(),
-  sentAt: timestamp("sent_at").defaultNow(),
-  channel: varchar("channel", { length: 50 }).default("whatsapp"),
-  messageId: varchar("message_id", { length: 255 }), // ID del mensaje en el canal (WhatsApp, email, etc.)
-});
 
 export const messagesRelations = relations(messages, ({ one }) => ({
   lead: one(leads, {
     fields: [messages.leadId],
-    references: [leads.id],
-  }),
+    references: [leads.id]
+  })
 }));
-
-export const surveys = pgTable("surveys", {
-  id: serial("id").primaryKey(),
-  leadId: integer("lead_id").references(() => leads.id),
-  title: varchar("title", { length: 100 }).notNull(),
-  questions: text("questions").notNull(), // JSON con las preguntas
-  responses: text("responses"), // JSON con las respuestas
-  sentAt: timestamp("sent_at").defaultNow(),
-  completedAt: timestamp("completed_at"),
-  expiresAt: timestamp("expires_at"),
-});
 
 export const surveysRelations = relations(surveys, ({ one }) => ({
   lead: one(leads, {
     fields: [surveys.leadId],
-    references: [leads.id],
+    references: [leads.id]
   }),
+  createdBy: one(users, {
+    fields: [surveys.createdBy],
+    references: [users.id]
+  })
 }));
 
-export const dashboardStats = pgTable("dashboard_stats", {
-  id: serial("id").primaryKey(),
-  totalLeads: integer("total_leads").default(0),
-  newLeadsThisMonth: integer("new_leads_this_month").default(0),
-  activeDeals: integer("active_deals").default(0),
-  closedDealsThisMonth: integer("closed_deals_this_month").default(0),
-  totalRevenue: integer("total_revenue").default(0),
-  revenueThisMonth: integer("revenue_this_month").default(0),
-  leadsDistribution: text("leads_distribution"), // JSON con distribución por estado, fuente, etc.
-  conversionRates: text("conversion_rates"), // JSON con tasas de conversión
-  topPerformers: text("top_performers"), // JSON con mejores agentes
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Whatsapp Accounts
-export const whatsappAccounts = pgTable("whatsapp_accounts", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
-  phoneNumber: varchar("phone_number", { length: 20 }),
-  status: varchar("status", { length: 50 }).default("inactive"),
-  sessionData: text("session_data"),
-  settings: text("settings"), // JSON con configuraciones
-  lastActive: timestamp("last_active"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const whatsappAccountsRelations = relations(whatsappAccounts, ({ many }) => ({
-  userAccounts: many(userWhatsappAccounts),
+// Relaciones para plantillas de mensajes
+export const messageTemplatesRelations = relations(messageTemplates, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [messageTemplates.createdBy],
+    references: [users.id]
+  }),
+  campaigns: many(marketingCampaigns)
 }));
 
-// Asignaciones de cuentas de WhatsApp a usuarios
+// Relaciones para campañas de marketing
+export const marketingCampaignsRelations = relations(marketingCampaigns, ({ one }) => ({
+  template: one(messageTemplates, {
+    fields: [marketingCampaigns.templateId],
+    references: [messageTemplates.id]
+  }),
+  creator: one(users, {
+    fields: [marketingCampaigns.createdBy],
+    references: [users.id]
+  })
+}));
+
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true });
+export const insertActivitySchema = createInsertSchema(activities).omit({ id: true, createdAt: true });
+export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, sentAt: true });
+export const insertSurveySchema = createInsertSchema(surveys).omit({ id: true, sentAt: true, completedAt: true });
+export const insertDashboardStatsSchema = createInsertSchema(dashboardStats).omit({ id: true, updatedAt: true });
+export const insertMessageTemplateSchema = createInsertSchema(messageTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertMarketingCampaignSchema = createInsertSchema(marketingCampaigns).omit({ id: true, createdAt: true, updatedAt: true, stats: true });
+
+// Types for insert and select operations
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type InsertActivity = z.infer<typeof insertActivitySchema>;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type InsertSurvey = z.infer<typeof insertSurveySchema>;
+export type InsertDashboardStats = z.infer<typeof insertDashboardStatsSchema>;
+export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
+export type InsertMarketingCampaign = z.infer<typeof insertMarketingCampaignSchema>;
+
+export type User = typeof users.$inferSelect;
+export type Lead = typeof leads.$inferSelect;
+export type Activity = typeof activities.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+export type Survey = typeof surveys.$inferSelect;
+export type DashboardStats = typeof dashboardStats.$inferSelect;
+export type MessageTemplate = typeof messageTemplates.$inferSelect;
+export type MarketingCampaign = typeof marketingCampaigns.$inferSelect;
+
+// Tabla para galería de archivos
+export const mediaGallery = pgTable("media_gallery", {
+  id: serial("id").primaryKey(),
+  filename: text("filename").notNull(),
+  originalFilename: text("original_filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  size: integer("size").notNull(),
+  path: text("path").notNull(),
+  type: text("type").notNull(), // image, document, audio, video
+  tags: text("tags").array(),
+  title: text("title"),
+  description: text("description"),
+  uploadedBy: integer("uploaded_by").references(() => users.id),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  lastUsedAt: timestamp("last_used_at"),
+  useCount: integer("use_count").default(0),
+});
+
+// Relaciones para galería de medios
+export const mediaGalleryRelations = relations(mediaGallery, ({ one }) => ({
+  uploader: one(users, {
+    fields: [mediaGallery.uploadedBy],
+    references: [users.id]
+  })
+}));
+
+// Usuario-Cuenta WhatsApp para asignar agentes a diferentes cuentas
 export const userWhatsappAccounts = pgTable("user_whatsapp_accounts", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
-  accountId: integer("account_id").references(() => whatsappAccounts.id).notNull(),
-  role: varchar("role", { length: 50 }).default("user"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  userId: integer("userId").notNull().references(() => users.id),
+  accountId: integer("accountId").notNull().references(() => whatsappAccounts.id),
+  // Permisos: read_only, respond, full_access
+  permissions: text("permissions").default("respond"),
+  // Categorías o etiquetas de chats que este usuario puede manejar
+  assignedCategories: text("assignedCategories").array(),
+  assignedAt: timestamp("assignedAt").defaultNow(),
+  assignedBy: integer("assignedBy").references(() => users.id),
 });
 
+// Chat-Agente para asignación de conversaciones a agentes específicos
+export const chatAssignments = pgTable("chat_assignments", {
+  id: serial("id").primaryKey(),
+  // Chat ID en formato de WhatsApp (número@c.us)
+  chatId: text("chatId").notNull(),
+  // Conexión a la cuenta de WhatsApp
+  accountId: integer("accountId").notNull().references(() => whatsappAccounts.id),
+  // Usuario al que se asigna el chat
+  assignedToId: integer("assignedToId").notNull().references(() => users.id),
+  // Usuario que hizo la asignación
+  assignedById: integer("assignedById").references(() => users.id),
+  // Categoría o etiqueta del chat
+  category: text("category"),
+  // Estado: active, closed, transferred
+  status: text("status").default("active"),
+  // Notas o motivo de la asignación
+  notes: text("notes"),
+  assignedAt: timestamp("assignedAt").defaultNow(),
+  lastActivityAt: timestamp("lastActivityAt"),
+});
+
+// Categorías para organizar chats
+export const chatCategories = pgTable("chat_categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  color: text("color").default("#3b82f6"), // Color para UI
+  icon: text("icon"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  createdBy: integer("createdBy").references(() => users.id),
+});
+
+// Relaciones para cuentas de WhatsApp
+export const whatsappAccountsRelations = relations(whatsappAccounts, ({ one, many }) => ({
+  admin: one(users, {
+    fields: [whatsappAccounts.adminId],
+    references: [users.id]
+  }),
+  assignedUsers: many(userWhatsappAccounts),
+  chatAssignments: many(chatAssignments)
+}));
+
+// Relaciones para usuario-cuenta
 export const userWhatsappAccountsRelations = relations(userWhatsappAccounts, ({ one }) => ({
   user: one(users, {
     fields: [userWhatsappAccounts.userId],
-    references: [users.id],
+    references: [users.id]
   }),
   account: one(whatsappAccounts, {
     fields: [userWhatsappAccounts.accountId],
-    references: [whatsappAccounts.id],
+    references: [whatsappAccounts.id]
   }),
+  assignedBy: one(users, {
+    fields: [userWhatsappAccounts.assignedBy],
+    references: [users.id]
+  })
 }));
 
-// Asignaciones de chats a agentes
-export const chatAssignments = pgTable("chat_assignments", {
-  id: serial("id").primaryKey(),
-  chatId: varchar("chat_id", { length: 255 }).notNull(),
-  agentId: integer("agent_id").references(() => users.id).notNull(),
-  accountId: integer("account_id").references(() => whatsappAccounts.id),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
+// Relaciones para asignaciones de chat
 export const chatAssignmentsRelations = relations(chatAssignments, ({ one }) => ({
-  agent: one(users, {
-    fields: [chatAssignments.agentId],
-    references: [users.id],
-  }),
   account: one(whatsappAccounts, {
     fields: [chatAssignments.accountId],
-    references: [whatsappAccounts.id],
-  }),
-}));
-
-// Plantillas de mensaje
-export const messageTemplates = pgTable("message_templates", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
-  content: text("content").notNull(),
-  category: varchar("category", { length: 50 }),
-  tags: text("tags").array(),
-  createdBy: integer("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const messageTemplatesRelations = relations(messageTemplates, ({ one }) => ({
-  createdBy: one(users, {
-    fields: [messageTemplates.createdBy],
-    references: [users.id],
-  }),
-}));
-
-// Categorías de chat
-export const chatCategories = pgTable("chat_categories", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
-  color: varchar("color", { length: 20 }),
-  description: text("description"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Agentes 
-export const agents = pgTable("agents", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
-  email: varchar("email", { length: 100 }).notNull(),
-  status: varchar("status", { length: 50 }).default("active"),
-  department: varchar("department", { length: 100 }),
-  supervisorId: integer("supervisor_id").references(() => users.id),
-  activeSince: timestamp("active_since"),
-  lastActive: timestamp("last_active"),
-  skills: text("skills").array(),
-  performance: text("performance"), // JSON con métricas de desempeño
-  level: varchar("level", { length: 20 }),
-  maxLeads: integer("max_leads").default(10),
-  maxChats: integer("max_chats").default(5),
-  workingHours: text("working_hours"), // JSON con horario
-  avatar: varchar("avatar", { length: 255 }),
-  phone: varchar("phone", { length: 20 }),
-  hireDate: timestamp("hire_date"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const agentsRelations = relations(agents, ({ one }) => ({
-  supervisor: one(users, {
-    fields: [agents.supervisorId],
-    references: [users.id],
-  }),
-}));
-
-// Sistema de tickets para atención al cliente
-export const tickets = pgTable("tickets", {
-  id: serial("id").primaryKey(),
-  title: varchar("title", { length: 100 }).notNull(),
-  description: text("description").notNull(),
-  status: ticketStatusEnum("status").default("nuevo"),
-  priority: ticketPriorityEnum("priority").default("media"),
-  category: ticketCategoryEnum("category").default("consulta"),
-  leadId: integer("lead_id").references(() => leads.id),
-  assignedTo: integer("assigned_to").references(() => users.id),
-  chatId: varchar("chat_id", { length: 255 }),
-  source: varchar("source", { length: 50 }),
-  resolution: text("resolution"),
-  resolvedAt: timestamp("resolved_at"),
-  dueDate: timestamp("due_date"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const ticketsRelations = relations(tickets, ({ one }) => ({
-  lead: one(leads, {
-    fields: [tickets.leadId],
-    references: [leads.id],
+    references: [whatsappAccounts.id]
   }),
   assignedTo: one(users, {
-    fields: [tickets.assignedTo],
-    references: [users.id],
+    fields: [chatAssignments.assignedToId],
+    references: [users.id]
   }),
+  assignedBy: one(users, {
+    fields: [chatAssignments.assignedById],
+    references: [users.id]
+  })
 }));
 
-// Ya existe una definición de dashboardStats más arriba
-// Dejamos este comentario para documentar
+// Relaciones para categorías de chat
+export const chatCategoriesRelations = relations(chatCategories, ({ one }) => ({
+  createdByUser: one(users, {
+    fields: [chatCategories.createdBy],
+    references: [users.id]
+  })
+}));
 
-// Campañas de marketing
-// Galería de medios
-export const mediaGallery = pgTable("media_gallery", {
-  id: serial("id").primaryKey(),
-  filename: varchar("filename", { length: 255 }).notNull(),
-  originalName: varchar("original_name", { length: 255 }),
-  mimeType: varchar("mime_type", { length: 100 }),
-  size: integer("size"),
-  path: varchar("path", { length: 255 }).notNull(),
-  url: varchar("url", { length: 255 }),
-  type: varchar("type", { length: 50 }), // image, video, document, audio, etc.
-  tags: text("tags").array(),
-  uploadedBy: integer("uploaded_by").references(() => users.id),
-  isPublic: boolean("is_public").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+// Definir relaciones de usuarios
+export const usersRelations = relations(users, ({ one, many }) => ({
+  supervisor: one(users, {
+    fields: [users.supervisorId],
+    references: [users.id]
+  }),
+  subordinates: many(users, {
+    relationName: "supervisorRelation"
+  }),
+  assignedLeads: many(leads),
+  activities: many(activities, { relationName: "userActivities" }),
+  whatsappAccounts: many(userWhatsappAccounts),
+  chatAssignments: many(chatAssignments, { relationName: "assignedChats" })
+}));
 
-export const campaigns = pgTable("campaigns", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
-  description: text("description"),
-  status: varchar("status", { length: 50 }).default("draft"),
-  startDate: timestamp("start_date"),
-  endDate: timestamp("end_date"),
-  budget: integer("budget"),
-  results: text("results"), // JSON con resultados
-  templateId: integer("template_id").references(() => messageTemplates.id),
-  createdBy: integer("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+export const insertMediaGallerySchema = createInsertSchema(mediaGallery).omit({ id: true, uploadedAt: true, lastUsedAt: true, useCount: true });
+export const insertWhatsappAccountSchema = createInsertSchema(whatsappAccounts).omit({ id: true, createdAt: true, lastActiveAt: true });
+export const insertUserWhatsappAccountSchema = createInsertSchema(userWhatsappAccounts).omit({ id: true, assignedAt: true });
+export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
+export const insertChatCategorySchema = createInsertSchema(chatCategories).omit({ id: true, createdAt: true });
 
-// Tipos con Zod
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
-export const insertUserSchema = createInsertSchema(users);
-export const selectUserSchema = createSelectSchema(users);
+export type InsertMediaGallery = z.infer<typeof insertMediaGallerySchema>;
+export type InsertWhatsappAccount = z.infer<typeof insertWhatsappAccountSchema>;
+export type InsertUserWhatsappAccount = z.infer<typeof insertUserWhatsappAccountSchema>;
+export type InsertChatAssignment = z.infer<typeof insertChatAssignmentSchema>;
+export type InsertChatCategory = z.infer<typeof insertChatCategorySchema>;
 
-export type Lead = typeof leads.$inferSelect;
-export type InsertLead = typeof leads.$inferInsert;
-export const insertLeadSchema = createInsertSchema(leads);
-export const selectLeadSchema = createSelectSchema(leads);
-
-export type Activity = typeof activities.$inferSelect;
-export type InsertActivity = typeof activities.$inferInsert;
-export const insertActivitySchema = createInsertSchema(activities);
-export const selectActivitySchema = createSelectSchema(activities);
-
-export type Message = typeof messages.$inferSelect;
-export type InsertMessage = typeof messages.$inferInsert;
-export const insertMessageSchema = createInsertSchema(messages);
-export const selectMessageSchema = createSelectSchema(messages);
-
-export type Survey = typeof surveys.$inferSelect;
-export type InsertSurvey = typeof surveys.$inferInsert;
-export const insertSurveySchema = createInsertSchema(surveys);
-export const selectSurveySchema = createSelectSchema(surveys);
-
-export type DashboardStats = typeof dashboardStats.$inferSelect;
-export type InsertDashboardStats = typeof dashboardStats.$inferInsert;
-export const insertDashboardStatsSchema = createInsertSchema(dashboardStats);
-export const selectDashboardStatsSchema = createSelectSchema(dashboardStats);
-
+export type MediaGallery = typeof mediaGallery.$inferSelect;
 export type WhatsappAccount = typeof whatsappAccounts.$inferSelect;
-export type InsertWhatsappAccount = typeof whatsappAccounts.$inferInsert;
-export const insertWhatsappAccountSchema = createInsertSchema(whatsappAccounts);
-export const selectWhatsappAccountSchema = createSelectSchema(whatsappAccounts);
-
 export type UserWhatsappAccount = typeof userWhatsappAccounts.$inferSelect;
-export type InsertUserWhatsappAccount = typeof userWhatsappAccounts.$inferInsert;
-export const insertUserWhatsappAccountSchema = createInsertSchema(userWhatsappAccounts);
-export const selectUserWhatsappAccountSchema = createSelectSchema(userWhatsappAccounts);
-
 export type ChatAssignment = typeof chatAssignments.$inferSelect;
-export type InsertChatAssignment = typeof chatAssignments.$inferInsert;
-export const insertChatAssignmentSchema = createInsertSchema(chatAssignments);
-export const selectChatAssignmentSchema = createSelectSchema(chatAssignments);
-
-export type MessageTemplate = typeof messageTemplates.$inferSelect;
-export type InsertMessageTemplate = typeof messageTemplates.$inferInsert;
-export const insertMessageTemplateSchema = createInsertSchema(messageTemplates);
-export const selectMessageTemplateSchema = createSelectSchema(messageTemplates);
-
 export type ChatCategory = typeof chatCategories.$inferSelect;
-export type InsertChatCategory = typeof chatCategories.$inferInsert;
-export const insertChatCategorySchema = createInsertSchema(chatCategories);
-export const selectChatCategorySchema = createSelectSchema(chatCategories);
-
-export type Agent = typeof agents.$inferSelect;
-export type InsertAgent = typeof agents.$inferInsert;
-export const insertAgentSchema = createInsertSchema(agents);
-export const selectAgentSchema = createSelectSchema(agents);
-
-export type Ticket = typeof tickets.$inferSelect;
-export type InsertTicket = typeof tickets.$inferInsert;
-export const insertTicketSchema = createInsertSchema(tickets);
-export const selectTicketSchema = createSelectSchema(tickets);
-
-export type Campaign = typeof campaigns.$inferSelect;
-export type InsertCampaign = typeof campaigns.$inferInsert;
-export const insertCampaignSchema = createInsertSchema(campaigns);
-export const selectCampaignSchema = createSelectSchema(campaigns);
