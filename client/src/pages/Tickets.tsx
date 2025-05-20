@@ -513,12 +513,24 @@ export default function Tickets() {
                           Editar
                         </Button>
                         <Select
-                          onValueChange={(value) =>
+                          onValueChange={(value) => {
+                            console.log(`Cambiando estado del ticket ${ticket.id} de ${ticket.status} a ${value}`);
+                            
+                            // Actualizar la caché inmediatamente para la respuesta visual rápida
+                            const currentData = queryClient.getQueryData<any[]>(["/api/tickets"]);
+                            if (currentData) {
+                              const updatedData = currentData.map(t => 
+                                t.id === ticket.id ? { ...t, status: value } : t
+                              );
+                              queryClient.setQueryData(["/api/tickets"], updatedData);
+                            }
+                            
+                            // Luego enviar la actualización al servidor
                             updateTicketStatusMutation.mutate({
                               id: ticket.id,
                               status: value,
                             })
-                          }
+                          }}
                           defaultValue={ticket.status}
                         >
                           <SelectTrigger className="w-[130px]">
