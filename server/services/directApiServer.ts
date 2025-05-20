@@ -184,22 +184,48 @@ export const registerDirectAPIRoutes = (app: any) => {
       // Obtener estado actual
       const status = await whatsappService.getStatus();
       
-      // Verificar si está autenticado
-      if (!status.authenticated) {
-        return res.status(403).json({ error: 'WhatsApp no está autenticado' });
+      // Verificar si está inicializado (omitimos la verificación de autenticación por ahora)
+      if (!status.initialized) {
+        return res.status(503).json({ error: 'El servicio de WhatsApp no está inicializado' });
       }
       
-      // Enviar mensaje
-      const result = await whatsappService.sendMessage(chatId, message);
-      
-      // Devolver resultado
-      return res.json({
-        success: true,
-        messageId: result?.id || null
-      });
+      try {
+        // Intentar enviar mensaje incluso si no está completamente autenticado
+        console.log(`Intentando enviar mensaje a ${chatId}: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
+        
+        const result = await whatsappService.sendMessage(chatId, message);
+        
+        // Devolver resultado
+        return res.json({
+          success: true,
+          messageId: result?.id || null
+        });
+      } catch (sendError) {
+        console.error('Error al enviar mensaje de WhatsApp:', sendError);
+        
+        // Si falla por autenticación, intentar reconectar
+        if (sendError.message && sendError.message.includes('auth')) {
+          // Importar el servicio específico para reconexión
+          const { whatsappService: whatsappImpl } = await import('./whatsappServiceImpl');
+          try {
+            console.log('Intentando reconectar WhatsApp automáticamente...');
+            await whatsappImpl.reconnect();
+            return res.status(503).json({ 
+              error: 'WhatsApp está reconectando, por favor intente nuevamente en unos segundos' 
+            });
+          } catch (reconnectError) {
+            console.error('Error al reconectar WhatsApp:', reconnectError);
+          }
+        }
+        
+        return res.status(500).json({ 
+          error: 'Error al enviar mensaje',
+          details: sendError.message || 'Error desconocido' 
+        });
+      }
     } catch (error) {
-      console.error('Error enviando mensaje:', error);
-      res.status(500).json({ error: 'Error al enviar mensaje' });
+      console.error('Error procesando solicitud de mensaje:', error);
+      res.status(500).json({ error: 'Error al procesar la solicitud de envío de mensaje' });
     }
   });
   
