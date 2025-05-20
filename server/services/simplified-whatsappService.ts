@@ -310,7 +310,7 @@ class SimplifiedWhatsAppService extends EventEmitter implements IWhatsAppService
    * Obtiene los mensajes de un chat específico
    */
   async getMessages(chatId: string, limit: number = 100): Promise<WhatsAppMessage[]> {
-    console.log(`Obteniendo mensajes del chat ${chatId}...`);
+    console.log(`Obteniendo mensajes reales del chat ${chatId}...`);
     
     // Validar que estamos autenticados
     if (!this.status.authenticated && this.status.status !== 'connected') {
@@ -318,161 +318,43 @@ class SimplifiedWhatsAppService extends EventEmitter implements IWhatsAppService
       await this.simulateAuthentication();
     }
     
-    // Simular tiempo de carga
-    await this.delay(this.simulatedDelay);
-    
-    // Generar mensajes según el chat
-    let messages: WhatsAppMessage[] = [];
-    const now = Date.now();
-    
-    if (chatId === '123456789@c.us') {
-      messages = [
-        {
-          id: `demo-msg-1-${chatId}`,
-          body: 'Hola, estoy interesado en sus servicios. ¿Podrían darme más información?',
-          fromMe: false,
-          timestamp: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
-          author: 'Cliente Potencial 1',
-          hasMedia: false,
-          type: 'chat'
-        },
-        {
-          id: `demo-msg-2-${chatId}`,
-          body: '¡Claro! Nuestros servicios incluyen consultoría de marketing, desarrollo web y estrategias de redes sociales. ¿En cuál está más interesado?',
-          fromMe: true,
-          timestamp: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-          author: 'Tú',
-          hasMedia: false,
-          type: 'chat'
-        },
-        {
-          id: `demo-msg-3-${chatId}`,
-          body: 'Me interesa principalmente el desarrollo web. ¿Cuáles son sus tarifas?',
-          fromMe: false,
-          timestamp: new Date(now - 30 * 60 * 1000).toISOString(),
-          author: 'Cliente Potencial 1',
-          hasMedia: false,
-          type: 'chat'
-        },
-        {
-          id: `demo-msg-4-${chatId}`,
-          body: 'Tenemos varios planes según sus necesidades. ¿Le parece bien si agendamos una llamada para discutir los detalles?',
-          fromMe: true,
-          timestamp: new Date(now - 15 * 60 * 1000).toISOString(),
-          author: 'Tú',
-          hasMedia: false,
-          type: 'chat'
-        },
-        {
-          id: `demo-msg-5-${chatId}`,
-          body: 'Me parece perfecto. ¿Podríamos hablar mañana a las 10am?',
-          fromMe: false,
-          timestamp: new Date(now - 10 * 60 * 1000).toISOString(),
-          author: 'Cliente Potencial 1',
-          hasMedia: false,
-          type: 'chat'
+    try {
+      // Consultamos la base de datos para obtener los mensajes reales
+      const accountId = 1; // ID de la cuenta principal de WhatsApp
+      
+      // Realizamos una llamada al microservicio de base de datos para obtener los mensajes reales
+      const response = await fetch(`http://localhost:5003/messages/${accountId}/${chatId}`);
+      
+      if (response.ok) {
+        const messagesData = await response.json();
+        
+        if (Array.isArray(messagesData) && messagesData.length > 0) {
+          // Convertimos los mensajes al formato esperado por la aplicación
+          const messages: WhatsAppMessage[] = messagesData.map(msg => ({
+            id: msg.id || `msg-${Date.now()}-${Math.random()}`,
+            body: msg.body || msg.message || '',
+            fromMe: msg.fromMe || false,
+            timestamp: msg.timestamp || new Date().toISOString(),
+            author: msg.fromMe ? 'Tú' : (msg.author || msg.contact || 'Contacto'),
+            hasMedia: msg.hasMedia || false,
+            type: msg.type || 'chat'
+          }));
+          
+          // Limitamos el número de mensajes si es necesario
+          const limitedMessages = messages.slice(0, limit);
+          console.log(`${limitedMessages.length} mensajes reales obtenidos de la base de datos.`);
+          return limitedMessages;
         }
-      ];
-    } else if (chatId === '555555555@c.us') {
-      messages = [
-        {
-          id: `demo-msg-1-${chatId}`,
-          body: '¿Recibiste mi correo sobre la propuesta?',
-          fromMe: false,
-          timestamp: new Date(now - 5 * 60 * 60 * 1000).toISOString(),
-          author: 'María García',
-          hasMedia: false,
-          type: 'chat'
-        },
-        {
-          id: `demo-msg-2-${chatId}`,
-          body: 'Sí, lo revisé. Tengo algunas sugerencias para mejorarla.',
-          fromMe: true,
-          timestamp: new Date(now - 4 * 60 * 60 * 1000).toISOString(),
-          author: 'Tú',
-          hasMedia: false,
-          type: 'chat'
-        },
-        {
-          id: `demo-msg-3-${chatId}`,
-          body: '¿Podemos revisarla juntos antes de la presentación?',
-          fromMe: false,
-          timestamp: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
-          author: 'María García',
-          hasMedia: false,
-          type: 'chat'
-        }
-      ];
-    } else if (chatId === '987654321@c.us') {
-      messages = [
-        {
-          id: `demo-msg-1-${chatId}`,
-          body: 'Hola, ¿cómo va el desarrollo del nuevo sitio web?',
-          fromMe: false,
-          timestamp: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-          author: 'Juan Pérez',
-          hasMedia: false,
-          type: 'chat'
-        },
-        {
-          id: `demo-msg-2-${chatId}`,
-          body: 'Va según lo planificado. Estamos terminando el diseño de la página principal.',
-          fromMe: true,
-          timestamp: new Date(now - 1.5 * 60 * 60 * 1000).toISOString(),
-          author: 'Tú',
-          hasMedia: false,
-          type: 'chat'
-        },
-        {
-          id: `demo-msg-3-${chatId}`,
-          body: '¿Cuándo podríamos agendar una demostración del producto?',
-          fromMe: false,
-          timestamp: new Date(now - 30 * 60 * 1000).toISOString(),
-          author: 'Juan Pérez',
-          hasMedia: false,
-          type: 'chat'
-        }
-      ];
-    } else {
-      // Chat grupal u otros chats
-      messages = [
-        {
-          id: `demo-msg-1-${chatId}`,
-          body: 'Hemos cerrado la venta con el cliente XYZ',
-          fromMe: false,
-          timestamp: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-          author: 'Juan Pérez',
-          hasMedia: false,
-          type: 'chat'
-        },
-        {
-          id: `demo-msg-2-${chatId}`,
-          body: '¡Excelente trabajo equipo!',
-          fromMe: true,
-          timestamp: new Date(now - 1 * 60 * 60 * 1000).toISOString(),
-          author: 'Tú',
-          hasMedia: false,
-          type: 'chat'
-        },
-        {
-          id: `demo-msg-3-${chatId}`,
-          body: 'La comisión debería reflejarse en el próximo cierre',
-          fromMe: false,
-          timestamp: new Date(now - 30 * 60 * 1000).toISOString(),
-          author: 'Ana Gómez',
-          hasMedia: false,
-          type: 'chat'
-        }
-      ];
+      }
+      
+      console.log('No se encontraron mensajes en la base de datos, retornando arreglo vacío');
+      return [];
+      
+    } catch (error) {
+      console.error('Error al obtener mensajes reales:', error);
+      // En caso de error, retornamos un arreglo vacío en lugar de datos simulados
+      return [];
     }
-    
-    // Limitar el número de mensajes si es necesario
-    if (messages.length > limit) {
-      messages = messages.slice(0, limit);
-    }
-    
-    console.log(`${messages.length} mensajes obtenidos.`);
-    return messages;
   }
 
   /**
