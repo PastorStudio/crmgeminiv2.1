@@ -443,6 +443,14 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         }
       };
       
+      // Intentar enviar a través de WebSocket primero para actualizaciones en tiempo real
+      const wsSuccess = sendWSMessage({
+        type: 'SEND_MESSAGE',
+        chatId: selectedChatId,
+        accountId: currentAccountId,
+        message
+      });
+      
       try {
         console.log(`Enviando mensaje a chat ${selectedChatId} desde cuenta ${currentAccountId}`);
         

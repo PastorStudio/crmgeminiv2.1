@@ -3077,6 +3077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Configurar el servidor WebSocket para notificaciones en tiempo real
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  console.log('Servidor WebSocket inicializado en la ruta /ws');
   
   // Intentaremos importar el servicio de notificaciones si está disponible
   let notificationService: any;
