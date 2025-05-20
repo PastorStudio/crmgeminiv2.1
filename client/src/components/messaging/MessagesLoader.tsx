@@ -51,7 +51,41 @@ const MessagesLoader: React.FC<MessagesLoaderProps> = ({
     try {
       console.log(`Cargando mensajes para chat ${chatId}...`);
       
-      // Intentar obtener mensajes desde la API
+      // Verificar si es un chat de demostración (generado por modo multi-cuenta)
+      if (chatId.startsWith('demo-chat-')) {
+        console.log('Detectado chat de demostración, generando mensajes simulados');
+        
+        // Extraer ID de cuenta y número de chat del ID
+        const parts = chatId.split('-');
+        const accountId = parts[2];
+        const chatNum = parts[3];
+        
+        // Generar mensajes de demostración (15 mensajes)
+        const demoMessages = [];
+        for (let i = 1; i <= 15; i++) {
+          const isFromMe = i % 3 === 0; // Algunos son enviados por el usuario
+          const timestamp = Date.now() / 1000 - (15 - i) * 3600; // Últimas 15 horas
+          
+          demoMessages.push({
+            id: `demo-msg-${accountId}-${chatNum}-${i}`,
+            body: isFromMe 
+              ? `Este es un mensaje enviado por ti (cuenta ${accountId}) al chat ${chatNum}` 
+              : `Este es un mensaje recibido en la cuenta ${accountId} del chat ${chatNum}`,
+            fromMe: isFromMe,
+            timestamp: timestamp,
+            hasMedia: false
+          });
+        }
+        
+        // Ordenar mensajes por tiempo
+        const sortedMessages = demoMessages.sort((a, b) => a.timestamp - b.timestamp);
+        console.log(`✅ Generados ${sortedMessages.length} mensajes de demostración para chat ${chatId}`);
+        setMessages(sortedMessages);
+        setIsLoading(false);
+        return; // No continuar con el resto del código
+      }
+      
+      // Para chats reales, intentar obtener mensajes desde la API
       const response = await fetch(`/api/direct/whatsapp/messages/${chatId}`);
       const data = await response.json();
       
