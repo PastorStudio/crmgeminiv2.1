@@ -514,18 +514,80 @@ const WhatsAppAccounts = () => {
                 </div>
                 <div className="flex gap-1">
                   {account.currentStatus?.authenticated ? (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="text-red-500 border-red-500 hover:bg-red-50"
-                      onClick={() => {
-                        setSelectedAccount(account);
-                        disconnectAccountMutation.mutate(account.id);
-                      }}
-                    >
-                      <PowerOff className="h-4 w-4 mr-2" />
-                      Desconectar
-                    </Button>
+                    <>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="text-red-500 border-red-500 hover:bg-red-50"
+                        onClick={() => {
+                          setSelectedAccount(account);
+                          disconnectAccountMutation.mutate(account.id);
+                        }}
+                      >
+                        <PowerOff className="h-4 w-4 mr-2" />
+                        Desconectar
+                      </Button>
+                      
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="text-orange-500 border-orange-500 hover:bg-orange-50"
+                        onClick={async () => {
+                          try {
+                            setSelectedAccount(account);
+                            
+                            // Primero intentar desconexión normal
+                            const response = await fetch(`/api/whatsapp-accounts/${account.id}/disconnect`, {
+                              method: 'POST'
+                            });
+                            
+                            if (response.ok) {
+                              // Luego forzar limpieza de sesión
+                              const cleanupResponse = await fetch(`/api/whatsapp-accounts/${account.id}/clear-session`, {
+                                method: 'POST'
+                              });
+                              
+                              if (cleanupResponse.ok) {
+                                toast({
+                                  title: "Conexión limpiada",
+                                  description: "Se ha limpiado completamente la sesión de WhatsApp",
+                                });
+                                
+                                // Recargar datos de cuentas
+                                queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+                                
+                                // Recargar la página después de 1 segundo
+                                setTimeout(() => {
+                                  window.location.reload();
+                                }, 1000);
+                              } else {
+                                toast({
+                                  title: "Advertencia",
+                                  description: "Se desconectó pero no se pudo limpiar completamente la sesión",
+                                  variant: "warning"
+                                });
+                              }
+                            } else {
+                              toast({
+                                title: "Error",
+                                description: "No se pudo desconectar correctamente la cuenta",
+                                variant: "destructive"
+                              });
+                            }
+                          } catch (error) {
+                            console.error("Error en limpieza de conexión:", error);
+                            toast({
+                              title: "Error",
+                              description: "Error al comunicarse con el servidor",
+                              variant: "destructive"
+                            });
+                          }
+                        }}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Limpiar sesión
+                      </Button>
+                    </>
                   ) : (
                     <Button 
                       size="sm" 
