@@ -169,9 +169,15 @@ router.post('/:id/initialize', async (req, res) => {
     const status = whatsappServiceMulti.getStatus(id);
     
     // Actualizar estado en base de datos
+    // Convertir el estado a cadena JSON para almacenamiento adecuado
+    const sessionDataForStorage = typeof status === 'object' 
+      ? JSON.stringify(status) 
+      : status;
+    
+    console.log(`Actualizando estado de cuenta WhatsApp ID ${id} a pending_auth`);
     await storage.updateWhatsappAccount(id, {
       status: 'pending_auth',
-      sessionData: status
+      sessionData: sessionDataForStorage
     });
     
     res.json({ success: true, status });
