@@ -709,14 +709,30 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     ? whatsappChats.find((chat: WhatsAppChat) => chat.id === selectedChatId) 
     : null;
 
-  // Seleccionar el primer chat al cargar
+  // Seleccionar el primer chat al cargar - VERSIÓN CORREGIDA
+  // Usamos una referencia para evitar el bucle infinito
+  const initialSelectionMade = useRef(false);
+  
   useEffect(() => {
-    if (Array.isArray(whatsappChats) && whatsappChats.length > 0 && !selectedChatId) {
+    // Sólo elegir un chat automáticamente si:
+    // 1. No hay bucle previo (verificamos con la referencia)
+    // 2. Hay chats disponibles
+    // 3. No hay chat seleccionado actualmente
+    if (
+      !initialSelectionMade.current && 
+      Array.isArray(whatsappChats) && 
+      whatsappChats.length > 0 && 
+      !selectedChatId
+    ) {
+      console.log('Seleccionando chat inicial una sola vez');
       // Ordenar por más reciente
       const sortedChats = [...whatsappChats].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       setSelectedChatId(sortedChats[0].id);
+      
+      // Marcar que ya se hizo la selección inicial para no repetir
+      initialSelectionMade.current = true;
     }
-  }, [whatsappChats, selectedChatId]);
+  }, [whatsappChats]);
 
   // Scroll al último mensaje
   useEffect(() => {
@@ -1211,14 +1227,20 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                         Chats disponibles: {whatsappChats.length}
                       </div>
                       
-                      {/* Mapeo de chats con protección de errores */}
-                      {whatsappChats.map((chat: any) => (
+                      {/* Mapeo de chats con protección de errores - Versión corregida para evitar bucles */}
+                      {whatsappChats.map((chat: WhatsAppChat) => (
                         <div
                           key={chat.id}
                           className={`p-3 hover:bg-gray-50 cursor-pointer ${
                             selectedChatId === chat.id ? 'bg-green-50 border-l-4 border-l-green-500' : ''
                           }`}
-                          onClick={() => handleChatSelect(chat)}
+                          onClick={() => {
+                            // Evitar cambios repetitivos que causan bucles
+                            if (selectedChatId !== chat.id) {
+                              console.log('Seleccionando chat:', chat.name, chat.id);
+                              handleChatSelect(chat);
+                            }
+                          }}
                         >
                           <div className="flex items-center gap-3">
                             <Avatar className="h-11 w-11 flex-shrink-0 border shadow-sm">
