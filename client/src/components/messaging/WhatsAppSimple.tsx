@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
-import { WhatsAppQRCode } from './WhatsAppQRCode';
+import { WhatsAppQRAuth } from './WhatsAppQRAuth';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateAutoResponse } from '@/lib/gemini';
 import { chatContext } from '@/lib/chatContext';
