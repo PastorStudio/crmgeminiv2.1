@@ -14,7 +14,7 @@ let geminiClient = null;
 
 // Configuración
 const config = {
-  enabled: false,  // Desactivado para evitar mensajes de prueba
+  enabled: true,  // ACTIVADO para permitir respuestas automáticas
   delay: 2000,
   excludedChats: []
 };

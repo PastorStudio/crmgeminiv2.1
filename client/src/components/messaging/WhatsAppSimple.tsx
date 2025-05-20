@@ -1267,7 +1267,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
               
               {/* Área de mensajes */}
               <div 
-                className="flex-1 overflow-y-auto p-3 bg-gray-50" 
+                className="flex-1 overflow-y-auto p-3 bg-gray-50 messages-container" 
                 ref={chatContainerRef}
               >
                 {isLoadingMessages ? (
