@@ -479,24 +479,37 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         messageWithSignature = `${message}\n\n_Mensaje enviado por: ${agentName}_`;
       }
       
-      const response = await fetch(`/api/direct/whatsapp/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chatId: selectedChatId,
-          message: messageWithSignature,
-          includeMeta: true, // Incluir metadatos como la firma del agente
-          agentSignature: addSignatureToMessage ? true : undefined
-        }),
-      });
+      console.log(`Intentando enviar mensaje a chat ${selectedChatId}`);
       
-      if (!response.ok) {
-        throw new Error(`Error al enviar mensaje: ${response.statusText}`);
+      try {
+        const response = await fetch(`/api/direct/whatsapp/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chatId: selectedChatId,
+            message: messageWithSignature,
+            includeMeta: true, // Incluir metadatos como la firma del agente
+            agentSignature: addSignatureToMessage ? true : undefined
+          }),
+        });
+        
+        // Obtener respuesta detallada del servidor si está disponible
+        const responseData = await response.json().catch(e => ({ error: response.statusText }));
+        
+        if (!response.ok) {
+          // Extraer mensaje detallado si existe
+          const errorMessage = responseData.error || responseData.details || responseData.message || response.statusText;
+          console.error("Error detallado del servidor:", responseData);
+          throw new Error(`Error al enviar mensaje: ${errorMessage}`);
+        }
+        
+        return responseData;
+      } catch (error) {
+        console.error("Error completo al enviar mensaje:", error);
+        throw error;
       }
-      
-      return await response.json();
     },
     onSuccess: (data) => {
       console.log('Mensaje enviado con éxito', data);
