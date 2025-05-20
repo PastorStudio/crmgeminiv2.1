@@ -654,7 +654,9 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                       {showDateSeparator && (
                         <div className="flex justify-center my-4">
                           <div className="bg-gray-100 text-gray-500 text-xs rounded-full px-3 py-1 font-medium">
-                            {format(new Date(msg.timestamp * 1000), 'EEEE, d MMMM', { locale: es })}
+                            {format(new Date(msg.timestamp * 1000), 'EEEE, d MMMM', { 
+                              locale: es
+                            })}
                           </div>
                         </div>
                       )}
@@ -704,7 +706,8 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                             <span className={`text-[10px] ${msg.fromMe ? 'text-green-100' : 'text-gray-500'}`}>
                               {new Date(msg.timestamp * 1000).toLocaleTimeString([], {
                                 hour: '2-digit',
-                                minute: '2-digit'
+                                minute: '2-digit',
+                                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
                               })}
                             </span>
                             
