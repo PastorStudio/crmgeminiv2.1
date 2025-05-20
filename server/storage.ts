@@ -590,7 +590,7 @@ export class DatabaseStorage implements IStorage {
         name: row.name,
         phoneNumber: row.phone_number || '', 
         status: row.status || 'inactive',
-        sessionData: row.session_data || row.sessionData || '',
+        sessionData: row.session_data || '',
         createdAt: row.createdAt || new Date(),
         updatedAt: row.createdAt || new Date(),
         lastActive: row.lastActiveAt || null,
