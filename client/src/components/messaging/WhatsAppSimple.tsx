@@ -47,7 +47,11 @@ import {
   Contact,
   File,
   UserPlus,
-  User
+  User,
+  Maximize,
+  Download,
+  Video,
+  Play
 } from 'lucide-react';
 import ChatAssignmentDialog from './ChatAssignmentDialog';
 import { MessageText } from '@/components/ui/message-text';
@@ -73,6 +77,8 @@ interface WhatsAppMessage {
   hasMedia: boolean;
   mediaUrl?: string;
   caption?: string;
+  mimetype?: string;
+  filename?: string;
 }
 
 interface WhatsAppInterfaceProps {
@@ -99,6 +105,12 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   const [currentAccountId, setCurrentAccountId] = useState<number>(1);
   // Estado para almacenar todas las cuentas de WhatsApp
   const [whatsappAccounts, setWhatsappAccounts] = useState<any[]>([]);
+  
+  // Estados para previsualización de archivos multimedia
+  const [isMediaPreviewOpen, setIsMediaPreviewOpen] = useState(false);
+  const [mediaPreviewUrl, setMediaPreviewUrl] = useState('');
+  const [mediaCaption, setMediaCaption] = useState('');
+  const [mediaType, setMediaType] = useState('image/jpeg');
   
   // Refs para scroll automático
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1203,11 +1215,49 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                               {msg.hasMedia && (
                                 <div className="mb-2">
                                   {msg.mediaUrl ? (
-                                    <img 
-                                      src={msg.mediaUrl} 
-                                      alt={msg.caption || 'Imagen'} 
-                                      className="rounded mb-1 w-full object-cover"
-                                    />
+                                    <div 
+                                      className="relative cursor-pointer group"
+                                      onClick={() => {
+                                        // Abrir el modal con la media
+                                        setMediaPreviewUrl(msg.mediaUrl || '');
+                                        setMediaCaption(msg.caption || '');
+                                        setMediaType(msg.mimetype || 'image/jpeg');
+                                        setIsMediaPreviewOpen(true);
+                                      }}
+                                    >
+                                      {msg.mimetype?.startsWith('image/') ? (
+                                        <>
+                                          <img 
+                                            src={msg.mediaUrl} 
+                                            alt={msg.caption || 'Imagen'} 
+                                            className="rounded mb-1 w-full object-cover max-h-60"
+                                          />
+                                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all rounded">
+                                            <div className="opacity-0 group-hover:opacity-100 bg-black bg-opacity-50 rounded-full p-2">
+                                              <Maximize size={20} className="text-white" />
+                                            </div>
+                                          </div>
+                                        </>
+                                      ) : msg.mimetype?.startsWith('video/') ? (
+                                        <div className="relative rounded mb-1 bg-gray-100 h-48 w-full flex items-center justify-center">
+                                          <Play size={40} className="text-primary absolute" />
+                                          <Video className="text-gray-400 w-full h-full opacity-70" />
+                                          <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                                            Video
+                                          </div>
+                                        </div>
+                                      ) : msg.mimetype?.startsWith('audio/') ? (
+                                        <div className="bg-gray-100 rounded mb-1 p-4 flex items-center">
+                                          <Mic size={24} className="text-primary mr-2" />
+                                          <span className="text-sm">Audio</span>
+                                        </div>
+                                      ) : (
+                                        <div className="bg-gray-100 rounded mb-1 p-4 flex items-center">
+                                          <FileText size={24} className="text-primary mr-2" />
+                                          <span className="text-sm">Archivo: {msg.filename || 'Desconocido'}</span>
+                                        </div>
+                                      )}
+                                    </div>
                                   ) : (
                                     <div className="bg-gray-100 rounded flex items-center justify-center h-32 w-full">
                                       <MessageSquare size={30} className="text-gray-400" />
