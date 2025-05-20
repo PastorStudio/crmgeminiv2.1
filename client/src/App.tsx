@@ -29,9 +29,6 @@ import WhatsAppManager from './pages/WhatsAppManager';
 import SimpleWhatsApp from './pages/SimpleWhatsApp';
 import UltraSimpleChat from './pages/UltraSimpleChat';
 import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
-import CombinedWhatsApp from './pages/CombinedWhatsApp';
-import DirectAccess from './pages/DirectAccess';
-import AllAccounts from './pages/AllAccounts';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
 import { PageTransition } from '@/components/ui/page-transition';
@@ -234,13 +231,6 @@ const AppRoutes: React.FC = () => {
                 Gestor WhatsApp
               </a>
               
-              <a href="/combined-whatsapp" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/combined-whatsapp' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                Todas las Cuentas
-              </a>
-              
               {/* Menú oculto: Conexión, Código QR e Integraciones - Se mantiene en el código pero no se muestra */}
               {false && (
                 <>
@@ -373,13 +363,10 @@ const AppRoutes: React.FC = () => {
                 <Route path="/simple-whatsapp" component={() => <PrivateRoute component={SimpleWhatsApp} path="/simple-whatsapp" />} />
                 <Route path="/ultra-whatsapp" component={() => <PrivateRoute component={UltraSimpleChat} path="/ultra-whatsapp" />} />
                 <Route path="/whatsapp-demo" component={() => <PrivateRoute component={SimpleWhatsAppDemo} path="/whatsapp-demo" />} />
-                <Route path="/combined-whatsapp" component={() => <PrivateRoute component={CombinedWhatsApp} path="/combined-whatsapp" />} />
-                <Route path="/all-accounts" component={() => <PrivateRoute component={AllAccounts} path="/all-accounts" />} />
                 <Route path="/users" component={() => <PrivateRoute component={UserManagement} path="/users" />} />
                 <Route path="/whatsapp-accounts" component={() => <PrivateRoute component={WhatsAppAccounts} path="/whatsapp-accounts" />} />
                 <Route path="/chat-assignments" component={() => <PrivateRoute component={ChatAssignments} path="/chat-assignments" />} />
                 <Route path="/profile" component={() => <PrivateRoute component={Profile} path="/profile" />} />
-                <Route path="/direct-access" component={() => <PrivateRoute component={DirectAccess} path="/direct-access" />} />
                 <Route component={() => <PrivateRoute component={NotFound} path="*" />} />
               </Switch>
             </PageTransition>
