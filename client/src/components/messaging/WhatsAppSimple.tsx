@@ -1615,6 +1615,24 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
           accountId={currentAccountId}
         />
       )}
+      
+      {/* Diálogo de autenticación QR de WhatsApp */}
+      <WhatsAppQRAuth
+        open={showQRDialog}
+        onOpenChange={setShowQRDialog}
+        accountId={currentAccountId}
+        onQRScanned={() => {
+          toast({
+            title: "WhatsApp conectado",
+            description: "La cuenta ha sido conectada exitosamente",
+            variant: "default"
+          });
+          // Refrescar datos
+          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/direct/whatsapp/status'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/direct/whatsapp/chats'] });
+        }}
+      />
     </Card>
   );
 }
