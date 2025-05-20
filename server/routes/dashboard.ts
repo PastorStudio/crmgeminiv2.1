@@ -20,13 +20,13 @@ export const dashboardRouter = (app: Express) => {
           COUNT(t.id) as total_tickets,
           COALESCE(
             EXTRACT(EPOCH FROM AVG(
-              CASE WHEN t.status = 'resuelto' AND t.resolved_at IS NOT NULL AND t.created_at IS NOT NULL
-              THEN t.resolved_at - t.created_at
+              CASE WHEN t.status = 'resuelto' AND t.created_at IS NOT NULL
+              THEN NOW() - t.created_at
               END
             )) / 3600, 0
           ) as avg_resolution_time_hours
         FROM agents a
-        LEFT JOIN tickets t ON t.agent_id = a.id
+        LEFT JOIN tickets t ON t.assigned_agent_id = a.id
         GROUP BY a.id, a.name, a.department
         ORDER BY total_tickets DESC
       `);
@@ -91,11 +91,11 @@ export const dashboardRouter = (app: Express) => {
           SELECT 
             a.*,
             l.name AS lead_name,
-            ROW_NUMBER() OVER (PARTITION BY a.lead_id ORDER BY a.start_time ASC) as row_num
+            ROW_NUMBER() OVER (PARTITION BY a."leadId" ORDER BY a."scheduled" ASC) as row_num
           FROM activities a
-          LEFT JOIN leads l ON a.lead_id = l.id
-          WHERE a.completed = false AND a.start_time >= NOW()
-          ORDER BY a.start_time ASC
+          LEFT JOIN leads l ON a."leadId" = l.id
+          WHERE a.completed = false AND a."scheduled" >= NOW()
+          ORDER BY a."scheduled" ASC
         )
         SELECT * FROM RankedActivities 
         WHERE row_num = 1
