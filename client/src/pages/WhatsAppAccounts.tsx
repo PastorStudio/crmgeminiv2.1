@@ -27,9 +27,6 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Alert,
-  AlertDescription,
-  AlertTitle,
 } from '@/components/ui';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -45,6 +42,8 @@ import {
   UserPlus,
   CheckCircle,
   XCircle,
+  Eraser,
+  AlertTriangle
 } from 'lucide-react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -615,7 +614,7 @@ const WhatsAppAccounts = () => {
                           }
                         }}
                       >
-                        <X className="h-4 w-4 mr-2" />
+                        <XCircle className="h-4 w-4 mr-2" />
                         Limpiar sesión
                       </Button>
                     </>
