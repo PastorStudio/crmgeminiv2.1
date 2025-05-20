@@ -94,21 +94,15 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     staleTime: 0,
   });
   
-  // Datos de agentes de ejemplo para usar si falla la carga desde API
-  const agentesPreConfigurados = [
-    { id: 1, username: "agente1", fullName: "Agente 1", role: "agent", status: "active" },
-    { id: 2, username: "agente2", fullName: "Agente 2", role: "agent", status: "active" },
-    { id: 3, username: "supervisor1", fullName: "Supervisor 1", role: "supervisor", status: "active" },
-    { id: 4, username: "DJP", fullName: "Demo User", role: "super_admin", status: "active" }
-  ];
+  // Ya no usamos agentes precargados, sino que mostramos un error si no se pueden cargar
 
   // Cargar usuarios (agentes)
-  const { data: users = [] } = useQuery<User[]>({
+  const { data: users = [], refetch: refetchUsers } = useQuery<User[]>({
     queryKey: ['/api/users', open], // Incluir 'open' para que se recargue cuando se abre el diálogo
     queryFn: async () => {
       try {
         console.log('Cargando usuarios para asignación de chat...');
-        // Intentar obtener directamente sin usar el sistema de autenticación
+        // Solicitar específicamente para asignación de chat
         const response = await fetch('/api/users?forChatAssignment=true', {
           headers: {
             'Accept': 'application/json',
@@ -117,10 +111,9 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
           credentials: 'include'
         });
         
-        // Si hay error en la API, usar datos precargados
         if (!response.ok) {
-          console.warn('Fallback: Usando datos de agentes precargados');
-          return agentesPreConfigurados;
+          console.error('Error al obtener usuarios:', response.status, response.statusText);
+          throw new Error(`Error al cargar usuarios: ${response.status}`);
         }
         
         const data = await response.json();
@@ -128,16 +121,16 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
           console.log('Usuarios obtenidos correctamente:', data.users.length);
           return data.users;
         } else {
-          console.warn('Respuesta inesperada al cargar usuarios, usando precargados:', data);
-          return agentesPreConfigurados;
+          console.error('Respuesta inesperada al cargar usuarios:', data);
+          throw new Error('Formato de respuesta inválido');
         }
       } catch (error) {
-        console.error('Error cargando usuarios, usando precargados:', error);
-        return agentesPreConfigurados;
+        console.error('Error cargando usuarios:', error);
+        throw error;
       }
     },
     enabled: open,
-    // Importante: No mantener caché para siempre asegurar datos frescos
+    // No mantener caché para siempre asegurar datos frescos
     staleTime: 0,
     // Forzar revalidación en cada apertura del diálogo
     refetchOnMount: true,
