@@ -89,6 +89,10 @@ interface WhatsAppInterfaceProps {
 // Sin datos de demostración - Sólo se utilizarán datos reales
 
 export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfaceProps) {
+  // Sistema de notificaciones toast y acceso a React Query
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
   // Estado local
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
@@ -123,8 +127,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     connectionStatus 
   } = useWebSocket();
   
-  // Obtener QueryClient para poder usarlo en funciones
-  const queryClient = useQueryClient();
+  // Referencias a React Query y Toast ya declaradas anteriormente
   
   // Query para obtener todas las cuentas de WhatsApp
   const {
@@ -626,15 +629,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       hasMedia: false
     };
     
-    // Añadir mensaje a la lista y actualizar UI inmediatamente
+    // Simplemente actualizar el estado local para mostrar el mensaje inmediatamente
     if (selectedChatId) {
-      // Modificar directamente los datos del hook de React Query
-      const updatedMessages = [...apiMessages, tempMsg];
-      // Forzar React Query a usar estos datos actualizados
-      queryClient.setQueryData(
-        ['/api/whatsapp-accounts', currentAccountId, 'messages', selectedChatId],
-        updatedMessages
-      );
+      // Forzamos una actualización del componente para mostrar el mensaje
+      messageMutation.onSuccess(tempMsg);
     }
     
     // Intentar enviar el mensaje en segundo plano
