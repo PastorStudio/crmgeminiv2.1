@@ -361,46 +361,27 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         return [];
       }
       
-      // Comprobar primero en caché para mostrar algo inmediatamente
-      const cacheKey = `whatsapp_messages_${currentAccountId}_${selectedChatId}`;
-      let cachedMessages = [];
-      
-      try {
-        const cachedData = localStorage.getItem(cacheKey);
-        if (cachedData) {
-          cachedMessages = JSON.parse(cachedData);
-          console.log(`Usando ${cachedMessages.length} mensajes en caché para cuenta ${currentAccountId}, chat ${selectedChatId}`);
-        }
-      } catch (e) {}
-      
+      // Siempre obtener datos frescos del servidor
       try {
         // Usar importación dinámica para asegurar que tenemos la última versión
         const { apiRequest } = await import('@/lib/queryClient');
         
-        // Intentar recuperar mensajes de caché primero
-        if (cachedMessages.length > 0) {
-          console.log(`Usando ${cachedMessages.length} mensajes de caché para mostrar inmediatamente`);
-        }
+        // Siempre intentar obtener los mensajes reales primero
+        console.log(`Obteniendo mensajes reales para cuenta ${currentAccountId}, chat ${selectedChatId}...`);
         
-        // Proporcionar los mensajes en caché mientras se recargan
-        if (cachedMessages.length > 0) {
-          // Recarga en background
-          setTimeout(async () => {
-            try {
-              // Inténtalo con el método directo que funciona para ambas cuentas
-              const directResponse = await apiRequest(`/api/direct/whatsapp/messages/${selectedChatId}`);
-              if (Array.isArray(directResponse) && directResponse.length > 0) {
-                localStorage.setItem(cacheKey, JSON.stringify(directResponse));
-                queryClient.setQueryData(
-                  ['/api/whatsapp-accounts', currentAccountId, 'messages', selectedChatId], 
-                  directResponse
-                );
-              }
-            } catch (e) {}
-          }, 100);
+        // Usar método directo que funciona para todas las cuentas
+        try {
+          const directResponse = await apiRequest(`/api/direct/whatsapp/messages/${selectedChatId}`);
           
-          // Devuelve los datos en caché inmediatamente
-          return cachedMessages;
+          if (Array.isArray(directResponse) && directResponse.length > 0) {
+            console.log(`Cargados ${directResponse.length} mensajes reales para chat ${selectedChatId}`);
+            // Guardar en caché solo como respaldo, pero no los usamos por defecto
+            const cacheKey = `whatsapp_messages_${currentAccountId}_${selectedChatId}`;
+            localStorage.setItem(cacheKey, JSON.stringify(directResponse));
+            return directResponse;
+          }
+        } catch (directError) {
+          console.warn(`Error obteniendo mensajes directos:`, directError);
         }
         
         // Usar método directo que funciona para todas las cuentas
