@@ -24,6 +24,9 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { href: "/gemini-test", icon: "psychology", label: "IA Test" },
     { href: "/integrations", icon: "link", label: "Integraciones" },
     { href: "/database", icon: "storage", label: "Base de Datos" },
+    { href: "/whatsapp-accounts", icon: "smartphone", label: "Cuentas WhatsApp" },
+    { href: "/simple-whatsapp", icon: "chat", label: "WhatsApp Simple" },
+    { href: "/all-accounts", icon: "supervisor_account", label: "Todas las Cuentas" },
     { href: "/settings", icon: "settings", label: "Settings" },
   ];
 

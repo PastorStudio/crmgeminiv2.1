@@ -1,42 +1,332 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-interface WhatsAppChat {
-  id: string;
-  name: string;
-  isGroup: boolean;
-  timestamp: number;
-  unreadCount: number;
-  lastMessage?: string;
-  profilePicUrl?: string;
-  accountId?: number;
-  accountName?: string;
-}
+// Componente que muestra los chats de todas las cuentas
+export function WhatsAppAllAccounts() {
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [allChats, setAllChats] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [messageText, setMessageText] = useState('');
 
-/**
- * Componente para renderizar los chats de todas las cuentas
- */
-export const AllAccountsChats: React.FC<{
-  chats: WhatsAppChat[];
-  selectedChatId: string | null;
-  onSelectChat: (chat: WhatsAppChat) => void;
-}> = ({ chats, selectedChatId, onSelectChat }) => {
+  // Obtener cuentas de WhatsApp
+  const { data: accountsData } = useQuery({
+    queryKey: ['/api/whatsapp-accounts'],
+    enabled: true,
+  });
+
+  // Efecto para cargar cuentas
+  useEffect(() => {
+    if (accountsData && Array.isArray(accountsData)) {
+      const activeAccounts = accountsData.filter((account: any) => 
+        account.status === 'CONNECTED' || account.status === 'READY'
+      );
+      setAccounts(activeAccounts);
+      setLoading(false);
+    }
+  }, [accountsData]);
+
+  // Obtener chats para todas las cuentas
+  useEffect(() => {
+    const fetchAllChats = async () => {
+      if (!accounts || accounts.length === 0) return;
+      
+      try {
+        const allChatsResponse = await Promise.all(
+          accounts.map(async (account) => {
+            const response = await fetch(`/api/whatsapp/${account.id}/chats`);
+            if (!response.ok) {
+              console.error(`Error al obtener chats para cuenta ${account.id}`);
+              return [];
+            }
+            const chats = await response.json();
+            return chats.map((chat: any) => ({
+              ...chat,
+              accountId: account.id,
+              accountName: account.name
+            }));
+          })
+        );
+        
+        // Combinar todos los chats y organizarlos por ID de cuenta
+        const combinedChats = allChatsResponse.flat().sort((a, b) => {
+          // Primero ordenar por ID de cuenta
+          if (a.accountId !== b.accountId) {
+            return a.accountId - b.accountId;
+          }
+          // Luego por timestamp si está disponible
+          if (a.timestamp && b.timestamp) {
+            return b.timestamp - a.timestamp;
+          }
+          return 0;
+        });
+        
+        setAllChats(combinedChats);
+      } catch (error) {
+        console.error('Error al obtener chats:', error);
+      }
+    };
+    
+    fetchAllChats();
+    // Refrescar cada 10 segundos
+    const interval = setInterval(fetchAllChats, 10000);
+    
+    return () => clearInterval(interval);
+  }, [accounts]);
+
+  // Obtener mensajes cuando se selecciona un chat
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!selectedChat) return;
+      
+      try {
+        // Extraer ID de cuenta y chat ID del formato "accountId-chatId"
+        const [accountId, chatId] = selectedChat.split('-');
+        
+        const response = await fetch(`/api/whatsapp/${accountId}/chats/${encodeURIComponent(chatId)}/messages`);
+        if (!response.ok) {
+          console.error(`Error al obtener mensajes para chat ${chatId}`);
+          return;
+        }
+        
+        const data = await response.json();
+        setMessages(data);
+      } catch (error) {
+        console.error('Error al obtener mensajes:', error);
+      }
+    };
+    
+    fetchMessages();
+    // Refrescar mensajes cada 5 segundos
+    const interval = setInterval(fetchMessages, 5000);
+    
+    return () => clearInterval(interval);
+  }, [selectedChat]);
+
+  // Enviar mensaje
+  const sendMessage = async () => {
+    if (!selectedChat || !messageText.trim()) return;
+    
+    try {
+      // Extraer ID de cuenta y chat ID
+      const [accountId, chatId] = selectedChat.split('-');
+      
+      const response = await fetch(`/api/whatsapp/${accountId}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          chatId, 
+          message: messageText 
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Error al enviar mensaje');
+        return;
+      }
+      
+      // Limpiar campo de mensaje
+      setMessageText('');
+      
+      // Refrescar mensajes inmediatamente
+      const messagesResponse = await fetch(`/api/whatsapp/${accountId}/chats/${encodeURIComponent(chatId)}/messages`);
+      const messagesData = await messagesResponse.json();
+      setMessages(messagesData);
+    } catch (error) {
+      console.error('Error al enviar mensaje:', error);
+    }
+  };
+
+  // Manejar envío con Enter
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  // Agrupar chats por ID de cuenta
+  const chatsByAccount = allChats.reduce((acc: any, chat: any) => {
+    if (!acc[chat.accountId]) {
+      acc[chat.accountId] = [];
+    }
+    acc[chat.accountId].push(chat);
+    return acc;
+  }, {});
+
   return (
-    <div className="divide-y">
-      {chats.map((chat) => (
-        <div
-          key={chat.id}
-          className={`p-3 hover:bg-gray-50 cursor-pointer ${
-            selectedChatId === chat.id ? 'bg-green-50 border-l-4 border-l-green-500' : ''
-          }`}
-          onClick={() => onSelectChat(chat)}
-        >
-          {chat.accountId && (
-            <div className="text-xs font-medium bg-blue-100 text-blue-800 rounded-full h-5 w-5 flex items-center justify-center absolute right-1 top-1">
-              {chat.accountId}
-            </div>
-          )}
+    <div className="flex h-full bg-gray-100">
+      {/* Panel lateral */}
+      <div className="w-1/3 border-r border-gray-300 bg-white overflow-y-auto">
+        <div className="p-4 border-b border-gray-300 bg-green-600 text-white">
+          <h2 className="text-xl font-semibold">Todas las Cuentas</h2>
         </div>
-      ))}
+        
+        {loading ? (
+          <div className="flex justify-center items-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+          </div>
+        ) : (
+          <ScrollArea className="h-full">
+            {Object.entries(chatsByAccount).map(([accountId, accountChats]: [string, any]) => (
+              <div key={accountId} className="mb-2">
+                <div className="p-2 bg-gray-100 sticky top-0 z-10">
+                  <div className="flex items-center">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white mr-2">
+                      {accountId}
+                    </div>
+                    <span className="font-medium">
+                      {accounts.find(acc => acc.id === parseInt(accountId))?.name || `Cuenta ${accountId}`}
+                    </span>
+                  </div>
+                </div>
+                
+                {accountChats.map((chat: any) => (
+                  <div
+                    key={`${chat.accountId}-${chat.id}`}
+                    className={`p-3 border-b border-gray-200 hover:bg-gray-100 cursor-pointer ${
+                      selectedChat === `${chat.accountId}-${chat.id}` ? 'bg-gray-200' : ''
+                    }`}
+                    onClick={() => setSelectedChat(`${chat.accountId}-${chat.id}`)}
+                  >
+                    <div className="flex items-center">
+                      <Avatar className="h-10 w-10 mr-3">
+                        <AvatarImage src={chat.profilePicUrl} alt={chat.name} />
+                        <AvatarFallback>
+                          {chat.name?.charAt(0) || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between">
+                          <span className="font-medium truncate">
+                            {chat.name || 'Chat sin nombre'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {chat.timestamp ? format(new Date(chat.timestamp * 1000), 'HH:mm') : ''}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 truncate">
+                          {chat.lastMessage || 'No hay mensajes'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+            
+            {Object.keys(chatsByAccount).length === 0 && (
+              <div className="p-4 text-center text-gray-500">
+                <p>No hay chats disponibles</p>
+                <p className="text-sm mt-2">Conecta tus cuentas de WhatsApp para ver los chats</p>
+              </div>
+            )}
+          </ScrollArea>
+        )}
+      </div>
+      
+      {/* Área de mensajes */}
+      <div className="flex-1 flex flex-col">
+        {selectedChat ? (
+          <>
+            {/* Cabecera del chat */}
+            <div className="p-4 border-b border-gray-300 bg-white flex items-center">
+              {(() => {
+                const selectedChatObj = allChats.find(
+                  (chat) => `${chat.accountId}-${chat.id}` === selectedChat
+                );
+                const [accountId] = selectedChat.split('-');
+                
+                return (
+                  <>
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs mr-3">
+                      {accountId}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">
+                        {selectedChatObj?.name || 'Chat seleccionado'}
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        {accounts.find(acc => acc.id === parseInt(accountId))?.name || 'Cuenta WhatsApp'}
+                      </p>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+            
+            {/* Mensajes */}
+            <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+              {messages.length > 0 ? (
+                <div className="space-y-3">
+                  {messages.map((message, index) => (
+                    <div
+                      key={`${message.id || index}-${message.timestamp}`}
+                      className={`max-w-[80%] p-3 rounded-lg ${
+                        message.fromMe
+                          ? 'ml-auto bg-green-100 text-gray-800'
+                          : 'bg-white text-gray-800 border border-gray-200'
+                      }`}
+                    >
+                      <div className="text-sm">{message.body}</div>
+                      <div className="text-right mt-1">
+                        <span className="text-xs text-gray-500">
+                          {message.timestamp
+                            ? format(new Date(message.timestamp * 1000), 'HH:mm')
+                            : ''}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  <div className="text-center">
+                    <p>No hay mensajes en este chat</p>
+                    <p className="text-sm mt-2">Envía un mensaje para iniciar la conversación</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Área de entrada de mensaje */}
+            <div className="p-3 bg-white border-t border-gray-300">
+              <div className="flex items-center">
+                <textarea
+                  className="flex-1 border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                  placeholder="Escribe un mensaje..."
+                  rows={2}
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                ></textarea>
+                <button
+                  className="ml-2 bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 focus:outline-none"
+                  onClick={sendMessage}
+                >
+                  Enviar
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-center h-full text-gray-500">
+            <div className="text-center">
+              <p className="text-xl">Selecciona un chat para ver los mensajes</p>
+              <p className="mt-2">Los chats están organizados por ID de cuenta</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
-};
+}
