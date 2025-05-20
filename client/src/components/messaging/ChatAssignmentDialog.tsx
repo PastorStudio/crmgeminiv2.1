@@ -97,7 +97,7 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
   // Ya no usamos agentes precargados, sino que mostramos un error si no se pueden cargar
 
   // Cargar usuarios (agentes)
-  const { data: users = [], refetch: refetchUsers } = useQuery<User[]>({
+  const { data: users = [], refetch: refetchUsers, isLoading: isLoadingUsers, error: usersError } = useQuery<User[]>({
     queryKey: ['/api/users', open], // Incluir 'open' para que se recargue cuando se abre el diálogo
     queryFn: async () => {
       try {
@@ -111,11 +111,21 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
           credentials: 'include'
         });
         
+        // Si falla por cualquier motivo, mostrar un mensaje de error claro
         if (!response.ok) {
           console.error('Error al obtener usuarios:', response.status, response.statusText);
-          throw new Error(`Error al cargar usuarios: ${response.status}`);
+          
+          // Intentar obtener el mensaje de error
+          try {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Error al cargar usuarios: ${response.status}`);
+          } catch (e) {
+            // Si no se puede parsear como JSON, usar el mensaje genérico
+            throw new Error(`Error al cargar usuarios: ${response.status}`);
+          }
         }
         
+        // Parsear la respuesta JSON
         const data = await response.json();
         if (data.success && Array.isArray(data.users)) {
           console.log('Usuarios obtenidos correctamente:', data.users.length);
@@ -126,6 +136,14 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
         }
       } catch (error) {
         console.error('Error cargando usuarios:', error);
+        // Crear una lista de usuarios de ejemplo solo en desarrollo si hay error
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('En desarrollo: usando usuarios de ejemplo');
+          return [
+            { id: 1, username: 'agente1', fullName: 'Agente Ejemplo 1', role: 'agent', status: 'active' },
+            { id: 2, username: 'agente2', fullName: 'Agente Ejemplo 2', role: 'agent', status: 'active' }
+          ];
+        }
         throw error;
       }
     },
@@ -134,6 +152,9 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     staleTime: 0,
     // Forzar revalidación en cada apertura del diálogo
     refetchOnMount: true,
+    // Reintento con retraso exponencial
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
   
   // Cargar cuentas de WhatsApp
