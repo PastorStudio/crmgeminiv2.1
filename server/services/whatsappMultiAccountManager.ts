@@ -615,11 +615,35 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         
         // Realizar una petición sencilla para mantener la sesión activa
         try {
-          // Obtener la información de contacto propio mantiene la sesión activa
-          await instance.client.getWid();
-          console.log(`[Conexión Permanente] Mantener activa cuenta ID ${accountId} - OK`);
+          // Verificar que el cliente tiene los métodos necesarios antes de llamarlos
+          // Solución para todas las cuentas, incluyendo la cuenta ID 2 (Soporte)
+          if (instance.client && typeof instance.client.getState === 'function') {
+            // Obtener estado es más confiable y funciona en todas las versiones de la API
+            const connectionState = await instance.client.getState();
+            console.log(`[Conexión Permanente] Estado actual cuenta ID ${accountId}: ${connectionState}`);
+            
+            // Guardar archivo de estado para verificación futura
+            const statusFilePath = path.join(path.dirname(instance.sessionPath), 'session_status.json');
+            fs.writeFileSync(statusFilePath, JSON.stringify({
+              accountId,
+              name: instance.name,
+              state: connectionState,
+              timestamp: Date.now()
+            }));
+            console.log(`Archivo de estado de sesión creado en: ${statusFilePath}`);
+          } else {
+            // Método alternativo si getState no está disponible
+            console.log(`Verificando conexión para cuenta ID ${accountId}...`);
+            // Este método funciona para todas las cuentas (incluida la de Soporte)
+            if (instance.client && instance.client.info) {
+              console.log(`Conexión OK para cuenta ID ${accountId}`);
+            } else {
+              throw new Error(`Cliente no inicializado correctamente para cuenta ID ${accountId}`);
+            }
+          }
         } catch (pingErr) {
           console.warn(`[Conexión Permanente] Error en ping para cuenta ID ${accountId}:`, pingErr);
+          // No interrumpir el flujo por este error, pero registrar para diagnóstico
         }
         
         return;
