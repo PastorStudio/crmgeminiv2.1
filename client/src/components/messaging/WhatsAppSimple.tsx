@@ -869,11 +869,11 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       
       // Crear datos de demostración para probar la interfaz
       // Esto es temporal hasta que se resuelvan los problemas de conexión
-      const demoData: Record<number, WhatsAppChat[]> = {};
+      const demoData: Record<number, any[]> = {};
       
       selectedAccounts.forEach((accountId) => {
         // Generar 10 chats de demostración para cada cuenta seleccionada
-        const demoChats: WhatsAppChat[] = [];
+        const demoChats = [];
         for (let i = 1; i <= 10; i++) {
           demoChats.push({
             id: `demo-chat-${accountId}-${i}`,
@@ -881,7 +881,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
             isGroup: i % 3 === 0, // Algunos son grupos
             timestamp: Date.now() / 1000 - (i * 3600), // Dispersos en las últimas horas
             unreadCount: Math.floor(Math.random() * 5),
-            lastMessage: `Este es un mensaje de prueba para la cuenta ${accountId}`
+            lastMessage: `Este es un mensaje de prueba para la cuenta ${accountId}`,
+            accountId: accountId // Importante: añadir el ID de cuenta a cada chat
           });
         }
         
