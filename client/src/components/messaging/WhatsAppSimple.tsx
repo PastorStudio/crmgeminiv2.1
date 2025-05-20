@@ -1327,30 +1327,41 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                             selectedChatId === chat.id ? 'bg-green-50 border-l-4 border-l-green-500' : ''
                           }`}
                           onClick={() => {
-                            // SIMPLIFICACIÓN IMPORTANTE: Evitar toda la lógica compleja que causa problemas
-                            // Esta implementación directa evita cualquier problema de bucle
+                            // SOLUCIÓN SIMPLIFICADA: Implementación directa muy básica
                             console.log('Seleccionando chat directo:', chat.name, chat.id);
+                            
+                            // 1. Actualizar ID de chat seleccionado
                             setSelectedChatId(chat.id);
                             
-                            // Usar setTimeout para darle tiempo al estado a actualizarse
+                            // 2. Guardar en localStorage para mantener la selección
+                            localStorage.setItem('last_selected_chat_id', chat.id);
+                            localStorage.setItem('last_selected_chat_account', currentAccountId.toString());
+                            
+                            // 3. Forzar recarga de mensajes inmediatamente después de cambiar el estado
                             setTimeout(() => {
-                              // Forzar recarga explícita de mensajes tras seleccionar chat
-                              console.log('Refrescando mensajes para chat:', chat.id);
+                              // Método 1: Usar refetch de react-query
+                              if (typeof refetchMessages === 'function') {
+                                console.log('Refrescando mensajes con refetchMessages');
+                                refetchMessages();
+                              }
                               
-                              // Intentar con el endpoint directo que es más fiable
+                              // Método 2: Cargar mensajes directamente como respaldo
+                              console.log('Cargando mensajes directamente como respaldo');
                               fetch(`/api/direct/whatsapp/messages/${chat.id}`)
                                 .then(res => res.json())
-                                .then(messages => {
-                                  if (Array.isArray(messages) && messages.length > 0) {
-                                    console.log(`Cargados ${messages.length} mensajes reales para chat ${chat.id}`);
-                                    // Almacenar mensajes en localStorage como caché
-                                    localStorage.setItem(`messages_${chat.id}`, JSON.stringify(messages));
+                                .then(data => {
+                                  if (Array.isArray(data) && data.length > 0) {
+                                    console.log(`Cargados ${data.length} mensajes reales`);
+                                    // También guardar en localStorage como caché
+                                    localStorage.setItem(`messages_${chat.id}`, JSON.stringify(data));
+                                  } else {
+                                    console.log('No se encontraron mensajes para este chat');
                                   }
                                 })
                                 .catch(err => {
-                                  console.error('Error cargando mensajes directamente:', err);
+                                  console.error('Error cargando mensajes:', err);
                                 });
-                            }, 500);
+                            }, 300);
                           }}
                         >
                           <div className="flex items-center gap-3">
