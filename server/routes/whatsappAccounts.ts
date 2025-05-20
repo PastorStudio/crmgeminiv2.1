@@ -136,12 +136,107 @@ router.delete('/:id', async (req, res) => {
     // Luego eliminar de la base de datos
     await storage.deleteWhatsappAccount(id);
     
+    // Sincronizar carpetas de sesión con los nuevos IDs
+    await syncSessionFolders();
+    
     res.json({ success: true });
   } catch (error) {
     console.error('Error al eliminar cuenta de WhatsApp:', error);
     res.status(500).json({ error: 'Error al eliminar cuenta de WhatsApp' });
   }
 });
+
+/**
+ * Sincroniza las carpetas de sesión con los IDs actualizados
+ * Esta función se llama después de eliminar una cuenta y reorganizar los IDs
+ */
+async function syncSessionFolders() {
+  try {
+    console.log("Sincronizando carpetas de sesión con IDs reorganizados...");
+    
+    // Importar módulos necesarios
+    const path = require('path');
+    const fs = require('fs');
+    
+    // Definir directorio de cuentas
+    const TEMP_DIR = path.join(process.cwd(), 'temp');
+    const ACCOUNTS_DIR = path.join(TEMP_DIR, 'whatsapp-accounts');
+    
+    // Obtener todas las cuentas con sus IDs actualizados
+    const accounts = await storage.getAllWhatsappAccounts();
+    accounts.sort((a, b) => a.id - b.id);
+    
+    // Para cada cuenta, asegurar que su carpeta tenga el nombre correcto
+    for (const account of accounts) {
+      const expectedFolderPath = path.join(ACCOUNTS_DIR, `account_${account.id}`);
+      
+      // Buscar posibles carpetas antiguas para esta cuenta 
+      for (let i = 1; i <= 10; i++) {
+        // Evitar revisar la carpeta con el ID correcto
+        if (i === account.id) continue;
+        
+        const oldFolderPath = path.join(ACCOUNTS_DIR, `account_${i}`);
+        
+        // Si existe una carpeta con nombre antiguo y no existe la nueva
+        if (fs.existsSync(oldFolderPath) && !fs.existsSync(expectedFolderPath)) {
+          // Intentar determinar si esta carpeta pertenece a esta cuenta
+          const oldSessionFile = path.join(oldFolderPath, 'session_status.json');
+          
+          if (fs.existsSync(oldSessionFile)) {
+            try {
+              const sessionData = JSON.parse(fs.readFileSync(oldSessionFile, 'utf8'));
+              
+              // Si la carpeta pertenece a esta cuenta o no hay forma de saberlo
+              // (en el peor caso, es mejor reasignar la carpeta)
+              if (!sessionData.name || sessionData.name === account.name) {
+                console.log(`Renombrando carpeta de cuenta ${account.name} de ${oldFolderPath} a ${expectedFolderPath}`);
+                fs.renameSync(oldFolderPath, expectedFolderPath);
+                break; // Carpeta encontrada y actualizada
+              }
+            } catch (readError) {
+              // Si no podemos leer el archivo, asumimos que podría ser la carpeta correcta
+              console.log(`No se pudo leer datos de ${oldSessionFile}, renombrando ${oldFolderPath} a ${expectedFolderPath}`);
+              fs.renameSync(oldFolderPath, expectedFolderPath);
+              break;
+            }
+          } else {
+            // Si no hay archivo de estado, asumimos que podría ser la carpeta correcta
+            console.log(`Sin datos de sesión en ${oldFolderPath}, renombrando a ${expectedFolderPath}`);
+            fs.renameSync(oldFolderPath, expectedFolderPath);
+            break;
+          }
+        }
+      }
+      
+      // Si después de la búsqueda, la carpeta esperada no existe, crearla
+      if (!fs.existsSync(expectedFolderPath)) {
+        console.log(`Creando nueva carpeta para cuenta ${account.name} en ${expectedFolderPath}`);
+        fs.mkdirSync(expectedFolderPath, { recursive: true });
+      }
+    }
+    
+    console.log("Sincronización de carpetas de sesión completada");
+    
+    // Reiniciar el administrador de cuentas (opcional, pero asegura consistencia)
+    if (accounts.length > 0) {
+      console.log("Reiniciando administrador de cuentas para aplicar cambios...");
+      
+      // Reiniciar las cuentas activas
+      for (const account of accounts) {
+        if (account.status === 'active' || account.status === 'pending_auth') {
+          try {
+            await whatsappMultiAccountManager.disconnectAccount(account.id);
+            await whatsappMultiAccountManager.initializeAccount(account.id);
+          } catch (error) {
+            console.error(`Error al reiniciar cuenta ${account.id} (${account.name}):`, error);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error al sincronizar carpetas de sesión:", error);
+  }
+}
 
 // Inicializar una cuenta de WhatsApp
 router.post('/:id/initialize', async (req, res) => {
