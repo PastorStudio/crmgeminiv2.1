@@ -11,6 +11,7 @@ import * as qrcode from 'qrcode';
 import { IWhatsAppService, WhatsAppStatus, WhatsAppMessage, WhatsAppChat } from './whatsappInterface';
 import { storage } from '../storage';
 import { whatsappAccounts } from '@shared/schema';
+import { convertWhatsAppTimestamp, getTimeZoneConfig } from '../utils/timeZoneDetector';
 
 // Estructura para mantener información de cada cliente
 interface WhatsAppInstance {
@@ -30,9 +31,11 @@ interface WhatsAppInstance {
 // Constantes para manejo de sesiones y reconexión
 const TEMP_DIR = path.join(process.cwd(), 'temp');
 const ACCOUNTS_DIR = path.join(TEMP_DIR, 'whatsapp-accounts');
-const RECONNECT_ATTEMPTS_MAX = 5;
-const CONNECTION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutos
-const KEEP_ALIVE_INTERVAL = 30 * 1000; // 30 segundos
+const RECONNECT_ATTEMPTS_MAX = 10; // Aumentado para mayor persistencia
+const CONNECTION_CHECK_INTERVAL = 3 * 60 * 1000; // 3 minutos
+const KEEP_ALIVE_INTERVAL = 20 * 1000; // 20 segundos
+const AUTO_RECONNECT_INTERVAL = 60 * 1000; // 1 minuto
+const PERMANENT_CONNECTION_ENABLED = true; // Flag para activar conexión permanente
 
 // Asegurarse de que los directorios existan
 if (!fs.existsSync(TEMP_DIR)) {
@@ -569,65 +572,190 @@ class WhatsAppMultiAccountManager extends EventEmitter {
    */
   private async keepConnectionAlive(accountId: number): Promise<void> {
     const instance = this.instances.get(accountId);
-    if (!instance || !instance.client) return;
+    if (!instance || !instance.client) {
+      if (PERMANENT_CONNECTION_ENABLED) {
+        console.log(`[Conexión Permanente] No hay cliente para cuenta ID ${accountId}, intentando inicializar...`);
+        try {
+          await this.initializeAccount(accountId);
+          
+          // Guardar en BD que esta cuenta está configurada para conexión permanente
+          await storage.updateWhatsappAccount(accountId, {
+            status: 'reconnecting',
+            sessionData: {
+              permanentConnection: true,
+              lastReconnectAttempt: new Date().toISOString()
+            }
+          });
+        } catch (err) {
+          console.error(`[Conexión Permanente] Error inicializando cuenta ID ${accountId}:`, err);
+        }
+      }
+      return;
+    }
     
     try {
       // Verificar estado actual
       const state = await instance.client.getState();
       
-      // Si está conectado, no hacer nada más
+      // Actualizar el estado interno
+      instance.status.connectionState = state;
+      instance.status.lastConnectionCheck = new Date();
+      
+      // Si está conectado, actualizar el estado en la BD y mantener sesión activa
       if (state === 'CONNECTED') {
+        // Marcar como activa en la BD
+        await storage.updateWhatsappAccount(accountId, {
+          status: 'active',
+          sessionData: {
+            ...instance.status,
+            permanentConnection: PERMANENT_CONNECTION_ENABLED,
+            lastActive: new Date().toISOString()
+          }
+        });
+        
+        // Realizar una petición sencilla para mantener la sesión activa
+        try {
+          // Obtener la información de contacto propio mantiene la sesión activa
+          await instance.client.getWid();
+          console.log(`[Conexión Permanente] Mantener activa cuenta ID ${accountId} - OK`);
+        } catch (pingErr) {
+          console.warn(`[Conexión Permanente] Error en ping para cuenta ID ${accountId}:`, pingErr);
+        }
+        
         return;
       }
       
       // Si no está conectado, intentar recuperar si ha pasado suficiente tiempo
-      if (Date.now() - instance.lastReconnectAttempt > 2 * 60 * 1000) {
-        console.log(`Conexión no activa para cuenta ID ${accountId}, intentando recuperar...`);
+      if (Date.now() - instance.lastReconnectAttempt > AUTO_RECONNECT_INTERVAL) {
+        console.log(`[Conexión Permanente] Conexión no activa (${state}) para cuenta ID ${accountId}, intentando recuperar...`);
         await this.attemptConnectionRecovery(accountId);
+        
+        // Registrar el intento de reconexión
+        await storage.updateWhatsappAccount(accountId, {
+          status: 'reconnecting',
+          sessionData: {
+            connectionState: state,
+            permanentConnection: PERMANENT_CONNECTION_ENABLED,
+            lastReconnectAttempt: new Date().toISOString()
+          }
+        });
       }
     } catch (error) {
-      console.error(`Error en keepAlive para cuenta ID ${accountId}:`, error);
+      console.error(`[Conexión Permanente] Error en keepAlive para cuenta ID ${accountId}:`, error);
+      
+      // Si hay un error en la verificación del estado, probablemente la sesión esté corrupta
+      // Intentar reconectar después de un tiempo
+      if (Date.now() - instance.lastReconnectAttempt > AUTO_RECONNECT_INTERVAL * 2) {
+        console.log(`[Conexión Permanente] Intentando recuperación de emergencia para cuenta ID ${accountId}...`);
+        await this.attemptConnectionRecovery(accountId, true);
+      }
     }
   }
 
   /**
-   * Intenta recuperar una conexión perdida
+   * Intenta recuperar una conexión perdida con estrategia mejorada de persistencia
+   * @param accountId ID de la cuenta a recuperar
+   * @param forceReinit Si es true, fuerza la reinicialización completa
    */
-  private async attemptConnectionRecovery(accountId: number): Promise<boolean> {
+  private async attemptConnectionRecovery(accountId: number, forceReinit: boolean = false): Promise<boolean> {
     const instance = this.instances.get(accountId);
     if (!instance) return false;
     
     // Actualizar timestamp del último intento
     instance.lastReconnectAttempt = Date.now();
     
+    // Registrar el intento en la BD
     try {
-      // Si el cliente no existe, inicializar uno nuevo
-      if (!instance.client) {
-        console.log(`Cliente no existe para cuenta ID ${accountId}, inicializando nuevo...`);
+      await storage.updateWhatsappAccount(accountId, {
+        status: 'reconnecting',
+        sessionData: {
+          lastReconnectAttempt: new Date().toISOString(),
+          permanentConnection: PERMANENT_CONNECTION_ENABLED
+        }
+      });
+    } catch (dbErr) {
+      console.error(`[Conexión Permanente] Error actualizando estado de reconexión en BD:`, dbErr);
+    }
+    
+    try {
+      // Si el cliente no existe o se fuerza la reinicialización, inicializar uno nuevo
+      if (!instance.client || forceReinit) {
+        console.log(`[Conexión Permanente] Cliente no existe o reinicio forzado para cuenta ID ${accountId}, inicializando nuevo...`);
+        
+        // Si hay un cliente existente, intentar cerrarlo limpiamente
+        if (instance.client) {
+          try {
+            await instance.client.destroy();
+          } catch (err) {
+            console.error(`[Conexión Permanente] Error al cerrar cliente para cuenta ID ${accountId}:`, err);
+          }
+          
+          // Liberar recursos
+          instance.client = null;
+        }
+        
+        // Remover instancia si es necesario
+        this.instances.delete(accountId);
+        
+        // Crear nueva instancia
         return await this.initializeAccount(accountId);
       }
       
       // Verificar estado actual
       try {
         const state = await instance.client.getState();
-        console.log(`Estado actual para cuenta ID ${accountId}: ${state}`);
+        console.log(`[Conexión Permanente] Estado actual para cuenta ID ${accountId}: ${state}`);
         
         if (state !== 'CONNECTED') {
-          // Intentar resetear el estado
+          // Estrategia progresiva de reconexión
+          console.log(`[Conexión Permanente] Intentando recuperación progresiva para cuenta ID ${accountId}...`);
+          
+          // Paso 1: Intentar resetear el estado
           await instance.client.resetState();
           
           // Verificar nuevamente
           const newState = await instance.client.getState();
           
           if (newState !== 'CONNECTED') {
-            // Si sigue sin conectar, reinicializar completamente
-            console.log(`Reset de estado falló para cuenta ID ${accountId}, reinicializando...`);
+            // Si sigue sin conectar, intentar el Paso 2: reiniciar la página de WhatsApp
+            console.log(`[Conexión Permanente] Reset de estado falló para cuenta ID ${accountId}, intentando reiniciar página...`);
+            
+            try {
+              // Intentar recargar la página de WhatsApp
+              if (instance.client.pupPage) {
+                await instance.client.pupPage.reload();
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Esperar a que cargue
+                
+                // Verificar nuevamente
+                const reloadState = await instance.client.getState().catch(() => 'ERROR');
+                
+                if (reloadState === 'CONNECTED') {
+                  console.log(`[Conexión Permanente] Recarga de página exitosa para cuenta ID ${accountId}`);
+                  
+                  await storage.updateWhatsappAccount(accountId, {
+                    status: 'active',
+                    sessionData: {
+                      connectionState: 'CONNECTED',
+                      lastRecoveryMethod: 'page_reload',
+                      lastActive: new Date().toISOString()
+                    }
+                  });
+                  
+                  return true;
+                }
+              }
+            } catch (reloadErr) {
+              console.error(`[Conexión Permanente] Error recargando página para cuenta ID ${accountId}:`, reloadErr);
+            }
+            
+            // Paso 3: Si todo falla, reinicializar completamente
+            console.log(`[Conexión Permanente] Todos los intentos de recuperación fallaron para cuenta ID ${accountId}, reinicializando...`);
             
             // Cerrar cliente existente
             try {
               await instance.client.destroy();
             } catch (err) {
-              console.error(`Error al cerrar cliente para cuenta ID ${accountId}:`, err);
+              console.error(`[Conexión Permanente] Error al cerrar cliente para cuenta ID ${accountId}:`, err);
             }
             
             // Remover instancia
@@ -637,14 +765,32 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             return await this.initializeAccount(accountId);
           }
           
-          console.log(`Conexión recuperada para cuenta ID ${accountId}`);
+          console.log(`[Conexión Permanente] Conexión recuperada para cuenta ID ${accountId}`);
+          
+          await storage.updateWhatsappAccount(accountId, {
+            status: 'active',
+            sessionData: {
+              connectionState: 'CONNECTED',
+              lastRecoveryMethod: 'state_reset',
+              lastActive: new Date().toISOString()
+            }
+          });
+          
           return true;
         } else {
-          // Ya está conectado
+          // Ya está conectado, actualizar estado en BD
+          await storage.updateWhatsappAccount(accountId, {
+            status: 'active',
+            sessionData: {
+              connectionState: 'CONNECTED',
+              lastActive: new Date().toISOString()
+            }
+          });
+          
           return true;
         }
       } catch (error) {
-        console.error(`Error verificando estado para cuenta ID ${accountId}:`, error);
+        console.error(`[Conexión Permanente] Error verificando estado para cuenta ID ${accountId}:`, error);
         
         // Si no podemos verificar el estado, reinicializar
         try {
