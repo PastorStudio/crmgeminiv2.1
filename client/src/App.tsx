@@ -45,15 +45,17 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<any>, path: string
     return <Component />;
   }
   
-  // Mostrar indicador más discreto mientras se verifica la autenticación
+  // Mostrar cargando superpuesto mientras se verifica la autenticación
   if (isLoading) {
     return (
       <div>
-        <div className="fixed top-0 right-0 mt-4 mr-4 bg-white/90 p-2 rounded-lg shadow-sm flex items-center z-30">
-          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-          <span className="ml-2 text-xs text-gray-800">Verificando...</span>
-        </div>
         <Component />
+        <div className="fixed top-0 left-0 right-0 bottom-0 bg-white/70 flex justify-center items-center z-50">
+          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            <span className="ml-2 text-gray-800">Verificando sesión...</span>
+          </div>
+        </div>
       </div>
     );
   }

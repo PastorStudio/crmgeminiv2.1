@@ -28,8 +28,7 @@ import {
   type InsertAgent
 } from "@shared/schema";
 import { db } from './db';
-import { pool } from './db';
-import { eq, desc, or, sql } from 'drizzle-orm';
+import { eq, desc, or } from 'drizzle-orm';
 
 // Interface for storage methods
 export interface IStorage {
@@ -138,17 +137,20 @@ export class DatabaseStorage implements IStorage {
   async initializeData(): Promise<void> {
     try {
       // Verificar si ya existen usuarios
-      // Usar consulta SQL directa para evitar problemas con nombres de columnas
-      const existingUsers = await db.execute(sql`SELECT * FROM users LIMIT 1`);
+      const existingUsers = await this.getAllUsers();
       
-      if (existingUsers.rows.length === 0) {
+      if (existingUsers.length === 0) {
         console.log("Base de datos lista para recibir datos reales. No se generarán datos de ejemplo.");
         
-        // Crear usuario administrador usando consulta SQL directa
-        await db.execute(sql`
-          INSERT INTO users (username, password, "fullName", email, role, status)
-          VALUES ('admin', 'admin123', 'Administrador', 'admin@geminicrm.com', 'admin', 'active')
-        `);
+        // Crear usuario administrador
+        await db.insert(users).values({
+          username: "admin",
+          password: "admin123",
+          fullName: "Administrador",
+          email: "admin@geminicrm.com",
+          role: "admin",
+          status: "active"
+        });
         
         // Crear superadministrador
         await db.insert(users).values({
@@ -267,65 +269,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActivitiesByLead(leadId: number): Promise<Activity[]> {
-    try {
-      // Usar consulta SQL directa para evitar problemas con nombres de columnas
-      const result = await db.execute(sql`
-        SELECT * FROM activities 
-        WHERE "leadId" = ${leadId}
-        ORDER BY "createdAt" DESC
-      `);
-      
-      if (!result.rows) return [];
-      
-      return result.rows.map(row => ({
-        id: row.id,
-        leadId: row.leadid || row.leadId,
-        userId: row.userid || row.userId,
-        type: row.type || 'meeting',
-        title: row.title || '',
-        description: row.description || '',
-        startTime: row.starttime || row.scheduled,
-        endTime: row.endtime || null,
-        completed: row.completed || false,
-        createdAt: row.createdat || row.createdAt,
-        createdBy: row.createdby || row.userId,
-        aiGenerated: row.aigenerated || row.aiGenerated || false
-      }));
-    } catch (error) {
-      console.error(`Error al obtener actividades para lead ${leadId}:`, error);
-      return [];
-    }
+    return db.select().from(activities).where(eq(activities.leadId, leadId));
   }
 
   async getActivitiesByUser(userId: number): Promise<Activity[]> {
-    try {
-      // Usar consulta SQL directa para evitar problemas con nombres de columnas
-      const result = await db.execute(sql`
-        SELECT * FROM activities 
-        WHERE "userId" = ${userId}
-        ORDER BY "createdAt" DESC
-      `);
-      
-      if (!result.rows) return [];
-      
-      return result.rows.map(row => ({
-        id: row.id,
-        leadId: row.leadid || row.leadId,
-        userId: row.userid || row.userId,
-        type: row.type || 'meeting',
-        title: row.title || '',
-        description: row.description || '',
-        startTime: row.starttime || row.scheduled,
-        endTime: row.endtime || null,
-        completed: row.completed || false,
-        createdAt: row.createdat || row.createdAt,
-        createdBy: row.createdby || row.userId,
-        aiGenerated: row.aigenerated || row.aiGenerated || false
-      }));
-    } catch (error) {
-      console.error(`Error al obtener actividades para usuario ${userId}:`, error);
-      return [];
-    }
+    return db.select().from(activities).where(eq(activities.userId, userId));
   }
 
   async getUpcomingActivities(userId: number, limit: number = 10): Promise<Activity[]> {
@@ -425,47 +373,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDashboardStats(): Promise<DashboardStats | undefined> {
-    try {
-      // Intentar obtener con SQL directo para evitar problemas de mapeo de columnas
-      try {
-        const result = await db.execute(sql`SELECT * FROM dashboard_stats LIMIT 1`);
-        if (result.rows && result.rows.length > 0) {
-          return result.rows[0] as DashboardStats;
-        }
-      } catch (sqlError) {
-        console.error("Error en SQL directo para dashboard stats:", sqlError);
-      }
-      
-      // Si no hay resultados o hay error, devolver datos predeterminados
-      return {
-        id: 1,
-        totalLeads: 0,
-        newLeadsThisMonth: 0,
-        activeDeals: 0,
-        leadsInNegotiation: 0,
-        conversionRate: 0,
-        averageDealSize: 0,
-        revenue: 0,
-        topPerformers: "[]",
-        updatedAt: new Date()
-      };
-    } catch (error) {
-      console.error("Error general al obtener estadísticas del dashboard:", error);
-      
-      // En caso de error, devolver datos predeterminados
-      return {
-        id: 1,
-        totalLeads: 0,
-        newLeadsThisMonth: 0,
-        activeDeals: 0,
-        leadsInNegotiation: 0,
-        conversionRate: 0,
-        averageDealSize: 0,
-        revenue: 0,
-        topPerformers: "[]",
-        updatedAt: new Date()
-      };
-    }
+    const [stats] = await db.select().from(dashboardStats);
+    return stats;
   }
 
   async updateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats> {
@@ -576,69 +485,20 @@ export class DatabaseStorage implements IStorage {
   // WhatsApp Accounts methods
   async getAllWhatsappAccounts(): Promise<WhatsappAccount[]> {
     try {
-      // Abordaje más fundamental: consulta directa sin ORM para evitar problemas con el esquema
-      // Solo incluimos campos que sabemos que existen en la tabla
-      const result = await pool.query(`
-        SELECT id, name, status, phone_number, session_data, 
-               "createdAt", "lastActiveAt", "ownerName", "ownerPhone", description
-        FROM whatsapp_accounts
-      `);
-      
-      // Transformar resultado a formato esperado por la interfaz
-      return (result.rows as any[]).map(row => ({
-        id: row.id,
-        name: row.name,
-        phoneNumber: row.phone_number || '', 
-        status: row.status || 'inactive',
-        sessionData: row.session_data || '',
-        createdAt: row.createdAt || new Date(),
-        updatedAt: row.createdAt || new Date(),
-        lastActive: row.lastActiveAt || null,
-        ownerName: row.ownerName || '',
-        ownerPhone: row.ownerPhone || '',
-        description: row.description || '',
-        settings: null // Campo requerido por la interfaz pero no existe en DB
-      }));
+      const results = await db.select().from(whatsappAccounts);
+      return results;
     } catch (error) {
       console.error("Error al obtener cuentas de WhatsApp:", error);
-      // En caso de error, devolver array vacío en lugar de fallar
       return [];
     }
   }
 
   async getWhatsappAccount(id: number): Promise<WhatsappAccount | undefined> {
     try {
-      // Usamos pool.query para acceder directamente a la base de datos
-      // Incluimos todos los campos de la tabla
-      const result = await pool.query(`
-        SELECT id, name, status, phone_number, phoneNumber, session_data, sessionData, 
-               "createdAt", "lastActiveAt", "ownerName", "ownerPhone", description
-        FROM whatsapp_accounts
-        WHERE id = $1
-      `, [id]);
-      
-      // Si no hay resultados, devolver undefined
-      if (!result.rows || result.rows.length === 0) {
-        return undefined;
-      }
-      
-      const row = result.rows[0];
-      
-      // Transformamos a la estructura esperada por la interfaz, con todos los campos
-      return {
-        id: row.id,
-        name: row.name,
-        phoneNumber: row.phone_number || row.phoneNumber || '',
-        status: row.status || 'inactive',
-        sessionData: row.session_data || row.sessionData || '',
-        createdAt: row.createdAt || new Date(),
-        lastActive: row.lastActiveAt || null,
-        ownerName: row.ownerName || '',
-        ownerPhone: row.ownerPhone || '',
-        description: row.description || '',
-        settings: null, // Campo requerido por la interfaz
-        updatedAt: row.createdAt || new Date() // Valor aproximado
-      };
+      const [account] = await db.select()
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.id, id));
+      return account;
     } catch (error) {
       console.error(`Error al obtener cuenta WhatsApp ${id}:`, error);
       return undefined;
@@ -647,69 +507,10 @@ export class DatabaseStorage implements IStorage {
 
   async createWhatsappAccount(account: InsertWhatsappAccount): Promise<WhatsappAccount> {
     try {
-      // Adaptamos los nombres de campos al formato de la base de datos real
-      const { settings, phoneNumber, sessionData, ...restData } = account;
-      
-      const now = new Date();
-      
-      // Convertimos sessionData a formato string si es necesario
-      const sessionDataString = typeof sessionData === 'object' 
-        ? JSON.stringify(sessionData) 
-        : (sessionData || '{}');
-        
-      console.log(`Creando cuenta WhatsApp con datos de sesión:`, {
-        tipo: typeof sessionData,
-        formato: sessionDataString.substring(0, 100) + (sessionDataString.length > 100 ? '...' : '')
-      });
-      
-      // Usamos pool.query en lugar de db.query.raw y manejamos las diferentes columnas con tipos apropiados
-      const result = await pool.query(`
-        INSERT INTO whatsapp_accounts (
-          name, 
-          status, 
-          phone_number,
-          phoneNumber, 
-          session_data,
-          sessionData, 
-          "createdAt",
-          "ownerName",
-          "ownerPhone",
-          description
-        ) VALUES (
-          $1, $2, $3, $3, $4, CAST($4 AS JSONB), $5, $6, $7, $8
-        ) RETURNING id, name, status, phone_number, phoneNumber, session_data, sessionData, "createdAt", "ownerName", "ownerPhone", description
-      `, [
-        account.name,
-        account.status || 'inactive',
-        phoneNumber || '',
-        sessionDataString,
-        now,
-        account.ownerName || '',
-        account.ownerPhone || '',
-        account.description || ''
-      ]);
-      
-      if (!result.rows || result.rows.length === 0) {
-        throw new Error('Error al crear cuenta de WhatsApp: Sin resultados');
-      }
-      
-      const row = result.rows[0];
-      
-      // Transformar a formato esperado por la interfaz, incluyendo todos los campos
-      return {
-        id: row.id,
-        name: row.name,
-        phoneNumber: row.phone_number || row.phoneNumber || '',
-        status: row.status || 'inactive',
-        sessionData: row.session_data || row.sessionData || '{}',
-        createdAt: row.createdAt || now,
-        lastActive: row.lastActiveAt || null,
-        ownerName: row.ownerName || '',
-        ownerPhone: row.ownerPhone || '',
-        description: row.description || '',
-        settings: null, // Campo requerido por la interfaz
-        updatedAt: row.createdAt || now
-      };
+      const [createdAccount] = await db.insert(whatsappAccounts)
+        .values(account)
+        .returning();
+      return createdAccount;
     } catch (error) {
       console.error("Error al crear cuenta WhatsApp:", error);
       throw error;
@@ -718,118 +519,24 @@ export class DatabaseStorage implements IStorage {
 
   async updateWhatsappAccount(id: number, data: Partial<InsertWhatsappAccount>): Promise<WhatsappAccount | undefined> {
     try {
-      // Primero verificamos que la cuenta existe
-      const existingAccount = await this.getWhatsappAccount(id);
-      if (!existingAccount) {
-        return undefined;
-      }
-      
-      // Adaptamos los nombres de campos al formato de la base de datos real
-      const { settings, phoneNumber, sessionData, ...restData } = data;
-      
-      // Construimos la consulta SQL dinámica para la actualización
-      let updateFields = '';
-      const updateValues: any[] = [];
-      let paramIndex = 1;
-      
-      if (restData.name !== undefined) {
-        updateFields += `name = $${paramIndex}, `;
-        updateValues.push(restData.name);
-        paramIndex++;
-      }
-      
-      if (restData.status !== undefined) {
-        updateFields += `status = $${paramIndex}, `;
-        updateValues.push(restData.status);
-        paramIndex++;
-      }
-      
-      if (phoneNumber !== undefined) {
-        // Actualizar ambas columnas duplicadas con el mismo valor
-        updateFields += `phone_number = $${paramIndex}, phoneNumber = $${paramIndex}, `;
-        updateValues.push(phoneNumber);
-        paramIndex++;
-      }
-      
-      if (sessionData !== undefined) {
-        // Convertir sessionData a string si es un objeto
-        const sessionDataString = typeof sessionData === 'object'
-          ? JSON.stringify(sessionData)
-          : (sessionData || '{}');
-          
-        console.log(`Actualizando datos de sesión para cuenta WhatsApp ID ${id}:`, {
-          tipo: typeof sessionData,
-          formato: sessionDataString.substring(0, 100) + (sessionDataString.length > 100 ? '...' : '')
-        });
-        
-        // Para la columna session_data (tipo text), usamos siempre la versión string
-        updateFields += `session_data = $${paramIndex}, `;
-        updateValues.push(sessionDataString);
-        paramIndex++;
-        
-        // Para la columna sessionData (tipo jsonb), debemos usar un valor jsonb válido
-        try {
-          // Si ya es un objeto, usamos CAST para convertirlo a JSONB
-          updateFields += `sessionData = CAST($${paramIndex} AS JSONB), `;
-          updateValues.push(sessionDataString);
-          paramIndex++;
-        } catch (jsonErr) {
-          console.error("Error al convertir sessionData a JSONB:", jsonErr);
-          // En caso de error, usamos un objeto JSON vacío como fallback
-          updateFields += `sessionData = '{}', `;
-        }
-      }
-      
-      // Si no hay campos para actualizar, devolvemos la cuenta existente
-      if (!updateFields) {
-        return existingAccount;
-      }
-      
-      // Eliminamos la coma final
-      updateFields = updateFields.slice(0, -2);
-      
-      // Añadimos el ID para la condición WHERE
-      updateValues.push(id);
-      
-      // Ejecutamos la consulta SQL directa usando pool.query en lugar de db.query.raw
-      const result = await pool.query(`
-        UPDATE whatsapp_accounts
-        SET ${updateFields}
-        WHERE id = $${paramIndex}
-        RETURNING id, name, status, phone_number, session_data, "createdAt", "lastActiveAt"
-      `, updateValues);
-      
-      if (!result.rows || result.rows.length === 0) {
-        return undefined;
-      }
-      
-      const row = result.rows[0];
-      
-      // Transformamos a formato esperado por la interfaz
-      return {
-        id: row.id,
-        name: row.name,
-        phoneNumber: row.phone_number || '',
-        status: row.status || 'inactive',
-        sessionData: row.session_data || '{}',
-        createdAt: row.createdAt || new Date(),
-        lastActive: row.lastActiveAt || null,
-        settings: null,
-        updatedAt: row.createdAt || new Date()
-      };
+      const [updatedAccount] = await db.update(whatsappAccounts)
+        .set({
+          ...data,
+          ...(data.status === 'active' ? { lastActiveAt: new Date() } : {})
+        })
+        .where(eq(whatsappAccounts.id, id))
+        .returning();
+      return updatedAccount;
     } catch (error) {
       console.error(`Error al actualizar cuenta WhatsApp ${id}:`, error);
-      return undefined;
+      throw error;
     }
   }
 
   async deleteWhatsappAccount(id: number): Promise<void> {
     try {
-      // Usamos pool.query en lugar de db.query.raw porque es el método correcto para ejecutar SQL directo
-      await pool.query(`
-        DELETE FROM whatsapp_accounts
-        WHERE id = $1
-      `, [id]);
+      await db.delete(whatsappAccounts)
+        .where(eq(whatsappAccounts.id, id));
     } catch (error) {
       console.error(`Error al eliminar cuenta WhatsApp ${id}:`, error);
       throw error;

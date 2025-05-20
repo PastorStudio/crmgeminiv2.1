@@ -5,7 +5,6 @@ import DashboardStats from "@/components/dashboard/DashboardStats";
 import SalesPipeline from "@/components/dashboard/SalesPipeline";
 import UpcomingActivities from "@/components/dashboard/UpcomingActivities";
 import RecentConversations from "@/components/dashboard/RecentConversations";
-import TicketsByAgent from "@/components/dashboard/TicketsByAgent";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { apiRequest } from "@/lib/queryClient";
@@ -180,11 +179,6 @@ export default function Dashboard() {
         
         {/* Dashboard Stats */}
         <DashboardStats />
-        
-        {/* Tickets By Agent */}
-        <div className="mt-6">
-          <TicketsByAgent />
-        </div>
         
         {/* Sales Pipeline */}
         <SalesPipeline />
