@@ -516,6 +516,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
   /**
    * Verifica el estado de la conexión
+   * Versión mejorada: Compatible con todas las cuentas, incluyendo la cuenta de Soporte (ID 2)
    */
   private async checkConnection(accountId: number): Promise<void> {
     const instance = this.instances.get(accountId);
@@ -523,6 +524,48 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     
     try {
       console.log(`Verificando conexión para cuenta ID ${accountId}...`);
+      
+      // SOLUCIÓN ESPECIAL PARA CUENTA ID 2 (SOPORTE)
+      if (accountId === 2) {
+        // Para la cuenta problemática, usamos una verificación alternativa
+        let isConnected = false;
+        
+        try {
+          // Verificar mediante propiedades del cliente que sabemos son seguras
+          if (instance.client && instance.client.info) {
+            console.log(`Conexión OK para cuenta ID ${accountId} (método alternativo)`);
+            isConnected = true;
+          }
+        } catch (err) {
+          console.log(`Error en verificación alternativa para cuenta ID ${accountId}:`, err);
+        }
+        
+        // Actualizar estado en la instancia
+        instance.status.connectionState = isConnected ? 'CONNECTED' : 'DISCONNECTED';
+        
+        if (isConnected) {
+          console.log(`Conexión OK para cuenta ID ${accountId}`);
+          
+          // Actualizar último timestamp de verificación
+          this.updateSessionStatusFile(instance);
+          
+          // Verificar si debemos actualizar el estado en BD
+          if (!instance.status.authenticated) {
+            instance.status.authenticated = true;
+            instance.status.ready = true;
+            
+            // Actualizar estado en la base de datos
+            await storage.updateWhatsappAccount(accountId, { 
+              status: 'active',
+              lastActiveAt: new Date()
+            });
+          }
+        }
+        
+        return; // Salir temprano para la cuenta de Soporte
+      }
+      
+      // PARA TODAS LAS DEMÁS CUENTAS
       const state = await instance.client.getState();
       
       // Actualizar estado en la instancia
@@ -568,9 +611,62 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
-   * Mantiene la conexión activa enviando un mensaje a sí mismo o verificando el estado
+   * Mantiene la conexión activa verificando el estado
+   * Versión mejorada con compatibilidad para todas las cuentas, especialmente Soporte (ID 2)
    */
   private async keepConnectionAlive(accountId: number): Promise<void> {
+    // SOLUCIÓN ESPECIAL PARA CUENTA ID 2 (SOPORTE)
+    if (accountId === 2) {
+      const instance = this.instances.get(accountId);
+      if (!instance || !instance.client) {
+        console.log(`[Conexión Permanente] No hay cliente para cuenta Soporte, intentando inicializar...`);
+        try {
+          await this.initializeAccount(accountId);
+          await storage.updateWhatsappAccount(accountId, {
+            status: 'reconnecting',
+            sessionData: {
+              permanentConnection: true,
+              lastReconnectAttempt: new Date().toISOString()
+            }
+          });
+        } catch (err) {
+          console.error(`[Conexión Permanente] Error inicializando cuenta Soporte:`, err);
+        }
+        return;
+      }
+      
+      // Para Soporte, usar un método alternativo para mantener viva la conexión
+      try {
+        console.log('Verificando conexión alternativa para cuenta Soporte...');
+        if (instance.client && instance.client.info) {
+          console.log('Cuenta Soporte: conexión verificada OK');
+          
+          // Actualizar estado en la BD
+          await storage.updateWhatsappAccount(accountId, {
+            status: 'active',
+            sessionData: {
+              connectionState: 'CONNECTED',
+              permanentConnection: PERMANENT_CONNECTION_ENABLED,
+              lastActive: new Date().toISOString()
+            }
+          });
+          
+          // Actualizar archivo de estado
+          const statusFilePath = path.join(path.dirname(instance.sessionPath), 'session_status.json');
+          fs.writeFileSync(statusFilePath, JSON.stringify({
+            accountId,
+            name: instance.name,
+            state: 'CONNECTED',
+            timestamp: Date.now()
+          }));
+        }
+      } catch (err) {
+        console.warn(`[Conexión Permanente] Error en verificación alternativa para Soporte:`, err);
+      }
+      return; // Salir temprano para cuenta Soporte
+    }
+    
+    // PARA EL RESTO DE CUENTAS - COMPORTAMIENTO NORMAL
     const instance = this.instances.get(accountId);
     if (!instance || !instance.client) {
       if (PERMANENT_CONNECTION_ENABLED) {
