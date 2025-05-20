@@ -5,11 +5,16 @@
  * sirviendo como punto de entrada principal para el sistema.
  */
 
-const express = require('express');
-const cors = require('cors');
-const axios = require('axios');
-const path = require('path');
-const fs = require('fs');
+import express from 'express';
+import cors from 'cors';
+import axios from 'axios';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.API_SERVER_PORT || 5000;
 

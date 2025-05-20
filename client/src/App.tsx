@@ -25,6 +25,7 @@ import UserManagement from './pages/UserManagement';
 import WhatsAppAccounts from './pages/WhatsAppAccounts';
 import ChatAssignments from './pages/ChatAssignments';
 import Profile from './pages/Profile';
+import WhatsAppManager from './pages/WhatsAppManager';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
 import { PageTransition } from '@/components/ui/page-transition';
@@ -220,6 +221,13 @@ const AppRoutes: React.FC = () => {
                 Cuentas WhatsApp
               </a>
               
+              <a href="/whatsapp-manager" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-manager' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Gestor WhatsApp
+              </a>
+              
               {/* Menú oculto: Conexión, Código QR e Integraciones - Se mantiene en el código pero no se muestra */}
               {false && (
                 <>
@@ -347,6 +355,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/qrcode" component={() => <PrivateRoute component={QRCode} path="/qrcode" />} />
                 <Route path="/qr-viewer" component={() => <PrivateRoute component={QrViewer} path="/qr-viewer" />} />
                 <Route path="/qr-text" component={() => <PrivateRoute component={QrTextViewer} path="/qr-text" />} />
+                <Route path="/whatsapp-manager" component={() => <PrivateRoute component={WhatsAppManager} path="/whatsapp-manager" />} />
                 <Route path="/raw-qr" component={() => <PrivateRoute component={RawQrViewer} path="/raw-qr" />} />
                 <Route path="/users" component={() => <PrivateRoute component={UserManagement} path="/users" />} />
                 <Route path="/whatsapp-accounts" component={() => <PrivateRoute component={WhatsAppAccounts} path="/whatsapp-accounts" />} />

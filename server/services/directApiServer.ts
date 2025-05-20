@@ -1,256 +1,79 @@
 /**
- * Servidor de API directa para integración de mensajería en tiempo real
+ * Implementación de rutas de API directas que no pasan por Vite
  */
 
-import { Request, Response } from 'express';
-import whatsappService from './whatsappService';
-import fs from 'fs';
-import path from 'path';
+import type { Express } from "express";
+import whatsappService from './simplified-whatsappService';
 
-// Ruta del archivo QR
-const QR_TEXT_FILE = path.join(process.cwd(), 'temp', 'whatsapp-qr.txt');
-
-export const registerDirectAPIRoutes = (app: any) => {
-  
-  // Obtener estado de WhatsApp
-  app.get("/api/direct/whatsapp/status", async (req: Request, res: Response) => {
+export function registerDirectAPIRoutes(app: Express): void {
+  // Rutas directas para obtener el estado de WhatsApp (incluido el código QR)
+  app.get('/api/direct/whatsapp/status', async (req, res) => {
     try {
-      const status = await whatsappService.getStatus();
+      const status = whatsappService.getStatus();
       res.json(status);
     } catch (error) {
-      console.error('Error obteniendo estado de WhatsApp:', error);
-      res.status(500).json({ error: 'Error obteniendo estado de WhatsApp' });
+      console.error('Error al obtener estado de WhatsApp:', error);
+      res.status(500).json({
+        error: 'Error interno',
+        message: 'Error al obtener el estado de WhatsApp'
+      });
     }
   });
-  
-  // Obtener código QR de WhatsApp como imagen
-  app.get("/api/direct/whatsapp/qrcode", async (req: Request, res: Response) => {
+
+  // Ruta para obtener específicamente el código QR
+  app.get('/api/direct/whatsapp/qr', async (req, res) => {
     try {
-      // Verificar si existe el archivo QR
-      if (fs.existsSync(QR_TEXT_FILE)) {
-        // Leer contenido del QR
-        const qrText = fs.readFileSync(QR_TEXT_FILE, 'utf8');
-        
-        // Importar qrcode
-        const qrcode = await import('qrcode');
-        
-        // Convertir a buffer de imagen
-        const qrBuffer = await qrcode.toBuffer(qrText);
-        
-        // Devolver como base64
-        res.json({
-          success: true,
-          qrcode: qrBuffer.toString('base64')
-        });
+      const status = whatsappService.getStatus();
+      if (status.qrCode) {
+        res.json({ qrCode: status.qrCode });
       } else {
-        res.status(404).json({ 
-          success: false, 
-          error: 'Código QR no disponible' 
+        res.status(404).json({
+          error: 'QR no disponible',
+          message: 'No hay código QR disponible actualmente'
         });
       }
     } catch (error) {
-      console.error('Error obteniendo código QR:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Error al procesar código QR' 
+      console.error('Error al obtener código QR:', error);
+      res.status(500).json({
+        error: 'Error interno',
+        message: 'Error al obtener el código QR'
       });
     }
   });
-  
-  // Obtener el texto del código QR directamente
-  app.get("/api/direct/whatsapp/qr-text", async (req: Request, res: Response) => {
+
+  // Ruta para inicializar el servicio de WhatsApp
+  app.post('/api/direct/whatsapp/initialize', async (req, res) => {
     try {
-      // Verificar si existe el archivo QR
-      if (fs.existsSync(QR_TEXT_FILE)) {
-        // Leer contenido del QR
-        const qrText = fs.readFileSync(QR_TEXT_FILE, 'utf8');
-        
-        // Devolver el texto del QR
-        res.json({
-          success: true,
-          qrText: qrText
-        });
+      await whatsappService.initialize();
+      const status = whatsappService.getStatus();
+      res.json({ 
+        message: 'Servicio inicializado correctamente',
+        status
+      });
+    } catch (error) {
+      console.error('Error al inicializar servicio de WhatsApp:', error);
+      res.status(500).json({
+        error: 'Error interno',
+        message: 'Error al inicializar el servicio de WhatsApp'
+      });
+    }
+  });
+
+  // Ruta para mostrar el código QR como imagen
+  app.get('/api/direct/whatsapp/qr-image', async (req, res) => {
+    try {
+      const status = whatsappService.getStatus();
+      if (status.qrCode) {
+        // Redirige al servicio de API de QR
+        res.redirect(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(status.qrCode)}`);
       } else {
-        res.status(404).json({ 
-          success: false, 
-          error: 'Código QR no disponible' 
-        });
+        res.status(404).send('No hay código QR disponible actualmente');
       }
     } catch (error) {
-      console.error('Error obteniendo texto del código QR:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Error al procesar código QR' 
-      });
+      console.error('Error al generar imagen de QR:', error);
+      res.status(500).send('Error interno al generar la imagen del código QR');
     }
   });
-  
-  // Obtener chats de WhatsApp
-  app.get("/api/direct/whatsapp/chats", async (req: Request, res: Response) => {
-    try {
-      // Obtener estado actual
-      const status = await whatsappService.getStatus();
-      
-      // Para depuración - ver el estado real de la conexión
-      console.log('Obteniendo lista de chats...');
-      console.log('Actualizando lista de chats - cliente está autenticado:', status.authenticated);
-      
-      // Verificar si está autenticado
-      if (!status.authenticated) {
-        console.log('WhatsApp no autenticado o no listo. No hay datos disponibles.');
-        // No hay datos disponibles, devolver array vacío
-        return res.json([]);
-      }
-      
-      try {
-        // Importar e instanciar servicio específico de WhatsApp
-        const { whatsappService: whatsappImpl } = await import('./whatsappServiceImpl');
-        
-        // Intentar obtener chats reales - con reintentos automáticos
-        let attempt = 1;
-        let chats = [];
-        const maxAttempts = 3;
-        
-        while (attempt <= maxAttempts) {
-          console.log(`Intento ${attempt} de obtener chats reales...`);
-          try {
-            chats = await whatsappImpl.getChats();
-            console.log(`Obtenidos ${chats.length} chats en intento ${attempt}`);
-            
-            if (chats && chats.length > 0) {
-              console.log('Procesando', chats.length, 'chats...');
-              break; // Salir del bucle si tenemos chats
-            }
-          } catch (attemptError) {
-            console.error(`Error en intento ${attempt}:`, attemptError);
-          }
-          
-          attempt++;
-          if (attempt <= maxAttempts) {
-            // Esperar un poco antes del siguiente intento
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        }
-        
-        // Devolver los chats obtenidos
-        return res.json(chats);
-      } catch (serviceError) {
-        console.error('Error importando servicio de WhatsApp:', serviceError);
-        return res.status(500).json({ error: 'Error en el servicio de WhatsApp' });
-      }
-    } catch (error) {
-      console.error('Error obteniendo chats de WhatsApp:', error);
-      res.status(500).json({ error: 'Error obteniendo chats de WhatsApp' });
-    }
-  });
-  
-  // Obtener mensajes de un chat específico
-  app.get("/api/direct/whatsapp/messages/:chatId", async (req: Request, res: Response) => {
-    try {
-      const { chatId } = req.params;
-      
-      // Obtener estado actual
-      const status = await whatsappService.getStatus();
-      
-      // Verificar si está autenticado
-      if (!status.authenticated) {
-        console.log(`WhatsApp no autenticado o no listo. No hay mensajes disponibles para ${chatId}`);
-        return res.json([]);
-      }
-      
-      // Importar e instanciar servicio específico de WhatsApp
-      const { whatsappService: whatsappImpl } = await import('./whatsappServiceImpl');
-      
-      // Obtener mensajes reales
-      const messages = await whatsappImpl.getMessages(chatId);
-      
-      // Devolver los mensajes
-      return res.json(messages);
-    } catch (error) {
-      console.error(`Error obteniendo mensajes para ${req.params.chatId}:`, error);
-      res.status(500).json({ error: 'Error obteniendo mensajes' });
-    }
-  });
-  
-  // Enviar mensaje a un chat
-  app.post("/api/direct/whatsapp/send", async (req: Request, res: Response) => {
-    try {
-      const { chatId, message } = req.body;
-      
-      if (!chatId || !message) {
-        return res.status(400).json({ error: 'Se requiere chatId y message' });
-      }
-      
-      // Obtener estado actual
-      const status = await whatsappService.getStatus();
-      
-      // Verificar si está autenticado
-      if (!status.authenticated) {
-        return res.status(403).json({ error: 'WhatsApp no está autenticado' });
-      }
-      
-      // Enviar mensaje
-      const result = await whatsappService.sendMessage(chatId, message);
-      
-      // Devolver resultado
-      return res.json({
-        success: true,
-        messageId: result?.id || null
-      });
-    } catch (error) {
-      console.error('Error enviando mensaje:', error);
-      res.status(500).json({ error: 'Error al enviar mensaje' });
-    }
-  });
-  
-  // Obtener contactos de WhatsApp
-  app.get("/api/direct/whatsapp/contacts", async (req: Request, res: Response) => {
-    try {
-      // Obtener estado actual
-      const status = await whatsappService.getStatus();
-      
-      // Verificar si está autenticado
-      if (!status.authenticated) {
-        console.log('WhatsApp no autenticado o no listo. No hay contactos disponibles.');
-        // No hay datos disponibles, devolver array vacío
-        return res.json([]);
-      }
-      
-      try {
-        // Importar servicio de contactos
-        const { getAllWhatsAppContacts } = await import('./whatsappContactsService');
-        
-        // Obtener contactos
-        const contacts = await getAllWhatsAppContacts();
-        
-        return res.json(contacts);
-      } catch (contactError) {
-        console.error('Error obteniendo contactos de WhatsApp:', contactError);
-        return res.json([]);
-      }
-    } catch (error) {
-      console.error('Error obteniendo contactos de WhatsApp:', error);
-      res.status(500).json({ error: 'Error al obtener contactos' });
-    }
-  });
-  
-  // Cerrar sesión de WhatsApp
-  app.post("/api/direct/whatsapp/logout", async (req: Request, res: Response) => {
-    try {
-      // Importar e instanciar servicio específico de WhatsApp
-      const { whatsappService: whatsappImpl } = await import('./whatsappServiceImpl');
-      
-      // Cerrar sesión
-      await whatsappImpl.logout();
-      
-      // Devolver resultado
-      return res.json({
-        success: true,
-        message: 'Sesión cerrada correctamente'
-      });
-    } catch (error) {
-      console.error('Error cerrando sesión:', error);
-      res.status(500).json({ error: 'Error al cerrar sesión' });
-    }
-  });
-};
+
+  console.log('Rutas de API directa registradas correctamente');
+}

@@ -1482,6 +1482,10 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       // Si no hay mensajes reales ni en caché, devolver un arreglo vacío
       console.log(`WhatsApp no autenticado o no listo. No hay mensajes disponibles para ${chatId}`);
       return [];
+    } catch (error) {
+      console.error(`Error general al obtener mensajes para ${chatId}:`, error);
+      return [];
+    }
           demoMessages = [
             {
               id: `demo-msg-1-${chatId}`,
@@ -1526,13 +1530,17 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
               hasMedia: false
             }
           ];
-        } else if (chatId === "555555555@c.us") {
-          demoMessages = [
+        } 
+        
+        // Chats adicionales para demostración
+        if (chatId == "555555555@c.us") {
+          const now = Date.now();
+          const demoMessages = [
             {
               id: `demo-msg-1-${chatId}`,
               body: "¿Recibiste mi correo sobre la propuesta?",
               fromMe: false,
-              timestamp: Math.floor((now - 3600000 * 5) / 1000),
+              timestamp: Math.floor((Date.now() - 3600000 * 5) / 1000),
               hasMedia: false
             },
             {
