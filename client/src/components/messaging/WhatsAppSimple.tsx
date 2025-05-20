@@ -432,8 +432,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       if (!currentAccountId) throw new Error('No hay cuenta seleccionada');
       
       try {
-        // Usar la ruta completa de la API con el ID de la cuenta
-        const response = await fetch(`/api/whatsapp-accounts/${currentAccountId}/send`, {
+        console.log(`Enviando mensaje a chat ${selectedChatId} desde cuenta ${currentAccountId}`);
+        
+        // Probar primero con la ruta directa que sabemos funciona
+        const response = await fetch(`/api/direct/whatsapp/sendMessage`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -441,7 +443,8 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
           },
           body: JSON.stringify({
             chatId: selectedChatId,
-            message
+            message,
+            accountId: currentAccountId
           }),
         });
         
@@ -450,6 +453,31 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         if (!contentType || !contentType.includes('application/json')) {
           const text = await response.text();
           console.error('Respuesta no es JSON:', text);
+          
+          // Si detectamos una respuesta HTML con DOCTYPE, es un error de redirección
+          if (text.includes('<!DOCTYPE html>')) {
+            console.error('Detectada respuesta HTML con DOCTYPE - intentando ruta alternativa');
+            
+            // Intentar con la ruta alternativa
+            const alternativeResponse = await fetch(`/api/whatsapp-accounts/${currentAccountId}/sendMessage`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
+              body: JSON.stringify({
+                chatId: selectedChatId,
+                message
+              }),
+            });
+            
+            if (!alternativeResponse.ok) {
+              throw new Error(`Error al enviar mensaje: ${alternativeResponse.statusText}`);
+            }
+            
+            return await alternativeResponse.json();
+          }
+          
           throw new Error('La respuesta del servidor no es JSON válido');
         }
         
