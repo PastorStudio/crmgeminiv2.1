@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useWebSocket, NotificationType } from '@/hooks/useWebSocket';
 import { getInitials } from '@/lib/utils';
+import MessagesLoader from '@/components/messaging/MessagesLoader';
 import { 
   UserCheck, 
   RefreshCw, 
