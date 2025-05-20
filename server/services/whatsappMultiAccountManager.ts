@@ -615,9 +615,16 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         
         // Realizar una petición sencilla para mantener la sesión activa
         try {
-          // Obtener la información de contacto propio mantiene la sesión activa
-          await instance.client.getWid();
-          console.log(`[Conexión Permanente] Mantener activa cuenta ID ${accountId} - OK`);
+          // Usar un método seguro que existe en todas las versiones de la librería
+          // En lugar de getWid() que no está disponible en todas las instancias
+          if (instance.client.getState) {
+            await instance.client.getState();
+            console.log(`[Conexión Permanente] Mantener activa cuenta ID ${accountId} - OK`);
+          } else {
+            // Como alternativa, podemos intentar obtener la información básica del cliente
+            const info = await instance.client.info || await instance.client.getInfo?.();
+            console.log(`[Conexión Permanente] Mantener activa cuenta ID ${accountId} - OK (info)`);
+          }
         } catch (pingErr) {
           console.warn(`[Conexión Permanente] Error en ping para cuenta ID ${accountId}:`, pingErr);
         }
