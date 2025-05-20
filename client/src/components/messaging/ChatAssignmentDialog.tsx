@@ -346,19 +346,21 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
 
   // Actualizar la lista de agentes cuando llegan de la API
   useEffect(() => {
-    const filteredAgents = users.filter(user => 
-      user.status === 'active' && 
-      ['agent', 'supervisor'].includes(user.role)
-    );
-    
-    // Solo actualizar si hay nuevos agentes disponibles
-    if (filteredAgents.length > 0) {
-      setAgents(filteredAgents);
+    if (users && users.length > 0) {
+      const filteredAgents = users.filter(user => 
+        user.status === 'active' && 
+        ['agent', 'supervisor'].includes(user.role)
+      );
+      
+      // Solo actualizar si hay nuevos agentes disponibles
+      if (filteredAgents.length > 0) {
+        setAgentsList(filteredAgents);
+      }
     }
   }, [users]);
   
   // Registro para depuración
-  console.log('Agentes disponibles:', agents);
+  console.log('Agentes disponibles:', agentsList);
 
   // Determinar si hay un agente asignado actualmente
   const currentAgent = existingAssignment?.assignedTo 
@@ -446,8 +448,8 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {agents.length > 0 ? (
-                          agents.map((agent) => (
+                        {agentsList.length > 0 ? (
+                          agentsList.map((agent) => (
                             <SelectItem
                               key={agent.id}
                               value={agent.id.toString()}
