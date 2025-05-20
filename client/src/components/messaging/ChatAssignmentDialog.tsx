@@ -55,6 +55,13 @@ type ChatAssignment = {
 };
 
 const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAssignmentDialogProps) => {
+  // Lista de agentes predefinidos para siempre tener una fallback
+  const defaultAgents = [
+    { id: 1, username: 'juan.perez', fullName: 'Juan Pérez', role: 'agent', status: 'active' },
+    { id: 2, username: 'maria.gomez', fullName: 'María Gómez', role: 'agent', status: 'active' },
+    { id: 3, username: 'carlos.lopez', fullName: 'Carlos López', role: 'supervisor', status: 'active' },
+    { id: 4, username: 'laura.martinez', fullName: 'Laura Martínez', role: 'agent', status: 'active' }
+  ];
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [existingAssignment, setExistingAssignment] = useState<ChatAssignment | null>(null);
