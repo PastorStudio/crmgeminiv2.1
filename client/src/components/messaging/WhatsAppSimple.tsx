@@ -778,13 +778,59 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="w-full justify-start bg-purple-50 hover:bg-purple-100 border-purple-200"
+                      className="w-full justify-start bg-purple-50 hover:bg-purple-100 border-purple-200 mb-2"
                       onClick={() => setAssignmentDialogOpen(true)}
                     >
                       <UserPlus className="mr-1 h-4 w-4 text-purple-600" />
                       {assignedAgent ? 'Reasignar chat' : 'Asignar a agente'}
                     </Button>
                   )}
+                  
+                  {/* Botón para limpiar conexión de WhatsApp */}
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start bg-red-50 hover:bg-red-100 border-red-200 mb-2"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(`/api/whatsapp-accounts/${currentAccountId}/disconnect`, {
+                          method: 'POST'
+                        });
+                        
+                        if (response.ok) {
+                          toast({
+                            title: "Conexión limpiada",
+                            description: "Se ha limpiado la conexión de WhatsApp correctamente",
+                          });
+                          
+                          // Refrescar datos de la cuenta
+                          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+                          queryClient.invalidateQueries({ queryKey: ['/api/direct/whatsapp/status'] });
+                          
+                          // Recargar la página después de 1 segundo
+                          setTimeout(() => {
+                            window.location.reload();
+                          }, 1000);
+                        } else {
+                          toast({
+                            title: "Error",
+                            description: "No se pudo limpiar la conexión de WhatsApp",
+                            variant: "destructive"
+                          });
+                        }
+                      } catch (error) {
+                        console.error("Error limpiando conexión:", error);
+                        toast({
+                          title: "Error",
+                          description: "Error al comunicarse con el servidor",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                  >
+                    <X className="mr-1 h-4 w-4 text-red-600" />
+                    Limpiar conexión
+                  </Button>
                   
                   <Dialog>
                     <DialogTrigger asChild>
