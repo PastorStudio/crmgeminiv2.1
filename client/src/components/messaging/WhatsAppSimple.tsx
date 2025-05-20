@@ -620,7 +620,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     // Limpiar el campo de texto inmediatamente para mejor experiencia de usuario
     setNewMessage('');
     
-    // Añadir mensaje directamente a la interfaz para mostrar respuesta inmediata
+    // Crear mensaje temporal para mostrar inmediatamente
     const tempMsg = {
       id: `temp-${Date.now()}`,
       body: msgToSend,
@@ -629,11 +629,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       hasMedia: false
     };
     
-    // Simplemente actualizar el estado local para mostrar el mensaje inmediatamente
-    if (selectedChatId) {
-      // Forzamos una actualización del componente para mostrar el mensaje
-      messageMutation.onSuccess(tempMsg);
-    }
+    // Mostrar mensaje inmediatamente en la interfaz
+    // Actualizamos directamente el estado de whatsappMessages
+    const newWhatsappMessages = [...whatsappMessages, tempMsg];
+    setWhatsappMessages(newWhatsappMessages);
     
     // Intentar enviar el mensaje en segundo plano
     fetch('/api/direct/whatsapp/sendMessage', {
