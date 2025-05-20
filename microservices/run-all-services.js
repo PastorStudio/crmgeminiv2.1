@@ -1,5 +1,5 @@
 /**
- * Script para iniciar todos los microservicios (Versión CommonJS)
+ * Script para iniciar todos los microservicios
  * 
  * Este script inicia todos los microservicios en orden: 
  * 1. Servidor de base de datos

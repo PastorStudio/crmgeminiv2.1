@@ -1482,10 +1482,6 @@ class WhatsAppServiceImpl extends EventEmitter implements IWhatsAppService {
       // Si no hay mensajes reales ni en caché, devolver un arreglo vacío
       console.log(`WhatsApp no autenticado o no listo. No hay mensajes disponibles para ${chatId}`);
       return [];
-    } catch (error) {
-      console.error(`Error general al obtener mensajes para ${chatId}:`, error);
-      return [];
-    }
           demoMessages = [
             {
               id: `demo-msg-1-${chatId}`,
