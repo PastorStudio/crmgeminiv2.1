@@ -1584,6 +1584,37 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                                 onClick={() => {
                                   console.log('Seleccionando chat multi-cuenta:', chat.name, chat.id, 'de cuenta:', chat.accountId);
                                   
+                                  // Verificar si es un chat de demostración
+                                  if (chat.id.startsWith('demo-chat-')) {
+                                    console.log('Detectado chat de demostración, preparando visualización...');
+                                    
+                                    // Extraer partes del ID
+                                    const parts = chat.id.split('-');
+                                    const accountId = parts[2];
+                                    const chatNum = parts[3];
+                                    
+                                    // Generar mensajes de demostración
+                                    const demoMessages = [];
+                                    for (let i = 1; i <= 15; i++) {
+                                      const isFromMe = i % 3 === 0;
+                                      const timestamp = Date.now() / 1000 - (15 - i) * 3600;
+                                      
+                                      demoMessages.push({
+                                        id: `demo-msg-${accountId}-${chatNum}-${i}`,
+                                        body: isFromMe 
+                                          ? `Este es un mensaje enviado desde la cuenta ${accountId} al chat ${chatNum}` 
+                                          : `Este es un mensaje recibido en la cuenta ${accountId} del chat ${chatNum}`,
+                                        fromMe: isFromMe,
+                                        timestamp: timestamp,
+                                        hasMedia: false
+                                      });
+                                    }
+                                    
+                                    // Ordenar y establecer mensajes
+                                    const sortedMessages = demoMessages.sort((a, b) => a.timestamp - b.timestamp);
+                                    setMessagesState(sortedMessages);
+                                  }
+                                  
                                   // Actualizar chat seleccionado
                                   setSelectedChatId(chat.id);
                                   // También actualizar la cuenta actual para poder enviar mensajes desde ella
