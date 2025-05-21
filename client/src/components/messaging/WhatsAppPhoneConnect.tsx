@@ -12,7 +12,7 @@ import {
   CardTitle 
 } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+// Removed InputOTP components to fix rendering issues
 import { Smartphone, CheckCircle, XCircle, ArrowRightCircle } from 'lucide-react';
 
 export interface PhoneConnectProps {
@@ -149,26 +149,17 @@ export function WhatsAppPhoneConnect({ accountId, onSuccess }: PhoneConnectProps
                 Ingresa el código de 8 dígitos que recibiste en WhatsApp
               </p>
               
-              <InputOTP
-                maxLength={8}
-                value={code}
-                onChange={(value) => setCode(value)}
-                render={({ slots }) => (
-                  <div className="flex gap-1 justify-center">
-                    <InputOTPGroup>
-                      {slots.slice(0, 4).map((slot, index) => (
-                        <InputOTPSlot key={index} {...slot} />
-                      ))}
-                    </InputOTPGroup>
-                    <span className="flex items-center">-</span>
-                    <InputOTPGroup>
-                      {slots.slice(4, 8).map((slot, index) => (
-                        <InputOTPSlot key={index + 4} {...slot} />
-                      ))}
-                    </InputOTPGroup>
-                  </div>
-                )}
-              />
+              <div className="flex justify-center items-center gap-2">
+                <Input
+                  type="text"
+                  maxLength={8}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="12345678"
+                  className="text-center text-lg font-mono tracking-widest"
+                  style={{ letterSpacing: '0.5em' }}
+                />
+              </div>
             </div>
           </div>
         )}
