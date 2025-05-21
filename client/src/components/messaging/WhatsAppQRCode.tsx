@@ -10,19 +10,41 @@ import { RefreshCw, XCircle, Users } from 'lucide-react';
 export function WhatsAppQRCode({ accountId }: { accountId: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
-  // Query para obtener el código QR
+  // Query para obtener el código QR - versión mejorada con manejo de errores
   const { data: qrData, isLoading: isQrLoading, refetch: refetchQr } = useQuery({
     queryKey: ['/api/whatsapp-accounts', accountId, 'qrcode'],
     queryFn: async () => {
       try {
-        const response = await apiRequest(`/api/whatsapp-accounts/${accountId}/qrcode`);
-        return response.success ? response : null;
+        // Timeout para evitar bloqueos durante el despliegue
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
+        const response = await apiRequest(`/api/whatsapp-accounts/${accountId}/qrcode`, {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        // Verificar que el QR sea válido
+        if (response.success && response.qrcode && typeof response.qrcode === 'string' && response.qrcode.trim().length > 10) {
+          return response;
+        } else {
+          console.warn('Código QR inválido o incompleto recibido:', 
+            response.qrcode ? `${response.qrcode.substring(0, 15)}...` : 'Vacío');
+          return null;
+        }
       } catch (error) {
-        console.error('Error fetching QR code:', error);
+        if (error.name === 'AbortError') {
+          console.warn('Timeout al obtener el código QR');
+        } else {
+          console.error('Error fetching QR code:', error);
+        }
         return null;
       }
     },
-    refetchInterval: 5000 // Actualizar cada 5 segundos
+    refetchInterval: 5000, // Actualizar cada 5 segundos
+    retry: 3,              // Reintentar hasta 3 veces
+    retryDelay: 1000       // Esperar 1 segundo entre reintentos
   });
   
   // Generar el código QR cuando cambian los datos

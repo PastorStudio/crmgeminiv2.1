@@ -383,8 +383,9 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   // Actualizar información del agente asignado cuando cambia la asignación
   useEffect(() => {
     if (chatAssignment && chatAssignment.assignedTo) {
+      // Usar propiedad name si existe, de lo contrario usar username
       setAssignedAgent({
-        name: chatAssignment.assignedTo.fullName,
+        name: chatAssignment.assignedTo.name || chatAssignment.assignedTo.username,
         username: chatAssignment.assignedTo.username
       });
     } else {
