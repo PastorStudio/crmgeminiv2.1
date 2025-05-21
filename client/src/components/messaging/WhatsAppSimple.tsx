@@ -825,10 +825,51 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   // Usar el estado local en vez de apiMessages
   const whatsappMessages = messagesState;
   
-  // Obtener el chat actual
-  const currentChat = selectedChatId && Array.isArray(whatsappChats) 
-    ? whatsappChats.find((chat: WhatsAppChat) => chat.id === selectedChatId) 
-    : null;
+  // Obtener el chat actual - con mayor robustez para evitar problemas de selección
+  const getCurrentChat = () => {
+    // Si tenemos un chat seleccionado
+    if (selectedChatId) {
+      // Primero buscar en los chats normales
+      if (Array.isArray(whatsappChats)) {
+        const found = whatsappChats.find((chat: WhatsAppChat) => chat.id === selectedChatId);
+        if (found) return found;
+      }
+      
+      // Si no se encuentra en los chats normales, buscar en multi-account chats
+      if (multiAccountMode && Object.keys(multiAccountChats).length > 0) {
+        for (const accountId in multiAccountChats) {
+          const accountChats = multiAccountChats[accountId];
+          if (Array.isArray(accountChats)) {
+            const found = accountChats.find((chat: WhatsAppChat) => chat.id === selectedChatId);
+            if (found) return {...found, accountId: parseInt(accountId)};
+          }
+        }
+      }
+      
+      // Si aún no encontramos, buscar en localStorage
+      const cachedChatInfo = localStorage.getItem(`chat_info_${selectedChatId}`);
+      if (cachedChatInfo) {
+        try {
+          return JSON.parse(cachedChatInfo);
+        } catch (e) {
+          console.error('Error parsing cached chat info:', e);
+        }
+      }
+      
+      // Como último recurso, crear un objeto básico para mostrar al menos el ID
+      return {
+        id: selectedChatId,
+        name: selectedChatId.replace(/@.*$/, ''), // Extraer número/nombre del ID
+        isGroup: selectedChatId.includes('@g.us'),
+        timestamp: Date.now() / 1000,
+        unreadCount: 0
+      };
+    }
+    
+    return null;
+  };
+  
+  const currentChat = getCurrentChat();
 
   // Seleccionar el primer chat al cargar - VERSIÓN CORREGIDA
   // Usamos una referencia para evitar el bucle infinito
@@ -1481,6 +1522,26 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                             Para usar el modo multi-cuenta, debes tener al menos una cuenta conectada.
                             <div className="mt-1">Ve a la página de "Cuentas de WhatsApp" para conectar cuentas.</div>
                           </div>
+                        </div>
+                      )}
+                      
+                      {/* Modo demostrativo cuando no hay cuentas activas */}
+                      {whatsappAccounts.filter(account => account.currentStatus?.authenticated).length === 0 && (
+                        <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-md text-blue-700 text-sm">
+                          <div className="font-medium mb-1">Modo demostración activado</div>
+                          <div className="text-xs text-blue-600">
+                            Se muestran datos de demostración para que puedas probar la interfaz.
+                          </div>
+                          <button 
+                            onClick={() => {
+                              // Activar datos de demostración para todas las cuentas
+                              const demoAccounts = [1, 2, 3, 4]; // IDs de demostración
+                              setSelectedAccounts(demoAccounts);
+                            }}
+                            className="mt-2 w-full py-1 px-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                          >
+                            Cargar datos de demostración
+                          </button>
                         </div>
                       )}
                     </div>
