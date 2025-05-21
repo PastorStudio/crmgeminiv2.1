@@ -341,6 +341,65 @@ router.post('/:id/disconnect', async (req, res) => {
   }
 });
 
+// Reinicializar una cuenta (forzar regeneración de QR)
+router.post('/:id/reinitialize', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+    
+    console.log(`Solicitud para reinicializar cuenta ID ${id}`);
+    
+    // Primero desconectar si está conectada
+    await whatsappServiceMulti.disconnectAccount(id);
+    
+    // Forzar eliminación de sesión anterior
+    try {
+      const account = await storage.getWhatsappAccount(id);
+      if (account) {
+        // Actualizar estado en BD para forzar nueva sesión
+        await storage.updateWhatsappAccount(id, {
+          status: 'initializing',
+          sessionData: { forceNewSession: true, lastReset: new Date().toISOString() }
+        });
+      }
+    } catch (dbError) {
+      console.error(`Error actualizando BD para reinicialización de cuenta ${id}:`, dbError);
+    }
+    
+    // Intentar inicializar nuevamente
+    try {
+      // Inicializar la cuenta en lugar de usar attemptConnectionRecovery
+      await whatsappServiceMulti.initializeAccount(id);
+      
+      // Esperar un momento para que comience la inicialización
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Verificar estado actual
+      const status = whatsappServiceMulti.getStatus(id);
+      
+      res.json({ 
+        success: true, 
+        message: 'Cuenta reinicializada correctamente',
+        status
+      });
+    } catch (initError) {
+      console.error(`Error reinicializando cuenta ${id}:`, initError);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al reinicializar la cuenta. Intente nuevamente.' 
+      });
+    }
+  } catch (error) {
+    console.error('Error al reinicializar cuenta de WhatsApp:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al reinicializar cuenta de WhatsApp' 
+    });
+  }
+});
+
 // Enviar mensaje desde una cuenta específica
 router.post('/:id/send', async (req, res) => {
   try {
