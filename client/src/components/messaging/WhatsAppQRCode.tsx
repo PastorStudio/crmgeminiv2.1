@@ -68,10 +68,21 @@ export function WhatsAppQRCode({ accountId }: { accountId: number }) {
           img.height = 256;
           img.alt = "Código QR de WhatsApp";
           
-          // Limpiar el canvas y agregar la imagen
-          const parent = canvasRef.current.parentNode;
-          if (parent) {
-            parent.replaceChild(img, canvasRef.current);
+          // Método alternativo: insertar la imagen junto al canvas (no reemplazarlo)
+          // Esto evita problemas con las referencias nulas
+          if (canvasRef.current) {
+            try {
+              // Ocultar el canvas
+              canvasRef.current.style.display = 'none';
+              
+              // Obtener el contenedor padre y agregar la imagen
+              const parent = canvasRef.current.parentElement;
+              if (parent) {
+                parent.appendChild(img);
+              }
+            } catch (domError) {
+              console.error('Error al manipular el DOM:', domError);
+            }
           }
         }
       } catch (error) {
