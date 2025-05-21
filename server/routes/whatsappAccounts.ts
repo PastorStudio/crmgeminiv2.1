@@ -463,4 +463,135 @@ router.get('/:id/messages/:chatId', async (req, res) => {
   }
 });
 
+// Esquema de validación para conexión por teléfono
+const phoneConnectRequestSchema = z.object({
+  phoneNumber: z.string().min(8, 'Ingrese un número de teléfono válido')
+});
+
+// Esquema de validación para verificación de código
+const phoneConnectVerifySchema = z.object({
+  phoneNumber: z.string().min(8, 'Ingrese un número de teléfono válido'),
+  code: z.string().length(8, 'El código debe tener 8 dígitos')
+});
+
+// Solicitar código de conexión por teléfono
+router.post('/:id/phone-connect/request', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+    
+    // Validar datos de entrada
+    const validation = phoneConnectRequestSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Datos inválidos', 
+        details: validation.error.format() 
+      });
+    }
+    
+    const { phoneNumber } = validation.data;
+    
+    // Verificar que la cuenta existe
+    const account = await storage.getWhatsappAccount(id);
+    if (!account) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Cuenta no encontrada' 
+      });
+    }
+    
+    // Enviar solicitud de código al servicio WhatsApp
+    const result = await whatsappMultiAccountManager.requestPhoneNumberCode(id, phoneNumber);
+    
+    if (result.success) {
+      // Actualizar los datos de la cuenta con el número de teléfono para la siguiente etapa
+      await storage.updateWhatsappAccount(id, {
+        ownerPhone: phoneNumber,
+        status: 'pending_auth',
+        sessionData: {
+          ...account.sessionData,
+          phoneConnectRequestedAt: new Date().toISOString(),
+          phoneNumber
+        }
+      });
+      
+      res.json({
+        success: true,
+        message: 'Código solicitado exitosamente. Revisa tu WhatsApp.'
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: result.message || 'No se pudo solicitar el código. Intente nuevamente.'
+      });
+    }
+  } catch (error) {
+    console.error('Error al solicitar código para conexión por teléfono:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error al solicitar código para conexión por teléfono'
+    });
+  }
+});
+
+// Verificar código y completar conexión
+router.post('/:id/phone-connect/verify', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'ID inválido' 
+      });
+    }
+    
+    // Validar datos de entrada
+    const validation = phoneConnectVerifySchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Datos inválidos', 
+        details: validation.error.format() 
+      });
+    }
+    
+    const { phoneNumber, code } = validation.data;
+    
+    // Verificar código en el servicio WhatsApp
+    const result = await whatsappMultiAccountManager.verifyPhoneNumberCode(id, phoneNumber, code);
+    
+    if (result.success) {
+      // Actualizar estado de la cuenta a conectada
+      await storage.updateWhatsappAccount(id, {
+        status: 'active',
+        sessionData: {
+          authenticated: true,
+          authenticatedAt: new Date().toISOString(),
+          authMethod: 'phone_code',
+          phoneNumber
+        }
+      });
+      
+      res.json({
+        success: true,
+        message: 'Conexión completada exitosamente'
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: result.message || 'Código inválido o expirado. Intente nuevamente.'
+      });
+    }
+  } catch (error) {
+    console.error('Error al verificar código para conexión por teléfono:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error al verificar código para conexión por teléfono'
+    });
+  }
+});
+
 export default router;
