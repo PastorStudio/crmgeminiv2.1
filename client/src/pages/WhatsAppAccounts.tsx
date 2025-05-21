@@ -42,7 +42,11 @@ import {
   UserPlus,
   CheckCircle,
   XCircle,
+  Smartphone,
 } from 'lucide-react';
+
+// Importar componente de conexión por teléfono
+import { WhatsAppPhoneConnect } from '@/components/messaging/WhatsAppPhoneConnect';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -122,6 +126,7 @@ const WhatsAppAccounts = () => {
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newlyCreatedAccountId, setNewlyCreatedAccountId] = useState<number | null>(null);
+  const [authMethod, setAuthMethod] = useState<'qrcode' | 'phone'>('qrcode');
   
   // Consulta para obtener cuentas
   const { data: accounts = [], isLoading, error, refetch } = useQuery<WhatsAppAccount[]>({
@@ -660,55 +665,96 @@ const WhatsAppAccounts = () => {
                 <p className="text-center text-muted-foreground">
                   {initializeAccountMutation.isPending 
                     ? 'Inicializando cuenta...' 
-                    : 'Generando código QR...'}
+                    : 'Preparando conexión...'}
                 </p>
-              </div>
-            ) : qrData?.qrcode ? (
-              <div className="flex flex-col items-center">
-                <div className="bg-white p-4 rounded-lg mb-4">
-                  {/* Crear un elemento para mostrar el QR */}
-                  <div 
-                    id="qrcode-display"
-                    className="qr-container w-64 h-64 flex items-center justify-center"
-                  >
-                    <QRCodeDisplay qrData={qrData.qrcode} />
-                  </div>
-                </div>
-                <p className="text-center text-sm text-muted-foreground mb-4">
-                  Escanee este código QR con WhatsApp en su teléfono para conectar la cuenta.
-                  <br />
-                  El código se actualizará automáticamente.
-                </p>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleRefreshQR}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Actualizar QR
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleReconnect}
-                  >
-                    <Power className="h-4 w-4 mr-2" />
-                    Reinicializar
-                  </Button>
-                </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center p-6">
-                <XCircle className="h-16 w-16 text-red-500 mb-4" />
-                <h3 className="text-xl font-medium mb-2">Error</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  No se pudo generar el código QR. Intente reinicializar la cuenta.
-                </p>
-                <Button onClick={handleReconnect}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Reintentar
-                </Button>
+              <div className="flex flex-col space-y-4">
+                {/* Pestañas para elegir método de conexión */}
+                <Tabs 
+                  defaultValue={authMethod} 
+                  onValueChange={(value) => setAuthMethod(value as 'qrcode' | 'phone')} 
+                  className="w-full"
+                >
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="qrcode" className="flex items-center justify-center">
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Código QR
+                    </TabsTrigger>
+                    <TabsTrigger value="phone" className="flex items-center justify-center">
+                      <Smartphone className="h-4 w-4 mr-2" />
+                      Teléfono
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  {/* Contenido de la pestaña Código QR */}
+                  <TabsContent value="qrcode" className="mt-4">
+                    {qrData?.qrcode ? (
+                      <div className="flex flex-col items-center">
+                        <div className="bg-white p-4 rounded-lg mb-4">
+                          <div 
+                            id="qrcode-display"
+                            className="qr-container w-64 h-64 flex items-center justify-center"
+                          >
+                            <QRCodeDisplay qrData={qrData.qrcode} />
+                          </div>
+                        </div>
+                        <p className="text-center text-sm text-muted-foreground mb-4">
+                          Escanee este código QR con WhatsApp en su teléfono para conectar la cuenta.
+                          <br />
+                          El código se actualizará automáticamente.
+                        </p>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleRefreshQR}
+                          >
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Actualizar QR
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleReconnect}
+                          >
+                            <Power className="h-4 w-4 mr-2" />
+                            Reinicializar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-6">
+                        <XCircle className="h-16 w-16 text-red-500 mb-4" />
+                        <h3 className="text-xl font-medium mb-2">Error</h3>
+                        <p className="text-muted-foreground text-center mb-4">
+                          No se pudo generar el código QR. Intente reinicializar la cuenta.
+                        </p>
+                        <Button onClick={handleReconnect}>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Reintentar
+                        </Button>
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  {/* Contenido de la pestaña Teléfono */}
+                  <TabsContent value="phone" className="mt-4">
+                    {selectedAccount && (
+                      <WhatsAppPhoneConnect 
+                        accountId={selectedAccount.id}
+                        onSuccess={() => {
+                          toast({
+                            title: "Conexión exitosa",
+                            description: "Tu cuenta de WhatsApp ha sido conectada correctamente",
+                          });
+                          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+                          setQrDialogOpen(false);
+                        }}
+                      />
+                    )}
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
           </div>
