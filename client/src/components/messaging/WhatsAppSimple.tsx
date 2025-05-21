@@ -1524,26 +1524,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                           </div>
                         </div>
                       )}
-                      
-                      {/* Modo demostrativo cuando no hay cuentas activas */}
-                      {whatsappAccounts.filter(account => account.currentStatus?.authenticated).length === 0 && (
-                        <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-md text-blue-700 text-sm">
-                          <div className="font-medium mb-1">Modo demostración activado</div>
-                          <div className="text-xs text-blue-600">
-                            Se muestran datos de demostración para que puedas probar la interfaz.
-                          </div>
-                          <button 
-                            onClick={() => {
-                              // Activar datos de demostración para todas las cuentas
-                              const demoAccounts = [1, 2, 3, 4]; // IDs de demostración
-                              setSelectedAccounts(demoAccounts);
-                            }}
-                            className="mt-2 w-full py-1 px-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-                          >
-                            Cargar datos de demostración
-                          </button>
-                        </div>
-                      )}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       {selectedAccounts.length === 0 
