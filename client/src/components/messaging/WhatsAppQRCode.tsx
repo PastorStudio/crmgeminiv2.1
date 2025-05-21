@@ -32,16 +32,50 @@ export function WhatsAppQRCode({ accountId }: { accountId: number }) {
     const generateQR = async () => {
       try {
         // Usar el texto del QR directamente como viene del servidor
-        await QRCode.toCanvas(canvasRef.current, qrData.qrcode, {
-          width: 256,
-          margin: 1,
-          color: {
-            dark: '#000000',
-            light: '#ffffff'
+        const qrText = qrData.qrcode.trim();
+        
+        // Verificar si el QR no está vacío
+        if (!qrText) {
+          console.error('El código QR está vacío');
+          return;
+        }
+        
+        // Implementación más robusta para manejar errores en la generación de QR
+        try {
+          await QRCode.toCanvas(canvasRef.current, qrText, {
+            width: 256,
+            margin: 1,
+            color: {
+              dark: '#000000',
+              light: '#ffffff'
+            },
+            errorCorrectionLevel: 'H' // Mayor nivel de corrección de errores
+          });
+        } catch (canvasError) {
+          console.error('Error al generar QR en canvas, intentando alternativa:', canvasError);
+          
+          // Alternativa: generar como URL de imagen (en caso de que falle el canvas)
+          const qrDataUrl = await QRCode.toDataURL(qrText, {
+            width: 256,
+            margin: 1,
+            errorCorrectionLevel: 'H'
+          });
+          
+          // Crear imagen y mostrarla en lugar del canvas
+          const img = document.createElement('img');
+          img.src = qrDataUrl;
+          img.width = 256;
+          img.height = 256;
+          img.alt = "Código QR de WhatsApp";
+          
+          // Limpiar el canvas y agregar la imagen
+          const parent = canvasRef.current.parentNode;
+          if (parent) {
+            parent.replaceChild(img, canvasRef.current);
           }
-        });
+        }
       } catch (error) {
-        console.error('Error al generar el código QR:', error);
+        console.error('Error al procesar el código QR:', error);
       }
     };
     
