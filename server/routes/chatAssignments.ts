@@ -102,6 +102,23 @@ router.get('/by-chat', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Asignación de chat no encontrada' });
     }
     
+    // Asegurarse de que la información del agente sea consistente
+    if (assignment.assignedTo) {
+      // Si el usuario tiene fullName pero no name, copiar fullName a name
+      if (assignment.assignedTo.fullName && !assignment.assignedTo.name) {
+        assignment.assignedTo.name = assignment.assignedTo.fullName;
+      }
+      // Si tiene name pero no fullName, copiar name a fullName
+      else if (assignment.assignedTo.name && !assignment.assignedTo.fullName) {
+        assignment.assignedTo.fullName = assignment.assignedTo.name;
+      }
+      // Si no tiene ninguno, usar username como fallback
+      else if (!assignment.assignedTo.name && !assignment.assignedTo.fullName) {
+        assignment.assignedTo.name = assignment.assignedTo.username;
+        assignment.assignedTo.fullName = assignment.assignedTo.username;
+      }
+    }
+    
     res.json(assignment);
   } catch (error) {
     console.error('Error al obtener asignación de chat por chatId:', error);
