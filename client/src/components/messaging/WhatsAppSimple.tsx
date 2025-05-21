@@ -747,7 +747,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   });
 
   // Filtrar chats por nombre o último mensaje (si hay chats)
-  const filteredChats = whatsappChats.length > 0 
+  const filteredChats = whatsappChats && whatsappChats.length > 0 
     ? whatsappChats.filter(chat => {
         if (!chatFilter) return true;
         
