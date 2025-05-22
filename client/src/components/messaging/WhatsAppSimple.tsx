@@ -1654,24 +1654,15 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                                 // Asegurarse de que los chats pertenecen realmente a esta cuenta - evitar cruce de IDs
                                 console.log(`Verificando que los chats pertenecen a la cuenta ${accountId}`);
                                 
-                                // Generar chats de demostración específicos para esta cuenta
-                                // ya que los chats actuales podrían estar cruzados entre cuentas
-                                const demoChatsForAccount = [];
-                                for (let i = 1; i <= 10; i++) {
-                                  demoChatsForAccount.push({
-                                    id: `demo-chat-${accountId}-${i}`,
-                                    name: `Chat de Prueba ${i} (Cuenta ${accountId})`,
-                                    isGroup: i % 3 === 0, // Algunos son grupos
-                                    timestamp: Date.now() / 1000 - (i * 3600), // Dispersos en las últimas horas
-                                    unreadCount: Math.floor(Math.random() * 5),
-                                    lastMessage: `Este es un mensaje de prueba para la cuenta ${accountId}`,
-                                    accountId: accountId // ID explícito de la cuenta
-                                  });
+                                // Usar chats ya disponibles para esta cuenta
+                                if (whatsappChats && Array.isArray(whatsappChats)) {
+                                  const chatsForAccount = whatsappChats.map(chat => ({
+                                    ...chat,
+                                    accountId: accountId
+                                  }));
+                                  allChats = [...allChats, ...chatsForAccount];
+                                  console.log(`✅ Usando ${chatsForAccount.length} chats reales para cuenta ${accountId}`);
                                 }
-                                
-                                // Usar estos chats de demostración en lugar de whatsappChats
-                                // para evitar la confusión entre cuentas
-                                allChats = [...allChats, ...demoChatsForAccount];
                               }
                             });
                             
