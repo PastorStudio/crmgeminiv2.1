@@ -360,7 +360,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         fs.mkdirSync(baseDir, { recursive: true });
       }
 
-      const chromiumPath = this.getChromiumExecutablePath();
+      const chromiumPath = '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium';
       const hasExistingSession = fs.existsSync(sessionPath);
 
       const puppeteerOptions = {
@@ -397,8 +397,8 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         qrMaxRetries: hasExistingSession ? 8 : 15,
         restartOnAuthFail: true,
         takeoverOnConflict: true,
-        authTimeoutMs: 300000, // 5 minutos
-        takeoverTimeoutMs: 30000, // 30 segundos
+        authTimeoutMs: 600000, // 10 minutos
+        takeoverTimeoutMs: 60000, // 60 segundos
 
       });
 
@@ -453,6 +453,31 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     const { client, id, name, qrCodePath } = instance;
 
     // Evento QR mejorado para producción
+    client.on('qr', async (qr) => {
+      try {
+        console.log(`📱 Código QR recibido para cuenta ${id}: ${qr.substring(0, 50)}...`);
+        
+        // Validar formato del código QR
+        if (this.isValidWhatsAppQR(qr)) {
+          // Usar el gestor mejorado de QR
+          await improvedQRManager.generateQRCode(id, qr);
+          
+          const remainingMinutes = improvedQRManager.getRemainingValidityMinutes(id);
+          console.log(`✅ Código QR generado para cuenta ${id} (válido por ${remainingMinutes} minutos)`);
+          
+          // También mantener compatibilidad con el cache actual
+          this.qrCodeCache.set(id, {
+            text: qr,
+            dataUrl: await this.generateQRImage(qr),
+            generatedAt: Date.now()
+          });
+        } else {
+          console.warn(`⚠ Código QR inválido recibido para cuenta ${id}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error procesando código QR para cuenta ${id}:`, error);
+      }
+    });
     client.on('qr', async (qrText) => {
       console.log(`Nuevo código QR recibido para cuenta ID ${id} (${name})`);
       
