@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import qrcode from 'qrcode';
 import { storage } from '../storage';
+import { improvedQRManager } from '../utils/improvedQRManager';
 
 interface WhatsAppStatus {
   initialized: boolean;
@@ -225,7 +226,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   private cleanExpiredQRCache(): number {
     let cleaned = 0;
     const now = Date.now();
-    const maxAge = 5 * 60 * 1000; // 5 minutos
+    const maxAge = 20 * 60 * 1000; // 20 minutos - tiempo extendido para conexión
     
     Array.from(this.qrCodeCache.entries()).forEach(([accountId, qrData]) => {
       if (now - qrData.generatedAt > maxAge) {
@@ -393,11 +394,12 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           timeout: 120000,
           ignoreHTTPSErrors: true,
         },
-        qrMaxRetries: hasExistingSession ? 5 : 10,
+        qrMaxRetries: hasExistingSession ? 8 : 15,
         restartOnAuthFail: true,
         takeoverOnConflict: true,
-        authTimeoutMs: 120000,
-        takeoverTimeoutMs: 15000
+        authTimeoutMs: 300000, // 5 minutos
+        takeoverTimeoutMs: 30000, // 30 segundos
+
       });
 
       // Estado inicial
