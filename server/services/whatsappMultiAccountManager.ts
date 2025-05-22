@@ -458,7 +458,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         console.log(`📱 Código QR recibido para cuenta ${id}: ${qr.substring(0, 50)}...`);
         
         // Validar formato del código QR
-        if (this.isValidWhatsAppQR(qr)) {
+        if (qr && qr.startsWith('2@')) {
           // Usar el gestor mejorado de QR
           await improvedQRManager.generateQRCode(id, qr);
           
