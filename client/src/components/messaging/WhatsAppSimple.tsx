@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import { WhatsAppQRCode } from './WhatsAppQRCode';
@@ -1052,7 +1052,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   }, [lastMessage, refetchChats, refetchMessages, selectedChatId, toast]);
 
   // MANEJAR SELECCIÓN DE CHAT - VERSIÓN MEJORADA SIN BUCLES
-  const handleChatSelect = useCallback((chat: WhatsAppChat) => {
+  const handleChatSelect = (chat: WhatsAppChat) => {
     // PROTECCIÓN ANTI-BUCLE: Verificar si ya está seleccionado
     if (selectedChatId === chat.id) {
       console.log(`⚠️ Chat ${chat.id} ya está seleccionado, evitando bucle infinito`);
@@ -1081,7 +1081,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     if (onSelectLead && selectedLeadId) {
       onSelectLead(selectedLeadId);
     }
-  }, [selectedChatId, currentAccountId, refetchMessages, onSelectLead, selectedLeadId]); // Dependencias específicas
+  };
 
   // Enviar mensaje - implementación con cache local
   const handleSendMessage = () => {
@@ -1574,27 +1574,7 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 <TabsTrigger value="contacts" className="flex-1">Contactos</TabsTrigger>
               </TabsList>
               
-              {/* Smart Chat Loader - Solo en modo multi-cuenta */}
-              {multiAccountMode && selectedAccounts.length > 0 && (
-                <SmartChatLoader
-                  accountIds={selectedAccounts}
-                  enabled={multiAccountMode}
-                  onChatsLoaded={(smartChats) => {
-                    console.log(`Smart loader cargó ${smartChats.length} chats optimizados`);
-                    // Actualizar el estado con los chats optimizados
-                    const groupedChats: { [key: number]: any[] } = {};
-                    smartChats.forEach(chat => {
-                      if (!groupedChats[chat.accountId]) {
-                        groupedChats[chat.accountId] = [];
-                      }
-                      groupedChats[chat.accountId].push(chat);
-                    });
-                    setMultiAccountChats(groupedChats);
-                  }}
-                  priorityChats={selectedChatId ? [selectedChatId] : []}
-                  className="mb-2"
-                />
-              )}
+              {/* Smart Chat Loader deshabilitado temporalmente */}
             </div>
             
             <TabsContent value="chats" className="flex-1 overflow-hidden">
