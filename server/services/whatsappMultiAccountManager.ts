@@ -50,6 +50,7 @@ if (!fs.existsSync(ACCOUNTS_DIR)) {
  */
 class WhatsAppMultiAccountManager extends EventEmitter {
   private instances: Map<number, WhatsAppInstance> = new Map();
+  private qrCodeCache: Map<number, { text: string; dataUrl: string; generatedAt: number }> = new Map();
 
   constructor() {
     super();
@@ -271,36 +272,59 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     client.on('qr', async (qrText) => {
       console.log(`Nuevo código QR recibido para cuenta ID ${id} (${name})`);
       
-      // Guardar QR en archivo
-      fs.writeFileSync(qrCodePath, qrText);
-      console.log(`Código QR guardado en: ${qrCodePath}`);
-      
       try {
-        // Generar imagen del QR
+        // Verificar que el texto QR es válido
+        if (!qrText || typeof qrText !== 'string') {
+          console.error(`Código QR inválido para cuenta ${id}: ${qrText}`);
+          return;
+        }
+
+        // Guardar QR en archivo como respaldo
+        try {
+          fs.writeFileSync(qrCodePath, qrText);
+          console.log(`Código QR guardado en: ${qrCodePath}`);
+        } catch (fileError) {
+          console.warn(`No se pudo guardar QR en archivo para cuenta ${id}:`, fileError);
+        }
+        
+        // Generar imagen del QR con configuración optimizada para producción
         const qrDataUrl = await qrcode.toDataURL(qrText, {
           errorCorrectionLevel: 'H',
           type: 'image/png',
-          margin: 4,
-          scale: 4,
+          margin: 2,
+          scale: 6,
+          width: 300,
           color: {
-            dark: '#128C7E',
+            dark: '#000000',
             light: '#FFFFFF'
           }
         });
         
-        // Actualizar estado
+        // Actualizar estado con validación
         instance.status.qrCode = qrText;
         instance.status.qrDataUrl = qrDataUrl;
         instance.status.ready = true;
         
-        // Actualizar estado en la base de datos
-        await storage.updateWhatsappAccount(id, { 
-          status: 'pending_auth',
-          sessionData: {
-            ...instance.status,
-            lastQrGeneratedAt: new Date().toISOString()
-          }
+        // Almacenar QR en memoria para acceso rápido
+        this.qrCodeCache.set(id, {
+          text: qrText,
+          dataUrl: qrDataUrl,
+          generatedAt: Date.now()
         });
+        
+        // Actualizar estado en la base de datos
+        try {
+          await storage.updateWhatsappAccount(id, { 
+            status: 'pending_auth',
+            sessionData: {
+              qrCode: qrText,
+              qrDataUrl: qrDataUrl,
+              lastQrGenerated: new Date().toISOString()
+            }
+          });
+        } catch (dbError) {
+          console.warn(`No se pudo actualizar estado en BD para cuenta ${id}:`, dbError);
+        }
         
         // Emitir evento
         this.emit('qr', { 
@@ -309,6 +333,12 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           qrText, 
           qrDataUrl 
         });
+      
+      } catch (qrError) {
+        console.error(`Error procesando código QR para cuenta ${id}:`, qrError);
+        instance.status.error = 'Error generando código QR';
+      }
+    });
         
       } catch (error) {
         console.error(`Error generando imagen QR para cuenta ID ${id}:`, error);
