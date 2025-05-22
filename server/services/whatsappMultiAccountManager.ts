@@ -3,7 +3,7 @@
  * Versión optimizada para códigos QR en producción
  */
 import { EventEmitter } from 'events';
-import { Client, LocalAuth } from 'whatsapp-web.js';
+import { Client } from 'whatsapp-web.js';
 import fs from 'fs';
 import path from 'path';
 import qrcode from 'qrcode';
@@ -227,12 +227,12 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     const now = Date.now();
     const maxAge = 5 * 60 * 1000; // 5 minutos
     
-    for (const [accountId, qrData] of this.qrCodeCache) {
+    Array.from(this.qrCodeCache.entries()).forEach(([accountId, qrData]) => {
       if (now - qrData.generatedAt > maxAge) {
         this.qrCodeCache.delete(accountId);
         cleaned++;
       }
-    }
+    });
     
     if (cleaned > 0) {
       console.log(`Limpiados ${cleaned} códigos QR expirados del cache`);
@@ -388,10 +388,6 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
       // Crear cliente WhatsApp
       const client = new Client({
-        authStrategy: new LocalAuth({
-          clientId: `whatsapp_account_${accountId}`,
-          dataPath: sessionPath
-        }),
         puppeteer: {
           ...puppeteerOptions,
           timeout: 120000,
@@ -808,13 +804,13 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   getActiveAccounts(): { id: number, name: string, status: string }[] {
     const activeAccounts: { id: number, name: string, status: string }[] = [];
     
-    for (const [id, instance] of this.instances) {
+    Array.from(this.instances.entries()).forEach(([id, instance]) => {
       activeAccounts.push({
         id,
         name: instance.name,
         status: instance.status.authenticated ? 'connected' : 'disconnected'
       });
-    }
+    });
     
     return activeAccounts;
   }
