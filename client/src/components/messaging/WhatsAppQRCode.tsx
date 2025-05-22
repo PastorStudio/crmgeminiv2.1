@@ -116,8 +116,8 @@ export function WhatsAppQRCode({ accountId }: { accountId: number }) {
       }
     },
     refetchInterval: (data) => {
-      // Si hay error o no hay datos, acortar el intervalo
-      if (!data || qrError) return 3000;
+      // Si no hay datos, acortar el intervalo
+      if (!data) return 3000;
       // Si hay datos, intervalo normal
       return 5000;
     },
