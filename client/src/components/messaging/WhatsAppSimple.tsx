@@ -872,30 +872,48 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
   
   const currentChat = getCurrentChat();
 
-  // Seleccionar el primer chat al cargar - VERSIÓN CORREGIDA
-  // Usamos una referencia para evitar el bucle infinito
+  // SELECCIÓN INICIAL DE CHAT - VERSIÓN CORREGIDA PARA EVITAR BUCLES
   const initialSelectionMade = useRef(false);
   
   useEffect(() => {
-    // Sólo elegir un chat automáticamente si:
-    // 1. No hay bucle previo (verificamos con la referencia)
-    // 2. Hay chats disponibles
-    // 3. No hay chat seleccionado actualmente
+    // CONDICIONES ESTRICTAS para evitar bucle infinito:
+    // 1. Solo ejecutar UNA VEZ por sesión (usando ref)
+    // 2. Debe haber chats disponibles 
+    // 3. NO debe haber chat ya seleccionado
+    // 4. Verificar que los chats no sean de demo (para evitar interferencia)
     if (
       !initialSelectionMade.current && 
       Array.isArray(whatsappChats) && 
       whatsappChats.length > 0 && 
-      !selectedChatId
+      !selectedChatId &&
+      whatsappChats.some(chat => !chat.id.includes('demo-chat'))
     ) {
-      console.log('Seleccionando chat inicial una sola vez');
-      // Ordenar por más reciente
-      const sortedChats = [...whatsappChats].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-      setSelectedChatId(sortedChats[0].id);
+      console.log('🎯 Seleccionando chat inicial automáticamente (solo una vez)');
       
-      // Marcar que ya se hizo la selección inicial para no repetir
-      initialSelectionMade.current = true;
+      // Filtrar chats reales (no de demo)
+      const realChats = whatsappChats.filter(chat => !chat.id.includes('demo-chat'));
+      
+      if (realChats.length > 0) {
+        // Ordenar por más reciente y seleccionar el primero
+        const sortedChats = [...realChats].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        const firstChat = sortedChats[0];
+        
+        setSelectedChatId(firstChat.id);
+        console.log(`✅ Chat inicial seleccionado: ${firstChat.name} (${firstChat.id})`);
+        
+        // IMPORTANTE: Marcar que ya se hizo la selección inicial
+        initialSelectionMade.current = true;
+      }
     }
-  }, [whatsappChats]);
+  }, [whatsappChats, selectedChatId]); // DEPENDENCIAS LIMITADAS para evitar re-ejecución
+  
+  // RESETEAR la referencia cuando cambie la cuenta para permitir nueva selección
+  useEffect(() => {
+    if (currentAccountId) {
+      initialSelectionMade.current = false;
+      console.log('🔄 Reseteando selección inicial para nueva cuenta:', currentAccountId);
+    }
+  }, [currentAccountId]);
 
   // Scroll al último mensaje
   useEffect(() => {
@@ -1033,31 +1051,37 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     }
   }, [lastMessage, refetchChats, refetchMessages, selectedChatId, toast]);
 
-  // Manejar selección de chat - Versión mejorada para evitar bucles
-  const handleChatSelect = (chat: WhatsAppChat) => {
-    // Verificar si ya está seleccionado (prevenir bucles infinitos)
+  // MANEJAR SELECCIÓN DE CHAT - VERSIÓN MEJORADA SIN BUCLES
+  const handleChatSelect = useCallback((chat: WhatsAppChat) => {
+    // PROTECCIÓN ANTI-BUCLE: Verificar si ya está seleccionado
     if (selectedChatId === chat.id) {
-      console.log(`Chat ${chat.id} ya seleccionado, evitando bucle`);
+      console.log(`⚠️ Chat ${chat.id} ya está seleccionado, evitando bucle infinito`);
       return;
     }
     
-    console.log(`Seleccionando chat ${chat.id} (${chat.name})`);
+    console.log(`🎯 Seleccionando chat ${chat.id} (${chat.name})`);
+    
+    // CAMBIO INMEDIATO del estado (sin delays que causen bucles)
     setSelectedChatId(chat.id);
     
-    // Guardar en localStorage para mantener la selección entre recargas
-    localStorage.setItem('last_selected_chat_id', chat.id);
-    localStorage.setItem('last_selected_chat_account', currentAccountId.toString());
+    // Guardar en localStorage para persistencia
+    try {
+      localStorage.setItem('last_selected_chat_id', chat.id);
+      localStorage.setItem('last_selected_chat_account', currentAccountId.toString());
+    } catch (e) {
+      console.warn('No se pudo guardar en localStorage:', e);
+    }
     
-    // Refrescar mensajes para el chat seleccionado
+    // Refrescar mensajes SOLO una vez con delay mínimo
     setTimeout(() => {
       refetchMessages();
-    }, 300);
+    }, 100); // Delay reducido para mejor UX
     
-    // Si hay un ID de lead asociado, notificar
+    // Notificar lead si es necesario
     if (onSelectLead && selectedLeadId) {
       onSelectLead(selectedLeadId);
     }
-  };
+  }, [selectedChatId, currentAccountId, refetchMessages, onSelectLead, selectedLeadId]); // Dependencias específicas
 
   // Enviar mensaje - implementación con cache local
   const handleSendMessage = () => {
