@@ -1573,6 +1573,28 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                 <TabsTrigger value="chats" className="flex-1">Chats</TabsTrigger>
                 <TabsTrigger value="contacts" className="flex-1">Contactos</TabsTrigger>
               </TabsList>
+              
+              {/* Smart Chat Loader - Solo en modo multi-cuenta */}
+              {multiAccountMode && selectedAccounts.length > 0 && (
+                <SmartChatLoader
+                  accountIds={selectedAccounts}
+                  enabled={multiAccountMode}
+                  onChatsLoaded={(smartChats) => {
+                    console.log(`Smart loader cargó ${smartChats.length} chats optimizados`);
+                    // Actualizar el estado con los chats optimizados
+                    const groupedChats: { [key: number]: any[] } = {};
+                    smartChats.forEach(chat => {
+                      if (!groupedChats[chat.accountId]) {
+                        groupedChats[chat.accountId] = [];
+                      }
+                      groupedChats[chat.accountId].push(chat);
+                    });
+                    setMultiAccountChats(groupedChats);
+                  }}
+                  priorityChats={selectedChatId ? [selectedChatId] : []}
+                  className="mb-2"
+                />
+              )}
             </div>
             
             <TabsContent value="chats" className="flex-1 overflow-hidden">
