@@ -6,6 +6,9 @@ import { setupVite, serveStatic, log } from "./vite";
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
+import { db } from "./db";
+import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 // Sistema iniciado correctamente
 console.log('✅ Sistema CRM WhatsApp iniciado correctamente');
