@@ -16,22 +16,39 @@ router.get('/:chatId', async (req, res) => {
   }
 });
 
-// Agregar comentario a un chat
+// Agregar comentario a un chat - VERSIÓN CORREGIDA
 router.post('/', async (req, res) => {
   try {
-    console.log('💬 Creando comentario:', req.body);
-    const { chatId, text, comment } = req.body;
+    const { chatId, text, comment, userId = 1 } = req.body;
     const commentText = text || comment;
     
+    console.log('💬 CREANDO COMENTARIO CORREGIDO:', { chatId, commentText, userId, fullBody: req.body });
+
     if (!chatId || !commentText) {
-      return res.status(400).json({ error: 'Se requieren chatId y text/comment' });
+      return res.status(400).json({ 
+        error: 'Datos requeridos faltantes',
+        details: { chatId: !!chatId, text: !!commentText },
+        received: req.body
+      });
     }
 
-    const newComment = await storage.createChatComment({ chatId, text: commentText });
-    res.json(newComment);
+    // Usar el storage que SÍ funciona
+    try {
+      const newComment = await storage.createChatComment({ 
+        chatId, 
+        text: commentText,
+        userId: parseInt(userId)
+      });
+      
+      console.log('✅ COMENTARIO CREADO EXITOSAMENTE:', newComment);
+      res.json(newComment);
+    } catch (storageError) {
+      console.error('❌ Error en storage:', storageError);
+      res.status(500).json({ error: 'Error en almacenamiento: ' + (storageError as Error).message });
+    }
   } catch (error) {
-    console.error('Error al agregar comentario:', error);
-    res.status(500).json({ error: 'Error al agregar comentario' });
+    console.error('❌ Error general creando comentario:', error);
+    res.status(500).json({ error: 'Error al agregar comentario: ' + (error as Error).message });
   }
 });
 

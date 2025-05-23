@@ -61,7 +61,7 @@ export async function createRealAssignment(req: Request, res: Response) {
 export async function getRealAssignment(req: Request, res: Response) {
   try {
     const { chatId, accountId } = req.query;
-    console.log('🔍 BUSCANDO ASIGNACIÓN REAL:', { chatId, accountId });
+    console.log('🔍 BUSCANDO ASIGNACIÓN REAL:', { chatId, accountId, fullQuery: req.query });
 
     if (!chatId || !accountId) {
       return res.status(400).json({ error: 'chatId y accountId requeridos' });
