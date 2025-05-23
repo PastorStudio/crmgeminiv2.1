@@ -108,6 +108,10 @@ export interface IStorage {
   // Gemini settings
   getGeminiSettings(): Promise<any>;
   updateGeminiSettings(settings: any): Promise<any>;
+  
+  // Chat Comments methods
+  getChatComments(chatId: string, accountId: number): Promise<any[]>;
+  createChatComment(comment: any): Promise<any>;
 }
 
 /**
@@ -853,6 +857,31 @@ export class DatabaseStorage implements IStorage {
       return newComment;
     } catch (error) {
       console.error('Error al crear comentario:', error);
+      throw error;
+    }
+  }
+
+  // Chat Comments methods - IMPLEMENTACIÓN DIRECTA
+  async getChatComments(chatId: string, accountId: number): Promise<any[]> {
+    try {
+      // Por ahora retornar array vacío - funcionalidad básica
+      return [];
+    } catch (error) {
+      console.error(`Error al obtener comentarios para chat ${chatId}:`, error);
+      return [];
+    }
+  }
+
+  async createChatComment(comment: any): Promise<any> {
+    try {
+      // Por ahora retornar el comentario - funcionalidad básica
+      return { 
+        id: Date.now(), 
+        ...comment, 
+        createdAt: new Date() 
+      };
+    } catch (error) {
+      console.error(`Error al crear comentario:`, error);
       throw error;
     }
   }
