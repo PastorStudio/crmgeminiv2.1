@@ -637,7 +637,19 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  // ✅ MÉTODO DUPLICADO ELIMINADO - USAR SOLO LA IMPLEMENTACIÓN POSTGRESQL REAL
+  async getChatAssignmentByChatId(chatId: string): Promise<ChatAssignment | undefined> {
+    try {
+      const [assignment] = await db.select()
+        .from(chatAssignments)
+        .where(eq(chatAssignments.chatId, chatId));
+      
+      console.log(`🔍 Consulta asignación PostgreSQL para chat ${chatId}:`, assignment);
+      return assignment;
+    } catch (error) {
+      console.error(`Error al obtener asignación para chat ${chatId}:`, error);
+      return undefined;
+    }
+  }
 
   async getChatAssignmentByChat(chatId: string, accountId: number): Promise<ChatAssignment | undefined> {
     try {
