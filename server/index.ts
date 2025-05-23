@@ -6,6 +6,9 @@ import { setupVite, serveStatic, log } from "./vite";
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
+
+// Inicializar motor de respuestas automáticas
+const autoResponseEngine = require('./services/autoResponseEngine');
 // Configuración específica para WhatsApp QR
 console.log(`Modo de ejecución: ${process.env.NODE_ENV || 'development'}`);
 // No cambiamos NODE_ENV para no afectar a Vite
