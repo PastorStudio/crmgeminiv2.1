@@ -2,11 +2,34 @@
  * Implementación de rutas de API directas que no pasan por Vite
  */
 
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import whatsappService from './simplified-whatsappService';
 import { whatsappMultiAccountManager } from './whatsappMultiAccountManager';
+import { storage } from '../storage';
 
 export function registerDirectAPIRoutes(app: Express): void {
+  
+  // Ruta para usuarios que bypasa completamente Vite
+  app.get("/api/direct/users", async (req: Request, res: Response) => {
+    try {
+      console.log("🔄 Direct API: Obteniendo usuarios...");
+      const users = await storage.getAllUsers();
+      const safeUsers = users.map(user => {
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+      console.log(`✅ Direct API: Enviando ${safeUsers.length} usuarios`);
+      console.log(`📋 Direct API: Lista:`, safeUsers.map(u => u.username));
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.status(200).json(safeUsers);
+    } catch (error) {
+      console.error("❌ Direct API: Error obteniendo usuarios:", error);
+      res.status(500).json({ error: "Error interno del servidor" });
+    }
+  });
+  
   // Rutas directas para obtener el estado de WhatsApp (incluido el código QR)
   app.get('/api/direct/whatsapp/status', async (req, res) => {
     try {
