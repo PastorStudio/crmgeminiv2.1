@@ -64,16 +64,30 @@ export function ChatCommentsDialog({
     enabled: open && !!chatId,
   });
 
+  // Obtener información del usuario actual
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: async () => {
+      const response = await fetch('/api/system/users');
+      if (!response.ok) throw new Error('Error al obtener usuarios');
+      const users = await response.json();
+      // Por ahora retornamos el primer usuario activo como usuario actual
+      // TODO: Implementar autenticación real
+      return users.find((u: any) => u.status === 'active') || users[0];
+    },
+  });
+
   // Agregar nuevo comentario
   const addCommentMutation = useMutation({
     mutationFn: async (comment: string) => {
-      console.log('💬 Agregando comentario:', { chatId, comment });
+      console.log('💬 Agregando comentario:', { chatId, comment, userId: currentUser?.id });
       const response = await fetch('/api/chat-comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chatId,
-          comment: comment.trim()
+          comment: comment.trim(),
+          userId: currentUser?.id || 1
         })
       });
       
