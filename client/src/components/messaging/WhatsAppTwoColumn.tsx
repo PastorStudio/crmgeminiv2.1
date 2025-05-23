@@ -866,15 +866,34 @@ export function WhatsAppTwoColumn() {
                   </div>
                 </div>
 
-                {/* Botón de información del perfil */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowUserProfile(true)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <User className="h-4 w-4" />
-                </Button>
+                {/* Botones de acción */}
+                <div className="flex items-center space-x-2">
+                  {/* Botón de Asignar Chat - Azul y visible */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Button
+                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                      onClick={() => setAssignmentDialogOpen(true)}
+                    >
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      Asignar Chat
+                    </Button>
+                  </motion.div>
+                  
+                  {/* Botón de información del perfil */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowUserProfile(true)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <User className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
