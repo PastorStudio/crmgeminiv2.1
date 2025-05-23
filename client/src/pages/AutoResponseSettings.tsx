@@ -183,7 +183,7 @@ export default function AutoResponseSettings() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auto-response/config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/config/auto-response"] });
       // Solo mostrar un toast discreto ocasionalmente
       if (Math.random() < 0.1) { // 10% de probabilidad
         toast({
