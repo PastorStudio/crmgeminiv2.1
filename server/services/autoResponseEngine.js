@@ -18,6 +18,11 @@ class AutoResponseEngine {
     
     // Activar inmediatamente para pruebas
     console.log('🚀 Inicializando motor de respuestas automáticas...');
+    
+    // Activar monitoreo automáticamente al inicializar
+    setTimeout(() => {
+      this.startMonitoring();
+    }, 5000);
   }
 
   async initializeAI() {
@@ -70,15 +75,25 @@ class AutoResponseEngine {
     if (!this.isActive) return;
 
     console.log('🔍 Verificando mensajes nuevos para respuestas automáticas...');
+    console.log(`📊 Chats configurados: ${this.configs.size}`);
     
     for (const [chatId, config] of this.configs.entries()) {
-      if (!config.enabled) continue;
+      if (!config.enabled) {
+        console.log(`⏸️ Chat ${chatId} tiene respuestas automáticas deshabilitadas`);
+        continue;
+      }
+      
+      console.log(`🎯 Procesando chat activo: ${chatId}`);
       
       try {
         await this.processChat(chatId, config);
       } catch (error) {
         console.error(`❌ Error procesando chat ${chatId}:`, error);
       }
+    }
+    
+    if (this.configs.size === 0) {
+      console.log('⚠️ No hay chats configurados para respuestas automáticas');
     }
   }
 
