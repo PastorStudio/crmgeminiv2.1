@@ -14,6 +14,20 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// ENDPOINT CRÍTICO - ANTES DE CUALQUIER MIDDLEWARE
+app.post("/api/auto-response/config", (req, res) => {
+  console.log('🚀 ENDPOINT DIRECTO EN INDEX.TS');
+  console.log('📦 Body:', req.body);
+  
+  res.setHeader('Content-Type', 'application/json');
+  res.json({
+    success: true,
+    message: "Configuración guardada desde index.ts",
+    config: req.body,
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
