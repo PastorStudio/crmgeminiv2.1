@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { registerRoutes } from "./routes";
+import { activeAutoResponse } from "./services/activeConnectionAutoResponse";
 import { setupVite, serveStatic, log } from "./vite";
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
