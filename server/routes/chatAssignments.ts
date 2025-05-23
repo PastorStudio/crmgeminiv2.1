@@ -54,8 +54,7 @@ router.post('/', async (req, res) => {
       assignment = await storage.createOrUpdateChatAssignment({
         chatId,
         accountId,
-        assignedToId,
-        assignedAt: new Date()
+        assignedToId
       });
     }
     

@@ -658,7 +658,7 @@ export class DatabaseStorage implements IStorage {
       if (assignment) {
         // Obtener información del agente asignado
         const agent = await this.getUser(assignment.assignedToId);
-        return { ...assignment, agent };
+        return { ...assignment, agent } as any;
       }
       
       return undefined;
