@@ -69,8 +69,10 @@ export async function getRealAssignment(req: Request, res: Response) {
       path: req.path 
     });
 
+    // Si no hay parámetros, devolver respuesta vacía válida
     if (!chatId || !accountId) {
-      return res.status(400).json({ error: 'chatId y accountId requeridos' });
+      console.log('❌ Parámetros faltantes - devolviendo null');
+      return res.json(null);
     }
 
     // Buscar asignación con JOIN para obtener datos del agente
