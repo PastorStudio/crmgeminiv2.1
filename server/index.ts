@@ -9,6 +9,26 @@ import whatsappAccountsRouter from "./routes/whatsappAccounts";
 
 // Inicializar motor de respuestas automáticas
 const autoResponseEngine = require('./services/autoResponseEngine');
+
+// Activar respuestas automáticas para el chat principal después de 10 segundos
+setTimeout(() => {
+  console.log('🚀 Activando respuestas automáticas automáticamente para chat principal...');
+  const config = {
+    enabled: true,
+    provider: 'gemini',
+    timing: '30sec',
+    style: 'dynamic',
+    humanity: 3,
+    length: 'medium',
+    instructions: 'Responde de manera amigable y profesional a los clientes'
+  };
+  autoResponseEngine.setConfig('12016671859@c.us', 1, config);
+  
+  // Verificar mensajes inmediatamente
+  setTimeout(() => {
+    autoResponseEngine.checkForNewMessages();
+  }, 5000);
+}, 10000);
 // Configuración específica para WhatsApp QR
 console.log(`Modo de ejecución: ${process.env.NODE_ENV || 'development'}`);
 // No cambiamos NODE_ENV para no afectar a Vite
