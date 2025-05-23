@@ -69,112 +69,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Registrar rutas para cuentas de WhatsApp y asignaciones de chat
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   // ✅ ENDPOINTS DIRECTOS PARA ASIGNACIONES Y COMENTARIOS - POSTGRESQL REAL
+  const { 
+    createChatAssignment, 
+    getChatAssignment, 
+    getChatComments, 
+    createChatComment 
+  } = await import('./chat-direct-api');
   
-  // CREAR ASIGNACIÓN
-  app.post("/api/chat-assignments", async (req: Request, res: Response) => {
-    try {
-      console.log('🔥 NUEVA ASIGNACIÓN DIRECTA:', req.body);
-      const { chatId, accountId, assignedToId, category } = req.body;
-      
-      // ELIMINAR ASIGNACIÓN ANTERIOR
-      await db.delete(chatAssignments).where(eq(chatAssignments.chatId, chatId));
-      
-      // CREAR NUEVA ASIGNACIÓN DIRECTAMENTE EN POSTGRESQL
-      const [newAssignment] = await db.insert(chatAssignments)
-        .values({
-          chatId: String(chatId),
-          accountId: Number(accountId), 
-          assignedToId: Number(assignedToId),
-          category: category || 'general',
-          status: 'active',
-          assignedAt: new Date(),
-          lastActivityAt: new Date()
-        })
-        .returning();
-      
-      // OBTENER INFORMACIÓN DEL AGENTE
-      const [agent] = await db.select().from(users).where(eq(users.id, assignedToId));
-      
-      const response = { ...newAssignment, assignedTo: agent };
-      console.log('✅ ASIGNACIÓN CREADA EXITOSAMENTE:', response);
-      res.json(response);
-    } catch (error) {
-      console.error('❌ ERROR CREANDO ASIGNACIÓN:', error);
-      res.status(500).json({ error: 'Error al crear asignación' });
-    }
-  });
-
-  // OBTENER ASIGNACIÓN
-  app.get("/api/chat-assignments/by-chat", async (req: Request, res: Response) => {
-    try {
-      const { chatId, accountId } = req.query;
-      console.log('🔍 BUSCANDO ASIGNACIÓN:', { chatId, accountId });
-      
-      const [assignment] = await db.select()
-        .from(chatAssignments)
-        .where(eq(chatAssignments.chatId, chatId as string));
-      
-      if (assignment) {
-        const [agent] = await db.select().from(users).where(eq(users.id, assignment.assignedToId));
-        const response = { ...assignment, assignedTo: agent };
-        console.log('✅ ASIGNACIÓN ENCONTRADA:', response);
-        res.json(response);
-      } else {
-        console.log('❌ NO HAY ASIGNACIÓN PARA:', chatId);
-        res.json(null);
-      }
-    } catch (error) {
-      console.error('❌ ERROR BUSCANDO ASIGNACIÓN:', error);
-      res.status(500).json({ error: 'Error al buscar asignación' });
-    }
-  });
-
-  // COMENTARIOS INTERNOS
-  app.get("/api/chat-comments/:chatId", async (req: Request, res: Response) => {
-    try {
-      const { chatId } = req.params;
-      console.log('💬 OBTENIENDO COMENTARIOS PARA:', chatId);
-      
-      // Por ahora retornar comentarios de ejemplo hasta crear la tabla
-      const comments = [
-        {
-          id: 1,
-          chatId: chatId,
-          text: "Cliente parece interesado en el producto premium",
-          timestamp: new Date().toISOString(),
-          user: { name: "Sistema", username: "system" }
-        }
-      ];
-      
-      console.log('✅ COMENTARIOS OBTENIDOS:', comments);
-      res.json(comments);
-    } catch (error) {
-      console.error('❌ ERROR OBTENIENDO COMENTARIOS:', error);
-      res.status(500).json({ error: 'Error al obtener comentarios' });
-    }
-  });
-
-  app.post("/api/chat-comments", async (req: Request, res: Response) => {
-    try {
-      const { chatId, text, userId } = req.body;
-      console.log('💬 CREANDO COMENTARIO:', { chatId, text, userId });
-      
-      // Crear comentario (implementación básica)
-      const newComment = {
-        id: Date.now(),
-        chatId,
-        text,
-        timestamp: new Date().toISOString(),
-        user: { name: "Agente", username: "agent" }
-      };
-      
-      console.log('✅ COMENTARIO CREADO:', newComment);
-      res.json(newComment);
-    } catch (error) {
-      console.error('❌ ERROR CREANDO COMENTARIO:', error);
-      res.status(500).json({ error: 'Error al crear comentario' });
-    }
-  });
+  app.post("/api/chat-assignments", createChatAssignment);
+  app.get("/api/chat-assignments/by-chat", getChatAssignment);
+  app.get("/api/chat-comments/:chatId", getChatComments);
+  app.post("/api/chat-comments", createChatComment);
   
   // Ruta para la página de prueba de la galería de medios
   app.get("/media-gallery-test", (req: Request, res: Response) => {
