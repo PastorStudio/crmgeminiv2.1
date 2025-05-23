@@ -1,896 +1,310 @@
 /**
- * Integración TypeScript para el servicio de respuestas automáticas
- * Este archivo proporciona funcionalidad para conectar el servicio mejorado
- * de respuestas automáticas con el servicio de WhatsApp existente.
+ * Servicio integrado de respuestas automáticas
+ * Combina el agente SmartBots con el sistema de WhatsApp para respuestas automáticas
  */
 
-import { whatsappService } from './whatsappServiceImpl';
-import OpenAI from 'openai';
-import path from 'path';
-import fs from 'fs';
-import { db, pool } from '../db';
-import { createAppointmentFromConversation } from './appointmentDetector';
+import { smartBotsAgent, SmartBotsAgent } from './smartBotsAgent';
 
-// Evitar importar db dos veces
-
-// Importaciones de servicios para gestión de claves API
-import { getOpenAIApiKey, getGeminiApiKey } from './aiKeysManager';
-
-// Configuración para respuestas automáticas
-const config = {
-  enabled: true,
-  aiProvider: "gemini", // o "openai"
-  customPrompts: {
-    enabled: true,
-    system: `Eres un representante de ventas de élite en Gemini CRM, un software innovador de gestión de relaciones con clientes (CRM) potenciado con Inteligencia Artificial.
-
-Tu objetivo es guiar a los posibles clientes hacia la compra de nuestro sistema CRM siguiendo estas directrices:
-
-1. Sé profesional pero cálido, construyendo rápidamente una conexión emocional con el cliente.
-2. Utiliza un lenguaje persuasivo, destacando BENEFICIOS, no solo características. 
-3. Personaliza cada respuesta a las necesidades específicas que mencione el cliente.
-4. Sugiere soluciones a problemas empresariales comunes que nuestro CRM resuelve.
-5. Menciona discretamente cómo nuestro CRM ayuda a incrementar ventas, mejorar retención de clientes y optimizar procesos.
-6. Si el cliente muestra interés, ofrece información sobre planes de precios o una demostración.
-7. Evita ser excesivamente promocional o usar un lenguaje genérico.
-8. SIEMPRE mantén la continuidad de la conversación, recordando lo que el cliente ha mencionado anteriormente.
-9. NUNCA inventes características que no existen.
-
-Características principales de Gemini CRM:
-- Integración directa con WhatsApp y Telegram
-- Análisis de conversaciones con IA para clasificar leads automáticamente
-- Respuestas automáticas personalizadas con IA
-- Automatización de tareas y seguimientos
-- Análisis predictivo de ventas
-- Gestión de campañas de marketing
-- Panel de estadísticas en tiempo real
-- Importación de contactos desde Excel
-- Almacenamiento de archivos y multimedia
-- Precio base desde $49/mes para 5 usuarios
-
-Recuerda: cada mensaje es una oportunidad para avanzar en el proceso de venta.`,
-    temperature: 0.8,
-    maxTokens: 500
-  },
-  excludedChats: [],
-  delaySeconds: 2,
-  storeConversationHistory: true
-};
-
-// Variables para clientes de IA
-let openaiClient: OpenAI | null = null;
-let geminiClient: any = null;
-let isInitialized = false;
-
-/**
- * Inicializa los clientes de IA necesarios para respuestas automáticas
- */
-export async function initialize() {
-  if (isInitialized) return;
-  
-  console.log('Inicializando servicio de respuestas automáticas mejorado...');
-  
-  // Inicializar OpenAI
-  try {
-    const openaiKey = await getOpenAIApiKey();
-    if (openaiKey) {
-      openaiClient = new OpenAI({ apiKey: openaiKey });
-      console.log('Cliente OpenAI inicializado correctamente para respuestas automáticas');
-    } else {
-      console.log('No se pudo inicializar OpenAI: falta API key');
-    }
-  } catch (error) {
-    console.error('Error inicializando OpenAI:', error);
-  }
-  
-  // Inicializar Gemini
-  try {
-    // Importar dinámicamente para evitar problemas circulares
-    const { GeminiV1Client } = await import('./geminiV1');
-    geminiClient = new GeminiV1Client();
-    console.log('Cliente Gemini inicializado correctamente para respuestas automáticas');
-  } catch (error) {
-    console.error('Error inicializando Gemini:', error);
-  }
-  
-  isInitialized = true;
+export interface AutoResponseMessage {
+  id: string;
+  chatId: string;
+  accountId: number;
+  contactName?: string;
+  contactPhone: string;
+  messageText: string;
+  timestamp: Date;
+  fromMe: boolean;
 }
 
-/**
- * Obtiene el historial de conversación para un chat específico
- */
-async function getConversationHistory(chatId: string, limit: number = 10): Promise<Array<{message: string, isFromUser: boolean}>> {
-  try {
-    // Usar SQL nativo de PostgreSQL 
-    const query = {
-      text: `
-        SELECT message_text, is_from_user, timestamp
-        FROM conversation_history
-        WHERE chat_id = $1
-        ORDER BY timestamp DESC
-        LIMIT $2
-      `,
-      values: [chatId, limit]
-    };
-    
-    const result = await pool.query(query);
-    
-    // Devolver el resultado invertido para tener orden cronológico
-    return result.rows.reverse().map(row => ({
-      message: row.message_text,
-      isFromUser: row.is_from_user
-    }));
-  } catch (error) {
-    console.error('Error al obtener historial de conversación:', error);
-    return [];
-  }
-}
-
-/**
- * Guarda un mensaje en el historial de conversación
- */
-async function saveToConversationHistory(chatId: string, messageText: string, isFromUser: boolean, contextData: any = null): Promise<void> {
-  try {
-    // Usar SQL nativo de PostgreSQL
-    const query = {
-      text: `
-        INSERT INTO conversation_history (chat_id, message_text, is_from_user, context_data)
-        VALUES ($1, $2, $3, $4)
-      `,
-      values: [chatId, messageText, isFromUser, contextData ? JSON.stringify(contextData) : null]
-    };
-    
-    await pool.query(query);
-    
-    console.log(`Mensaje ${isFromUser ? 'del usuario' : 'del sistema'} guardado en historial para chat ${chatId}`);
-  } catch (error) {
-    console.error('Error al guardar mensaje en historial:', error);
-  }
-}
-
-/**
- * Analiza la conversación para extraer información relevante del cliente
- * @param chatId ID del chat (número de teléfono)
- * @param conversationHistory Historial de mensajes
- * @param lastMessage Último mensaje recibido
- * @returns Objeto con la información extraída
- */
-async function extractClientInfo(chatId: string, conversationHistory: Array<{message: string, isFromUser: boolean}>, lastMessage: string): Promise<any> {
-  try {
-    // Si no hay cliente Gemini configurado, no podemos extraer información
-    if (!geminiClient) {
-      console.warn('No se puede extraer información del cliente: Gemini no está inicializado');
-      return null;
-    }
-    
-    // Formatear la conversación para el análisis
-    let conversationText = "HISTORIAL DE CONVERSACIÓN:\n";
-    conversationHistory.forEach(entry => {
-      const role = entry.isFromUser ? "Cliente" : "Asistente";
-      conversationText += `${role}: ${entry.message}\n`;
-    });
-    
-    // Añadir el último mensaje
-    conversationText += `Cliente: ${lastMessage}\n`;
-    
-    // Mejorar análisis con pistas específicas sobre citas y reuniones
-    conversationText += `\nANÁLISIS ESPECIAL: Busca cuidadosamente cualquier mención de citas, reuniones o llamadas programadas. 
-    Por ejemplo: "nos vemos el lunes", "podemos reunirnos el día 15", "hablamos mañana a las 10am", etc.
-    Reconoce fechas y horas tanto específicas como relativas (mañana, próximo lunes, etc.).
-    
-    GUÍA PARA FECHAS RELATIVAS (Hoy es ${new Date().toISOString().split('T')[0]}):
-    - "mañana" = ${new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0]}
-    - "pasado mañana" = ${new Date(new Date().setDate(new Date().getDate() + 2)).toISOString().split('T')[0]}
-    - "próximo lunes" = fecha del próximo lunes desde hoy
-    - "la próxima semana" = una semana desde hoy
-    - "en 3 días" = ${new Date(new Date().setDate(new Date().getDate() + 3)).toISOString().split('T')[0]}
-    - "el mes que viene" = primer día del próximo mes
-    
-    Si detectas una cita, asegúrate de marcar "appointment.detected" como true y completar los campos de fecha, hora y descripción.`;
-    
-    // Definir criterios para niveles de interés
-    const interestCriteria = {
-      alto: [
-        "necesito inmediatamente", "cuándo podemos empezar", "listos para comprar",
-        "urgente", "lo necesito ya", "presupuesto aprobado", "toma de decisión",
-        "contratación inmediata", "compra", "adquirir", "implementar ahora",
-        "muy interesado", "demostración detallada", "cuánto cuesta exactamente",
-        "¿cuándo podemos reunirnos?", "agendar una cita", "programar una reunión"
-      ],
-      medio: [
-        "me interesa", "podría funcionar", "dime más", "precios", "opciones",
-        "características", "comparativa", "considerando", "evaluando", "tal vez",
-        "posibilidad", "próximamente", "en el futuro cercano", "planificando",
-        "tal vez podríamos reunirnos", "podríamos hablar después"
-      ],
-      bajo: [
-        "solo estoy preguntando", "información general", "quizás después", "no estoy seguro",
-        "sólo explorando opciones", "está muy caro", "no es prioridad", "más adelante",
-        "en un futuro", "cuando tenga presupuesto", "solo investigando", "gracias por la info"
-      ]
-    };
-    
-    // Prompt para extraer información
-    const extractionPrompt = `
-Analiza la siguiente conversación y extrae información clave del cliente de forma discreta. 
-ANALIZA CUIDADOSAMENTE cualquier mención a citas o reuniones.
-
-Devuelve SOLAMENTE un objeto JSON con estos campos:
-{
-  "phoneNumber": "${chatId.replace('@c.us', '')}", 
-  "clientName": "nombre del cliente (si se menciona)",
-  "company": "empresa del cliente (si se menciona)",
-  "location": "ubicación o dirección (si se menciona)",
-  "serviceInterest": "servicio específico que le interesa (detallado)",
-  "interestLevel": "alto, medio o bajo, basado en el lenguaje y preguntas",
-  "interestPercentage": número entre 0-100 basado en probabilidad de compra,
-  "budget": número estimado de presupuesto si se menciona (o null),
-  "timeline": "marco temporal para decisión/implementación (o null)",
-  "decisionMaker": "true/false si es la persona que toma decisiones",
-  "competitors": "competidores que está evaluando (si menciona)",
-  "painPoints": "problemas actuales que está enfrentando",
-  "appointment": {
-    "detected": true/false,
-    "description": "descripción de la cita (si se detecta)",
-    "date": "fecha en formato YYYY-MM-DD (si se menciona)",
-    "time": "hora en formato HH:MM (si se menciona)",
-    "type": "meeting/call/followup (tipo de cita)",
-    "location": "lugar de la cita (si se menciona)"
-  },
-  "notes": "información adicional relevante"
-}
-
-Criterios para determinar el nivel de interés:
-- ALTO (70-100%): Menciona urgencia, presupuesto aprobado, preguntas específicas sobre implementación, solicita una prueba/demo, habla de contratar pronto, menciona decisión inmediata.
-- MEDIO (40-69%): Solicita más información, pregunta por precios/planes, solicita características específicas, muestra consideración activa, pide comparativas.
-- BAJO (0-39%): Solo busca información general, menciona "tal vez en el futuro", muestra preocupación por costos, respuestas cortas, no hace preguntas de seguimiento.
-
-Si algún campo no se puede determinar, déjalo como null o como cadena vacía. NO INVENTES INFORMACIÓN.
-Analiza el lenguaje y contexto cuidadosamente para determinar el nivel de interés.
-
-IMPORTANTE PARA CITAS (appointment):
-- La fecha actual es: ${new Date().toISOString().split('T')[0]}
-- Si detectas frases como "mañana", "la próxima semana", "el jueves", convierte a formato YYYY-MM-DD
-- Para "mañana" usa: ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}
-- Para "pasado mañana" usa: ${new Date(Date.now() + 172800000).toISOString().split('T')[0]}
-- Siempre marca "detected": true si encuentras cualquier referencia a reuniones o citas
-- Si mencionan una cita pero no especifican fecha, marca "detected": true pero deja "date" vacío
-- SIEMPRE identifica citas o reuniones incluso cuando se mencionan indirectamente. Por ejemplo, si dicen "nos vemos mañana" o "podemos hablar el jueves" o "paso por tu oficina el lunes"
-`;
-
-    console.log('Extrayendo información del cliente con IA...');
-    const result = await geminiClient.generateContent(
-      extractionPrompt + "\n\n" + conversationText,
-      "gemini-pro",
-      {
-        temperature: 0.2,
-        maxOutputTokens: 1024,
-        topP: 0.8,
-        topK: 40
-      }
-    );
-    
-    // Intentar parsear el resultado como JSON
-    try {
-      // Limpiar el resultado para asegurar que solo tengamos JSON
-      let jsonText = result.trim();
-      // A veces Gemini devuelve el JSON con texto adicional, intentamos extraer solo el JSON
-      const jsonStart = jsonText.indexOf('{');
-      const jsonEnd = jsonText.lastIndexOf('}') + 1;
-      if (jsonStart >= 0 && jsonEnd > jsonStart) {
-        jsonText = jsonText.substring(jsonStart, jsonEnd);
-      }
-      
-      const clientInfo = JSON.parse(jsonText);
-      console.log('Información del cliente extraída con éxito:', clientInfo);
-      return clientInfo;
-    } catch (parseError) {
-      console.error('Error al parsear resultado de extracción de información:', parseError);
-      console.log('Texto recibido:', result);
-      return null;
-    }
-  } catch (error) {
-    console.error('Error al extraer información del cliente:', error);
-    return null;
-  }
-}
-
-/**
- * Actualiza o crea un lead en la base de datos con la información extraída
- */
-async function updateOrCreateLead(clientInfo: any): Promise<void> {
-  if (!clientInfo) return;
-  
-  try {
-    // Primero buscar si ya existe un lead con este número de teléfono
-    const query = {
-      text: `
-        SELECT id FROM leads 
-        WHERE phone = $1 
-        LIMIT 1
-      `,
-      values: [clientInfo.phoneNumber]
-    };
-    
-    const result = await pool.query(query);
-    
-    if (result.rows.length > 0) {
-      // Actualizar lead existente
-      const existingLeadId = result.rows[0].id;
-      
-      // Generar etiquetas inteligentes basadas en la conversación
-      const generateTags = () => {
-        const tags = [];
-        
-        // Etiqueta de interés basada en el nivel detectado
-        tags.push(`interés-${clientInfo.interestLevel || 'bajo'}`);
-        
-        // Etiqueta de servicio específico
-        if (clientInfo.serviceInterest) {
-          tags.push(`servicio-${clientInfo.serviceInterest.toLowerCase() || 'general'}`);
-        }
-        
-        // Etiquetas basadas en urgencia/plazo
-        if (clientInfo.timeline) {
-          if (clientInfo.timeline.includes('inmediato') || clientInfo.timeline.includes('urgente')) {
-            tags.push('urgencia-alta');
-          } else if (clientInfo.timeline.includes('mes') || clientInfo.timeline.includes('semana')) {
-            tags.push('plazo-corto');
-          } else if (clientInfo.timeline.includes('trimestre') || clientInfo.timeline.includes('año')) {
-            tags.push('plazo-largo');
-          }
-        }
-        
-        // Etiqueta basada en presupuesto
-        if (clientInfo.budget) {
-          if (clientInfo.budget > 5000) {
-            tags.push('presupuesto-alto');
-          } else if (clientInfo.budget > 1000) {
-            tags.push('presupuesto-medio');
-          } else {
-            tags.push('presupuesto-bajo');
-          }
-        }
-        
-        // Etiqueta de toma de decisiones
-        if (clientInfo.decisionMaker === 'true') {
-          tags.push('tomador-decisiones');
-        } else if (clientInfo.decisionMaker === 'false') {
-          tags.push('influenciador');
-        }
-        
-        // Etiqueta de problemas específicos
-        if (clientInfo.painPoints) {
-          if (clientInfo.painPoints.includes('tiempo')) {
-            tags.push('problema-tiempo');
-          }
-          if (clientInfo.painPoints.includes('costo') || clientInfo.painPoints.includes('precio')) {
-            tags.push('problema-costo');
-          }
-          if (clientInfo.painPoints.includes('calidad')) {
-            tags.push('problema-calidad');
-          }
-          if (clientInfo.painPoints.includes('integración')) {
-            tags.push('problema-integración');
-          }
-        }
-        
-        // Limitar a máximo 5 etiquetas para no saturar
-        return tags.slice(0, 5);
-      };
-      
-      // Obtener etiquetas generadas
-      const tags = generateTags();
-      
-      // Preparar notas completas
-      const notesText = `
-Ubicación: ${clientInfo.location || 'No especificada'}
-Interés: ${clientInfo.serviceInterest || 'No especificado'}
-Nivel de interés: ${clientInfo.interestLevel} (${clientInfo.interestPercentage}%)
-Presupuesto: ${clientInfo.budget ? `$${clientInfo.budget}` : 'No especificado'}
-Plazo: ${clientInfo.timeline || 'No especificado'}
-Tomador de decisiones: ${clientInfo.decisionMaker === 'true' ? 'Sí' : clientInfo.decisionMaker === 'false' ? 'No' : 'Sin determinar'}
-Competidores: ${clientInfo.competitors || 'No mencionados'}
-Problemas: ${clientInfo.painPoints || 'No mencionados'}
-Notas: ${clientInfo.notes || 'Ninguna'}
-      `.trim();
-      
-      // Preparar datos para actualización
-      const updateQuery = {
-        text: `
-          UPDATE leads 
-          SET 
-            name = COALESCE($1, name),
-            company = COALESCE($2, company),
-            notes = 
-              CASE 
-                WHEN notes IS NULL THEN $3
-                ELSE notes || E'\n\nActualización (' || NOW()::text || '):\n' || $3
-              END,
-            status = 
-              CASE 
-                WHEN $4 >= 70 THEN 'hot'
-                WHEN $4 >= 40 THEN 'warm'
-                ELSE 'cold'
-              END,
-            tags = 
-              CASE 
-                WHEN tags IS NULL THEN $5::text[]
-                ELSE array_cat(tags, $5::text[])
-              END
-          WHERE id = $6
-          RETURNING id
-        `,
-        values: [
-          clientInfo.clientName || null,
-          clientInfo.company || null,
-          notesText,
-          clientInfo.interestPercentage || 0,
-          tags,
-          existingLeadId
-        ]
-      };
-      
-      const updateResult = await pool.query(updateQuery);
-      const updatedLeadId = updateResult.rows[0].id;
-      console.log(`Lead actualizado con ID: ${updatedLeadId}`);
-      
-      // Verificar si hay información de cita en la conversación
-      if (clientInfo.appointment && clientInfo.appointment.detected === true) {
-        // Crear cita automáticamente para el lead existente
-        await createAppointmentFromConversation(clientInfo, updatedLeadId);
-      }
-    } else {
-      // Generar etiquetas inteligentes para el nuevo lead
-      const generateTags = () => {
-        const tags = [];
-        
-        // Etiqueta de interés basada en el nivel detectado
-        tags.push(`interés-${clientInfo.interestLevel || 'bajo'}`);
-        
-        // Etiqueta de servicio específico
-        if (clientInfo.serviceInterest) {
-          tags.push(`servicio-${clientInfo.serviceInterest.toLowerCase() || 'general'}`);
-        }
-        
-        // Etiquetas basadas en urgencia/plazo
-        if (clientInfo.timeline) {
-          if (clientInfo.timeline.includes('inmediato') || clientInfo.timeline.includes('urgente')) {
-            tags.push('urgencia-alta');
-          } else if (clientInfo.timeline.includes('mes') || clientInfo.timeline.includes('semana')) {
-            tags.push('plazo-corto');
-          } else if (clientInfo.timeline.includes('trimestre') || clientInfo.timeline.includes('año')) {
-            tags.push('plazo-largo');
-          }
-        }
-        
-        // Etiqueta basada en presupuesto
-        if (clientInfo.budget) {
-          if (clientInfo.budget > 5000) {
-            tags.push('presupuesto-alto');
-          } else if (clientInfo.budget > 1000) {
-            tags.push('presupuesto-medio');
-          } else {
-            tags.push('presupuesto-bajo');
-          }
-        }
-        
-        // Etiqueta de toma de decisiones
-        if (clientInfo.decisionMaker === 'true') {
-          tags.push('tomador-decisiones');
-        } else if (clientInfo.decisionMaker === 'false') {
-          tags.push('influenciador');
-        }
-        
-        // Etiqueta de problemas específicos
-        if (clientInfo.painPoints) {
-          if (clientInfo.painPoints.includes('tiempo')) {
-            tags.push('problema-tiempo');
-          }
-          if (clientInfo.painPoints.includes('costo') || clientInfo.painPoints.includes('precio')) {
-            tags.push('problema-costo');
-          }
-          if (clientInfo.painPoints.includes('calidad')) {
-            tags.push('problema-calidad');
-          }
-          if (clientInfo.painPoints.includes('integración')) {
-            tags.push('problema-integración');
-          }
-        }
-        
-        // Limitar a máximo 5 etiquetas para no saturar
-        return tags.slice(0, 5);
-      };
-      
-      // Obtener etiquetas generadas
-      const tags = generateTags();
-      
-      // Preparar notas completas
-      const notesText = `
-Ubicación: ${clientInfo.location || 'No especificada'}
-Interés: ${clientInfo.serviceInterest || 'No especificado'}
-Nivel de interés: ${clientInfo.interestLevel} (${clientInfo.interestPercentage}%)
-Presupuesto: ${clientInfo.budget ? `$${clientInfo.budget}` : 'No especificado'}
-Plazo: ${clientInfo.timeline || 'No especificado'}
-Tomador de decisiones: ${clientInfo.decisionMaker === 'true' ? 'Sí' : clientInfo.decisionMaker === 'false' ? 'No' : 'Sin determinar'}
-Competidores: ${clientInfo.competitors || 'No mencionados'}
-Problemas: ${clientInfo.painPoints || 'No mencionados'}
-Notas: ${clientInfo.notes || 'Ninguna'}
-      `.trim();
-      
-      // Crear nuevo lead
-      const insertQuery = {
-        text: `
-          INSERT INTO leads (
-            name, 
-            phone, 
-            company, 
-            source, 
-            status, 
-            notes,
-            tags,
-            created_at
-          )
-          VALUES ($1, $2, $3, 'whatsapp', 
-            CASE 
-              WHEN $4 >= 70 THEN 'hot'
-              WHEN $4 >= 40 THEN 'warm'
-              ELSE 'cold'
-            END, 
-            $5,
-            $6::text[],
-            NOW()
-          )
-          RETURNING id
-        `,
-        values: [
-          clientInfo.clientName || 'Cliente de WhatsApp',
-          clientInfo.phoneNumber,
-          clientInfo.company || null,
-          clientInfo.interestPercentage || 0,
-          notesText,
-          tags
-        ]
-      };
-      
-      const insertResult = await pool.query(insertQuery);
-      const leadId = insertResult.rows[0].id;
-      console.log(`Nuevo lead creado con ID: ${leadId}`);
-      
-      // Verificar si hay información de cita en la conversación
-      console.log('Verificando información de cita en clientInfo:', JSON.stringify(clientInfo.appointment));
-      if (clientInfo.appointment && clientInfo.appointment.detected === true) {
-        console.log('🔔 Cita detectada en la conversación:', 
-                   JSON.stringify({
-                     fecha: clientInfo.appointment.date,
-                     hora: clientInfo.appointment.time,
-                     descripcion: clientInfo.appointment.description
-                   }));
-        // Crear cita automáticamente
-        await createAppointmentFromConversation(clientInfo, leadId);
-        console.log('✅ Proceso de creación de cita finalizado para lead ID:', leadId);
-      } else {
-        console.log('No se detectó ninguna cita válida en la conversación');
-      }
-    }
-  } catch (error) {
-    console.error('Error al actualizar/crear lead:', error);
-  }
-}
-
-/**
- * Maneja un mensaje de WhatsApp entrante para generar una posible respuesta automática
- */
-export async function handleIncomingMessage(message: any) {
-  // Verificar si el servicio está habilitado
-  if (!config.enabled) {
-    return;
-  }
-  
-  // Ignorar mensajes enviados por nosotros
-  if (message.fromMe) {
-    return;
-  }
-  
-  // Verificar si el chat está excluido
-  if (config.excludedChats.includes(message.from)) {
-    return;
-  }
-  
-  // Asegurarse de que los clientes estén inicializados
-  if (!isInitialized) {
-    await initialize();
-  }
-  
-  // Obtener nombre del contacto
-  let contactName = 'cliente';
-  try {
-    const contact = await message.getContact();
-    contactName = contact.name || contact.pushname || 'cliente';
-    console.log(`Nombre del contacto para respuesta automática: ${contactName}`);
-  } catch (err) {
-    console.warn('No se pudo obtener el nombre del contacto para respuesta automática');
-  }
-  
-  // Guardar mensaje del usuario en el historial si está habilitado
-  if (config.storeConversationHistory) {
-    await saveToConversationHistory(message.from, message.body, true, {
-      contactName,
-      timestamp: new Date().toISOString()
-    });
-  }
-  
-  // Obtener historial de conversación si está habilitado
-  let conversationHistory = [];
-  if (config.storeConversationHistory) {
-    conversationHistory = await getConversationHistory(message.from, 10);
-    console.log(`Recuperado historial de conversación para ${message.from}: ${conversationHistory.length} mensajes`);
-  }
-  
-  // Extraer información del cliente y actualizar lead
-  // Usar configuración para determinar frecuencia
-  const extractionConfig = {
-    enabled: true,
-    frequency: 2, // Analizar cada 2 mensajes (más frecuente)
-    minMessages: 1 // Mínimo de mensajes para iniciar análisis
+export interface AutoResponseConfig {
+  enabled: boolean;
+  delaySeconds: number;
+  useSmartBots: boolean;
+  smartBotsConfig: {
+    enabled: boolean;
+    temperature: number;
+    maxTokens: number;
+    customPrompt?: string;
   };
-  
-  if (conversationHistory.length >= extractionConfig.minMessages && 
-      conversationHistory.length % extractionConfig.frequency === 0 &&
-      extractionConfig.enabled) {
-    console.log('Iniciando extracción de información del cliente...');
-    const clientInfo = await extractClientInfo(message.from, conversationHistory, message.body);
-    if (clientInfo) {
-      await updateOrCreateLead(clientInfo);
-    }
-  }
-  
-  // Generar respuesta con IA, incluyendo historial
-  let responseText = await generateAIResponse(message.body, contactName, conversationHistory);
-  
-  // Si hay una respuesta, enviarla con retraso para simular escritura
-  if (responseText && responseText.trim()) {
-    // Guardar respuesta en el historial si está habilitado
-    if (config.storeConversationHistory) {
-      await saveToConversationHistory(message.from, responseText, false, {
-        aiProvider: config.aiProvider,
-        timestamp: new Date().toISOString()
-      });
-    }
-    
-    setTimeout(async () => {
-      try {
-        // Simular estado de escritura
-        const chat = await message.getChat();
-        await chat.sendStateTyping();
-        
-        // Esperar un poco más antes de enviar el mensaje
-        setTimeout(async () => {
-          try {
-            // Enviar la respuesta
-            await message.reply(responseText);
-            console.log('Respuesta automática enviada con éxito');
-          } catch (sendError) {
-            console.error('Error al enviar respuesta automática:', sendError);
-          }
-        }, 2000);
-      } catch (typingError) {
-        console.error('Error al enviar estado de escritura:', typingError);
-        
-        // Si falla el estado de escritura, intentar enviar directamente
-        try {
-          await message.reply(responseText);
-          console.log('Respuesta automática enviada (sin estado de escritura)');
-        } catch (finalError) {
-          console.error('Error final al enviar respuesta automática:', finalError);
-        }
-      }
-    }, config.delaySeconds * 1000);
-  }
+  excludedContacts: string[];
+  businessHours: {
+    enabled: boolean;
+    start: string;
+    end: string;
+    timezone: string;
+  };
+  maxResponsesPerDay: number;
 }
 
-/**
- * Genera una respuesta utilizando IA
- */
-async function generateAIResponse(
-  messageText: string, 
-  contactName: string, 
-  conversationHistory: Array<{message: string, isFromUser: boolean}> = []
-): Promise<string> {
-  // Primero intentar con el proveedor configurado
-  if (config.aiProvider === "openai" && openaiClient) {
-    try {
-      return await generateWithOpenAI(messageText, contactName, conversationHistory);
-    } catch (error) {
-      console.error('Error con OpenAI:', error);
-      // Si falla, intentar con Gemini como respaldo
-      if (geminiClient) {
-        try {
-          return await generateWithGemini(messageText, contactName, conversationHistory);
-        } catch (innerError) {
-          console.error('Error con Gemini (respaldo):', innerError);
-        }
-      }
-    }
-  } else if (geminiClient) {
-    try {
-      return await generateWithGemini(messageText, contactName, conversationHistory);
-    } catch (error) {
-      console.error('Error con Gemini:', error);
-      // Si falla, intentar con OpenAI como respaldo
-      if (openaiClient) {
-        try {
-          return await generateWithOpenAI(messageText, contactName, conversationHistory);
-        } catch (innerError) {
-          console.error('Error con OpenAI (respaldo):', innerError);
-        }
-      }
-    }
-  }
-  
-  // Si todo falla, devolver cadena vacía para que no se envíe ningún mensaje
-  return "";
-}
+export class AutoResponseIntegration {
+  private config: AutoResponseConfig;
+  private responseCount: Map<string, number> = new Map();
+  private lastResetDate: Date = new Date();
 
-/**
- * Genera respuesta usando OpenAI
- */
-async function generateWithOpenAI(
-  messageText: string, 
-  contactName: string, 
-  conversationHistory: Array<{message: string, isFromUser: boolean}> = []
-): Promise<string> {
-  if (!openaiClient) throw new Error("Cliente OpenAI no inicializado");
-  
-  const systemPrompt = config.customPrompts.system
-    .replace(/{{nombre}}/g, contactName);
-  
-  // Instrucción específica para evitar los mensajes genéricos
-  const enhancedSystemPrompt = `${systemPrompt}\n\nIMPORTANTE: Evita iniciar la respuesta con saludos genéricos como "Hola, gracias por tu mensaje" o "En breve nos pondremos en contacto contigo". Personaliza tu respuesta directamente al contexto del mensaje y al cliente.`;
-  
-  // Crear mensajes para el historial de conversación
-  const messages = [
-    { role: "system", content: enhancedSystemPrompt },
-  ];
-  
-  // Añadir historial de conversación si existe
-  if (conversationHistory && conversationHistory.length > 0) {
-    console.log(`Usando ${conversationHistory.length} mensajes de historial para respuesta con OpenAI`);
-    // Añadir historial de conversación previo
-    conversationHistory.forEach(entry => {
-      messages.push({
-        role: entry.isFromUser ? "user" : "assistant",
-        content: entry.message
-      });
-    });
-  }
-  
-  // Añadir el mensaje actual del usuario
-  messages.push({ role: "user", content: messageText });
-  
-  const response = await openaiClient.chat.completions.create({
-    model: "gpt-4o", // el modelo más reciente de OpenAI es "gpt-4o" 
-    messages: messages,
-    temperature: config.customPrompts.temperature,
-    max_tokens: config.customPrompts.maxTokens,
-  });
-  
-  const result = response.choices[0].message.content || "";
-  
-  // Verificar que no esté vacío
-  if (!result || result.trim() === "") {
-    throw new Error("OpenAI devolvió una respuesta vacía");
-  }
-  
-  return result;
-}
-
-/**
- * Genera respuesta usando Gemini
- */
-async function generateWithGemini(
-  messageText: string, 
-  contactName: string, 
-  conversationHistory: Array<{message: string, isFromUser: boolean}> = []
-): Promise<string> {
-  if (!geminiClient) throw new Error("Cliente Gemini no inicializado");
-  
-  const systemPrompt = config.customPrompts.system
-    .replace(/{{nombre}}/g, contactName);
-  
-  // Formatear el prompt para Gemini incluyendo el historial
-  let fullPrompt = systemPrompt + "\n\n";
-  
-  // Añadir historial de conversación si existe
-  if (conversationHistory && conversationHistory.length > 0) {
-    console.log(`Usando ${conversationHistory.length} mensajes de historial para respuesta con Gemini`);
-    
-    fullPrompt += "HISTORIAL DE CONVERSACIÓN:\n";
-    conversationHistory.forEach(entry => {
-      const role = entry.isFromUser ? "Cliente" : "Asistente";
-      fullPrompt += `${role}: ${entry.message}\n`;
-    });
-    
-    fullPrompt += "\nBasado en el historial anterior, responde al siguiente mensaje:\n";
-  }
-  
-  // Añadir el mensaje actual
-  fullPrompt += `Mensaje actual del cliente: ${messageText}\n\nTu respuesta:`;
-  
-  const result = await geminiClient.generateContent(
-    fullPrompt,
-    "gemini-pro",
-    {
-      temperature: config.customPrompts.temperature,
-      maxOutputTokens: config.customPrompts.maxTokens,
-      topP: 0.8,
-      topK: 40
-    }
-  );
-  
-  // Verificar que no esté vacío
-  if (!result || result.trim() === "") {
-    throw new Error("Gemini devolvió una respuesta vacía");
-  }
-  
-  return result;
-}
-
-/**
- * Integra el servicio de respuestas automáticas con el servicio de WhatsApp
- */
-export async function setupAutoResponsesWithWhatsApp() {
-  try {
-    // Inicializar los clientes de IA
-    await initialize();
-    
-    // Verificar que el servicio de WhatsApp esté disponible
-    if (!whatsappService) {
-      throw new Error('Servicio de WhatsApp no disponible');
-    }
-    
-    // Escuchar eventos de mensajes
-    whatsappService.on('message', async (message: any) => {
-      try {
-        await handleIncomingMessage(message);
-      } catch (error) {
-        console.error('Error procesando mensaje para respuesta automática:', error);
-      }
-    });
-    
-    console.log('Servicio de respuestas automáticas integrado correctamente con WhatsApp');
-    return true;
-  } catch (error) {
-    console.error('Error al integrar servicio de respuestas automáticas con WhatsApp:', error);
-    return false;
-  }
-}
-
-/**
- * Configura las respuestas automáticas
- */
-export function setAutoResponseConfig(newConfig: any) {
-  config.enabled = newConfig.enabled ?? config.enabled;
-  config.aiProvider = newConfig.aiProvider ?? config.aiProvider;
-  config.delaySeconds = newConfig.delaySeconds ?? config.delaySeconds;
-  
-  if (newConfig.customPrompts) {
-    config.customPrompts = {
-      ...config.customPrompts,
-      ...newConfig.customPrompts
+  constructor() {
+    this.config = {
+      enabled: true,
+      delaySeconds: 10,
+      useSmartBots: true,
+      smartBotsConfig: {
+        enabled: true,
+        temperature: 0.7,
+        maxTokens: 500,
+        customPrompt: undefined
+      },
+      excludedContacts: [],
+      businessHours: {
+        enabled: true,
+        start: '09:00',
+        end: '18:00',
+        timezone: 'America/Mexico_City'
+      },
+      maxResponsesPerDay: 50
     };
   }
-  
-  if (newConfig.excludedChats) {
-    config.excludedChats = [...newConfig.excludedChats];
+
+  /**
+   * Procesa un mensaje entrante y determina si debe generar una respuesta automática
+   */
+  async processIncomingMessage(message: AutoResponseMessage): Promise<string | null> {
+    try {
+      console.log('🔄 Procesando mensaje para respuesta automática:', message.messageText);
+
+      // Verificar si las respuestas automáticas están habilitadas
+      if (!this.config.enabled) {
+        console.log('⏸️ Respuestas automáticas deshabilitadas');
+        return null;
+      }
+
+      // No responder a mensajes enviados por nosotros
+      if (message.fromMe) {
+        console.log('⏸️ Mensaje enviado por nosotros, no responder');
+        return null;
+      }
+
+      // Verificar si el contacto está excluido
+      if (this.isContactExcluded(message.contactPhone)) {
+        console.log('⏸️ Contacto excluido de respuestas automáticas');
+        return null;
+      }
+
+      // Verificar límite diario de respuestas
+      if (!this.canSendMoreResponses(message.contactPhone)) {
+        console.log('⏸️ Límite diario de respuestas alcanzado para el contacto');
+        return null;
+      }
+
+      // Verificar horario comercial
+      if (!this.isWithinBusinessHours()) {
+        console.log('⏸️ Fuera del horario comercial');
+        return null;
+      }
+
+      // Generar respuesta usando SmartBots
+      const response = await this.generateAutoResponse(message);
+
+      if (response) {
+        // Incrementar contador de respuestas
+        this.incrementResponseCount(message.contactPhone);
+        console.log('✅ Respuesta automática generada:', response);
+      }
+
+      return response;
+
+    } catch (error) {
+      console.error('❌ Error procesando mensaje para respuesta automática:', error);
+      return null;
+    }
   }
-  
-  console.log('Configuración de respuestas automáticas actualizada:', config);
+
+  /**
+   * Genera una respuesta automática usando SmartBots
+   */
+  private async generateAutoResponse(message: AutoResponseMessage): Promise<string | null> {
+    try {
+      if (!this.config.useSmartBots || !this.config.smartBotsConfig.enabled) {
+        // Respuesta genérica si SmartBots está deshabilitado
+        return 'Gracias por tu mensaje. Un asesor te contactará pronto.';
+      }
+
+      // Verificar disponibilidad del agente SmartBots
+      const isAvailable = await smartBotsAgent.isAvailable();
+      if (!isAvailable) {
+        console.log('⚠️ SmartBots no está disponible, usando respuesta genérica');
+        return 'Gracias por tu mensaje. Un asesor te contactará pronto.';
+      }
+
+      // Actualizar configuración del agente si es necesario
+      if (this.config.smartBotsConfig.customPrompt) {
+        smartBotsAgent.updateConfig({
+          systemPrompt: this.config.smartBotsConfig.customPrompt,
+          temperature: this.config.smartBotsConfig.temperature,
+          maxTokens: this.config.smartBotsConfig.maxTokens
+        });
+      }
+
+      // Obtener contexto de conversación (simplificado por ahora)
+      const conversationContext: string[] = [];
+
+      // Generar respuesta con SmartBots
+      const response = await smartBotsAgent.generateResponse(
+        message.messageText,
+        message.contactName,
+        conversationContext
+      );
+
+      return response;
+
+    } catch (error) {
+      console.error('❌ Error generando respuesta con SmartBots:', error);
+      return 'Gracias por tu mensaje. Un asesor te contactará pronto.';
+    }
+  }
+
+  /**
+   * Verifica si un contacto está excluido
+   */
+  private isContactExcluded(contactPhone: string): boolean {
+    return this.config.excludedContacts.some(excluded => 
+      contactPhone.includes(excluded) || excluded.includes(contactPhone)
+    );
+  }
+
+  /**
+   * Verifica si se pueden enviar más respuestas hoy
+   */
+  private canSendMoreResponses(contactPhone: string): boolean {
+    this.resetDailyCountIfNeeded();
+    
+    const currentCount = this.responseCount.get(contactPhone) || 0;
+    return currentCount < this.config.maxResponsesPerDay;
+  }
+
+  /**
+   * Incrementa el contador de respuestas para un contacto
+   */
+  private incrementResponseCount(contactPhone: string): void {
+    const currentCount = this.responseCount.get(contactPhone) || 0;
+    this.responseCount.set(contactPhone, currentCount + 1);
+  }
+
+  /**
+   * Resetea los contadores diarios si es un nuevo día
+   */
+  private resetDailyCountIfNeeded(): void {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const resetDate = new Date(this.lastResetDate.getFullYear(), this.lastResetDate.getMonth(), this.lastResetDate.getDate());
+
+    if (today > resetDate) {
+      this.responseCount.clear();
+      this.lastResetDate = now;
+      console.log('🔄 Contadores diarios de respuestas automáticas reseteados');
+    }
+  }
+
+  /**
+   * Verifica si estamos dentro del horario comercial
+   */
+  private isWithinBusinessHours(): boolean {
+    if (!this.config.businessHours.enabled) {
+      return true;
+    }
+
+    try {
+      const now = new Date();
+      const currentTime = now.toLocaleTimeString('en-US', { 
+        hour12: false,
+        timeZone: this.config.businessHours.timezone 
+      });
+
+      const [currentHour, currentMinute] = currentTime.split(':').map(Number);
+      const currentTotalMinutes = currentHour * 60 + currentMinute;
+
+      const [startHour, startMinute] = this.config.businessHours.start.split(':').map(Number);
+      const startTotalMinutes = startHour * 60 + startMinute;
+
+      const [endHour, endMinute] = this.config.businessHours.end.split(':').map(Number);
+      const endTotalMinutes = endHour * 60 + endMinute;
+
+      return currentTotalMinutes >= startTotalMinutes && currentTotalMinutes <= endTotalMinutes;
+
+    } catch (error) {
+      console.error('❌ Error verificando horario comercial:', error);
+      return true; // En caso de error, permitir respuestas
+    }
+  }
+
+  /**
+   * Envía una respuesta automática a WhatsApp
+   */
+  async sendAutoResponse(
+    chatId: string, 
+    accountId: number, 
+    response: string, 
+    delayMs?: number
+  ): Promise<boolean> {
+    try {
+      const delay = delayMs || (this.config.delaySeconds * 1000);
+      
+      console.log(`⏱️ Enviando respuesta automática en ${delay}ms:`, response);
+
+      // Esperar el delay configurado
+      await new Promise(resolve => setTimeout(resolve, delay));
+
+      // Aquí se integraría con el servicio de WhatsApp para enviar el mensaje
+      // Por ahora simulamos el envío
+      console.log('📤 Enviando respuesta automática a chat:', chatId);
+      console.log('💬 Mensaje:', response);
+
+      // TODO: Integrar con el servicio real de WhatsApp
+      // await whatsappService.sendMessage(accountId, chatId, response);
+
+      return true;
+
+    } catch (error) {
+      console.error('❌ Error enviando respuesta automática:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Actualiza la configuración de respuestas automáticas
+   */
+  updateConfig(newConfig: Partial<AutoResponseConfig>): void {
+    this.config = { ...this.config, ...newConfig };
+    console.log('🔧 Configuración de respuestas automáticas actualizada:', this.config);
+  }
+
+  /**
+   * Obtiene la configuración actual
+   */
+  getConfig(): AutoResponseConfig {
+    return { ...this.config };
+  }
+
+  /**
+   * Obtiene estadísticas de respuestas automáticas
+   */
+  getStats(): {
+    totalResponsesToday: number;
+    activeContacts: number;
+    configEnabled: boolean;
+    smartBotsEnabled: boolean;
+  } {
+    this.resetDailyCountIfNeeded();
+    
+    const totalResponsesToday = Array.from(this.responseCount.values()).reduce((sum, count) => sum + count, 0);
+    const activeContacts = this.responseCount.size;
+
+    return {
+      totalResponsesToday,
+      activeContacts,
+      configEnabled: this.config.enabled,
+      smartBotsEnabled: this.config.useSmartBots && this.config.smartBotsConfig.enabled
+    };
+  }
 }
 
-/**
- * Obtiene la configuración actual
- */
-export function getAutoResponseConfig() {
-  return { ...config };
-}
+// Instancia global del servicio de respuestas automáticas
+export const autoResponseIntegration = new AutoResponseIntegration();
