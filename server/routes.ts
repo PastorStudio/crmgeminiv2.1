@@ -1568,35 +1568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auto-response/config", async (req: Request, res: Response) => {
-    try {
-      console.log('🤖 API: Actualizando configuración:', req.body);
-      const config = req.body;
-      
-      if (!config) {
-        return res.status(400).json({
-          success: false,
-          message: "Se requiere configuración"
-        });
-      }
-      
-      // Guardar configuración exitosamente
-      res.json({
-        success: true,
-        message: "Configuración actualizada correctamente",
-        config: {
-          ...config,
-          updatedAt: new Date().toISOString()
-        }
-      });
-    } catch (error) {
-      console.error('❌ Error actualizando configuración:', error);
-      res.status(500).json({
-        success: false,
-        message: "Error interno del servidor"
-      });
-    }
-  });
+  // ENDPOINT DUPLICADO REMOVIDO - YA ESTÁ AL INICIO
 
   app.post("/api/auto-response/cancel", async (req: Request, res: Response) => {
     try {
