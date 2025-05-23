@@ -7,7 +7,6 @@ import {
   dashboardStats,
   whatsappAccounts,
   chatAssignments,
-  chatComments,
   type User, 
   type InsertUser,
   type Lead,
@@ -21,10 +20,9 @@ import {
   type DashboardStats,
   type InsertDashboardStats,
   type WhatsappAccount,
+  type InsertWhatsappAccount,
   type ChatAssignment,
-  type InsertChatAssignment,
-  type ChatComment,
-  type InsertChatComment
+  type InsertChatAssignment
 } from "@shared/schema";
 import { db } from './db';
 import { eq, desc, or } from 'drizzle-orm';
@@ -79,10 +77,10 @@ export interface IStorage {
   updateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats>;
   
   // WhatsApp Account methods
-  getAllWhatsappAccounts(): Promise<any[]>;
-  getWhatsappAccount(id: number): Promise<any | undefined>;
-  createWhatsappAccount(account: any): Promise<any>;
-  updateWhatsappAccount(id: number, data: any): Promise<any | undefined>;
+  getAllWhatsappAccounts(): Promise<WhatsappAccount[]>;
+  getWhatsappAccount(id: number): Promise<WhatsappAccount | undefined>;
+  createWhatsappAccount(account: InsertWhatsappAccount): Promise<WhatsappAccount>;
+  updateWhatsappAccount(id: number, data: Partial<InsertWhatsappAccount>): Promise<WhatsappAccount | undefined>;
   deleteWhatsappAccount(id: number): Promise<void>;
   
   // Chat Assignment methods
@@ -94,11 +92,6 @@ export interface IStorage {
   updateChatAssignment(id: number, data: Partial<InsertChatAssignment>): Promise<ChatAssignment | undefined>;
   deleteChatAssignment(id: number): Promise<void>;
   
-  // Chat Comments methods
-  getChatComments(chatId: string): Promise<ChatComment[]>;
-  createChatComment(comment: InsertChatComment): Promise<ChatComment>;
-  deleteChatComment(id: number): Promise<void>;
-  
   // WhatsApp methods
   getWhatsAppContact(contactId: string): Promise<any>;
   getWhatsAppChat(chatId: string): Promise<any>;
@@ -108,11 +101,6 @@ export interface IStorage {
   // Gemini settings
   getGeminiSettings(): Promise<any>;
   updateGeminiSettings(settings: any): Promise<any>;
-
-  // Chat Comments methods
-  getChatComments(chatId: string): Promise<ChatComment[]>;
-  createChatComment(comment: InsertChatComment): Promise<ChatComment>;
-  deleteChatComment(id: number): Promise<void>;
 }
 
 /**
@@ -149,27 +137,6 @@ export class DatabaseStorage implements IStorage {
           role: "super_admin",
           status: "active",
           department: "Dirección"
-        });
-
-        // Crear agentes de ejemplo
-        await db.insert(users).values({
-          username: "agente1",
-          password: "agente123",
-          fullName: "Ana García",
-          email: "ana@empresa.com",
-          role: "agent",
-          status: "active",
-          department: "Ventas"
-        });
-
-        await db.insert(users).values({
-          username: "agente2",
-          password: "agente123",
-          fullName: "Carlos López",
-          email: "carlos@empresa.com",
-          role: "agent",
-          status: "active",
-          department: "Soporte"
         });
         
         // Crear estadísticas iniciales del dashboard
@@ -514,7 +481,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async createWhatsappAccount(account: any): Promise<WhatsappAccount> {
+  async createWhatsappAccount(account: InsertWhatsappAccount): Promise<WhatsappAccount> {
     try {
       // Obtener todas las cuentas existentes para encontrar el próximo ID disponible
       const existingAccounts = await this.getAllWhatsappAccounts();
@@ -550,7 +517,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateWhatsappAccount(id: number, data: any): Promise<WhatsappAccount | undefined> {
+  async updateWhatsappAccount(id: number, data: Partial<InsertWhatsappAccount>): Promise<WhatsappAccount | undefined> {
     try {
       const [updatedAccount] = await db.update(whatsappAccounts)
         .set({
@@ -643,7 +610,7 @@ export class DatabaseStorage implements IStorage {
     try {
       const assignments = await db.select()
         .from(chatAssignments)
-        .where(eq(chatAssignments.agentId, agentId));
+        .where(eq(chatAssignments.assignedToId, agentId));
       return assignments;
     } catch (error) {
       console.error(`Error al obtener asignaciones para agente ${agentId}:`, error);

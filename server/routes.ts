@@ -35,9 +35,6 @@ import { registerTemplateVariablesRoutes } from "./services/templateVariablesRou
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import chatAssignmentsRouter from "./routes/chatAssignments";
 
-// Importar el integrador de respuestas automáticas
-// Auto response integrator will be initialized after server starts
-
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
 

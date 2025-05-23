@@ -1,6 +1,6 @@
 import React from "react";
 import { Helmet } from "react-helmet";
-import WhatsAppTwoColumn from "@/components/messaging/WhatsAppTwoColumn";
+import { WhatsAppTwoColumn } from "@/components/messaging/WhatsAppTwoColumn";
 
 export default function Messages() {
   return (
