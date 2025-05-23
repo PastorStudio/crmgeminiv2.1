@@ -71,8 +71,15 @@ export default function AutoResponseSettings() {
     queryKey: ["/api/auto-response/config"],
     queryFn: async () => {
       const response = await fetch("/api/auto-response/config");
-      return await response.json();
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      const data = await response.json();
+      console.log('Configuración recibida:', data);
+      return data;
     },
+    retry: 2,
+    retryDelay: 1000,
   });
   
   // Setup form
@@ -100,7 +107,26 @@ export default function AutoResponseSettings() {
   // Update form values when config is loaded
   useEffect(() => {
     if (config) {
-      form.reset(config);
+      console.log('Actualizando formulario con configuración:', config);
+      // Mapear la configuración del servidor al formato del formulario
+      const formConfig = {
+        enabled: config.enabled || false,
+        delaySeconds: config.delay || 10,
+        templates: config.templates || [],
+        useProfessionLevel: true,
+        defaultTemplate: config.defaultTemplate || "",
+        enabledForGroups: false,
+        enabledForBroadcast: false,
+        excludedContacts: config.excludedNumbers || [],
+        aiProvider: config.provider || "gemini",
+        customPrompts: {
+          enabled: config.customPrompts?.enabled || false,
+          system: config.customPrompts?.system || config.messageTemplate || "",
+          temperature: config.customPrompts?.temperature || 0.7,
+          maxTokens: config.customPrompts?.maxTokens || 500,
+        },
+      };
+      form.reset(formConfig);
     }
   }, [config, form]);
   
@@ -161,9 +187,9 @@ export default function AutoResponseSettings() {
     queryKey: ["openai-key-status"],
     queryFn: async () => {
       try {
-        const response = await fetch('/api/check-secrets?secret_keys=OPENAI_API_KEY');
+        const response = await fetch('/api/settings/openai-key-status');
         const result = await response.json();
-        return { hasValidKey: result?.includes("OPENAI_API_KEY") };
+        return result;
       } catch (error) {
         console.error("Error checking OpenAI key status:", error);
         return { hasValidKey: false };
