@@ -1597,48 +1597,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-      
-      // Importar el servicio de respuestas automáticas
-      const { autoResponseIntegration } = await import('./services/autoResponseIntegration');
-      
-      // Mapear configuración del frontend al formato interno
-      const internalConfig = {
-        enabled: config.enabled || false,
-        delaySeconds: config.delaySeconds || 10,
-        useSmartBots: true, // Siempre usar SmartBots
-        smartBotsConfig: {
-          enabled: config.customPrompts?.enabled || true,
-          temperature: config.customPrompts?.temperature || 0.7,
-          maxTokens: config.customPrompts?.maxTokens || 500,
-          customPrompt: config.customPrompts?.system
-        },
-        excludedContacts: config.excludedContacts || config.excludedNumbers || [],
-        businessHours: config.businessHours || {
-          enabled: true,
-          start: '09:00',
-          end: '18:00',
-          timezone: 'America/Mexico_City'
-        },
-        maxResponsesPerDay: config.maxResponsesPerDay || 50
-      };
-      
-      // Actualizar configuración
-      autoResponseIntegration.updateConfig(internalConfig);
-      
-      console.log('🤖 Configuración SmartBots actualizada correctamente');
-      res.json({ 
-        success: true, 
-        config: config,
-        message: "Configuración de SmartBots actualizada correctamente"
-      });
-    } catch (error) {
-      console.error("Error al actualizar configuración de SmartBots:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error al actualizar configuración de SmartBots" 
-      });
-    }
-  });
 
   app.post("/api/auto-response/cancel", async (req: Request, res: Response) => {
     try {
