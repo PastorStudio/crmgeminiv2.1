@@ -759,6 +759,13 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
+   * Obtiene instancia de cuenta
+   */
+  getInstance(accountId: number): WhatsAppInstance | undefined {
+    return this.instances.get(accountId);
+  }
+
+  /**
    * Envía mensaje
    */
   async sendMessage(accountId: number, to: string, body: string): Promise<any> {
