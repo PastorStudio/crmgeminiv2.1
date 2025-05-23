@@ -249,17 +249,42 @@ app.use((req, res, next) => {
         });
       }
 
-      const newComment = await storage.createChatComment({
-        chatId,
-        comment: commentText,
-        userId: parseInt(userId)
-      });
-
-      console.log('✅ COMENTARIO CREADO EXITOSAMENTE:', newComment);
-      res.json(newComment);
+      console.log('💬 INSERTANDO COMENTARIO EN POSTGRESQL:', { chatId, text: commentText, userId });
+      
+      // Usar importación dinámica para evitar problemas de dependencias
+      const { sql } = await import('drizzle-orm');
+      const { eq } = await import('drizzle-orm');
+      const { users } = await import('@shared/schema');
+      
+      // INSERTAR COMENTARIO DIRECTAMENTE EN POSTGRESQL
+      const insertQuery = sql`
+        INSERT INTO chat_comments ("chatId", "userId", text, timestamp, "isInternal")
+        VALUES (${chatId}, ${parseInt(userId)}, ${commentText}, NOW(), true)
+        RETURNING *
+      `;
+      
+      const result = await db.execute(insertQuery);
+      const newComment = result.rows[0];
+      
+      // OBTENER INFORMACIÓN DEL USUARIO
+      const [user] = await db.select().from(users).where(eq(users.id, parseInt(userId)));
+      
+      const response = {
+        id: newComment.id,
+        chatId: newComment.chatId,
+        text: newComment.text,
+        timestamp: newComment.timestamp,
+        user: {
+          name: user?.fullName || "Agente",
+          username: user?.username || "agent"
+        }
+      };
+      
+      console.log('✅ COMENTARIO GUARDADO EN POSTGRESQL:', response);
+      res.json(response);
     } catch (error) {
       console.error('❌ Error al crear comentario:', error);
-      res.status(500).json({ error: 'Error al crear comentario: ' + error.message });
+      res.status(500).json({ error: 'Error al crear comentario: ' + (error as Error).message });
     }
   });
 
