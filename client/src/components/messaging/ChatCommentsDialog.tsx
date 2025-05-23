@@ -203,9 +203,9 @@ export function ChatCommentsDialog({
                 </p>
               </div>
             ) : (
-              <div className="space-y-4 py-4">
+              <div className="space-y-3 py-2">
                 {comments.map((comment: ChatComment, index: number) => (
-                  <Card key={comment.id} className="p-4 hover:shadow-sm transition-shadow">
+                  <div key={comment.id} className="pb-3 border-b border-gray-100 last:border-b-0">
                     <div className="flex items-start space-x-3">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         {comment.user?.avatar ? (
@@ -218,34 +218,31 @@ export function ChatCommentsDialog({
                       </Avatar>
                       
                       <div className="flex-1 min-w-0 max-w-full overflow-hidden">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-2 min-w-0 flex-1">
-                            <span className="font-medium text-gray-900 text-sm truncate">
-                              {comment.user?.fullName || 'Usuario Desconocido'}
-                            </span>
-                            <Badge 
-                              variant="secondary"
-                              className={`${getRoleColor(comment.user?.role || '')} flex-shrink-0`}
-                            >
-                              {comment.user?.role || 'usuario'}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center space-x-1 text-xs text-gray-500 flex-shrink-0 ml-2">
-                            <Clock className="h-3 w-3" />
-                            <span className="whitespace-nowrap">{formatDate(comment.timestamp || comment.createdAt)}</span>
-                          </div>
+                        {/* Header con nombre, rol y hora */}
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span className="font-medium text-gray-900 text-sm">
+                            {comment.user?.fullName || 'Usuario Desconocido'}
+                          </span>
+                          <Badge 
+                            variant="secondary"
+                            className={`${getRoleColor(comment.user?.role || '')} text-xs px-2 py-0`}
+                          >
+                            {comment.user?.role || 'usuario'}
+                          </Badge>
+                          <span className="text-xs text-gray-500 ml-auto">
+                            {formatDate(comment.timestamp || comment.createdAt)}
+                          </span>
                         </div>
                         
-                        <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-hidden">
-                          {comment.text || comment.comment}
-                        </p>
+                        {/* Mensaje */}
+                        <div className="bg-gray-50 rounded-lg p-3 mt-2">
+                          <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap break-words">
+                            {comment.text || comment.comment}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    
-                    {index < comments.length - 1 && (
-                      <Separator className="mt-4" />
-                    )}
-                  </Card>
+                  </div>
                 ))}
               </div>
             )}
