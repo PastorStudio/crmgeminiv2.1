@@ -68,6 +68,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Registrar rutas para cuentas de WhatsApp y asignaciones de chat
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
+  // 🔥 ROUTER DE ASIGNACIONES CORREGIDO - FORZAR POSTGRESQL
+  console.log('🚀 Registrando router de asignaciones arreglado...');
   app.use("/api/chat-assignments", chatAssignmentsRouter);
   
   // Ruta para la página de prueba de la galería de medios
