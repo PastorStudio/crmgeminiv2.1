@@ -61,8 +61,8 @@ router.post('/', async (req, res) => {
       // Asignar agente
       assignment = await storage.createOrUpdateChatAssignment({
         chatId,
-        accountId,
-        assignedToId
+        agentId: assignedToId,
+        accountId
       });
     }
     
