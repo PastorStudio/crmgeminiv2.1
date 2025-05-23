@@ -24,12 +24,13 @@ export const users = pgTable("users", {
 // WhatsApp Accounts
 export const whatsappAccounts = pgTable("whatsapp_accounts", {
   id: serial("id").primaryKey(),
-  accountName: text("accountName").notNull(),
-  phoneNumber: text("phoneNumber").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
   status: text("status").default("disconnected"),
-  qrCode: text("qrCode"),
+  ownerName: text("ownerName"),
+  ownerPhone: text("ownerPhone"),
+  adminId: integer("adminId"),
   sessionData: jsonb("sessionData"),
-  isActive: boolean("isActive").default(false),
   createdAt: timestamp("createdAt").defaultNow(),
   lastActiveAt: timestamp("lastActiveAt"),
 });
