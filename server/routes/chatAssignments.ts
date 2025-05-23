@@ -58,12 +58,31 @@ router.post('/', async (req, res) => {
       await storage.removeChatAssignment(chatId);
       assignment = null;
     } else {
-      // Asignar agente
-      assignment = await storage.createOrUpdateChatAssignment({
-        chatId,
-        accountId,
-        assignedToId
-      });
+      // 🔥 FORZAR USO DIRECTO DE POSTGRESQL - NO MEMORIA VIRTUAL
+      console.log('🔥 INSERTANDO DIRECTAMENTE EN POSTGRESQL DESDE ROUTER');
+      
+      const { db } = await import('../db');
+      const { chatAssignments } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      // Borrar asignación existente
+      await db.delete(chatAssignments).where(eq(chatAssignments.chatId, chatId));
+      
+      // Insertar nueva asignación DIRECTAMENTE en PostgreSQL
+      const [newAssignment] = await db.insert(chatAssignments)
+        .values({
+          chatId,
+          accountId: Number(accountId),
+          assignedToId: Number(assignedToId),
+          category: 'general',
+          status: 'active',
+          assignedAt: new Date(),
+          lastActivityAt: new Date()
+        })
+        .returning();
+      
+      console.log('✅ ASIGNACIÓN GUARDADA DIRECTAMENTE EN POSTGRESQL:', newAssignment);
+      assignment = newAssignment;
     }
     
     res.json(assignment);
