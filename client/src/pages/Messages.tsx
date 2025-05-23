@@ -1,10 +1,8 @@
-import { useState } from "react";
+import React from "react";
 import { Helmet } from "react-helmet";
-import { WhatsAppSimple } from "@/components/messaging/WhatsAppSimple";
+import { RealWhatsAppChats } from "@/components/messaging/RealWhatsAppChats";
 
 export default function Messages() {
-  const [selectedLeadId, setSelectedLeadId] = useState<number | undefined>(undefined);
-
   return (
     <>
       <Helmet>
@@ -12,9 +10,9 @@ export default function Messages() {
         <meta name="description" content="Comunícate con tus clientes a través de WhatsApp directamente desde tu CRM" />
       </Helmet>
 
-      {/* Esta página debe usar 100% del espacio disponible */}
+      {/* Nueva interfaz de WhatsApp completamente reescrita */}
       <div className="w-full h-screen flex p-0 m-0 overflow-hidden">
-        <WhatsAppSimple selectedLeadId={selectedLeadId} onSelectLead={setSelectedLeadId} />
+        <RealWhatsAppChats />
       </div>
     </>
   );
