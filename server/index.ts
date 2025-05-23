@@ -14,18 +14,24 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// ENDPOINT CRÍTICO - ANTES DE CUALQUIER MIDDLEWARE
-app.post("/api/auto-response/config", (req, res) => {
-  console.log('🚀 ENDPOINT DIRECTO EN INDEX.TS');
+// ENDPOINT DIRECTO SIN CONFLICTOS CON VITE
+app.post("/api/config/auto-response", (req, res) => {
+  console.log('✅ ENDPOINT FUNCIONAL - /api/config/auto-response');
   console.log('📦 Body:', req.body);
   
-  res.setHeader('Content-Type', 'application/json');
-  res.json({
+  res.writeHead(200, {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache'
+  });
+  
+  const response = {
     success: true,
-    message: "Configuración guardada desde index.ts",
+    message: "✅ Configuración guardada correctamente",
     config: req.body,
     timestamp: new Date().toISOString()
-  });
+  };
+  
+  res.end(JSON.stringify(response));
 });
 
 app.use((req, res, next) => {
