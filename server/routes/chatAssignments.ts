@@ -44,51 +44,75 @@ router.get('/:chatId', async (req, res) => {
 // Asignar o desasignar agente a un chat
 router.post('/', async (req, res) => {
   try {
-    console.log('📝 Asignación de chat (directo):', req.body);
+    console.log('📝 ASIGNACIÓN DE CHAT - INICIO:', req.body);
     const { chatId, accountId, assignedToId } = req.body;
     
     if (!chatId || !accountId) {
+      console.log('❌ ERROR: Faltan parámetros obligatorios');
       return res.status(400).json({ error: 'Se requiere chatId y accountId' });
     }
 
-    let assignment;
-    
     if (assignedToId === null || assignedToId === undefined) {
       // Desasignar agente
-      await storage.removeChatAssignment(chatId);
-      assignment = null;
-    } else {
-      // 🔥 FORZAR USO DIRECTO DE POSTGRESQL - NO MEMORIA VIRTUAL
-      console.log('🔥 INSERTANDO DIRECTAMENTE EN POSTGRESQL DESDE ROUTER');
-      
+      console.log('🗑️ DESASIGNANDO AGENTE DE CHAT:', chatId);
       const { db } = await import('../db');
       const { chatAssignments } = await import('@shared/schema');
       const { eq } = await import('drizzle-orm');
       
-      // Borrar asignación existente
       await db.delete(chatAssignments).where(eq(chatAssignments.chatId, chatId));
-      
-      // Insertar nueva asignación DIRECTAMENTE en PostgreSQL
-      const [newAssignment] = await db.insert(chatAssignments)
-        .values({
-          chatId,
-          accountId: Number(accountId),
-          assignedToId: Number(assignedToId),
-          category: 'general',
-          status: 'active',
-          assignedAt: new Date(),
-          lastActivityAt: new Date()
-        })
-        .returning();
-      
-      console.log('✅ ASIGNACIÓN GUARDADA DIRECTAMENTE EN POSTGRESQL:', newAssignment);
-      assignment = newAssignment;
+      console.log('✅ AGENTE DESASIGNADO EXITOSAMENTE');
+      return res.json(null);
     }
+
+    // ASIGNAR AGENTE DIRECTAMENTE EN POSTGRESQL
+    console.log('🔥 ASIGNANDO AGENTE DIRECTAMENTE EN POSTGRESQL');
     
-    res.json(assignment);
+    const { db } = await import('../db');
+    const { chatAssignments, users } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
+    // 1. Borrar asignación existente
+    await db.delete(chatAssignments).where(eq(chatAssignments.chatId, chatId));
+    console.log('🗑️ Asignación anterior eliminada');
+    
+    // 2. Insertar nueva asignación
+    const insertData = {
+      chatId: String(chatId),
+      accountId: Number(accountId),
+      assignedToId: Number(assignedToId),
+      category: 'general',
+      status: 'active',
+      assignedAt: new Date(),
+      lastActivityAt: new Date()
+    };
+    
+    console.log('📊 DATOS A INSERTAR:', insertData);
+    
+    const [newAssignment] = await db.insert(chatAssignments)
+      .values(insertData)
+      .returning();
+    
+    console.log('✅ ASIGNACIÓN CREADA EN POSTGRESQL:', newAssignment);
+    
+    // 3. Obtener información del agente
+    const [agent] = await db.select().from(users).where(eq(users.id, assignedToId));
+    console.log('👤 AGENTE ENCONTRADO:', agent);
+    
+    // 4. Verificar que se guardó
+    const [verification] = await db.select().from(chatAssignments).where(eq(chatAssignments.chatId, chatId));
+    console.log('🔍 VERIFICACIÓN EN BD:', verification);
+    
+    const response = {
+      ...newAssignment,
+      assignedTo: agent
+    };
+    
+    console.log('🎉 RESPUESTA FINAL:', response);
+    res.json(response);
+    
   } catch (error) {
-    console.error('Error al asignar agente:', error);
-    res.status(500).json({ error: 'Error al asignar agente' });
+    console.error('❌ ERROR CRÍTICO AL ASIGNAR AGENTE:', error);
+    res.status(500).json({ error: 'Error al asignar agente: ' + error.message });
   }
 });
 
