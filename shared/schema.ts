@@ -349,6 +349,29 @@ export const chatAssignments = pgTable("chat_assignments", {
   lastActivityAt: timestamp("lastActivityAt"),
 });
 
+// Comentarios internos de chat
+export const chatComments = pgTable("chat_comments", {
+  id: serial("id").primaryKey(),
+  chatId: text("chatId").notNull(),
+  userId: integer("userId").notNull().references(() => users.id),
+  text: text("text").notNull(),
+  timestamp: timestamp("timestamp").defaultNow(),
+  isInternal: boolean("isInternal").default(true),
+});
+
+// Configuración de respuestas automáticas
+export const autoResponseConfig = pgTable("auto_response_config", {
+  id: serial("id").primaryKey(),
+  enabled: boolean("enabled").default(false),
+  provider: text("provider").default("gemini"), // gemini, openai, smartbots
+  welcomeMessage: text("welcome_message"),
+  businessHours: jsonb("business_hours"),
+  maxResponsesPerDay: integer("max_responses_per_day").default(50),
+  responseDelay: integer("response_delay").default(2), // segundos
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+});
+
 // Categorías para organizar chats
 export const chatCategories = pgTable("chat_categories", {
   id: serial("id").primaryKey(),
