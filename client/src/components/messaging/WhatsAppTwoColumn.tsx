@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatAssignmentDialog from './ChatAssignmentDialog';
 import { AutoResponseConfigDialog } from './AutoResponseConfigDialog';
+import { ChatCommentsDialog } from './ChatCommentsDialog';
 
 // Componente para mostrar el agente asignado en cada chat de la lista con animaciones
 function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
@@ -1158,6 +1159,16 @@ export function WhatsAppTwoColumn() {
           onSave={handleAutoResponseConfig}
           chatId={selectedChat.id}
           accountId={selectedAccount.id}
+        />
+      )}
+
+      {/* Diálogo de comentarios internos */}
+      {selectedChat && (
+        <ChatCommentsDialog
+          open={commentsDialogOpen}
+          onOpenChange={setCommentsDialogOpen}
+          chatId={selectedChat.id}
+          chatName={selectedChat.name}
         />
       )}
     </div>
