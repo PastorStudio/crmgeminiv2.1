@@ -217,26 +217,26 @@ export function ChatCommentsDialog({
                         )}
                       </Avatar>
                       
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 max-w-full overflow-hidden">
                         <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium text-gray-900 text-sm">
+                          <div className="flex items-center space-x-2 min-w-0 flex-1">
+                            <span className="font-medium text-gray-900 text-sm truncate">
                               {comment.user?.fullName || 'Usuario Desconocido'}
                             </span>
                             <Badge 
                               variant="secondary"
-                              className={getRoleColor(comment.user?.role || '')}
+                              className={`${getRoleColor(comment.user?.role || '')} flex-shrink-0`}
                             >
                               {comment.user?.role || 'usuario'}
                             </Badge>
                           </div>
-                          <div className="flex items-center space-x-1 text-xs text-gray-500">
+                          <div className="flex items-center space-x-1 text-xs text-gray-500 flex-shrink-0 ml-2">
                             <Clock className="h-3 w-3" />
-                            <span>{formatDate(comment.timestamp || comment.createdAt)}</span>
+                            <span className="whitespace-nowrap">{formatDate(comment.timestamp || comment.createdAt)}</span>
                           </div>
                         </div>
                         
-                        <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                        <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-hidden">
                           {comment.text || comment.comment}
                         </p>
                       </div>
