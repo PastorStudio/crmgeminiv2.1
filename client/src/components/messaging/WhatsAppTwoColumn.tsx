@@ -1025,10 +1025,43 @@ export function WhatsAppTwoColumn() {
                               <div className={`flex items-center justify-end mt-1 space-x-1 ${
                                 message.fromMe ? 'text-blue-100' : 'text-gray-400'
                               }`}>
-                                <Clock className="h-3 w-3" />
                                 <span className="text-xs">
                                   {formatTime(message.timestamp)}
                                 </span>
+                                {/* Indicadores de estado del mensaje - solo para mensajes enviados */}
+                                {message.fromMe && (
+                                  <div className="flex items-center ml-1">
+                                    {/* Doble check para mensajes leídos */}
+                                    {message.ack === 3 || message.read ? (
+                                      <div className="flex items-center">
+                                        <svg className="w-3 h-3 text-blue-200" viewBox="0 0 16 16" fill="currentColor">
+                                          <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                        </svg>
+                                        <svg className="w-3 h-3 text-blue-200 -ml-1" viewBox="0 0 16 16" fill="currentColor">
+                                          <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                        </svg>
+                                      </div>
+                                    ) : message.ack === 2 ? (
+                                      /* Doble check para mensajes entregados */
+                                      <div className="flex items-center">
+                                        <svg className="w-3 h-3 text-blue-200" viewBox="0 0 16 16" fill="currentColor">
+                                          <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                        </svg>
+                                        <svg className="w-3 h-3 text-blue-300 -ml-1" viewBox="0 0 16 16" fill="currentColor">
+                                          <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                        </svg>
+                                      </div>
+                                    ) : message.ack === 1 ? (
+                                      /* Un solo check para mensaje enviado */
+                                      <svg className="w-3 h-3 text-blue-300" viewBox="0 0 16 16" fill="currentColor">
+                                        <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                      </svg>
+                                    ) : (
+                                      /* Reloj para mensaje pendiente */
+                                      <Clock className="h-3 w-3 text-blue-300" />
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
