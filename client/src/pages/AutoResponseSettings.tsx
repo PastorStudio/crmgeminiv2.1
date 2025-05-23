@@ -167,11 +167,9 @@ export default function AutoResponseSettings() {
     form.reset(formConfig);
   }, [config, form, isError]);
   
-  // Update configuration mutation
-  const { mutate: updateConfig, isPending } = useMutation({
+  // Auto-save mutation (sin mostrar toast para cada guardado)
+  const { mutate: autoSaveConfig, isPending: isAutoSaving } = useMutation({
     mutationFn: async (values: AutoResponseConfig) => {
-      console.log('🚀 Enviando configuración:', values);
-      
       const response = await fetch("/api/config/auto-response", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -182,27 +180,45 @@ export default function AutoResponseSettings() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const result = await response.json();
-      console.log('✅ Respuesta del servidor:', result);
-      return result;
+      return response.json();
     },
-    onSuccess: (data) => {
-      console.log('🎉 Configuración guardada exitosamente:', data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auto-response/config"] });
-      toast({
-        title: "✅ Configuración actualizada",
-        description: "La configuración de respuestas automáticas ha sido guardada correctamente.",
-      });
+      // Solo mostrar un toast discreto ocasionalmente
+      if (Math.random() < 0.1) { // 10% de probabilidad
+        toast({
+          title: "💾 Guardado automático",
+          description: "Configuración actualizada automáticamente",
+          duration: 2000,
+        });
+      }
     },
     onError: (error) => {
-      console.error('❌ Error al guardar:', error);
       toast({
-        title: "❌ Error al guardar",
-        description: `Error: ${error.message}`,
+        title: "⚠️ Error en guardado automático",
+        description: `No se pudo guardar automáticamente: ${error.message}`,
         variant: "destructive",
+        duration: 3000,
       });
     },
   });
+
+  // Función de autoguardado con debounce
+  const scheduleAutoSave = (values: AutoResponseConfig) => {
+    // Solo guardar si ya se ha cargado la configuración inicial
+    if (!hasLoadedRef.current) return;
+    
+    // Cancelar guardado previo si existe
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Programar nuevo guardado en 1.5 segundos
+    saveTimeoutRef.current = setTimeout(() => {
+      console.log('💾 Autoguardado activado');
+      autoSaveConfig(values);
+    }, 1500);
+  };
   
   // Form submission handler
   const onSubmit = (values: AutoResponseConfig) => {
