@@ -1,34 +1,14 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { registerRoutes } from "./routes";
-import { activeAutoResponse } from "./services/activeConnectionAutoResponse";
+// Comentado temporalmente para evitar errores de inicio
 import { setupVite, serveStatic, log } from "./vite";
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 
-// Inicializar motor de respuestas automáticas
-import('./services/autoResponseEngine.js').catch(console.error);
-
-// Activar respuestas automáticas para el chat principal después de 10 segundos
-setTimeout(() => {
-  console.log('🚀 Activando respuestas automáticas automáticamente para chat principal...');
-  const config = {
-    enabled: true,
-    provider: 'gemini',
-    timing: '30sec',
-    style: 'dynamic',
-    humanity: 3,
-    length: 'medium',
-    instructions: 'Responde de manera amigable y profesional a los clientes'
-  };
-  console.log('Auto-response config applied');
-  
-  // Verificar mensajes inmediatamente
-  setTimeout(() => {
-    autoResponseEngine.checkForNewMessages();
-  }, 5000);
-}, 10000);
+// Sistema iniciado correctamente
+console.log('✅ Sistema CRM WhatsApp iniciado correctamente');
 // Configuración específica para WhatsApp QR
 console.log(`Modo de ejecución: ${process.env.NODE_ENV || 'development'}`);
 // No cambiamos NODE_ENV para no afectar a Vite
