@@ -425,8 +425,42 @@ export default function Settings() {
                     )}
                   />
                   
-                  <div className="mb-4">
-                    <h3 className="text-base font-medium">Gemini API Key Status</h3>
+                  {/* OpenAI API Key Configuration */}
+                  <div className="mb-6 p-4 border rounded-lg">
+                    <h3 className="text-base font-medium mb-3">OpenAI API Key</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center">
+                        <div className={`h-3 w-3 rounded-full mr-2 ${openaiKeyStatus?.hasValidKey ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        <span className="text-sm">
+                          {openaiKeyStatusLoading ? (
+                            "Checking OpenAI API key status..."
+                          ) : openaiKeyStatus?.hasValidKey ? (
+                            "Valid OpenAI API key configured"
+                          ) : (
+                            "No OpenAI API key configured"
+                          )}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Required for SmartBots AI and OpenAI GPT auto-responses. Get your key from{" "}
+                        <a 
+                          href="https://platform.openai.com/api-keys" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:underline"
+                        >
+                          OpenAI Platform
+                        </a>
+                      </p>
+                      <div className="text-xs text-amber-600">
+                        ⚠️ Configure this API key through environment variables (OPENAI_API_KEY) or contact your administrator.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Gemini API Key Status */}
+                  <div className="mb-4 p-4 border rounded-lg">
+                    <h3 className="text-base font-medium mb-3">Gemini API Key</h3>
                     <div className="flex items-center mt-2">
                       <div className={`h-3 w-3 rounded-full mr-2 ${keyStatus?.hasValidKey ? 'bg-green-500' : 'bg-red-500'}`}></div>
                       <span className="text-sm">
@@ -441,6 +475,9 @@ export default function Settings() {
                         )}
                       </span>
                     </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Used for Gemini AI auto-responses and CRM analysis features.
+                    </p>
                     
                     {!keyStatus?.hasValidKey && (
                       <div className="mt-2">

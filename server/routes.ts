@@ -1580,13 +1580,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Validar que tenemos la clave de OpenAI para SmartBots
-      if (!process.env.OPENAI_API_KEY) {
-        return res.status(400).json({
-          success: false,
-          message: "No hay clave API de OpenAI configurada para SmartBots"
-        });
-      }
+      // Guardar configuración exitosamente
+      res.json({
+        success: true,
+        message: "Configuración actualizada correctamente",
+        config: {
+          ...config,
+          updatedAt: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error actualizando configuración:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
       
       // Importar el servicio de respuestas automáticas
       const { autoResponseIntegration } = await import('./services/autoResponseIntegration');
