@@ -3258,5 +3258,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
   
+  // ✅ RUTAS CORREGIDAS PARA TODAS LAS FUNCIONES
+  
+  // Asignaciones de chat que funcionan
+  app.get('/api/chat-assignments/by-chat', getAssignmentByChat);
+  app.post('/api/chat-assignments', createAssignmentFixed);
+  
+  // Comentarios de chat que funcionan
+  app.get('/api/chat-comments/:chatId', getCommentsFixed);
+  app.post('/api/chat-comments', createCommentFixed);
+  
+  // Configuración de respuestas automáticas que funciona
+  app.get('/api/auto-response-config', getAutoResponseConfigFixed);
+  app.post('/api/auto-response-config', saveAutoResponseConfigFixed);
+
   return httpServer;
 }
