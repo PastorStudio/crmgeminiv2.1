@@ -20,13 +20,14 @@ router.get('/:chatId', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     console.log('💬 Creando comentario:', req.body);
-    const { chatId, text } = req.body;
+    const { chatId, text, comment } = req.body;
+    const commentText = text || comment;
     
-    if (!chatId || !text) {
-      return res.status(400).json({ error: 'Se requieren chatId y text' });
+    if (!chatId || !commentText) {
+      return res.status(400).json({ error: 'Se requieren chatId y text/comment' });
     }
 
-    const comment = await storage.createChatComment({ chatId, text });
+    const newComment = await storage.createChatComment({ chatId, text: commentText });
     res.json(comment);
   } catch (error) {
     console.error('Error al agregar comentario:', error);
