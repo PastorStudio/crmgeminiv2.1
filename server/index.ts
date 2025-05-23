@@ -329,7 +329,185 @@ app.use((req, res, next) => {
   // Registrar rutas de WhatsApp accounts sin autenticación
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   
-  // Las rutas para asignación de chats se registran en routes.ts
+  // ENDPOINT ARREGLADO PARA ASIGNACIONES DE AGENTES
+  app.get('/api/chat-assignments/by-chat', async (req, res) => {
+    try {
+      const { chatId, accountId } = req.query;
+      console.log('🔍 Consulta asignación PostgreSQL para chat by-chat:', chatId);
+      
+      if (!chatId) {
+        return res.json(null);
+      }
+
+      const { sql } = await import('drizzle-orm');
+      const assignmentQuery = sql`
+        SELECT ca.*, u."fullName" as agent_name, u.username as agent_username, u.role as agent_role
+        FROM chat_assignments ca
+        LEFT JOIN users u ON ca."assignedToId" = u.id
+        WHERE ca."chatId" = ${chatId}
+        LIMIT 1
+      `;
+      
+      const result = await db.execute(assignmentQuery);
+      
+      if (result.rows.length > 0) {
+        const assignment = result.rows[0];
+        const response = {
+          id: assignment.id,
+          chatId: assignment.chatId,
+          accountId: assignment.accountId,
+          assignedToId: assignment.assignedToId,
+          category: assignment.category,
+          status: assignment.status,
+          assignedAt: assignment.assignedAt,
+          assignedTo: assignment.agent_name ? {
+            id: assignment.assignedToId,
+            fullName: assignment.agent_name,
+            username: assignment.agent_username,
+            role: assignment.agent_role
+          } : null
+        };
+        console.log('✅ Asignación encontrada:', response);
+        res.json(response);
+      } else {
+        console.log('❌ No hay asignación para este chat');
+        res.json(null);
+      }
+    } catch (error) {
+      console.error('❌ Error al buscar asignación:', error);
+      res.json(null);
+    }
+  });
+
+  // ENDPOINT ARREGLADO PARA CREAR ASIGNACIONES DE AGENTES
+  app.post('/api/chat-assignments', async (req, res) => {
+    try {
+      console.log('📝 Creando/actualizando asignación:', req.body);
+      const { chatId, accountId, assignedToId, category = 'general' } = req.body;
+      
+      if (!chatId || !accountId) {
+        return res.status(400).json({ error: 'Se requiere chatId y accountId' });
+      }
+
+      const { sql } = await import('drizzle-orm');
+      
+      // Verificar si ya existe una asignación
+      const existingQuery = sql`
+        SELECT * FROM chat_assignments WHERE "chatId" = ${chatId} LIMIT 1
+      `;
+      const existingResult = await db.execute(existingQuery);
+      
+      if (existingResult.rows.length > 0) {
+        // Actualizar asignación existente
+        const updateQuery = sql`
+          UPDATE chat_assignments 
+          SET "assignedToId" = ${assignedToId || null}, "category" = ${category}, "assignedAt" = NOW()
+          WHERE "chatId" = ${chatId}
+          RETURNING *
+        `;
+        const updateResult = await db.execute(updateQuery);
+        console.log('✅ Asignación actualizada:', updateResult.rows[0]);
+        res.json(updateResult.rows[0]);
+      } else {
+        // Crear nueva asignación
+        const insertQuery = sql`
+          INSERT INTO chat_assignments ("chatId", "accountId", "assignedToId", "category", "status", "assignedAt")
+          VALUES (${chatId}, ${parseInt(accountId)}, ${assignedToId || null}, ${category}, 'active', NOW())
+          RETURNING *
+        `;
+        const insertResult = await db.execute(insertQuery);
+        console.log('✅ Nueva asignación creada:', insertResult.rows[0]);
+        res.json(insertResult.rows[0]);
+      }
+    } catch (error) {
+      console.error('❌ Error al crear asignación:', error);
+      res.status(500).json({ error: 'Error al crear asignación: ' + (error as Error).message });
+    }
+  });
+
+  // ENDPOINT ARREGLADO PARA CONFIGURACIÓN DE RESPUESTAS AUTOMÁTICAS
+  app.get('/api/auto-response/config', async (req, res) => {
+    try {
+      console.log('⚙️ Obteniendo configuración de respuestas automáticas');
+      
+      const { sql } = await import('drizzle-orm');
+      const configQuery = sql`
+        SELECT * FROM auto_response_config ORDER BY id DESC LIMIT 1
+      `;
+      
+      const result = await db.execute(configQuery);
+      
+      if (result.rows.length > 0) {
+        console.log('✅ Configuración encontrada:', result.rows[0]);
+        res.json(result.rows[0]);
+      } else {
+        // Crear configuración por defecto
+        const defaultConfig = {
+          enabled: false,
+          provider: 'gemini',
+          welcomeMessage: 'Hola, gracias por contactarnos. En breve le atenderemos.',
+          maxResponsesPerDay: 50,
+          responseDelay: 2,
+          businessHours: { start: '09:00', end: '18:00', timezone: 'America/Mexico_City' }
+        };
+        
+        const insertQuery = sql`
+          INSERT INTO auto_response_config (enabled, provider, "welcomeMessage", "maxResponsesPerDay", "responseDelay", "businessHours")
+          VALUES (${defaultConfig.enabled}, ${defaultConfig.provider}, ${defaultConfig.welcomeMessage}, ${defaultConfig.maxResponsesPerDay}, ${defaultConfig.responseDelay}, ${JSON.stringify(defaultConfig.businessHours)})
+          RETURNING *
+        `;
+        
+        const insertResult = await db.execute(insertQuery);
+        console.log('✅ Configuración por defecto creada:', insertResult.rows[0]);
+        res.json(insertResult.rows[0]);
+      }
+    } catch (error) {
+      console.error('❌ Error al obtener configuración:', error);
+      res.status(500).json({ error: 'Error al obtener configuración' });
+    }
+  });
+
+  app.post('/api/auto-response/config', async (req, res) => {
+    try {
+      console.log('⚙️ Guardando configuración de respuestas automáticas:', req.body);
+      
+      const { enabled, provider, welcomeMessage, maxResponsesPerDay, responseDelay, businessHours } = req.body;
+      
+      const { sql } = await import('drizzle-orm');
+      
+      // Verificar si existe configuración
+      const existingQuery = sql`SELECT id FROM auto_response_config LIMIT 1`;
+      const existingResult = await db.execute(existingQuery);
+      
+      if (existingResult.rows.length > 0) {
+        // Actualizar configuración existente
+        const updateQuery = sql`
+          UPDATE auto_response_config 
+          SET enabled = ${enabled}, provider = ${provider}, "welcomeMessage" = ${welcomeMessage}, 
+              "maxResponsesPerDay" = ${maxResponsesPerDay}, "responseDelay" = ${responseDelay}, 
+              "businessHours" = ${JSON.stringify(businessHours)}, "updatedAt" = NOW()
+          WHERE id = ${existingResult.rows[0].id}
+          RETURNING *
+        `;
+        const updateResult = await db.execute(updateQuery);
+        console.log('✅ Configuración actualizada:', updateResult.rows[0]);
+        res.json(updateResult.rows[0]);
+      } else {
+        // Crear nueva configuración
+        const insertQuery = sql`
+          INSERT INTO auto_response_config (enabled, provider, "welcomeMessage", "maxResponsesPerDay", "responseDelay", "businessHours")
+          VALUES (${enabled}, ${provider}, ${welcomeMessage}, ${maxResponsesPerDay}, ${responseDelay}, ${JSON.stringify(businessHours)})
+          RETURNING *
+        `;
+        const insertResult = await db.execute(insertQuery);
+        console.log('✅ Nueva configuración creada:', insertResult.rows[0]);
+        res.json(insertResult.rows[0]);
+      }
+    } catch (error) {
+      console.error('❌ Error al guardar configuración:', error);
+      res.status(500).json({ error: 'Error al guardar configuración: ' + (error as Error).message });
+    }
+  });
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
