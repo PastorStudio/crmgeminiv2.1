@@ -8,38 +8,42 @@ router.get('/by-chat', async (req, res) => {
   try {
     const { chatId, accountId } = req.query;
     
-    console.log('🔍 BUSCANDO ASIGNACIÓN:', { chatId, accountId });
+    console.log('🔍 Consulta asignación PostgreSQL para chat', chatId + ':', { chatId, accountId, queryParams: req.query });
     
     if (!chatId || !accountId) {
-      console.log('❌ Faltan parámetros');
+      console.log('❌ Faltan parámetros requeridos');
       return res.status(400).json({ error: 'Se requiere chatId y accountId' });
     }
     
     // BUSCAR DIRECTAMENTE EN POSTGRESQL
     const { db } = await import('../db');
     const { chatAssignments, users } = await import('@shared/schema');
-    const { eq } = await import('drizzle-orm');
+    const { eq, and } = await import('drizzle-orm');
     
+    // Buscar por chatId Y accountId para mayor precisión
     const [assignment] = await db.select()
       .from(chatAssignments)
-      .where(eq(chatAssignments.chatId, chatId as string));
+      .where(and(
+        eq(chatAssignments.chatId, String(chatId)),
+        eq(chatAssignments.accountId, Number(accountId))
+      ));
     
-    console.log('📊 ASIGNACIÓN ENCONTRADA:', assignment);
+    console.log('📊 RESULTADO ASIGNACIÓN POSTGRESQL:', assignment);
     
     if (assignment) {
       // Obtener información del agente
       const [agent] = await db.select().from(users).where(eq(users.id, assignment.assignedToId));
-      console.log('👤 AGENTE ENCONTRADO:', agent);
+      console.log('👤 AGENTE ASIGNADO:', agent);
       
       const response = { ...assignment, assignedTo: agent };
-      console.log('✅ RESPUESTA FINAL:', response);
+      console.log('✅ RESPUESTA COMPLETA:', response);
       res.json(response);
     } else {
-      console.log('❌ NO HAY ASIGNACIÓN');
+      console.log('❌ NO HAY ASIGNACIÓN PARA ESTE CHAT Y CUENTA');
       res.json(null);
     }
   } catch (error) {
-    console.error('❌ ERROR AL OBTENER ASIGNACIÓN:', error);
+    console.error('❌ ERROR CRÍTICO AL OBTENER ASIGNACIÓN:', error);
     res.status(500).json({ error: 'Error al obtener asignación: ' + (error as Error).message });
   }
 });
