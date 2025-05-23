@@ -522,7 +522,9 @@ export default function AutoResponseSettings() {
                       </>
                     ) : (
                       <>
-                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <div className="h-4 w-4 bg-green-600 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs">✓</span>
+                        </div>
                         <span className="text-green-700 font-medium">✅ Autoguardado activo</span>
                       </>
                     )}
