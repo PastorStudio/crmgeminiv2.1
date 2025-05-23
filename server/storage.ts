@@ -78,6 +78,10 @@ export interface IStorage {
   
   // WhatsApp Account methods
   getAllWhatsappAccounts(): Promise<WhatsappAccount[]>;
+
+  // Auto-response configuration methods
+  getAutoResponseConfig(): Promise<any>;
+  saveAutoResponseConfig(config: any): Promise<void>;
   getWhatsappAccount(id: number): Promise<WhatsappAccount | undefined>;
   createWhatsappAccount(account: InsertWhatsappAccount): Promise<WhatsappAccount>;
   updateWhatsappAccount(id: number, data: Partial<InsertWhatsappAccount>): Promise<WhatsappAccount | undefined>;

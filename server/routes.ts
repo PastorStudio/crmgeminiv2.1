@@ -1460,44 +1460,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Auto-response endpoints
+  // Auto-response endpoints - REAL STORAGE
   app.get("/api/auto-response/config", async (req: Request, res: Response) => {
     try {
       console.log('🤖 API: Obteniendo configuración de respuestas automáticas');
       
-      // Configuración completa funcional
-      const config = {
-        enabled: false,
-        delaySeconds: 10,
-        templates: [
-          {
-            id: "1",
-            name: "SmartBots AI",
-            content: "Respuesta inteligente generada por SmartBots",
-            variables: []
-          },
-          {
-            id: "2", 
-            name: "OpenAI ChatGPT",
-            content: "Respuesta generada por ChatGPT",
-            variables: []
-          },
-          {
-            id: "3",
-            name: "Gemini AI",
-            content: "Respuesta generada por Gemini",
-            variables: []
-          }
-        ],
-        defaultTemplate: "1",
-        excludedContacts: [],
-        excludedNumbers: [],
-        provider: "smartbots",
-        messageTemplate: "Eres un asistente virtual profesional que responde consultas de atención al cliente de manera amable y útil.",
-        customPrompts: {
-          enabled: true,
-          system: "Eres SmartBots, un asistente virtual especializado en atención al cliente para WhatsApp. Responde de manera amable, profesional y útil.",
-          temperature: 0.7,
+      const config = await storage.getAutoResponseConfig();
+      res.json(config);
+    } catch (error) {
+      console.error('Error getting auto-response config:', error);
+      res.status(500).json({ error: "Failed to get auto-response configuration" });
+    }
+  });
+
+  app.post("/api/auto-response/config", async (req: Request, res: Response) => {
+    try {
+      console.log('🤖 API: Guardando configuración de respuestas automáticas:', req.body);
+      
+      await storage.saveAutoResponseConfig(req.body);
+      res.json({ success: true, config: req.body });
+    } catch (error) {
+      console.error('Error saving auto-response config:', error);
+      res.status(500).json({ error: "Failed to save auto-response configuration" });
+    }
+  });
+
+  // Alternative endpoint for config (avoiding Vite interception)
+  app.get("/api/config/auto-response", async (req: Request, res: Response) => {
+    try {
+      const config = await storage.getAutoResponseConfig();
+      res.json(config);
+    } catch (error) {
+      console.error('Error getting auto-response config:', error);
+      res.status(500).json({ error: "Failed to get auto-response configuration" });
+    }
+  });
+
+  app.post("/api/config/auto-response", async (req: Request, res: Response) => {
+    try {
+      await storage.saveAutoResponseConfig(req.body);
+      res.json({ success: true, config: req.body });
+    } catch (error) {
+      console.error('Error saving auto-response config:', error);
+      res.status(500).json({ error: "Failed to save auto-response configuration" });
+    }
+  });
           maxTokens: 500
         },
         businessHours: {
