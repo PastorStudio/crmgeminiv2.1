@@ -15,6 +15,7 @@ import { Send, Loader2, Search, MessageCircle, Clock, Users, CheckCheck, Check, 
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatAssignmentDialog from './ChatAssignmentDialog';
+import { AutoResponseConfigDialog } from './AutoResponseConfigDialog';
 
 // Componente para mostrar el agente asignado en cada chat de la lista con animaciones
 function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
@@ -105,6 +106,8 @@ export function WhatsAppTwoColumn() {
   const [selectedAgent, setSelectedAgent] = useState('');
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [autoResponseEnabled, setAutoResponseEnabled] = useState(false);
+  const [autoResponseConfigOpen, setAutoResponseConfigOpen] = useState(false);
+  const [autoResponseConfig, setAutoResponseConfig] = useState(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -906,7 +909,7 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
 
-                  {/* Botón de Respuestas Automáticas */}
+                  {/* Botón de Configuración de Respuestas Automáticas */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -920,7 +923,7 @@ export function WhatsAppTwoColumn() {
                           ? "bg-green-600 hover:bg-green-700 text-white" 
                           : "border-green-600 text-green-600 hover:bg-green-50"
                       }`}
-                      onClick={toggleAutoResponse}
+                      onClick={() => setAutoResponseConfigOpen(true)}
                     >
                       <MessageCircle className="h-4 w-4 mr-2" />
                       {autoResponseEnabled ? "Auto ON" : "Auto OFF"}
