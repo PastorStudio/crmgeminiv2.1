@@ -168,9 +168,19 @@ export function WhatsAppTwoColumn() {
     queryFn: async () => {
       if (!selectedChat?.id) return null;
       try {
-        const response = await fetch(`/api/chat-assignments/by-chat?chatId=${encodeURIComponent(selectedChat.id)}&accountId=${selectedAccount?.id}`);
+        const response = await fetch(`/api/chat-assignments/${encodeURIComponent(selectedChat.id)}`);
         if (!response.ok) return null;
-        return response.json();
+        const assignment = await response.json();
+        
+        // Si hay asignación, obtener datos del agente
+        if (assignment && assignment.assignedToId) {
+          const agentResponse = await fetch(`/api/users/${assignment.assignedToId}`);
+          if (agentResponse.ok) {
+            const agent = await agentResponse.json();
+            return { ...assignment, assignedTo: agent };
+          }
+        }
+        return assignment;
       } catch (error) {
         console.log('No se pudo cargar asignación de agente:', error);
         return null;
