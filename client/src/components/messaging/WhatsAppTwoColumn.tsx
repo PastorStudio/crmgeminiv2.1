@@ -1031,8 +1031,9 @@ export function WhatsAppTwoColumn() {
                                 {/* Indicadores de estado del mensaje - solo para mensajes enviados */}
                                 {message.fromMe && (
                                   <div className="flex items-center ml-1">
-                                    {/* Doble check para mensajes leídos */}
-                                    {message.ack === 3 || message.read ? (
+                                    {/* Mostrar indicadores basados en propiedades disponibles de WhatsApp */}
+                                    {(message as any).ack === 3 || (message as any).isRead ? (
+                                      /* Doble check azul para mensajes leídos */
                                       <div className="flex items-center">
                                         <svg className="w-3 h-3 text-blue-200" viewBox="0 0 16 16" fill="currentColor">
                                           <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
@@ -1041,24 +1042,31 @@ export function WhatsAppTwoColumn() {
                                           <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
                                         </svg>
                                       </div>
-                                    ) : message.ack === 2 ? (
-                                      /* Doble check para mensajes entregados */
+                                    ) : (message as any).ack === 2 || (message as any).status === 'delivered' ? (
+                                      /* Doble check gris para mensajes entregados */
                                       <div className="flex items-center">
-                                        <svg className="w-3 h-3 text-blue-200" viewBox="0 0 16 16" fill="currentColor">
+                                        <svg className="w-3 h-3 text-blue-300" viewBox="0 0 16 16" fill="currentColor">
                                           <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
                                         </svg>
                                         <svg className="w-3 h-3 text-blue-300 -ml-1" viewBox="0 0 16 16" fill="currentColor">
                                           <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
                                         </svg>
                                       </div>
-                                    ) : message.ack === 1 ? (
+                                    ) : (message as any).ack === 1 || (message as any).status === 'sent' ? (
                                       /* Un solo check para mensaje enviado */
                                       <svg className="w-3 h-3 text-blue-300" viewBox="0 0 16 16" fill="currentColor">
                                         <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
                                       </svg>
                                     ) : (
-                                      /* Reloj para mensaje pendiente */
-                                      <Clock className="h-3 w-3 text-blue-300" />
+                                      /* Doble check para mensajes normales - WhatsApp por defecto muestra entregado */
+                                      <div className="flex items-center">
+                                        <svg className="w-3 h-3 text-blue-300" viewBox="0 0 16 16" fill="currentColor">
+                                          <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                        </svg>
+                                        <svg className="w-3 h-3 text-blue-300 -ml-1" viewBox="0 0 16 16" fill="currentColor">
+                                          <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                        </svg>
+                                      </div>
                                     )}
                                   </div>
                                 )}
