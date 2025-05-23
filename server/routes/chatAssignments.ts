@@ -8,7 +8,7 @@ router.get('/:chatId', async (req, res) => {
   try {
     const { chatId } = req.params;
     
-    const assignment = await storage.getChatAssignment(chatId);
+    const assignment = await storage.getChatAssignmentByChatId(chatId);
     res.json(assignment);
   } catch (error) {
     console.error('Error al obtener asignación:', error);

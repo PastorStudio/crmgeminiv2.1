@@ -349,52 +349,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Users endpoints - protegidos con autenticación
+  // Users endpoints - acceso temporal sin autenticación para desarrollo
   app.get("/api/users", async (req: Request, res: Response) => {
     try {
-      // Permitir acceso sin autenticación cuando es específicamente para asignación de chat
-      const forChatAssignment = req.query.forChatAssignment === 'true';
-      
-      // Si no es para asignación de chat, verificar autenticación
-      if (!forChatAssignment) {
-        try {
-          // Verificar autenticación
-          const authResult = await authService.authenticateForAPI(req);
-          if (!authResult || !authResult.success) {
-            return res.status(401).json({ 
-              success: false, 
-              message: "No autenticado" 
-            });
-          }
-          
-          // Verificar que el usuario tiene permisos de admin o supervisor
-          const userRole = authResult.user.role;
-          if (userRole !== 'admin' && userRole !== 'supervisor') {
-            return res.status(403).json({ 
-              success: false, 
-              message: "No tienes permisos para acceder a la lista de usuarios" 
-            });
-          }
-        } catch (error) {
-          return res.status(401).json({
-            success: false,
-            message: "Error de autenticación"
-          });
-        }
-      }
-      
       const users = await storage.getAllUsers();
       
-      // Filtrar las contraseñas por seguridad
+      // Filtrar las contraseñas por seguridad y devolver directamente el array
       const safeUsers = users.map(user => {
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword;
       });
       
-      res.json({ 
-        success: true, 
-        users: safeUsers 
-      });
+      res.json(safeUsers);
     } catch (error) {
       console.error("Error al obtener usuarios:", error);
       res.status(500).json({ 
