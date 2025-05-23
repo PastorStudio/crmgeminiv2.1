@@ -12,7 +12,7 @@ export async function createChatAssignment(req: Request, res: Response) {
     // ELIMINAR ASIGNACIÓN ANTERIOR SI EXISTE
     await db.delete(chatAssignments).where(eq(chatAssignments.chatId, chatId));
     
-    // INSERTAR NUEVA ASIGNACIÓN
+    // INSERTAR NUEVA ASIGNACIÓN EN POSTGRESQL CON NOMENCLATURA CORRECTA
     const [newAssignment] = await db.insert(chatAssignments)
       .values({
         chatId: String(chatId),
