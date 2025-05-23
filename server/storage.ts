@@ -713,6 +713,92 @@ export class DatabaseStorage implements IStorage {
       throw error;
     }
   }
+
+  // Chat comments methods
+  async getChatComments(chatId: string): Promise<any[]> {
+    try {
+      return [];
+    } catch (error) {
+      console.error('Error al obtener comentarios del chat:', error);
+      return [];
+    }
+  }
+
+  async createChatComment(comment: any): Promise<any> {
+    try {
+      return {
+        id: Date.now(),
+        ...comment,
+        user: { name: 'Usuario Sistema', username: 'system' }
+      };
+    } catch (error) {
+      console.error('Error al crear comentario:', error);
+      throw error;
+    }
+  }
+
+  // Chat assignments methods usando la tabla existente
+  async getChatAssignmentByChatId(chatId: string): Promise<any> {
+    try {
+      const [assignment] = await db.select()
+        .from(chatAssignments)
+        .where(eq(chatAssignments.chatId, chatId));
+      return assignment || null;
+    } catch (error) {
+      console.error('Error al obtener asignación de chat:', error);
+      return null;
+    }
+  }
+
+  async createOrUpdateChatAssignment(assignment: any): Promise<any> {
+    try {
+      if (!assignment.agentId) {
+        await this.removeChatAssignment(assignment.chatId);
+        return null;
+      }
+
+      const existing = await this.getChatAssignmentByChatId(assignment.chatId);
+      
+      if (existing) {
+        const [updated] = await db.update(chatAssignments)
+          .set({
+            assignedToId: assignment.agentId,
+            lastActivityAt: new Date()
+          })
+          .where(eq(chatAssignments.chatId, assignment.chatId))
+          .returning();
+        
+        const agent = await this.getUser(assignment.agentId);
+        return { ...updated, agent: agent };
+      } else {
+        const [created] = await db.insert(chatAssignments)
+          .values({
+            chatId: assignment.chatId,
+            assignedToId: assignment.agentId,
+            assignedAt: new Date(),
+            lastActivityAt: new Date()
+          })
+          .returning();
+        
+        const agent = await this.getUser(assignment.agentId);
+        return { ...created, agent: agent };
+      }
+    } catch (error) {
+      console.error('Error al crear/actualizar asignación:', error);
+      throw error;
+    }
+  }
+
+  async removeChatAssignment(chatId: string): Promise<void> {
+    try {
+      await db.delete(chatAssignments)
+        .where(eq(chatAssignments.chatId, chatId));
+      console.log(`Asignación removida para chat ${chatId}`);
+    } catch (error) {
+      console.error('Error al remover asignación:', error);
+      throw error;
+    }
+  }
 }
 
 // Siempre usamos almacenamiento en base de datos real para datos reales
