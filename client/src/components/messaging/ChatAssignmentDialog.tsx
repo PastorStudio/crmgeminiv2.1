@@ -220,9 +220,11 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
       // Invalidar todas las consultas relacionadas
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-assignment'] });
       
       // Invalidar consultas específicas
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat', chatId, accountId] });
+      queryClient.invalidateQueries({ queryKey: ['chat-assignment', chatId] });
       
       // Forzar refresco de los datos de WhatsApp
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
@@ -259,9 +261,11 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
       // Invalidar todas las consultas relacionadas
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-assignment'] });
       
       // Invalidar consultas específicas
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat', chatId, accountId] });
+      queryClient.invalidateQueries({ queryKey: ['chat-assignment', chatId] });
       
       // Forzar refresco global de los datos
       queryClient.invalidateQueries();
