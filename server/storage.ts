@@ -792,42 +792,34 @@ export class DatabaseStorage implements IStorage {
   async createOrUpdateChatAssignment(assignment: any): Promise<any> {
     try {
       const agentId = assignment.assignedToId || assignment.agentId;
+      console.log('💾 Guardando asignación en PostgreSQL:', { chatId: assignment.chatId, agentId, accountId: assignment.accountId });
       
       if (!agentId) {
         await this.removeChatAssignment(assignment.chatId);
         return null;
       }
 
-      const existing = await this.getChatAssignmentByChatId(assignment.chatId);
+      // Primero eliminar cualquier asignación existente para este chat
+      await db.delete(chatAssignments)
+        .where(eq(chatAssignments.chatId, assignment.chatId));
+
+      // Crear nueva asignación
+      const [created] = await db.insert(chatAssignments)
+        .values({
+          chatId: assignment.chatId,
+          accountId: assignment.accountId,
+          assignedToId: agentId,
+          category: assignment.category || null,
+          status: 'active',
+          assignedAt: new Date(),
+          lastActivityAt: new Date()
+        })
+        .returning();
       
-      if (existing) {
-        const [updated] = await db.update(chatAssignments)
-          .set({
-            assignedToId: agentId,
-            accountId: assignment.accountId,
-            lastActivityAt: new Date()
-          })
-          .where(eq(chatAssignments.chatId, assignment.chatId))
-          .returning();
-        
-        const agent = await this.getUser(agentId);
-        return { ...updated, agent: agent };
-      } else {
-        const [created] = await db.insert(chatAssignments)
-          .values({
-            chatId: assignment.chatId,
-            accountId: assignment.accountId,
-            assignedToId: agentId,
-            category: assignment.category || null,
-            status: 'active',
-            assignedAt: new Date(),
-            lastActivityAt: new Date()
-          })
-          .returning();
-        
-        const agent = await this.getUser(agentId);
-        return { ...created, agent: agent };
-      }
+      console.log('✅ Asignación guardada exitosamente en PostgreSQL:', created);
+      
+      const agent = await this.getUser(agentId);
+      return { ...created, agent: agent };
     } catch (error) {
       console.error('Error al crear/actualizar asignación:', error);
       throw error;
