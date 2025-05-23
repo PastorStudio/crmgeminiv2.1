@@ -432,49 +432,51 @@ app.use((req, res, next) => {
   app.get('/api/chat-assignments/by-chat', async (req, res) => {
     try {
       const { chatId, accountId } = req.query;
-      console.log('🔍 Consulta asignación PostgreSQL para chat by-chat:', chatId);
+      console.log('🔍 Consulta asignación PostgreSQL para chat by-chat:', { chatId, accountId });
       
       if (!chatId) {
-        return res.json(null);
+        console.log('❌ No se proporcionó chatId');
+        return res.status(200).json(null);
       }
 
-      const { sql } = await import('drizzle-orm');
-      const assignmentQuery = sql`
-        SELECT ca.*, u."fullName" as agent_name, u.username as agent_username, u.role as agent_role
-        FROM chat_assignments ca
-        LEFT JOIN users u ON ca."assignedToId" = u.id
-        WHERE ca."chatId" = ${chatId}
-        LIMIT 1
-      `;
+      // Importar tablas necesarias
+      const { chatAssignments, users } = await import('@shared/schema');
+      const { eq, and } = await import('drizzle-orm');
+
+      // Buscar asignación directamente usando el chatId recibido
+      const assignments = await db
+        .select({
+          id: chatAssignments.id,
+          chatId: chatAssignments.chatId,
+          accountId: chatAssignments.accountId,
+          assignedToId: chatAssignments.assignedToId,
+          category: chatAssignments.category,
+          status: chatAssignments.status,
+          assignedAt: chatAssignments.assignedAt,
+          assignedTo: {
+            id: users.id,
+            username: users.username,
+            fullName: users.fullName,
+            role: users.role
+          }
+        })
+        .from(chatAssignments)
+        .leftJoin(users, eq(chatAssignments.assignedToId, users.id))
+        .where(eq(chatAssignments.chatId, chatId as string))
+        .limit(1);
       
-      const result = await db.execute(assignmentQuery);
-      
-      if (result.rows.length > 0) {
-        const assignment = result.rows[0];
-        const response = {
-          id: assignment.id,
-          chatId: assignment.chatId,
-          accountId: assignment.accountId,
-          assignedToId: assignment.assignedToId,
-          category: assignment.category,
-          status: assignment.status,
-          assignedAt: assignment.assignedAt,
-          assignedTo: assignment.agent_name ? {
-            id: assignment.assignedToId,
-            fullName: assignment.agent_name,
-            username: assignment.agent_username,
-            role: assignment.agent_role
-          } : null
-        };
-        console.log('✅ Asignación encontrada:', response);
-        res.json(response);
+      if (assignments.length > 0) {
+        const assignment = assignments[0];
+        console.log('✅ Asignación encontrada:', assignment);
+        return res.status(200).json(assignment);
       } else {
         console.log('❌ No hay asignación para este chat');
-        res.json(null);
+        return res.status(200).json(null);
       }
+      
     } catch (error) {
       console.error('❌ Error al buscar asignación:', error);
-      res.json(null);
+      return res.status(500).json({ error: 'Error interno del servidor' });
     }
   });
 
