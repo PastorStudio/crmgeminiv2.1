@@ -14,6 +14,32 @@ import { Label } from '@/components/ui/label';
 import { Send, Loader2, Search, MessageCircle, Clock, Users, CheckCheck, Check, User, MessageSquare, UserPlus, X, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+// Componente para mostrar el agente asignado en cada chat de la lista
+function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
+  const { data: assignment } = useQuery({
+    queryKey: ['chat-assignment-badge', chatId, accountId],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/chat-assignments/by-chat?chatId=${encodeURIComponent(chatId)}&accountId=${accountId}`);
+        if (!response.ok) return null;
+        return response.json();
+      } catch (error) {
+        return null;
+      }
+    },
+    enabled: !!chatId && !!accountId
+  });
+
+  if (!assignment?.assignedTo) return null;
+
+  return (
+    <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded flex items-center">
+      <User className="h-2 w-2 mr-1" />
+      {assignment.assignedTo.fullName.split(' ')[0]}
+    </span>
+  );
+}
+
 interface WhatsAppChat {
   id: string;
   name: string;
@@ -451,11 +477,7 @@ export function WhatsAppTwoColumn() {
 
                         {/* Última conexión y estado de lectura */}
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-1">
-                            {/* Tipo de chat */}
-                            <span className="text-xs text-gray-400 px-1.5 py-0.5 bg-gray-100 rounded">
-                              {chat.isGroup ? 'Grupo' : 'Individual'}
-                            </span>
+                          <div className="flex items-center space-x-1 flex-wrap">
                             {/* Estado de conexión solo para individuales */}
                             {!chat.isGroup && (
                               <span className="text-xs text-gray-500 truncate">
@@ -466,6 +488,8 @@ export function WhatsAppTwoColumn() {
                                 )}
                               </span>
                             )}
+                            {/* Mostrar agente asignado en lista de chats */}
+                            <ChatAssignmentBadge chatId={chat.id} accountId={chat.accountId} />
                           </div>
                           <div className="flex items-center space-x-1 flex-shrink-0">
                             {/* Indicador de mensajes leídos */}
@@ -687,14 +711,16 @@ export function WhatsAppTwoColumn() {
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
-                      <span className="px-2 py-0.5 bg-gray-100 rounded-full text-xs">
-                        {selectedChat.isGroup ? 'Grupo' : 'Individual'}
-                      </span>
-                      {/* Mostrar agente asignado */}
-                      {assignmentData?.assignedTo && (
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs flex items-center">
+                      {/* Mostrar agente asignado de forma prominente */}
+                      {assignmentData?.assignedTo ? (
+                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium flex items-center">
                           <User className="h-3 w-3 mr-1" />
-                          {assignmentData.assignedTo.fullName}
+                          Agente: {assignmentData.assignedTo.fullName}
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm flex items-center">
+                          <User className="h-3 w-3 mr-1" />
+                          Sin asignar
                         </span>
                       )}
                       <span className="text-sm text-gray-500">
