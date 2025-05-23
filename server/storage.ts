@@ -642,6 +642,8 @@ export class DatabaseStorage implements IStorage {
       const [assignment] = await db.select()
         .from(chatAssignments)
         .where(eq(chatAssignments.chatId, chatId));
+      
+      console.log(`🔍 Consulta asignación para chat ${chatId}:`, assignment);
       return assignment;
     } catch (error) {
       console.error(`Error al obtener asignación para chat ${chatId}:`, error);
