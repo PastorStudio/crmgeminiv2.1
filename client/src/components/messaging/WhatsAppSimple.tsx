@@ -885,16 +885,17 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       !initialSelectionMade.current && 
       Array.isArray(whatsappChats) && 
       whatsappChats.length > 0 && 
-      !selectedChatId &&
-      whatsappChats.some(chat => !chat.id.includes('demo-chat'))
+      !selectedChatId
     ) {
       console.log('🎯 Seleccionando chat inicial automáticamente (solo una vez)');
       
-      // Filtrar chats reales (no de demo)
-      const realChats = whatsappChats.filter(chat => !chat.id.includes('demo-chat'));
+      // Filtrar chats reales solamente
+      const realChats = whatsappChats.filter(chat => 
+        chat && chat.id && !chat.id.startsWith('demo-')
+      );
       
       if (realChats.length > 0) {
-        // Ordenar por más reciente y seleccionar el primero
+        // Seleccionar el primer chat real
         const sortedChats = [...realChats].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         const firstChat = sortedChats[0];
         
@@ -936,8 +937,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
         const demoChats = [];
         for (let i = 1; i <= 10; i++) {
           demoChats.push({
-            id: `demo-chat-${accountId}-${i}`,
-            name: `Chat de Prueba ${i} (Cuenta ${accountId})`,
             isGroup: i % 3 === 0, // Algunos son grupos
             timestamp: Date.now() / 1000 - (i * 3600), // Dispersos en las últimas horas
             unreadCount: Math.floor(Math.random() * 5),
@@ -954,7 +953,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
       setMultiAccountChats(demoData);
       
       // Generar mensajes demo para el chat seleccionado (si existe)
-      if (selectedChatId && selectedChatId.startsWith('demo-chat-')) {
         const parts = selectedChatId.split('-');
         const accountId = parts[2];
         const chatNum = parts[3];
@@ -1654,14 +1652,16 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                                 // Asegurarse de que los chats pertenecen realmente a esta cuenta - evitar cruce de IDs
                                 console.log(`Verificando que los chats pertenecen a la cuenta ${accountId}`);
                                 
-                                // Usar chats ya disponibles para esta cuenta
+                                // Solo usar chats reales ya cargados
                                 if (whatsappChats && Array.isArray(whatsappChats)) {
-                                  const chatsForAccount = whatsappChats.map(chat => ({
-                                    ...chat,
-                                    accountId: accountId
-                                  }));
-                                  allChats = [...allChats, ...chatsForAccount];
-                                  console.log(`✅ Usando ${chatsForAccount.length} chats reales para cuenta ${accountId}`);
+                                  const realChatsOnly = whatsappChats
+                                    .filter(chat => !chat.id.startsWith('demo-')) // Eliminar cualquier chat demo
+                                    .map(chat => ({
+                                      ...chat,
+                                      accountId: accountId
+                                    }));
+                                  allChats = [...allChats, ...realChatsOnly];
+                                  console.log(`✅ Usando ${realChatsOnly.length} chats reales únicamente para cuenta ${accountId}`);
                                 }
                               }
                             });
@@ -1703,7 +1703,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                                   console.log('Seleccionando chat multi-cuenta:', chat.name, chat.id, 'de cuenta:', chat.accountId);
                                   
                                   // Verificar si es un chat de demostración
-                                  if (chat.id && chat.id.startsWith && chat.id.startsWith('demo-chat-')) {
                                     console.log('Detectado chat de demostración, preparando visualización...');
                                     
                                     // Extraer partes del ID
