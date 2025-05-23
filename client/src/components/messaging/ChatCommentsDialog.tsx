@@ -218,17 +218,11 @@ export function ChatCommentsDialog({
                       </Avatar>
                       
                       <div className="flex-1 min-w-0 max-w-full overflow-hidden">
-                        {/* Header con nombre, rol y hora */}
+                        {/* Header con nombre de usuario y hora */}
                         <div className="flex items-center space-x-2 mb-1">
                           <span className="font-medium text-gray-900 text-sm">
-                            {comment.user?.name || comment.user?.fullName || 'Usuario Desconocido'}
+                            {comment.user?.username || 'usuario_desconocido'}
                           </span>
-                          <Badge 
-                            variant="secondary"
-                            className={`${getRoleColor(comment.user?.role || '')} text-xs px-2 py-0`}
-                          >
-                            {comment.user?.role || 'usuario'}
-                          </Badge>
                           <span className="text-xs text-gray-500 ml-auto">
                             {formatDate(comment.timestamp || comment.createdAt)}
                           </span>
