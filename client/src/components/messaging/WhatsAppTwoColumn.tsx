@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -21,6 +21,7 @@ interface WhatsAppChat {
   isOnline?: boolean;
   lastSeen?: number;
   messageRead?: boolean;
+  profilePicUrl?: string;
 }
 
 interface WhatsAppMessage {
@@ -32,6 +33,8 @@ interface WhatsAppMessage {
   type: string;
   author?: string;
   chatId: string;
+  authorProfilePic?: string;
+  authorNumber?: string;
 }
 
 export function WhatsAppTwoColumn() {
@@ -250,9 +253,16 @@ export function WhatsAppTwoColumn() {
                     onClick={() => setSelectedChat(chat)}
                   >
                     <div className="flex items-center space-x-2 overflow-hidden">
-                      {/* Avatar compacto */}
+                      {/* Avatar compacto con foto real */}
                       <div className="relative flex-shrink-0">
                         <Avatar className="h-8 w-8">
+                          {chat.profilePicUrl ? (
+                            <AvatarImage 
+                              src={chat.profilePicUrl} 
+                              alt={chat.name}
+                              className="object-cover"
+                            />
+                          ) : null}
                           <AvatarFallback className={`text-xs ${chat.isGroup ? 'bg-green-100' : 'bg-blue-100'}`}>
                             {chat.isGroup ? (
                               <Users className="h-4 w-4 text-green-600" />
@@ -261,10 +271,12 @@ export function WhatsAppTwoColumn() {
                             )}
                           </AvatarFallback>
                         </Avatar>
-                        {/* Indicador de estado online/offline */}
-                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-                          isOnline ? 'bg-green-500' : 'bg-gray-400'
-                        }`} />
+                        {/* Indicador de estado online/offline solo para contactos individuales */}
+                        {!chat.isGroup && (
+                          <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                            isOnline ? 'bg-green-500' : 'bg-gray-400'
+                          }`} />
+                        )}
                       </div>
 
                       {/* Información del contacto - Layout vertical compacto */}
@@ -286,13 +298,22 @@ export function WhatsAppTwoColumn() {
 
                         {/* Última conexión y estado de lectura */}
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500 truncate">
-                            {isOnline ? (
-                              <span className="text-green-600 font-medium">En línea</span>
-                            ) : (
-                              `Últ. vez: ${formatLastSeen(chat.timestamp)}`
+                          <div className="flex items-center space-x-1">
+                            {/* Tipo de chat */}
+                            <span className="text-xs text-gray-400 px-1.5 py-0.5 bg-gray-100 rounded">
+                              {chat.isGroup ? 'Grupo' : 'Individual'}
+                            </span>
+                            {/* Estado de conexión solo para individuales */}
+                            {!chat.isGroup && (
+                              <span className="text-xs text-gray-500 truncate">
+                                {isOnline ? (
+                                  <span className="text-green-600 font-medium">En línea</span>
+                                ) : (
+                                  `${formatLastSeen(chat.timestamp)}`
+                                )}
+                              </span>
                             )}
-                          </span>
+                          </div>
                           <div className="flex items-center space-x-1 flex-shrink-0">
                             {/* Indicador de mensajes leídos */}
                             {chat.unreadCount > 0 ? (
@@ -327,6 +348,13 @@ export function WhatsAppTwoColumn() {
               <div className="flex items-center space-x-3">
                 <div className="relative">
                   <Avatar className="h-10 w-10">
+                    {selectedChat.profilePicUrl ? (
+                      <AvatarImage 
+                        src={selectedChat.profilePicUrl} 
+                        alt={selectedChat.name}
+                        className="object-cover"
+                      />
+                    ) : null}
                     <AvatarFallback className={`${selectedChat.isGroup ? 'bg-green-100' : 'bg-blue-100'}`}>
                       {selectedChat.isGroup ? (
                         <Users className="h-5 w-5 text-green-600" />
@@ -335,10 +363,12 @@ export function WhatsAppTwoColumn() {
                       )}
                     </AvatarFallback>
                   </Avatar>
-                  {/* Indicador de estado en el header */}
-                  <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-                    isContactOnline(selectedChat) ? 'bg-green-500' : 'bg-gray-400'
-                  }`} />
+                  {/* Indicador de estado en el header solo para contactos individuales */}
+                  {!selectedChat.isGroup && (
+                    <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                      isContactOnline(selectedChat) ? 'bg-green-500' : 'bg-gray-400'
+                    }`} />
+                  )}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center space-x-2">
@@ -348,11 +378,20 @@ export function WhatsAppTwoColumn() {
                     )}
                   </div>
                   <p className="text-sm text-gray-500">
-                    {isContactOnline(selectedChat) ? (
-                      <span className="text-green-600">En línea</span>
-                    ) : (
-                      `Últ. vez: ${formatLastSeen(selectedChat.timestamp)}`
-                    )} • {messages.length} mensajes
+                    <span className="px-2 py-0.5 bg-gray-100 rounded-full text-xs mr-2">
+                      {selectedChat.isGroup ? 'Grupo' : 'Individual'}
+                    </span>
+                    {!selectedChat.isGroup && (
+                      <>
+                        {isContactOnline(selectedChat) ? (
+                          <span className="text-green-600">En línea</span>
+                        ) : (
+                          `Últ. vez: ${formatLastSeen(selectedChat.timestamp)}`
+                        )}
+                        {' • '}
+                      </>
+                    )}
+                    {messages.length} mensajes
                   </p>
                 </div>
               </div>
@@ -372,35 +411,77 @@ export function WhatsAppTwoColumn() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}
-                    >
+                  {messages.map((message, index) => {
+                    const showAvatar = selectedChat.isGroup && !message.fromMe;
+                    const isFirstFromAuthor = index === 0 || 
+                      messages[index - 1].author !== message.author || 
+                      messages[index - 1].fromMe !== message.fromMe;
+                    
+                    return (
                       <div
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                          message.fromMe
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
+                        key={message.id}
+                        className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}
                       >
-                        {!message.fromMe && selectedChat.isGroup && (
-                          <p className="text-xs font-medium mb-1 opacity-75">
-                            {message.author || 'Desconocido'}
-                          </p>
-                        )}
-                        <p className="text-sm">{message.body}</p>
-                        <div className={`flex items-center justify-end mt-1 space-x-1 ${
-                          message.fromMe ? 'text-blue-100' : 'text-gray-400'
+                        <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${
+                          message.fromMe ? 'flex-row-reverse space-x-reverse' : ''
                         }`}>
-                          <Clock className="h-3 w-3" />
-                          <span className="text-xs">
-                            {formatTime(message.timestamp)}
-                          </span>
+                          {/* Avatar del remitente para grupos */}
+                          {showAvatar && isFirstFromAuthor && (
+                            <div className="flex-shrink-0 mb-1">
+                              <Avatar className="h-6 w-6">
+                                {message.authorProfilePic ? (
+                                  <AvatarImage 
+                                    src={message.authorProfilePic} 
+                                    alt={message.author || 'Usuario'}
+                                    className="object-cover"
+                                  />
+                                ) : null}
+                                <AvatarFallback className="text-xs bg-gray-200">
+                                  {(message.author || message.authorNumber || 'U').charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            </div>
+                          )}
+                          
+                          {/* Spacer cuando no hay avatar pero es grupo */}
+                          {showAvatar && !isFirstFromAuthor && (
+                            <div className="w-6 flex-shrink-0" />
+                          )}
+
+                          {/* Contenido del mensaje */}
+                          <div className="flex-1">
+                            {/* Nombre del autor para grupos (solo en el primer mensaje de la secuencia) */}
+                            {showAvatar && isFirstFromAuthor && (
+                              <div className="mb-1">
+                                <span className="text-xs font-medium text-gray-600">
+                                  {message.author || message.authorNumber || 'Usuario desconocido'}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Burbuja del mensaje */}
+                            <div
+                              className={`px-4 py-2 rounded-lg ${
+                                message.fromMe
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              <p className="text-sm">{message.body}</p>
+                              <div className={`flex items-center justify-end mt-1 space-x-1 ${
+                                message.fromMe ? 'text-blue-100' : 'text-gray-400'
+                              }`}>
+                                <Clock className="h-3 w-3" />
+                                <span className="text-xs">
+                                  {formatTime(message.timestamp)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
               )}

@@ -451,26 +451,41 @@ router.get('/:id/chats', async (req, res) => {
         return;
       }
 
-      // Procesar y formatear chats
-      const processedChats = chats
-        .filter(chat => chat && chat.id)
-        .slice(0, 50) // Limitar a 50 chats
-        .map(chat => ({
-          id: chat.id._serialized || chat.id,
-          name: chat.name || chat.id.user || 'Sin nombre',
-          isGroup: Boolean(chat.isGroup),
-          timestamp: chat.timestamp || Date.now() / 1000,
-          unreadCount: chat.unreadCount || 0,
-          lastMessage: chat.lastMessage?.body || '',
-          muteExpiration: chat.muteExpiration || 0,
-          archived: Boolean(chat.archived),
-          pinned: Boolean(chat.pinned),
-          accountId: id
-        }))
-        .sort((a, b) => b.timestamp - a.timestamp);
+      // Procesar y formatear chats con fotos de perfil
+      const processedChats = await Promise.all(
+        chats
+          .filter(chat => chat && chat.id)
+          .slice(0, 50) // Limitar a 50 chats
+          .map(async (chat) => {
+            let profilePicUrl = null;
+            try {
+              // Obtener foto de perfil real de WhatsApp
+              profilePicUrl = await chat.getProfilePicUrl();
+            } catch (error) {
+              // Si no hay foto de perfil, usar null (fallback al avatar por defecto)
+              profilePicUrl = null;
+            }
 
-      console.log(`✅ Enviando ${processedChats.length} chats reales al frontend`);
-      res.json(processedChats);
+            return {
+              id: chat.id._serialized || chat.id,
+              name: chat.name || chat.id.user || 'Sin nombre',
+              isGroup: Boolean(chat.isGroup),
+              timestamp: chat.timestamp || Date.now() / 1000,
+              unreadCount: chat.unreadCount || 0,
+              lastMessage: chat.lastMessage?.body || '',
+              muteExpiration: chat.muteExpiration || 0,
+              archived: Boolean(chat.archived),
+              pinned: Boolean(chat.pinned),
+              profilePicUrl: profilePicUrl,
+              accountId: id
+            };
+          })
+      );
+
+      const sortedChats = processedChats.sort((a, b) => b.timestamp - a.timestamp);
+
+      console.log(`✅ Enviando ${sortedChats.length} chats reales al frontend`);
+      res.json(sortedChats);
     } catch (whatsappError) {
       console.error(`❌ Error obteniendo chats de WhatsApp:`, whatsappError);
       res.json([]);
