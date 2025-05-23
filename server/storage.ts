@@ -715,9 +715,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Chat comments methods
+  // Comentarios internos del sistema (solo para agentes, no van a WhatsApp)
+  private chatComments: Map<string, any[]> = new Map();
+
   async getChatComments(chatId: string): Promise<any[]> {
     try {
-      return [];
+      return this.chatComments.get(chatId) || [];
     } catch (error) {
       console.error('Error al obtener comentarios del chat:', error);
       return [];
@@ -726,11 +729,19 @@ export class DatabaseStorage implements IStorage {
 
   async createChatComment(comment: any): Promise<any> {
     try {
-      return {
+      const chatId = comment.chatId;
+      const newComment = {
         id: Date.now(),
         ...comment,
-        user: { name: 'Usuario Sistema', username: 'system' }
+        timestamp: new Date().toISOString(),
+        user: { name: 'Agente Sistema', username: 'system' }
       };
+      
+      const existingComments = this.chatComments.get(chatId) || [];
+      this.chatComments.set(chatId, [...existingComments, newComment]);
+      
+      console.log(`💬 Comentario interno agregado al chat ${chatId}:`, newComment.text);
+      return newComment;
     } catch (error) {
       console.error('Error al crear comentario:', error);
       throw error;

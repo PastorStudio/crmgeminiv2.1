@@ -66,14 +66,24 @@ export function WhatsAppTwoColumn() {
   // Usar la primera cuenta activa
   const selectedAccount = accounts.find((acc: any) => acc.currentStatus?.authenticated) || accounts[0];
 
-  // Cargar agentes disponibles (con manejo de errores)
+  // Cargar agentes disponibles usando los datos temporales
   const { data: agents = [] } = useQuery({
     queryKey: ['agents'],
     queryFn: async () => {
       try {
-        const response = await fetch('/api/users');
-        if (!response.ok) return [];
-        return response.json();
+        // Usar los mismos datos que en UserManagement
+        const mockUsers = [
+          { id: 1, username: 'admin', fullName: 'Administrador', email: 'admin@sistema.com', role: 'admin', status: 'active' },
+          { id: 2, username: 'agente', fullName: 'Agente Principal', email: 'agente@sistema.com', role: 'agent', status: 'active' },
+          { id: 3, username: 'DJP', fullName: 'DJP - Superadministrador', email: 'djp@sistema.com', role: 'super_admin', status: 'active' },
+          { id: 4, username: 'steph', fullName: 'Stephanie', email: 'steph@sistema.com', role: 'agent', status: 'active' }
+        ];
+        
+        // Filtrar solo agentes activos
+        return mockUsers.filter(user => 
+          user.status === 'active' && 
+          ['agent', 'admin', 'supervisor'].includes(user.role)
+        );
       } catch (error) {
         console.log('No se pudieron cargar agentes:', error);
         return [];
@@ -594,7 +604,7 @@ export function WhatsAppTwoColumn() {
                                 <SelectItem value="unassigned">Sin asignar</SelectItem>
                                 {agents.map((agent: any) => (
                                   <SelectItem key={agent.id} value={agent.id.toString()}>
-                                    {agent.name || agent.username} ({agent.username})
+                                    {agent.fullName || agent.username} ({agent.role})
                                   </SelectItem>
                                 ))}
                               </SelectContent>
