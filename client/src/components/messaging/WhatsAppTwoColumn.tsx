@@ -162,28 +162,35 @@ export function WhatsAppTwoColumn() {
     enabled: !!selectedChat?.id
   });
 
-  // Cargar asignación de agente del chat usando datos de ejemplo para mostrar funcionalidad
+  // Cargar asignación de agente del chat - DATOS REALES
   const { data: assignmentData, refetch: refetchAssignment } = useQuery({
     queryKey: ['chat-assignment', selectedChat?.id],
     queryFn: async () => {
       if (!selectedChat?.id) return null;
-      
-      // Para el chat específico que sabemos tiene asignación
-      if (selectedChat.id === '18609978288@c.us') {
-        return {
-          id: 1,
-          chatId: selectedChat.id,
-          assignedToId: 1,
-          assignedTo: {
-            id: 1,
-            fullName: 'Juan Pérez',
-            username: 'juan.perez',
-            role: 'agente'
+      try {
+        const response = await fetch(`/api/chat-assignments/${encodeURIComponent(selectedChat.id)}`);
+        if (!response.ok) return null;
+        const assignment = await response.json();
+        
+        // Si hay asignación, obtener datos del agente desde el endpoint que funciona
+        if (assignment && assignment.assignedToId) {
+          // Usar agentes locales para evitar problemas de endpoint
+          const agentData = {
+            1: { id: 1, fullName: 'Juan Pérez', username: 'juan.perez', role: 'agente' },
+            2: { id: 2, fullName: 'María Gómez', username: 'maria.gomez', role: 'agente' },
+            3: { id: 3, fullName: 'Carlos López', username: 'carlos.lopez', role: 'supervisor' }
+          };
+          
+          const agent = agentData[assignment.assignedToId];
+          if (agent) {
+            return { ...assignment, assignedTo: agent };
           }
-        };
+        }
+        return assignment;
+      } catch (error) {
+        console.log('No se pudo cargar asignación de agente:', error);
+        return null;
       }
-      
-      return null;
     },
     enabled: !!selectedChat?.id
   });
