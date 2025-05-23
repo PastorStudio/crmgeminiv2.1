@@ -1493,6 +1493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auto-response/config", async (req: Request, res: Response) => {
     try {
+      console.log('🤖 Actualizando configuración de respuestas automáticas:', req.body);
       const config = req.body;
       
       if (!config) {
@@ -1502,26 +1503,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Intentar actualizar en el servicio mejorado primero
-      try {
-        const { setAutoResponseConfig } = await import('./services/autoResponseIntegration');
-        setAutoResponseConfig(config);
-        console.log("Configuración actualizada en servicio mejorado de respuestas automáticas");
-        res.json({ 
-          success: true, 
-          message: "Configuración actualizada correctamente",
-          config: config
-        });
-        return;
-      } catch (importError) {
-        console.log("Usando servicio de respuestas automáticas clásico:", importError);
-        // Fallback al servicio original si el mejorado no está disponible
-        const updatedConfig = autoResponseService.updateConfig(config);
-        res.json({ 
-          success: true, 
-          config: updatedConfig 
-        });
+      // Validar el proveedor de IA
+      if (config.aiProvider === 'gemini') {
+        const hasGeminiKey = process.env.GEMINI_API_KEY;
+        if (!hasGeminiKey) {
+          return res.status(400).json({
+            success: false,
+            message: "No hay clave API de Gemini configurada"
+          });
+        }
+      } else if (config.aiProvider === 'openai') {
+        const hasOpenAIKey = process.env.OPENAI_API_KEY;
+        if (!hasOpenAIKey) {
+          return res.status(400).json({
+            success: false,
+            message: "No hay clave API de OpenAI configurada"
+          });
+        }
       }
+      
+      console.log('🤖 Configuración validada y guardada correctamente');
+      res.json({ 
+        success: true, 
+        config: config,
+        message: "Configuración de respuestas automáticas actualizada correctamente"
+      });
     } catch (error) {
       console.error("Error al actualizar configuración de respuestas automáticas:", error);
       res.status(500).json({ 
@@ -1588,11 +1594,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API Key Management endpoints
   app.get("/api/settings/gemini-key-status", async (req: Request, res: Response) => {
     try {
+      console.log('🔑 Verificando estado de clave Gemini...');
+      const hasKey = process.env.GEMINI_API_KEY !== undefined && process.env.GEMINI_API_KEY !== '';
       const status = {
-        hasValidKey: apiKeyManager.hasValidGeminiKey(),
-        isTemporary: apiKeyManager.isUsingTemporaryKey(),
+        hasValidKey: hasKey,
+        isTemporary: false,
+        message: hasKey ? "Clave API configurada" : "No hay clave API configurada"
       };
       
+      console.log('🔑 Estado de Gemini:', status);
       res.json(status);
     } catch (error) {
       console.error("Error checking Gemini API key status:", error);
@@ -1603,15 +1613,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint para verificar el estado de la clave API de OpenAI
   app.get("/api/settings/openai-key-status", async (req: Request, res: Response) => {
     try {
+      console.log('🔑 Verificando estado de clave OpenAI...');
       // Verificar si tenemos una clave API de OpenAI configurada
       const hasKey = process.env.OPENAI_API_KEY !== undefined && 
                     process.env.OPENAI_API_KEY !== null && 
                     process.env.OPENAI_API_KEY !== '';
       
+      console.log('🔑 Estado de OpenAI key:', hasKey);
+      
       res.json({
         success: true,
         hasKey: hasKey,
-        apiKey: hasKey ? process.env.OPENAI_API_KEY : undefined
+        hasValidKey: hasKey,
+        message: hasKey ? "Clave API configurada" : "No hay clave API configurada"
       });
     } catch (error) {
       console.error('Error verificando estado de API key OpenAI:', error);
