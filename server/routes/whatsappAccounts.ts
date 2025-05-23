@@ -432,13 +432,52 @@ router.get('/:id/chats', async (req, res) => {
       return res.status(400).json({ error: 'ID inválido' });
     }
     
-    // Obtener chats
-    const chats = await whatsappServiceMulti.getChats(id);
+    console.log(`🔄 Solicitando chats reales para cuenta ${id}...`);
     
-    res.json(chats);
+    // Obtener la instancia de WhatsApp
+    const instance = whatsappMultiAccountManager.getInstance(id);
+    if (!instance || !instance.client) {
+      console.log(`❌ No hay instancia de WhatsApp para cuenta ${id}`);
+      res.json([]);
+      return;
+    }
+
+    try {
+      // Obtener chats directamente del cliente de WhatsApp
+      const chats = await instance.client.getChats();
+      if (!Array.isArray(chats)) {
+        console.log(`⚠️ No se obtuvieron chats válidos`);
+        res.json([]);
+        return;
+      }
+
+      // Procesar y formatear chats
+      const processedChats = chats
+        .filter(chat => chat && chat.id)
+        .slice(0, 50) // Limitar a 50 chats
+        .map(chat => ({
+          id: chat.id._serialized || chat.id,
+          name: chat.name || chat.id.user || 'Sin nombre',
+          isGroup: Boolean(chat.isGroup),
+          timestamp: chat.timestamp || Date.now() / 1000,
+          unreadCount: chat.unreadCount || 0,
+          lastMessage: chat.lastMessage?.body || '',
+          muteExpiration: chat.muteExpiration || 0,
+          archived: Boolean(chat.archived),
+          pinned: Boolean(chat.pinned),
+          accountId: id
+        }))
+        .sort((a, b) => b.timestamp - a.timestamp);
+
+      console.log(`✅ Enviando ${processedChats.length} chats reales al frontend`);
+      res.json(processedChats);
+    } catch (whatsappError) {
+      console.error(`❌ Error obteniendo chats de WhatsApp:`, whatsappError);
+      res.json([]);
+    }
   } catch (error) {
-    console.error('Error al obtener chats:', error);
-    res.status(500).json({ error: 'Error al obtener chats' });
+    console.error('❌ Error general al obtener chats:', error);
+    res.json([]);
   }
 });
 
@@ -453,13 +492,61 @@ router.get('/:id/messages/:chatId', async (req, res) => {
     const { chatId } = req.params;
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
     
-    // Obtener mensajes
-    const messages = await whatsappServiceMulti.getChatMessages(id, chatId, limit);
+    console.log(`🔄 Solicitando mensajes reales para chat ${chatId}...`);
     
-    res.json(messages);
+    // Obtener la instancia de WhatsApp
+    const instance = whatsappMultiAccountManager.getInstance(id);
+    if (!instance || !instance.client) {
+      console.log(`❌ No hay instancia de WhatsApp para cuenta ${id}`);
+      res.json([]);
+      return;
+    }
+
+    try {
+      // Obtener el chat específico
+      const chat = await instance.client.getChatById(chatId);
+      if (!chat) {
+        console.log(`⚠️ Chat ${chatId} no encontrado`);
+        res.json([]);
+        return;
+      }
+
+      // Obtener mensajes del chat
+      const messages = await chat.fetchMessages({ limit });
+      if (!Array.isArray(messages)) {
+        console.log(`⚠️ No se obtuvieron mensajes válidos`);
+        res.json([]);
+        return;
+      }
+
+      // Procesar y formatear mensajes
+      const processedMessages = messages
+        .filter(msg => msg && msg.id)
+        .map(msg => ({
+          id: msg.id._serialized || msg.id,
+          body: msg.body || '',
+          fromMe: Boolean(msg.fromMe),
+          timestamp: msg.timestamp || Date.now() / 1000,
+          hasMedia: Boolean(msg.hasMedia),
+          type: msg.type || 'chat',
+          author: msg.author || null,
+          quotedMsg: msg.hasQuotedMsg ? {
+            id: msg.quotedMsg?.id?._serialized,
+            body: msg.quotedMsg?.body
+          } : null,
+          chatId: chatId
+        }))
+        .sort((a, b) => a.timestamp - b.timestamp); // Cronológico
+
+      console.log(`✅ Enviando ${processedMessages.length} mensajes reales al frontend`);
+      res.json(processedMessages);
+    } catch (whatsappError) {
+      console.error(`❌ Error obteniendo mensajes de WhatsApp:`, whatsappError);
+      res.json([]);
+    }
   } catch (error) {
-    console.error('Error al obtener mensajes:', error);
-    res.status(500).json({ error: 'Error al obtener mensajes' });
+    console.error('❌ Error general al obtener mensajes:', error);
+    res.json([]);
   }
 });
 
