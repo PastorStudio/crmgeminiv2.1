@@ -198,33 +198,31 @@ export function WhatsAppTwoColumn() {
     enabled: !!selectedChat?.id
   });
 
-  // Cargar asignación de agente del chat - DATOS REALES usando consulta directa
+  // Cargar asignación de agente del chat - CONEXIÓN REAL A POSTGRESQL
   const { data: assignmentData, refetch: refetchAssignment } = useQuery({
     queryKey: ['chat-assignment', selectedChat?.id, selectedAccount?.id],
     queryFn: async () => {
       if (!selectedChat?.id || !selectedAccount?.id) return null;
       
-      // Para el chat que sabemos que tiene asignación real desde la DB
-      if (selectedChat.id === '18609978288@c.us' && selectedAccount.id === 2) {
-        return {
-          id: 1,
-          chatId: '18609978288@c.us',
-          accountId: 2,
-          assignedToId: 1,
-          assignedTo: {
-            id: 1,
-            fullName: 'Juan Pérez',
-            username: 'juan.perez',
-            role: 'agent'
-          }
-        };
+      try {
+        console.log('🔍 Buscando asignación real para chat:', selectedChat.id, 'cuenta:', selectedAccount.id);
+        const response = await fetch(`/api/chat-assignments/by-chat?chatId=${encodeURIComponent(selectedChat.id)}&accountId=${selectedAccount.id}`);
+        
+        if (!response.ok) {
+          console.log('❌ No se encontró asignación');
+          return null;
+        }
+        
+        const assignment = await response.json();
+        console.log('✅ Asignación encontrada:', assignment);
+        return assignment;
+      } catch (error) {
+        console.error('❌ Error al buscar asignación:', error);
+        return null;
       }
-      
-      return null;
     },
     enabled: !!selectedChat?.id && !!selectedAccount?.id,
-    // Actualizar automáticamente para mostrar cambios
-    refetchInterval: 3000,
+    refetchInterval: 5000, // Verificar cambios cada 5 segundos
     staleTime: 0
   });
 
