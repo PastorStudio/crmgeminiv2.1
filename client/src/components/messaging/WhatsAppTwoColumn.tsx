@@ -7,7 +7,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Send, Loader2, Search, MessageCircle, Clock, Users, CheckCheck, Check } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Send, Loader2, Search, MessageCircle, Clock, Users, CheckCheck, Check, User, MessageSquare, UserPlus, X, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface WhatsAppChat {
@@ -41,6 +45,9 @@ export function WhatsAppTwoColumn() {
   const [selectedChat, setSelectedChat] = useState<WhatsAppChat | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showUserProfile, setShowUserProfile] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [selectedAgent, setSelectedAgent] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -57,7 +64,41 @@ export function WhatsAppTwoColumn() {
   });
 
   // Usar la primera cuenta activa
-  const selectedAccount = accounts.find(acc => acc.currentStatus?.authenticated) || accounts[0];
+  const selectedAccount = accounts.find((acc: any) => acc.currentStatus?.authenticated) || accounts[0];
+
+  // Cargar agentes disponibles
+  const { data: agents = [] } = useQuery({
+    queryKey: ['agents'],
+    queryFn: async () => {
+      const response = await fetch('/api/users');
+      if (!response.ok) return [];
+      return response.json();
+    }
+  });
+
+  // Cargar comentarios del chat actual
+  const { data: chatComments = [], refetch: refetchComments } = useQuery({
+    queryKey: ['chat-comments', selectedChat?.id],
+    queryFn: async () => {
+      if (!selectedChat?.id) return [];
+      const response = await fetch(`/api/chat-comments/${selectedChat.id}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!selectedChat?.id
+  });
+
+  // Cargar asignación de agente del chat
+  const { data: chatAssignment, refetch: refetchAssignment } = useQuery({
+    queryKey: ['chat-assignment', selectedChat?.id],
+    queryFn: async () => {
+      if (!selectedChat?.id) return null;
+      const response = await fetch(`/api/chat-assignments/${selectedChat.id}`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!selectedChat?.id
+  });
 
   // Cargar chats de WhatsApp - CHATS REALES
   const { data: chats = [], isLoading: loadingChats, refetch: refetchChats } = useQuery({
@@ -137,10 +178,51 @@ export function WhatsAppTwoColumn() {
   });
 
   // Filtrar chats según búsqueda
-  const filteredChats = chats.filter(chat => 
+  const filteredChats = chats.filter((chat: any) => 
     chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Mutación para agregar comentario
+  const addCommentMutation = useMutation({
+    mutationFn: async ({ chatId, comment }: { chatId: string; comment: string }) => {
+      const response = await fetch('/api/chat-comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId, comment })
+      });
+      if (!response.ok) throw new Error('Error al agregar comentario');
+      return response.json();
+    },
+    onSuccess: () => {
+      setNewComment('');
+      refetchComments();
+      toast({
+        title: "Comentario agregado",
+        description: "El comentario se guardó correctamente.",
+      });
+    }
+  });
+
+  // Mutación para asignar agente
+  const assignAgentMutation = useMutation({
+    mutationFn: async ({ chatId, agentId }: { chatId: string; agentId: number }) => {
+      const response = await fetch('/api/chat-assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId, agentId })
+      });
+      if (!response.ok) throw new Error('Error al asignar agente');
+      return response.json();
+    },
+    onSuccess: () => {
+      refetchAssignment();
+      toast({
+        title: "Agente asignado",
+        description: "El agente se asignó correctamente al chat.",
+      });
+    }
+  });
 
   // Auto-scroll a mensajes más recientes
   useEffect(() => {
@@ -193,6 +275,22 @@ export function WhatsAppTwoColumn() {
     sendMessageMutation.mutate({
       chatId: selectedChat.id,
       message: newMessage.trim(),
+    });
+  };
+
+  const handleAddComment = () => {
+    if (!newComment.trim() || !selectedChat) return;
+    addCommentMutation.mutate({
+      chatId: selectedChat.id,
+      comment: newComment.trim()
+    });
+  };
+
+  const handleAssignAgent = () => {
+    if (!selectedAgent || !selectedChat) return;
+    assignAgentMutation.mutate({
+      chatId: selectedChat.id,
+      agentId: parseInt(selectedAgent)
     });
   };
 
@@ -345,55 +443,231 @@ export function WhatsAppTwoColumn() {
           <>
             {/* Header del chat seleccionado */}
             <div className="p-4 border-b border-gray-100 bg-gray-50">
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <Avatar className="h-10 w-10">
-                    {selectedChat.profilePicUrl ? (
-                      <AvatarImage 
-                        src={selectedChat.profilePicUrl} 
-                        alt={selectedChat.name}
-                        className="object-cover"
-                      />
-                    ) : null}
-                    <AvatarFallback className={`${selectedChat.isGroup ? 'bg-green-100' : 'bg-blue-100'}`}>
-                      {selectedChat.isGroup ? (
-                        <Users className="h-5 w-5 text-green-600" />
-                      ) : (
-                        selectedChat.name.charAt(0).toUpperCase()
-                      )}
-                    </AvatarFallback>
-                  </Avatar>
-                  {/* Indicador de estado en el header solo para contactos individuales */}
-                  {!selectedChat.isGroup && (
-                    <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-                      isContactOnline(selectedChat) ? 'bg-green-500' : 'bg-gray-400'
-                    }`} />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2">
-                    <h3 className="font-semibold text-gray-900">{selectedChat.name}</h3>
-                    {!selectedChat.isGroup && (
-                      <span className="text-sm text-gray-500">+{extractPhoneNumber(selectedChat.id)}</span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    <span className="px-2 py-0.5 bg-gray-100 rounded-full text-xs mr-2">
-                      {selectedChat.isGroup ? 'Grupo' : 'Individual'}
-                    </span>
-                    {!selectedChat.isGroup && (
-                      <>
-                        {isContactOnline(selectedChat) ? (
-                          <span className="text-green-600">En línea</span>
-                        ) : (
-                          `Últ. vez: ${formatLastSeen(selectedChat.timestamp)}`
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  {/* Avatar clickeable para abrir perfil */}
+                  <Dialog open={showUserProfile} onOpenChange={setShowUserProfile}>
+                    <DialogTrigger asChild>
+                      <div className="relative cursor-pointer hover:opacity-80 transition-opacity">
+                        <Avatar className="h-10 w-10">
+                          {selectedChat.profilePicUrl ? (
+                            <AvatarImage 
+                              src={selectedChat.profilePicUrl} 
+                              alt={selectedChat.name}
+                              className="object-cover"
+                            />
+                          ) : null}
+                          <AvatarFallback className={`${selectedChat.isGroup ? 'bg-green-100' : 'bg-blue-100'}`}>
+                            {selectedChat.isGroup ? (
+                              <Users className="h-5 w-5 text-green-600" />
+                            ) : (
+                              selectedChat.name.charAt(0).toUpperCase()
+                            )}
+                          </AvatarFallback>
+                        </Avatar>
+                        {/* Indicador de estado en el header solo para contactos individuales */}
+                        {!selectedChat.isGroup && (
+                          <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                            isContactOnline(selectedChat) ? 'bg-green-500' : 'bg-gray-400'
+                          }`} />
                         )}
-                        {' • '}
-                      </>
-                    )}
-                    {messages.length} mensajes
-                  </p>
+                      </div>
+                    </DialogTrigger>
+
+                    {/* Modal del perfil del usuario */}
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center space-x-3">
+                          <Avatar className="h-12 w-12">
+                            {selectedChat.profilePicUrl ? (
+                              <AvatarImage src={selectedChat.profilePicUrl} alt={selectedChat.name} />
+                            ) : null}
+                            <AvatarFallback>
+                              {selectedChat.isGroup ? (
+                                <Users className="h-6 w-6" />
+                              ) : (
+                                selectedChat.name.charAt(0).toUpperCase()
+                              )}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h2 className="text-xl font-bold">{selectedChat.name}</h2>
+                            {!selectedChat.isGroup && (
+                              <p className="text-sm text-gray-500">+{extractPhoneNumber(selectedChat.id)}</p>
+                            )}
+                          </div>
+                        </DialogTitle>
+                      </DialogHeader>
+
+                      <div className="space-y-6">
+                        {/* Información del contacto */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-sm font-medium">Tipo</Label>
+                            <p className="text-sm text-gray-600">
+                              {selectedChat.isGroup ? 'Grupo' : 'Contacto Individual'}
+                            </p>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium">Estado</Label>
+                            <p className="text-sm text-gray-600">
+                              {!selectedChat.isGroup && isContactOnline(selectedChat) ? (
+                                <span className="text-green-600">En línea</span>
+                              ) : (
+                                `Últ. vez: ${formatLastSeen(selectedChat.timestamp)}`
+                              )}
+                            </p>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium">Total Mensajes</Label>
+                            <p className="text-sm text-gray-600">{messages.length}</p>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium">Sin Leer</Label>
+                            <p className="text-sm text-gray-600">{selectedChat.unreadCount || 0}</p>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Asignación de Agente */}
+                        <div>
+                          <Label className="text-sm font-medium mb-2 block">
+                            <UserPlus className="inline h-4 w-4 mr-1" />
+                            Agente Asignado
+                          </Label>
+                          <div className="flex space-x-2">
+                            <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+                              <SelectTrigger className="flex-1">
+                                <SelectValue placeholder={
+                                  chatAssignment?.agent ? 
+                                  `${chatAssignment.agent.name} (${chatAssignment.agent.username})` : 
+                                  "Seleccionar agente"
+                                } />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">Sin asignar</SelectItem>
+                                {agents.map((agent: any) => (
+                                  <SelectItem key={agent.id} value={agent.id.toString()}>
+                                    {agent.name} ({agent.username})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button 
+                              onClick={handleAssignAgent}
+                              disabled={assignAgentMutation.isPending}
+                              size="sm"
+                            >
+                              {assignAgentMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Save className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Comentarios Internos */}
+                        <div>
+                          <Label className="text-sm font-medium mb-2 block">
+                            <MessageSquare className="inline h-4 w-4 mr-1" />
+                            Comentarios Internos
+                          </Label>
+                          
+                          {/* Lista de comentarios */}
+                          <div className="max-h-32 overflow-y-auto space-y-2 mb-3">
+                            {chatComments.length === 0 ? (
+                              <p className="text-sm text-gray-500 italic">No hay comentarios aún</p>
+                            ) : (
+                              chatComments.map((comment: any) => (
+                                <div key={comment.id} className="bg-gray-50 p-2 rounded text-sm">
+                                  <div className="flex justify-between items-start mb-1">
+                                    <span className="font-medium text-gray-700">{comment.user?.name || 'Usuario'}</span>
+                                    <span className="text-xs text-gray-500">
+                                      {new Date(comment.createdAt).toLocaleString()}
+                                    </span>
+                                  </div>
+                                  <p className="text-gray-600">{comment.comment}</p>
+                                </div>
+                              ))
+                            )}
+                          </div>
+
+                          {/* Agregar nuevo comentario */}
+                          <div className="space-y-2">
+                            <Textarea
+                              value={newComment}
+                              onChange={(e) => setNewComment(e.target.value)}
+                              placeholder="Agregar comentario interno (no se envía al usuario de WhatsApp)..."
+                              className="min-h-[80px]"
+                            />
+                            <div className="flex justify-end">
+                              <Button 
+                                onClick={handleAddComment}
+                                disabled={!newComment.trim() || addCommentMutation.isPending}
+                                size="sm"
+                              >
+                                {addCommentMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                                ) : (
+                                  <MessageSquare className="h-4 w-4 mr-1" />
+                                )}
+                                Agregar Comentario
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-semibold text-gray-900">{selectedChat.name}</h3>
+                      {!selectedChat.isGroup && (
+                        <span className="text-sm text-gray-500">+{extractPhoneNumber(selectedChat.id)}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-0.5 bg-gray-100 rounded-full text-xs">
+                        {selectedChat.isGroup ? 'Grupo' : 'Individual'}
+                      </span>
+                      {/* Mostrar agente asignado */}
+                      {chatAssignment?.agent && (
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs flex items-center">
+                          <User className="h-3 w-3 mr-1" />
+                          {chatAssignment.agent.name}
+                        </span>
+                      )}
+                      <span className="text-sm text-gray-500">
+                        {!selectedChat.isGroup && (
+                          <>
+                            {isContactOnline(selectedChat) ? (
+                              <span className="text-green-600">En línea</span>
+                            ) : (
+                              `Últ. vez: ${formatLastSeen(selectedChat.timestamp)}`
+                            )}
+                            {' • '}
+                          </>
+                        )}
+                        {messages.length} mensajes
+                      </span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Botón de información del perfil */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowUserProfile(true)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <User className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 
