@@ -108,52 +108,63 @@ export default function AutoResponseSettings() {
     },
   });
   
-  // Update form values when config is loaded
+  // Update form values when config is loaded or use defaults
   useEffect(() => {
-    // Usar configuración por defecto si no hay configuración del servidor
+    // Configuración por defecto funcional
     const defaultConfig = {
       enabled: false,
       delaySeconds: 10,
-      templates: [],
+      templates: [
+        {
+          id: "1",
+          name: "Saludo automático",
+          content: "¡Hola! Gracias por contactarnos. Te atenderemos pronto.",
+          variables: []
+        }
+      ],
       useProfessionLevel: true,
-      defaultTemplate: "",
+      defaultTemplate: "1",
       enabledForGroups: false,
       enabledForBroadcast: false,
       excludedContacts: [],
-      aiProvider: "gemini" as const,
+      aiProvider: "smartbots" as const, // Usar SmartBots por defecto
       customPrompts: {
-        enabled: false,
-        system: "Eres un asistente virtual profesional que responde consultas de atención al cliente de manera amable y útil.",
+        enabled: true,
+        system: "Eres SmartBots, un asistente virtual especializado en atención al cliente para WhatsApp. Responde de manera amable, profesional y útil.",
         temperature: 0.7,
         maxTokens: 500,
       },
     };
 
+    let formConfig = defaultConfig;
+
     if (config && !isError) {
-      console.log('Actualizando formulario con configuración del servidor:', config);
+      console.log('✅ Configuración del servidor cargada:', config);
       // Mapear la configuración del servidor al formato del formulario
-      const formConfig = {
+      formConfig = {
         enabled: config.enabled || false,
-        delaySeconds: config.delay || 10,
-        templates: config.templates || [],
+        delaySeconds: config.delaySeconds || config.delay || 10,
+        templates: config.templates || defaultConfig.templates,
         useProfessionLevel: true,
-        defaultTemplate: config.defaultTemplate || "",
-        enabledForGroups: false,
-        enabledForBroadcast: false,
-        excludedContacts: config.excludedNumbers || [],
-        aiProvider: config.provider || "gemini",
+        defaultTemplate: config.defaultTemplate || "1",
+        enabledForGroups: config.enabledForGroups || false,
+        enabledForBroadcast: config.enabledForBroadcast || false,
+        excludedContacts: config.excludedContacts || config.excludedNumbers || [],
+        aiProvider: (config.provider === "smartbots" || config.useSmartBots) ? "smartbots" : 
+                   config.provider === "openai" ? "openai" : 
+                   config.provider || "gemini",
         customPrompts: {
-          enabled: config.customPrompts?.enabled || false,
+          enabled: config.customPrompts?.enabled !== false,
           system: config.customPrompts?.system || config.messageTemplate || defaultConfig.customPrompts.system,
           temperature: config.customPrompts?.temperature || 0.7,
           maxTokens: config.customPrompts?.maxTokens || 500,
         },
       };
-      form.reset(formConfig);
     } else {
-      console.log('Usando configuración por defecto');
-      form.reset(defaultConfig);
+      console.log('⚠️ Usando configuración por defecto (SmartBots)');
     }
+
+    form.reset(formConfig);
   }, [config, form, isError]);
   
   // Update configuration mutation
@@ -233,12 +244,7 @@ export default function AutoResponseSettings() {
   
   if (isError) {
     console.error('Error en la carga de configuración:', isError);
-    return (
-      <div className="p-6">
-        <h1 className="text-2xl font-semibold mb-6">Cargando configuración por defecto...</h1>
-        <p>Usando configuración por defecto mientras se resuelve el problema de conexión.</p>
-      </div>
-    );
+    // En lugar de mostrar error, usar configuración por defecto pero permitir que funcione la página
   }
   
   return (

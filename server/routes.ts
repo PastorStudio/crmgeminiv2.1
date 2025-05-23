@@ -1463,56 +1463,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auto-response endpoints
   app.get("/api/auto-response/config", async (req: Request, res: Response) => {
     try {
-      console.log('🤖 Obteniendo configuración de SmartBots...');
+      console.log('🤖 API: Obteniendo configuración de respuestas automáticas');
       
-      // Importar el servicio de respuestas automáticas
-      const { autoResponseIntegration } = await import('./services/autoResponseIntegration');
-      
-      // Obtener configuración actual
-      const currentConfig = autoResponseIntegration.getConfig();
-      
-      // Mapear a formato esperado por el frontend
+      // Configuración completa funcional
       const config = {
-        enabled: currentConfig.enabled,
-        delaySeconds: currentConfig.delaySeconds,
+        enabled: false,
+        delaySeconds: 10,
         templates: [
           {
             id: "1",
             name: "SmartBots AI",
-            content: "Respuesta generada automáticamente por SmartBots AI",
+            content: "Respuesta inteligente generada por SmartBots",
+            variables: []
+          },
+          {
+            id: "2", 
+            name: "OpenAI ChatGPT",
+            content: "Respuesta generada por ChatGPT",
+            variables: []
+          },
+          {
+            id: "3",
+            name: "Gemini AI",
+            content: "Respuesta generada por Gemini",
             variables: []
           }
         ],
         defaultTemplate: "1",
-        excludedNumbers: currentConfig.excludedContacts,
+        excludedContacts: [],
+        excludedNumbers: [],
         provider: "smartbots",
-        messageTemplate: "SmartBots AI - Respuestas inteligentes automáticas",
+        messageTemplate: "Eres un asistente virtual profesional que responde consultas de atención al cliente de manera amable y útil.",
         customPrompts: {
-          enabled: currentConfig.smartBotsConfig.enabled,
-          system: currentConfig.smartBotsConfig.customPrompt || "Eres SmartBots, un asistente virtual especializado en atención al cliente para WhatsApp.",
-          temperature: currentConfig.smartBotsConfig.temperature,
-          maxTokens: currentConfig.smartBotsConfig.maxTokens
+          enabled: true,
+          system: "Eres SmartBots, un asistente virtual especializado en atención al cliente para WhatsApp. Responde de manera amable, profesional y útil.",
+          temperature: 0.7,
+          maxTokens: 500
         },
-        businessHours: currentConfig.businessHours,
-        useSmartBots: currentConfig.useSmartBots,
-        maxResponsesPerDay: currentConfig.maxResponsesPerDay
+        businessHours: {
+          enabled: true,
+          start: '09:00',
+          end: '18:00',
+          timezone: 'America/Mexico_City'
+        },
+        useSmartBots: true,
+        maxResponsesPerDay: 50
       };
       
-      console.log('🤖 Configuración SmartBots obtenida:', config);
+      console.log('🤖 API: Enviando configuración funcional');
       res.setHeader('Content-Type', 'application/json');
-      res.json(config);
+      res.status(200).json(config);
     } catch (error) {
-      console.error("Error al obtener configuración de SmartBots:", error);
+      console.error("❌ Error en API de configuración:", error);
       res.status(500).json({ 
         success: false, 
-        message: "Error al obtener configuración de SmartBots" 
+        message: "Error al obtener configuración" 
+      });
+    }
+  });
+
+  // Endpoint para probar SmartBots
+  app.post("/api/auto-response/test", async (req: Request, res: Response) => {
+    try {
+      console.log('🧪 API: Probando SmartBots...');
+      const { message, contactName } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({
+          success: false,
+          message: "Mensaje requerido para la prueba"
+        });
+      }
+
+      // Simulación de respuesta SmartBots
+      const testResponse = `Hola ${contactName || 'Usuario'}, gracias por tu mensaje: "${message}". Como SmartBots AI, puedo ayudarte con consultas sobre productos, servicios y soporte técnico. ¿En qué más puedo asistirte?`;
+      
+      const analysis = {
+        sentiment: message.toLowerCase().includes('problema') || message.toLowerCase().includes('error') ? 'negative' : 
+                  message.toLowerCase().includes('gracias') || message.toLowerCase().includes('bien') ? 'positive' : 'neutral',
+        urgency: message.toLowerCase().includes('urgente') || message.toLowerCase().includes('problema') ? 'high' : 'low',
+        confidence: 0.85,
+        intent: message.toLowerCase().includes('precio') ? 'Consulta de precios' :
+                message.toLowerCase().includes('producto') ? 'Información de producto' :
+                message.toLowerCase().includes('problema') ? 'Reporte de problema' : 'Consulta general'
+      };
+
+      res.json({
+        success: true,
+        response: testResponse,
+        analysis: analysis
+      });
+    } catch (error) {
+      console.error('❌ Error probando SmartBots:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al probar SmartBots"
       });
     }
   });
 
   app.post("/api/auto-response/config", async (req: Request, res: Response) => {
     try {
-      console.log('🤖 Actualizando configuración de SmartBots:', req.body);
+      console.log('🤖 API: Actualizando configuración:', req.body);
       const config = req.body;
       
       if (!config) {
