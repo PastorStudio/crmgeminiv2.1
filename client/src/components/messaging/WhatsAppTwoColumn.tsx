@@ -11,9 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Send, Loader2, Search, MessageCircle, Clock, Users, CheckCheck, Check, User, MessageSquare, UserPlus, X, Save } from 'lucide-react';
+import { Send, Loader2, Search, MessageCircle, Clock, Users, CheckCheck, Check, User, MessageSquare, UserPlus, X, Save, UserCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import ChatAssignmentDialog from './ChatAssignmentDialog';
 
 // Componente para mostrar el agente asignado en cada chat de la lista con animaciones
 function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
@@ -102,6 +103,7 @@ export function WhatsAppTwoColumn() {
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [selectedAgent, setSelectedAgent] = useState('');
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1022,6 +1024,16 @@ export function WhatsAppTwoColumn() {
           </div>
         )}
       </div>
+      
+      {/* Diálogo de asignación de chat */}
+      {selectedChat && selectedAccount && (
+        <ChatAssignmentDialog
+          open={assignmentDialogOpen}
+          onOpenChange={setAssignmentDialogOpen}
+          chatId={selectedChat.id}
+          accountId={selectedAccount.id}
+        />
+      )}
     </div>
   );
 }
