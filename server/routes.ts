@@ -349,26 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Users endpoints - acceso temporal sin autenticación para desarrollo
-  app.get("/api/users", async (req: Request, res: Response) => {
-    try {
-      const users = await storage.getAllUsers();
-      
-      // Filtrar las contraseñas por seguridad y devolver directamente el array
-      const safeUsers = users.map(user => {
-        const { password, ...userWithoutPassword } = user;
-        return userWithoutPassword;
-      });
-      
-      res.json(safeUsers);
-    } catch (error) {
-      console.error("Error al obtener usuarios:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error al obtener la lista de usuarios" 
-      });
-    }
-  });
+  // Eliminar ruta conflictiva - se maneja en index.ts
 
   app.get("/api/users/:id", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {
