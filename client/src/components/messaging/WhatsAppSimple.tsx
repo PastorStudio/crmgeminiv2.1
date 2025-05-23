@@ -9,8 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
-import { ConnectionStatus } from './ConnectionStatus';
-import { MessagesLoader } from './MessagesLoader';
+// import { ConnectionStatus } from './ConnectionStatus';
+import MessagesLoader from './MessagesLoader';
 import { Send, MessageSquare, Users, Phone, Clock } from 'lucide-react';
 
 interface WhatsAppChat {
@@ -154,10 +154,13 @@ export function WhatsAppSimple({ currentAccountId }: WhatsAppSimpleProps) {
           <h3 className="text-lg font-semibold mb-3">WhatsApp</h3>
           
           {/* Estado de conexión */}
-          <ConnectionStatus 
-            isConnected={connectionStatus?.authenticated || false}
-            status={connectionStatus?.status || 'disconnected'}
-          />
+          <div className={`text-xs px-2 py-1 rounded ${
+            connectionStatus?.authenticated 
+              ? 'bg-green-100 text-green-700' 
+              : 'bg-red-100 text-red-700'
+          }`}>
+            {connectionStatus?.authenticated ? '🟢 Conectado' : '🔴 Desconectado'}
+          </div>
           
           {/* Filtro de búsqueda */}
           <div className="mt-3">
