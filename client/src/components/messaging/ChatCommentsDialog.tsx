@@ -212,7 +212,7 @@ export function ChatCommentsDialog({
                           <AvatarImage src={comment.user.avatar} />
                         ) : (
                           <AvatarFallback className="bg-orange-100 text-orange-700 text-xs">
-                            {getInitials(comment.user?.fullName || 'Usuario')}
+                            {getInitials(comment.user?.name || comment.user?.fullName || 'Usuario')}
                           </AvatarFallback>
                         )}
                       </Avatar>
@@ -221,7 +221,7 @@ export function ChatCommentsDialog({
                         {/* Header con nombre, rol y hora */}
                         <div className="flex items-center space-x-2 mb-1">
                           <span className="font-medium text-gray-900 text-sm">
-                            {comment.user?.fullName || 'Usuario Desconocido'}
+                            {comment.user?.name || comment.user?.fullName || 'Usuario Desconocido'}
                           </span>
                           <Badge 
                             variant="secondary"
