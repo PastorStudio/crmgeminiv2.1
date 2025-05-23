@@ -349,20 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Usuarios endpoint sin autenticación para desarrollo
-  app.get("/api/users", async (req: Request, res: Response) => {
-    try {
-      const users = await storage.getAllUsers();
-      const safeUsers = users.map(user => {
-        const { password, ...userWithoutPassword } = user;
-        return userWithoutPassword;
-      });
-      res.json(safeUsers);
-    } catch (error) {
-      console.error("Error al obtener usuarios:", error);
-      res.status(500).json({ error: "Error interno del servidor" });
-    }
-  });
+  // Ruta eliminada - se maneja en index.ts
 
   app.get("/api/users/:id", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {

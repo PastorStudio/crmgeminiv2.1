@@ -56,17 +56,19 @@ app.use((req, res, next) => {
   // Registramos rutas directas para evitar la interceptación de Vite
   registerDirectAPIRoutes(app);
   
-  // Rutas API simples sin autenticación para desarrollo
+  // Ruta principal de usuarios sin autenticación (desarrollo)
   app.get('/api/users', async (req, res) => {
     try {
+      console.log("🔄 Solicitando lista de usuarios...");
       const users = await storage.getAllUsers();
       const safeUsers = users.map(user => {
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword;
       });
+      console.log(`✅ Enviando ${safeUsers.length} usuarios al frontend`);
       res.json(safeUsers);
     } catch (error) {
-      console.error("Error al obtener usuarios:", error);
+      console.error("❌ Error al obtener usuarios:", error);
       res.status(500).json({ error: "Error interno del servidor" });
     }
   });
@@ -142,7 +144,7 @@ app.use((req, res, next) => {
     }
   });
 
-  // Registramos las rutas normales de la API
+  // IMPORTANTE: Registrar routes después de las rutas directas para evitar conflictos
   const server = await registerRoutes(app);
   
   // Las rutas para asignación de chats se registran en routes.ts

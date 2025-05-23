@@ -115,15 +115,11 @@ export default function UserManagement() {
     defaultValues,
   });
 
-  // Obtener lista de usuarios
+  // Obtener lista de usuarios - sin autenticación para desarrollo
   const { data: users, isLoading } = useQuery({
     queryKey: ['/api/users'],
     queryFn: async () => {
-      const response = await fetch('/api/users', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
-        }
-      });
+      const response = await fetch('/api/users');
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -131,9 +127,10 @@ export default function UserManagement() {
       }
       
       const data = await response.json();
-      return data.success && data.users ? data.users : [];
+      // La API ahora devuelve directamente el array de usuarios
+      return Array.isArray(data) ? data : [];
     },
-    enabled: !!currentUser // Solo cargar si hay un usuario autenticado
+    enabled: true // Siempre cargar para desarrollo
   });
 
   // Mutación para crear usuario
