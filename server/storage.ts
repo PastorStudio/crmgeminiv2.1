@@ -637,19 +637,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getChatAssignmentByChatId(chatId: string): Promise<ChatAssignment | undefined> {
-    try {
-      const [assignment] = await db.select()
-        .from(chatAssignments)
-        .where(eq(chatAssignments.chatId, chatId));
-      
-      console.log(`🔍 Consulta asignación para chat ${chatId}:`, assignment);
-      return assignment;
-    } catch (error) {
-      console.error(`Error al obtener asignación para chat ${chatId}:`, error);
-      return undefined;
-    }
-  }
+  // ✅ MÉTODO DUPLICADO ELIMINADO - USAR SOLO LA IMPLEMENTACIÓN POSTGRESQL REAL
 
   async getChatAssignmentByChat(chatId: string, accountId: number): Promise<ChatAssignment | undefined> {
     try {
@@ -755,39 +743,9 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async createChatComment(comment: any): Promise<any> {
-    try {
-      const chatId = comment.chatId;
-      const newComment = {
-        id: Date.now(),
-        ...comment,
-        timestamp: new Date().toISOString(),
-        user: { name: 'Agente Sistema', username: 'system' }
-      };
-      
-      const existingComments = this.chatComments.get(chatId) || [];
-      this.chatComments.set(chatId, [...existingComments, newComment]);
-      
-      console.log(`💬 Comentario interno agregado al chat ${chatId}:`, newComment.text);
-      return newComment;
-    } catch (error) {
-      console.error('Error al crear comentario:', error);
-      throw error;
-    }
-  }
+  // ✅ COMENTARIOS AHORA USAN POSTGRESQL - MÉTODO EN MEMORIA ELIMINADO
 
-  // Chat assignments methods usando la tabla existente
-  async getChatAssignmentByChatId(chatId: string): Promise<any> {
-    try {
-      const [assignment] = await db.select()
-        .from(chatAssignments)
-        .where(eq(chatAssignments.chatId, chatId));
-      return assignment || null;
-    } catch (error) {
-      console.error('Error al obtener asignación de chat:', error);
-      return null;
-    }
-  }
+  // ✅ ESTE MÉTODO DUPLICADO HA SIDO ELIMINADO PARA USAR SOLO POSTGRESQL REAL
 
   async createOrUpdateChatAssignment(assignment: any): Promise<any> {
     console.log('🔥 GUARDANDO DIRECTAMENTE EN POSTGRESQL - NO MEMORIA:', assignment);
