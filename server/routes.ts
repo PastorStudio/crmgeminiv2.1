@@ -1463,37 +1463,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auto-response endpoints
   app.get("/api/auto-response/config", async (req: Request, res: Response) => {
     try {
-      console.log('🤖 Obteniendo configuración de respuestas automáticas...');
-      // Configuración por defecto para respuestas automáticas
+      console.log('🤖 Obteniendo configuración de SmartBots...');
+      
+      // Importar el servicio de respuestas automáticas
+      const { autoResponseIntegration } = await import('./services/autoResponseIntegration');
+      
+      // Obtener configuración actual
+      const currentConfig = autoResponseIntegration.getConfig();
+      
+      // Mapear a formato esperado por el frontend
       const config = {
-        enabled: false,
-        provider: 'gemini',
-        delay: 2000,
-        messageTemplate: 'Gracias por contactarnos. Te responderemos pronto.',
-        businessHours: {
-          enabled: true,
-          start: '09:00',
-          end: '18:00',
-          timezone: 'America/Mexico_City'
+        enabled: currentConfig.enabled,
+        delaySeconds: currentConfig.delaySeconds,
+        templates: [
+          {
+            id: "1",
+            name: "SmartBots AI",
+            content: "Respuesta generada automáticamente por SmartBots AI",
+            variables: []
+          }
+        ],
+        defaultTemplate: "1",
+        excludedNumbers: currentConfig.excludedContacts,
+        provider: "smartbots",
+        messageTemplate: "SmartBots AI - Respuestas inteligentes automáticas",
+        customPrompts: {
+          enabled: currentConfig.smartBotsConfig.enabled,
+          system: currentConfig.smartBotsConfig.customPrompt || "Eres SmartBots, un asistente virtual especializado en atención al cliente para WhatsApp.",
+          temperature: currentConfig.smartBotsConfig.temperature,
+          maxTokens: currentConfig.smartBotsConfig.maxTokens
         },
-        excludedNumbers: [],
-        maxResponsesPerDay: 10
+        businessHours: currentConfig.businessHours,
+        useSmartBots: currentConfig.useSmartBots,
+        maxResponsesPerDay: currentConfig.maxResponsesPerDay
       };
       
-      console.log('🤖 Configuración obtenida:', config);
+      console.log('🤖 Configuración SmartBots obtenida:', config);
+      res.setHeader('Content-Type', 'application/json');
       res.json(config);
     } catch (error) {
-      console.error("Error al obtener configuración de respuestas automáticas:", error);
+      console.error("Error al obtener configuración de SmartBots:", error);
       res.status(500).json({ 
         success: false, 
-        message: "Error al obtener configuración de respuestas automáticas" 
+        message: "Error al obtener configuración de SmartBots" 
       });
     }
   });
 
   app.post("/api/auto-response/config", async (req: Request, res: Response) => {
     try {
-      console.log('🤖 Actualizando configuración de respuestas automáticas:', req.body);
+      console.log('🤖 Actualizando configuración de SmartBots:', req.body);
       const config = req.body;
       
       if (!config) {
@@ -1503,36 +1522,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Validar el proveedor de IA
-      if (config.aiProvider === 'gemini') {
-        const hasGeminiKey = process.env.GEMINI_API_KEY;
-        if (!hasGeminiKey) {
-          return res.status(400).json({
-            success: false,
-            message: "No hay clave API de Gemini configurada"
-          });
-        }
-      } else if (config.aiProvider === 'openai') {
-        const hasOpenAIKey = process.env.OPENAI_API_KEY;
-        if (!hasOpenAIKey) {
-          return res.status(400).json({
-            success: false,
-            message: "No hay clave API de OpenAI configurada"
-          });
-        }
+      // Validar que tenemos la clave de OpenAI para SmartBots
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(400).json({
+          success: false,
+          message: "No hay clave API de OpenAI configurada para SmartBots"
+        });
       }
       
-      console.log('🤖 Configuración validada y guardada correctamente');
+      // Importar el servicio de respuestas automáticas
+      const { autoResponseIntegration } = await import('./services/autoResponseIntegration');
+      
+      // Mapear configuración del frontend al formato interno
+      const internalConfig = {
+        enabled: config.enabled || false,
+        delaySeconds: config.delaySeconds || 10,
+        useSmartBots: true, // Siempre usar SmartBots
+        smartBotsConfig: {
+          enabled: config.customPrompts?.enabled || true,
+          temperature: config.customPrompts?.temperature || 0.7,
+          maxTokens: config.customPrompts?.maxTokens || 500,
+          customPrompt: config.customPrompts?.system
+        },
+        excludedContacts: config.excludedContacts || config.excludedNumbers || [],
+        businessHours: config.businessHours || {
+          enabled: true,
+          start: '09:00',
+          end: '18:00',
+          timezone: 'America/Mexico_City'
+        },
+        maxResponsesPerDay: config.maxResponsesPerDay || 50
+      };
+      
+      // Actualizar configuración
+      autoResponseIntegration.updateConfig(internalConfig);
+      
+      console.log('🤖 Configuración SmartBots actualizada correctamente');
       res.json({ 
         success: true, 
         config: config,
-        message: "Configuración de respuestas automáticas actualizada correctamente"
+        message: "Configuración de SmartBots actualizada correctamente"
       });
     } catch (error) {
-      console.error("Error al actualizar configuración de respuestas automáticas:", error);
+      console.error("Error al actualizar configuración de SmartBots:", error);
       res.status(500).json({ 
         success: false, 
-        message: "Error al actualizar configuración de respuestas automáticas" 
+        message: "Error al actualizar configuración de SmartBots" 
       });
     }
   });

@@ -65,6 +65,10 @@ type Template = z.infer<typeof templateSchema>;
 export default function AutoResponseSettings() {
   const { toast } = useToast();
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  const [testMessage, setTestMessage] = useState('');
+  const [testResponse, setTestResponse] = useState('');
+  const [testAnalysis, setTestAnalysis] = useState<any>(null);
+  const [testingSmartBots, setTestingSmartBots] = useState(false);
   
   // Fetch configuration
   const { data: config, isLoading: configLoading, isError } = useQuery({
