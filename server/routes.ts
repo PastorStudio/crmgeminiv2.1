@@ -3345,5 +3345,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Ruta para verificar el estado del motor de respuestas automáticas
+  app.get('/api/auto-response/status', (req, res) => {
+    try {
+      const autoResponseEngine = require('./services/autoResponseEngine');
+      const status = autoResponseEngine.getStatus();
+      
+      console.log('📊 Estado del motor de respuestas automáticas:', status);
+      res.json(status);
+    } catch (error) {
+      console.error('❌ Error obteniendo estado del motor:', error);
+      res.status(500).json({ error: 'Error obteniendo estado del motor' });
+    }
+  });
+
   return httpServer;
 }

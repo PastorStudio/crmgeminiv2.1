@@ -15,6 +15,9 @@ class AutoResponseEngine {
     this.checkInterval = null;
     
     this.initializeAI();
+    
+    // Activar inmediatamente para pruebas
+    console.log('🚀 Inicializando motor de respuestas automáticas...');
   }
 
   async initializeAI() {
