@@ -3309,10 +3309,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const autoResponseEngine = require('./services/autoResponseEngine');
       autoResponseEngine.setConfig(chatId, accountId, config);
       
+      // Si está habilitado, activar inmediatamente una verificación
+      if (config.enabled) {
+        console.log('🚀 Activando verificación inmediata de mensajes...');
+        setTimeout(() => {
+          autoResponseEngine.checkForNewMessages();
+        }, 5000); // Verificar en 5 segundos
+      }
+      
       res.json({ success: true, message: 'Configuración guardada y motor activado' });
     } catch (error) {
       console.error('❌ Error guardando configuración:', error);
       res.status(500).json({ error: 'Error guardando configuración' });
+    }
+  });
+
+  // Ruta para activar respuestas automáticas rápidamente
+  app.post('/api/auto-response/activate', (req, res) => {
+    try {
+      const { chatId, accountId } = req.body;
+      console.log(`🚀 Activación rápida de respuestas automáticas para chat ${chatId}`);
+      
+      const autoResponseEngine = require('./services/autoResponseEngine');
+      const config = autoResponseEngine.activateForChat(chatId, accountId);
+      
+      // Verificar mensajes inmediatamente
+      setTimeout(() => {
+        autoResponseEngine.checkForNewMessages();
+      }, 2000);
+      
+      res.json({ success: true, config, message: 'Respuestas automáticas activadas' });
+    } catch (error) {
+      console.error('❌ Error activando respuestas automáticas:', error);
+      res.status(500).json({ error: 'Error activando respuestas automáticas' });
     }
   });
 

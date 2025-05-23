@@ -79,6 +79,23 @@ class AutoResponseEngine {
     }
   }
 
+  // Activar automáticamente el sistema para un chat específico
+  activateForChat(chatId, accountId) {
+    const defaultConfig = {
+      enabled: true,
+      provider: 'gemini',
+      timing: '30sec',
+      style: 'dynamic',
+      humanity: 3,
+      length: 'medium',
+      instructions: 'Responde de manera amigable y profesional'
+    };
+    
+    console.log(`🚀 Activando respuestas automáticas para chat ${chatId}`);
+    this.setConfig(chatId, accountId, defaultConfig);
+    return defaultConfig;
+  }
+
   async processChat(chatId, config) {
     try {
       // Obtener mensajes del chat
