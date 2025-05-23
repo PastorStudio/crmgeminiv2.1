@@ -220,50 +220,46 @@ app.use((req, res, next) => {
     }
   });
 
+  // API corregida de comentarios
   app.get('/api/chat-comments/:chatId', async (req, res) => {
     try {
-      console.log('💬 Obteniendo comentarios (directo):', req.params.chatId);
       const { chatId } = req.params;
+      console.log('💬 Obteniendo comentarios para chat:', chatId);
       
-      // Devolver comentarios de ejemplo por ahora
-      const comments = [
-        {
-          id: 1,
-          chatId,
-          text: "Chat asignado para seguimiento",
-          author: "Sistema",
-          createdAt: new Date()
-        }
-      ];
+      const comments = await storage.getChatComments(chatId);
+      console.log('✅ Comentarios encontrados:', comments.length);
       res.json(comments);
     } catch (error) {
-      console.error('Error al obtener comentarios:', error);
+      console.error('❌ Error al obtener comentarios:', error);
       res.status(500).json({ error: 'Error al obtener comentarios' });
     }
   });
 
   app.post('/api/chat-comments', async (req, res) => {
     try {
-      console.log('💬 Creando comentario (directo):', req.body);
-      const { chatId, text } = req.body;
+      console.log('💬 CREANDO COMENTARIO - Datos recibidos:', req.body);
+      const { chatId, comment, text, userId = 1 } = req.body;
+      const commentText = comment || text;
       
-      if (!chatId || !text) {
-        return res.status(400).json({ error: 'Se requieren chatId y text' });
+      if (!chatId || !commentText) {
+        console.log('❌ Faltan datos requeridos:', { chatId: !!chatId, comment: !!commentText });
+        return res.status(400).json({ 
+          error: 'Faltan datos requeridos',
+          required: { chatId: !!chatId, comment: !!commentText }
+        });
       }
 
-      // Crear comentario simple en memoria por ahora
-      const newComment = {
-        id: Date.now(),
+      const newComment = await storage.createChatComment({
         chatId,
-        text,
-        author: "Usuario Actual",
-        createdAt: new Date()
-      };
-      
+        comment: commentText,
+        userId: parseInt(userId)
+      });
+
+      console.log('✅ COMENTARIO CREADO EXITOSAMENTE:', newComment);
       res.json(newComment);
     } catch (error) {
-      console.error('Error al agregar comentario:', error);
-      res.status(500).json({ error: 'Error al agregar comentario' });
+      console.error('❌ Error al crear comentario:', error);
+      res.status(500).json({ error: 'Error al crear comentario: ' + error.message });
     }
   });
 
