@@ -69,22 +69,8 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
   const queryClient = useQueryClient();
   const [existingAssignment, setExistingAssignment] = useState<ChatAssignment | null>(null);
   
-  // Cargar cuentas de WhatsApp disponibles
-  const { data: whatsappAccounts = [], isLoading: isLoadingAccounts } = useQuery<WhatsAppAccount[]>({
-    queryKey: ['/api/whatsapp-accounts'],
-    queryFn: async () => {
-      console.log('🔄 Cargando cuentas de WhatsApp disponibles...');
-      const response = await fetch('/api/whatsapp-accounts');
-      if (!response.ok) {
-        throw new Error('Error al cargar cuentas de WhatsApp');
-      }
-      const accounts = await response.json();
-      console.log('✅ Cuentas de WhatsApp cargadas:', accounts);
-      return accounts;
-    },
-    enabled: open,
-    staleTime: 30000, // Cachear por 30 segundos
-  });
+  // Sistema de asignación INTERNO - No requiere conexión de WhatsApp
+  // Las cuentas están disponibles como sistema interno independiente
   
   // Consulta para verificar si ya existe una asignación
   const { data: assignment, isLoading: checkingAssignment } = useQuery({
@@ -422,29 +408,22 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                   <FormItem>
                     <FormLabel>Cuenta de WhatsApp</FormLabel>
                     <Select
-                      disabled={isLoadingAccounts} // Deshabilitar solo mientras carga
+                      disabled={false} // Sistema interno - siempre disponible
                       onValueChange={(value) => field.onChange(parseInt(value))}
                       value={field.value ? field.value.toString() : accountId?.toString()}
                     >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue 
-                            placeholder={
-                              accounts.find(acc => acc.id === accountId)?.name || "Seleccionar cuenta"
-                            }
+                            placeholder={`Cuenta #${accountId} - Sistema Interno`}
                             className="text-sm"
                           />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {whatsappAccounts.map((account) => (
-                          <SelectItem
-                            key={account.id}
-                            value={account.id.toString()}
-                          >
-                            {account.name} {account.status === 'active' ? '🟢' : '🔴'}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value={accountId?.toString() || "1"}>
+                          🏢 Cuenta #{accountId} - Sistema Interno
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
