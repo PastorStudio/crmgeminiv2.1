@@ -31,10 +31,20 @@ interface WhatsAppMessage {
 }
 
 interface WhatsAppSimpleProps {
-  currentAccountId: number;
+  selectedLeadId?: number;
+  onSelectLead?: (leadId: number | undefined) => void;
+  currentAccountId?: number;
+  multiAccountMode?: boolean;
+  selectedAccounts?: number[];
 }
 
-export function WhatsAppSimple({ currentAccountId }: WhatsAppSimpleProps) {
+export function WhatsAppSimple({ 
+  selectedLeadId, 
+  onSelectLead, 
+  currentAccountId = 1, 
+  multiAccountMode = false, 
+  selectedAccounts = [1] 
+}: WhatsAppSimpleProps) {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [chatFilter, setChatFilter] = useState('');
