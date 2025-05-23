@@ -97,11 +97,9 @@ app.use((req, res, next) => {
   // API para asignaciones de chat sin autenticación
   app.get('/api/chat-assignments/:chatId', async (req, res) => {
     try {
-      console.log('📝 Obteniendo asignación (directo):', req.params.chatId);
       const { chatId } = req.params;
-      
-      // Devolver asignación vacía por ahora para evitar errores de DB
-      res.json(null);
+      const assignment = await storage.getChatAssignmentByChatId(decodeURIComponent(chatId));
+      res.json(assignment);
     } catch (error) {
       console.error('Error al obtener asignación:', error);
       res.status(500).json({ error: 'Error al obtener asignación' });
@@ -179,34 +177,16 @@ app.use((req, res, next) => {
     }
   });
 
-  // Crear servidor HTTP directamente sin registrar routes.ts para evitar conflictos
+  // TEMPORALMENTE desactivado para usar rutas directas sin autenticación
+  // const server = await registerRoutes(app);
+  
+  // Crear servidor HTTP manualmente para evitar conflictos
   const server = createServer(app);
   
-  // Solo registrar rutas esenciales sin autenticación
+  // Registrar rutas de WhatsApp accounts sin autenticación
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   
-  // Servir página de inicio directamente para evitar problemas de Vite
-  app.use(express.static('public'));
-  
-  app.get('/', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
-  });
-  
-  // Agregar rutas básicas de API manualmente
-  app.get('/api/auth/me', (req, res) => {
-    res.status(404).json({ success: false, message: "Usuario no encontrado" });
-  });
-  
-  // Agregar ruta de usuarios para el sistema
-  app.get('/api/users', async (req, res) => {
-    try {
-      const users = await storage.getAllUsers();
-      res.json(users);
-    } catch (error) {
-      console.error('Error al obtener usuarios:', error);
-      res.status(500).json({ error: 'Error al obtener usuarios' });
-    }
-  });
+  // Las rutas para asignación de chats se registran en routes.ts
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
