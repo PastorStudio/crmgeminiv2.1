@@ -185,12 +185,12 @@ app.use((req, res, next) => {
   // Solo registrar rutas esenciales sin autenticación
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   
-  // Configuración estándar de Vite
-  if (process.env.NODE_ENV === "production") {
-    serveStatic(app);
-  } else {
-    setupVite(app, server);
-  }
+  // Servir página de inicio directamente para evitar problemas de Vite
+  app.use(express.static('public'));
+  
+  app.get('/', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
+  });
   
   // Agregar rutas básicas de API manualmente
   app.get('/api/auth/me', (req, res) => {
