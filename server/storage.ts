@@ -818,6 +818,8 @@ export class DatabaseStorage implements IStorage {
             chatId: assignment.chatId,
             accountId: assignment.accountId,
             assignedToId: agentId,
+            category: assignment.category || null,
+            status: 'active',
             assignedAt: new Date(),
             lastActivityAt: new Date()
           })

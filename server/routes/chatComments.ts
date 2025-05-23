@@ -28,7 +28,7 @@ router.post('/', async (req, res) => {
     }
 
     const newComment = await storage.createChatComment({ chatId, text: commentText });
-    res.json(comment);
+    res.json(newComment);
   } catch (error) {
     console.error('Error al agregar comentario:', error);
     res.status(500).json({ error: 'Error al agregar comentario' });
