@@ -55,6 +55,92 @@ app.use((req, res, next) => {
   // Registramos rutas directas para evitar la interceptación de Vite
   registerDirectAPIRoutes(app);
   
+  // Rutas API simples sin autenticación para desarrollo
+  app.get('/api/users', async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const safeUsers = users.map(user => {
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Error al obtener usuarios:", error);
+      res.status(500).json({ error: "Error interno del servidor" });
+    }
+  });
+
+  // API para asignaciones de chat sin autenticación
+  app.get('/api/chat-assignments/:chatId', async (req, res) => {
+    try {
+      const { chatId } = req.params;
+      const assignment = await storage.getChatAssignmentByChatId(decodeURIComponent(chatId));
+      res.json(assignment);
+    } catch (error) {
+      console.error('Error al obtener asignación:', error);
+      res.status(500).json({ error: 'Error al obtener asignación' });
+    }
+  });
+
+  app.post('/api/chat-assignments', async (req, res) => {
+    try {
+      const { chatId, agentId } = req.body;
+      if (!chatId) {
+        return res.status(400).json({ error: 'Se requiere chatId' });
+      }
+
+      let assignment;
+      if (agentId === null || agentId === undefined) {
+        await storage.removeChatAssignment(chatId);
+        assignment = null;
+      } else {
+        assignment = await storage.createOrUpdateChatAssignment({
+          chatId,
+          agentId,
+          assignedAt: new Date()
+        });
+      }
+      
+      res.json(assignment);
+    } catch (error) {
+      console.error('Error al asignar agente:', error);
+      res.status(500).json({ error: 'Error al asignar agente' });
+    }
+  });
+
+  app.get('/api/chat-comments/:chatId', async (req, res) => {
+    try {
+      const { chatId } = req.params;
+      const comments = await storage.getChatComments(decodeURIComponent(chatId));
+      res.json(comments);
+    } catch (error) {
+      console.error('Error al obtener comentarios:', error);
+      res.status(500).json({ error: 'Error al obtener comentarios' });
+    }
+  });
+
+  app.post('/api/chat-comments', async (req, res) => {
+    try {
+      const { chatId, comment } = req.body;
+      if (!chatId || !comment) {
+        return res.status(400).json({ error: 'Se requieren chatId y comment' });
+      }
+
+      const userId = 1; // Usuario por defecto para desarrollo
+      const newComment = await storage.createChatComment({
+        chatId,
+        userId,
+        comment,
+        createdAt: new Date()
+      });
+      
+      res.json(newComment);
+    } catch (error) {
+      console.error('Error al agregar comentario:', error);
+      res.status(500).json({ error: 'Error al agregar comentario' });
+    }
+  });
+
   // Registramos las rutas normales de la API
   const server = await registerRoutes(app);
   
