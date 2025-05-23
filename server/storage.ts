@@ -92,7 +92,10 @@ export interface IStorage {
   getChatAssignmentsByAgent(agentId: number): Promise<ChatAssignment[]>;
   getChatAssignment(id: number): Promise<ChatAssignment | undefined>;
   getChatAssignmentByChatId(chatId: string): Promise<ChatAssignment | undefined>;
+  getChatAssignmentByChat(chatId: string, accountId: number): Promise<ChatAssignment | undefined>;
   createChatAssignment(assignment: InsertChatAssignment): Promise<ChatAssignment>;
+  createOrUpdateChatAssignment(assignment: InsertChatAssignment): Promise<ChatAssignment>;
+  removeChatAssignment(chatId: string): Promise<void>;
   updateChatAssignment(id: number, data: Partial<InsertChatAssignment>): Promise<ChatAssignment | undefined>;
   deleteChatAssignment(id: number): Promise<void>;
   
@@ -642,6 +645,25 @@ export class DatabaseStorage implements IStorage {
       return assignment;
     } catch (error) {
       console.error(`Error al obtener asignación para chat ${chatId}:`, error);
+      return undefined;
+    }
+  }
+
+  async getChatAssignmentByChat(chatId: string, accountId: number): Promise<ChatAssignment | undefined> {
+    try {
+      const [assignment] = await db.select()
+        .from(chatAssignments)
+        .where(eq(chatAssignments.chatId, chatId));
+      
+      if (assignment) {
+        // Obtener información del agente asignado
+        const agent = await this.getUser(assignment.assignedToId);
+        return { ...assignment, agent };
+      }
+      
+      return undefined;
+    } catch (error) {
+      console.error(`Error al obtener asignación para chat ${chatId} en cuenta ${accountId}:`, error);
       return undefined;
     }
   }
