@@ -265,11 +265,11 @@ export function WhatsAppTwoColumn() {
 
   // Mutación para asignar agente (con manejo de errores)
   const assignAgentMutation = useMutation({
-    mutationFn: async ({ chatId, agentId }: { chatId: string; agentId: number | null }) => {
+    mutationFn: async ({ chatId, accountId, agentId }: { chatId: string; accountId: number; agentId: number | null }) => {
       const response = await fetch('/api/chat-assignments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatId, agentId })
+        body: JSON.stringify({ chatId, accountId, assignedToId: agentId })
       });
       if (!response.ok) {
         const errorText = await response.text();
@@ -278,6 +278,9 @@ export function WhatsAppTwoColumn() {
       return response.json();
     },
     onSuccess: () => {
+      // Invalidar todas las consultas relacionadas con asignaciones
+      queryClient.invalidateQueries({ queryKey: ['chat-assignment'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-assignment-badge'] });
       refetchAssignment();
       toast({
         title: "Agente asignado",
@@ -357,18 +360,20 @@ export function WhatsAppTwoColumn() {
   };
 
   const handleAssignAgent = () => {
-    if (!selectedAgent || !selectedChat) return;
+    if (!selectedAgent || !selectedChat || !selectedAccount) return;
     
     if (selectedAgent === 'unassigned') {
       // Desasignar agente
       assignAgentMutation.mutate({
         chatId: selectedChat.id,
+        accountId: selectedAccount.id,
         agentId: null
       });
     } else {
       const agentId = parseInt(selectedAgent);
       assignAgentMutation.mutate({
         chatId: selectedChat.id,
+        accountId: selectedAccount.id,
         agentId: agentId
       });
     }
