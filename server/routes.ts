@@ -34,6 +34,14 @@ import { mediaGalleryService } from "./services/mediaGalleryService";
 import { registerTemplateVariablesRoutes } from "./services/templateVariablesRoutes";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import chatAssignmentsRouter from "./routes/chatAssignments";
+import { 
+  getAssignmentByChat, 
+  createAssignmentFixed, 
+  getCommentsFixed, 
+  createCommentFixed,
+  getAutoResponseConfigFixed,
+  saveAutoResponseConfigFixed 
+} from "./fix-all-apis";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
