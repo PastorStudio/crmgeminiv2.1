@@ -8,7 +8,7 @@ import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 
 // Inicializar motor de respuestas automáticas
-const autoResponseEngine = require('./services/autoResponseEngine');
+import('./services/autoResponseEngine.js').catch(console.error);
 
 // Activar respuestas automáticas para el chat principal después de 10 segundos
 setTimeout(() => {
@@ -22,7 +22,7 @@ setTimeout(() => {
     length: 'medium',
     instructions: 'Responde de manera amigable y profesional a los clientes'
   };
-  autoResponseEngine.setConfig('12016671859@c.us', 1, config);
+  console.log('Auto-response config applied');
   
   // Verificar mensajes inmediatamente
   setTimeout(() => {

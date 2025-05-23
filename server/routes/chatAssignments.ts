@@ -11,8 +11,8 @@ router.get('/by-chat', async (req, res) => {
     console.log('🔍 Consulta asignación PostgreSQL - Parámetros recibidos:', { chatId, accountId, todosLosParams: req.query });
     
     if (!chatId || !accountId) {
-      console.log('❌ Faltan parámetros requeridos');
-      return res.status(400).json({ error: 'Se requiere chatId y accountId' });
+      console.log('❌ Faltan parámetros requeridos - devolviendo null');
+      return res.json(null);
     }
     
     // BUSCAR DIRECTAMENTE EN POSTGRESQL
