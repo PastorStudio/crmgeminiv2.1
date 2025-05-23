@@ -108,6 +108,7 @@ export function WhatsAppTwoColumn() {
   const [autoResponseEnabled, setAutoResponseEnabled] = useState(false);
   const [autoResponseConfigOpen, setAutoResponseConfigOpen] = useState(false);
   const [autoResponseConfig, setAutoResponseConfig] = useState(null);
+  const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -933,6 +934,28 @@ export function WhatsAppTwoColumn() {
                     >
                       <MessageCircle className="h-4 w-4 mr-2" />
                       {autoResponseEnabled ? "Auto ON" : "Auto OFF"}
+                    </Button>
+                  </motion.div>
+                  
+                  {/* Botón de Comentarios Internos */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                  >
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-orange-600 text-orange-600 hover:bg-orange-50 shadow-sm transition-all duration-300 relative"
+                      onClick={() => setCommentsDialogOpen(true)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Comentarios
+                      {chatComments.length > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                          {chatComments.length}
+                        </span>
+                      )}
                     </Button>
                   </motion.div>
                   
