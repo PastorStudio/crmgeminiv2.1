@@ -170,24 +170,35 @@ export default function AutoResponseSettings() {
   // Update configuration mutation
   const { mutate: updateConfig, isPending } = useMutation({
     mutationFn: async (values: AutoResponseConfig) => {
+      console.log('🚀 Enviando configuración:', values);
+      
       const response = await fetch("/api/auto-response/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values)
       });
-      return await response.json();
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ Respuesta del servidor:', result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('🎉 Configuración guardada exitosamente:', data);
       queryClient.invalidateQueries({ queryKey: ["/api/auto-response/config"] });
       toast({
-        title: "Configuración actualizada",
-        description: "La configuración de respuestas automáticas ha sido guardada.",
+        title: "✅ Configuración actualizada",
+        description: "La configuración de respuestas automáticas ha sido guardada correctamente.",
       });
     },
     onError: (error) => {
+      console.error('❌ Error al guardar:', error);
       toast({
-        title: "Error",
-        description: `Error al guardar la configuración: ${error.message}`,
+        title: "❌ Error al guardar",
+        description: `Error: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -489,7 +500,17 @@ export default function AutoResponseSettings() {
                 <Button type="button" variant="outline" onClick={() => form.reset(config)}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isPending}>
+                <Button 
+                  type="submit" 
+                  disabled={isPending}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    console.log('🔄 Botón de guardar presionado');
+                    const formValues = form.getValues();
+                    console.log('📝 Valores actuales del formulario:', formValues);
+                    updateConfig(formValues);
+                  }}
+                >
                   {isPending ? (
                     <>
                       <span className="animate-spin mr-2">⟳</span>
