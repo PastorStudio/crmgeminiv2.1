@@ -219,6 +219,8 @@ export const insertSurveySchema = createInsertSchema(surveys).omit({ id: true, s
 export const insertDashboardStatsSchema = createInsertSchema(dashboardStats).omit({ id: true, updatedAt: true });
 export const insertMessageTemplateSchema = createInsertSchema(messageTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertMarketingCampaignSchema = createInsertSchema(marketingCampaigns).omit({ id: true, createdAt: true, updatedAt: true, stats: true });
+export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true });
+export const insertChatCommentSchema = createInsertSchema(chatComments).omit({ id: true, createdAt: true });
 
 // Types for insert and select operations
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -229,6 +231,8 @@ export type InsertSurvey = z.infer<typeof insertSurveySchema>;
 export type InsertDashboardStats = z.infer<typeof insertDashboardStatsSchema>;
 export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
 export type InsertMarketingCampaign = z.infer<typeof insertMarketingCampaignSchema>;
+export type InsertChatAssignment = z.infer<typeof insertChatAssignmentSchema>;
+export type InsertChatComment = z.infer<typeof insertChatCommentSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Lead = typeof leads.$inferSelect;
@@ -238,6 +242,10 @@ export type Survey = typeof surveys.$inferSelect;
 export type DashboardStats = typeof dashboardStats.$inferSelect;
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
 export type MarketingCampaign = typeof marketingCampaigns.$inferSelect;
+export type ChatAssignment = typeof chatAssignments.$inferSelect;
+export type ChatComment = typeof chatComments.$inferSelect;
+export type WhatsappAccount = typeof whatsappAccounts.$inferSelect;
+export type InsertWhatsappAccount = z.infer<typeof createInsertSchema(whatsappAccounts).omit({ id: true, createdAt: true })>;
 
 // Tabla para galería de archivos
 export const mediaGallery = pgTable("media_gallery", {
@@ -331,7 +339,7 @@ export const userWhatsappAccounts = pgTable("user_whatsapp_accounts", {
 // Chat-Agente para asignación de conversaciones a agentes específicos
 export const chatAssignments = pgTable("chat_assignments", {
   id: serial("id").primaryKey(),
-  // Chat ID en formato de WhatsApp (número@c.us)
+  // Chat ID en formato de WhatsApp (número@c.us) - almacenado como texto
   chatId: text("chatId").notNull(),
   // Conexión a la cuenta de WhatsApp
   accountId: integer("accountId").notNull().references(() => whatsappAccounts.id),
@@ -347,6 +355,19 @@ export const chatAssignments = pgTable("chat_assignments", {
   notes: text("notes"),
   assignedAt: timestamp("assignedAt").defaultNow(),
   lastActivityAt: timestamp("lastActivityAt"),
+});
+
+// Comentarios de chat para el sistema interno
+export const chatComments = pgTable("chat_comments", {
+  id: serial("id").primaryKey(),
+  // Chat ID en formato de WhatsApp (número@c.us)
+  chatId: text("chatId").notNull(),
+  // Usuario que agregó el comentario
+  userId: integer("userId").notNull().references(() => users.id),
+  // Contenido del comentario
+  comment: text("comment").notNull(),
+  // Fecha de creación
+  createdAt: timestamp("createdAt").defaultNow(),
 });
 
 // Categorías para organizar chats

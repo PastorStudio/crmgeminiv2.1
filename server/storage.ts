@@ -7,6 +7,7 @@ import {
   dashboardStats,
   whatsappAccounts,
   chatAssignments,
+  chatComments,
   type User, 
   type InsertUser,
   type Lead,
@@ -22,7 +23,9 @@ import {
   type WhatsappAccount,
   type InsertWhatsappAccount,
   type ChatAssignment,
-  type InsertChatAssignment
+  type InsertChatAssignment,
+  type ChatComment,
+  type InsertChatComment
 } from "@shared/schema";
 import { db } from './db';
 import { eq, desc, or } from 'drizzle-orm';
@@ -92,6 +95,11 @@ export interface IStorage {
   updateChatAssignment(id: number, data: Partial<InsertChatAssignment>): Promise<ChatAssignment | undefined>;
   deleteChatAssignment(id: number): Promise<void>;
   
+  // Chat Comments methods
+  getChatComments(chatId: string): Promise<ChatComment[]>;
+  createChatComment(comment: InsertChatComment): Promise<ChatComment>;
+  deleteChatComment(id: number): Promise<void>;
+  
   // WhatsApp methods
   getWhatsAppContact(contactId: string): Promise<any>;
   getWhatsAppChat(chatId: string): Promise<any>;
@@ -101,6 +109,11 @@ export interface IStorage {
   // Gemini settings
   getGeminiSettings(): Promise<any>;
   updateGeminiSettings(settings: any): Promise<any>;
+
+  // Chat Comments methods
+  getChatComments(chatId: string): Promise<ChatComment[]>;
+  createChatComment(comment: InsertChatComment): Promise<ChatComment>;
+  deleteChatComment(id: number): Promise<void>;
 }
 
 /**
@@ -137,6 +150,27 @@ export class DatabaseStorage implements IStorage {
           role: "super_admin",
           status: "active",
           department: "Dirección"
+        });
+
+        // Crear agentes de ejemplo
+        await db.insert(users).values({
+          username: "agente1",
+          password: "agente123",
+          fullName: "Ana García",
+          email: "ana@empresa.com",
+          role: "agent",
+          status: "active",
+          department: "Ventas"
+        });
+
+        await db.insert(users).values({
+          username: "agente2",
+          password: "agente123",
+          fullName: "Carlos López",
+          email: "carlos@empresa.com",
+          role: "agent",
+          status: "active",
+          department: "Soporte"
         });
         
         // Crear estadísticas iniciales del dashboard
