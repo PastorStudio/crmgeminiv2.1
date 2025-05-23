@@ -216,17 +216,19 @@ export function ChatCommentsDialog({
                       
                       <div className="flex-1 min-w-0 max-w-full overflow-hidden">
                         {/* Header con usuario, rol y hora */}
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="font-medium text-gray-900 text-sm">
-                            {comment.user?.username || 'usuario_desconocido'}
-                          </span>
-                          <Badge 
-                            variant="secondary"
-                            className={`${getRoleColor(comment.user?.role || '')} text-xs px-2 py-0`}
-                          >
-                            {comment.user?.role || 'usuario'}
-                          </Badge>
-                          <span className="text-xs text-gray-500 ml-auto">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium text-gray-900 text-sm">
+                              {comment.user?.username || 'usuario_desconocido'}
+                            </span>
+                            <Badge 
+                              variant="secondary"
+                              className={`${getRoleColor(comment.user?.role || '')} text-xs px-2 py-0`}
+                            >
+                              {comment.user?.role || 'usuario'}
+                            </Badge>
+                          </div>
+                          <span className="text-xs text-gray-500">
                             {formatDate(comment.timestamp || comment.createdAt)}
                           </span>
                         </div>
