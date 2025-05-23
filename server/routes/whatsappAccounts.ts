@@ -503,6 +503,14 @@ router.get('/:id/messages/:chatId', async (req, res) => {
     }
 
     try {
+      // Verificar que el cliente esté completamente listo
+      const clientState = await instance.client.getState();
+      if (clientState !== 'CONNECTED') {
+        console.log(`⚠️ Cliente no conectado (estado: ${clientState})`);
+        res.json([]);
+        return;
+      }
+
       // Obtener el chat específico
       const chat = await instance.client.getChatById(chatId);
       if (!chat) {
@@ -511,8 +519,14 @@ router.get('/:id/messages/:chatId', async (req, res) => {
         return;
       }
 
-      // Obtener mensajes del chat
-      const messages = await chat.fetchMessages({ limit });
+      console.log(`🔄 Obteniendo ${limit} mensajes del chat...`);
+      
+      // Obtener mensajes del chat con timeout
+      const messages = await Promise.race([
+        chat.fetchMessages({ limit }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+      ]);
+
       if (!Array.isArray(messages)) {
         console.log(`⚠️ No se obtuvieron mensajes válidos`);
         res.json([]);
@@ -542,6 +556,7 @@ router.get('/:id/messages/:chatId', async (req, res) => {
       res.json(processedMessages);
     } catch (whatsappError) {
       console.error(`❌ Error obteniendo mensajes de WhatsApp:`, whatsappError);
+      // Si hay error, devolver array vacío en lugar de fallar
       res.json([]);
     }
   } catch (error) {
