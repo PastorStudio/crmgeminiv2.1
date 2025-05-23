@@ -185,7 +185,7 @@ app.use((req, res, next) => {
   // Solo registrar rutas esenciales sin autenticación
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   
-  // Static files en producción
+  // Configuración estándar de Vite
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
