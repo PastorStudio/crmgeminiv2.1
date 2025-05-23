@@ -109,12 +109,12 @@ export function WhatsAppTwoColumn() {
   });
 
   // Cargar asignación de agente del chat (con manejo de errores)
-  const { data: chatAssignment, refetch: refetchAssignment } = useQuery({
+  const { data: assignmentData, refetch: refetchAssignment } = useQuery({
     queryKey: ['chat-assignment', selectedChat?.id],
     queryFn: async () => {
       if (!selectedChat?.id) return null;
       try {
-        const response = await fetch(`/api/chat-assignments/${encodeURIComponent(selectedChat.id)}`);
+        const response = await fetch(`/api/chat-assignments/by-chat?chatId=${encodeURIComponent(selectedChat.id)}&accountId=${selectedAccount?.id}`);
         if (!response.ok) return null;
         return response.json();
       } catch (error) {
@@ -595,8 +595,8 @@ export function WhatsAppTwoColumn() {
                             <Select value={selectedAgent} onValueChange={setSelectedAgent}>
                               <SelectTrigger className="flex-1">
                                 <SelectValue placeholder={
-                                  chatAssignment?.agent ? 
-                                  `${chatAssignment.agent.name} (${chatAssignment.agent.username})` : 
+                                  assignmentData?.assignedTo ? 
+                                  `${assignmentData.assignedTo.fullName} (${assignmentData.assignedTo.username})` : 
                                   "Seleccionar agente"
                                 } />
                               </SelectTrigger>
@@ -691,10 +691,10 @@ export function WhatsAppTwoColumn() {
                         {selectedChat.isGroup ? 'Grupo' : 'Individual'}
                       </span>
                       {/* Mostrar agente asignado */}
-                      {chatAssignment?.agent && (
+                      {assignmentData?.assignedTo && (
                         <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs flex items-center">
                           <User className="h-3 w-3 mr-1" />
-                          {chatAssignment.agent.name}
+                          {assignmentData.assignedTo.fullName}
                         </span>
                       )}
                       <span className="text-sm text-gray-500">
