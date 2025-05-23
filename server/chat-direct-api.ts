@@ -71,7 +71,7 @@ export async function getChatComments(req: Request, res: Response) {
     const { eq, sql } = await import('drizzle-orm');
     
     const commentsQuery = sql`
-      SELECT cc.*, u."fullName" as user_name, u.username
+      SELECT cc.*, u."fullName" as user_name, u.username, u.role, u.email
       FROM chat_comments cc
       LEFT JOIN users u ON cc."userId" = u.id
       WHERE cc."chatId" = ${chatId}
@@ -86,8 +86,10 @@ export async function getChatComments(req: Request, res: Response) {
       text: row.text,
       timestamp: row.timestamp,
       user: {
-        name: row.user_name || "Usuario",
-        username: row.username || "unknown"
+        fullName: row.user_name || "Usuario Desconocido",
+        username: row.username || "unknown",
+        role: row.role || "usuario",
+        email: row.email || ""
       }
     }));
     
