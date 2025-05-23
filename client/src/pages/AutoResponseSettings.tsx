@@ -50,7 +50,7 @@ const autoResponseConfigSchema = z.object({
   enabledForGroups: z.boolean().default(false),
   enabledForBroadcast: z.boolean().default(false),
   excludedContacts: z.array(z.string()),
-  aiProvider: z.enum(["gemini", "openai"]),
+  aiProvider: z.enum(["gemini", "openai", "smartbots"]),
   customPrompts: z.object({
     enabled: z.boolean().default(false),
     system: z.string(),
@@ -98,7 +98,7 @@ export default function AutoResponseSettings() {
       enabledForGroups: false,
       enabledForBroadcast: false,
       excludedContacts: [],
-      aiProvider: "gemini",
+      aiProvider: "smartbots",
       customPrompts: {
         enabled: false,
         system: "",
