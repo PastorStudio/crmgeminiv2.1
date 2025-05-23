@@ -643,7 +643,7 @@ export class DatabaseStorage implements IStorage {
     try {
       const assignments = await db.select()
         .from(chatAssignments)
-        .where(eq(chatAssignments.assignedToId, agentId));
+        .where(eq(chatAssignments.agentId, agentId));
       return assignments;
     } catch (error) {
       console.error(`Error al obtener asignaciones para agente ${agentId}:`, error);
