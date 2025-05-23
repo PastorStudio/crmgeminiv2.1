@@ -8,23 +8,39 @@ router.get('/by-chat', async (req, res) => {
   try {
     const { chatId, accountId } = req.query;
     
+    console.log('🔍 BUSCANDO ASIGNACIÓN:', { chatId, accountId });
+    
     if (!chatId || !accountId) {
+      console.log('❌ Faltan parámetros');
       return res.status(400).json({ error: 'Se requiere chatId y accountId' });
     }
     
-    // Usar el método que funciona correctamente
-    const assignment = await storage.getChatAssignmentByChatId(chatId as string);
+    // BUSCAR DIRECTAMENTE EN POSTGRESQL
+    const { db } = await import('../db');
+    const { chatAssignments, users } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
+    const [assignment] = await db.select()
+      .from(chatAssignments)
+      .where(eq(chatAssignments.chatId, chatId as string));
+    
+    console.log('📊 ASIGNACIÓN ENCONTRADA:', assignment);
     
     if (assignment) {
       // Obtener información del agente
-      const agent = await storage.getUser(assignment.assignedToId);
-      res.json({ ...assignment, assignedTo: agent });
+      const [agent] = await db.select().from(users).where(eq(users.id, assignment.assignedToId));
+      console.log('👤 AGENTE ENCONTRADO:', agent);
+      
+      const response = { ...assignment, assignedTo: agent };
+      console.log('✅ RESPUESTA FINAL:', response);
+      res.json(response);
     } else {
+      console.log('❌ NO HAY ASIGNACIÓN');
       res.json(null);
     }
   } catch (error) {
-    console.error('Error al obtener asignación:', error);
-    res.status(500).json({ error: 'Error al obtener asignación' });
+    console.error('❌ ERROR AL OBTENER ASIGNACIÓN:', error);
+    res.status(500).json({ error: 'Error al obtener asignación: ' + (error as Error).message });
   }
 });
 
