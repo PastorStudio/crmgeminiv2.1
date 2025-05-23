@@ -92,10 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     createChatComment 
   } = await import('./chat-direct-api');
   
-  app.post("/api/chat-assignments", createChatAssignment);
-  app.get("/api/chat-assignments/by-chat", getChatAssignment);
-  app.get("/api/chat-comments/:chatId", getChatComments);
-  app.post("/api/chat-comments", createChatComment);
+  // Rutas duplicadas eliminadas - usando las versiones que funcionan correctamente
   
   // Ruta para la página de prueba de la galería de medios
   app.get("/media-gallery-test", (req: Request, res: Response) => {
