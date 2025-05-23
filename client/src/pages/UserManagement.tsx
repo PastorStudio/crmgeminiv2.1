@@ -119,7 +119,7 @@ export default function UserManagement() {
   const mockUsers = [
     { id: 1, username: 'admin', fullName: 'Administrador', email: 'admin@sistema.com', role: 'admin', status: 'active', department: 'administracion' },
     { id: 2, username: 'agente', fullName: 'Agente Principal', email: 'agente@sistema.com', role: 'agent', status: 'active', department: 'soporte' },
-    { id: 3, username: 'DJP', fullName: 'DJP Usuario', email: 'djp@sistema.com', role: 'supervisor', status: 'active', department: 'ventas' },
+    { id: 3, username: 'DJP', fullName: 'DJP - Superadministrador', email: 'djp@sistema.com', role: 'super_admin', status: 'active', department: 'administracion' },
     { id: 4, username: 'steph', fullName: 'Stephanie', email: 'steph@sistema.com', role: 'agent', status: 'active', department: 'atencion_cliente' }
   ];
 
