@@ -19,14 +19,15 @@ router.get('/:chatId', async (req, res) => {
 // Agregar comentario a un chat
 router.post('/', async (req, res) => {
   try {
-    const { chatId, comment } = req.body;
+    console.log('💬 Creando comentario:', req.body);
+    const { chatId, text } = req.body;
     
-    if (!chatId || !comment) {
-      return res.status(400).json({ error: 'Se requieren chatId y comment' });
+    if (!chatId || !text) {
+      return res.status(400).json({ error: 'Se requieren chatId y text' });
     }
 
-    // TODO: Obtener userId del usuario autenticado
-    const userId = 1; // Por ahora usar usuario por defecto
+    const comment = await storage.createChatComment({ chatId, text });
+    res.json(comment);
     
     const newComment = await storage.createChatComment({
       chatId,
