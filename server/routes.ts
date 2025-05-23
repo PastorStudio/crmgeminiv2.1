@@ -1463,17 +1463,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auto-response endpoints
   app.get("/api/auto-response/config", async (req: Request, res: Response) => {
     try {
-      // Intentar obtener configuración del servicio mejorado primero
-      try {
-        const { getAutoResponseConfig } = await import('./services/autoResponseIntegration');
-        const config = getAutoResponseConfig();
-        return res.json(config);
-      } catch (importError) {
-        console.log("Usando servicio de respuestas automáticas clásico");
-        // Fallback al servicio original si el mejorado no está disponible
-        const config = autoResponseService.getConfig();
-        return res.json(config);
-      }
+      console.log('🤖 Obteniendo configuración de respuestas automáticas...');
+      // Configuración por defecto para respuestas automáticas
+      const config = {
+        enabled: false,
+        provider: 'gemini',
+        delay: 2000,
+        messageTemplate: 'Gracias por contactarnos. Te responderemos pronto.',
+        businessHours: {
+          enabled: true,
+          start: '09:00',
+          end: '18:00',
+          timezone: 'America/Mexico_City'
+        },
+        excludedNumbers: [],
+        maxResponsesPerDay: 10
+      };
+      
+      console.log('🤖 Configuración obtenida:', config);
+      res.json(config);
     } catch (error) {
       console.error("Error al obtener configuración de respuestas automáticas:", error);
       res.status(500).json({ 
