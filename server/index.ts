@@ -56,16 +56,18 @@ app.use((req, res, next) => {
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
   app.get('/api/system/users', async (req, res) => {
     try {
-      console.log("🔄 Solicitando lista de usuarios...");
+      console.log("🔄 System users: Solicitando lista de usuarios...");
       const users = await storage.getAllUsers();
       const safeUsers = users.map(user => {
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword;
       });
-      console.log(`✅ Enviando ${safeUsers.length} usuarios al frontend`);
+      console.log(`✅ System users: Enviando ${safeUsers.length} usuarios`);
+      console.log(`📋 System users: Datos:`, safeUsers);
+      res.setHeader('Content-Type', 'application/json');
       res.json(safeUsers);
     } catch (error) {
-      console.error("❌ Error al obtener usuarios:", error);
+      console.error("❌ System users: Error:", error);
       res.status(500).json({ error: "Error interno del servidor" });
     }
   });

@@ -115,24 +115,36 @@ export default function UserManagement() {
     defaultValues,
   });
 
-  // Obtener lista de usuarios - usando ruta alternativa
-  const { data: users, isLoading } = useQuery({
-    queryKey: ['/api/system/users'],
+  // Obtener lista de usuarios - usando ruta directa que bypasa completamente Vite
+  const { data: users, isLoading, error } = useQuery({
+    queryKey: ['/api/direct/users'],
     queryFn: async () => {
-      console.log('🔄 Frontend: Solicitando usuarios...');
-      const response = await fetch('/api/system/users');
+      console.log('🔄 Frontend: Solicitando usuarios desde ruta directa...');
+      const response = await fetch('/api/direct/users', {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
       
       if (!response.ok) {
         console.error('❌ Frontend: Error en response:', response.status);
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'No se pudo obtener la lista de usuarios');
+        const errorText = await response.text();
+        console.error('❌ Frontend: Response text:', errorText);
+        throw new Error(`Error ${response.status}: ${errorText}`);
       }
       
       const data = await response.json();
-      console.log('✅ Frontend: Usuarios recibidos:', data.length);
+      console.log('✅ Frontend: Datos recibidos:', data);
+      console.log('✅ Frontend: Tipo de datos:', typeof data);
+      console.log('✅ Frontend: Es array:', Array.isArray(data));
+      console.log('✅ Frontend: Usuarios recibidos:', data?.length || 0);
+      
       return Array.isArray(data) ? data : [];
     },
-    enabled: true // Siempre cargar para desarrollo
+    enabled: true, // Siempre cargar para desarrollo
+    retry: 3,
+    retryDelay: 1000
   });
 
   // Mutación para crear usuario
