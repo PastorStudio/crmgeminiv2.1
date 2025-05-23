@@ -186,8 +186,8 @@ export function ChatCommentsDialog({
           </p>
         </DialogHeader>
 
-        {/* Lista de comentarios */}
-        <div className="flex-1 min-h-0">
+        {/* Lista de comentarios con altura fija para mostrar máximo 2 comentarios */}
+        <div className="h-[280px] overflow-hidden">
           <ScrollArea className="h-full pr-4">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
