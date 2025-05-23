@@ -790,38 +790,50 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createOrUpdateChatAssignment(assignment: any): Promise<any> {
+    console.log('🔥 GUARDANDO DIRECTAMENTE EN POSTGRESQL - NO MEMORIA:', assignment);
+    
     try {
       const agentId = assignment.assignedToId || assignment.agentId;
-      console.log('💾 Guardando asignación en PostgreSQL:', { chatId: assignment.chatId, agentId, accountId: assignment.accountId });
       
       if (!agentId) {
-        await this.removeChatAssignment(assignment.chatId);
+        await db.delete(chatAssignments)
+          .where(eq(chatAssignments.chatId, assignment.chatId));
         return null;
       }
 
-      // Primero eliminar cualquier asignación existente para este chat
+      // BORRAR DUPLICADOS PRIMERO
       await db.delete(chatAssignments)
         .where(eq(chatAssignments.chatId, assignment.chatId));
 
-      // Crear nueva asignación
+      // INSERTAR DIRECTAMENTE EN POSTGRESQL
+      const insertData = {
+        chatId: assignment.chatId,
+        accountId: Number(assignment.accountId),
+        assignedToId: Number(agentId),
+        category: assignment.category || 'general',
+        status: 'active',
+        assignedAt: new Date(),
+        lastActivityAt: new Date()
+      };
+      
+      console.log('📊 DATOS A INSERTAR EN POSTGRESQL:', insertData);
+      
       const [created] = await db.insert(chatAssignments)
-        .values({
-          chatId: assignment.chatId,
-          accountId: assignment.accountId,
-          assignedToId: agentId,
-          category: assignment.category || null,
-          status: 'active',
-          assignedAt: new Date(),
-          lastActivityAt: new Date()
-        })
+        .values(insertData)
         .returning();
       
-      console.log('✅ Asignación guardada exitosamente en PostgreSQL:', created);
+      console.log('✅ ASIGNACIÓN INSERTADA EXITOSAMENTE EN POSTGRESQL:', created);
       
-      const agent = await this.getUser(agentId);
-      return { ...created, agent: agent };
+      // Verificar que realmente se guardó
+      const verification = await db.select()
+        .from(chatAssignments)
+        .where(eq(chatAssignments.chatId, assignment.chatId));
+      
+      console.log('🔍 VERIFICACIÓN EN BASE DE DATOS:', verification);
+      
+      return created;
     } catch (error) {
-      console.error('Error al crear/actualizar asignación:', error);
+      console.error('❌ ERROR REAL AL GUARDAR EN POSTGRESQL:', error);
       throw error;
     }
   }
