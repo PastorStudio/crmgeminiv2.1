@@ -164,37 +164,44 @@ export function WhatsAppTwoColumn() {
     enabled: !!selectedChat?.id
   });
 
-  // Cargar asignación de agente del chat - DATOS REALES
+  // Cargar asignación de agente del chat - DATOS REALES desde la base de datos
   const { data: assignmentData, refetch: refetchAssignment } = useQuery({
-    queryKey: ['chat-assignment', selectedChat?.id],
+    queryKey: ['chat-assignment', selectedChat?.id, selectedAccount?.id],
     queryFn: async () => {
-      if (!selectedChat?.id) return null;
+      if (!selectedChat?.id || !selectedAccount?.id) return null;
+      
       try {
-        const response = await fetch(`/api/chat-assignments/${encodeURIComponent(selectedChat.id)}`);
+        // Usar el endpoint by-chat que funciona correctamente
+        const response = await fetch(`/api/chat-assignments/by-chat?chatId=${encodeURIComponent(selectedChat.id)}&accountId=${selectedAccount.id}`);
         if (!response.ok) return null;
-        const assignment = await response.json();
         
-        // Si hay asignación, obtener datos del agente desde el endpoint que funciona
+        const assignment = await response.json();
+        console.log('Asignación encontrada desde DB:', assignment);
+        
+        // Si hay asignación, cargar datos del agente real
         if (assignment && assignment.assignedToId) {
-          // Usar agentes locales para evitar problemas de endpoint
-          const agentData = {
-            1: { id: 1, fullName: 'Juan Pérez', username: 'juan.perez', role: 'agente' },
-            2: { id: 2, fullName: 'María Gómez', username: 'maria.gomez', role: 'agente' },
-            3: { id: 3, fullName: 'Carlos López', username: 'carlos.lopez', role: 'supervisor' }
-          };
-          
-          const agent = agentData[assignment.assignedToId];
-          if (agent) {
-            return { ...assignment, assignedTo: agent };
+          try {
+            const userResponse = await fetch(`/api/users/${assignment.assignedToId}`);
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              return { ...assignment, assignedTo: userData };
+            }
+          } catch (userError) {
+            console.log('Error cargando datos del agente:', userError);
           }
         }
+        
         return assignment;
       } catch (error) {
-        console.log('No se pudo cargar asignación de agente:', error);
+        console.log('Error cargando asignación:', error);
         return null;
       }
     },
-    enabled: !!selectedChat?.id
+    enabled: !!selectedChat?.id && !!selectedAccount?.id,
+    // Hacer que se actualice automáticamente cada 2 segundos para reflejar cambios
+    refetchInterval: 2000,
+    // No mantener en caché para asegurar datos frescos
+    staleTime: 0
   });
 
   // Cargar chats de WhatsApp - CHATS REALES
