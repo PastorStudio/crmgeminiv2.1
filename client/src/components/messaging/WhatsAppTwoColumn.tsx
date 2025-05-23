@@ -112,23 +112,31 @@ export function WhatsAppTwoColumn() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Función para alternar respuestas automáticas
-  const toggleAutoResponse = async () => {
+  // Función para manejar la configuración de respuestas automáticas
+  const handleAutoResponseConfig = async (config: any) => {
     try {
-      const newState = !autoResponseEnabled;
-      setAutoResponseEnabled(newState);
+      setAutoResponseConfig(config);
+      setAutoResponseEnabled(config.enabled);
       
-      // Aquí se podría hacer una llamada al backend para persistir el estado
-      // await fetch('/api/auto-response/toggle', { method: 'POST', body: JSON.stringify({ enabled: newState }) });
+      // Guardar configuración en el backend
+      await fetch('/api/auto-response/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: selectedChat?.id,
+          accountId: selectedAccount?.id,
+          config
+        })
+      });
       
       toast({
-        title: newState ? "Respuestas automáticas activadas" : "Respuestas automáticas desactivadas",
-        description: newState ? "El chat ahora responderá automáticamente" : "Las respuestas automáticas están pausadas",
+        title: "Configuración guardada",
+        description: `Respuestas automáticas ${config.enabled ? 'activadas' : 'desactivadas'} con ${config.provider}`,
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "No se pudo cambiar el estado de respuestas automáticas",
+        description: "No se pudo guardar la configuración",
         variant: "destructive",
       });
     }
@@ -1074,6 +1082,18 @@ export function WhatsAppTwoColumn() {
         <ChatAssignmentDialog
           open={assignmentDialogOpen}
           onOpenChange={setAssignmentDialogOpen}
+          chatId={selectedChat.id}
+          accountId={selectedAccount.id}
+        />
+      )}
+
+      {/* Diálogo de configuración de respuestas automáticas */}
+      {selectedChat && selectedAccount && (
+        <AutoResponseConfigDialog
+          open={autoResponseConfigOpen}
+          onOpenChange={setAutoResponseConfigOpen}
+          currentConfig={autoResponseConfig}
+          onSave={handleAutoResponseConfig}
           chatId={selectedChat.id}
           accountId={selectedAccount.id}
         />
