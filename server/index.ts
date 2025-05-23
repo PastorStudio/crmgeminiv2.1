@@ -431,30 +431,43 @@ app.use((req, res, next) => {
   // ENDPOINT ARREGLADO PARA ASIGNACIONES DE AGENTES
   app.get('/api/chat-assignments/by-chat', async (req, res) => {
     try {
-      console.log('🔍 Consulta de asignación recibida:', {
+      console.log('🔍 Consulta de asignación completa:', {
         url: req.url,
         query: req.query,
-        originalUrl: req.originalUrl
+        originalUrl: req.originalUrl,
+        headers: Object.keys(req.headers)
       });
 
-      // Extraer chatId de la URL usando regex más robusto
-      let chatId = null;
-      if (req.url) {
-        const urlMatch = req.url.match(/[?&]chatId=([^&]+)/);
-        if (urlMatch) {
-          chatId = decodeURIComponent(urlMatch[1]);
-          console.log('📍 ChatId extraído de URL:', chatId);
+      // Extraer chatId de múltiples formas posibles
+      let chatId = req.query.chatId || req.query.chat_id;
+      let accountId = req.query.accountId || req.query.account_id;
+      
+      // Si no está en query, buscar en la URL raw
+      if (!chatId && req.url) {
+        const fullUrl = req.url;
+        console.log('📍 URL completa recibida:', fullUrl);
+        
+        // Buscar patrones de chatId en la URL
+        const patterns = [
+          /chatId=([^&]+)/,
+          /chat_id=([^&]+)/,
+          /chat=([^&]+)/
+        ];
+        
+        for (const pattern of patterns) {
+          const match = fullUrl.match(pattern);
+          if (match) {
+            chatId = decodeURIComponent(match[1]);
+            console.log('📍 ChatId encontrado con patrón:', pattern, '→', chatId);
+            break;
+          }
         }
       }
       
-      // Si no se encontró chatId en la URL, intentar desde query params
-      if (!chatId) {
-        chatId = req.query.chatId as string;
-        console.log('📍 ChatId desde query:', chatId);
-      }
+      console.log('🔍 Parámetros finales:', { chatId, accountId });
       
       if (!chatId) {
-        console.log('❌ No se pudo obtener chatId');
+        console.log('❌ No se pudo obtener chatId de ninguna fuente');
         return res.status(200).json(null);
       }
       
