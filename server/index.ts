@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { registerDirectAPIRoutes } from "./services/directApiServer";
+import { storage } from "./storage";
 // Configuración específica para WhatsApp QR
 console.log(`Modo de ejecución: ${process.env.NODE_ENV || 'development'}`);
 // No cambiamos NODE_ENV para no afectar a Vite
