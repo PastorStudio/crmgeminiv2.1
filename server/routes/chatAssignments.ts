@@ -19,6 +19,7 @@ router.get('/:chatId', async (req, res) => {
 // Asignar o desasignar agente a un chat
 router.post('/', async (req, res) => {
   try {
+    console.log('📝 Creando asignación de chat:', req.body);
     const { chatId, agentId } = req.body;
     
     if (!chatId) {
