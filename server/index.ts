@@ -431,19 +431,40 @@ app.use((req, res, next) => {
   // ENDPOINT ARREGLADO PARA ASIGNACIONES DE AGENTES
   app.get('/api/chat-assignments/by-chat', async (req, res) => {
     try {
-      const { chatId, accountId } = req.query;
-      console.log('🔍 Consulta asignación PostgreSQL para chat by-chat:', { chatId, accountId });
+      console.log('🔍 Consulta de asignación recibida:', {
+        url: req.url,
+        query: req.query,
+        originalUrl: req.originalUrl
+      });
+
+      // Extraer chatId de la URL usando regex más robusto
+      let chatId = null;
+      if (req.url) {
+        const urlMatch = req.url.match(/[?&]chatId=([^&]+)/);
+        if (urlMatch) {
+          chatId = decodeURIComponent(urlMatch[1]);
+          console.log('📍 ChatId extraído de URL:', chatId);
+        }
+      }
+      
+      // Si no se encontró chatId en la URL, intentar desde query params
+      if (!chatId) {
+        chatId = req.query.chatId as string;
+        console.log('📍 ChatId desde query:', chatId);
+      }
       
       if (!chatId) {
-        console.log('❌ No se proporcionó chatId');
+        console.log('❌ No se pudo obtener chatId');
         return res.status(200).json(null);
       }
+      
+      console.log('🔍 Buscando asignación para chatId:', chatId);
 
       // Importar tablas necesarias
       const { chatAssignments, users } = await import('@shared/schema');
-      const { eq, and } = await import('drizzle-orm');
+      const { eq } = await import('drizzle-orm');
 
-      // Buscar asignación directamente usando el chatId recibido
+      // Buscar asignación en la base de datos
       const assignments = await db
         .select({
           id: chatAssignments.id,
@@ -462,7 +483,7 @@ app.use((req, res, next) => {
         })
         .from(chatAssignments)
         .leftJoin(users, eq(chatAssignments.assignedToId, users.id))
-        .where(eq(chatAssignments.chatId, chatId as string))
+        .where(eq(chatAssignments.chatId, chatId))
         .limit(1);
       
       if (assignments.length > 0) {
@@ -470,13 +491,56 @@ app.use((req, res, next) => {
         console.log('✅ Asignación encontrada:', assignment);
         return res.status(200).json(assignment);
       } else {
-        console.log('❌ No hay asignación para este chat');
+        console.log('❌ No hay asignación para este chat:', chatId);
         return res.status(200).json(null);
       }
       
     } catch (error) {
       console.error('❌ Error al buscar asignación:', error);
       return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  });
+
+  // ENDPOINT DE PRUEBA PARA VERIFICAR ASIGNACIONES EXISTENTES
+  app.get('/api/test-assignment/:chatId', async (req, res) => {
+    try {
+      const { chatId } = req.params;
+      console.log('🧪 Prueba de asignación para:', chatId);
+      
+      const { chatAssignments, users } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+
+      const assignments = await db
+        .select({
+          id: chatAssignments.id,
+          chatId: chatAssignments.chatId,
+          accountId: chatAssignments.accountId,
+          assignedToId: chatAssignments.assignedToId,
+          category: chatAssignments.category,
+          status: chatAssignments.status,
+          assignedAt: chatAssignments.assignedAt,
+          assignedTo: {
+            id: users.id,
+            username: users.username,
+            fullName: users.fullName,
+            role: users.role
+          }
+        })
+        .from(chatAssignments)
+        .leftJoin(users, eq(chatAssignments.assignedToId, users.id))
+        .where(eq(chatAssignments.chatId, chatId))
+        .limit(1);
+      
+      if (assignments.length > 0) {
+        console.log('✅ Asignación de prueba encontrada:', assignments[0]);
+        res.json({ success: true, assignment: assignments[0] });
+      } else {
+        console.log('❌ No hay asignación de prueba para:', chatId);
+        res.json({ success: false, message: 'No hay asignación para este chat' });
+      }
+    } catch (error) {
+      console.error('❌ Error en prueba de asignación:', error);
+      res.status(500).json({ error: 'Error en prueba' });
     }
   });
 
