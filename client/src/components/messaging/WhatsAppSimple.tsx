@@ -54,12 +54,7 @@ export function WhatsAppSimple({ currentAccountId }: WhatsAppSimpleProps) {
       const response = await fetch('/api/direct/whatsapp/chats');
       const data = await response.json();
       
-      // Solo retornar chats válidos (sin datos demo)
-      const validChats = Array.isArray(data) 
-        ? data.filter(chat => chat && chat.id && !chat.id.startsWith('demo-'))
-        : [];
-      
-      return validChats;
+      return Array.isArray(data) ? data : [];
     },
     refetchInterval: 10000, // Refrescar cada 10 segundos
     staleTime: 5000
@@ -75,13 +70,12 @@ export function WhatsAppSimple({ currentAccountId }: WhatsAppSimpleProps) {
     refetchInterval: 5000
   });
 
-  // Selección automática del primer chat real
+  // Selección automática del primer chat
   useEffect(() => {
     if (whatsappChats.length > 0 && !selectedChatId) {
-      const firstRealChat = whatsappChats[0];
-      if (firstRealChat && !firstRealChat.id.startsWith('demo-')) {
-        setSelectedChatId(firstRealChat.id);
-        console.log(`✅ Chat real seleccionado automáticamente: ${firstRealChat.name}`);
+      const firstChat = whatsappChats[0];
+      if (firstChat) {
+        setSelectedChatId(firstChat.id);
       }
     }
   }, [whatsappChats, selectedChatId]);
@@ -94,11 +88,6 @@ export function WhatsAppSimple({ currentAccountId }: WhatsAppSimpleProps) {
 
   // Manejar selección de chat
   const handleChatSelect = (chat: WhatsAppChat) => {
-    // Rechazar chats demo
-    if (chat.id.startsWith('demo-')) {
-      return;
-    }
-    
     setSelectedChatId(chat.id);
   };
 
