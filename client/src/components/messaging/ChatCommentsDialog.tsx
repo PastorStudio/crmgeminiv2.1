@@ -86,8 +86,8 @@ export function ChatCommentsDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chatId,
-          comment: comment.trim(),
-          userId: currentUser?.id || 1
+          text: comment.trim(),
+          userId: currentUser?.id || 3
         })
       });
       
