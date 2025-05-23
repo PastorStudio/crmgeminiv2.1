@@ -77,26 +77,32 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     queryKey: ['/api/chat-assignments/by-chat', chatId, accountId],
     queryFn: async () => {
       // Imprimir para depuración
-      console.log('Verificando asignación para chatId:', chatId, 'y accountId:', accountId);
+      console.log('🔍 Verificando asignación para chatId:', chatId, 'y accountId:', accountId);
       
       if (!chatId || !accountId) {
-        console.warn('ChatID o accountID no válidos para buscar asignación');
+        console.warn('❌ ChatID o accountID no válidos para buscar asignación');
         return null;
       }
       
       try {
-        // Asegurarse de que los parámetros estén codificados correctamente para la URL
-        const encodedChatId = encodeURIComponent(chatId);
-        const result = await apiRequest(`/api/chat-assignments/by-chat?chatId=${encodedChatId}&accountId=${accountId}`);
-        console.log('Asignación encontrada:', result);
+        // Crear la URL con parámetros explícitos
+        const params = new URLSearchParams({
+          chatId: chatId,
+          accountId: accountId.toString()
+        });
+        const url = `/api/chat-assignments/by-chat?${params.toString()}`;
+        console.log('📍 URL de consulta:', url);
+        
+        const result = await apiRequest(url);
+        console.log('✅ Asignación encontrada:', result);
         return result;
       } catch (error) {
         // Si devuelve 404, significa que no hay asignación
         if ((error as any)?.status === 404) {
-          console.log('No se encontró asignación existente');
+          console.log('ℹ️ No se encontró asignación existente');
           return null;
         }
-        console.error('Error al verificar asignación:', error);
+        console.error('❌ Error al verificar asignación:', error);
         return null;
       }
     },
