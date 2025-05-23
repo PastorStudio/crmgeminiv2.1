@@ -69,6 +69,23 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
   const queryClient = useQueryClient();
   const [existingAssignment, setExistingAssignment] = useState<ChatAssignment | null>(null);
   
+  // Cargar cuentas de WhatsApp disponibles
+  const { data: whatsappAccounts = [], isLoading: isLoadingAccounts } = useQuery<WhatsAppAccount[]>({
+    queryKey: ['/api/whatsapp-accounts'],
+    queryFn: async () => {
+      console.log('🔄 Cargando cuentas de WhatsApp disponibles...');
+      const response = await fetch('/api/whatsapp-accounts');
+      if (!response.ok) {
+        throw new Error('Error al cargar cuentas de WhatsApp');
+      }
+      const accounts = await response.json();
+      console.log('✅ Cuentas de WhatsApp cargadas:', accounts);
+      return accounts;
+    },
+    enabled: open,
+    staleTime: 30000, // Cachear por 30 segundos
+  });
+  
   // Consulta para verificar si ya existe una asignación
   const { data: assignment, isLoading: checkingAssignment } = useQuery({
     queryKey: ['/api/chat-assignments/by-chat', chatId, accountId],
@@ -405,7 +422,7 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                   <FormItem>
                     <FormLabel>Cuenta de WhatsApp</FormLabel>
                     <Select
-                      disabled={true} // No permitir cambiar la cuenta
+                      disabled={isLoadingAccounts} // Deshabilitar solo mientras carga
                       onValueChange={(value) => field.onChange(parseInt(value))}
                       value={field.value ? field.value.toString() : accountId?.toString()}
                     >
@@ -420,12 +437,12 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {accounts.map((account) => (
+                        {whatsappAccounts.map((account) => (
                           <SelectItem
                             key={account.id}
                             value={account.id.toString()}
                           >
-                            {account.name}
+                            {account.name} {account.status === 'active' ? '🟢' : '🔴'}
                           </SelectItem>
                         ))}
                       </SelectContent>
