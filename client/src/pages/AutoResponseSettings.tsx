@@ -345,20 +345,26 @@ export default function AutoResponseSettings() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="gemini">
-                                Gemini AI {geminiKeyStatus?.hasValidKey ? "✓" : "⚠️"}
+                              <SelectItem value="smartbots">
+                                SmartBots AI (Recomendado) {openaiKeyStatus?.hasValidKey ? "✓" : "⚠️"}
                               </SelectItem>
                               <SelectItem value="openai">
                                 OpenAI GPT {openaiKeyStatus?.hasValidKey ? "✓" : "⚠️"}
                               </SelectItem>
+                              <SelectItem value="gemini">
+                                Gemini AI {geminiKeyStatus?.hasValidKey ? "✓" : "⚠️"}
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                           <FormDescription>
-                            {field.value === "gemini" && !geminiKeyStatus?.hasValidKey && (
-                              <span className="text-amber-600">⚠️ API key de Gemini no configurada. Configúrala en Ajustes → AI Integration.</span>
+                            {field.value === "smartbots" && !openaiKeyStatus?.hasValidKey && (
+                              <span className="text-amber-600">⚠️ API key de OpenAI no configurada. SmartBots requiere OpenAI. Configúrala en Ajustes → AI Integration.</span>
                             )}
                             {field.value === "openai" && !openaiKeyStatus?.hasValidKey && (
                               <span className="text-amber-600">⚠️ API key de OpenAI no configurada. Configúrala en Ajustes → AI Integration.</span>
+                            )}
+                            {field.value === "gemini" && !geminiKeyStatus?.hasValidKey && (
+                              <span className="text-amber-600">⚠️ API key de Gemini no configurada. Configúrala en Ajustes → AI Integration.</span>
                             )}
                           </FormDescription>
                           <FormMessage />
@@ -376,7 +382,11 @@ export default function AutoResponseSettings() {
                           <div className="space-y-0.5">
                             <FormLabel className="text-base">Habilitar respuestas con IA</FormLabel>
                             <FormDescription>
-                              Usa {form.watch("aiProvider") === "gemini" ? "Gemini AI" : "OpenAI GPT"} para generar respuestas personalizadas en lugar de plantillas fijas
+                              Usa {
+                                form.watch("aiProvider") === "smartbots" ? "SmartBots AI" :
+                                form.watch("aiProvider") === "gemini" ? "Gemini AI" : 
+                                "OpenAI GPT"
+                              } para generar respuestas personalizadas en lugar de plantillas fijas
                             </FormDescription>
                           </div>
                           <FormControl>
