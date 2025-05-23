@@ -53,8 +53,8 @@ app.use((req, res, next) => {
     console.error("Error al inicializar la base de datos:", error);
   }
   
-  // IMPORTANTE: Rutas sin autenticación ANTES de registerRoutes
-  app.get('/api/users', async (req, res) => {
+  // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
+  app.get('/api/system/users', async (req, res) => {
     try {
       console.log("🔄 Solicitando lista de usuarios...");
       const users = await storage.getAllUsers();
@@ -66,6 +66,23 @@ app.use((req, res, next) => {
       res.json(safeUsers);
     } catch (error) {
       console.error("❌ Error al obtener usuarios:", error);
+      res.status(500).json({ error: "Error interno del servidor" });
+    }
+  });
+
+  // Ruta original también funcional
+  app.get('/api/users', async (req, res) => {
+    try {
+      console.log("🔄 API users - Solicitando lista de usuarios...");
+      const users = await storage.getAllUsers();
+      const safeUsers = users.map(user => {
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+      console.log(`✅ API users - Enviando ${safeUsers.length} usuarios`);
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("❌ API users - Error:", error);
       res.status(500).json({ error: "Error interno del servidor" });
     }
   });

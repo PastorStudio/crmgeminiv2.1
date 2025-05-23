@@ -115,19 +115,21 @@ export default function UserManagement() {
     defaultValues,
   });
 
-  // Obtener lista de usuarios - sin autenticación para desarrollo
+  // Obtener lista de usuarios - usando ruta alternativa
   const { data: users, isLoading } = useQuery({
-    queryKey: ['/api/users'],
+    queryKey: ['/api/system/users'],
     queryFn: async () => {
-      const response = await fetch('/api/users');
+      console.log('🔄 Frontend: Solicitando usuarios...');
+      const response = await fetch('/api/system/users');
       
       if (!response.ok) {
+        console.error('❌ Frontend: Error en response:', response.status);
         const errorData = await response.json();
         throw new Error(errorData.message || 'No se pudo obtener la lista de usuarios');
       }
       
       const data = await response.json();
-      // La API ahora devuelve directamente el array de usuarios
+      console.log('✅ Frontend: Usuarios recibidos:', data.length);
       return Array.isArray(data) ? data : [];
     },
     enabled: true // Siempre cargar para desarrollo
