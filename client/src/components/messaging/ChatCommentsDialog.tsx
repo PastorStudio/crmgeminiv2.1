@@ -204,7 +204,13 @@ export function ChatCommentsDialog({
               </div>
             ) : (
               <div className="space-y-3 py-2">
-                {comments.map((comment: ChatComment, index: number) => (
+                {comments
+                  .sort((a, b) => {
+                    const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
+                    const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
+                    return timeB - timeA; // Más nuevo primero (descendente)
+                  })
+                  .map((comment: ChatComment, index: number) => (
                   <div key={comment.id} className="pb-3 border-b border-gray-100 last:border-b-0">
                     <div className="flex items-start space-x-3">
                       <Avatar className="h-8 w-8 flex-shrink-0">
