@@ -66,36 +66,51 @@ export function WhatsAppTwoColumn() {
   // Usar la primera cuenta activa
   const selectedAccount = accounts.find((acc: any) => acc.currentStatus?.authenticated) || accounts[0];
 
-  // Cargar agentes disponibles
+  // Cargar agentes disponibles (con manejo de errores)
   const { data: agents = [] } = useQuery({
     queryKey: ['agents'],
     queryFn: async () => {
-      const response = await fetch('/api/users');
-      if (!response.ok) return [];
-      return response.json();
+      try {
+        const response = await fetch('/api/users');
+        if (!response.ok) return [];
+        return response.json();
+      } catch (error) {
+        console.log('No se pudieron cargar agentes:', error);
+        return [];
+      }
     }
   });
 
-  // Cargar comentarios del chat actual
+  // Cargar comentarios del chat actual (con manejo de errores)
   const { data: chatComments = [], refetch: refetchComments } = useQuery({
     queryKey: ['chat-comments', selectedChat?.id],
     queryFn: async () => {
       if (!selectedChat?.id) return [];
-      const response = await fetch(`/api/chat-comments/${selectedChat.id}`);
-      if (!response.ok) return [];
-      return response.json();
+      try {
+        const response = await fetch(`/api/chat-comments/${encodeURIComponent(selectedChat.id)}`);
+        if (!response.ok) return [];
+        return response.json();
+      } catch (error) {
+        console.log('No se pudieron cargar comentarios:', error);
+        return [];
+      }
     },
     enabled: !!selectedChat?.id
   });
 
-  // Cargar asignación de agente del chat
+  // Cargar asignación de agente del chat (con manejo de errores)
   const { data: chatAssignment, refetch: refetchAssignment } = useQuery({
     queryKey: ['chat-assignment', selectedChat?.id],
     queryFn: async () => {
       if (!selectedChat?.id) return null;
-      const response = await fetch(`/api/chat-assignments/${selectedChat.id}`);
-      if (!response.ok) return null;
-      return response.json();
+      try {
+        const response = await fetch(`/api/chat-assignments/${encodeURIComponent(selectedChat.id)}`);
+        if (!response.ok) return null;
+        return response.json();
+      } catch (error) {
+        console.log('No se pudo cargar asignación de agente:', error);
+        return null;
+      }
     },
     enabled: !!selectedChat?.id
   });
@@ -183,7 +198,7 @@ export function WhatsAppTwoColumn() {
     chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Mutación para agregar comentario
+  // Mutación para agregar comentario (con manejo de errores)
   const addCommentMutation = useMutation({
     mutationFn: async ({ chatId, comment }: { chatId: string; comment: string }) => {
       const response = await fetch('/api/chat-comments', {
@@ -201,10 +216,18 @@ export function WhatsAppTwoColumn() {
         title: "Comentario agregado",
         description: "El comentario se guardó correctamente.",
       });
+    },
+    onError: (error) => {
+      console.log('Error al agregar comentario:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo agregar el comentario. La funcionalidad estará disponible próximamente.",
+        variant: "destructive",
+      });
     }
   });
 
-  // Mutación para asignar agente
+  // Mutación para asignar agente (con manejo de errores)
   const assignAgentMutation = useMutation({
     mutationFn: async ({ chatId, agentId }: { chatId: string; agentId: number }) => {
       const response = await fetch('/api/chat-assignments', {
@@ -220,6 +243,14 @@ export function WhatsAppTwoColumn() {
       toast({
         title: "Agente asignado",
         description: "El agente se asignó correctamente al chat.",
+      });
+    },
+    onError: (error) => {
+      console.log('Error al asignar agente:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo asignar el agente. La funcionalidad estará disponible próximamente.",
+        variant: "destructive",
       });
     }
   });
@@ -288,9 +319,15 @@ export function WhatsAppTwoColumn() {
 
   const handleAssignAgent = () => {
     if (!selectedAgent || !selectedChat) return;
+    const agentId = parseInt(selectedAgent);
+    if (agentId === 0) {
+      // Desasignar agente
+      // TODO: Implementar desasignación
+      return;
+    }
     assignAgentMutation.mutate({
       chatId: selectedChat.id,
-      agentId: parseInt(selectedAgent)
+      agentId: agentId
     });
   };
 
@@ -475,7 +512,7 @@ export function WhatsAppTwoColumn() {
                     </DialogTrigger>
 
                     {/* Modal del perfil del usuario */}
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" aria-describedby="user-profile-description">
                       <DialogHeader>
                         <DialogTitle className="flex items-center space-x-3">
                           <Avatar className="h-12 w-12">
@@ -499,7 +536,7 @@ export function WhatsAppTwoColumn() {
                         </DialogTitle>
                       </DialogHeader>
 
-                      <div className="space-y-6">
+                      <div id="user-profile-description" className="space-y-6">
                         {/* Información del contacto */}
                         <div className="grid grid-cols-2 gap-4">
                           <div>
@@ -546,7 +583,7 @@ export function WhatsAppTwoColumn() {
                                 } />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">Sin asignar</SelectItem>
+                                <SelectItem value="0">Sin asignar</SelectItem>
                                 {agents.map((agent: any) => (
                                   <SelectItem key={agent.id} value={agent.id.toString()}>
                                     {agent.name} ({agent.username})
