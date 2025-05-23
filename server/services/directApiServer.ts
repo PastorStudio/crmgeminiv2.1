@@ -79,25 +79,39 @@ export function registerDirectAPIRoutes(app: Express): void {
   // Endpoint para obtener chats
   app.get('/api/direct/whatsapp/chats', async (req, res) => {
     try {
-      console.log('🔄 Obteniendo chats desde WhatsApp...');
+      console.log('🔄 API directa: Obteniendo chats desde WhatsApp...');
       
-      // Verificar si hay clientes conectados
-      const connectedAccounts = whatsappMultiAccountManager.getConnectedAccounts();
-      if (connectedAccounts.length === 0) {
-        console.log('📭 No hay cuentas WhatsApp conectadas');
-        res.json([]);
-        return;
+      // Usar el servicio de WhatsApp simple que ya funciona
+      const status = whatsappService.getStatus();
+      if (status.authenticated && status.ready) {
+        // Intentar obtener chats del cliente actual
+        const instance = whatsappMultiAccountManager.getInstance(1);
+        if (instance && instance.client) {
+          try {
+            const chats = await instance.client.getChats();
+            const processedChats = chats.slice(0, 50).map(chat => ({
+              id: chat.id._serialized || chat.id,
+              name: chat.name || chat.id.user || 'Sin nombre',
+              isGroup: Boolean(chat.isGroup),
+              timestamp: chat.timestamp || Date.now() / 1000,
+              unreadCount: chat.unreadCount || 0,
+              lastMessage: chat.lastMessage?.body || '',
+              accountId: 1
+            }));
+            console.log(`✅ Obtenidos ${processedChats.length} chats reales`);
+            res.json(processedChats);
+            return;
+          } catch (error) {
+            console.log('❌ Error con cliente directo:', error);
+          }
+        }
       }
       
-      // Obtener chats de la primera cuenta conectada
-      const accountId = connectedAccounts[0];
-      const chats = await whatsappMultiAccountManager.getChats(accountId);
-      
-      console.log(`✅ Obtenidos ${chats.length} chats para cuenta ${accountId}`);
-      res.json(chats);
+      console.log('📭 WhatsApp no conectado o sin chats');
+      res.json([]);
     } catch (error) {
       console.error('❌ Error obteniendo chats:', error);
-      res.json([]); // Devolver array vacío en lugar de error
+      res.json([]);
     }
   });
 
@@ -109,23 +123,38 @@ export function registerDirectAPIRoutes(app: Express): void {
       
       console.log(`🔄 Obteniendo mensajes para chat ${chatId}...`);
       
-      // Verificar si hay clientes conectados
-      const connectedAccounts = whatsappMultiAccountManager.getConnectedAccounts();
-      if (connectedAccounts.length === 0) {
-        console.log('📭 No hay cuentas WhatsApp conectadas');
-        res.json([]);
-        return;
+      const status = whatsappService.getStatus();
+      if (status.authenticated && status.ready) {
+        const instance = whatsappMultiAccountManager.getInstance(1);
+        if (instance && instance.client) {
+          try {
+            const chat = await instance.client.getChatById(chatId);
+            if (chat) {
+              const messages = await chat.fetchMessages({ limit });
+              const processedMessages = messages.map(msg => ({
+                id: msg.id._serialized || msg.id,
+                body: msg.body || '',
+                fromMe: Boolean(msg.fromMe),
+                timestamp: msg.timestamp || Date.now() / 1000,
+                hasMedia: Boolean(msg.hasMedia),
+                type: msg.type || 'chat',
+                author: msg.author || null
+              }));
+              console.log(`✅ Obtenidos ${processedMessages.length} mensajes para chat ${chatId}`);
+              res.json(processedMessages);
+              return;
+            }
+          } catch (error) {
+            console.log('❌ Error obteniendo mensajes:', error);
+          }
+        }
       }
       
-      // Obtener mensajes de la primera cuenta conectada
-      const accountId = connectedAccounts[0];
-      const messages = await whatsappMultiAccountManager.getMessages(accountId, chatId, limit);
-      
-      console.log(`✅ Obtenidos ${messages.length} mensajes para chat ${chatId}`);
-      res.json(messages);
+      console.log('📭 No se pudieron obtener mensajes');
+      res.json([]);
     } catch (error) {
       console.error(`❌ Error obteniendo mensajes para chat ${chatId}:`, error);
-      res.json([]); // Devolver array vacío en lugar de error
+      res.json([]);
     }
   });
 
@@ -136,12 +165,8 @@ export function registerDirectAPIRoutes(app: Express): void {
       
       console.log(`📤 Enviando mensaje a chat ${chatId}...`);
       
-      // Usar el accountId especificado o el primero conectado
-      const targetAccountId = accountId || whatsappMultiAccountManager.getConnectedAccounts()[0];
-      
-      if (!targetAccountId) {
-        throw new Error('No hay cuentas WhatsApp conectadas');
-      }
+      // Usar accountId especificado o por defecto la cuenta 1
+      const targetAccountId = accountId || 1;
       
       const result = await whatsappMultiAccountManager.sendMessage(targetAccountId, chatId, message);
       
