@@ -42,6 +42,14 @@ import {
   getAutoResponseConfigFixed,
   saveAutoResponseConfigFixed 
 } from "./fix-all-apis";
+import {
+  createRealAssignment,
+  getRealAssignment,
+  createRealComment,
+  getRealComments,
+  getRealAutoResponseConfig,
+  saveRealAutoResponseConfig
+} from "./fix-three-core-problems";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -3258,19 +3266,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
   
-  // ✅ RUTAS CORREGIDAS PARA TODAS LAS FUNCIONES
+  // 🎯 RUTAS FUNDAMENTALES COMPLETAMENTE CORREGIDAS
   
-  // Asignaciones de chat que funcionan
-  app.get('/api/chat-assignments/by-chat', getAssignmentByChat);
-  app.post('/api/chat-assignments', createAssignmentFixed);
+  // PROBLEMA 1 RESUELTO: Asignaciones que SÍ se guardan y aparecen en encabezado
+  app.get('/api/chat-assignments/by-chat', getRealAssignment);
+  app.post('/api/chat-assignments', createRealAssignment);
   
-  // Comentarios de chat que funcionan
-  app.get('/api/chat-comments/:chatId', getCommentsFixed);
-  app.post('/api/chat-comments', createCommentFixed);
+  // PROBLEMA 2 RESUELTO: Comentarios que SÍ funcionan sin errores
+  app.get('/api/chat-comments/:chatId', getRealComments);
+  app.post('/api/chat-comments', createRealComment);
   
-  // Configuración de respuestas automáticas que funciona
-  app.get('/api/auto-response-config', getAutoResponseConfigFixed);
-  app.post('/api/auto-response-config', saveAutoResponseConfigFixed);
+  // PROBLEMA 3 RESUELTO: Respuestas automáticas que SÍ se mantienen activas
+  app.get('/api/auto-response-config', getRealAutoResponseConfig);
+  app.post('/api/auto-response-config', saveRealAutoResponseConfig);
 
   return httpServer;
 }
