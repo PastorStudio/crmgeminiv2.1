@@ -43,7 +43,7 @@ export function WhatsAppSimple({ currentAccountId }: WhatsAppSimpleProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Estados para chats y mensajes reales únicamente
+  // Estados para manejo de datos
   const [realChats, setRealChats] = useState<WhatsAppChat[]>([]);
   const [realMessages, setRealMessages] = useState<WhatsAppMessage[]>([]);
 
@@ -54,13 +54,12 @@ export function WhatsAppSimple({ currentAccountId }: WhatsAppSimpleProps) {
       const response = await fetch('/api/direct/whatsapp/chats');
       const data = await response.json();
       
-      // Filtrar solo chats reales
-      const realChatsOnly = Array.isArray(data) 
+      // Solo retornar chats válidos (sin datos demo)
+      const validChats = Array.isArray(data) 
         ? data.filter(chat => chat && chat.id && !chat.id.startsWith('demo-'))
         : [];
       
-      console.log(`✅ Cargados ${realChatsOnly.length} chats reales únicamente`);
-      return realChatsOnly;
+      return validChats;
     },
     refetchInterval: 10000, // Refrescar cada 10 segundos
     staleTime: 5000
@@ -95,12 +94,11 @@ export function WhatsAppSimple({ currentAccountId }: WhatsAppSimpleProps) {
 
   // Manejar selección de chat
   const handleChatSelect = (chat: WhatsAppChat) => {
+    // Rechazar chats demo
     if (chat.id.startsWith('demo-')) {
-      console.log(`⚠️ Chat demo rechazado: ${chat.id}`);
       return;
     }
     
-    console.log(`✅ Seleccionando chat real: ${chat.name || chat.id}`);
     setSelectedChatId(chat.id);
   };
 
