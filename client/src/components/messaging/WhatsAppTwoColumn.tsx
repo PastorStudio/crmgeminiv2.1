@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Send, Loader2, Search, MessageCircle, Clock, Users, CheckCheck, Check, User, MessageSquare, UserPlus, X, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 
-// Componente para mostrar el agente asignado en cada chat de la lista
+// Componente para mostrar el agente asignado en cada chat de la lista con animaciones
 function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
   const { data: assignment } = useQuery({
     queryKey: ['chat-assignment-badge', chatId, accountId],
@@ -30,13 +31,40 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
     enabled: !!chatId && !!accountId
   });
 
-  if (!assignment?.assignedTo) return null;
-
   return (
-    <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded flex items-center">
-      <User className="h-2 w-2 mr-1" />
-      {assignment.assignedTo.fullName.split(' ')[0]}
-    </span>
+    <AnimatePresence mode="wait">
+      {assignment?.assignedTo && (
+        <motion.span
+          key={assignment.assignedTo.id}
+          initial={{ opacity: 0, scale: 0.8, x: -10 }}
+          animate={{ opacity: 1, scale: 1, x: 0 }}
+          exit={{ opacity: 0, scale: 0.8, x: 10 }}
+          transition={{ 
+            duration: 0.3, 
+            ease: "easeInOut",
+            type: "spring",
+            stiffness: 200,
+            damping: 20
+          }}
+          className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded flex items-center"
+        >
+          <motion.div
+            initial={{ rotate: -90, opacity: 0 }}
+            animate={{ rotate: 0, opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.2 }}
+          >
+            <User className="h-2 w-2 mr-1" />
+          </motion.div>
+          <motion.span
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.2 }}
+          >
+            {assignment.assignedTo.fullName.split(' ')[0]}
+          </motion.span>
+        </motion.span>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -638,17 +666,42 @@ export function WhatsAppTwoColumn() {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <Button 
-                              onClick={handleAssignAgent}
-                              disabled={assignAgentMutation.isPending}
-                              size="sm"
+                            <motion.div
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              transition={{ duration: 0.2 }}
                             >
-                              {assignAgentMutation.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Save className="h-4 w-4" />
-                              )}
-                            </Button>
+                              <Button 
+                                onClick={handleAssignAgent}
+                                disabled={assignAgentMutation.isPending}
+                                size="sm"
+                                className="transition-all duration-300 hover:shadow-lg"
+                              >
+                                <AnimatePresence mode="wait">
+                                  {assignAgentMutation.isPending ? (
+                                    <motion.div
+                                      key="loading"
+                                      initial={{ opacity: 0, rotate: -90 }}
+                                      animate={{ opacity: 1, rotate: 0 }}
+                                      exit={{ opacity: 0, rotate: 90 }}
+                                      transition={{ duration: 0.2 }}
+                                    >
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    </motion.div>
+                                  ) : (
+                                    <motion.div
+                                      key="save"
+                                      initial={{ opacity: 0, scale: 0.8 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      exit={{ opacity: 0, scale: 0.8 }}
+                                      transition={{ duration: 0.2 }}
+                                    >
+                                      <Save className="h-4 w-4" />
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </Button>
+                            </motion.div>
                           </div>
                         </div>
 
@@ -716,18 +769,70 @@ export function WhatsAppTwoColumn() {
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
-                      {/* Mostrar agente asignado de forma prominente */}
-                      {assignmentData?.assignedTo ? (
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium flex items-center">
-                          <User className="h-3 w-3 mr-1" />
-                          Agente: {assignmentData.assignedTo.fullName}
-                        </span>
-                      ) : (
-                        <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm flex items-center">
-                          <User className="h-3 w-3 mr-1" />
-                          Sin asignar
-                        </span>
-                      )}
+                      {/* Mostrar agente asignado de forma prominente con animaciones */}
+                      <AnimatePresence mode="wait">
+                        {assignmentData?.assignedTo ? (
+                          <motion.span
+                            key={`assigned-${assignmentData.assignedTo.id}`}
+                            initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            transition={{ 
+                              duration: 0.4, 
+                              ease: "easeInOut",
+                              type: "spring",
+                              stiffness: 300,
+                              damping: 25
+                            }}
+                            className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium flex items-center"
+                          >
+                            <motion.div
+                              initial={{ rotate: -180, scale: 0 }}
+                              animate={{ rotate: 0, scale: 1 }}
+                              transition={{ delay: 0.2, duration: 0.3 }}
+                            >
+                              <User className="h-3 w-3 mr-1" />
+                            </motion.div>
+                            <motion.span
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.25, duration: 0.3 }}
+                            >
+                              Agente: {assignmentData.assignedTo.fullName}
+                            </motion.span>
+                          </motion.span>
+                        ) : (
+                          <motion.span
+                            key="unassigned"
+                            initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            transition={{ 
+                              duration: 0.3, 
+                              ease: "easeInOut",
+                              type: "spring",
+                              stiffness: 200,
+                              damping: 20
+                            }}
+                            className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm flex items-center"
+                          >
+                            <motion.div
+                              initial={{ rotate: 90, opacity: 0 }}
+                              animate={{ rotate: 0, opacity: 1 }}
+                              transition={{ delay: 0.1, duration: 0.2 }}
+                            >
+                              <User className="h-3 w-3 mr-1" />
+                            </motion.div>
+                            <motion.span
+                              initial={{ opacity: 0, x: 10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.15, duration: 0.2 }}
+                            >
+                              Sin asignar
+                            </motion.span>
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
                       <span className="text-sm text-gray-500">
                         {!selectedChat.isGroup && (
                           <>
