@@ -34,7 +34,7 @@ export default function DashboardStats() {
                     <Skeleton className="h-8 w-20" />
                   ) : (
                     <div className="text-2xl font-semibold text-gray-900">
-                      {stats?.totalLeads.toLocaleString() || "0"}
+                      {(stats?.totalLeads || 0).toLocaleString()}
                     </div>
                   )}
                   <div className="ml-2 flex items-baseline text-sm font-semibold text-green-600">
