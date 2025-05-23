@@ -3280,5 +3280,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auto-response-config', getRealAutoResponseConfig);
   app.post('/api/auto-response-config', saveRealAutoResponseConfig);
 
+  // API para el estado y control de respuestas automáticas
+  app.get('/api/auto-response/status', (req, res) => {
+    try {
+      const autoResponseEngine = require('./services/autoResponseEngine');
+      const engineStatus = autoResponseEngine.getStatus();
+      
+      const status = {
+        enabled: engineStatus.active,
+        hasGemini: !!process.env.GEMINI_API_KEY,
+        hasOpenAI: !!process.env.OPENAI_API_KEY,
+        configuredChats: engineStatus.configuredChats,
+        processedMessages: engineStatus.processedMessages,
+        lastCheck: new Date().toISOString()
+      };
+      res.json(status);
+    } catch (error) {
+      res.status(500).json({ error: 'Error obteniendo estado' });
+    }
+  });
+
+  app.post('/api/auto-response/config', (req, res) => {
+    try {
+      const { chatId, accountId, config } = req.body;
+      console.log('🎛️ Configuración de respuestas automáticas recibida:', req.body);
+      
+      // Importar y usar el motor de respuestas automáticas
+      const autoResponseEngine = require('./services/autoResponseEngine');
+      autoResponseEngine.setConfig(chatId, accountId, config);
+      
+      res.json({ success: true, message: 'Configuración guardada y motor activado' });
+    } catch (error) {
+      console.error('❌ Error guardando configuración:', error);
+      res.status(500).json({ error: 'Error guardando configuración' });
+    }
+  });
+
   return httpServer;
 }
