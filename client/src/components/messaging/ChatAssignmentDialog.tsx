@@ -407,11 +407,16 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                     <Select
                       disabled={true} // No permitir cambiar la cuenta
                       onValueChange={(value) => field.onChange(parseInt(value))}
-                      defaultValue={field.value ? field.value.toString() : ""}
+                      value={field.value ? field.value.toString() : accountId?.toString()}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar cuenta" />
+                          <SelectValue 
+                            placeholder={
+                              accounts.find(acc => acc.id === accountId)?.name || "Seleccionar cuenta"
+                            }
+                            className="text-sm"
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
