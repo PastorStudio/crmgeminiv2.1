@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Send, Loader2, Search, MessageCircle, Clock, Users } from 'lucide-react';
+import { Send, Loader2, Search, MessageCircle, Clock, Users, CheckCheck, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface WhatsAppChat {
@@ -18,6 +18,9 @@ interface WhatsAppChat {
   unreadCount: number;
   lastMessage: string;
   accountId: number;
+  isOnline?: boolean;
+  lastSeen?: number;
+  messageRead?: boolean;
 }
 
 interface WhatsAppMessage {
@@ -141,7 +144,7 @@ export function WhatsAppTwoColumn() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Formatear fecha
+  // Formatear fecha y hora
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
     return date.toLocaleTimeString('es-ES', { 
@@ -150,23 +153,34 @@ export function WhatsAppTwoColumn() {
     });
   };
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp * 1000);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+  const formatLastSeen = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - (timestamp * 1000);
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
 
-    if (date.toDateString() === today.toDateString()) {
-      return 'Hoy';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Ayer';
-    } else {
-      return date.toLocaleDateString('es-ES', { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: '2-digit' 
-      });
-    }
+    if (minutes < 1) return 'En línea';
+    if (minutes < 60) return `Hace ${minutes}m`;
+    if (hours < 24) return `Hace ${hours}h`;
+    if (days < 7) return `Hace ${days}d`;
+    return new Date(timestamp * 1000).toLocaleDateString('es-ES', { 
+      day: '2-digit', 
+      month: '2-digit' 
+    });
+  };
+
+  // Extraer número de teléfono del ID del chat
+  const extractPhoneNumber = (chatId: string) => {
+    const phone = chatId.split('@')[0];
+    return phone.replace(/\D/g, ''); // Solo números
+  };
+
+  // Determinar si el contacto está en línea (simulado pero realista)
+  const isContactOnline = (chat: WhatsAppChat) => {
+    // Basado en actividad reciente (últimos 5 minutos)
+    const fiveMinutesAgo = Date.now() / 1000 - 300;
+    return chat.timestamp > fiveMinutesAgo;
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -220,56 +234,85 @@ export function WhatsAppTwoColumn() {
               )}
             </div>
           ) : (
-            <div className="p-2">
-              {filteredChats.map((chat) => (
-                <Card
-                  key={chat.id}
-                  className={`p-3 mb-2 cursor-pointer transition-colors hover:bg-gray-50 ${
-                    selectedChat?.id === chat.id ? 'bg-blue-50 border-blue-200' : 'border-gray-200'
-                  }`}
-                  onClick={() => setSelectedChat(chat)}
-                >
-                  <div className="flex items-start space-x-3">
-                    {/* Avatar */}
-                    <Avatar className="h-12 w-12 flex-shrink-0">
-                      <AvatarFallback className={`${chat.isGroup ? 'bg-green-100' : 'bg-blue-100'}`}>
-                        {chat.isGroup ? (
-                          <Users className="h-6 w-6 text-green-600" />
-                        ) : (
-                          chat.name.charAt(0).toUpperCase()
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    {/* Contenido del chat */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-medium text-gray-900 truncate">
-                          {chat.name}
-                        </h3>
-                        <span className="text-xs text-gray-500">
-                          {formatTime(chat.timestamp)}
-                        </span>
+            <div className="p-2 space-y-1">
+              {filteredChats.map((chat) => {
+                const phoneNumber = extractPhoneNumber(chat.id);
+                const isOnline = isContactOnline(chat);
+                
+                return (
+                  <Card
+                    key={chat.id}
+                    className={`p-2 cursor-pointer transition-all duration-200 hover:shadow-sm ${
+                      selectedChat?.id === chat.id 
+                        ? 'bg-blue-50 border-blue-300 shadow-sm' 
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setSelectedChat(chat)}
+                  >
+                    <div className="flex items-center space-x-2 overflow-hidden">
+                      {/* Avatar compacto */}
+                      <div className="relative flex-shrink-0">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className={`text-xs ${chat.isGroup ? 'bg-green-100' : 'bg-blue-100'}`}>
+                            {chat.isGroup ? (
+                              <Users className="h-4 w-4 text-green-600" />
+                            ) : (
+                              chat.name.charAt(0).toUpperCase()
+                            )}
+                          </AvatarFallback>
+                        </Avatar>
+                        {/* Indicador de estado online/offline */}
+                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                          isOnline ? 'bg-green-500' : 'bg-gray-400'
+                        }`} />
                       </div>
-                      
-                      <p className="text-sm text-gray-600 truncate mb-1">
-                        {chat.lastMessage || 'Sin mensajes'}
-                      </p>
-                      
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-400">
-                          {formatDate(chat.timestamp)}
-                        </span>
-                        {chat.unreadCount > 0 && (
-                          <Badge variant="destructive" className="text-xs">
-                            {chat.unreadCount}
-                          </Badge>
-                        )}
+
+                      {/* Información del contacto - Layout vertical compacto */}
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        {/* Nombre/Número y hora */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-medium text-gray-900 truncate">
+                              {chat.isGroup ? chat.name : (chat.name !== phoneNumber ? chat.name : `+${phoneNumber}`)}
+                            </h4>
+                            {!chat.isGroup && chat.name !== phoneNumber && (
+                              <p className="text-xs text-gray-500 truncate">+{phoneNumber}</p>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
+                            {formatTime(chat.timestamp)}
+                          </span>
+                        </div>
+
+                        {/* Última conexión y estado de lectura */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500 truncate">
+                            {isOnline ? (
+                              <span className="text-green-600 font-medium">En línea</span>
+                            ) : (
+                              `Últ. vez: ${formatLastSeen(chat.timestamp)}`
+                            )}
+                          </span>
+                          <div className="flex items-center space-x-1 flex-shrink-0">
+                            {/* Indicador de mensajes leídos */}
+                            {chat.unreadCount > 0 ? (
+                              <Badge variant="destructive" className="text-xs px-1.5 py-0.5 h-5">
+                                {chat.unreadCount}
+                              </Badge>
+                            ) : (
+                              <div className="flex items-center">
+                                {chat.lastMessage && (
+                                  <CheckCheck className="h-3 w-3 text-blue-500" />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </ScrollArea>
@@ -282,19 +325,34 @@ export function WhatsAppTwoColumn() {
             {/* Header del chat seleccionado */}
             <div className="p-4 border-b border-gray-100 bg-gray-50">
               <div className="flex items-center space-x-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className={`${selectedChat.isGroup ? 'bg-green-100' : 'bg-blue-100'}`}>
-                    {selectedChat.isGroup ? (
-                      <Users className="h-5 w-5 text-green-600" />
-                    ) : (
-                      selectedChat.name.charAt(0).toUpperCase()
+                <div className="relative">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className={`${selectedChat.isGroup ? 'bg-green-100' : 'bg-blue-100'}`}>
+                      {selectedChat.isGroup ? (
+                        <Users className="h-5 w-5 text-green-600" />
+                      ) : (
+                        selectedChat.name.charAt(0).toUpperCase()
+                      )}
+                    </AvatarFallback>
+                  </Avatar>
+                  {/* Indicador de estado en el header */}
+                  <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                    isContactOnline(selectedChat) ? 'bg-green-500' : 'bg-gray-400'
+                  }`} />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <h3 className="font-semibold text-gray-900">{selectedChat.name}</h3>
+                    {!selectedChat.isGroup && (
+                      <span className="text-sm text-gray-500">+{extractPhoneNumber(selectedChat.id)}</span>
                     )}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{selectedChat.name}</h3>
+                  </div>
                   <p className="text-sm text-gray-500">
-                    {selectedChat.isGroup ? 'Grupo' : 'Contacto'} • {messages.length} mensajes
+                    {isContactOnline(selectedChat) ? (
+                      <span className="text-green-600">En línea</span>
+                    ) : (
+                      `Últ. vez: ${formatLastSeen(selectedChat.timestamp)}`
+                    )} • {messages.length} mensajes
                   </p>
                 </div>
               </div>
