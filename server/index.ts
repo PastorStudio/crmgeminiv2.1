@@ -242,10 +242,11 @@ app.use((req, res, next) => {
       const commentText = comment || text;
       
       if (!chatId || !commentText) {
-        console.log('❌ Faltan datos requeridos:', { chatId: !!chatId, comment: !!commentText });
+        console.log('❌ Faltan datos requeridos:', { chatId: !!chatId, commentText: !!commentText, received: req.body });
         return res.status(400).json({ 
-          error: 'Faltan datos requeridos',
-          required: { chatId: !!chatId, comment: !!commentText }
+          error: 'Se requieren chatId y texto del comentario',
+          details: { chatId: !!chatId, commentText: !!commentText },
+          received: req.body
         });
       }
 

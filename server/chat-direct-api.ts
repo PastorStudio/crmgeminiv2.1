@@ -106,7 +106,7 @@ export async function createChatComment(req: Request, res: Response) {
     
     if (!chatId || !commentText) {
       console.log('❌ DATOS FALTANTES:', { chatId, commentText, originalBody: req.body });
-      return res.status(400).json({ error: 'Se requieren chatId y text/comment' });
+      return res.status(400).json({ error: 'Se requieren chatId y texto del comentario' });
     }
     
     console.log('💬 CREANDO COMENTARIO EN POSTGRESQL:', { chatId, text: commentText, userId });
