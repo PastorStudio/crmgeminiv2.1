@@ -229,13 +229,16 @@ export function WhatsAppTwoColumn() {
 
   // Mutación para asignar agente (con manejo de errores)
   const assignAgentMutation = useMutation({
-    mutationFn: async ({ chatId, agentId }: { chatId: string; agentId: number }) => {
+    mutationFn: async ({ chatId, agentId }: { chatId: string; agentId: number | null }) => {
       const response = await fetch('/api/chat-assignments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chatId, agentId })
       });
-      if (!response.ok) throw new Error('Error al asignar agente');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error al asignar agente: ${errorText}`);
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -249,7 +252,7 @@ export function WhatsAppTwoColumn() {
       console.log('Error al asignar agente:', error);
       toast({
         title: "Error",
-        description: "No se pudo asignar el agente. La funcionalidad estará disponible próximamente.",
+        description: `No se pudo asignar el agente: ${error.message}`,
         variant: "destructive",
       });
     }
@@ -319,16 +322,21 @@ export function WhatsAppTwoColumn() {
 
   const handleAssignAgent = () => {
     if (!selectedAgent || !selectedChat) return;
-    const agentId = parseInt(selectedAgent);
-    if (agentId === 0) {
+    
+    if (selectedAgent === 'unassigned') {
       // Desasignar agente
-      // TODO: Implementar desasignación
-      return;
+      assignAgentMutation.mutate({
+        chatId: selectedChat.id,
+        agentId: null
+      });
+    } else {
+      const agentId = parseInt(selectedAgent);
+      assignAgentMutation.mutate({
+        chatId: selectedChat.id,
+        agentId: agentId
+      });
     }
-    assignAgentMutation.mutate({
-      chatId: selectedChat.id,
-      agentId: agentId
-    });
+    setSelectedAgent('');
   };
 
   return (
@@ -583,10 +591,10 @@ export function WhatsAppTwoColumn() {
                                 } />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="0">Sin asignar</SelectItem>
+                                <SelectItem value="unassigned">Sin asignar</SelectItem>
                                 {agents.map((agent: any) => (
                                   <SelectItem key={agent.id} value={agent.id.toString()}>
-                                    {agent.name} ({agent.username})
+                                    {agent.name || agent.username} ({agent.username})
                                   </SelectItem>
                                 ))}
                               </SelectContent>
