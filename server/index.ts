@@ -229,7 +229,31 @@ app.use((req, res, next) => {
       const { chatId } = req.params;
       console.log('💬 Obteniendo comentarios para chat:', chatId);
       
-      const comments = await storage.getChatComments(chatId);
+      // CONSULTAR DIRECTAMENTE POSTGRESQL
+      const { sql } = await import('drizzle-orm');
+      const commentsQuery = sql`
+        SELECT cc.*, u."fullName" as user_name, u.username, u.role, u.email
+        FROM chat_comments cc
+        LEFT JOIN users u ON cc."userId" = u.id
+        WHERE cc."chatId" = ${chatId}
+        ORDER BY cc.timestamp DESC
+      `;
+      
+      const result = await db.execute(commentsQuery);
+      
+      const comments = result.rows.map((row: any) => ({
+        id: row.id,
+        chatId: row.chatId,
+        text: row.text,
+        timestamp: row.timestamp,
+        user: {
+          name: row.user_name || "Usuario Desconocido",
+          username: row.username || "unknown",
+          role: row.role || "usuario",
+          email: row.email || ""
+        }
+      }));
+      
       console.log('✅ Comentarios encontrados:', comments.length);
       res.json(comments);
     } catch (error) {
