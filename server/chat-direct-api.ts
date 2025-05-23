@@ -80,7 +80,7 @@ export async function getChatComments(req: Request, res: Response) {
     
     const result = await db.execute(commentsQuery);
     
-    const comments = result.map((row: any) => ({
+    const comments = result.rows.map((row: any) => ({
       id: row.id,
       chatId: row.chatId,
       text: row.text,
@@ -101,20 +101,27 @@ export async function getChatComments(req: Request, res: Response) {
 
 export async function createChatComment(req: Request, res: Response) {
   try {
-    const { chatId, text, userId } = req.body;
-    console.log('💬 CREANDO COMENTARIO EN POSTGRESQL:', { chatId, text, userId });
+    const { chatId, text, comment, userId } = req.body;
+    const commentText = text || comment; // Aceptar tanto 'text' como 'comment'
+    
+    if (!chatId || !commentText) {
+      console.log('❌ DATOS FALTANTES:', { chatId, commentText, originalBody: req.body });
+      return res.status(400).json({ error: 'Se requieren chatId y text/comment' });
+    }
+    
+    console.log('💬 CREANDO COMENTARIO EN POSTGRESQL:', { chatId, text: commentText, userId });
     
     // INSERTAR COMENTARIO DIRECTAMENTE EN POSTGRESQL
     const { sql } = await import('drizzle-orm');
     
     const insertQuery = sql`
       INSERT INTO chat_comments ("chatId", "userId", text, timestamp, "isInternal")
-      VALUES (${chatId}, ${userId || 1}, ${text}, NOW(), true)
+      VALUES (${chatId}, ${userId || 1}, ${commentText}, NOW(), true)
       RETURNING *
     `;
     
     const result = await db.execute(insertQuery);
-    const newComment = result[0];
+    const newComment = result.rows[0];
     
     // OBTENER INFORMACIÓN DEL USUARIO
     const [user] = await db.select().from(users).where(eq(users.id, userId || 1));
