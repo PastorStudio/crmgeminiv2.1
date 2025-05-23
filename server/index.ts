@@ -238,7 +238,7 @@ app.use((req, res, next) => {
   app.post('/api/chat-comments', async (req, res) => {
     try {
       console.log('💬 CREANDO COMENTARIO - Datos recibidos:', req.body);
-      const { chatId, comment, text, userId = 1 } = req.body;
+      const { chatId, comment, text, userId = 3 } = req.body; // Default to Super Administrador (id: 3)
       const commentText = comment || text;
       
       if (!chatId || !commentText) {
@@ -248,6 +248,10 @@ app.use((req, res, next) => {
           required: { chatId: !!chatId, comment: !!commentText }
         });
       }
+
+      // Obtener información completa del usuario desde la base de datos
+      const currentUser = await storage.getUser(userId);
+      console.log('👤 Usuario identificado para comentario:', currentUser);
 
       console.log('💬 INSERTANDO COMENTARIO EN POSTGRESQL:', { chatId, text: commentText, userId });
       

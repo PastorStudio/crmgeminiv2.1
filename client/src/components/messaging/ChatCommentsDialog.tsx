@@ -232,12 +232,12 @@ export function ChatCommentsDialog({
                           </div>
                           <div className="flex items-center space-x-1 text-xs text-gray-500">
                             <Clock className="h-3 w-3" />
-                            <span>{formatDate(comment.createdAt)}</span>
+                            <span>{formatDate(comment.timestamp || comment.createdAt)}</span>
                           </div>
                         </div>
                         
                         <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
-                          {comment.comment}
+                          {comment.text || comment.comment}
                         </p>
                       </div>
                     </div>
