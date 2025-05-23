@@ -1522,11 +1522,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoint para probar SmartBots
+  // Endpoint para probar diferentes proveedores de IA
   app.post("/api/auto-response/test", async (req: Request, res: Response) => {
     try {
-      console.log('🧪 API: Probando SmartBots...');
-      const { message, contactName } = req.body;
+      console.log('🧪 API: Probando proveedor de IA...');
+      const { message, contactName, provider = 'smartbots' } = req.body;
       
       if (!message) {
         return res.status(400).json({
@@ -1535,29 +1535,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Simulación de respuesta SmartBots
-      const testResponse = `Hola ${contactName || 'Usuario'}, gracias por tu mensaje: "${message}". Como SmartBots AI, puedo ayudarte con consultas sobre productos, servicios y soporte técnico. ¿En qué más puedo asistirte?`;
+      // Importar el servicio de proveedores de IA
+      const { aiProvidersService } = await import('./services/aiProviders');
       
-      const analysis = {
-        sentiment: message.toLowerCase().includes('problema') || message.toLowerCase().includes('error') ? 'negative' : 
-                  message.toLowerCase().includes('gracias') || message.toLowerCase().includes('bien') ? 'positive' : 'neutral',
-        urgency: message.toLowerCase().includes('urgente') || message.toLowerCase().includes('problema') ? 'high' : 'low',
-        confidence: 0.85,
-        intent: message.toLowerCase().includes('precio') ? 'Consulta de precios' :
-                message.toLowerCase().includes('producto') ? 'Información de producto' :
-                message.toLowerCase().includes('problema') ? 'Reporte de problema' : 'Consulta general'
-      };
+      // Generar respuesta usando el proveedor seleccionado
+      const result = await aiProvidersService.generateResponse(provider, message, contactName || 'Usuario');
 
-      res.json({
-        success: true,
-        response: testResponse,
-        analysis: analysis
-      });
+      if (result.success) {
+        console.log(`✅ Respuesta generada con ${provider}`);
+        res.json({
+          success: true,
+          response: result.response,
+          analysis: result.analysis,
+          provider: provider
+        });
+      } else {
+        console.log(`⚠️ Error con ${provider}, usando respuesta por defecto`);
+        res.json({
+          success: true,
+          response: result.response,
+          analysis: result.analysis,
+          provider: provider,
+          warning: result.error
+        });
+      }
     } catch (error) {
-      console.error('❌ Error probando SmartBots:', error);
+      console.error('❌ Error probando IA:', error);
       res.status(500).json({
         success: false,
-        message: "Error al probar SmartBots"
+        message: "Error al probar el proveedor de IA"
       });
     }
   });
