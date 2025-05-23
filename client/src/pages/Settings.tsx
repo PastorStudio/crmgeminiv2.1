@@ -396,9 +396,9 @@ export default function Settings() {
         <TabsContent value="api">
           <Card>
             <CardHeader>
-              <CardTitle>Gemini AI Integration</CardTitle>
+              <CardTitle>AI Integration</CardTitle>
               <CardDescription>
-                Configure how the CRM uses Google's Gemini AI to enhance your workflows
+                Configure AI providers (OpenAI, Gemini) to enhance your workflows
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
