@@ -328,6 +328,102 @@ app.use((req, res, next) => {
   
   // Registrar rutas de WhatsApp accounts sin autenticación
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
+
+  // ✅ NUEVO ENDPOINT PARA ASIGNACIONES SIN CONFLICTOS
+  app.get('/api/assignments/by-chat', async (req, res) => {
+    try {
+      const { chatId, accountId } = req.query;
+      console.log('🔍 Consulta asignación NUEVA RUTA:', chatId);
+      
+      if (!chatId) {
+        return res.json(null);
+      }
+
+      const { sql } = await import('drizzle-orm');
+      const assignmentQuery = sql`
+        SELECT ca.*, u."fullName" as agent_name, u.username as agent_username, u.role as agent_role
+        FROM chat_assignments ca
+        LEFT JOIN users u ON ca."assignedToId" = u.id
+        WHERE ca."chatId" = ${chatId}
+        LIMIT 1
+      `;
+      
+      const result = await db.execute(assignmentQuery);
+      
+      if (result.rows.length > 0) {
+        const assignment = result.rows[0];
+        const response = {
+          id: assignment.id,
+          chatId: assignment.chatId,
+          accountId: assignment.accountId,
+          assignedToId: assignment.assignedToId,
+          category: assignment.category,
+          status: assignment.status,
+          assignedAt: assignment.assignedAt,
+          assignedTo: assignment.agent_name ? {
+            id: assignment.assignedToId,
+            fullName: assignment.agent_name,
+            username: assignment.agent_username,
+            role: assignment.agent_role
+          } : null
+        };
+        console.log('✅ Asignación encontrada (nueva ruta):', response);
+        res.json(response);
+      } else {
+        console.log('❌ No hay asignación para este chat (nueva ruta)');
+        res.json(null);
+      }
+    } catch (error) {
+      console.error('❌ Error al buscar asignación (nueva ruta):', error);
+      res.json(null);
+    }
+  });
+
+  // ✅ NUEVO ENDPOINT PARA CREAR ASIGNACIONES SIN CONFLICTOS
+  app.post('/api/assignments/create', async (req, res) => {
+    try {
+      console.log('📝 Creando/actualizando asignación (nueva ruta):', req.body);
+      const { chatId, accountId, assignedToId, category = 'general' } = req.body;
+      
+      if (!chatId || !accountId) {
+        return res.status(400).json({ error: 'Se requiere chatId y accountId' });
+      }
+
+      const { sql } = await import('drizzle-orm');
+      
+      // Verificar si ya existe una asignación
+      const existingQuery = sql`
+        SELECT * FROM chat_assignments WHERE "chatId" = ${chatId} LIMIT 1
+      `;
+      const existingResult = await db.execute(existingQuery);
+      
+      if (existingResult.rows.length > 0) {
+        // Actualizar asignación existente
+        const updateQuery = sql`
+          UPDATE chat_assignments 
+          SET "assignedToId" = ${assignedToId || null}, "category" = ${category}, "assignedAt" = NOW()
+          WHERE "chatId" = ${chatId}
+          RETURNING *
+        `;
+        const updateResult = await db.execute(updateQuery);
+        console.log('✅ Asignación actualizada (nueva ruta):', updateResult.rows[0]);
+        res.json(updateResult.rows[0]);
+      } else {
+        // Crear nueva asignación
+        const insertQuery = sql`
+          INSERT INTO chat_assignments ("chatId", "accountId", "assignedToId", "category", "status", "assignedAt")
+          VALUES (${chatId}, ${parseInt(accountId)}, ${assignedToId || null}, ${category}, 'active', NOW())
+          RETURNING *
+        `;
+        const insertResult = await db.execute(insertQuery);
+        console.log('✅ Nueva asignación creada (nueva ruta):', insertResult.rows[0]);
+        res.json(insertResult.rows[0]);
+      }
+    } catch (error) {
+      console.error('❌ Error al crear asignación (nueva ruta):', error);
+      res.status(500).json({ error: 'Error al crear asignación: ' + (error as Error).message });
+    }
+  });
   
   // ENDPOINT ARREGLADO PARA ASIGNACIONES DE AGENTES
   app.get('/api/chat-assignments/by-chat', async (req, res) => {
