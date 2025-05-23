@@ -514,7 +514,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async createWhatsappAccount(account: InsertWhatsappAccount): Promise<WhatsappAccount> {
+  async createWhatsappAccount(account: any): Promise<WhatsappAccount> {
     try {
       // Obtener todas las cuentas existentes para encontrar el próximo ID disponible
       const existingAccounts = await this.getAllWhatsappAccounts();
@@ -550,7 +550,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateWhatsappAccount(id: number, data: Partial<InsertWhatsappAccount>): Promise<WhatsappAccount | undefined> {
+  async updateWhatsappAccount(id: number, data: any): Promise<WhatsappAccount | undefined> {
     try {
       const [updatedAccount] = await db.update(whatsappAccounts)
         .set({
