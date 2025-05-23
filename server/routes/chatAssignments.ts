@@ -12,8 +12,16 @@ router.get('/by-chat', async (req, res) => {
       return res.status(400).json({ error: 'Se requiere chatId y accountId' });
     }
     
-    const assignment = await storage.getChatAssignmentByChat(chatId as string, parseInt(accountId as string));
-    res.json(assignment);
+    // Usar el método que funciona correctamente
+    const assignment = await storage.getChatAssignmentByChatId(chatId as string);
+    
+    if (assignment) {
+      // Obtener información del agente
+      const agent = await storage.getUser(assignment.assignedToId);
+      res.json({ ...assignment, agent });
+    } else {
+      res.json(null);
+    }
   } catch (error) {
     console.error('Error al obtener asignación:', error);
     res.status(500).json({ error: 'Error al obtener asignación' });
