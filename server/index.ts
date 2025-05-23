@@ -307,8 +307,11 @@ app.use((req, res, next) => {
         text: newComment.text,
         timestamp: newComment.timestamp,
         user: {
-          name: user?.fullName || "Agente",
-          username: user?.username || "agent"
+          name: user?.fullName || currentUser?.fullName || "Super Administrador",
+          fullName: user?.fullName || currentUser?.fullName || "Super Administrador",
+          username: user?.username || currentUser?.username || "DJP",
+          role: user?.role || currentUser?.role || "super_admin",
+          email: user?.email || currentUser?.email || "superadmin@crm.com"
         }
       };
       
