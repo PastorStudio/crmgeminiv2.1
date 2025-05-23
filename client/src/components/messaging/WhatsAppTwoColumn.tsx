@@ -104,9 +104,32 @@ export function WhatsAppTwoColumn() {
   const [newComment, setNewComment] = useState('');
   const [selectedAgent, setSelectedAgent] = useState('');
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const [autoResponseEnabled, setAutoResponseEnabled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Función para alternar respuestas automáticas
+  const toggleAutoResponse = async () => {
+    try {
+      const newState = !autoResponseEnabled;
+      setAutoResponseEnabled(newState);
+      
+      // Aquí se podría hacer una llamada al backend para persistir el estado
+      // await fetch('/api/auto-response/toggle', { method: 'POST', body: JSON.stringify({ enabled: newState }) });
+      
+      toast({
+        title: newState ? "Respuestas automáticas activadas" : "Respuestas automáticas desactivadas",
+        description: newState ? "El chat ahora responderá automáticamente" : "Las respuestas automáticas están pausadas",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo cambiar el estado de respuestas automáticas",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Cargar cuentas de WhatsApp disponibles
   const { data: accounts = [] } = useQuery({
@@ -880,6 +903,27 @@ export function WhatsAppTwoColumn() {
                     >
                       <UserCheck className="h-4 w-4 mr-2" />
                       Asignar Chat
+                    </Button>
+                  </motion.div>
+
+                  {/* Botón de Respuestas Automáticas */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.1 }}
+                  >
+                    <Button
+                      size="sm"
+                      variant={autoResponseEnabled ? "default" : "outline"}
+                      className={`shadow-sm transition-all duration-300 ${
+                        autoResponseEnabled 
+                          ? "bg-green-600 hover:bg-green-700 text-white" 
+                          : "border-green-600 text-green-600 hover:bg-green-50"
+                      }`}
+                      onClick={toggleAutoResponse}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      {autoResponseEnabled ? "Auto ON" : "Auto OFF"}
                     </Button>
                   </motion.div>
                   
