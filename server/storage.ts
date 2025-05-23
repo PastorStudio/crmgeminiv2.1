@@ -21,7 +21,6 @@ import {
   type DashboardStats,
   type InsertDashboardStats,
   type WhatsappAccount,
-  type InsertWhatsappAccount,
   type ChatAssignment,
   type InsertChatAssignment,
   type ChatComment,
@@ -80,10 +79,10 @@ export interface IStorage {
   updateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats>;
   
   // WhatsApp Account methods
-  getAllWhatsappAccounts(): Promise<WhatsappAccount[]>;
-  getWhatsappAccount(id: number): Promise<WhatsappAccount | undefined>;
-  createWhatsappAccount(account: InsertWhatsappAccount): Promise<WhatsappAccount>;
-  updateWhatsappAccount(id: number, data: Partial<InsertWhatsappAccount>): Promise<WhatsappAccount | undefined>;
+  getAllWhatsappAccounts(): Promise<any[]>;
+  getWhatsappAccount(id: number): Promise<any | undefined>;
+  createWhatsappAccount(account: any): Promise<any>;
+  updateWhatsappAccount(id: number, data: any): Promise<any | undefined>;
   deleteWhatsappAccount(id: number): Promise<void>;
   
   // Chat Assignment methods

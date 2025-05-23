@@ -219,8 +219,7 @@ export const insertSurveySchema = createInsertSchema(surveys).omit({ id: true, s
 export const insertDashboardStatsSchema = createInsertSchema(dashboardStats).omit({ id: true, updatedAt: true });
 export const insertMessageTemplateSchema = createInsertSchema(messageTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertMarketingCampaignSchema = createInsertSchema(marketingCampaigns).omit({ id: true, createdAt: true, updatedAt: true, stats: true });
-export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true });
-export const insertChatCommentSchema = createInsertSchema(chatComments).omit({ id: true, createdAt: true });
+// Chat schemas moved to end of file to avoid duplication
 
 // Types for insert and select operations
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -231,8 +230,7 @@ export type InsertSurvey = z.infer<typeof insertSurveySchema>;
 export type InsertDashboardStats = z.infer<typeof insertDashboardStatsSchema>;
 export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
 export type InsertMarketingCampaign = z.infer<typeof insertMarketingCampaignSchema>;
-export type InsertChatAssignment = z.infer<typeof insertChatAssignmentSchema>;
-export type InsertChatComment = z.infer<typeof insertChatCommentSchema>;
+// Chat types moved to end of file to avoid duplication
 
 export type User = typeof users.$inferSelect;
 export type Lead = typeof leads.$inferSelect;
@@ -242,10 +240,8 @@ export type Survey = typeof surveys.$inferSelect;
 export type DashboardStats = typeof dashboardStats.$inferSelect;
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
 export type MarketingCampaign = typeof marketingCampaigns.$inferSelect;
-export type ChatAssignment = typeof chatAssignments.$inferSelect;
-export type ChatComment = typeof chatComments.$inferSelect;
+// Chat types moved to end of file to avoid duplication
 export type WhatsappAccount = typeof whatsappAccounts.$inferSelect;
-export type InsertWhatsappAccount = z.infer<typeof createInsertSchema(whatsappAccounts).omit({ id: true, createdAt: true })>;
 
 // Tabla para galería de archivos
 export const mediaGallery = pgTable("media_gallery", {
@@ -479,24 +475,27 @@ export const insertMediaGallerySchema = createInsertSchema(mediaGallery).omit({ 
 export const insertWhatsappAccountSchema = createInsertSchema(whatsappAccounts).omit({ id: true, createdAt: true, lastActiveAt: true });
 export const insertUserWhatsappAccountSchema = createInsertSchema(userWhatsappAccounts).omit({ id: true, assignedAt: true });
 export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
+export const insertChatCommentSchema = createInsertSchema(chatComments).omit({ id: true, createdAt: true });
 export const insertChatCategorySchema = createInsertSchema(chatCategories).omit({ id: true, createdAt: true });
 export const insertAiConfigSchema = createInsertSchema(aiConfig).omit({ id: true, updatedAt: true });
 export const insertTimeZoneConfigSchema = createInsertSchema(timeZoneConfig).omit({ id: true, updatedAt: true });
 export const insertWhatsappMessageSchema = createInsertSchema(whatsappMessages).omit({ id: true, createdAt: true });
 
 export type InsertMediaGallery = z.infer<typeof insertMediaGallerySchema>;
-export type InsertWhatsappAccount = z.infer<typeof insertWhatsappAccountSchema>;
+export type InsertWhatsappAccountNew = z.infer<typeof insertWhatsappAccountSchema>;
 export type InsertUserWhatsappAccount = z.infer<typeof insertUserWhatsappAccountSchema>;
 export type InsertChatAssignment = z.infer<typeof insertChatAssignmentSchema>;
+export type InsertChatComment = z.infer<typeof insertChatCommentSchema>;
 export type InsertChatCategory = z.infer<typeof insertChatCategorySchema>;
 export type InsertAiConfig = z.infer<typeof insertAiConfigSchema>;
 export type InsertTimeZoneConfig = z.infer<typeof insertTimeZoneConfigSchema>;
 export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
 
 export type MediaGallery = typeof mediaGallery.$inferSelect;
-export type WhatsappAccount = typeof whatsappAccounts.$inferSelect;
+export type WhatsappAccountNew = typeof whatsappAccounts.$inferSelect;
 export type UserWhatsappAccount = typeof userWhatsappAccounts.$inferSelect;
 export type ChatAssignment = typeof chatAssignments.$inferSelect;
+export type ChatComment = typeof chatComments.$inferSelect;
 export type ChatCategory = typeof chatCategories.$inferSelect;
 export type AiConfig = typeof aiConfig.$inferSelect;
 export type TimeZoneConfig = typeof timeZoneConfig.$inferSelect;
