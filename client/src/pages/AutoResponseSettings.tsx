@@ -106,8 +106,27 @@ export default function AutoResponseSettings() {
   
   // Update form values when config is loaded
   useEffect(() => {
-    if (config) {
-      console.log('Actualizando formulario con configuración:', config);
+    // Usar configuración por defecto si no hay configuración del servidor
+    const defaultConfig = {
+      enabled: false,
+      delaySeconds: 10,
+      templates: [],
+      useProfessionLevel: true,
+      defaultTemplate: "",
+      enabledForGroups: false,
+      enabledForBroadcast: false,
+      excludedContacts: [],
+      aiProvider: "gemini" as const,
+      customPrompts: {
+        enabled: false,
+        system: "Eres un asistente virtual profesional que responde consultas de atención al cliente de manera amable y útil.",
+        temperature: 0.7,
+        maxTokens: 500,
+      },
+    };
+
+    if (config && !isError) {
+      console.log('Actualizando formulario con configuración del servidor:', config);
       // Mapear la configuración del servidor al formato del formulario
       const formConfig = {
         enabled: config.enabled || false,
@@ -121,14 +140,17 @@ export default function AutoResponseSettings() {
         aiProvider: config.provider || "gemini",
         customPrompts: {
           enabled: config.customPrompts?.enabled || false,
-          system: config.customPrompts?.system || config.messageTemplate || "",
+          system: config.customPrompts?.system || config.messageTemplate || defaultConfig.customPrompts.system,
           temperature: config.customPrompts?.temperature || 0.7,
           maxTokens: config.customPrompts?.maxTokens || 500,
         },
       };
       form.reset(formConfig);
+    } else {
+      console.log('Usando configuración por defecto');
+      form.reset(defaultConfig);
     }
-  }, [config, form]);
+  }, [config, form, isError]);
   
   // Update configuration mutation
   const { mutate: updateConfig, isPending } = useMutation({
@@ -206,13 +228,11 @@ export default function AutoResponseSettings() {
   }
   
   if (isError) {
+    console.error('Error en la carga de configuración:', isError);
     return (
       <div className="p-6">
-        <h1 className="text-2xl font-semibold mb-6">Error al cargar la configuración</h1>
-        <p>No se pudo cargar la configuración de respuestas automáticas.</p>
-        <Button onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/auto-response/config"] })}>
-          Reintentar
-        </Button>
+        <h1 className="text-2xl font-semibold mb-6">Cargando configuración por defecto...</h1>
+        <p>Usando configuración por defecto mientras se resuelve el problema de conexión.</p>
       </div>
     );
   }
