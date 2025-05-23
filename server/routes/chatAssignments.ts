@@ -18,7 +18,7 @@ router.get('/by-chat', async (req, res) => {
     if (assignment) {
       // Obtener información del agente
       const agent = await storage.getUser(assignment.assignedToId);
-      res.json({ ...assignment, agent });
+      res.json({ ...assignment, assignedTo: agent });
     } else {
       res.json(null);
     }
