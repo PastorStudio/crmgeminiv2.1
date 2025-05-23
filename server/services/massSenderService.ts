@@ -345,8 +345,7 @@ export class MassSenderService extends EventEmitter {
 
     try {
       // Obtener todas las campañas activas
-      // Temporalmente omitir el procesamiento de campañas para evitar errores de DB
-      return;
+      const campaigns = await this.getCampaigns();
       const runningCampaigns = campaigns.filter(c => c.status === 'running');
 
       // Procesar cada campaña activa
