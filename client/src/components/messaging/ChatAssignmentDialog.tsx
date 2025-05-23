@@ -113,14 +113,19 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
       try {
         console.log('Cargando usuarios para asignación de chat...');
         
-        // Usar una lista de agentes locales predefinidos para evitar errores de carga
-        // Esto resuelve el problema de la página en blanco cuando falla la API
-        const defaultAgents = [
-          { id: 1, username: 'juan.perez', fullName: 'Juan Pérez', role: 'agent', status: 'active' },
-          { id: 2, username: 'maria.gomez', fullName: 'María Gómez', role: 'agent', status: 'active' },
-          { id: 3, username: 'carlos.lopez', fullName: 'Carlos López', role: 'supervisor', status: 'active' },
-          { id: 4, username: 'laura.martinez', fullName: 'Laura Martínez', role: 'agent', status: 'active' }
-        ];
+        // Cargar agentes reales del sistema
+        const response = await fetch('/api/users');
+        if (!response.ok) {
+          throw new Error('Error al cargar usuarios del sistema');
+        }
+        
+        const data = await response.json();
+        if (data.success && Array.isArray(data.users) && data.users.length > 0) {
+          console.log('Usuarios reales obtenidos:', data.users.length);
+          return data.users;
+        } else {
+          throw new Error('No se encontraron usuarios en el sistema');
+        }
         
         // Solicitar específicamente para asignación de chat
         try {
