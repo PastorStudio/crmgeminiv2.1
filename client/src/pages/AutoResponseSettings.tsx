@@ -172,7 +172,7 @@ export default function AutoResponseSettings() {
     mutationFn: async (values: AutoResponseConfig) => {
       console.log('🚀 Enviando configuración:', values);
       
-      const response = await fetch("/api/auto-response/config", {
+      const response = await fetch("/api/config/auto-response", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values)
