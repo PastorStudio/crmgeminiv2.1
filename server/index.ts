@@ -53,10 +53,7 @@ app.use((req, res, next) => {
     console.error("Error al inicializar la base de datos:", error);
   }
   
-  // Registramos rutas directas para evitar la interceptación de Vite
-  registerDirectAPIRoutes(app);
-  
-  // Ruta principal de usuarios sin autenticación (desarrollo)
+  // IMPORTANTE: Rutas sin autenticación ANTES de registerRoutes
   app.get('/api/users', async (req, res) => {
     try {
       console.log("🔄 Solicitando lista de usuarios...");
@@ -72,6 +69,9 @@ app.use((req, res, next) => {
       res.status(500).json({ error: "Error interno del servidor" });
     }
   });
+
+  // Registramos rutas directas para evitar la interceptación de Vite
+  registerDirectAPIRoutes(app);
 
   // API para asignaciones de chat sin autenticación
   app.get('/api/chat-assignments/:chatId', async (req, res) => {
