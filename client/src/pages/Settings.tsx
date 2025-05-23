@@ -102,7 +102,7 @@ export default function Settings() {
     },
   });
 
-  // Fetch API key status
+  // Fetch Gemini API key status
   const { data: keyStatus, isLoading: keyStatusLoading } = useQuery<{
     hasValidKey: boolean;
     isTemporary: boolean;
@@ -110,6 +110,17 @@ export default function Settings() {
     queryKey: ["/api/settings/gemini-key-status"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/settings/gemini-key-status");
+      return await response.json();
+    },
+  });
+
+  // Fetch OpenAI API key status
+  const { data: openaiStatus, isLoading: openaiStatusLoading } = useQuery<{
+    hasValidKey: boolean;
+  }>({
+    queryKey: ["/api/settings/openai-key-status"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/settings/openai-key-status");
       return await response.json();
     },
   });
@@ -430,11 +441,11 @@ export default function Settings() {
                     <h3 className="text-base font-medium mb-3">OpenAI API Key</h3>
                     <div className="space-y-3">
                       <div className="flex items-center">
-                        <div className={`h-3 w-3 rounded-full mr-2 ${openaiKeyStatus?.hasValidKey ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        <div className={`h-3 w-3 rounded-full mr-2 ${openaiStatus?.hasValidKey ? 'bg-green-500' : 'bg-red-500'}`}></div>
                         <span className="text-sm">
-                          {openaiKeyStatusLoading ? (
+                          {openaiStatusLoading ? (
                             "Checking OpenAI API key status..."
-                          ) : openaiKeyStatus?.hasValidKey ? (
+                          ) : openaiStatus?.hasValidKey ? (
                             "Valid OpenAI API key configured"
                           ) : (
                             "No OpenAI API key configured"
