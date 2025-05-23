@@ -52,7 +52,6 @@ const MessagesLoader: React.FC<MessagesLoaderProps> = ({
       console.log(`Cargando mensajes para chat ${chatId}...`);
       
       // Verificar si es un chat de demostración (generado por modo multi-cuenta)
-      if (chatId.startsWith('demo-chat-')) {
         console.log('Detectado chat de demostración, generando mensajes simulados');
         
         // Extraer ID de cuenta y número de chat del ID
