@@ -3767,5 +3767,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rutas de transcripción de audio con OpenAI Whisper
+  app.post('/api/audio/transcribe-whatsapp', async (req: Request, res: Response) => {
+    try {
+      const { audioUrl, chatId, accountId, messageId } = req.body;
+
+      if (!audioUrl || !chatId || !accountId) {
+        return res.status(400).json({
+          success: false,
+          error: 'audioUrl, chatId y accountId son requeridos'
+        });
+      }
+
+      console.log('🎤 Transcribiendo audio de WhatsApp:', audioUrl);
+
+      // Verificar si tenemos la clave de OpenAI
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({
+          success: false,
+          error: 'Clave API de OpenAI no configurada'
+        });
+      }
+
+      // Importar y configurar OpenAI
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY
+      });
+
+      // Descargar el audio
+      const audioResponse = await fetch(audioUrl);
+      if (!audioResponse.ok) {
+        throw new Error('No se pudo descargar el audio de WhatsApp');
+      }
+
+      const audioBuffer = await audioResponse.arrayBuffer();
+      const audioFile = new File([audioBuffer], 'whatsapp-audio.ogg', {
+        type: 'audio/ogg'
+      });
+
+      // Transcribir usando OpenAI Whisper
+      const transcription = await openai.audio.transcriptions.create({
+        file: audioFile,
+        model: 'whisper-1',
+        language: 'es',
+        response_format: 'text'
+      });
+
+      console.log('✅ Audio de WhatsApp transcrito exitosamente:', transcription);
+
+      res.json({
+        success: true,
+        transcription: transcription.trim(),
+        chatId,
+        accountId,
+        messageId,
+        audioUrl
+      });
+
+    } catch (error) {
+      console.error('❌ Error transcribiendo audio de WhatsApp:', error);
+      
+      res.status(500).json({
+        success: false,
+        error: 'Error transcribiendo audio de WhatsApp',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
   return httpServer;
 }

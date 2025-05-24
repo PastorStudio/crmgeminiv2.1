@@ -276,6 +276,91 @@ export function WhatsAppTwoColumn() {
     }
   };
 
+  // Función para manejar mensajes de audio
+  const handleAudioMessage = async (audioMessage: any) => {
+    if (!selectedChat) return;
+    
+    try {
+      console.log('🎤 Procesando mensaje de audio...');
+      
+      // Verificar si el mensaje tiene URL de audio
+      if (!audioMessage.mediaUrl && !audioMessage._data?.mediaUrl) {
+        console.log('⚠️ Mensaje de audio sin URL disponible');
+        return;
+      }
+      
+      const audioUrl = audioMessage.mediaUrl || audioMessage._data?.mediaUrl;
+      
+      // Transcribir el audio usando OpenAI Whisper
+      const transcriptionResponse = await fetch('/api/audio/transcribe-whatsapp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          audioUrl: audioUrl,
+          chatId: selectedChat.id,
+          accountId: selectedChat.accountId,
+          messageId: audioMessage.id
+        })
+      });
+
+      if (transcriptionResponse.ok) {
+        const transcriptionData = await transcriptionResponse.json();
+        console.log('✅ Audio transcrito exitosamente:', transcriptionData.transcription);
+        
+        // Mostrar la transcripción al usuario
+        toast({
+          title: "🎤 Audio transcrito",
+          description: `Transcripción: "${transcriptionData.transcription}"`,
+          duration: 5000
+        });
+        
+        // Si SmartBots está habilitado, generar respuesta automática basada en la transcripción
+        if (smartBotsEnabled) {
+          console.log('🤖 Generando respuesta automática para audio transcrito...');
+          
+          setTimeout(async () => {
+            try {
+              const response = await generateSmartBotsAutoResponse(transcriptionData.transcription, selectedChat.name);
+              if (response) {
+                console.log('📤 Enviando respuesta automática para audio:', response);
+                await sendAutoMessage(response);
+                
+                toast({
+                  title: "🎤➡️🤖 Respuesta automática para audio",
+                  description: "SmartBots ha respondido al mensaje de audio transcrito",
+                  duration: 3000
+                });
+              }
+            } catch (error) {
+              console.error('❌ Error generando respuesta para audio:', error);
+            }
+          }, 2000);
+        }
+        
+      } else {
+        const errorData = await transcriptionResponse.json();
+        console.error('❌ Error transcribiendo audio:', errorData);
+        
+        toast({
+          title: "❌ Error transcribiendo audio",
+          description: errorData.error || "No se pudo transcribir el mensaje de audio",
+          variant: "destructive"
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ Error procesando mensaje de audio:', error);
+      
+      toast({
+        title: "❌ Error procesando audio",
+        description: "No se pudo procesar el mensaje de audio",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Función para generar respuesta manual con SmartBots
   const generateSmartBotsResponse = async (userMessage: string, contactName: string, isIncomingMessage = false) => {
     try {
@@ -605,7 +690,14 @@ export function WhatsAppTwoColumn() {
       
       if (incomingMessages.length > 0) {
         const lastIncomingMessage = incomingMessages[incomingMessages.length - 1];
-        console.log('🤖 Mensaje entrante detectado:', lastIncomingMessage.body);
+        
+        // Verificar si es un mensaje de audio
+        if (lastIncomingMessage.type === 'ptt' || lastIncomingMessage.type === 'audio') {
+          console.log('🎤 Mensaje de audio detectado:', lastIncomingMessage);
+          await handleAudioMessage(lastIncomingMessage);
+        } else {
+          console.log('🤖 Mensaje entrante detectado:', lastIncomingMessage.body);
+        }
         
         // Solo procesar si no hemos procesado este mensaje antes
         if (lastIncomingMessage.id !== lastProcessedMessageId) {
