@@ -82,7 +82,10 @@ export class ExternalAgentService {
       console.log(`📡 URL: ${agent.agentUrl}`);
       console.log(`💬 Mensaje: ${message}`);
 
-      // Hacer la petición al agente externo
+      // Hacer la petición al agente externo con AbortController para timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
       const response = await fetch(agent.agentUrl, {
         method: 'POST',
         headers: {
@@ -90,8 +93,10 @@ export class ExternalAgentService {
           'Accept': 'application/json'
         },
         body: JSON.stringify(payload),
-        timeout: 30000 // 30 segundos de timeout
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         console.error(`❌ Error en respuesta del agente: ${response.status} ${response.statusText}`);
@@ -158,6 +163,89 @@ export class ExternalAgentService {
     }
     
     return null;
+  }
+
+  // Procesar mensaje para agente específico
+  async processMessageForAgent(message: string, chatId: string, accountId: number, context?: any): Promise<any> {
+    try {
+      const agent = await this.shouldProcessMessage(message);
+      
+      if (!agent) {
+        return {
+          success: false,
+          message: 'No hay agentes disponibles para procesar este mensaje'
+        };
+      }
+
+      const response = await this.sendMessageToAgent(agent.id, message, chatId);
+      
+      return {
+        success: true,
+        response: response,
+        agent: agent.name,
+        processingTime: Date.now()
+      };
+    } catch (error) {
+      console.error('❌ Error procesando mensaje para agente:', error);
+      return {
+        success: false,
+        error: 'Error procesando mensaje'
+      };
+    }
+  }
+
+  // Activar agente
+  async activateAgent(agentId: string): Promise<boolean> {
+    try {
+      const result = await this.updateAgent(agentId, { isActive: true });
+      return !!result;
+    } catch (error) {
+      console.error('❌ Error activando agente:', error);
+      return false;
+    }
+  }
+
+  // Desactivar agente
+  async deactivateAgent(agentId: string): Promise<boolean> {
+    try {
+      const result = await this.updateAgent(agentId, { isActive: false });
+      return !!result;
+    } catch (error) {
+      console.error('❌ Error desactivando agente:', error);
+      return false;
+    }
+  }
+
+  // Obtener estadísticas de agentes
+  async getAgentStats(): Promise<any> {
+    try {
+      const allAgents = await this.getAllAgents();
+      const activeAgents = allAgents.filter(agent => agent.isActive);
+      
+      const agentsByUrl: Record<string, number> = {};
+      
+      allAgents.forEach(agent => {
+        try {
+          const domain = new URL(agent.agentUrl).hostname;
+          agentsByUrl[domain] = (agentsByUrl[domain] || 0) + 1;
+        } catch {
+          agentsByUrl['unknown'] = (agentsByUrl['unknown'] || 0) + 1;
+        }
+      });
+      
+      return {
+        totalAgents: allAgents.length,
+        activeAgents: activeAgents.length,
+        agentsByUrl: agentsByUrl
+      };
+    } catch (error) {
+      console.error('❌ Error obteniendo estadísticas de agentes:', error);
+      return {
+        totalAgents: 0,
+        activeAgents: 0,
+        agentsByUrl: {}
+      };
+    }
   }
 }
 
