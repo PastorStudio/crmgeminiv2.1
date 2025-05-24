@@ -11,10 +11,13 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   // Query para obtener actividades
-  const { data: activities, isLoading } = useQuery({
+  const { data: activitiesData, isLoading } = useQuery({
     queryKey: ['/api/activities'],
     queryFn: () => fetch('/api/activities').then(res => res.json()).catch(() => [])
   });
+
+  // Asegurar que activities sea siempre un array
+  const activities = Array.isArray(activitiesData) ? activitiesData : [];
 
   return (
     <div className="p-6">
