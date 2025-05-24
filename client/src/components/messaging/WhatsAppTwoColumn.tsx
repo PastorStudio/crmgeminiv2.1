@@ -411,6 +411,47 @@ export function WhatsAppTwoColumn() {
     enabled: !!selectedChat?.id
   });
 
+  // Handle chat selection and mark messages as read
+  const handleChatSelect = async (chat: WhatsAppChat) => {
+    setSelectedChat(chat);
+    setNewMessage(''); // Clear input when switching chats
+    
+    // Mark chat as read and reset unread count
+    if (chat.unreadCount > 0) {
+      try {
+        console.log(`📖 Marcando chat ${chat.id} como leído (${chat.unreadCount} mensajes no leídos)`);
+        
+        // Call API to mark messages as read
+        await fetch(`/api/whatsapp-accounts/${chat.accountId}/chats/${chat.id}/mark-read`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        // Update chat list to show zero unread count immediately
+        queryClient.setQueryData(
+          [`/api/whatsapp-accounts/${chat.accountId}/chats`],
+          (oldChats: any) => {
+            if (Array.isArray(oldChats)) {
+              return oldChats.map((c: any) => 
+                c.id === chat.id 
+                  ? { ...c, unreadCount: 0, messageRead: true }
+                  : c
+              );
+            }
+            return oldChats;
+          }
+        );
+        
+        console.log(`✅ Chat ${chat.id} marcado como leído exitosamente`);
+        
+      } catch (error) {
+        console.error('❌ Error marcando chat como leído:', error);
+      }
+    }
+  };
+
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { chatId: string; accountId: number; message: string }) => {
@@ -865,7 +906,7 @@ export function WhatsAppTwoColumn() {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2, delay: index * 0.05 }}
                     className="p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 ml-[-8px] mr-[-8px] pl-[10px] pr-[10px] pt-[10px] pb-[10px] mt-[0px] mb-[0px] text-[14px] font-bold"
-                    onClick={() => setSelectedChat(chat)}
+                    onClick={() => handleChatSelect(chat)}
                   >
                     <div className="flex items-center space-x-3">
                       <div className="relative">
