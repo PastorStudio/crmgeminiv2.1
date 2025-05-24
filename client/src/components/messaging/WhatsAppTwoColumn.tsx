@@ -221,36 +221,58 @@ export function WhatsAppTwoColumn() {
     if (!selectedChat) return;
     
     try {
-      const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/send-message`, {
+      console.log('📤 Enviando respuesta automática:', message);
+      
+      const response = await fetch('/api/whatsapp/send-message', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
         body: JSON.stringify({
           chatId: selectedChat.id,
-          message: message,
-          isAutoResponse: true
+          accountId: selectedChat.accountId,
+          message: message
         })
       });
 
       if (response.ok) {
-        console.log('✅ Respuesta automática enviada exitosamente');
+        const result = await response.json();
+        console.log('✅ Respuesta automática enviada exitosamente:', result);
+        
         toast({
           title: "🤖 Respuesta automática enviada",
           description: "SmartBots ha respondido al mensaje recibido",
           duration: 3000
         });
         
-        // Actualizar los mensajes del chat
+        // Actualizar los mensajes del chat para mostrar el mensaje enviado
         queryClient.invalidateQueries({
           queryKey: ['/api/whatsapp-accounts', selectedChat.accountId, 'chats', selectedChat.id, 'messages']
         });
+        
+        // También actualizar la lista de chats
+        queryClient.invalidateQueries({
+          queryKey: ['/api/whatsapp-accounts', selectedChat.accountId, 'chats']
+        });
+        
       } else {
-        console.error('❌ Error enviando respuesta automática');
+        const errorData = await response.json();
+        console.error('❌ Error enviando respuesta automática:', errorData);
+        
+        toast({
+          title: "❌ Error enviando respuesta",
+          description: errorData.error || "No se pudo enviar la respuesta automática",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('❌ Error en envío de respuesta automática:', error);
+      
+      toast({
+        title: "❌ Error de conexión",
+        description: "No se pudo conectar para enviar la respuesta",
+        variant: "destructive"
+      });
     }
   };
 
