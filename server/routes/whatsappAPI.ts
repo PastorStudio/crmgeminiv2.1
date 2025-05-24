@@ -100,61 +100,85 @@ export async function getWhatsAppChats(req: Request, res: Response) {
   }
 }
 
-// Get messages for a specific chat with real WhatsApp data
+// Get messages for a specific chat with real WhatsApp data ONLY
 export async function getWhatsAppMessages(req: Request, res: Response) {
   try {
     const { chatId } = req.params;
     
     if (!chatId) {
+      console.log('❌ No chatId proporcionado');
       return res.json([]);
     }
 
-    console.log('🔄 Obteniendo mensajes reales para chat:', chatId);
+    console.log('🔄 SOLO mensajes REALES para chat:', chatId);
 
     const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
     
-    let messages: any[] = [];
+    let authenticMessages: any[] = [];
     const accounts = await db.select().from(whatsappAccounts);
+    
+    console.log(`🔍 Verificando ${accounts.length} cuentas para chat ${chatId}`);
     
     for (const account of accounts) {
       try {
         const client = whatsappMultiAccountManager.getClient(account.id);
         if (client) {
           const state = await client.getState();
+          console.log(`📱 Cuenta ${account.id}: estado ${state}`);
           
           if (state === 'CONNECTED') {
-            console.log(`📱 Buscando mensajes en cuenta ${account.id} para chat ${chatId}`);
+            console.log(`✅ Cuenta ${account.id} CONECTADA - Buscando mensajes para ${chatId}`);
             
-            const chat = await client.getChatById(chatId);
-            if (chat) {
-              const chatMessages = await chat.fetchMessages({ limit: 50 });
-              
-              const formattedMessages = chatMessages.map(msg => ({
-                id: msg.id.id,
-                body: msg.body || '',
-                fromMe: msg.fromMe,
-                timestamp: msg.timestamp * 1000,
-                hasMedia: msg.hasMedia,
-                type: msg.type,
-                chatId: chatId,
-                author: !msg.fromMe && chat.isGroup ? msg.author : undefined,
-                authorNumber: msg.from
-              }));
-              
-              messages = formattedMessages;
-              console.log(`✅ ${messages.length} mensajes reales obtenidos para chat ${chatId}`);
-              break;
+            try {
+              const chat = await client.getChatById(chatId);
+              if (chat) {
+                console.log(`📞 Chat encontrado en cuenta ${account.id}`);
+                const chatMessages = await chat.fetchMessages({ limit: 50 });
+                
+                if (chatMessages && chatMessages.length > 0) {
+                  console.log(`📨 ${chatMessages.length} mensajes encontrados en WhatsApp`);
+                  
+                  const authenticFormattedMessages = chatMessages.map((msg, index) => ({
+                    id: msg.id?.id || msg.id?._serialized || `real_${Date.now()}_${index}`,
+                    body: msg.body || msg.text || '[Sin texto]',
+                    fromMe: Boolean(msg.fromMe),
+                    timestamp: msg.timestamp ? msg.timestamp * 1000 : Date.now(),
+                    hasMedia: Boolean(msg.hasMedia),
+                    type: msg.type || 'chat',
+                    chatId: chatId,
+                    author: !msg.fromMe && chat.isGroup ? (msg.author || msg._data?.notifyName) : undefined,
+                    authorNumber: msg.from || msg.author,
+                    authorProfilePic: msg.authorProfilePic || null
+                  }));
+                  
+                  authenticMessages = authenticFormattedMessages.sort((a, b) => a.timestamp - b.timestamp);
+                  console.log(`🎉 ${authenticMessages.length} mensajes AUTÉNTICOS obtenidos del chat ${chatId}`);
+                  break; // Encontramos el chat, salir del bucle
+                } else {
+                  console.log(`📭 Chat ${chatId} no tiene mensajes en cuenta ${account.id}`);
+                }
+              } else {
+                console.log(`❌ Chat ${chatId} no encontrado en cuenta ${account.id}`);
+              }
+            } catch (chatError) {
+              console.error(`❌ Error accediendo al chat ${chatId} en cuenta ${account.id}:`, chatError);
             }
+          } else {
+            console.log(`⚠️ Cuenta ${account.id} no conectada: ${state}`);
           }
+        } else {
+          console.log(`❌ Cliente no existe para cuenta ${account.id}`);
         }
       } catch (error) {
-        console.error(`❌ Error obteniendo mensajes de cuenta ${account.id}:`, (error as Error).message);
+        console.error(`❌ Error procesando cuenta ${account.id}:`, (error as Error).message);
       }
     }
 
-    res.json(messages);
+    console.log(`📤 Enviando ${authenticMessages.length} mensajes auténticos al frontend`);
+    // NUNCA devolver datos simulados - solo mensajes reales de WhatsApp
+    res.json(authenticMessages);
   } catch (error) {
-    console.error('❌ Error general obteniendo mensajes:', error);
+    console.error('❌ Error crítico obteniendo mensajes:', error);
     res.json([]);
   }
 }
