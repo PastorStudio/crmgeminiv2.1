@@ -3592,6 +3592,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para marcar chat como leído
+  app.post('/api/whatsapp-accounts/:accountId/chats/:chatId/mark-read', async (req: Request, res: Response) => {
+    try {
+      const { accountId, chatId } = req.params;
+      
+      console.log(`📖 Marcando chat ${chatId} de cuenta ${accountId} como leído`);
+      
+      // Aquí se puede implementar la lógica para actualizar el estado en la base de datos
+      // Por ahora, simplemente respondemos éxito
+      
+      res.json({
+        success: true,
+        message: `Chat ${chatId} marcado como leído`,
+        chatId,
+        accountId: parseInt(accountId)
+      });
+      
+    } catch (error) {
+      console.error('❌ Error marcando chat como leído:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
   // Endpoint para SmartBots AI - Consulta externa
   app.post('/api/smartbots/generate-response', async (req: Request, res: Response) => {
     console.log('🚀 LLAMADA RECIBIDA EN /api/smartbots/generate-response');
