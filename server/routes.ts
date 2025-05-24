@@ -4115,6 +4115,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Lista global de agentes creados
+  const globalAgents: any[] = [];
+
   // Crear agente desde URL
   app.post('/api/external-agents/create-from-url', async (req: Request, res: Response) => {
     try {
@@ -4145,7 +4148,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accountId: 1
       };
 
-      console.log('✅ Agente creado exitosamente:', newAgent);
+      // Guardar el agente en la lista global
+      globalAgents.push(newAgent);
+      console.log('✅ Agente creado y guardado exitosamente:', newAgent);
+      console.log('📋 Total de agentes guardados:', globalAgents.length);
 
       res.json({
         success: true,
@@ -4166,15 +4172,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/external-agents/:agentId/activate', async (req: Request, res: Response) => {
     try {
       const { agentId } = req.params;
-      const { externalAgentService } = await import('./services/externalAgentService');
       
-      const success = externalAgentService.activateAgent(agentId);
-      
-      if (success) {
-        res.json({ success: true, message: 'Agente activado exitosamente' });
-      } else {
-        res.status(404).json({ success: false, error: 'Agente no encontrado' });
+      const agent = globalAgents.find(a => a.id === agentId);
+      if (!agent) {
+        return res.status(404).json({ success: false, error: 'Agente no encontrado' });
       }
+      
+      agent.isActive = true;
+      console.log(`✅ Agente ${agent.name} activado exitosamente`);
+      
+      res.json({ success: true, message: 'Agente activado exitosamente' });
     } catch (error) {
       console.error('❌ Error activando agente:', error);
       res.status(500).json({ success: false, error: 'Error interno del servidor' });
@@ -4185,15 +4192,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/external-agents/:agentId/deactivate', async (req: Request, res: Response) => {
     try {
       const { agentId } = req.params;
-      const { externalAgentService } = await import('./services/externalAgentService');
       
-      const success = externalAgentService.deactivateAgent(agentId);
-      
-      if (success) {
-        res.json({ success: true, message: 'Agente desactivado exitosamente' });
-      } else {
-        res.status(404).json({ success: false, error: 'Agente no encontrado' });
+      const agent = globalAgents.find(a => a.id === agentId);
+      if (!agent) {
+        return res.status(404).json({ success: false, error: 'Agente no encontrado' });
       }
+      
+      agent.isActive = false;
+      console.log(`🔇 Agente ${agent.name} desactivado exitosamente`);
+      
+      res.json({ success: true, message: 'Agente desactivado exitosamente' });
     } catch (error) {
       console.error('❌ Error desactivando agente:', error);
       res.status(500).json({ success: false, error: 'Error interno del servidor' });
@@ -4204,15 +4212,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/external-agents/:agentId', async (req: Request, res: Response) => {
     try {
       const { agentId } = req.params;
-      const { externalAgentService } = await import('./services/externalAgentService');
       
-      const agent = externalAgentService.getAgent(agentId);
-      if (!agent) {
+      const agentIndex = globalAgents.findIndex(a => a.id === agentId);
+      if (agentIndex === -1) {
         return res.status(404).json({ success: false, error: 'Agente no encontrado' });
       }
 
-      // Desactivar y eliminar el agente
-      externalAgentService.deactivateAgent(agentId);
+      const agent = globalAgents[agentIndex];
+      globalAgents.splice(agentIndex, 1);
+      console.log(`🗑️ Agente ${agent.name} eliminado exitosamente`);
       
       res.json({ success: true, message: 'Agente eliminado exitosamente' });
     } catch (error) {
@@ -4256,25 +4264,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/external-agents', async (req: Request, res: Response) => {
     try {
       console.log('📋 Obteniendo lista de agentes...');
-      
-      // Retornar lista de agentes simulados por ahora
-      const mockAgents = [
-        {
-          id: 'sample-agent-1',
-          name: 'SmartBots ChatGPT',
-          agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
-          description: 'Agente de prueba',
-          triggerKeywords: ['precio', 'ayuda'],
-          isActive: true,
-          responseDelay: 3,
-          accountId: 1
-        }
-      ];
+      console.log('📊 Agentes guardados actualmente:', globalAgents.length);
       
       res.setHeader('Content-Type', 'application/json');
       res.json({
         success: true,
-        agents: mockAgents
+        agents: globalAgents
       });
     } catch (error) {
       console.error('❌ Error obteniendo agentes:', error);
@@ -4290,12 +4285,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('📊 Obteniendo estadísticas de agentes...');
       
-      const stats = {
-        totalAgents: 1,
-        activeAgents: 1,
-        agentsByUrl: {
-          'chatgpt.com': 1
+      const activeAgents = globalAgents.filter(agent => agent.isActive);
+      const agentsByUrl: Record<string, number> = {};
+      
+      globalAgents.forEach(agent => {
+        try {
+          const domain = new URL(agent.agentUrl).hostname;
+          agentsByUrl[domain] = (agentsByUrl[domain] || 0) + 1;
+        } catch {
+          agentsByUrl['unknown'] = (agentsByUrl['unknown'] || 0) + 1;
         }
+      });
+      
+      const stats = {
+        totalAgents: globalAgents.length,
+        activeAgents: activeAgents.length,
+        agentsByUrl: agentsByUrl
       };
       
       res.setHeader('Content-Type', 'application/json');
