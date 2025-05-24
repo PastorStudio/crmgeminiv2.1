@@ -3683,9 +3683,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🎵 Solicitando audio para mensaje ${messageId} en chat ${chatId} cuenta ${accountId}`);
       
       // Obtener el servicio de WhatsApp para la cuenta
-      const whatsappService = multiAccountManager.getWhatsAppService(parseInt(accountId));
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      const instance = whatsappMultiAccountManager.getInstance(parseInt(accountId));
       
-      if (!whatsappService) {
+      if (!instance || !instance.client) {
         return res.status(404).json({
           success: false,
           error: `Cuenta WhatsApp ${accountId} no encontrada`
@@ -3693,8 +3694,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Obtener los mensajes del chat para encontrar el mensaje de audio
-      const messages = await whatsappService.getChatMessages(chatId, 50);
-      const audioMessage = messages.find(msg => msg.id === messageId && (msg.type === 'ptt' || msg.type === 'audio'));
+      const chat = await instance.client.getChatById(chatId);
+      const messages = await chat.fetchMessages({ limit: 50 });
+      const audioMessage = messages.find(msg => msg.id._serialized === messageId && (msg.type === 'ptt' || msg.type === 'audio'));
       
       if (!audioMessage) {
         return res.status(404).json({
