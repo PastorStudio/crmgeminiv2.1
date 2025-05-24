@@ -670,6 +670,11 @@ export function WhatsAppTwoColumn() {
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [languageSelectorOpen, setLanguageSelectorOpen] = useState(false);
+  
+  // Estados para grabación de notas de voz
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
 
   // Idiomas disponibles para traducción
   const availableLanguages = [
@@ -708,6 +713,93 @@ export function WhatsAppTwoColumn() {
     } catch (error) {
       console.warn('Traducción fallida, usando texto original:', error);
       return text;
+    }
+  };
+
+  // Función para iniciar grabación de nota de voz
+  const startVoiceRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          setAudioChunks(prev => [...prev, event.data]);
+        }
+      };
+      
+      recorder.onstop = () => {
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      setAudioChunks([]);
+      recorder.start();
+      
+      toast({
+        title: "🎤 Grabando nota de voz",
+        description: "Haz clic en el botón otra vez para detener la grabación",
+      });
+    } catch (error) {
+      console.error('Error al acceder al micrófono:', error);
+      toast({
+        title: "Error al acceder al micrófono",
+        description: "Verifica que hayas dado permisos para usar el micrófono",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Función para detener grabación y enviar nota de voz
+  const stopVoiceRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        
+        // Crear FormData para enviar el archivo de audio
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'voice_note.wav');
+        formData.append('chatId', selectedChat?.id || '');
+        formData.append('accountId', selectedChat?.accountId.toString() || '');
+        
+        try {
+          const response = await fetch('/api/whatsapp/send-voice-note', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            },
+            body: formData
+          });
+          
+          if (response.ok) {
+            toast({
+              title: "✅ Nota de voz enviada",
+              description: "Tu nota de voz se ha enviado correctamente",
+            });
+            
+            // Actualizar mensajes del chat
+            queryClient.invalidateQueries({
+              queryKey: ['/api/whatsapp-accounts', selectedChat?.accountId, 'chats', selectedChat?.id, 'messages']
+            });
+          } else {
+            throw new Error('Error al enviar nota de voz');
+          }
+        } catch (error) {
+          console.error('Error enviando nota de voz:', error);
+          toast({
+            title: "Error al enviar nota de voz",
+            description: "No se pudo enviar la nota de voz. Inténtalo de nuevo.",
+            variant: "destructive"
+          });
+        }
+        
+        setAudioChunks([]);
+      };
+      
+      mediaRecorder.stop();
+      setIsRecording(false);
+      setMediaRecorder(null);
     }
   };
 
@@ -891,14 +983,13 @@ export function WhatsAppTwoColumn() {
     let finalMessage = newMessage.trim();
     
     // Si el traductor está activado, traducir el mensaje antes de enviarlo
-    if (translatorEnabled) {
+    if (translationEnabled) {
       try {
-        console.log('🌐 Traduciendo mensaje:', finalMessage);
+        console.log('🌐 Traduciendo mensaje al:', selectedLanguage);
         
-        // Detectar idioma
-        const isSpanish = /[áéíóúñ¿¡]|hola|como|que|para|con|una|este|todo|pero|muy|cuando|hasta|donde|gracias|por favor|buenos días|buenas tardes|buenas noches/i.test(finalMessage);
-        const sourceLanguage = isSpanish ? 'es' : 'en';
-        const targetLanguage = isSpanish ? 'en' : 'es';
+        // Usar el idioma seleccionado del dropdown
+        const sourceLanguage = 'auto'; // Detección automática
+        const targetLanguage = selectedLanguage;
         
         // Usar Google Translate API directamente
         const googleTranslateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLanguage}&tl=${targetLanguage}&dt=t&q=${encodeURIComponent(finalMessage)}`;
@@ -1391,11 +1482,11 @@ export function WhatsAppTwoColumn() {
                                       <div className="flex flex-col">
                                         <span className="text-xs text-gray-600">Nota de voz</span>
                                         <div className="flex items-center space-x-2">
-                                          {message.mediaUrl || message._data?.mediaUrl ? (
+                                          {message.mediaUrl || message._data?.mediaUrl || message.body ? (
                                             <audio 
                                               controls 
                                               className="max-w-[200px] h-8"
-                                              src={message.mediaUrl || message._data?.mediaUrl}
+                                              src={message.mediaUrl || message._data?.mediaUrl || `/api/whatsapp-accounts/${selectedChat.accountId}/messages/${selectedChat.id}/audio/${message.id}`}
                                               onError={(e) => console.log('Error cargando audio:', e)}
                                             >
                                               Tu navegador no soporta audio.
@@ -1631,6 +1722,24 @@ export function WhatsAppTwoColumn() {
                     </div>
                   </PopoverContent>
                 </Popover>
+
+                {/* Voice Note Button */}
+                <Button
+                  variant={isRecording ? "destructive" : "outline"}
+                  size="sm"
+                  className={`h-9 px-3 ${isRecording ? 'animate-pulse' : ''}`}
+                  onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+                  disabled={!selectedChat}
+                >
+                  {isRecording ? (
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-1"></div>
+                      <span>🎤</span>
+                    </div>
+                  ) : (
+                    <span>🎤</span>
+                  )}
+                </Button>
 
                 {/* Translator with Language Selector */}
                 <Popover open={languageSelectorOpen} onOpenChange={setLanguageSelectorOpen}>
