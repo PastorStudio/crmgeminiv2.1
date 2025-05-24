@@ -138,12 +138,25 @@ class AuthService {
       // Extraer el token
       const token = authHeader.substring(7); // Quitar 'Bearer ' del inicio
 
-      // Verificar si es un token temporal del frontend (bypass para DJP)
-      if (token.startsWith('temp-token-DJP-')) {
-        // Token temporal válido para DJP con permisos de superadministrador
-        (req as any).user = { userId: 1, username: 'DJP', role: 'superadmin' };
-        next();
-        return;
+      // Verificar si es un token temporal del frontend (bypass para usuarios autorizados)
+      if (token.startsWith('temp-token-')) {
+        const username = token.split('-')[2]; // Extraer el nombre de usuario del token
+        if (username === 'DJP') {
+          // Token temporal válido para DJP con permisos de superadministrador
+          (req as any).user = { userId: 1, username: 'DJP', role: 'superadmin' };
+          next();
+          return;
+        } else if (['admin', 'agente', 'steph'].includes(username)) {
+          // Tokens temporales para otros usuarios
+          const roleMap: { [key: string]: string } = {
+            'admin': 'admin',
+            'agente': 'agent', 
+            'steph': 'agent'
+          };
+          (req as any).user = { userId: 2, username, role: roleMap[username] || 'agent' };
+          next();
+          return;
+        }
       }
 
       // Verificar el token JWT normal
