@@ -199,6 +199,73 @@ export const messageTemplatesRelations = relations(messageTemplates, ({ one, man
   campaigns: many(marketingCampaigns)
 }));
 
+// Tickets automáticos del sistema
+export const tickets = pgTable("tickets", {
+  id: serial("id").primaryKey(),
+  // ID único del chat de WhatsApp 
+  chatId: text("chatId").notNull(),
+  // Cuenta de WhatsApp asociada
+  accountId: integer("accountId").notNull().references(() => whatsappAccounts.id),
+  // Agente asignado
+  assignedToId: integer("assignedToId").references(() => users.id),
+  // Información del cliente
+  customerName: text("customerName"),
+  customerPhone: text("customerPhone"),
+  // Estados de ticket: nuevo, interesado, no_leido, pendiente_demo, completado, no_interesado
+  status: text("status").default("nuevo"),
+  // Prioridad: baja, media, alta, urgente
+  priority: text("priority").default("media"),
+  // Último mensaje del cliente
+  lastMessage: text("lastMessage"),
+  // Métricas del ticket
+  totalMessages: integer("totalMessages").default(0),
+  answeredMessages: integer("answeredMessages").default(0),
+  unreadMessages: integer("unreadMessages").default(0),
+  // Timestamps importantes
+  createdAt: timestamp("createdAt").defaultNow(),
+  lastActivityAt: timestamp("lastActivityAt").defaultNow(),
+  closedAt: timestamp("closedAt"),
+  // Notas internas
+  notes: text("notes"),
+  // Etiquetas del ticket
+  tags: text("tags").array(),
+});
+
+// Métricas de agentes por rendimiento
+export const agentMetrics = pgTable("agent_metrics", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id),
+  // Métricas de mensajes
+  totalMessagesSent: integer("totalMessagesSent").default(0),
+  totalMessagesReceived: integer("totalMessagesReceived").default(0),
+  averageResponseTime: integer("averageResponseTime").default(0), // en minutos
+  // Métricas de tickets
+  activeTickets: integer("activeTickets").default(0),
+  completedTickets: integer("completedTickets").default(0),
+  ticketsSolvedToday: integer("ticketsSolvedToday").default(0),
+  // Métricas de conversión
+  conversionsThisMonth: integer("conversionsThisMonth").default(0),
+  totalConversions: integer("totalConversions").default(0),
+  // Rating promedio (1-5 estrellas)
+  averageRating: doublePrecision("averageRating").default(0),
+  // Fecha de última actualización
+  lastUpdated: timestamp("lastUpdated").defaultNow(),
+});
+
+// Actividad de mensajes para tracking detallado
+export const messageActivity = pgTable("message_activity", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticketId").notNull().references(() => tickets.id),
+  userId: integer("userId").references(() => users.id),
+  chatId: text("chatId").notNull(),
+  messageContent: text("messageContent"),
+  messageType: text("messageType").default("text"), // text, image, audio, video, document
+  direction: text("direction").notNull(), // incoming, outgoing
+  isRead: boolean("isRead").default(false),
+  sentAt: timestamp("sentAt").defaultNow(),
+  readAt: timestamp("readAt"),
+});
+
 // Relaciones para campañas de marketing
 export const marketingCampaignsRelations = relations(marketingCampaigns, ({ one }) => ({
   template: one(messageTemplates, {
@@ -210,6 +277,52 @@ export const marketingCampaignsRelations = relations(marketingCampaigns, ({ one 
     references: [users.id]
   })
 }));
+
+// Relaciones para tickets
+export const ticketsRelations = relations(tickets, ({ one, many }) => ({
+  account: one(whatsappAccounts, {
+    fields: [tickets.accountId],
+    references: [whatsappAccounts.id]
+  }),
+  assignedTo: one(users, {
+    fields: [tickets.assignedToId],
+    references: [users.id]
+  }),
+  messageActivity: many(messageActivity)
+}));
+
+// Relaciones para métricas de agentes
+export const agentMetricsRelations = relations(agentMetrics, ({ one }) => ({
+  user: one(users, {
+    fields: [agentMetrics.userId],
+    references: [users.id]
+  })
+}));
+
+// Relaciones para actividad de mensajes
+export const messageActivityRelations = relations(messageActivity, ({ one }) => ({
+  ticket: one(tickets, {
+    fields: [messageActivity.ticketId],
+    references: [tickets.id]
+  }),
+  user: one(users, {
+    fields: [messageActivity.userId],
+    references: [users.id]
+  })
+}));
+
+// Tipos para las nuevas tablas
+export type Ticket = typeof tickets.$inferSelect;
+export type InsertTicket = typeof tickets.$inferInsert;
+export type AgentMetrics = typeof agentMetrics.$inferSelect;
+export type InsertAgentMetrics = typeof agentMetrics.$inferInsert;
+export type MessageActivity = typeof messageActivity.$inferSelect;
+export type InsertMessageActivity = typeof messageActivity.$inferInsert;
+
+// Esquemas de inserción para las nuevas tablas
+export const insertTicketSchema = createInsertSchema(tickets).omit({ id: true, createdAt: true });
+export const insertAgentMetricsSchema = createInsertSchema(agentMetrics).omit({ id: true, lastUpdated: true });
+export const insertMessageActivitySchema = createInsertSchema(messageActivity).omit({ id: true, sentAt: true });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true });
