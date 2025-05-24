@@ -4239,6 +4239,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Actualizar configuración de agente
+  app.patch('/api/external-agents/:agentId', async (req: Request, res: Response) => {
+    try {
+      const { agentId } = req.params;
+      const updates = req.body;
+      
+      const { externalAgentService } = await import('./services/externalAgentService');
+      
+      const updatedAgent = await externalAgentService.updateAgent(agentId, updates);
+      if (!updatedAgent) {
+        return res.status(404).json({ success: false, error: 'Agente no encontrado' });
+      }
+
+      console.log(`⚙️ Agente ${agentId} actualizado exitosamente:`, updates);
+      res.json({ 
+        success: true, 
+        message: 'Configuración del agente actualizada exitosamente',
+        agent: updatedAgent
+      });
+    } catch (error) {
+      console.error('❌ Error actualizando agente:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
   // Eliminar agente
   app.delete('/api/external-agents/:agentId', async (req: Request, res: Response) => {
     try {
@@ -4255,6 +4280,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('❌ Error eliminando agente:', error);
       res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  // Probar agente
+  app.post('/api/external-agents/:agentId/test', async (req: Request, res: Response) => {
+    try {
+      const { agentId } = req.params;
+      const { message = "Hola, esta es una prueba del sistema de agentes", chatId = "test-chat", accountId = 1 } = req.body;
+      
+      const { externalAgentService } = await import('./services/externalAgentService');
+      
+      const agentResponse = await externalAgentService.processMessageForAgent(
+        message,
+        chatId,
+        accountId,
+        { contactName: "Usuario de Prueba" }
+      );
+
+      console.log(`🧪 Prueba exitosa del agente ${agentId}:`, agentResponse);
+      res.json({ 
+        success: true, 
+        message: 'Agente probado exitosamente',
+        response: agentResponse
+      });
+    } catch (error) {
+      console.error('❌ Error probando agente:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
     }
   });
 

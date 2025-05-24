@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Link as LinkIcon, CheckCircle, XCircle, Bot, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Link as LinkIcon, CheckCircle, XCircle, Bot, Trash2, Settings, Timer, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ExternalAgent {
@@ -32,6 +34,8 @@ export default function ExternalAgents() {
   const [newAgentUrl, setNewAgentUrl] = useState('');
   const [newAgentKeywords, setNewAgentKeywords] = useState('');
   const [loading, setLoading] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<ExternalAgent | null>(null);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -163,6 +167,69 @@ export default function ExternalAgents() {
       toast({
         title: "Error",
         description: "No se pudo eliminar el agente",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const updateAgentConfig = async (agentId: string, updates: Partial<ExternalAgent>) => {
+    try {
+      const response = await fetch(`/api/external-agents/${agentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Éxito",
+          description: "Configuración del agente actualizada exitosamente"
+        });
+        fetchAgents();
+        fetchStats();
+        setShowConfigDialog(false);
+        setEditingAgent(null);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la configuración del agente",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const openConfigDialog = (agent: ExternalAgent) => {
+    setEditingAgent(agent);
+    setShowConfigDialog(true);
+  };
+
+  const testAgent = async (agentId: string) => {
+    try {
+      const response = await fetch(`/api/external-agents/${agentId}/test`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: "Hola, esta es una prueba del sistema de agentes",
+          chatId: "test-chat",
+          accountId: 1
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Prueba exitosa",
+          description: "El agente respondió correctamente"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error en prueba",
+        description: "No se pudo probar el agente",
         variant: "destructive"
       });
     }
@@ -315,8 +382,27 @@ export default function ExternalAgents() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    onClick={() => openConfigDialog(agent)}
+                    className="text-blue-600 hover:text-blue-700"
+                    title="Configuración Avanzada"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => testAgent(agent.id)}
+                    className="text-green-600 hover:text-green-700"
+                    title="Probar Agente"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => deleteAgent(agent.id)}
                     className="text-red-600 hover:text-red-700"
+                    title="Eliminar Agente"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -404,6 +490,151 @@ export default function ExternalAgents() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Diálogo de Configuración Avanzada */}
+      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Configuración Avanzada - {editingAgent?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Personaliza el comportamiento y configuraciones específicas de este agente
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingAgent && (
+            <div className="space-y-6">
+              {/* Tiempo de Respuesta */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Timer className="w-4 h-4" />
+                  Tiempo de Respuesta (segundos)
+                </Label>
+                <Select
+                  value={editingAgent.responseDelay?.toString() || "3"}
+                  onValueChange={(value) => 
+                    setEditingAgent({...editingAgent, responseDelay: parseInt(value)})
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar tiempo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 segundo (Inmediato)</SelectItem>
+                    <SelectItem value="2">2 segundos (Rápido)</SelectItem>
+                    <SelectItem value="3">3 segundos (Normal)</SelectItem>
+                    <SelectItem value="5">5 segundos (Pensando)</SelectItem>
+                    <SelectItem value="8">8 segundos (Reflexivo)</SelectItem>
+                    <SelectItem value="10">10 segundos (Detallado)</SelectItem>
+                    <SelectItem value="15">15 segundos (Análisis profundo)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-gray-600">
+                  Tiempo que espera antes de enviar la respuesta automática
+                </p>
+              </div>
+
+              {/* Palabras Clave */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" />
+                  Palabras Clave de Activación
+                </Label>
+                <Input
+                  value={editingAgent.triggerKeywords?.join(', ') || ''}
+                  onChange={(e) => 
+                    setEditingAgent({
+                      ...editingAgent, 
+                      triggerKeywords: e.target.value.split(',').map(k => k.trim()).filter(k => k)
+                    })
+                  }
+                  placeholder="ayuda, consulta, información, soporte..."
+                />
+                <p className="text-sm text-gray-600">
+                  Palabras que activan este agente (separadas por comas)
+                </p>
+              </div>
+
+              {/* Configuraciones Específicas */}
+              <div className="space-y-3">
+                <Label>Configuraciones Específicas</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={editingAgent.isActive}
+                      onCheckedChange={(checked) => 
+                        setEditingAgent({...editingAgent, isActive: checked})
+                      }
+                    />
+                    <Label className="text-sm">Agente Activo</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={editingAgent.accountId === 1}
+                      onCheckedChange={(checked) => 
+                        setEditingAgent({...editingAgent, accountId: checked ? 1 : 2})
+                      }
+                    />
+                    <Label className="text-sm">Cuenta Principal</Label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Información del Agente */}
+              <div className="space-y-3">
+                <Label>Información del Agente</Label>
+                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">Nombre:</span>
+                    <span>{editingAgent.name}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">URL:</span>
+                    <span className="truncate max-w-[200px]">{editingAgent.agentUrl}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">Estado:</span>
+                    <Badge className={editingAgent.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                      {editingAgent.isActive ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex justify-between pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => testAgent(editingAgent.id)}
+                  className="text-green-600 border-green-300 hover:bg-green-50"
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Probar Agente
+                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowConfigDialog(false);
+                      setEditingAgent(null);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    onClick={() => updateAgentConfig(editingAgent.id, editingAgent)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Guardar Cambios
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
