@@ -4065,7 +4065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/external-agents', async (req: Request, res: Response) => {
     try {
       const { externalAgentService } = await import('./services/externalAgentService');
-      const agents = externalAgentService.getAgents();
+      const agents = await externalAgentService.getAllAgents();
       
       res.json({
         success: true,
@@ -4082,29 +4082,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/external-agents', async (req: Request, res: Response) => {
     try {
-      const { id, name, url, apiKey, headers, requestFormat } = req.body;
+      const { name, agentUrl, description, triggerKeywords, responseDelay } = req.body;
       
-      if (!id || !name || !url) {
+      if (!agentUrl) {
         return res.status(400).json({
           success: false,
-          error: 'ID, nombre y URL son requeridos'
+          error: 'URL del agente es requerida'
+        });
+      }
+
+      // Validar que la URL sea válida
+      try {
+        new URL(agentUrl);
+      } catch (urlError) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'URL inválida' 
         });
       }
 
       const { externalAgentService } = await import('./services/externalAgentService');
       
-      externalAgentService.configureCustomAgent({
-        id,
-        name,
-        url,
-        apiKey,
-        headers,
-        requestFormat: requestFormat || 'custom'
+      const agent = await externalAgentService.createAgent({
+        name: name || `Agente ${Date.now()}`,
+        agentUrl,
+        description: description || null,
+        triggerKeywords: triggerKeywords || [],
+        responseDelay: responseDelay || 3,
+        accountId: null,
+        isActive: true
       });
 
       res.json({
         success: true,
-        message: `Agente ${name} configurado exitosamente`
+        agent,
+        message: `Agente ${agent.name} configurado exitosamente`
       });
     } catch (error) {
       console.error('❌ Error configurando agente externo:', error);
