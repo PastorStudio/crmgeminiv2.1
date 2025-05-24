@@ -91,9 +91,9 @@ export function AutoResponseDialog({
 
   // Query to fetch current config
   const { data: currentConfig, isLoading } = useQuery({
-    queryKey: ['/api/auto-response/config', chatId],
+    queryKey: ['/api/auto-response/config', chatId, accountId],
     queryFn: async () => {
-      const response = await fetch(`/api/auto-response/config/${chatId}`);
+      const response = await fetch(`/api/auto-response/config/${chatId}/${accountId}`);
       if (!response.ok) {
         if (response.status === 404) {
           return null; // No config exists yet
@@ -102,14 +102,14 @@ export function AutoResponseDialog({
       }
       return response.json();
     },
-    enabled: open && !!chatId,
+    enabled: open && !!chatId && !!accountId,
   });
 
   // Mutation to save config
   const saveConfigMutation = useMutation({
     mutationFn: async (data: AutoResponseConfig) => {
-      const response = await fetch(`/api/auto-response/config/${chatId}`, {
-        method: 'PUT',
+      const response = await fetch(`/api/auto-response/config/${chatId}/${accountId}`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -128,16 +128,16 @@ export function AutoResponseDialog({
     },
     onSuccess: () => {
       toast({
-        title: 'Configuration saved',
-        description: 'Auto-response settings have been updated successfully',
+        title: 'Configuración guardada',
+        description: 'Las configuraciones de auto-respuesta se han actualizado exitosamente',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/auto-response/config', chatId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auto-response/config', chatId, accountId] });
       onOpenChange(false);
     },
     onError: (error) => {
       toast({
         title: 'Error',
-        description: `Failed to save configuration: ${error.message}`,
+        description: `Error al guardar configuración: ${error.message}`,
         variant: 'destructive',
       });
     },

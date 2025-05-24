@@ -329,16 +329,12 @@ export function WhatsAppTwoColumn() {
     }
   }, [messages]);
 
-  // Initialize with connected accounts if none selected
+  // Initialize with all accounts selected by default
   useEffect(() => {
-    if (accounts && accounts.length > 0 && selectedAccounts.length === 0) {
-      // Select all connected accounts by default
-      const connectedAccountIds = accounts
-        .filter(acc => acc.status === 'connected' || acc.status === 'ready')
-        .map(acc => acc.id);
-      if (connectedAccountIds.length > 0) {
-        setSelectedAccounts(connectedAccountIds);
-      }
+    if ((accounts as any[])?.length > 0 && selectedAccounts.length === 0) {
+      // Select all accounts by default
+      const allAccountIds = (accounts as any[]).map((acc: any) => acc.id);
+      setSelectedAccounts(allAccountIds);
     }
   }, [accounts, selectedAccounts]);
 
@@ -421,7 +417,7 @@ export function WhatsAppTwoColumn() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">WhatsApp Business</h2>
               <Badge variant="secondary" className="bg-green-100 text-green-800">
-                {selectedAccounts.length}/{accounts.length} seleccionadas
+                {selectedAccounts.length}/{(accounts as any[])?.length || 0} seleccionadas
               </Badge>
             </div>
             
