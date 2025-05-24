@@ -864,59 +864,6 @@ export function WhatsAppTwoColumn() {
 
                 {/* Botones de acción */}
                 <div className="flex items-center space-x-2">
-                            </motion.span>
-                          </motion.span>
-                        ) : (
-                          <motion.span
-                            key="unassigned"
-                            initial={{ opacity: 0, scale: 0.9, y: -10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                            transition={{ 
-                              duration: 0.3, 
-                              ease: "easeInOut",
-                              type: "spring",
-                              stiffness: 200,
-                              damping: 20
-                            }}
-                            className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm flex items-center"
-                          >
-                            <motion.div
-                              initial={{ rotate: 90, opacity: 0 }}
-                              animate={{ rotate: 0, opacity: 1 }}
-                              transition={{ delay: 0.1, duration: 0.2 }}
-                            >
-                              <User className="h-3 w-3 mr-1" />
-                            </motion.div>
-                            <motion.span
-                              initial={{ opacity: 0, x: 10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.15, duration: 0.2 }}
-                            >
-                              Sin asignar
-                            </motion.span>
-                          </motion.span>
-                        )}
-                      </AnimatePresence>
-                      <span className="text-sm text-gray-500">
-                        {!selectedChat.isGroup && (
-                          <>
-                            {isContactOnline(selectedChat) ? (
-                              <span className="text-green-600">En línea</span>
-                            ) : (
-                              `Últ. vez: ${formatLastSeen(selectedChat.timestamp)}`
-                            )}
-                            {' • '}
-                          </>
-                        )}
-                        {messages.length} mensajes
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Botones de acción */}
-                <div className="flex items-center space-x-2">
                   {/* Botón de Asignar Chat - Azul y visible */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
@@ -938,6 +885,258 @@ export function WhatsAppTwoColumn() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
+                  >
+                    <Button
+                      size="sm"
+                      variant={autoResponseEnabled ? "default" : "outline"}
+                      className={`shadow-sm transition-all duration-300 ${
+                        autoResponseEnabled 
+                          ? "bg-green-600 hover:bg-green-700 text-white" 
+                          : "border-green-600 text-green-600 hover:bg-green-50"
+                      }`}
+                      onClick={() => setAutoResponseConfigOpen(true)}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      {autoResponseEnabled ? "Auto ON" : "Auto OFF"}
+                    </Button>
+                  </motion.div>
+                  
+                  {/* Botón de Comentarios Internos */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                  >
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-orange-600 text-orange-600 hover:bg-orange-50 shadow-sm transition-all duration-300 relative"
+                      onClick={() => setCommentsDialogOpen(true)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Comentarios
+                      {chatComments.length > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                          {chatComments.length}
+                        </span>
+                      )}
+                    </Button>
+                  </motion.div>
+                  
+                  {/* Botón de información del perfil */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowUserProfile(true)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <User className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Área de mensajes */}
+            <ScrollArea className="flex-1 p-4">
+              {loadingMessages ? (
+                <div className="flex items-center justify-center h-32">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                  <span className="ml-2 text-gray-500">Cargando mensajes...</span>
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+                  <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
+                  <p>No hay mensajes en este chat</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((message: any, index: number) => {
+                    const showAvatar = selectedChat?.isGroup && !message.fromMe;
+                    const isFirstFromAuthor = index === 0 || 
+                      messages[index - 1].author !== message.author || 
+                      messages[index - 1].fromMe !== message.fromMe;
+                    
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${
+                          message.fromMe ? 'flex-row-reverse space-x-reverse' : ''
+                        }`}>
+                          {/* Avatar del remitente para grupos */}
+                          {showAvatar && isFirstFromAuthor && (
+                            <div className="flex-shrink-0 mb-1">
+                              <Avatar className="h-6 w-6">
+                                {message.authorProfilePic ? (
+                                  <AvatarImage 
+                                    src={message.authorProfilePic} 
+                                    alt={message.author || 'Usuario'}
+                                    className="object-cover"
+                                  />
+                                ) : null}
+                                <AvatarFallback className="text-xs bg-gray-200">
+                                  {(message.author || message.authorNumber || 'U').charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            </div>
+                          )}
+                          
+                          {/* Spacer cuando no hay avatar pero es grupo */}
+                          {showAvatar && !isFirstFromAuthor && (
+                            <div className="w-6 flex-shrink-0" />
+                          )}
+
+                          {/* Contenido del mensaje */}
+                          <div className="flex-1">
+                            {/* Nombre del autor para grupos (solo en el primer mensaje de la secuencia) */}
+                            {showAvatar && isFirstFromAuthor && (
+                              <div className="mb-1">
+                                <span className="text-xs font-medium text-gray-600">
+                                  {message.author || message.authorNumber || 'Usuario desconocido'}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Burbuja del mensaje */}
+                            <div
+                              className={`px-4 py-2 rounded-lg ${
+                                message.fromMe
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              <p className="text-sm">{message.body}</p>
+                              <div className={`flex items-center justify-end mt-1 space-x-1 ${
+                                message.fromMe ? 'text-blue-100' : 'text-gray-400'
+                              }`}>
+                                <span className="text-xs">
+                                  {formatTime(message.timestamp)}
+                                </span>
+                                {/* Indicadores de estado del mensaje - solo para mensajes enviados */}
+                                {message.fromMe && (
+                                  <div className="flex items-center ml-1">
+                                    {/* Mostrar indicadores basados en propiedades disponibles de WhatsApp */}
+                                    {(message as any).ack === 3 || (message as any).isRead ? (
+                                      /* Doble check azul para mensajes leídos */
+                                      <div className="flex items-center">
+                                        <svg className="w-3 h-3 text-blue-200" viewBox="0 0 16 16" fill="currentColor">
+                                          <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                        </svg>
+                                        <svg className="w-3 h-3 text-blue-200 -ml-1" viewBox="0 0 16 16" fill="currentColor">
+                                          <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                        </svg>
+                                      </div>
+                                    ) : (message as any).ack === 2 || (message as any).status === 'delivered' ? (
+                                      /* Doble check gris para mensajes entregados */
+                                      <div className="flex items-center">
+                                        <svg className="w-3 h-3 text-blue-300" viewBox="0 0 16 16" fill="currentColor">
+                                          <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                        </svg>
+                                        <svg className="w-3 h-3 text-blue-300 -ml-1" viewBox="0 0 16 16" fill="currentColor">
+                                          <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                        </svg>
+                                      </div>
+                                    ) : (message as any).ack === 1 || (message as any).status === 'sent' ? (
+                                      /* Un solo check para mensaje enviado */
+                                      <svg className="w-3 h-3 text-blue-300" viewBox="0 0 16 16" fill="currentColor">
+                                        <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                      </svg>
+                                    ) : (
+                                      /* Doble check para mensajes normales - WhatsApp por defecto muestra entregado */
+                                      <div className="flex items-center">
+                                        <svg className="w-3 h-3 text-blue-300" viewBox="0 0 16 16" fill="currentColor">
+                                          <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                        </svg>
+                                        <svg className="w-3 h-3 text-blue-300 -ml-1" viewBox="0 0 16 16" fill="currentColor">
+                                          <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                                        </svg>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </ScrollArea>
+
+            {/* Input para enviar mensajes */}
+            <div className="p-4 border-t border-gray-100">
+              <form onSubmit={handleSendMessage} className="flex space-x-3">
+                <Input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Escribe un mensaje..."
+                  className="flex-1"
+                  disabled={sendMessageMutation.isPending}
+                />
+                <Button 
+                  type="submit" 
+                  disabled={!newMessage.trim() || sendMessageMutation.isPending}
+                  className="px-6"
+                >
+                  {sendMessageMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </form>
+            </div>
+          </>
+        ) : (
+          /* Pantalla cuando no hay chat seleccionado */
+          <div className="flex-1 flex items-center justify-center bg-gray-50">
+            <div className="text-center text-gray-500">
+              <MessageCircle className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-lg font-medium mb-2">Selecciona un chat</h3>
+              <p className="text-sm">Elige un chat de la lista para ver los mensajes</p>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Diálogo de asignación de chat */}
+      {selectedChat && selectedAccount && (
+        <ChatAssignmentDialog
+          open={assignmentDialogOpen}
+          onOpenChange={setAssignmentDialogOpen}
+          chatId={selectedChat.id}
+          accountId={selectedAccount.id}
+        />
+      )}
+
+      {/* Diálogo de configuración de respuestas automáticas */}
+      {selectedChat && selectedAccount && (
+        <AutoResponseConfigDialog
+          open={autoResponseConfigOpen}
+          onOpenChange={setAutoResponseConfigOpen}
+          currentConfig={autoResponseConfig}
+          onSave={handleAutoResponseConfig}
+          chatId={selectedChat.id}
+          accountId={selectedAccount.id}
+        />
+      )}
+
+      {/* Diálogo de comentarios internos */}
+      {selectedChat && (
+        <ChatCommentsDialog
+          open={commentsDialogOpen}
+          onOpenChange={setCommentsDialogOpen}
+          chatId={selectedChat.id}
+          chatName={selectedChat.name}
+        />
+      )}
+    </div>
+  );
+}
                   >
                     <Button
                       size="sm"
