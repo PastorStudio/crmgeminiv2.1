@@ -355,11 +355,8 @@ app.use((req, res, next) => {
     }
   });
 
-  // TEMPORALMENTE desactivado para usar rutas directas sin autenticación
-  // const server = await registerRoutes(app);
-  
-  // Crear servidor HTTP manualmente para evitar conflictos
-  const server = createServer(app);
+  // Registrar todas las rutas incluyendo autenticación
+  const server = await registerRoutes(app);
   
   // Inicializar sistema de notificaciones en tiempo real
   try {
