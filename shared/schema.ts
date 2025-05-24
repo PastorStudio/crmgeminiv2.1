@@ -372,7 +372,7 @@ export const agentResponses = pgTable('agent_responses', {
   chatId: text('chat_id').notNull(),
   originalMessage: text('original_message').notNull(),
   agentResponse: text('agent_response').notNull(),
-  confidence: real('confidence'),
+  confidence: doublePrecision('confidence'),
   responseTime: integer('response_time'),
   createdAt: timestamp('created_at').defaultNow(),
 });
