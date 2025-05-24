@@ -471,11 +471,7 @@ export function WhatsAppTwoColumn() {
                           )}
                         </div>
 
-                        {/* Chat categorization and assignment badges */}
-                        <div className="flex items-center justify-between mt-2">
-                          <ChatCategorizationBadge chatId={chat.id} accountId={chat.accountId} />
-                          <ChatAssignmentBadge chatId={chat.id} accountId={chat.accountId} />
-                        </div>
+
                       </div>
                     </div>
                   </motion.div>
