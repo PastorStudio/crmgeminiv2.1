@@ -713,9 +713,19 @@ export function WhatsAppTwoColumn() {
                                 </div>
                               )}
                               {message.fromMe && (
-                                <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[8px] flex-shrink-0">
-                                  <span>
-                                    {message.type === 'delivered' ? '✓✓' : '✓'}
+                                <div className="text-xs pt-[10px] pb-[10px] ml-[2px] mr-[8px] flex-shrink-0">
+                                  <span className={`${
+                                    message.messageRead 
+                                      ? 'text-blue-500' 
+                                      : message.type === 'delivered' 
+                                        ? 'text-gray-500' 
+                                        : 'text-gray-400'
+                                  }`}>
+                                    {message.messageRead 
+                                      ? '✓✓' 
+                                      : message.type === 'delivered' 
+                                        ? '✓✓' 
+                                        : '✓'}
                                   </span>
                                 </div>
                               )}
