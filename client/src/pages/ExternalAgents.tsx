@@ -52,9 +52,11 @@ export default function ExternalAgents() {
   const queryClient = useQueryClient();
 
   // Obtener lista de agentes
-  const { data: agents = [], isLoading: loadingAgents } = useQuery({
+  const { data: agentsResponse, isLoading: loadingAgents } = useQuery({
     queryKey: ['/api/external-agents'],
   });
+  
+  const agents = agentsResponse?.agents || [];
 
   // Obtener estadísticas
   const { data: stats } = useQuery<AgentStats>({

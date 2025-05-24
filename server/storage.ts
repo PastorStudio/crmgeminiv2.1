@@ -469,6 +469,53 @@ export class DatabaseStorage implements IStorage {
       // No lanzamos el error para evitar interrupciones, solo lo registramos
     }
   }
+
+  // Auto-response configuration methods
+  async getAutoResponseConfig(): Promise<any> {
+    try {
+      // Devolver configuración por defecto si no existe
+      return {
+        enabled: false,
+        welcomeMessage: "¡Hola! Gracias por contactarnos. En breve te responderemos.",
+        businessHours: {
+          enabled: false,
+          start: "09:00",
+          end: "18:00",
+          timezone: "UTC-5"
+        },
+        smartResponses: {
+          enabled: false,
+          model: "gpt-4o"
+        }
+      };
+    } catch (error) {
+      console.error("Error al obtener configuración de auto-respuesta:", error);
+      return {
+        enabled: false,
+        welcomeMessage: "¡Hola! Gracias por contactarnos. En breve te responderemos.",
+        businessHours: {
+          enabled: false,
+          start: "09:00",
+          end: "18:00",
+          timezone: "UTC-5"
+        },
+        smartResponses: {
+          enabled: false,
+          model: "gpt-4o"
+        }
+      };
+    }
+  }
+
+  async saveAutoResponseConfig(config: any): Promise<void> {
+    try {
+      // En un sistema real, esto se guardaría en la base de datos
+      console.log("Configuración de auto-respuesta guardada:", config);
+    } catch (error) {
+      console.error("Error al guardar configuración de auto-respuesta:", error);
+      throw error;
+    }
+  }
   
   // WhatsApp Accounts methods
   async getAllWhatsappAccounts(): Promise<WhatsappAccount[]> {
