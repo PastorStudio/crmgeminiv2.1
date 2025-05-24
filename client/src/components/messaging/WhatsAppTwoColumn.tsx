@@ -276,8 +276,8 @@ export function WhatsAppTwoColumn() {
     }
   };
 
-  // Función para manejar mensajes de audio
-  const handleAudioMessage = async (audioMessage: any) => {
+  // Función para manejar mensajes de audio con traducción
+  const handleAudioMessageWithTranslation = async (audioMessage: any) => {
     if (!selectedChat) return;
     
     try {
@@ -709,95 +709,7 @@ export function WhatsAppTwoColumn() {
     }
   };
 
-  // Función para manejar audio con transcripción y respuesta automática
-  const handleAudioMessage = async (message: any) => {
-    if (!selectedChat) return;
-    
-    try {
-      console.log('🎤 Procesando mensaje de audio...');
-      
-      if (!message.mediaUrl && !message._data?.mediaUrl) {
-        console.log('⚠️ Mensaje de audio sin URL disponible');
-        return;
-      }
-      
-      const audioUrl = message.mediaUrl || message._data?.mediaUrl;
-      
-      // Transcribir el audio usando OpenAI Whisper
-      const transcriptionResponse = await fetch('/api/audio/transcribe-whatsapp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          audioUrl: audioUrl,
-          chatId: selectedChat.id,
-          accountId: selectedChat.accountId,
-          messageId: message.id
-        })
-      });
 
-      if (transcriptionResponse.ok) {
-        const transcriptionData = await transcriptionResponse.json();
-        console.log('✅ Audio transcrito exitosamente:', transcriptionData.transcription);
-        
-        toast({
-          title: "🎤 Audio transcrito",
-          description: `"${transcriptionData.transcription}"`,
-          duration: 8000
-        });
-        
-        // Si SmartBots está habilitado, generar respuesta automática
-        if (smartBotsEnabled) {
-          console.log('🤖 Generando respuesta automática para audio transcrito...');
-          
-          setTimeout(async () => {
-            try {
-              let response = await generateSmartBotsAutoResponse(transcriptionData.transcription, selectedChat.name);
-              
-              // Si la traducción está habilitada, traducir la respuesta
-              if (response && translationEnabled && selectedLanguage !== 'es') {
-                console.log(`🌐 Traduciendo respuesta automática al ${selectedLanguage}...`);
-                response = await translateMessage(response, selectedLanguage);
-              }
-              
-              if (response) {
-                console.log('📤 Enviando respuesta automática para audio:', response);
-                await sendAutoMessage(response);
-                
-                toast({
-                  title: "🎤➡️🤖 Respuesta automática para audio enviada",
-                  description: translationEnabled ? `En ${selectedLanguage.toUpperCase()}` : "SmartBots respondió al audio",
-                  duration: 4000
-                });
-              }
-            } catch (error) {
-              console.error('❌ Error generando respuesta para audio:', error);
-            }
-          }, 2000);
-        }
-        
-      } else {
-        const errorData = await transcriptionResponse.json();
-        console.error('❌ Error transcribiendo audio:', errorData);
-        
-        toast({
-          title: "❌ Error transcribiendo audio",
-          description: errorData.error || "No se pudo transcribir el mensaje de audio",
-          variant: "destructive"
-        });
-      }
-      
-    } catch (error) {
-      console.error('❌ Error procesando mensaje de audio:', error);
-      
-      toast({
-        title: "❌ Error procesando audio",
-        description: "No se pudo procesar el mensaje de audio",
-        variant: "destructive"
-      });
-    }
-  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
