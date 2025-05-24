@@ -175,7 +175,7 @@ export function WhatsAppTwoColumn() {
   const [smartBotsEnabled, setSmartBotsEnabled] = useState(false);
 
   // Función para generar respuesta automática con SmartBots
-  const generateSmartBotsResponse = async (userMessage: string, contactName: string) => {
+  const generateSmartBotsResponse = async (userMessage: string, contactName: string, isIncomingMessage = false) => {
     try {
       console.log('🤖 Generando respuesta SmartBots para:', userMessage);
       
@@ -196,11 +196,21 @@ export function WhatsAppTwoColumn() {
       if (data.success && data.response) {
         console.log('✅ Respuesta SmartBots:', data.response);
         
-        // Mostrar notificación de que se generó una respuesta
-        toast({
-          title: "🤖 Respuesta AI generada",
-          description: `SmartBots sugiere: "${data.response.substring(0, 50)}..."`,
-        });
+        if (isIncomingMessage) {
+          // Para mensajes entrantes, pre-llenar el campo de texto con la respuesta sugerida
+          setNewMessage(data.response);
+          
+          toast({
+            title: "🤖 Respuesta AI preparada",
+            description: `SmartBots sugiere responder: "${data.response.substring(0, 50)}..."`,
+          });
+        } else {
+          // Mostrar notificación de que se generó una respuesta
+          toast({
+            title: "🤖 Respuesta AI generada",
+            description: `SmartBots sugiere: "${data.response.substring(0, 50)}..."`,
+          });
+        }
         
         return data.response;
       } else {
@@ -216,6 +226,8 @@ export function WhatsAppTwoColumn() {
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const [lastMessageCount, setLastMessageCount] = useState(0);
+  const [lastProcessedMessageId, setLastProcessedMessageId] = useState<string | null>(null);
 
   // Fetch WhatsApp accounts
   const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
@@ -379,6 +391,87 @@ export function WhatsAppTwoColumn() {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  // Detectar mensajes nuevos y activar SmartBots automáticamente
+  useEffect(() => {
+    if (!selectedMessages || !smartBotsEnabled || !selectedChat) return;
+
+    const currentMessages = selectedMessages;
+    const currentCount = currentMessages.length;
+
+    // Si hay mensajes nuevos
+    if (currentCount > lastMessageCount && lastMessageCount > 0) {
+      const newMessages = currentMessages.slice(lastMessageCount);
+      
+      // Buscar mensajes entrantes (no enviados por nosotros)
+      const incomingMessages = newMessages.filter(msg => !msg.fromMe);
+      
+      if (incomingMessages.length > 0) {
+        const lastIncomingMessage = incomingMessages[incomingMessages.length - 1];
+        
+        // Solo procesar si no hemos procesado este mensaje antes
+        if (lastIncomingMessage.id !== lastProcessedMessageId) {
+          console.log('🤖 Nuevo mensaje entrante detectado:', lastIncomingMessage.body);
+          
+          // Generar respuesta automática para el mensaje entrante
+          setTimeout(() => {
+            generateSmartBotsResponse(lastIncomingMessage.body, selectedChat.name, true);
+          }, 1500);
+          
+          setLastProcessedMessageId(lastIncomingMessage.id);
+        }
+      }
+    }
+
+    setLastMessageCount(currentCount);
+  }, [selectedMessages, smartBotsEnabled, selectedChat, lastMessageCount, lastProcessedMessageId, generateSmartBotsResponse]);
+
+  // Detectar y traducir mensajes en inglés automáticamente
+  useEffect(() => {
+    if (!selectedMessages || !translatorEnabled) return;
+
+    const currentMessages = selectedMessages;
+    
+    // Buscar mensajes en inglés que no son nuestros
+    const englishMessages = currentMessages.filter(msg => 
+      !msg.fromMe && 
+      /\b(hello|hi|how|are|you|what|where|when|why|please|thank|thanks|good|morning|afternoon|evening|night|yes|no|ok|okay)\b/i.test(msg.body)
+    );
+
+    if (englishMessages.length > 0) {
+      const lastEnglishMessage = englishMessages[englishMessages.length - 1];
+      
+      // Mostrar traducción automática
+      if (lastEnglishMessage.body.length > 3) {
+        console.log('🌐 Mensaje en inglés detectado:', lastEnglishMessage.body);
+        
+        // Traducción básica automática
+        const spanishTranslation = lastEnglishMessage.body
+          .replace(/hello|hi/gi, 'hola')
+          .replace(/how are you/gi, 'cómo estás')
+          .replace(/good morning/gi, 'buenos días')
+          .replace(/good afternoon/gi, 'buenas tardes')
+          .replace(/good evening|good night/gi, 'buenas noches')
+          .replace(/thank you|thanks/gi, 'gracias')
+          .replace(/please/gi, 'por favor')
+          .replace(/what/gi, 'qué')
+          .replace(/where/gi, 'dónde')
+          .replace(/when/gi, 'cuándo')
+          .replace(/why/gi, 'por qué')
+          .replace(/how/gi, 'cómo')
+          .replace(/yes/gi, 'sí')
+          .replace(/no/gi, 'no')
+          .replace(/ok|okay/gi, 'está bien');
+
+        if (spanishTranslation !== lastEnglishMessage.body) {
+          toast({
+            title: "🌐 Traducción automática",
+            description: `"${lastEnglishMessage.body}" → "${spanishTranslation}"`,
+          });
+        }
+      }
+    }
+  }, [selectedMessages, translatorEnabled]);
 
   // Initialize with all accounts selected by default
   useEffect(() => {
