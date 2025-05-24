@@ -4167,7 +4167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: `Agente intermediario conectado a ${agentName}`,
         triggerKeywords: triggerKeywords || [],
         responseDelay: 3,
-        accountId: null,
+        accountId: 1,
         isActive: true
       });
 
@@ -4305,8 +4305,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('📊 Obteniendo estadísticas de agentes desde base de datos...');
       const { externalAgentService } = await import('./services/externalAgentService');
       const stats = await externalAgentService.getAgentStats();
-      
-      res.json(stats);
       
       res.setHeader('Content-Type', 'application/json');
       res.json(stats);

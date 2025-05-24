@@ -6,14 +6,24 @@ import { nanoid } from 'nanoid';
 export class ExternalAgentService {
   // Crear un nuevo agente externo
   async createAgent(agentData: Omit<InsertExternalAgent, 'id'>): Promise<ExternalAgent> {
-    const id = nanoid();
-    
-    const [agent] = await db.insert(externalAgents).values({
-      ...agentData,
-      id,
-    }).returning();
-    
-    return agent;
+    try {
+      const id = nanoid();
+      
+      console.log('🔄 Insertando agente en base de datos:', { ...agentData, id });
+      
+      const [agent] = await db.insert(externalAgents).values({
+        ...agentData,
+        id,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }).returning();
+      
+      console.log('✅ Agente insertado exitosamente en base de datos:', agent);
+      return agent;
+    } catch (error) {
+      console.error('❌ Error insertando agente en base de datos:', error);
+      throw error;
+    }
   }
 
   // Obtener todos los agentes externos
