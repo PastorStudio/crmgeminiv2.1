@@ -187,7 +187,27 @@ export function WhatsAppTwoColumn() {
   const { data: messages = [], isLoading: loadingMessages } = useQuery({
     queryKey: ['/api/whatsapp/messages', selectedChat?.id],
     enabled: !!selectedChat?.id,
-    refetchInterval: 2000 // Refresh messages every 2 seconds
+    queryFn: async () => {
+      if (!selectedChat?.id) return [];
+      
+      console.log('🔄 Obteniendo mensajes reales para chat:', selectedChat.id);
+      
+      try {
+        const response = await fetch(`/api/whatsapp/messages/${selectedChat.id}`);
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+          console.log(`✅ ${data.length} mensajes reales obtenidos para chat ${selectedChat.id}`);
+          return data;
+        }
+        
+        return [];
+      } catch (error) {
+        console.error('❌ Error obteniendo mensajes:', error);
+        return [];
+      }
+    },
+    refetchInterval: 5000 // Refresh messages every 5 seconds
   });
 
   // Fetch auto response config

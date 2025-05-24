@@ -2246,6 +2246,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Crear servidor HTTP
   const httpServer = createServer(app);
   
+  // Ruta para obtener mensajes de un chat específico de WhatsApp
+  app.get("/api/whatsapp/messages/:chatId", async (req: Request, res: Response) => {
+    try {
+      const { getWhatsAppMessages } = await import('./routes/whatsappAPI');
+      await getWhatsAppMessages(req, res);
+    } catch (error) {
+      console.error("Error obteniendo mensajes de WhatsApp:", error);
+      res.status(500).json({ error: "Error obteniendo mensajes" });
+    }
+  });
+
   // Rutas para plantillas de mensajes
   app.get("/api/message-templates", async (req: Request, res: Response) => {
     try {
