@@ -200,7 +200,7 @@ app.use((req, res, next) => {
   // Registrar rutas de WhatsApp API
   app.get('/api/whatsapp/accounts', whatsappAPI.getWhatsAppAccounts);
   app.get('/api/whatsapp/chats', whatsappAPI.getWhatsAppChats);
-  app.get('/api/whatsapp/messages/:chatId', whatsappAPI.getWhatsAppMessages);
+  // Ruta de mensajes eliminada - se maneja en routes.ts con datos reales únicamente
   app.post('/api/whatsapp/send-message', whatsappAPI.sendWhatsAppMessage);
   app.get('/api/chat-categories/:chatId', whatsappAPI.getChatCategory);
   app.post('/api/chat-categories/:chatId', whatsappAPI.setChatCategory);
