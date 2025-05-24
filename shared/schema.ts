@@ -472,13 +472,7 @@ export const chatAssignmentsRelations = relations(chatAssignments, ({ one }) => 
   })
 }));
 
-// Relaciones para categorías de chat
-export const chatCategoriesRelations = relations(chatCategories, ({ one }) => ({
-  createdByUser: one(users, {
-    fields: [chatCategories.createdBy],
-    references: [users.id]
-  })
-}));
+// Chat categories relations removed due to table restructuring
 
 // Definir relaciones de usuarios
 export const usersRelations = relations(users, ({ one, many }) => ({
