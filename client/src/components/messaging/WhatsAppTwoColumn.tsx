@@ -31,7 +31,7 @@ import {
 
 // Import components
 import { AccountSelector } from './AccountSelector';
-import { ChatAssignmentDialog } from './ChatAssignmentDialog';
+import ChatAssignmentDialog from './ChatAssignmentDialog';
 import { ChatCommentsDialog } from './ChatCommentsDialog';
 import { AutoResponseDialog } from './AutoResponseDialog';
 

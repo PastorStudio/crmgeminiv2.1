@@ -1,16 +1,31 @@
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { toast } from '@/hooks/use-toast';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Clock, MessageCircle, Save, Zap } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { Bot, Clock, Hash, MessageSquare, Zap } from 'lucide-react';
+
+// Schema for auto-response configuration
+const autoResponseSchema = z.object({
+  enabled: z.boolean(),
+  template: z.string().min(1, 'Template message is required'),
+  triggerKeywords: z.array(z.string()).min(1, 'At least one trigger keyword is required'),
+  schedule: z.object({
+    enabled: z.boolean(),
+    startTime: z.string(),
+    endTime: z.string(),
+    timezone: z.string(),
+  }),
+  maxResponsesPerDay: z.number().min(1).max(100).optional(),
+});
 
 interface AutoResponseConfig {
   enabled: boolean;
@@ -22,6 +37,7 @@ interface AutoResponseConfig {
     endTime: string;
     timezone: string;
   };
+  maxResponsesPerDay?: number;
 }
 
 interface AutoResponseDialogProps {
@@ -37,213 +53,329 @@ export function AutoResponseDialog({
   onOpenChange,
   config,
   chatId,
-  accountId
+  accountId,
 }: AutoResponseDialogProps) {
-  const [enabled, setEnabled] = useState(config?.enabled || false);
-  const [template, setTemplate] = useState(config?.template || '');
-  const [keywords, setKeywords] = useState(config?.triggerKeywords?.join(', ') || '');
-  const [scheduleEnabled, setScheduleEnabled] = useState(config?.schedule?.enabled || false);
-  const [startTime, setStartTime] = useState(config?.schedule?.startTime || '09:00');
-  const [endTime, setEndTime] = useState(config?.schedule?.endTime || '18:00');
-
+  const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [keywordInput, setKeywordInput] = useState('');
 
-  const updateConfigMutation = useMutation({
+  // Form setup
+  const form = useForm<z.infer<typeof autoResponseSchema>>({
+    resolver: zodResolver(autoResponseSchema),
+    defaultValues: {
+      enabled: config?.enabled || false,
+      template: config?.template || '',
+      triggerKeywords: config?.triggerKeywords || [],
+      schedule: {
+        enabled: config?.schedule?.enabled || false,
+        startTime: config?.schedule?.startTime || '09:00',
+        endTime: config?.schedule?.endTime || '17:00',
+        timezone: config?.schedule?.timezone || 'America/Mexico_City',
+      },
+      maxResponsesPerDay: config?.maxResponsesPerDay || 10,
+    },
+  });
+
+  // Update form when config changes
+  useEffect(() => {
+    if (config) {
+      form.reset({
+        enabled: config.enabled,
+        template: config.template,
+        triggerKeywords: config.triggerKeywords,
+        schedule: config.schedule,
+        maxResponsesPerDay: config.maxResponsesPerDay || 10,
+      });
+    }
+  }, [config, form]);
+
+  // Query to fetch current config
+  const { data: currentConfig, isLoading } = useQuery({
+    queryKey: ['/api/auto-response/config', chatId],
+    queryFn: async () => {
+      const response = await fetch(`/api/auto-response/config/${chatId}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null; // No config exists yet
+        }
+        throw new Error('Failed to fetch auto-response config');
+      }
+      return response.json();
+    },
+    enabled: open && !!chatId,
+  });
+
+  // Mutation to save config
+  const saveConfigMutation = useMutation({
     mutationFn: async (data: AutoResponseConfig) => {
       const response = await fetch(`/api/auto-response/config/${chatId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...data,
+          chatId,
+          accountId,
+        }),
       });
-      if (!response.ok) throw new Error('Failed to update config');
+
+      if (!response.ok) {
+        throw new Error('Failed to save auto-response config');
+      }
+
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/auto-response/config', chatId] });
       toast({
-        title: "Configuración actualizada",
-        description: "La configuración de respuesta automática se ha guardado exitosamente"
+        title: 'Configuration saved',
+        description: 'Auto-response settings have been updated successfully',
       });
+      queryClient.invalidateQueries({ queryKey: ['/api/auto-response/config', chatId] });
       onOpenChange(false);
     },
-    onError: () => {
+    onError: (error) => {
       toast({
-        title: "Error",
-        description: "No se pudo actualizar la configuración",
-        variant: "destructive"
+        title: 'Error',
+        description: `Failed to save configuration: ${error.message}`,
+        variant: 'destructive',
       });
-    }
+    },
   });
 
-  const handleSave = () => {
+  // Handle form submission
+  const onSubmit = (data: z.infer<typeof autoResponseSchema>) => {
     const newConfig: AutoResponseConfig = {
-      enabled,
-      template,
-      triggerKeywords: keywords.split(',').map(k => k.trim()).filter(k => k),
-      schedule: {
-        enabled: scheduleEnabled,
-        startTime,
-        endTime,
-        timezone: 'America/Bogota'
-      }
+      enabled: data.enabled,
+      template: data.template,
+      triggerKeywords: data.triggerKeywords,
+      schedule: data.schedule,
+      maxResponsesPerDay: data.maxResponsesPerDay,
     };
 
-    updateConfigMutation.mutate(newConfig);
+    saveConfigMutation.mutate(newConfig);
   };
+
+  // Handle adding keywords
+  const addKeyword = () => {
+    if (keywordInput.trim()) {
+      const currentKeywords = form.getValues('triggerKeywords');
+      if (!currentKeywords.includes(keywordInput.trim())) {
+        form.setValue('triggerKeywords', [...currentKeywords, keywordInput.trim()]);
+        setKeywordInput('');
+      }
+    }
+  };
+
+  // Handle removing keywords
+  const removeKeyword = (keyword: string) => {
+    const currentKeywords = form.getValues('triggerKeywords');
+    form.setValue('triggerKeywords', currentKeywords.filter(k => k !== keyword));
+  };
+
+  // Handle keyword input keypress
+  const handleKeywordKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addKeyword();
+    }
+  };
+
+  const triggerKeywords = form.watch('triggerKeywords') || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <Zap className="h-5 w-5 text-green-600" />
-            <span>Configuración de Respuestas Automáticas</span>
+          <DialogTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5 text-blue-500" />
+            Auto-Response Configuration
           </DialogTitle>
+          <DialogDescription>
+            Configure automatic responses for this chat. Messages will be sent when trigger keywords are detected.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Enable/Disable */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <MessageCircle className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium">Estado de Respuestas Automáticas</span>
-                </div>
-                <Switch
-                  checked={enabled}
-                  onCheckedChange={setEnabled}
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-gray-600">
-                {enabled 
-                  ? "Las respuestas automáticas están activadas para este chat"
-                  : "Las respuestas automáticas están desactivadas"
-                }
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Template Message */}
-          <div className="space-y-2">
-            <Label htmlFor="template">Mensaje de Respuesta Automática</Label>
-            <Textarea
-              id="template"
-              placeholder="Ej: Gracias por contactarnos. En este momento no estamos disponibles, pero te responderemos pronto."
-              value={template}
-              onChange={(e) => setTemplate(e.target.value)}
-              className="min-h-20"
-              disabled={!enabled}
-            />
-            <p className="text-xs text-gray-500">
-              Este mensaje se enviará automáticamente cuando se cumplan las condiciones
-            </p>
-          </div>
-
-          {/* Trigger Keywords */}
-          <div className="space-y-2">
-            <Label htmlFor="keywords">Palabras Clave de Activación</Label>
-            <Input
-              id="keywords"
-              placeholder="Ej: hola, información, precio, ayuda"
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              disabled={!enabled}
-            />
-            <p className="text-xs text-gray-500">
-              Separa las palabras con comas. La respuesta se enviará cuando se detecten estas palabras
-            </p>
-          </div>
-
-          <Separator />
-
-          {/* Schedule Settings */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4 text-orange-600" />
-                  <span className="font-medium">Programación de Horarios</span>
-                </div>
-                <Switch
-                  checked={scheduleEnabled}
-                  onCheckedChange={setScheduleEnabled}
-                  disabled={!enabled}
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-4">
-              <p className="text-sm text-gray-600">
-                {scheduleEnabled 
-                  ? "Las respuestas automáticas solo se enviarán durante el horario configurado"
-                  : "Las respuestas automáticas se enviarán en cualquier momento"
-                }
-              </p>
-
-              {scheduleEnabled && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="startTime">Hora de Inicio</Label>
-                    <Input
-                      id="startTime"
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      disabled={!enabled}
-                    />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Enable/Disable Toggle */}
+            <FormField
+              control={form.control}
+              name="enabled"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base flex items-center gap-2">
+                      <Zap className="h-4 w-4" />
+                      Enable Auto-Response
+                    </FormLabel>
+                    <div className="text-sm text-muted-foreground">
+                      Automatically send responses when trigger keywords are detected
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="endTime">Hora de Fin</Label>
-                    <Input
-                      id="endTime"
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      disabled={!enabled}
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
                     />
-                  </div>
-                </div>
+                  </FormControl>
+                </FormItem>
               )}
-            </CardContent>
-          </Card>
+            />
 
-          {/* Preview */}
-          {enabled && template && (
-            <Card className="bg-blue-50 border-blue-200">
-              <CardHeader className="pb-3">
-                <span className="font-medium text-blue-900">Vista Previa del Mensaje</span>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="bg-white p-3 rounded-lg border">
-                  <p className="text-sm">{template}</p>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {keywords.split(',').map(keyword => keyword.trim()).filter(k => k).map((keyword, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {keyword}
+            {/* Template Message */}
+            <FormField
+              control={form.control}
+              name="template"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Response Template
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter your automatic response message..."
+                      className="min-h-[100px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Trigger Keywords */}
+            <div className="space-y-3">
+              <FormLabel className="flex items-center gap-2">
+                <Hash className="h-4 w-4" />
+                Trigger Keywords
+              </FormLabel>
+              
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add keyword..."
+                  value={keywordInput}
+                  onChange={(e) => setKeywordInput(e.target.value)}
+                  onKeyPress={handleKeywordKeyPress}
+                />
+                <Button
+                  type="button"
+                  onClick={addKeyword}
+                  disabled={!keywordInput.trim()}
+                >
+                  Add
+                </Button>
+              </div>
+
+              {triggerKeywords.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {triggerKeywords.map((keyword) => (
+                    <Badge
+                      key={keyword}
+                      variant="secondary"
+                      className="cursor-pointer"
+                      onClick={() => removeKeyword(keyword)}
+                    >
+                      {keyword} ×
                     </Badge>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              )}
+            </div>
 
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleSave}
-            disabled={updateConfigMutation.isPending}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {updateConfigMutation.isPending ? 'Guardando...' : 'Guardar Configuración'}
-          </Button>
-        </div>
+            {/* Schedule Settings */}
+            <FormField
+              control={form.control}
+              name="schedule.enabled"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Schedule Restrictions
+                    </FormLabel>
+                    <div className="text-sm text-muted-foreground">
+                      Only send responses during specific hours
+                    </div>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {form.watch('schedule.enabled') && (
+              <div className="grid grid-cols-2 gap-4 pl-4">
+                <FormField
+                  control={form.control}
+                  name="schedule.startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Time</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="schedule.endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Time</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
+            {/* Max Responses Per Day */}
+            <FormField
+              control={form.control}
+              name="maxResponsesPerDay"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Max Responses Per Day</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="100"
+                      {...field}
+                      onChange={(e) => field.onChange(parseInt(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={saveConfigMutation.isPending || !form.formState.isValid}
+              >
+                {saveConfigMutation.isPending ? 'Saving...' : 'Save Configuration'}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
