@@ -664,65 +664,136 @@ export function WhatsAppTwoColumn() {
     };
   }, [queryClient]);
 
-  // Handle audio message transcription
-  const handleAudioMessage = async (message: WhatsAppMessage) => {
-    if (!message.mediaUrl && !message._data?.mediaUrl) {
-      toast({
-        title: "Error",
-        description: "No se puede transcribir: audio no disponible",
-        variant: "destructive"
-      });
-      return;
-    }
+  // Estados para traducción mejorada
+  const [translationEnabled, setTranslationEnabled] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [languageSelectorOpen, setLanguageSelectorOpen] = useState(false);
 
+  // Idiomas disponibles para traducción
+  const availableLanguages = [
+    { code: 'en', name: 'English', flag: '🇺🇸' },
+    { code: 'es', name: 'Español', flag: '🇪🇸' },
+    { code: 'fr', name: 'Français', flag: '🇫🇷' },
+    { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+    { code: 'it', name: 'Italiano', flag: '🇮🇹' },
+    { code: 'pt', name: 'Português', flag: '🇵🇹' },
+    { code: 'ru', name: 'Русский', flag: '🇷🇺' },
+    { code: 'zh', name: '中文', flag: '🇨🇳' },
+    { code: 'ja', name: '日本語', flag: '🇯🇵' },
+    { code: 'ko', name: '한국어', flag: '🇰🇷' }
+  ];
+
+  // Función para traducir texto usando OpenAI
+  const translateMessage = async (text: string, targetLanguage: string) => {
     try {
-      console.log('🎵 Iniciando transcripción de audio para mensaje:', message.id);
+      const response = await fetch('/api/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: text,
+          targetLanguage: targetLanguage,
+          sourceLanguage: 'auto'
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        return result.translatedText;
+      }
+      throw new Error('Translation failed');
+    } catch (error) {
+      console.warn('Traducción fallida, usando texto original:', error);
+      return text;
+    }
+  };
+
+  // Función para manejar audio con transcripción y respuesta automática
+  const handleAudioMessage = async (message: any) => {
+    if (!selectedChat) return;
+    
+    try {
+      console.log('🎤 Procesando mensaje de audio...');
+      
+      if (!message.mediaUrl && !message._data?.mediaUrl) {
+        console.log('⚠️ Mensaje de audio sin URL disponible');
+        return;
+      }
       
       const audioUrl = message.mediaUrl || message._data?.mediaUrl;
-      const response = await fetch('/api/audio/transcribe', {
+      
+      // Transcribir el audio usando OpenAI Whisper
+      const transcriptionResponse = await fetch('/api/audio/transcribe-whatsapp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           audioUrl: audioUrl,
-          messageId: message.id,
-          chatId: selectedChat?.id,
-          accountId: selectedChat?.accountId
-        }),
+          chatId: selectedChat.id,
+          accountId: selectedChat.accountId,
+          messageId: message.id
+        })
       });
 
-      if (!response.ok) {
-        throw new Error('Error en la transcripción');
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
+      if (transcriptionResponse.ok) {
+        const transcriptionData = await transcriptionResponse.json();
+        console.log('✅ Audio transcrito exitosamente:', transcriptionData.transcription);
+        
         toast({
-          title: "Audio transcrito",
-          description: `🎵 "${result.transcription}"`,
+          title: "🎤 Audio transcrito",
+          description: `"${transcriptionData.transcription}"`,
           duration: 8000
         });
-        console.log('✅ Transcripción exitosa:', result.transcription);
         
         // Si SmartBots está habilitado, generar respuesta automática
-        if (smartBotsEnabled && result.transcription) {
+        if (smartBotsEnabled) {
           console.log('🤖 Generando respuesta automática para audio transcrito...');
-          await generateAutoResponse(result.transcription, selectedChat?.name || 'Usuario');
+          
+          setTimeout(async () => {
+            try {
+              let response = await generateSmartBotsAutoResponse(transcriptionData.transcription, selectedChat.name);
+              
+              // Si la traducción está habilitada, traducir la respuesta
+              if (response && translationEnabled && selectedLanguage !== 'es') {
+                console.log(`🌐 Traduciendo respuesta automática al ${selectedLanguage}...`);
+                response = await translateMessage(response, selectedLanguage);
+              }
+              
+              if (response) {
+                console.log('📤 Enviando respuesta automática para audio:', response);
+                await sendAutoMessage(response);
+                
+                toast({
+                  title: "🎤➡️🤖 Respuesta automática para audio enviada",
+                  description: translationEnabled ? `En ${selectedLanguage.toUpperCase()}` : "SmartBots respondió al audio",
+                  duration: 4000
+                });
+              }
+            } catch (error) {
+              console.error('❌ Error generando respuesta para audio:', error);
+            }
+          }, 2000);
         }
+        
       } else {
+        const errorData = await transcriptionResponse.json();
+        console.error('❌ Error transcribiendo audio:', errorData);
+        
         toast({
-          title: "Error",
-          description: "Error al transcribir el audio",
+          title: "❌ Error transcribiendo audio",
+          description: errorData.error || "No se pudo transcribir el mensaje de audio",
           variant: "destructive"
         });
       }
+      
     } catch (error) {
-      console.error('❌ Error transcribiendo audio:', error);
+      console.error('❌ Error procesando mensaje de audio:', error);
+      
       toast({
-        title: "Error",
-        description: "Error al transcribir el audio",
+        title: "❌ Error procesando audio",
+        description: "No se pudo procesar el mensaje de audio",
         variant: "destructive"
       });
     }
@@ -758,7 +829,7 @@ export function WhatsAppTwoColumn() {
         // Verificar si es un mensaje de audio
         if (lastIncomingMessage.type === 'ptt' || lastIncomingMessage.type === 'audio') {
           console.log('🎤 Mensaje de audio detectado:', lastIncomingMessage);
-          await handleAudioMessage(lastIncomingMessage);
+          handleAudioMessage(lastIncomingMessage);
         } else {
           console.log('🤖 Mensaje entrante detectado:', lastIncomingMessage.body);
         }
@@ -767,14 +838,31 @@ export function WhatsAppTwoColumn() {
         if (lastIncomingMessage.id !== lastProcessedMessageId) {
           console.log('🔄 Procesando nuevo mensaje ID:', lastIncomingMessage.id);
           
+          // Reordenar chats para mostrar este chat al principio
+          handleNewMessageReceived(selectedChat.id);
+          
           // Generar y enviar respuesta automática para el mensaje entrante
           setTimeout(async () => {
             try {
               console.log('🤖 Generando respuesta automática...');
-              const response = await generateSmartBotsAutoResponse(lastIncomingMessage.body, selectedChat.name);
+              let response = await generateSmartBotsAutoResponse(lastIncomingMessage.body, selectedChat.name);
+              
+              // Si la traducción está habilitada, traducir la respuesta
+              if (response && translationEnabled && selectedLanguage !== 'es') {
+                console.log(`🌐 Traduciendo respuesta automática al ${selectedLanguage}...`);
+                response = await translateMessage(response, selectedLanguage);
+              }
+              
               if (response) {
                 console.log('📤 Enviando respuesta automática:', response);
                 await sendAutoMessage(response);
+                
+                // Notificación indicando si fue traducida
+                toast({
+                  title: "🤖 Respuesta automática enviada",
+                  description: translationEnabled ? `Traducida al ${selectedLanguage.toUpperCase()}` : "SmartBots respondió automáticamente",
+                  duration: 3000
+                });
               } else {
                 console.log('❌ No se pudo generar respuesta automática');
               }
@@ -1030,17 +1118,33 @@ export function WhatsAppTwoColumn() {
 
   // Sort chats by activity: unread messages first, then by most recent timestamp
   const sortedChats = useMemo(() => {
+    if (!Array.isArray(chats)) return [];
+    
     return [...chats].sort((a, b) => {
       // Priority 1: Chats with unread messages first
       if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
       if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
       
-      // Priority 2: Most recent activity (highest timestamp first)
+      // Priority 2: Currently selected chat should stay visible but not necessarily at top
+      // Priority 3: Most recent activity (highest timestamp first)
       const timestampA = a.timestamp || 0;
       const timestampB = b.timestamp || 0;
       return timestampB - timestampA;
     });
   }, [chats]);
+
+  // Function to reorder chats when new message arrives
+  const handleNewMessageReceived = useCallback((chatId: string) => {
+    // Force chat list refresh to reorder by latest activity
+    queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+    
+    // Also refresh the chat list for specific accounts to ensure real-time updates
+    if (selectedAccounts.length > 0) {
+      selectedAccounts.forEach(accountId => {
+        queryClient.invalidateQueries({ queryKey: [`/api/whatsapp-accounts/${accountId}/chats`] });
+      });
+    }
+  }, [queryClient, selectedAccounts]);
 
   const filteredChats = sortedChats.filter(chat => 
     chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1614,31 +1718,79 @@ export function WhatsAppTwoColumn() {
                   </PopoverContent>
                 </Popover>
 
-                {/* Translator Toggle */}
-                <Button
-                  variant={translatorEnabled ? "default" : "outline"}
-                  size="sm"
-                  className={`h-9 w-9 p-0 ${translatorEnabled ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                  onClick={() => {
-                    setTranslatorEnabled(!translatorEnabled);
-                    toast({
-                      title: translatorEnabled ? "Traductor desactivado" : "Traductor activado",
-                      description: translatorEnabled 
-                        ? "Los mensajes se enviarán sin traducir" 
-                        : "Los mensajes se traducirán automáticamente",
-                    });
-                  }}
-                >
-                  <Languages className="h-4 w-4" />
-                </Button>
-
-                {/* Translator Status Indicator */}
-                {translatorEnabled && (
-                  <div className="flex items-center space-x-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                    <Languages className="h-3 w-3" />
-                    <span>Traductor ON</span>
-                  </div>
-                )}
+                {/* Translator with Language Selector */}
+                <Popover open={languageSelectorOpen} onOpenChange={setLanguageSelectorOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={translationEnabled ? "default" : "outline"}
+                      size="sm"
+                      className={`h-9 px-3 ${translationEnabled ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                    >
+                      <Languages className="h-4 w-4 mr-1" />
+                      {translationEnabled ? 
+                        availableLanguages.find(lang => lang.code === selectedLanguage)?.flag : 
+                        '🌐'
+                      }
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-3">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-sm">Traductor</h4>
+                        <Button
+                          variant={translationEnabled ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            setTranslationEnabled(!translationEnabled);
+                            toast({
+                              title: translationEnabled ? "Traductor desactivado" : "Traductor activado",
+                              description: translationEnabled 
+                                ? "Las respuestas automáticas se enviarán en español" 
+                                : `Las respuestas automáticas se traducirán al ${availableLanguages.find(l => l.code === selectedLanguage)?.name}`,
+                            });
+                          }}
+                        >
+                          {translationEnabled ? 'ON' : 'OFF'}
+                        </Button>
+                      </div>
+                      
+                      {translationEnabled && (
+                        <div className="space-y-2">
+                          <label className="text-xs text-gray-600 font-medium">Idioma de destino:</label>
+                          <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto">
+                            {availableLanguages.map((language) => (
+                              <Button
+                                key={language.code}
+                                variant={selectedLanguage === language.code ? "default" : "ghost"}
+                                size="sm"
+                                className="justify-start text-xs p-2 h-8"
+                                onClick={() => {
+                                  setSelectedLanguage(language.code);
+                                  toast({
+                                    title: "Idioma seleccionado",
+                                    description: `Las respuestas automáticas se traducirán al ${language.name}`,
+                                    duration: 2000
+                                  });
+                                  setLanguageSelectorOpen(false);
+                                }}
+                              >
+                                <span className="mr-1">{language.flag}</span>
+                                <span className="truncate">{language.name}</span>
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="text-xs text-gray-500 pt-2 border-t">
+                        {translationEnabled ? 
+                          `🤖 Las respuestas automáticas se enviarán en ${availableLanguages.find(l => l.code === selectedLanguage)?.name}` :
+                          'Las respuestas automáticas se enviarán en español'
+                        }
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Message Input */}
