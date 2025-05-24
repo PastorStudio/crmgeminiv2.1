@@ -589,11 +589,26 @@ export function WhatsAppTwoColumn() {
           if (spanishTranslation !== lastEnglishMessage.body) {
             console.log('🌐 Traducción:', `"${lastEnglishMessage.body}" → "${spanishTranslation}"`);
             
-            toast({
-              title: "🌐 Traducción automática",
-              description: `"${lastEnglishMessage.body}" → "${spanishTranslation}"`,
-              duration: 5000,
-            });
+            // Crear un mensaje de traducción interno (solo para nuestro sistema)
+            const translationMessage = {
+              id: `translation_${lastEnglishMessage.id}_${Date.now()}`,
+              body: `🌐 Traducción: "${spanishTranslation}"`,
+              fromMe: false,
+              timestamp: new Date().toISOString(),
+              isTranslation: true, // Marcador especial para mensajes de traducción
+              originalMessageId: lastEnglishMessage.id
+            };
+            
+            // Agregar el mensaje de traducción a la lista de mensajes localmente
+            // (esto no se envía a WhatsApp, solo aparece en nuestra interfaz)
+            if (Array.isArray(messages) && selectedChat) {
+              const updatedMessages = [...messages, translationMessage];
+              // Esto actualizará la vista local pero no enviará nada a WhatsApp
+              queryClient.setQueryData(
+                [`/api/whatsapp-accounts/${selectedChat.accountId}/messages/${selectedChat.id}`],
+                updatedMessages
+              );
+            }
           }
         }
       }
