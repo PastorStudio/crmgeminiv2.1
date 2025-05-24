@@ -197,7 +197,9 @@ export function WhatsAppTwoColumn() {
           message: userMessage,
           contactName: contactName,
           context: `Respuesta automática para mensaje recibido de ${contactName}`,
-          autoResponse: true
+          autoResponse: true,
+          targetLanguage: translationEnabled ? selectedLanguage : 'es',
+          translateResponse: translationEnabled
         })
       });
 

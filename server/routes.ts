@@ -3632,7 +3632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('📋 Body recibido:', req.body);
     
     try {
-      const { message, contactName, context } = req.body;
+      const { message, contactName, context, targetLanguage, translateResponse } = req.body;
       
       if (!message) {
         console.log('❌ Error: Mensaje vacío o no proporcionado');
@@ -3654,16 +3654,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
             apiKey: process.env.OPENAI_API_KEY
           });
 
+          // Determinar el idioma de respuesta
+          const languageMap = {
+            'en': 'English',
+            'es': 'Spanish (Español)',
+            'fr': 'French (Français)',
+            'de': 'German (Deutsch)',
+            'it': 'Italian (Italiano)',
+            'pt': 'Portuguese (Português)',
+            'ru': 'Russian (Русский)',
+            'zh': 'Chinese (中文)',
+            'ja': 'Japanese (日本語)',
+            'ko': 'Korean (한국어)'
+          };
+          
+          const responseLanguage = translateResponse && targetLanguage ? 
+            languageMap[targetLanguage] || 'Spanish (Español)' : 
+            'Spanish (Español)';
+
+          console.log(`🌐 Generando respuesta en: ${responseLanguage} (translateResponse: ${translateResponse}, targetLanguage: ${targetLanguage})`);
+
           const response = await openai.chat.completions.create({
             model: 'gpt-4o', // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
             messages: [
               {
                 role: 'system',
-                content: 'Eres un asistente virtual profesional para WhatsApp. Responde de manera amigable, concisa y útil en español. Mantén un tono profesional pero cercano. Responde máximo en 2-3 oraciones.'
+                content: `You are a professional WhatsApp virtual assistant. Respond in a friendly, concise and helpful manner in ${responseLanguage}. Maintain a professional but close tone. Respond in a maximum of 2-3 sentences. Always respond in ${responseLanguage} language.`
               },
               {
                 role: 'user',
-                content: `Mensaje de ${contactName || 'Usuario'}: ${message}`
+                content: `Message from ${contactName || 'User'}: ${message}`
               }
             ],
             max_tokens: 150,
