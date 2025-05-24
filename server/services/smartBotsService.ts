@@ -27,22 +27,18 @@ export async function generateSmartBotsResponse(
       ? `Contexto: ${context}\n\nMensaje de ${contactName}: ${userMessage}\n\nResponde de manera profesional y útil:`
       : `Mensaje de ${contactName}: ${userMessage}\n\nResponde de manera profesional y útil:`;
 
-    // URL de SmartBots API
-    const smartBotsUrl = 'https://api.smartbots.ai/v1/chat/completions';
-    
-    const response = await fetch(smartBotsUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.SMARTBOTS_API_KEY || 'demo-key'}`,
-        'User-Agent': 'WhatsApp-CRM/1.0'
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+    // Intentar usar OpenAI primero (más confiable)
+    try {
+      const openai = new (await import('openai')).default({
+        apiKey: process.env.OPENAI_API_KEY
+      });
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o', // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages: [
           {
             role: 'system',
-            content: 'Eres un asistente virtual profesional para WhatsApp. Responde de manera amigable, concisa y útil. Mantén un tono profesional pero cercano.'
+            content: 'Eres un asistente virtual profesional para WhatsApp. Responde de manera amigable, concisa y útil en español. Mantén un tono profesional pero cercano. Responde máximo en 2-3 oraciones.'
           },
           {
             role: 'user',
@@ -51,23 +47,66 @@ export async function generateSmartBotsResponse(
         ],
         max_tokens: 150,
         temperature: 0.7
-      })
-    });
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      const aiResponse = data.choices?.[0]?.message?.content || '';
+      const aiResponse = response.choices[0]?.message?.content || '';
       
       if (aiResponse) {
-        console.log('✅ Respuesta de SmartBots:', aiResponse);
+        console.log('✅ Respuesta de OpenAI:', aiResponse);
         
         return {
           success: true,
           response: aiResponse.trim(),
           originalMessage: userMessage,
-          confidence: 0.9,
-          model: 'SmartBots GPT'
+          confidence: 0.95,
+          model: 'OpenAI GPT-4o'
         };
+      }
+    } catch (openaiError) {
+      console.log('⚠️ OpenAI no disponible, intentando SmartBots...');
+      
+      // Fallback a SmartBots
+      const smartBotsUrl = 'https://api.smartbots.ai/v1/chat/completions';
+      
+      const response = await fetch(smartBotsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.SMARTBOTS_API_KEY || 'demo-key'}`,
+          'User-Agent': 'WhatsApp-CRM/1.0'
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: 'Eres un asistente virtual profesional para WhatsApp. Responde de manera amigable, concisa y útil. Mantén un tono profesional pero cercano.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: 150,
+          temperature: 0.7
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const aiResponse = data.choices?.[0]?.message?.content || '';
+        
+        if (aiResponse) {
+          console.log('✅ Respuesta de SmartBots:', aiResponse);
+          
+          return {
+            success: true,
+            response: aiResponse.trim(),
+            originalMessage: userMessage,
+            confidence: 0.9,
+            model: 'SmartBots GPT'
+          };
+        }
       }
     }
 
