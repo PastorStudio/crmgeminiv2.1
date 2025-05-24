@@ -362,7 +362,8 @@ export function WhatsAppTwoColumn() {
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString('es-ES', { 
       hour: '2-digit', 
-      minute: '2-digit' 
+      minute: '2-digit',
+      hour12: true
     });
   };
 
@@ -529,7 +530,7 @@ export function WhatsAppTwoColumn() {
         </ScrollArea>
       </div>
       {/* Right Panel - Chat Messages */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col ml-[2px] mr-[2px] mt-[-1px] mb-[-1px]">
         {selectedChat ? (
           <>
             {/* Chat Header */}
@@ -699,7 +700,7 @@ export function WhatsAppTwoColumn() {
                               }`}
                             >
                               <p className="text-sm whitespace-pre-wrap">{message.body}</p>
-                              <div className={`text-xs mt-1 ${message.fromMe ? 'text-blue-100' : 'text-gray-500'}`}>
+                              <div className={`text-xs mt-1 ${message.fromMe ? 'text-blue-100 text-left' : 'text-gray-500 text-right'} pt-[10px] pb-[10px] ml-[10px] mr-[10px]`}>
                                 {formatTime(message.timestamp)}
                                 {message.fromMe && (
                                   <span className="ml-1">
