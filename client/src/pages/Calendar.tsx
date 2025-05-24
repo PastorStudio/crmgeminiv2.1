@@ -244,7 +244,7 @@ export default function Calendar() {
   };
 
   return (
-    <>
+    <div className="p-6">
       <Helmet>
         <title>Calendar | GeminiCRM</title>
         <meta name="description" content="Schedule and manage meetings, calls, and other activities with your leads" />
@@ -709,6 +709,6 @@ export default function Calendar() {
           </Form>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
