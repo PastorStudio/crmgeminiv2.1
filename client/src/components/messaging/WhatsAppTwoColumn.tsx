@@ -859,33 +859,11 @@ export function WhatsAppTwoColumn() {
                         {messages.length} mensajes
                       </div>
                     </div>
-                          <motion.span
-                            key={`assigned-${assignmentData.assignedTo.id}`}
-                            initial={{ opacity: 0, scale: 0.9, y: -10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                            transition={{ 
-                              duration: 0.4, 
-                              ease: "easeInOut",
-                              type: "spring",
-                              stiffness: 300,
-                              damping: 25
-                            }}
-                            className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium flex items-center"
-                          >
-                            <motion.div
-                              initial={{ rotate: -180, scale: 0 }}
-                              animate={{ rotate: 0, scale: 1 }}
-                              transition={{ delay: 0.2, duration: 0.3 }}
-                            >
-                              <User className="h-3 w-3 mr-1" />
-                            </motion.div>
-                            <motion.span
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.25, duration: 0.3 }}
-                            >
-                              Agente: {assignmentData.assignedTo.fullName}
+                  </div>
+                </div>
+
+                {/* Botones de acción */}
+                <div className="flex items-center space-x-2">
                             </motion.span>
                           </motion.span>
                         ) : (
