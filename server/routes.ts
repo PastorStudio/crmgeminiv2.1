@@ -3487,5 +3487,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Translation endpoints
+  app.post('/api/translate', async (req: Request, res: Response) => {
+    try {
+      const { translateText, autoTranslate } = await import('./services/translationService');
+      const { text, targetLanguage, sourceLanguage } = req.body;
+      
+      if (!text || typeof text !== 'string' || text.trim() === '') {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Text is required for translation' 
+        });
+      }
+      
+      console.log('🌐 Translating text:', text);
+      
+      let result;
+      if (targetLanguage === 'auto' || !targetLanguage) {
+        // Auto-translate (Spanish <-> English)
+        result = await autoTranslate(text);
+      } else {
+        // Specific language translation
+        result = await translateText({
+          text,
+          targetLanguage,
+          sourceLanguage
+        });
+      }
+      
+      console.log('✅ Translation completed:', result);
+      
+      res.json({
+        success: true,
+        ...result
+      });
+      
+    } catch (error) {
+      console.error('❌ Translation error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Translation service error',
+        originalText: req.body.text,
+        translatedText: req.body.text // Return original text as fallback
+      });
+    }
+  });
+
+  // Detect language endpoint
+  app.post('/api/detect-language', async (req: Request, res: Response) => {
+    try {
+      const { detectLanguage } = await import('./services/translationService');
+      const { text } = req.body;
+      
+      if (!text || typeof text !== 'string' || text.trim() === '') {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Text is required for language detection' 
+        });
+      }
+      
+      console.log('🔍 Detecting language for:', text);
+      
+      const detectedLanguage = await detectLanguage(text);
+      
+      console.log('✅ Language detected:', detectedLanguage);
+      
+      res.json({
+        success: true,
+        text,
+        detectedLanguage
+      });
+      
+    } catch (error) {
+      console.error('❌ Language detection error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Language detection service error',
+        detectedLanguage: 'unknown'
+      });
+    }
+  });
+
   return httpServer;
 }
