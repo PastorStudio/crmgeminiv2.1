@@ -30,6 +30,7 @@ import SimpleWhatsApp from './pages/SimpleWhatsApp';
 import UltraSimpleChat from './pages/UltraSimpleChat';
 import WhatsAppConnection from './pages/WhatsAppConnection';
 import AgentMonitoring from './pages/AgentMonitoring';
+import Tickets from './pages/Tickets';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
@@ -222,6 +223,18 @@ const AppRoutes: React.FC = () => {
                   <rect x="8" y="16" width="6" height="1" fill="white" opacity="0.7"/>
                 </svg>
                 Tareas
+              </a>
+
+              <a href="/tickets" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/tickets' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="3" width="20" height="18" rx="3" fill="#8B5CF6"/>
+                  <rect x="5" y="7" width="14" height="2" rx="1" fill="white"/>
+                  <rect x="5" y="11" width="10" height="2" rx="1" fill="white"/>
+                  <rect x="5" y="15" width="12" height="2" rx="1" fill="white"/>
+                  <circle cx="18" cy="8" r="2" fill="#EF4444"/>
+                  <circle cx="18" cy="8" r="1" fill="white"/>
+                </svg>
+                Tickets
               </a>
               
               {/* Análisis y Recursos */}
@@ -437,6 +450,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/messages" component={() => <PrivateRoute component={Messages} path="/messages" />} />
                 <Route path="/calendar" component={() => <PrivateRoute component={Calendar} path="/calendar" />} />
                 <Route path="/tasks" component={() => <PrivateRoute component={Tasks} path="/tasks" />} />
+                <Route path="/tickets" component={() => <PrivateRoute component={Tickets} path="/tickets" />} />
                 <Route path="/analytics" component={() => <PrivateRoute component={Analytics} path="/analytics" />} />
                 <Route path="/settings" component={() => <PrivateRoute component={Settings} path="/settings" />} />
                 <Route path="/media-gallery" component={() => <PrivateRoute component={MediaGallery} path="/media-gallery" />} />
