@@ -561,13 +561,21 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       try {
         // Solo procesar mensajes entrantes (no enviados por nosotros)
         if (!message.fromMe) {
-          console.log(`📨 Nuevo mensaje recibido en cuenta ${id}: ${message.body.substring(0, 50)}...`);
+          console.log(`📨 Nuevo mensaje recibido en cuenta ${id}: ${message.body?.substring(0, 50) || '[Sin texto]'}...`);
+          console.log(`🔍 Tipo de mensaje: ${message.type}, hasMedia: ${message.hasMedia}, _data.type: ${message._data?.type}`);
           
-          let messageBody = message.body;
+          let messageBody = message.body || '';
           
           // Transcripción automática de notas de voz
-          if (message.type === 'ptt' || message.type === 'audio') {
-            console.log('🎤 Nota de voz recibida, iniciando transcripción automática...');
+          // Detectar múltiples tipos de audio de WhatsApp
+          const isVoiceMessage = message.type === 'ptt' || 
+                                 message.type === 'audio' || 
+                                 message.hasMedia && (message.type === 'voice' || message._data?.type === 'ptt');
+          
+          console.log(`🎵 ¿Es mensaje de voz? ${isVoiceMessage} (tipo: ${message.type}, hasMedia: ${message.hasMedia})`);
+          
+          if (isVoiceMessage) {
+            console.log(`🎤 Nota de voz detectada (tipo: ${message.type}), iniciando transcripción automática...`);
             
             try {
               const media = await message.downloadMedia();
