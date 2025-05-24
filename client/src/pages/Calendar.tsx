@@ -266,11 +266,14 @@ export default function Calendar() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendar */}
-        <Card className="lg:col-span-2">
+      {/* Calendar con 3 meses */}
+      <div className="grid grid-cols-1 gap-6">
+        <Card className="w-full">
           <CardHeader>
-            <CardTitle>Calendar</CardTitle>
+            <CardTitle className="flex items-center">
+              <span className="material-icons mr-2 text-primary-600">calendar_month</span>
+              Calendario - Vista de 3 Meses
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <CalendarComponent 
@@ -278,6 +281,8 @@ export default function Calendar() {
               mode="single" 
               selected={selectedDate} 
               onSelect={(date) => date && setSelectedDate(date)}
+              numberOfMonths={3}
+              showOutsideDays={false}
               modifiers={{
                 hasActivity: (date) => {
                   return activities?.some(activity => 
@@ -286,75 +291,155 @@ export default function Calendar() {
                 }
               }}
               modifiersClassNames={{
-                hasActivity: "has-activity relative before:absolute before:bottom-1 before:left-1/2 before:transform before:-translate-x-1/2 before:w-1 before:h-1 before:bg-primary-500 before:rounded-full"
+                hasActivity: "has-activity relative before:absolute before:bottom-1 before:left-1/2 before:transform before:-translate-x-1/2 before:w-2 before:h-2 before:bg-primary-500 before:rounded-full"
               }}
             />
           </CardContent>
         </Card>
 
-        {/* Activities for selected date */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>{format(selectedDate, "MMMM d, yyyy")}</CardTitle>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => openActivityModal()}
-            >
-              <span className="material-icons text-sm mr-1">add</span>
-              Add
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {activitiesLoading ? (
-              <div className="animate-pulse space-y-3">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-20 bg-gray-200 rounded-md"></div>
-                ))}
+        {/* Sección de eventos para la fecha seleccionada */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Actividades del día seleccionado */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center">
+                  <span className="material-icons mr-2 text-blue-600">event</span>
+                  {format(selectedDate, "MMMM d, yyyy")}
+                </CardTitle>
+                <p className="text-sm text-gray-500 mt-1">
+                  Actividades programadas para este día
+                </p>
               </div>
-            ) : activitiesForSelectedDate?.length === 0 ? (
-              <div className="text-center py-10 text-gray-500">
-                <span className="material-icons text-4xl mb-2">event_busy</span>
-                <p className="font-medium">No activities</p>
-                <p className="text-sm">Nothing scheduled for this day</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {activitiesForSelectedDate?.map((activity) => (
-                  <div 
-                    key={activity.id}
-                    className="p-3 border rounded-md hover:bg-gray-50 cursor-pointer"
-                    onClick={() => openActivityModal(activity)}
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => openActivityModal()}
+                className="bg-primary-50 border-primary-200 text-primary-700 hover:bg-primary-100"
+              >
+                <span className="material-icons text-sm mr-1">add</span>
+                Agregar
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {activitiesLoading ? (
+                <div className="animate-pulse space-y-3">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-20 bg-gray-200 rounded-md"></div>
+                  ))}
+                </div>
+              ) : activitiesForSelectedDate?.length === 0 ? (
+                <div className="text-center py-10 text-gray-500">
+                  <span className="material-icons text-4xl mb-2 text-gray-300">event_busy</span>
+                  <p className="font-medium">Sin actividades</p>
+                  <p className="text-sm">No hay nada programado para este día</p>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => openActivityModal()}
+                    className="mt-3 text-primary-600 hover:text-primary-700"
                   >
-                    <div className="flex items-center mb-2">
-                      <div className={`rounded-full p-2 mr-2 ${getActivityTypeColor(activity.type)}`}>
-                        <span className="material-icons text-sm">{getActivityTypeIcon(activity.type)}</span>
+                    <span className="material-icons text-sm mr-1">add_circle</span>
+                    Programar actividad
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {activitiesForSelectedDate?.map((activity) => (
+                    <div 
+                      key={activity.id}
+                      className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-all duration-200 hover:shadow-md"
+                      onClick={() => openActivityModal(activity)}
+                    >
+                      <div className="flex items-center mb-2">
+                        <div className={`rounded-full p-2 mr-3 ${getActivityTypeColor(activity.type)}`}>
+                          <span className="material-icons text-sm">{getActivityTypeIcon(activity.type)}</span>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-900">{activity.title}</h4>
+                          <p className="text-sm text-gray-500">
+                            {formatTimeRange(activity.startTime, activity.endTime)}
+                          </p>
+                        </div>
+                        {activity.completed && (
+                          <span className="material-icons text-green-500">check_circle</span>
+                        )}
                       </div>
-                      <div>
-                        <h4 className="font-medium text-sm">{activity.title}</h4>
-                        <p className="text-xs text-gray-500">
-                          {formatTimeRange(activity.startTime, activity.endTime)}
-                        </p>
-                      </div>
-                      {activity.completed && (
-                        <span className="ml-auto material-icons text-green-500 text-sm">check_circle</span>
+                      {activity.description && (
+                        <p className="text-sm text-gray-600 ml-11 mb-2">{activity.description}</p>
+                      )}
+                      {activity.leadId && leads && (
+                        <div className="ml-11 flex items-center text-sm text-gray-500">
+                          <span className="material-icons text-sm mr-1">person</span>
+                          {leads.find(lead => lead.id === activity.leadId)?.fullName || `Lead #${activity.leadId}`}
+                        </div>
                       )}
                     </div>
-                    {activity.description && (
-                      <p className="text-xs text-gray-600 ml-10">{activity.description}</p>
-                    )}
-                    {activity.leadId && leads && (
-                      <div className="mt-2 ml-10 flex items-center text-xs text-gray-500">
-                        <span className="material-icons text-xs mr-1">person</span>
-                        {leads.find(lead => lead.id === activity.leadId)?.fullName || `Lead #${activity.leadId}`}
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Resumen de actividades próximas */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <span className="material-icons mr-2 text-orange-600">schedule</span>
+                Próximas Actividades
+              </CardTitle>
+              <p className="text-sm text-gray-500 mt-1">
+                Resumen de tus próximas citas y tareas
+              </p>
+            </CardHeader>
+            <CardContent>
+              {activitiesLoading ? (
+                <div className="animate-pulse space-y-3">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="h-16 bg-gray-200 rounded-md"></div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {activities
+                    ?.filter(activity => activity.startTime && new Date(activity.startTime) >= new Date())
+                    ?.sort((a, b) => new Date(a.startTime!).getTime() - new Date(b.startTime!).getTime())
+                    ?.slice(0, 5)
+                    ?.map((activity) => (
+                      <div 
+                        key={activity.id}
+                        className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-all duration-200"
+                        onClick={() => openActivityModal(activity)}
+                      >
+                        <div className="flex items-center">
+                          <div className={`rounded-full p-1.5 mr-3 ${getActivityTypeColor(activity.type)}`}>
+                            <span className="material-icons text-xs">{getActivityTypeIcon(activity.type)}</span>
+                          </div>
+                          <div className="flex-1">
+                            <h5 className="font-medium text-sm text-gray-900">{activity.title}</h5>
+                            <p className="text-xs text-gray-500">
+                              {activity.startTime && format(new Date(activity.startTime), "MMM d, h:mm a")}
+                            </p>
+                          </div>
+                          {activity.completed && (
+                            <span className="material-icons text-green-500 text-sm">check_circle</span>
+                          )}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    ))}
+                  {(!activities || activities.filter(activity => 
+                    activity.startTime && new Date(activity.startTime) >= new Date()
+                  ).length === 0) && (
+                    <div className="text-center py-6 text-gray-500">
+                      <span className="material-icons text-3xl mb-2 text-gray-300">event_available</span>
+                      <p className="text-sm">No hay actividades próximas</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Activity Form Dialog */}
