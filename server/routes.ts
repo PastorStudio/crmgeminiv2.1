@@ -1558,44 +1558,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-        return res.status(400).json({
-          success: false,
-          message: "Mensaje requerido para la prueba"
-        });
-      }
-
-      // Importar el servicio de proveedores de IA
-      const { aiProvidersService } = await import('./services/aiProviders');
-      
-      // Generar respuesta usando el proveedor seleccionado
-      const result = await aiProvidersService.generateResponse(provider, message, contactName || 'Usuario');
-
-      if (result.success) {
-        console.log(`✅ Respuesta generada con ${provider}`);
-        res.json({
-          success: true,
-          response: result.response,
-          analysis: result.analysis,
-          provider: provider
-        });
-      } else {
-        console.log(`⚠️ Error con ${provider}, usando respuesta por defecto`);
-        res.json({
-          success: true,
-          response: result.response,
-          analysis: result.analysis,
-          provider: provider,
-          warning: result.error
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error probando IA:', error);
-      res.status(500).json({
-        success: false,
-        message: "Error al probar el proveedor de IA"
-      });
-    }
-  });
 
   // ENDPOINT DUPLICADO REMOVIDO - YA ESTÁ AL INICIO
 
