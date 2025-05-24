@@ -3594,10 +3594,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Endpoint para SmartBots AI - Consulta externa
   app.post('/api/smartbots/generate-response', async (req: Request, res: Response) => {
+    console.log('🚀 LLAMADA RECIBIDA EN /api/smartbots/generate-response');
+    console.log('📋 Body recibido:', req.body);
+    
     try {
       const { message, contactName, context } = req.body;
       
       if (!message) {
+        console.log('❌ Error: Mensaje vacío o no proporcionado');
         return res.status(400).json({ 
           success: false, 
           error: 'Mensaje requerido' 
