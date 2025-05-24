@@ -664,6 +664,70 @@ export function WhatsAppTwoColumn() {
     };
   }, [queryClient]);
 
+  // Handle audio message transcription
+  const handleAudioMessage = async (message: WhatsAppMessage) => {
+    if (!message.mediaUrl && !message._data?.mediaUrl) {
+      toast({
+        title: "Error",
+        description: "No se puede transcribir: audio no disponible",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      console.log('🎵 Iniciando transcripción de audio para mensaje:', message.id);
+      
+      const audioUrl = message.mediaUrl || message._data?.mediaUrl;
+      const response = await fetch('/api/audio/transcribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          audioUrl: audioUrl,
+          messageId: message.id,
+          chatId: selectedChat?.id,
+          accountId: selectedChat?.accountId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error en la transcripción');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Audio transcrito",
+          description: `🎵 "${result.transcription}"`,
+          duration: 8000
+        });
+        console.log('✅ Transcripción exitosa:', result.transcription);
+        
+        // Si SmartBots está habilitado, generar respuesta automática
+        if (smartBotsEnabled && result.transcription) {
+          console.log('🤖 Generando respuesta automática para audio transcrito...');
+          await generateAutoResponse(result.transcription, selectedChat?.name || 'Usuario');
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "Error al transcribir el audio",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error transcribiendo audio:', error);
+      toast({
+        title: "Error",
+        description: "Error al transcribir el audio",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -1297,7 +1361,74 @@ export function WhatsAppTwoColumn() {
                                     : 'bg-green-100 text-black rounded-bl-md'
                                 }`}
                               >
-                                <p className="text-sm whitespace-pre-wrap">{message.body}</p>
+                                {/* Mensajes de audio/nota de voz */}
+                                {(message.type === 'ptt' || message.type === 'audio') ? (
+                                  <div className="flex items-center space-x-3">
+                                    <div className="flex items-center space-x-2">
+                                      <div className="bg-gray-600 rounded-full p-2">
+                                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span className="text-xs text-gray-600">Nota de voz</span>
+                                        <div className="flex items-center space-x-2">
+                                          {message.mediaUrl || message._data?.mediaUrl ? (
+                                            <audio 
+                                              controls 
+                                              className="max-w-[200px] h-8"
+                                              src={message.mediaUrl || message._data?.mediaUrl}
+                                              onError={(e) => console.log('Error cargando audio:', e)}
+                                            >
+                                              Tu navegador no soporta audio.
+                                            </audio>
+                                          ) : (
+                                            <div className="flex items-center text-gray-500">
+                                              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zM9.049 8.684a1 1 0 011.902 0l.053.174a1 1 0 01-.53 1.233l-2.25 1.05a1 1 0 01-.854 0l-2.25-1.05a1 1 0 01-.53-1.233l.053-.174z" clipRule="evenodd" />
+                                              </svg>
+                                              Audio no disponible
+                                            </div>
+                                          )}
+                                          {(message.mediaUrl || message._data?.mediaUrl) && (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-6 px-2 text-xs"
+                                              onClick={() => handleAudioMessage(message)}
+                                            >
+                                              📝 Transcribir
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : message.type === 'image' ? (
+                                  /* Mensajes de imagen */
+                                  <div className="space-y-2">
+                                    {message.mediaUrl || message._data?.mediaUrl ? (
+                                      <img 
+                                        src={message.mediaUrl || message._data?.mediaUrl} 
+                                        alt="Imagen enviada"
+                                        className="max-w-[250px] max-h-[250px] rounded-lg object-cover"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = 'none';
+                                          e.currentTarget.nextElementSibling.style.display = 'block';
+                                        }}
+                                      />
+                                    ) : null}
+                                    <div style={{ display: 'none' }} className="bg-gray-100 p-4 rounded-lg text-center text-gray-500">
+                                      📸 Imagen no disponible
+                                    </div>
+                                    {message.body && (
+                                      <p className="text-sm whitespace-pre-wrap">{message.body}</p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  /* Mensajes de texto normales */
+                                  <p className="text-sm whitespace-pre-wrap">{message.body || '[Mensaje sin contenido]'}</p>
+                                )}
                               </div>
                               {!message.fromMe && (
                                 <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[2px] flex-shrink-0">
