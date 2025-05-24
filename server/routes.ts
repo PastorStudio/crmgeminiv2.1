@@ -4061,5 +4061,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/translate', translateText);
   app.post('/api/detect-language', detectLanguage);
 
+  // Endpoint para obtener transcripciones de notas de voz
+  app.get('/api/voice-transcriptions/:messageId', async (req: Request, res: Response) => {
+    try {
+      const { messageId } = req.params;
+      
+      console.log(`📝 Obteniendo transcripción para mensaje ${messageId}...`);
+      
+      const { voiceNoteTranscriptionService } = await import('./services/voiceNoteTranscriptionService');
+      const transcription = await voiceNoteTranscriptionService.getTranscription(messageId);
+      
+      if (transcription) {
+        console.log(`✅ Transcripción encontrada: "${transcription}"`);
+        res.json({
+          success: true,
+          transcription
+        });
+      } else {
+        console.log(`❌ Transcripción no encontrada para mensaje ${messageId}`);
+        res.status(404).json({
+          success: false,
+          error: 'Transcripción no encontrada'
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ Error obteniendo transcripción:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
   return httpServer;
 }
