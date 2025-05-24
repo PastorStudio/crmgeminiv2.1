@@ -172,6 +172,46 @@ export function WhatsAppTwoColumn() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [translatorEnabled, setTranslatorEnabled] = useState(false);
+  const [smartBotsEnabled, setSmartBotsEnabled] = useState(false);
+
+  // Función para generar respuesta automática con SmartBots
+  const generateSmartBotsResponse = async (userMessage: string, contactName: string) => {
+    try {
+      console.log('🤖 Generando respuesta SmartBots para:', userMessage);
+      
+      const response = await fetch('/api/smartbots/generate-response', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          contactName: contactName,
+          context: `Conversación de WhatsApp con ${contactName}`
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.response) {
+        console.log('✅ Respuesta SmartBots:', data.response);
+        
+        // Mostrar notificación de que se generó una respuesta
+        toast({
+          title: "🤖 Respuesta AI generada",
+          description: `SmartBots sugiere: "${data.response.substring(0, 50)}..."`,
+        });
+        
+        return data.response;
+      } else {
+        console.error('❌ Error en SmartBots:', data.error);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error conectando con SmartBots:', error);
+      return null;
+    }
+  };
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -440,6 +480,26 @@ export function WhatsAppTwoColumn() {
       accountId: selectedChat.accountId,
       message: finalMessage
     });
+    
+    // Si SmartBots está activado, generar respuesta automática sugerida
+    if (smartBotsEnabled && selectedChat) {
+      setTimeout(async () => {
+        try {
+          const aiResponse = await generateSmartBotsResponse(finalMessage, selectedChat.name);
+          if (aiResponse) {
+            // Mostrar la respuesta sugerida en el campo de texto
+            setNewMessage(aiResponse);
+            
+            toast({
+              title: "🤖 Respuesta AI lista",
+              description: "SmartBots ha generado una respuesta sugerida. Puedes editarla antes de enviar.",
+            });
+          }
+        } catch (error) {
+          console.error('Error generando respuesta SmartBots:', error);
+        }
+      }, 1000); // Esperar 1 segundo después de enviar el mensaje
+    }
   };
 
   const handleAccountsChange = (accountIds: number[]) => {
@@ -685,7 +745,7 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
                   
-                  {/* Auto Response Button */}
+                  {/* SmartBots AI Button */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -693,16 +753,24 @@ export function WhatsAppTwoColumn() {
                   >
                     <Button
                       size="sm"
-                      variant={autoResponseConfig?.enabled ? "default" : "outline"}
+                      variant={smartBotsEnabled ? "default" : "outline"}
                       className={`shadow-sm transition-all duration-300 ${
-                        autoResponseConfig?.enabled 
-                          ? "bg-green-600 hover:bg-green-700 text-white" 
-                          : "border-green-600 text-green-600 hover:bg-green-50"
+                        smartBotsEnabled 
+                          ? "bg-purple-600 hover:bg-purple-700 text-white" 
+                          : "border-purple-600 text-purple-600 hover:bg-purple-50"
                       }`}
-                      onClick={() => setAutoResponseConfigOpen(true)}
+                      onClick={() => {
+                        setSmartBotsEnabled(!smartBotsEnabled);
+                        toast({
+                          title: smartBotsEnabled ? "SmartBots desactivado" : "SmartBots activado",
+                          description: smartBotsEnabled 
+                            ? "Las respuestas automáticas están desactivadas" 
+                            : "Las respuestas se generarán automáticamente con IA",
+                        });
+                      }}
                     >
                       <MessageCircle className="h-4 w-4 mr-2" />
-                      {autoResponseConfig?.enabled ? "Auto ON" : "Auto OFF"}
+                      {smartBotsEnabled ? "AI ON" : "AI OFF"}
                     </Button>
                   </motion.div>
                   

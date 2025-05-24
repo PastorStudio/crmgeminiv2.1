@@ -3592,5 +3592,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para SmartBots AI
+  app.post('/api/smartbots/generate-response', async (req: Request, res: Response) => {
+    try {
+      const { message, contactName, context } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Mensaje requerido' 
+        });
+      }
+      
+      console.log('🤖 Generando respuesta con SmartBots para:', message);
+      
+      const { generateSmartBotsResponse } = await import('./services/smartBotsService');
+      const result = await generateSmartBotsResponse(message, contactName || 'Usuario', context);
+      
+      console.log('✅ Respuesta SmartBots generada:', result.response);
+      
+      res.json({
+        success: true,
+        response: result.response,
+        originalMessage: result.originalMessage,
+        confidence: result.confidence,
+        model: result.model || 'SmartBots AI'
+      });
+      
+    } catch (error) {
+      console.error('❌ Error con SmartBots:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Error generando respuesta automática',
+        response: 'Gracias por tu mensaje. Te responderemos pronto.' // Respuesta de emergencia
+      });
+    }
+  });
+
   return httpServer;
 }
