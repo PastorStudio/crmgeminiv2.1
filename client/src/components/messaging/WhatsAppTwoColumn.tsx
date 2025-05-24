@@ -487,35 +487,52 @@ export function WhatsAppTwoColumn() {
   useEffect(() => {
     if (!messages || !smartBotsEnabled || !selectedChat) return;
 
-    const currentMessages = messages;
+    const currentMessages = Array.isArray(messages) ? messages : [];
     const currentCount = currentMessages.length;
 
     // Si hay mensajes nuevos
     if (currentCount > lastMessageCount && lastMessageCount > 0) {
+      console.log(`🔍 Detectando mensajes: ${currentCount} actual vs ${lastMessageCount} anterior`);
+      
       const newMessages = currentMessages.slice(lastMessageCount);
+      console.log('📥 Mensajes nuevos encontrados:', newMessages.length);
       
       // Buscar mensajes entrantes (no enviados por nosotros)
-      const incomingMessages = newMessages.filter(msg => !msg.fromMe);
+      const incomingMessages = newMessages.filter((msg: any) => !msg.fromMe);
       
       if (incomingMessages.length > 0) {
         const lastIncomingMessage = incomingMessages[incomingMessages.length - 1];
+        console.log('🤖 Mensaje entrante detectado:', lastIncomingMessage.body);
         
         // Solo procesar si no hemos procesado este mensaje antes
         if (lastIncomingMessage.id !== lastProcessedMessageId) {
-          console.log('🤖 Nuevo mensaje entrante detectado:', lastIncomingMessage.body);
+          console.log('🔄 Procesando nuevo mensaje ID:', lastIncomingMessage.id);
           
           // Generar y enviar respuesta automática para el mensaje entrante
           setTimeout(async () => {
-            const response = await generateSmartBotsAutoResponse(lastIncomingMessage.body, selectedChat.name);
-            if (response) {
-              // Enviar la respuesta automáticamente
-              await sendAutoMessage(response);
+            try {
+              console.log('🤖 Generando respuesta automática...');
+              const response = await generateSmartBotsAutoResponse(lastIncomingMessage.body, selectedChat.name);
+              if (response) {
+                console.log('📤 Enviando respuesta automática:', response);
+                await sendAutoMessage(response);
+              } else {
+                console.log('❌ No se pudo generar respuesta automática');
+              }
+            } catch (error) {
+              console.error('❌ Error en respuesta automática:', error);
             }
           }, 2000);
           
           setLastProcessedMessageId(lastIncomingMessage.id);
+        } else {
+          console.log('⏭️ Mensaje ya procesado anteriormente');
         }
+      } else {
+        console.log('📤 Solo mensajes salientes detectados');
       }
+    } else if (currentCount === lastMessageCount) {
+      console.log('📊 Sin cambios en cantidad de mensajes');
     }
 
     setLastMessageCount(currentCount);
@@ -525,48 +542,63 @@ export function WhatsAppTwoColumn() {
   useEffect(() => {
     if (!messages || !translatorEnabled) return;
 
-    const currentMessages = messages;
+    const currentMessages = Array.isArray(messages) ? messages : [];
+    const currentCount = currentMessages.length;
     
-    // Buscar mensajes en inglés que no son nuestros
-    const englishMessages = currentMessages.filter(msg => 
-      !msg.fromMe && 
-      /\b(hello|hi|how|are|you|what|where|when|why|please|thank|thanks|good|morning|afternoon|evening|night|yes|no|ok|okay)\b/i.test(msg.body)
-    );
-
-    if (englishMessages.length > 0) {
-      const lastEnglishMessage = englishMessages[englishMessages.length - 1];
+    // Solo verificar los mensajes más recientes para evitar procesar repetidamente
+    if (currentCount > lastMessageCount && lastMessageCount > 0) {
+      const newMessages = currentMessages.slice(lastMessageCount);
       
-      // Mostrar traducción automática
-      if (lastEnglishMessage.body.length > 3) {
-        console.log('🌐 Mensaje en inglés detectado:', lastEnglishMessage.body);
-        
-        // Traducción básica automática
-        const spanishTranslation = lastEnglishMessage.body
-          .replace(/hello|hi/gi, 'hola')
-          .replace(/how are you/gi, 'cómo estás')
-          .replace(/good morning/gi, 'buenos días')
-          .replace(/good afternoon/gi, 'buenas tardes')
-          .replace(/good evening|good night/gi, 'buenas noches')
-          .replace(/thank you|thanks/gi, 'gracias')
-          .replace(/please/gi, 'por favor')
-          .replace(/what/gi, 'qué')
-          .replace(/where/gi, 'dónde')
-          .replace(/when/gi, 'cuándo')
-          .replace(/why/gi, 'por qué')
-          .replace(/how/gi, 'cómo')
-          .replace(/yes/gi, 'sí')
-          .replace(/no/gi, 'no')
-          .replace(/ok|okay/gi, 'está bien');
+      // Buscar mensajes en inglés que no son nuestros
+      const englishMessages = newMessages.filter((msg: any) => 
+        !msg.fromMe && 
+        /\b(hello|hi|how|are|you|what|where|when|why|please|thank|thanks|good|morning|afternoon|evening|night|yes|no|ok|okay|can|can't|do|it|system)\b/i.test(msg.body)
+      );
 
-        if (spanishTranslation !== lastEnglishMessage.body) {
-          toast({
-            title: "🌐 Traducción automática",
-            description: `"${lastEnglishMessage.body}" → "${spanishTranslation}"`,
-          });
+      if (englishMessages.length > 0) {
+        const lastEnglishMessage = englishMessages[englishMessages.length - 1];
+        
+        // Mostrar traducción automática para mensajes nuevos
+        if (lastEnglishMessage.body.length > 3) {
+          console.log('🌐 Mensaje en inglés detectado:', lastEnglishMessage.body);
+          
+          // Traducción básica automática mejorada
+          let spanishTranslation = lastEnglishMessage.body
+            .replace(/hello|hi/gi, 'hola')
+            .replace(/how are you/gi, 'cómo estás')
+            .replace(/good morning/gi, 'buenos días')
+            .replace(/good afternoon/gi, 'buenas tardes')
+            .replace(/good evening|good night/gi, 'buenas noches')
+            .replace(/thank you|thanks/gi, 'gracias')
+            .replace(/please/gi, 'por favor')
+            .replace(/what/gi, 'qué')
+            .replace(/where/gi, 'dónde')
+            .replace(/when/gi, 'cuándo')
+            .replace(/why/gi, 'por qué')
+            .replace(/how/gi, 'cómo')
+            .replace(/yes/gi, 'sí')
+            .replace(/\bno\b/gi, 'no')
+            .replace(/ok|okay/gi, 'está bien')
+            .replace(/can't/gi, 'no puedes')
+            .replace(/can/gi, 'puedes')
+            .replace(/\bdo\b/gi, 'hacer')
+            .replace(/\bit\b/gi, 'eso')
+            .replace(/system/gi, 'sistema')
+            .replace(/\bor\b/gi, 'o');
+
+          if (spanishTranslation !== lastEnglishMessage.body) {
+            console.log('🌐 Traducción:', `"${lastEnglishMessage.body}" → "${spanishTranslation}"`);
+            
+            toast({
+              title: "🌐 Traducción automática",
+              description: `"${lastEnglishMessage.body}" → "${spanishTranslation}"`,
+              duration: 5000,
+            });
+          }
         }
       }
     }
-  }, [messages, translatorEnabled]);
+  }, [messages, translatorEnabled, lastMessageCount]);
 
   // Initialize with all accounts selected by default
   useEffect(() => {
