@@ -652,6 +652,29 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           );
           
           console.log(`✅ Mensaje procesado por sistema de tickets automáticos`);
+
+          // Procesar mensaje con agentes intermediarios
+          try {
+            const { externalAgentService } = await import('./externalAgentService');
+            
+            const agentResponse = await externalAgentService.processMessageForAgent(
+              messageBody,
+              message.from,
+              id,
+              {
+                contactName: message._data.notifyName || 'Cliente Anónimo',
+                messageHistory: [] // Se puede expandir para incluir historial
+              }
+            );
+
+            if (agentResponse.success) {
+              console.log(`🤖 Agente intermediario respondió exitosamente: "${agentResponse.response}"`);
+            } else {
+              console.log(`🤖 No hay agente intermediario disponible para este mensaje`);
+            }
+          } catch (error) {
+            console.error(`❌ Error procesando mensaje con agentes intermediarios:`, error);
+          }
         }
       } catch (error) {
         console.error(`❌ Error procesando mensaje para tickets automáticos:`, error);
