@@ -905,7 +905,49 @@ export function WhatsAppTwoColumn() {
           setTimeout(async () => {
             try {
               console.log('🤖 Generando respuesta automática...');
-              let response = await generateSmartBotsAutoResponse(lastIncomingMessage.body, selectedChat.name);
+              console.log('🟢 Generando respuesta automática para mensaje recibido:', lastIncomingMessage.body);
+              
+              let response = null;
+              
+              // Verificar si hay un agente externo seleccionado
+              if (selectedExternalAgent) {
+                console.log('🤖 Usando agente externo seleccionado:', selectedExternalAgent);
+                
+                try {
+                  // Llamar al endpoint del agente externo específico
+                  const agentResponse = await fetch('/api/external-agents/process-message', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      agentId: selectedExternalAgent,
+                      message: lastIncomingMessage.body,
+                      contactName: selectedChat.name,
+                      context: `Chat con ${selectedChat.name}`,
+                      targetLanguage: selectedLanguage,
+                      translateResponse: translationEnabled
+                    })
+                  });
+                  
+                  if (agentResponse.ok) {
+                    const agentData = await agentResponse.json();
+                    if (agentData.success && agentData.response) {
+                      response = agentData.response;
+                      console.log('✅ Respuesta del agente externo recibida:', response);
+                    }
+                  } else {
+                    console.error('❌ Error en respuesta del agente externo:', agentResponse.status);
+                  }
+                } catch (agentError) {
+                  console.error('❌ Error conectando con agente externo:', agentError);
+                }
+              }
+              
+              // Si no hay agente externo o falló, usar SmartBots por defecto
+              if (!response) {
+                response = await generateSmartBotsAutoResponse(lastIncomingMessage.body, selectedChat.name);
+              }
               
               // Si la traducción está habilitada, traducir la respuesta
               if (response && translationEnabled && selectedLanguage !== 'es') {
@@ -918,16 +960,22 @@ export function WhatsAppTwoColumn() {
                 await sendAutoMessage(response);
                 
                 // Notificación indicando si fue traducida
+                const agentName = selectedExternalAgent ? 
+                  externalAgents.find(agent => agent.id === selectedExternalAgent)?.name || 'Agente externo' : 
+                  'SmartBots';
+                  
                 toast({
                   title: "🤖 Respuesta automática enviada",
-                  description: translationEnabled ? `Traducida al ${selectedLanguage.toUpperCase()}` : "SmartBots respondió automáticamente",
+                  description: translationEnabled ? 
+                    `${agentName} respondió (traducida al ${selectedLanguage.toUpperCase()})` : 
+                    `${agentName} respondió automáticamente`,
                   duration: 3000
                 });
               } else {
                 console.log('❌ No se pudo generar respuesta automática');
               }
             } catch (error) {
-              console.error('❌ Error en respuesta automática:', error);
+              console.error('❌ Error en generación de respuesta automática:', error);
             }
           }, 2000);
           
