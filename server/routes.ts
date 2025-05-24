@@ -3606,51 +3606,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('🤖 Consultando SmartBots API externa para:', message);
       
-      // Consultar la API externa de SmartBots
-      const smartbotsResponse = await fetch('https://api.smartbots.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer sk-smartbots-demo-key', // Usar clave demo primero
-          'User-Agent': 'WhatsApp-CRM/1.0'
-        },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            {
-              role: 'system',
-              content: 'Eres un asistente virtual profesional para WhatsApp. Responde de manera amigable, concisa y útil en español. Mantén un tono profesional pero cercano. Responde máximo en 2-3 oraciones.'
-            },
-            {
-              role: 'user',
-              content: `Mensaje de ${contactName || 'Usuario'}: ${message}`
-            }
-          ],
-          max_tokens: 150,
-          temperature: 0.7
-        })
-      });
-
-      if (smartbotsResponse.ok) {
-        const smartbotsData = await smartbotsResponse.json();
-        const aiResponse = smartbotsData.choices?.[0]?.message?.content || '';
-        
-        if (aiResponse) {
-          console.log('✅ Respuesta de SmartBots API externa:', aiResponse);
-          
-          res.json({
-            success: true,
-            response: aiResponse.trim(),
-            originalMessage: message,
-            confidence: 0.9,
-            model: 'SmartBots API Externa'
-          });
-          return;
-        }
-      }
-      
-      // Si SmartBots externa falla, usar OpenAI como respaldo
-      console.log('⚠️ SmartBots externa no disponible, usando OpenAI...');
+      // Usar OpenAI directamente (tu configuración actual)
+      console.log('🚀 Usando tu OpenAI configurado para respuesta automática...');
       
       const OpenAI = (await import('openai')).default;
       const openai = new OpenAI({
