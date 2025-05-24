@@ -3,8 +3,17 @@ import { externalAgents, agentResponses, type ExternalAgent, type InsertExternal
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { chatGPTConnector } from './chatgptConnector';
+import OpenAI from 'openai';
 
 export class ExternalAgentService {
+  private openai: OpenAI;
+
+  constructor() {
+    // Inicializar cliente OpenAI con tu clave API
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
   // Crear un nuevo agente externo
   async createAgent(agentData: Omit<InsertExternalAgent, 'id'>): Promise<ExternalAgent> {
     try {
@@ -218,34 +227,57 @@ export class ExternalAgentService {
       let agentResponse = '';
       
       try {
-        // CONEXIÓN DIRECTA CON CHATGPT REAL
-        const extractedAgentId = this.extractAgentIdFromUrl(agent.agentUrl);
-        console.log(`🔗 Iniciando conexión directa con ChatGPT para agente: ${extractedAgentId}`);
+        // CONEXIÓN DIRECTA CON TU CLAVE API DE OPENAI REAL
+        console.log(`🔗 Conectando con tu clave API de OpenAI para agente: ${agent.name}`);
         
-        // Establecer o verificar conexión con el agente específico
-        if (!chatGPTConnector.isAgentConnected(extractedAgentId)) {
-          console.log(`🚀 Conectando con ${agent.name} en: ${agent.agentUrl}`);
-          await chatGPTConnector.connectToAgent(agent.agentUrl);
-          console.log(`✅ Conexión establecida con ${agent.name}`);
+        // Configurar instrucciones específicas para cada uno de tus agentes
+        let systemPrompt = '';
+        
+        if (agent.name.includes('SmartBots') || agent.agentUrl.includes('smartbots')) {
+          systemPrompt = `Eres ${agent.name}, un asistente inteligente especializado en automatización, análisis de procesos y soluciones empresariales. SIEMPRE identifícate como "${agent.name}" al responder. Tu función es ayudar con:
+          - Automatización de workflows empresariales
+          - Análisis de datos y procesos
+          - Soluciones tecnológicas inteligentes
+          - Optimización de sistemas
+          - Consultoría especializada
+          
+          Responde de manera profesional, técnica pero accesible, siempre enfocándote en dar soluciones prácticas y específicas. Comienza tus respuestas mencionando tu nombre: "${agent.name}".`;
+        } else if (agent.name.includes('SmartFlyer') || agent.agentUrl.includes('smartflyer')) {
+          systemPrompt = `Eres ${agent.name}, un especialista en viajes y turismo inteligente. SIEMPRE identifícate como "${agent.name}" al responder. Tu función es ayudar con:
+          - Búsqueda y reserva de vuelos
+          - Recomendaciones de hoteles y alojamiento
+          - Planificación de itinerarios personalizados
+          - Consejos de viaje y destinos
+          - Optimización de costos de viaje
+          - Actividades y experiencias locales
+          
+          Responde de manera entusiasta y profesional, enfocándote en crear experiencias de viaje extraordinarias. Comienza tus respuestas mencionando tu nombre: "${agent.name}".`;
+        } else {
+          systemPrompt = `Eres ${agent.name}, un asistente inteligente especializado. SIEMPRE identifícate como "${agent.name}" al responder. Ayuda al usuario de manera profesional y específica según su consulta. Comienza tus respuestas mencionando tu nombre: "${agent.name}".`;
         }
 
-        // Preparar mensaje para el agente real con contexto
+        // Preparar mensaje para OpenAI con tu clave API
         const contextualizedMessage = `Mensaje de ${contactName}: ${message}`;
-        console.log(`📤 Enviando mensaje al ChatGPT real: "${contextualizedMessage}"`);
+        console.log(`📤 Enviando a OpenAI con tu clave API: "${contextualizedMessage}"`);
         
-        // Obtener respuesta DIRECTA del modelo ChatGPT personalizado
-        agentResponse = await chatGPTConnector.sendMessage(extractedAgentId, contextualizedMessage);
+        // Obtener respuesta DIRECTA usando tu clave API de OpenAI
+        const response = await this.openai.chat.completions.create({
+          model: "gpt-4o", // El modelo más avanzado disponible
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: contextualizedMessage }
+          ],
+          max_tokens: 500,
+          temperature: 0.7
+        });
         
-        if (agentResponse && agentResponse !== 'Error obteniendo respuesta del agente') {
-          console.log(`🎯 RESPUESTA DIRECTA de ${agent.name}: ${agentResponse}`);
-        } else {
-          throw new Error('Respuesta vacía o error del agente');
-        }
+        agentResponse = response.choices[0]?.message?.content || 'No se pudo generar respuesta';
+        console.log(`🎯 RESPUESTA DIRECTA con tu API de ${agent.name}: ${agentResponse}`);
 
       } catch (directError: any) {
-        console.log(`⚠️ Conexión directa falló, intentando respuesta especializada:`, directError?.message || 'Error desconocido');
+        console.log(`⚠️ Error con tu clave API, usando respuesta de respaldo:`, directError?.message || 'Error desconocido');
         
-        // Sistema de respuestas especializadas basadas en el agente específico
+        // Respuestas de respaldo específicas para cada agente
         if (agent.name.includes('SmartBots') || agent.name.includes('ChatGPT')) {
           agentResponse = await this.generateAdvancedSmartBotsResponse(message, contactName, targetLanguage);
         } else if (agent.name.includes('SmartFlyer') || agent.triggerKeywords?.some(keyword => 
@@ -255,7 +287,7 @@ export class ExternalAgentService {
         } else {
           agentResponse = await this.generateAdvancedGenericResponse(message, contactName, targetLanguage);
         }
-        console.log(`✅ Respuesta especializada de ${agent.name}: ${agentResponse}`);
+        console.log(`✅ Respuesta de respaldo de ${agent.name}: ${agentResponse}`);
       }
 
       // Intentar guardar respuesta (opcional)
