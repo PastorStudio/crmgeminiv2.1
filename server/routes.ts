@@ -4242,6 +4242,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Obtener todos los agentes
+  app.get('/api/external-agents', async (req: Request, res: Response) => {
+    try {
+      const { externalAgentService } = await import('./services/externalAgentService');
+      const agents = externalAgentService.getAgents();
+      
+      res.json({
+        success: true,
+        agents: agents
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo agentes:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
+  // Obtener estadísticas de agentes
+  app.get('/api/external-agents/stats', async (req: Request, res: Response) => {
+    try {
+      const { externalAgentService } = await import('./services/externalAgentService');
+      const stats = externalAgentService.getAgentStats();
+      
+      res.json(stats);
+    } catch (error) {
+      console.error('❌ Error obteniendo estadísticas de agentes:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
   app.patch('/api/external-agents/:agentId/toggle', async (req: Request, res: Response) => {
     try {
       const { agentId } = req.params;
