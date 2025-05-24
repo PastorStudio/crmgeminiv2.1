@@ -34,6 +34,7 @@ import { mediaGalleryService } from "./services/mediaGalleryService";
 import { registerTemplateVariablesRoutes } from "./services/templateVariablesRoutes";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import chatAssignmentsRouter from "./routes/chatAssignments";
+import ticketsRouter from "./routes/tickets";
 import { 
   getAssignmentByChat, 
   createAssignmentFixed, 
@@ -84,6 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Registrar rutas para cuentas de WhatsApp y asignaciones de chat
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
+  app.use("/api/tickets", ticketsRouter);
   // ✅ ENDPOINTS DIRECTOS PARA ASIGNACIONES Y COMENTARIOS - POSTGRESQL REAL
   const { 
     createChatAssignment, 
