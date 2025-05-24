@@ -4135,11 +4135,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Crear agente usando el servicio de base de datos
-      const agentName = agentUrl.includes('chatgpt.com') ? 'SmartBots ChatGPT' :
-                        agentUrl.includes('claude.ai') ? 'Claude Assistant' :
-                        agentUrl.includes('gemini') ? 'Gemini AI' :
-                        'Agente Externo';
+      // Extraer el nombre real del agente desde la URL
+      let agentName = 'Agente Externo';
+      
+      if (agentUrl.includes('chatgpt.com/g/')) {
+        // Extraer el nombre real desde la URL de ChatGPT personalizado
+        const urlParts = agentUrl.split('/g/')[1];
+        if (urlParts) {
+          const fullId = urlParts.split('/')[0] || urlParts;
+          
+          // Mapeo de IDs conocidos a nombres reales
+          if (fullId.includes('smartbots')) {
+            agentName = 'SmartBots';
+          } else if (fullId.includes('smartplanner')) {
+            agentName = 'SmartPlanner IA';
+          } else if (fullId.includes('682ceb8bfa4c81918b3ff66abe6f3480')) {
+            agentName = 'SmartBots';
+          } else if (fullId.includes('682e61ce2364819196df9641616414b1')) {
+            agentName = 'SmartPlanner IA';
+          } else {
+            // Extraer nombre genérico del final de la URL
+            const nameParts = fullId.split('-').slice(1);
+            if (nameParts.length > 0) {
+              agentName = nameParts.join(' ')
+                .split('-')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+            } else {
+              agentName = 'ChatGPT Personalizado';
+            }
+          }
+        }
+      } else if (agentUrl.includes('claude.ai')) {
+        agentName = 'Claude Assistant';
+      } else if (agentUrl.includes('gemini')) {
+        agentName = 'Gemini AI';
+      }
 
       const { externalAgentService } = await import('./services/externalAgentService');
       
