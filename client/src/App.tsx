@@ -5,7 +5,7 @@ import { Spinner } from '@/components/ui/spinner';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import Messages from './pages/Messages';
-import Calendar from './pages/Calendar';
+import Calendar from './pages/CalendarFixed';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import Tasks from './pages/Tasks';
