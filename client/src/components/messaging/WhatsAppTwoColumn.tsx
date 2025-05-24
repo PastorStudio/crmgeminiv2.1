@@ -1515,8 +1515,12 @@ export function WhatsAppTwoColumn() {
                               >
                                 {/* Mensajes de audio/nota de voz con transcripción */}
                                 {(message.type === 'ptt' || message.type === 'audio') ? (
-                                  <VoiceNoteMessage messageId={message.id} />
-                                ) : (message.type === 'ptt' || message.type === 'audio') ? (
+                                  <VoiceNoteMessage 
+                                    messageId={message.id} 
+                                    chatId={selectedChat.id}
+                                    accountId={selectedChat.accountId}
+                                  />
+                                ) : message.type === 'image' ? (
                                   <div className="flex items-center space-x-3">
                                     <div className="flex items-center space-x-2">
                                       <div className="bg-gray-600 rounded-full p-2">
