@@ -43,6 +43,7 @@ import {
   getAutoResponseConfigFixed,
   saveAutoResponseConfigFixed 
 } from "./fix-all-apis";
+import { translateText, detectLanguage } from "./routes/translation";
 import {
   createRealAssignment,
   getRealAssignment,
@@ -3835,6 +3836,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Translation routes
+  app.post('/api/translate', translateText);
+  app.post('/api/detect-language', detectLanguage);
 
   return httpServer;
 }
