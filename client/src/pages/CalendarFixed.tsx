@@ -39,39 +39,8 @@ export default function Calendar() {
         </Button>
       </div>
 
-      {/* Calendar con 3 meses separados */}
+      {/* Calendar con 3 meses: actual, siguiente, próximo */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Mes anterior */}
-        <Card className="shadow-lg border-l-4 border-l-blue-500">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
-            <CardTitle className="flex items-center text-blue-700">
-              <span className="material-icons mr-2">calendar_today</span>
-              Mes Anterior
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <CalendarComponent 
-              className="w-full" 
-              mode="single" 
-              selected={selectedDate} 
-              onSelect={(date) => date && setSelectedDate(date)}
-              numberOfMonths={1}
-              month={new Date(new Date().setMonth(new Date().getMonth() - 1))}
-              showOutsideDays={false}
-              modifiers={{
-                hasActivity: (date) => {
-                  return activities?.some((activity: Activity) => 
-                    activity.scheduled && isSameDay(parseISO(activity.scheduled.toString()), date)
-                  ) || false;
-                }
-              }}
-              modifiersClassNames={{
-                hasActivity: "has-activity relative before:absolute before:bottom-1 before:left-1/2 before:transform before:-translate-x-1/2 before:w-2 before:h-2 before:bg-blue-500 before:rounded-full"
-              }}
-            />
-          </CardContent>
-        </Card>
-
         {/* Mes actual */}
         <Card className="shadow-xl border-l-4 border-l-green-500 ring-2 ring-green-200">
           <CardHeader className="bg-gradient-to-r from-green-50 to-green-100">
@@ -90,9 +59,9 @@ export default function Calendar() {
               showOutsideDays={false}
               modifiers={{
                 hasActivity: (date) => {
-                  return activities?.some((activity: Activity) => 
+                  return activities.some((activity: Activity) => 
                     activity.scheduled && isSameDay(parseISO(activity.scheduled.toString()), date)
-                  ) || false;
+                  );
                 }
               }}
               modifiersClassNames={{
@@ -103,10 +72,10 @@ export default function Calendar() {
         </Card>
 
         {/* Mes siguiente */}
-        <Card className="shadow-lg border-l-4 border-l-purple-500">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100">
-            <CardTitle className="flex items-center text-purple-700">
-              <span className="material-icons mr-2">schedule</span>
+        <Card className="shadow-lg border-l-4 border-l-blue-500">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
+            <CardTitle className="flex items-center text-blue-700">
+              <span className="material-icons mr-2">calendar_month</span>
               Mes Siguiente
             </CardTitle>
           </CardHeader>
@@ -121,9 +90,40 @@ export default function Calendar() {
               showOutsideDays={false}
               modifiers={{
                 hasActivity: (date) => {
-                  return activities?.some((activity: Activity) => 
+                  return activities.some((activity: Activity) => 
                     activity.scheduled && isSameDay(parseISO(activity.scheduled.toString()), date)
-                  ) || false;
+                  );
+                }
+              }}
+              modifiersClassNames={{
+                hasActivity: "has-activity relative before:absolute before:bottom-1 before:left-1/2 before:transform before:-translate-x-1/2 before:w-2 before:h-2 before:bg-blue-500 before:rounded-full"
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Mes próximo (mes +2) */}
+        <Card className="shadow-lg border-l-4 border-l-purple-500">
+          <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100">
+            <CardTitle className="flex items-center text-purple-700">
+              <span className="material-icons mr-2">schedule</span>
+              Mes Próximo
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <CalendarComponent 
+              className="w-full" 
+              mode="single" 
+              selected={selectedDate} 
+              onSelect={(date) => date && setSelectedDate(date)}
+              numberOfMonths={1}
+              month={new Date(new Date().setMonth(new Date().getMonth() + 2))}
+              showOutsideDays={false}
+              modifiers={{
+                hasActivity: (date) => {
+                  return activities.some((activity: Activity) => 
+                    activity.scheduled && isSameDay(parseISO(activity.scheduled.toString()), date)
+                  );
                 }
               }}
               modifiersClassNames={{
