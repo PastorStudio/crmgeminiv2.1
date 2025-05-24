@@ -68,14 +68,15 @@ const Tickets = () => {
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
 
   // Obtener estadísticas de tickets
-  const { data: stats, isLoading: statsLoading } = useQuery<TicketStats>({
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<TicketStats>({
     queryKey: ['/api/tickets/stats'],
     queryFn: () => apiRequest('/api/tickets/stats'),
-    refetchInterval: 30000 // Actualizar cada 30 segundos
+    refetchInterval: 30000, // Actualizar cada 30 segundos
+    retry: false
   });
 
   // Obtener todos los tickets
-  const { data: ticketsData, isLoading: ticketsLoading, refetch } = useQuery({
+  const { data: ticketsData, isLoading: ticketsLoading, refetch, error: ticketsError } = useQuery({
     queryKey: ['/api/tickets', selectedStatus, selectedAgent],
     queryFn: () => {
       let url = '/api/tickets?limit=100';
@@ -83,7 +84,8 @@ const Tickets = () => {
       if (selectedAgent !== 'all') url += `&assignedTo=${selectedAgent}`;
       return apiRequest(url);
     },
-    refetchInterval: 10000 // Actualizar cada 10 segundos
+    refetchInterval: 10000, // Actualizar cada 10 segundos
+    retry: false
   });
 
   // Obtener usuarios (agentes)
@@ -167,12 +169,31 @@ const Tickets = () => {
     );
   };
 
-  const filteredTickets = ticketsData?.tickets?.filter((ticket: TicketData) => {
-    const matchesSearch = ticket.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ticket.customerPhone.includes(searchTerm) ||
-                         ticket.lastMessage.toLowerCase().includes(searchTerm.toLowerCase());
+  // Valores por defecto seguros
+  const safeStats = stats || {
+    byStatus: {
+      nuevo: 0,
+      interesado: 0,
+      no_leido: 0,
+      pendiente_demo: 0,
+      completado: 0,
+      no_interesado: 0
+    },
+    totals: {
+      total: 0,
+      active: 0,
+      today: 0
+    }
+  };
+
+  const safeTicketsData = ticketsData || { tickets: [] };
+
+  const filteredTickets = safeTicketsData.tickets.filter((ticket: TicketData) => {
+    const matchesSearch = ticket.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.customerPhone?.includes(searchTerm) ||
+                         ticket.lastMessage?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
-  }) || [];
+  });
 
   const getTicketsByStatus = (status: string) => {
     return filteredTickets.filter((ticket: TicketData) => ticket.status === status);
@@ -203,6 +224,30 @@ const Tickets = () => {
     );
   }
 
+  if (statsError || ticketsError) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Sistema de Tickets</h1>
+            <p className="text-muted-foreground">
+              Gestión automática de conversaciones de WhatsApp
+            </p>
+          </div>
+        </div>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground mb-4">
+            {statsError ? 'Error al cargar estadísticas de tickets' : 'Error al cargar tickets'}
+          </p>
+          <Button onClick={() => refetch()} variant="outline">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Reintentar
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
@@ -225,7 +270,7 @@ const Tickets = () => {
             <CardTitle className="text-sm font-medium">Total Tickets</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totals.total || 0}</div>
+            <div className="text-2xl font-bold">{safeStats.totals.total}</div>
             <p className="text-xs text-muted-foreground">Total acumulado</p>
           </CardContent>
         </Card>
@@ -234,7 +279,7 @@ const Tickets = () => {
             <CardTitle className="text-sm font-medium">Tickets Activos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats?.totals.active || 0}</div>
+            <div className="text-2xl font-bold text-blue-600">{safeStats.totals.active}</div>
             <p className="text-xs text-muted-foreground">Pendientes de atención</p>
           </CardContent>
         </Card>
@@ -243,7 +288,7 @@ const Tickets = () => {
             <CardTitle className="text-sm font-medium">Hoy</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats?.totals.today || 0}</div>
+            <div className="text-2xl font-bold text-green-600">{safeStats.totals.today}</div>
             <p className="text-xs text-muted-foreground">Tickets creados hoy</p>
           </CardContent>
         </Card>
@@ -252,7 +297,7 @@ const Tickets = () => {
             <CardTitle className="text-sm font-medium">No Leídos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats?.byStatus.no_leido || 0}</div>
+            <div className="text-2xl font-bold text-red-600">{safeStats.byStatus.no_leido}</div>
             <p className="text-xs text-muted-foreground">Requieren atención inmediata</p>
           </CardContent>
         </Card>
@@ -305,27 +350,27 @@ const Tickets = () => {
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="nuevo" className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4" />
-            Nuevos ({stats?.byStatus.nuevo || 0})
+            Nuevos ({safeStats.byStatus.nuevo})
           </TabsTrigger>
           <TabsTrigger value="interesado" className="flex items-center gap-2">
             <Eye className="w-4 h-4" />
-            Interesados ({stats?.byStatus.interesado || 0})
+            Interesados ({safeStats.byStatus.interesado})
           </TabsTrigger>
           <TabsTrigger value="no_leido" className="flex items-center gap-2">
             <MessageSquare className="w-4 h-4" />
-            No Leídos ({stats?.byStatus.no_leido || 0})
+            No Leídos ({safeStats.byStatus.no_leido})
           </TabsTrigger>
           <TabsTrigger value="pendiente_demo" className="flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            Pendiente Demo ({stats?.byStatus.pendiente_demo || 0})
+            Pendiente Demo ({safeStats.byStatus.pendiente_demo})
           </TabsTrigger>
           <TabsTrigger value="completado" className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4" />
-            Completados ({stats?.byStatus.completado || 0})
+            Completados ({safeStats.byStatus.completado})
           </TabsTrigger>
           <TabsTrigger value="no_interesado" className="flex items-center gap-2">
             <XCircle className="w-4 h-4" />
-            No Interesados ({stats?.byStatus.no_interesado || 0})
+            No Interesados ({safeStats.byStatus.no_interesado})
           </TabsTrigger>
         </TabsList>
 
