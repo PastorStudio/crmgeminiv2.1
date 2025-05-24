@@ -2246,14 +2246,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Crear servidor HTTP
   const httpServer = createServer(app);
   
-  // Ruta para obtener mensajes de un chat específico de WhatsApp
+  // Ruta para obtener mensajes de un chat específico de WhatsApp - SOLO DATOS REALES
   app.get("/api/whatsapp/messages/:chatId", async (req: Request, res: Response) => {
     try {
-      const { getWhatsAppMessages } = await import('./routes/whatsappAPI');
-      await getWhatsAppMessages(req, res);
+      const { getRealWhatsAppMessagesOnly } = await import('./routes/realWhatsAppMessages');
+      await getRealWhatsAppMessagesOnly(req, res);
     } catch (error) {
-      console.error("Error obteniendo mensajes de WhatsApp:", error);
-      res.status(500).json({ error: "Error obteniendo mensajes" });
+      console.error("Error obteniendo mensajes reales de WhatsApp:", error);
+      res.status(500).json({ error: "Error obteniendo mensajes auténticos" });
     }
   });
 
