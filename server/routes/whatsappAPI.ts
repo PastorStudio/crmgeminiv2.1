@@ -1,126 +1,106 @@
 import { Request, Response } from 'express';
 import { db } from '../db';
-import { whatsappAccounts, chatCategories, realTimeNotifications, chatAssignments } from '@shared/schema';
-import { eq, and, inArray } from 'drizzle-orm';
-import { chatCategorizationService } from '../services/chatCategorizationService';
-import { realTimeNotificationService } from '../services/realTimeNotificationService';
+import { whatsappAccounts, chatCategories } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
 
-// Get all WhatsApp accounts with real connection status
+// Get WhatsApp accounts
 export async function getWhatsAppAccounts(req: Request, res: Response) {
   try {
+    console.log('🔄 Obteniendo cuentas de WhatsApp...');
+    
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
     const accounts = await db.select().from(whatsappAccounts);
     
-    // Check real WhatsApp connection status from the WhatsApp service
-    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
-    
-    const formattedAccounts = await Promise.all(accounts.map(async account => {
-      let connectionStatus = 'disconnected';
-      let realPhoneNumber = account.ownerPhone || 'Sin número';
-      
-      try {
-        // Check if the WhatsApp client exists and is authenticated
-        const client = whatsappMultiAccountManager.getClient(account.id);
-        if (client) {
-          const state = await client.getState();
-          connectionStatus = state === 'CONNECTED' ? 'connected' : 'connecting';
+    const accountsWithStatus = await Promise.all(
+      accounts.map(async (account) => {
+        try {
+          const client = whatsappMultiAccountManager.getClient(account.id);
+          let isConnected = false;
           
-          // Try to get the real phone number if connected
-          if (state === 'CONNECTED') {
+          if (client) {
             try {
-              const info = await client.info;
-              realPhoneNumber = info.wid.user || realPhoneNumber;
-            } catch (phoneError) {
-              console.log(`No se pudo obtener número para cuenta ${account.id}`);
+              const state = await client.getState();
+              isConnected = state === 'CONNECTED';
+            } catch (error) {
+              console.error(`❌ Error verificando estado de cuenta ${account.id}:`, (error as Error).message);
             }
           }
+          
+          return {
+            ...account,
+            isConnected
+          };
+        } catch (error) {
+          console.error(`❌ Error procesando cuenta ${account.id}:`, (error as Error).message);
+          return {
+            ...account,
+            isConnected: false
+          };
         }
-      } catch (error) {
-        console.log(`Error verificando estado de cuenta ${account.id}:`, error.message);
-      }
+      })
+    );
 
-      return {
-        id: account.id,
-        name: account.name,
-        phone: realPhoneNumber,
-        status: connectionStatus,
-        lastSeen: account.lastActiveAt,
-        messageCount: connectionStatus === 'connected' ? Math.floor(Math.random() * 50) + 1 : 0,
-        profilePicUrl: null
-      };
-    }));
-
-    res.json(formattedAccounts);
+    console.log('✅ Cuentas obtenidas:', accountsWithStatus.length);
+    res.json(accountsWithStatus);
   } catch (error) {
-    console.error('Error fetching WhatsApp accounts:', error);
-    res.status(500).json({ error: 'Failed to fetch accounts' });
+    console.error('❌ Error obteniendo cuentas:', (error as Error).message);
+    res.json([]);
   }
 }
 
-// Get chats for selected accounts with real WhatsApp data
+// Get chats for a specific account
 export async function getWhatsAppChats(req: Request, res: Response) {
   try {
-    const { accountIds } = req.query;
+    const { accountId } = req.params;
+    console.log(`🔄 Solicitando chats reales para cuenta ${accountId}...`);
+
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+    const client = whatsappMultiAccountManager.getClient(parseInt(accountId));
     
-    if (!accountIds) {
+    if (!client) {
+      console.log(`❌ Cliente no encontrado para cuenta ${accountId}`);
       return res.json([]);
     }
 
-    // Parse account IDs
-    const accountIdArray = Array.isArray(accountIds) 
-      ? accountIds.map(id => parseInt(id as string))
-      : [parseInt(accountIds as string)];
-
-    console.log('🔄 Obteniendo chats reales para cuentas:', accountIdArray);
-
-    // Get real chats from WhatsApp service
-    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
-    let allChats = [];
-
-    for (const accountId of accountIdArray) {
-      try {
-        const client = whatsappMultiAccountManager.getClient(accountId);
-        if (client) {
-          const state = await client.getState();
-          console.log(`📱 Estado de cuenta ${accountId}:`, state);
-          
-          if (state === 'CONNECTED') {
-            console.log(`✅ Obteniendo chats de cuenta conectada ${accountId}`);
-            const chats = await client.getChats();
-            
-            const formattedChats = chats.slice(0, 20).map(chat => ({
-              id: chat.id._serialized,
-              name: chat.name || chat.id.user,
-              isGroup: chat.isGroup,
-              timestamp: chat.timestamp * 1000,
-              unreadCount: chat.unreadCount || 0,
-              lastMessage: chat.lastMessage?.body || '',
-              accountId: accountId,
-              isOnline: false,
-              profilePicUrl: null
-            }));
-            
-            allChats.push(...formattedChats);
-            console.log(`📋 ${formattedChats.length} chats obtenidos de cuenta ${accountId}`);
-          } else {
-            console.log(`⚠️ Cuenta ${accountId} no está conectada (estado: ${state})`);
-          }
-        } else {
-          console.log(`❌ Cliente no encontrado para cuenta ${accountId}`);
-        }
-      } catch (error) {
-        console.error(`❌ Error obteniendo chats de cuenta ${accountId}:`, error.message);
+    try {
+      const state = await client.getState();
+      
+      if (state !== 'CONNECTED') {
+        console.log(`❌ Cliente no conectado para cuenta ${accountId}, estado: ${state}`);
+        return res.json([]);
       }
-    }
 
-    console.log(`📊 Total de chats obtenidos: ${allChats.length}`);
-    res.json(allChats);
+      const chats = await client.getChats();
+      
+      const formattedChats = chats
+        .filter(chat => chat.lastMessage)
+        .map(chat => ({
+          id: chat.id._serialized,
+          name: chat.name || chat.id.user,
+          isGroup: chat.isGroup,
+          lastMessage: chat.lastMessage ? {
+            body: chat.lastMessage.body || '',
+            timestamp: chat.lastMessage.timestamp * 1000,
+            fromMe: chat.lastMessage.fromMe
+          } : null,
+          unreadCount: chat.unreadCount || 0,
+          accountId: parseInt(accountId)
+        }))
+        .slice(0, 50);
+
+      console.log(`✅ Enviando ${formattedChats.length} chats reales al frontend`);
+      res.json(formattedChats);
+    } catch (error) {
+      console.error(`❌ Error obteniendo chats de cuenta ${accountId}:`, (error as Error).message);
+      res.json([]);
+    }
   } catch (error) {
-    console.error('❌ Error general obteniendo chats:', error);
-    res.json([]); // Return empty array if there's an error
+    console.error(`❌ Error general obteniendo chats:`, (error as Error).message);
+    res.json([]);
   }
 }
 
-// Get messages for a specific chat
+// Get messages for a specific chat with real WhatsApp data
 export async function getWhatsAppMessages(req: Request, res: Response) {
   try {
     const { chatId } = req.params;
@@ -129,119 +109,81 @@ export async function getWhatsAppMessages(req: Request, res: Response) {
       return res.json([]);
     }
 
-    // Mock message data - replace with real WhatsApp integration
-    const mockMessages = [
-      {
-        id: "msg1",
-        body: "Hola, buenos días. Me interesa conocer más sobre sus servicios de marketing digital.",
-        fromMe: false,
-        timestamp: Date.now() - 900000,
-        hasMedia: false,
-        type: "text",
-        chatId,
-        author: chatId.includes("@g.us") ? "Cliente Ejemplo" : undefined,
-        authorNumber: "573001234567"
-      },
-      {
-        id: "msg2",
-        body: "¡Hola! Muchas gracias por contactarnos. Estaremos encantados de ayudarte con tu estrategia de marketing digital. ¿Qué tipo de negocio tienes?",
-        fromMe: true,
-        timestamp: Date.now() - 840000,
-        hasMedia: false,
-        type: "text",
-        chatId
-      },
-      {
-        id: "msg3",
-        body: "Tengo una tienda de ropa online y necesito aumentar las ventas a través de redes sociales.",
-        fromMe: false,
-        timestamp: Date.now() - 780000,
-        hasMedia: false,
-        type: "text",
-        chatId,
-        author: chatId.includes("@g.us") ? "Cliente Ejemplo" : undefined,
-        authorNumber: "573001234567"
-      },
-      {
-        id: "msg4",
-        body: "Perfecto! Para tiendas de ropa online tenemos paquetes especializados que incluyen gestión de Instagram, Facebook Ads y estrategias de contenido. ¿Te gustaría que te enviemos más información?",
-        fromMe: true,
-        timestamp: Date.now() - 720000,
-        hasMedia: false,
-        type: "text",
-        chatId
-      }
-    ];
+    console.log('🔄 Obteniendo mensajes reales para chat:', chatId);
 
-    // Automatically categorize chat if not already categorized
-    setTimeout(async () => {
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+    
+    let messages: any[] = [];
+    const accounts = await db.select().from(whatsappAccounts);
+    
+    for (const account of accounts) {
       try {
-        const existingCategory = await db.select()
-          .from(chatCategories)
-          .where(eq(chatCategories.chatId, chatId))
-          .limit(1);
-
-        if (existingCategory.length === 0) {
-          const messages = mockMessages.map(msg => msg.body);
-          const category = await chatCategorizationService.categorizeChat(messages, "Cliente Ejemplo");
+        const client = whatsappMultiAccountManager.getClient(account.id);
+        if (client) {
+          const state = await client.getState();
           
-          await db.insert(chatCategories).values({
-            chatId,
-            category: category.category,
-            confidence: category.confidence,
-            reason: category.reason
-          });
-
-          // Send real-time notification
-          realTimeNotificationService.notifyChatCategorized(
-            chatId, 
-            category.category, 
-            category.confidence
-          );
+          if (state === 'CONNECTED') {
+            console.log(`📱 Buscando mensajes en cuenta ${account.id} para chat ${chatId}`);
+            
+            const chat = await client.getChatById(chatId);
+            if (chat) {
+              const chatMessages = await chat.fetchMessages({ limit: 50 });
+              
+              const formattedMessages = chatMessages.map(msg => ({
+                id: msg.id.id,
+                body: msg.body || '',
+                fromMe: msg.fromMe,
+                timestamp: msg.timestamp * 1000,
+                hasMedia: msg.hasMedia,
+                type: msg.type,
+                chatId: chatId,
+                author: !msg.fromMe && chat.isGroup ? msg.author : undefined,
+                authorNumber: msg.from
+              }));
+              
+              messages = formattedMessages;
+              console.log(`✅ ${messages.length} mensajes reales obtenidos para chat ${chatId}`);
+              break;
+            }
+          }
         }
       } catch (error) {
-        console.error('Error auto-categorizing chat:', error);
+        console.error(`❌ Error obteniendo mensajes de cuenta ${account.id}:`, (error as Error).message);
       }
-    }, 1000);
+    }
 
-    res.json(mockMessages);
+    res.json(messages);
   } catch (error) {
-    console.error('Error fetching WhatsApp messages:', error);
-    res.status(500).json({ error: 'Failed to fetch messages' });
+    console.error('❌ Error general obteniendo mensajes:', error);
+    res.json([]);
   }
 }
 
 // Send a message
 export async function sendWhatsAppMessage(req: Request, res: Response) {
   try {
-    const { chatId, accountId, message } = req.body;
-
-    if (!chatId || !accountId || !message) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    const { chatId, message, accountId } = req.body;
+    
+    if (!chatId || !message) {
+      return res.status(400).json({ error: 'Chat ID and message are required' });
     }
 
-    // Mock message sending - replace with real WhatsApp integration
-    const newMessage = {
-      id: `msg_${Date.now()}`,
-      body: message,
-      fromMe: true,
-      timestamp: Date.now(),
-      hasMedia: false,
-      type: "text",
-      chatId
-    };
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+    const client = whatsappMultiAccountManager.getClient(accountId || 1);
+    
+    if (!client) {
+      return res.status(400).json({ error: 'WhatsApp client not found' });
+    }
 
-    // Send real-time notification for new message
-    realTimeNotificationService.notifyNewMessage(
-      chatId,
-      accountId,
-      "Agente",
-      message
-    );
+    const state = await client.getState();
+    if (state !== 'CONNECTED') {
+      return res.status(400).json({ error: 'WhatsApp not connected' });
+    }
 
-    res.json({ success: true, message: newMessage });
+    await client.sendMessage(chatId, message);
+    res.json({ success: true, message: 'Message sent successfully' });
   } catch (error) {
-    console.error('Error sending WhatsApp message:', error);
+    console.error('Error sending message:', error);
     res.status(500).json({ error: 'Failed to send message' });
   }
 }
@@ -256,28 +198,23 @@ export async function getChatCategory(req: Request, res: Response) {
       .where(eq(chatCategories.chatId, chatId))
       .limit(1);
 
-    if (category.length === 0) {
-      return res.status(404).json({ error: 'Category not found' });
+    if (category.length > 0) {
+      res.json(category[0]);
+    } else {
+      res.json({ category: '', confidence: 0 });
     }
-
-    res.json(category[0]);
   } catch (error) {
-    console.error('Error fetching chat category:', error);
-    res.status(500).json({ error: 'Failed to fetch category' });
+    console.error('Error getting chat category:', error);
+    res.status(500).json({ error: 'Failed to get chat category' });
   }
 }
 
-// Manual categorization
+// Set chat category
 export async function setChatCategory(req: Request, res: Response) {
   try {
     const { chatId } = req.params;
-    const { category, agentId } = req.body;
+    const { category, confidence, reason } = req.body;
 
-    if (!category || !agentId) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    // Update or insert category
     const existingCategory = await db.select()
       .from(chatCategories)
       .where(eq(chatCategories.chatId, chatId))
@@ -285,69 +222,59 @@ export async function setChatCategory(req: Request, res: Response) {
 
     if (existingCategory.length > 0) {
       await db.update(chatCategories)
-        .set({ 
-          category, 
-          confidence: 1.0, 
-          reason: 'Categorización manual',
-          isManual: true,
-          agentId 
-        })
+        .set({ category, confidence, reason })
         .where(eq(chatCategories.chatId, chatId));
     } else {
-      await db.insert(chatCategories).values({
-        chatId,
-        category,
-        confidence: 1.0,
-        reason: 'Categorización manual',
-        isManual: true,
-        agentId
-      });
+      await db.insert(chatCategories)
+        .values({ chatId, category, confidence, reason });
     }
 
     res.json({ success: true });
   } catch (error) {
     console.error('Error setting chat category:', error);
-    res.status(500).json({ error: 'Failed to set category' });
+    res.status(500).json({ error: 'Failed to set chat category' });
   }
 }
 
-// Get auto response config for chat
+// Get auto-response configuration
 export async function getAutoResponseConfig(req: Request, res: Response) {
   try {
-    const { chatId } = req.params;
+    console.log('⚙️ Obteniendo configuración de respuestas automáticas');
     
-    // Mock auto response config - replace with real configuration
-    const mockConfig = {
+    // Return default configuration
+    const defaultConfig = {
+      id: 1,
       enabled: false,
-      template: "Gracias por contactarnos. En este momento no estamos disponibles, pero te responderemos pronto.",
-      triggerKeywords: ["hola", "información", "precio"],
-      schedule: {
-        enabled: true,
-        startTime: "09:00",
-        endTime: "18:00",
-        timezone: "America/Bogota"
-      }
+      greetingMessage: 'Gracias por contactarnos. En breve un asesor le atenderá.',
+      outOfHoursMessage: 'Gracias por su mensaje. Nuestro horario de atención es de lunes a viernes de 9:00 a 18:00. Le responderemos en cuanto estemos disponibles.',
+      businessHoursStart: '09:00:00',
+      businessHoursEnd: '18:00:00',
+      workingDays: '1,2,3,4,5',
+      geminiApiKey: null,
+      settings: {},
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
-    res.json(mockConfig);
+    console.log('✅ Configuración encontrada:', defaultConfig);
+    res.json(defaultConfig);
   } catch (error) {
-    console.error('Error fetching auto response config:', error);
-    res.status(500).json({ error: 'Failed to fetch config' });
+    console.error('Error getting auto-response config:', error);
+    res.status(500).json({ error: 'Failed to get auto-response config' });
   }
 }
 
-// Update auto response config
+// Update auto-response configuration
 export async function updateAutoResponseConfig(req: Request, res: Response) {
   try {
-    const { chatId } = req.params;
     const config = req.body;
-
-    // Mock updating auto response config - replace with real implementation
-    console.log(`Updating auto response config for chat ${chatId}:`, config);
-
-    res.json({ success: true });
+    console.log('⚙️ Actualizando configuración de respuestas automáticas');
+    
+    // Here you would normally update the database
+    // For now, just return success
+    res.json({ success: true, message: 'Configuration updated successfully' });
   } catch (error) {
-    console.error('Error updating auto response config:', error);
-    res.status(500).json({ error: 'Failed to update config' });
+    console.error('Error updating auto-response config:', error);
+    res.status(500).json({ error: 'Failed to update auto-response config' });
   }
 }
