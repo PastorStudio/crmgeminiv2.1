@@ -177,8 +177,6 @@ export function WhatsAppTwoColumn() {
   // Estados para auto-envío con delay de 5 segundos
   const [autoSendTimer, setAutoSendTimer] = useState<NodeJS.Timeout | null>(null);
   const [isAutoSending, setIsAutoSending] = useState(false);
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const [fileMenuOpen, setFileMenuOpen] = useState(false);
   
   // Estados para respuestas automáticas a mensajes recibidos
   const [lastProcessedMessageId, setLastProcessedMessageId] = useState<string | null>(null);
@@ -350,78 +348,17 @@ export function WhatsAppTwoColumn() {
       setIsAutoSending(false);
     }
   };
-        });
-        
-        return data.response;
-      } else {
-        console.error('❌ Error en SmartBots automático:', data.error);
-        return null;
-      }
-    } catch (error) {
-      console.error('❌ Error conectando con SmartBots automático:', error);
-      console.error('🔍 Detalles del error:', error.message, error.name);
-      return null;
-    }
-  };
 
-  // Función para enviar mensaje automáticamente
-  const sendAutoMessage = async (message: string) => {
-    if (!selectedChat || !message.trim()) return;
-
-    try {
-      console.log('📤 Enviando mensaje automático:', message);
-      
-      const accountId = (selectedAccounts as any[]).find((acc: any) => 
-        selectedChat.accountId === acc.id
-      )?.id || selectedChat.accountId;
-
-      const response = await fetch(`/api/whatsapp-accounts/${accountId}/send-message`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chatId: selectedChat.id,
-          message: message
-        })
-      });
-
-      if (response.ok) {
-        console.log('✅ Mensaje automático enviado exitosamente');
-        
-        // Refrescar mensajes después de enviar
-        queryClient.invalidateQueries({
-          queryKey: [`/api/whatsapp-accounts/${accountId}/messages/${selectedChat.id}`]
-        });
-        
-        toast({
-          title: "✅ Mensaje enviado automáticamente",
-          description: "SmartBots envió la respuesta al cliente",
-        });
-      } else {
-        console.error('❌ Error enviando mensaje automático');
-        toast({
-          title: "❌ Error",
-          description: "No se pudo enviar el mensaje automático",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error en envío automático:', error);
-      toast({
-        title: "❌ Error de conexión",
-        description: "No se pudo conectar para enviar el mensaje",
-        variant: "destructive"
-      });
-    }
+  // Función para limpiar input después de auto-envío
+  const clearInputAfterAutoSend = () => {
+    setNewMessage('');
+    clearAutoSendTimer();
   };
 
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
-  const [lastMessageCount, setLastMessageCount] = useState(0);
-  const [lastProcessedMessageId, setLastProcessedMessageId] = useState<string | null>(null);
 
   // Fetch WhatsApp accounts
   const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
