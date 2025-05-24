@@ -3896,6 +3896,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Rutas de transcripción de audio con OpenAI Whisper
+  // Endpoint para transcribir manualmente notas de voz existentes
+  app.post('/api/whatsapp/transcribe-voice-notes/:accountId/:chatId', async (req: Request, res: Response) => {
+    try {
+      const { accountId, chatId } = req.params;
+      console.log(`🎤 Solicitando transcripción manual para chat ${chatId} en cuenta ${accountId}`);
+      
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      const instance = whatsappMultiAccountManager.getInstance(parseInt(accountId));
+      
+      if (!instance || !instance.client) {
+        return res.status(404).json({
+          success: false,
+          error: `Cuenta WhatsApp ${accountId} no encontrada`
+        });
+      }
+
+      // Obtener mensajes del chat
+      const chat = await instance.client.getChatById(chatId);
+      const messages = await chat.fetchMessages({ limit: 10 });
+      
+      // Buscar notas de voz no transcritas
+      const voiceMessages = messages.filter(msg => 
+        (msg.type === 'ptt' || msg.type === 'audio') && !msg.fromMe
+      );
+      
+      console.log(`🔍 Encontradas ${voiceMessages.length} notas de voz para transcribir`);
+      
+      let transcriptions = [];
+      
+      for (const message of voiceMessages) {
+        try {
+          console.log(`🎵 Transcribiendo nota de voz: ${message.id._serialized}`);
+          
+          const media = await message.downloadMedia();
+          if (media && process.env.OPENAI_API_KEY) {
+            // Importar OpenAI dinámicamente
+            const OpenAI = (await import('openai')).default;
+            const openai = new OpenAI({
+              apiKey: process.env.OPENAI_API_KEY
+            });
+            
+            // Convertir el archivo de audio a formato compatible
+            const audioBuffer = Buffer.from(media.data, 'base64');
+            
+            // Crear un archivo temporal
+            const fs = await import('fs');
+            const path = await import('path');
+            const tempFileName = `voice_note_${Date.now()}.ogg`;
+            const tempFilePath = path.join('/tmp', tempFileName);
+            
+            fs.writeFileSync(tempFilePath, audioBuffer);
+            
+            // Transcribir con OpenAI Whisper
+            const transcription = await openai.audio.transcriptions.create({
+              file: fs.createReadStream(tempFilePath),
+              model: 'whisper-1',
+              language: 'es'
+            });
+            
+            console.log(`✅ Nota de voz transcrita: "${transcription.text}"`);
+            
+            transcriptions.push({
+              messageId: message.id._serialized,
+              timestamp: message.timestamp,
+              transcription: transcription.text
+            });
+            
+            // Limpiar archivo temporal
+            fs.unlinkSync(tempFilePath);
+            
+          } else {
+            console.log('❌ No se pudo descargar el audio o falta la clave de OpenAI');
+          }
+        } catch (error) {
+          console.error(`❌ Error transcribiendo nota de voz:`, error);
+        }
+      }
+      
+      res.json({
+        success: true,
+        transcriptions,
+        message: `Se transcribieron ${transcriptions.length} notas de voz`
+      });
+      
+    } catch (error) {
+      console.error('❌ Error en transcripción manual:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error transcribiendo notas de voz'
+      });
+    }
+  });
+
   app.post('/api/audio/transcribe-whatsapp', async (req: Request, res: Response) => {
     try {
       const { audioUrl, chatId, accountId, messageId } = req.body;
