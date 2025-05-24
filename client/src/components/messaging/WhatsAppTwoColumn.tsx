@@ -465,7 +465,7 @@ export function WhatsAppTwoColumn() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2, delay: index * 0.05 }}
-                    className="p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 pl-[-2px] pr-[-2px] mt-[2px] mb-[2px] pt-[8px] pb-[8px] text-right text-[13px]"
+                    className="p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 mt-[-24px] mb-[-24px] ml-[34px] mr-[34px] pt-[13px] pb-[13px] pl-[-100px] pr-[-100px]"
                     onClick={() => setSelectedChat(chat)}
                   >
                     <div className="flex items-center space-x-3">
