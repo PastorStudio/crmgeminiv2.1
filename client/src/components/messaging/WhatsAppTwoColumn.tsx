@@ -723,7 +723,7 @@ export function WhatsAppTwoColumn() {
                                   }`}>
                                     {message.messageRead 
                                       ? '✓✓' 
-                                      : message.type === 'delivered' 
+                                      : (message.type === 'delivered' || message.type === 'received') 
                                         ? '✓✓' 
                                         : '✓'}
                                   </span>
