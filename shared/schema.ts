@@ -621,6 +621,21 @@ export type InsertTimeZoneConfig = z.infer<typeof insertTimeZoneConfigSchema>;
 export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
 
 export type MediaGallery = typeof mediaGallery.$inferSelect;
+
+// Tabla para transcripciones de notas de voz
+export const voiceNoteTranscriptions = pgTable("voice_note_transcriptions", {
+  id: serial("id").primaryKey(),
+  messageId: text("message_id").notNull().unique(),
+  chatId: text("chat_id").notNull(),
+  accountId: integer("account_id").notNull(),
+  transcription: text("transcription").notNull(),
+  duration: integer("duration"), // duración en segundos
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertVoiceNoteTranscriptionSchema = createInsertSchema(voiceNoteTranscriptions);
+export type InsertVoiceNoteTranscription = z.infer<typeof insertVoiceNoteTranscriptionSchema>;
+export type VoiceNoteTranscription = typeof voiceNoteTranscriptions.$inferSelect;
 export type WhatsappAccount = typeof whatsappAccounts.$inferSelect;
 export type UserWhatsappAccount = typeof userWhatsappAccounts.$inferSelect;
 export type ChatAssignment = typeof chatAssignments.$inferSelect;
