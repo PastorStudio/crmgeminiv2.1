@@ -4446,9 +4446,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint para procesar mensajes con agentes externos
   app.post('/api/external-agents/process-message', async (req: Request, res: Response) => {
     try {
+      console.log('🎯 ENDPOINT EJECUTADO: /api/external-agents/process-message');
+      console.log('📦 Datos recibidos:', req.body);
+      
       const { agentId, message, contactName, context, targetLanguage, translateResponse } = req.body;
       
+      console.log(`🔍 Procesando: agentId=${agentId}, mensaje="${message}", contacto="${contactName}"`);
+      
       if (!agentId || !message) {
+        console.log('❌ Datos faltantes:', { agentId, message });
         return res.status(400).json({
           success: false,
           error: 'Se requiere agentId y mensaje'

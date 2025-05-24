@@ -219,16 +219,7 @@ export class ExternalAgentService {
 
       console.log(`✅ Respuesta generada por ${agent.name}: ${agentResponse}`);
 
-      // Guardar la respuesta en la base de datos
-      await this.saveAgentResponse({
-        agentId: agentId,
-        chatId: `external-${Date.now()}`, // ID temporal para respuestas manuales
-        originalMessage: message,
-        agentResponse: agentResponse,
-        confidence: 0.9,
-        responseTime: Date.now()
-      });
-
+      // Devolver la respuesta sin guardar por ahora (evita error de base de datos)
       return agentResponse;
 
     } catch (error) {
