@@ -980,6 +980,45 @@ export function WhatsAppTwoColumn() {
 
 
 
+  // Función para manejar mensajes de audio (transcripción)
+  const handleAudioMessage = async (message: any) => {
+    try {
+      toast({
+        title: "🎧 Procesando audio...",
+        description: "Transcribiendo mensaje de voz...",
+      });
+
+      const response = await fetch('/api/audio/transcribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messageId: message.id,
+          audioUrl: message.mediaUrl || message._data?.mediaUrl
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "✅ Audio transcrito",
+          description: `Transcripción: "${result.text}"`,
+          duration: 5000
+        });
+      } else {
+        throw new Error('Error en la transcripción');
+      }
+    } catch (error) {
+      console.error('Error transcribiendo audio:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo transcribir el audio",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedChat) return;
     
@@ -1726,18 +1765,25 @@ export function WhatsAppTwoColumn() {
                   </PopoverContent>
                 </Popover>
 
-                {/* Voice Note Button */}
+                {/* Voice Note Button with Sound Waves */}
                 <Button
                   variant={isRecording ? "destructive" : "outline"}
                   size="sm"
-                  className={`h-9 px-3 ${isRecording ? 'animate-pulse' : ''}`}
+                  className={`h-9 px-3 ${isRecording ? 'bg-red-600 hover:bg-red-700' : ''}`}
                   onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
                   disabled={!selectedChat}
                 >
                   {isRecording ? (
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-1"></div>
+                    <div className="flex items-center space-x-1">
                       <span>🎤</span>
+                      {/* Animated Sound Waves */}
+                      <div className="flex items-center space-x-0.5">
+                        <div className="w-0.5 h-3 bg-white rounded-full animate-pulse" style={{animationDelay: '0ms'}}></div>
+                        <div className="w-0.5 h-4 bg-white rounded-full animate-pulse" style={{animationDelay: '150ms'}}></div>
+                        <div className="w-0.5 h-2 bg-white rounded-full animate-pulse" style={{animationDelay: '300ms'}}></div>
+                        <div className="w-0.5 h-5 bg-white rounded-full animate-pulse" style={{animationDelay: '450ms'}}></div>
+                        <div className="w-0.5 h-3 bg-white rounded-full animate-pulse" style={{animationDelay: '600ms'}}></div>
+                      </div>
                     </div>
                   ) : (
                     <span>🎤</span>
