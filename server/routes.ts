@@ -3490,7 +3490,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Translation endpoints
   app.post('/api/translate', async (req: Request, res: Response) => {
     try {
-      const { translateText, autoTranslate } = await import('./services/translationService');
       const { text, targetLanguage, sourceLanguage } = req.body;
       
       if (!text || typeof text !== 'string' || text.trim() === '') {
@@ -3502,12 +3501,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('🌐 Translating text:', text);
       
+      // Check if Gemini API key is available
+      if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.trim() === '') {
+        console.log('⚠️ Gemini API key not configured, using demo mode');
+        
+        // Simple demo translation (Spanish <-> English)
+        const isSpanish = /[áéíóúñ¿¡]|hola|como|que|para|con|una|este|todo|pero|muy|cuando|hasta|donde/i.test(text);
+        
+        const demoTranslation = {
+          originalText: text,
+          translatedText: isSpanish ? 
+            `[EN] ${text.replace(/hola/gi, 'hello').replace(/como/gi, 'how').replace(/que/gi, 'what')}` :
+            `[ES] ${text.replace(/hello/gi, 'hola').replace(/how/gi, 'como').replace(/what/gi, 'que')}`,
+          sourceLanguage: isSpanish ? 'es' : 'en',
+          targetLanguage: isSpanish ? 'en' : 'es',
+          confidence: 0.8
+        };
+        
+        return res.json({
+          success: true,
+          ...demoTranslation,
+          demo: true
+        });
+      }
+      
+      // Use real translation service if API key is available
+      const { translateText, autoTranslate } = await import('./services/translationService');
+      
       let result;
       if (targetLanguage === 'auto' || !targetLanguage) {
-        // Auto-translate (Spanish <-> English)
         result = await autoTranslate(text);
       } else {
-        // Specific language translation
         result = await translateText({
           text,
           targetLanguage,
