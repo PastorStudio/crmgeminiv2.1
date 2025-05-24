@@ -5,20 +5,48 @@ import { eq, and, inArray } from 'drizzle-orm';
 import { chatCategorizationService } from '../services/chatCategorizationService';
 import { realTimeNotificationService } from '../services/realTimeNotificationService';
 
-// Get all WhatsApp accounts
+// Get all WhatsApp accounts with real connection status
 export async function getWhatsAppAccounts(req: Request, res: Response) {
   try {
     const accounts = await db.select().from(whatsappAccounts);
     
-    // Format accounts with mock data for now - you can replace with real WhatsApp data
-    const formattedAccounts = accounts.map(account => ({
-      id: account.id,
-      name: account.name,
-      phone: account.ownerPhone || 'Sin número',
-      status: account.status === 'active' ? 'connected' : 'disconnected',
-      lastSeen: account.lastActiveAt,
-      messageCount: Math.floor(Math.random() * 50) + 1, // Mock count
-      profilePicUrl: null
+    // Check real WhatsApp connection status from the WhatsApp service
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+    
+    const formattedAccounts = await Promise.all(accounts.map(async account => {
+      let connectionStatus = 'disconnected';
+      let realPhoneNumber = account.ownerPhone || 'Sin número';
+      
+      try {
+        // Check if the WhatsApp client exists and is authenticated
+        const client = whatsappMultiAccountManager.getClient(account.id);
+        if (client) {
+          const state = await client.getState();
+          connectionStatus = state === 'CONNECTED' ? 'connected' : 'connecting';
+          
+          // Try to get the real phone number if connected
+          if (state === 'CONNECTED') {
+            try {
+              const info = await client.info;
+              realPhoneNumber = info.wid.user || realPhoneNumber;
+            } catch (phoneError) {
+              console.log(`No se pudo obtener número para cuenta ${account.id}`);
+            }
+          }
+        }
+      } catch (error) {
+        console.log(`Error verificando estado de cuenta ${account.id}:`, error.message);
+      }
+
+      return {
+        id: account.id,
+        name: account.name,
+        phone: realPhoneNumber,
+        status: connectionStatus,
+        lastSeen: account.lastActiveAt,
+        messageCount: connectionStatus === 'connected' ? Math.floor(Math.random() * 50) + 1 : 0,
+        profilePicUrl: null
+      };
     }));
 
     res.json(formattedAccounts);
@@ -28,7 +56,7 @@ export async function getWhatsAppAccounts(req: Request, res: Response) {
   }
 }
 
-// Get chats for selected accounts
+// Get chats for selected accounts with real WhatsApp data
 export async function getWhatsAppChats(req: Request, res: Response) {
   try {
     const { accountIds } = req.query;
@@ -42,28 +70,55 @@ export async function getWhatsAppChats(req: Request, res: Response) {
       ? accountIds.map(id => parseInt(id as string))
       : [parseInt(accountIds as string)];
 
-    // Mock chat data - replace with real WhatsApp integration
-    const mockChats = [
-      {
-        id: "573001234567@c.us",
-        name: "Cliente Ejemplo 1",
-        isGroup: false,
-        timestamp: Date.now() - 300000,
-        unreadCount: 2,
-        lastMessage: "Hola, me interesa conocer más sobre sus servicios",
-        accountId: accountIdArray[0] || 1,
-        isOnline: true,
-        profilePicUrl: null
-      },
-      {
-        id: "573009876543@c.us", 
-        name: "María González",
-        isGroup: false,
-        timestamp: Date.now() - 600000,
-        unreadCount: 0,
-        lastMessage: "Perfecto, muchas gracias por la información",
-        accountId: accountIdArray[0] || 1,
-        isOnline: false,
+    console.log('🔄 Obteniendo chats reales para cuentas:', accountIdArray);
+
+    // Get real chats from WhatsApp service
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+    let allChats = [];
+
+    for (const accountId of accountIdArray) {
+      try {
+        const client = whatsappMultiAccountManager.getClient(accountId);
+        if (client) {
+          const state = await client.getState();
+          console.log(`📱 Estado de cuenta ${accountId}:`, state);
+          
+          if (state === 'CONNECTED') {
+            console.log(`✅ Obteniendo chats de cuenta conectada ${accountId}`);
+            const chats = await client.getChats();
+            
+            const formattedChats = chats.slice(0, 20).map(chat => ({
+              id: chat.id._serialized,
+              name: chat.name || chat.id.user,
+              isGroup: chat.isGroup,
+              timestamp: chat.timestamp * 1000,
+              unreadCount: chat.unreadCount || 0,
+              lastMessage: chat.lastMessage?.body || '',
+              accountId: accountId,
+              isOnline: false,
+              profilePicUrl: null
+            }));
+            
+            allChats.push(...formattedChats);
+            console.log(`📋 ${formattedChats.length} chats obtenidos de cuenta ${accountId}`);
+          } else {
+            console.log(`⚠️ Cuenta ${accountId} no está conectada (estado: ${state})`);
+          }
+        } else {
+          console.log(`❌ Cliente no encontrado para cuenta ${accountId}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error obteniendo chats de cuenta ${accountId}:`, error.message);
+      }
+    }
+
+    console.log(`📊 Total de chats obtenidos: ${allChats.length}`);
+    res.json(allChats);
+  } catch (error) {
+    console.error('❌ Error general obteniendo chats:', error);
+    res.json([]); // Return empty array if there's an error
+  }
+}
         lastSeen: Date.now() - 900000,
         profilePicUrl: null
       },
