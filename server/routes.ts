@@ -4061,24 +4061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/translate', translateText);
   app.post('/api/detect-language', detectLanguage);
 
-  // External Agents routes
-  app.get('/api/external-agents', async (req: Request, res: Response) => {
-    try {
-      const { externalAgentService } = await import('./services/externalAgentService');
-      const agents = await externalAgentService.getAllAgents();
-      
-      res.json({
-        success: true,
-        agents
-      });
-    } catch (error) {
-      console.error('❌ Error obteniendo agentes externos:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error interno del servidor'
-      });
-    }
-  });
+  // External Agents routes - endpoint duplicado eliminado
 
   app.post('/api/external-agents', async (req: Request, res: Response) => {
     try {
@@ -4282,9 +4265,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { externalAgentService } = await import('./services/externalAgentService');
       const agents = await externalAgentService.getAllAgents();
       
-      console.log('📊 Agentes encontrados en base de datos:', agents.length);
+      console.log('📊 Agentes encontrados en base de datos:', agents.length, agents);
       
-      res.setHeader('Content-Type', 'application/json');
       res.json({
         success: true,
         agents: agents
