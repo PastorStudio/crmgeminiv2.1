@@ -183,7 +183,97 @@ export class ExternalAgentService {
     return null;
   }
 
-  // Procesar mensaje para agente específico
+  // Procesar mensaje con un agente específico para el selector AI
+  async processMessageWithAgent(agentId: string, messageData: {
+    message: string;
+    contactName: string;
+    context: string;
+    targetLanguage: string;
+    translateResponse: boolean;
+  }): Promise<string | null> {
+    try {
+      console.log(`🤖 Procesando mensaje con agente específico: ${agentId}`);
+      
+      const agent = await this.getAgentById(agentId);
+      if (!agent) {
+        console.error(`❌ Agente ${agentId} no encontrado`);
+        return null;
+      }
+
+      const { message, contactName, context, targetLanguage, translateResponse } = messageData;
+      
+      // Preparar el payload para el agente externo
+      const payload = {
+        message: message,
+        contact: contactName,
+        context: context,
+        language: targetLanguage,
+        translate: translateResponse,
+        timestamp: new Date().toISOString()
+      };
+
+      console.log(`📡 Enviando mensaje al agente: ${agent.name}`);
+      console.log(`💬 Contenido:`, payload);
+
+      // Hacer la petición al agente externo
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      const response = await fetch(agent.agentUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.error(`❌ Error en respuesta del agente: ${response.status} ${response.statusText}`);
+        return null;
+      }
+
+      const responseData = await response.json();
+      
+      // Extraer la respuesta del agente
+      let agentResponseText = '';
+      
+      if (typeof responseData === 'string') {
+        agentResponseText = responseData;
+      } else if (responseData.response) {
+        agentResponseText = responseData.response;
+      } else if (responseData.message) {
+        agentResponseText = responseData.message;
+      } else if (responseData.text) {
+        agentResponseText = responseData.text;
+      } else {
+        agentResponseText = JSON.stringify(responseData);
+      }
+
+      console.log(`✅ Respuesta recibida del agente: ${agentResponseText}`);
+
+      // Guardar la respuesta en la base de datos
+      await this.saveAgentResponse({
+        agentId: agentId,
+        chatId: `external-${Date.now()}`, // ID temporal para respuestas manuales
+        originalMessage: message,
+        agentResponse: agentResponseText,
+        confidence: responseData.confidence || null,
+        responseTime: Date.now()
+      });
+
+      return agentResponseText;
+
+    } catch (error) {
+      console.error(`❌ Error procesando mensaje con agente ${agentId}:`, error);
+      return null;
+    }
+  }
+
+  // Procesar mensaje para agente específico (método existente)
   async processMessageForAgent(message: string, chatId: string, accountId: number, context?: any): Promise<any> {
     try {
       const agent = await this.shouldProcessMessage(message);

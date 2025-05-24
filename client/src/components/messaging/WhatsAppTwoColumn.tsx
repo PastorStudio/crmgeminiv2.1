@@ -190,6 +190,38 @@ export function WhatsAppTwoColumn() {
     try {
       console.log('🟢 Generando respuesta automática para mensaje recibido:', userMessage);
       
+      // Si hay un agente externo seleccionado, usar ese agente
+      if (selectedExternalAgent) {
+        console.log('🤖 Usando agente externo seleccionado:', selectedExternalAgent);
+        
+        const response = await fetch('/api/external-agents/process-message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          },
+          body: JSON.stringify({
+            agentId: selectedExternalAgent,
+            message: userMessage,
+            contactName: contactName,
+            context: `Respuesta automática para mensaje recibido de ${contactName}`,
+            targetLanguage: translationEnabled ? selectedLanguage : 'es',
+            translateResponse: translationEnabled
+          })
+        });
+
+        const data = await response.json();
+        
+        if (data.success && data.response) {
+          console.log('✅ Respuesta generada por agente externo:', data.response);
+          return data.response;
+        } else {
+          console.error('❌ Error con agente externo, fallback a SmartBots:', data.error);
+          // Fallback a SmartBots en caso de error
+        }
+      }
+      
+      // Usar SmartBots por defecto o como fallback
       const response = await fetch('/api/smartbots/generate-response', {
         method: 'POST',
         headers: {
@@ -1416,27 +1448,102 @@ export function WhatsAppTwoColumn() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
                   >
-                    <Button
-                      size="sm"
-                      variant={smartBotsEnabled ? "default" : "outline"}
-                      className={`shadow-sm transition-all duration-300 ${
-                        smartBotsEnabled 
-                          ? "bg-purple-600 hover:bg-purple-700 text-white" 
-                          : "border-purple-600 text-purple-600 hover:bg-purple-50"
-                      }`}
-                      onClick={() => {
-                        setSmartBotsEnabled(!smartBotsEnabled);
-                        toast({
-                          title: smartBotsEnabled ? "SmartBots desactivado" : "SmartBots activado",
-                          description: smartBotsEnabled 
-                            ? "Las respuestas automáticas están desactivadas" 
-                            : "Las respuestas se generarán automáticamente con IA",
-                        });
-                      }}
-                    >
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      {smartBotsEnabled ? "AI ON" : "AI OFF"}
-                    </Button>
+                    <Popover open={agentSelectorOpen} onOpenChange={setAgentSelectorOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant={smartBotsEnabled ? "default" : "outline"}
+                          className={`shadow-sm transition-all duration-300 ${
+                            smartBotsEnabled 
+                              ? "bg-purple-600 hover:bg-purple-700 text-white" 
+                              : "border-purple-600 text-purple-600 hover:bg-purple-50"
+                          }`}
+                        >
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          {smartBotsEnabled ? "AI ON" : "AI OFF"}
+                          {smartBotsEnabled && selectedExternalAgent && (
+                            <span className="ml-2 text-xs bg-white bg-opacity-20 px-2 py-1 rounded">
+                              {externalAgents.find(agent => agent.id === selectedExternalAgent)?.name || 'Agent'}
+                            </span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-4" align="start">
+                        <div className="space-y-4">
+                          <div className="flex items-center space-x-2">
+                            <div className="flex-1">
+                              <h3 className="font-medium text-lg">AI Assistant</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Configura las respuestas automáticas con IA
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <label className="text-sm font-medium">Estado:</label>
+                            <Button
+                              size="sm"
+                              variant={smartBotsEnabled ? "default" : "outline"}
+                              onClick={() => {
+                                setSmartBotsEnabled(!smartBotsEnabled);
+                                if (!smartBotsEnabled && !selectedExternalAgent && externalAgents.length > 0) {
+                                  setSelectedExternalAgent(externalAgents[0].id);
+                                }
+                                toast({
+                                  title: smartBotsEnabled ? "AI desactivado" : "AI activado",
+                                  description: smartBotsEnabled 
+                                    ? "Las respuestas automáticas están desactivadas" 
+                                    : "Las respuestas se generarán automáticamente con IA",
+                                });
+                              }}
+                              className={smartBotsEnabled ? "bg-green-600 hover:bg-green-700" : ""}
+                            >
+                              {smartBotsEnabled ? "Activado" : "Desactivado"}
+                            </Button>
+                          </div>
+
+                          {smartBotsEnabled && (
+                            <div className="space-y-3">
+                              <label className="text-sm font-medium">Seleccionar Agente:</label>
+                              {externalAgents.length > 0 ? (
+                                <div className="space-y-2">
+                                  {externalAgents.map((agent) => (
+                                    <div
+                                      key={agent.id}
+                                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                                        selectedExternalAgent === agent.id
+                                          ? 'border-purple-500 bg-purple-50'
+                                          : 'border-gray-200 hover:border-purple-300 hover:bg-purple-25'
+                                      }`}
+                                      onClick={() => setSelectedExternalAgent(agent.id)}
+                                    >
+                                      <div className="flex items-center space-x-3">
+                                        <div className={`w-3 h-3 rounded-full ${
+                                          selectedExternalAgent === agent.id ? 'bg-purple-500' : 'bg-gray-300'
+                                        }`} />
+                                        <div className="flex-1">
+                                          <p className="font-medium text-sm">{agent.name}</p>
+                                          <p className="text-xs text-muted-foreground truncate">{agent.url}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-center py-4">
+                                  <p className="text-sm text-muted-foreground">
+                                    No hay agentes externos configurados
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Ve a la página de Agentes Externos para agregar uno
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </motion.div>
                   
                   {/* Comments Button */}
