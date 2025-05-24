@@ -222,6 +222,97 @@ export function WhatsAppTwoColumn() {
       return null;
     }
   };
+
+  // Función para generar respuesta automática de SmartBots (sin modificar el input)
+  const generateSmartBotsAutoResponse = async (userMessage: string, contactName: string) => {
+    try {
+      console.log('🤖 Generando respuesta automática SmartBots para:', userMessage);
+      
+      const response = await fetch('/api/smartbots/generate-response', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          contactName: contactName,
+          context: `Conversación de WhatsApp con ${contactName}`
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.response) {
+        console.log('✅ Respuesta automática SmartBots:', data.response);
+        
+        toast({
+          title: "🤖 Respuesta AI enviada automáticamente",
+          description: `SmartBots respondió: "${data.response.substring(0, 50)}..."`,
+        });
+        
+        return data.response;
+      } else {
+        console.error('❌ Error en SmartBots automático:', data.error);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error conectando con SmartBots automático:', error);
+      return null;
+    }
+  };
+
+  // Función para enviar mensaje automáticamente
+  const sendAutoMessage = async (message: string) => {
+    if (!selectedChat || !message.trim()) return;
+
+    try {
+      console.log('📤 Enviando mensaje automático:', message);
+      
+      const accountId = (selectedAccounts as any[]).find((acc: any) => 
+        selectedChat.accountId === acc.id
+      )?.id || selectedChat.accountId;
+
+      const response = await fetch(`/api/whatsapp-accounts/${accountId}/send-message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chatId: selectedChat.id,
+          message: message
+        })
+      });
+
+      if (response.ok) {
+        console.log('✅ Mensaje automático enviado exitosamente');
+        
+        // Refrescar mensajes después de enviar
+        queryClient.invalidateQueries({
+          queryKey: [`/api/whatsapp-accounts/${accountId}/messages/${selectedChat.id}`]
+        });
+        
+        toast({
+          title: "✅ Mensaje enviado automáticamente",
+          description: "SmartBots envió la respuesta al cliente",
+        });
+      } else {
+        console.error('❌ Error enviando mensaje automático');
+        toast({
+          title: "❌ Error",
+          description: "No se pudo enviar el mensaje automático",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error en envío automático:', error);
+      toast({
+        title: "❌ Error de conexión",
+        description: "No se pudo conectar para enviar el mensaje",
+        variant: "destructive"
+      });
+    }
+  };
+
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -394,9 +485,9 @@ export function WhatsAppTwoColumn() {
 
   // Detectar mensajes nuevos y activar SmartBots automáticamente
   useEffect(() => {
-    if (!selectedMessages || !smartBotsEnabled || !selectedChat) return;
+    if (!messages || !smartBotsEnabled || !selectedChat) return;
 
-    const currentMessages = selectedMessages;
+    const currentMessages = messages;
     const currentCount = currentMessages.length;
 
     // Si hay mensajes nuevos
@@ -413,10 +504,14 @@ export function WhatsAppTwoColumn() {
         if (lastIncomingMessage.id !== lastProcessedMessageId) {
           console.log('🤖 Nuevo mensaje entrante detectado:', lastIncomingMessage.body);
           
-          // Generar respuesta automática para el mensaje entrante
-          setTimeout(() => {
-            generateSmartBotsResponse(lastIncomingMessage.body, selectedChat.name, true);
-          }, 1500);
+          // Generar y enviar respuesta automática para el mensaje entrante
+          setTimeout(async () => {
+            const response = await generateSmartBotsAutoResponse(lastIncomingMessage.body, selectedChat.name);
+            if (response) {
+              // Enviar la respuesta automáticamente
+              await sendAutoMessage(response);
+            }
+          }, 2000);
           
           setLastProcessedMessageId(lastIncomingMessage.id);
         }
@@ -424,13 +519,13 @@ export function WhatsAppTwoColumn() {
     }
 
     setLastMessageCount(currentCount);
-  }, [selectedMessages, smartBotsEnabled, selectedChat, lastMessageCount, lastProcessedMessageId, generateSmartBotsResponse]);
+  }, [messages, smartBotsEnabled, selectedChat, lastMessageCount, lastProcessedMessageId]);
 
   // Detectar y traducir mensajes en inglés automáticamente
   useEffect(() => {
-    if (!selectedMessages || !translatorEnabled) return;
+    if (!messages || !translatorEnabled) return;
 
-    const currentMessages = selectedMessages;
+    const currentMessages = messages;
     
     // Buscar mensajes en inglés que no son nuestros
     const englishMessages = currentMessages.filter(msg => 
@@ -471,7 +566,7 @@ export function WhatsAppTwoColumn() {
         }
       }
     }
-  }, [selectedMessages, translatorEnabled]);
+  }, [messages, translatorEnabled]);
 
   // Initialize with all accounts selected by default
   useEffect(() => {
