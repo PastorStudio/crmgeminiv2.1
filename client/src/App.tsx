@@ -117,7 +117,7 @@ const AppRoutes: React.FC = () => {
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar con menú vertical organizado por categorías - solo se muestra si está autenticado */}
       {showSidebar && (
-        <aside className="fixed h-full w-44 bg-gradient-to-b from-purple-400 via-pink-300 to-green-300 shadow-lg z-50 overflow-y-auto">
+        <aside className="fixed h-full w-44 bg-gradient-to-b from-black via-black to-red-600 shadow-2xl z-50 overflow-y-auto" style={{backgroundImage: 'linear-gradient(180deg, #000000 0%, #000000 65%, #dc2626 100%)'}}>
           <div className="p-2">
             <div className="flex items-center justify-center mb-4">
               <span className="text-white text-sm font-bold">WhatsApp CRM</span>
@@ -130,15 +130,21 @@ const AppRoutes: React.FC = () => {
               </div>
               
               <a href="/" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="7" height="7" rx="1" fill="#3B82F6"/>
+                  <rect x="14" y="3" width="7" height="7" rx="1" fill="#10B981"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1" fill="#F59E0B"/>
+                  <rect x="14" y="14" width="7" height="7" rx="1" fill="#EF4444"/>
                 </svg>
                 Dashboard
               </a>
               
               <a href="/leads" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/leads' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="8" r="3" fill="#8B5CF6"/>
+                  <circle cx="8" cy="14" r="2" fill="#06B6D4"/>
+                  <circle cx="16" cy="14" r="2" fill="#F59E0B"/>
+                  <path d="M12 14v6M8 18h8" stroke="#10B981" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
                 Leads
               </a>
@@ -149,29 +155,43 @@ const AppRoutes: React.FC = () => {
               </div>
               
               <a href="/messages" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/messages' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="4" width="20" height="14" rx="3" fill="#25D366"/>
+                  <circle cx="7" cy="11" r="1" fill="white"/>
+                  <circle cx="12" cy="11" r="1" fill="white"/>
+                  <circle cx="17" cy="11" r="1" fill="white"/>
                 </svg>
                 Mensajes
               </a>
               
               <a href="/message-templates" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/message-templates' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v10m2 2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2z" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="18" height="18" rx="2" fill="#6366F1"/>
+                  <rect x="6" y="6" width="12" height="2" rx="1" fill="white"/>
+                  <rect x="6" y="10" width="8" height="2" rx="1" fill="white"/>
+                  <rect x="6" y="14" width="10" height="2" rx="1" fill="white"/>
                 </svg>
                 Plantillas
               </a>
               
               <a href="/mass-sender" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/mass-sender' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="8" fill="#F59E0B"/>
+                  <path d="M8 12h8M12 8v8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                  <circle cx="6" cy="6" r="2" fill="#EF4444"/>
+                  <circle cx="18" cy="6" r="2" fill="#10B981"/>
+                  <circle cx="6" cy="18" r="2" fill="#3B82F6"/>
+                  <circle cx="18" cy="18" r="2" fill="#8B5CF6"/>
                 </svg>
                 Envío Masivo
               </a>
               
               <a href="/auto-response-settings" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/auto-response-settings' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="8" width="18" height="8" rx="4" fill="#06B6D4"/>
+                  <circle cx="8" cy="12" r="2" fill="white"/>
+                  <circle cx="16" cy="12" r="2" fill="white"/>
+                  <path d="M10 10l4 4M14 10l-4 4" stroke="#06B6D4" strokeWidth="1.5"/>
                 </svg>
                 Respuestas Auto
               </a>
@@ -182,15 +202,24 @@ const AppRoutes: React.FC = () => {
               </div>
               
               <a href="/calendar" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/calendar' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="4" width="18" height="18" rx="2" fill="#EF4444"/>
+                  <rect x="3" y="4" width="18" height="6" rx="2" fill="#DC2626"/>
+                  <circle cx="8" cy="7" r="1" fill="white"/>
+                  <circle cx="16" cy="7" r="1" fill="white"/>
+                  <rect x="6" y="12" width="2" height="2" rx="0.5" fill="white"/>
+                  <rect x="11" y="12" width="2" height="2" rx="0.5" fill="white"/>
+                  <rect x="16" y="12" width="2" height="2" rx="0.5" fill="white"/>
                 </svg>
                 Calendario
               </a>
               
               <a href="/tasks" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/tasks' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="4" y="3" width="16" height="18" rx="2" fill="#10B981"/>
+                  <path d="M8 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <rect x="8" y="7" width="8" height="1" fill="white" opacity="0.7"/>
+                  <rect x="8" y="16" width="6" height="1" fill="white" opacity="0.7"/>
                 </svg>
                 Tareas
               </a>
