@@ -119,28 +119,6 @@ export async function getWhatsAppChats(req: Request, res: Response) {
     res.json([]); // Return empty array if there's an error
   }
 }
-        lastSeen: Date.now() - 900000,
-        profilePicUrl: null
-      },
-      {
-        id: "120363047204567890@g.us",
-        name: "Grupo Ventas Equipo",
-        isGroup: true,
-        timestamp: Date.now() - 1200000,
-        unreadCount: 5,
-        lastMessage: "Juan: Necesitamos revisar las metas del mes",
-        accountId: accountIdArray[0] || 1,
-        isOnline: false,
-        profilePicUrl: null
-      }
-    ];
-
-    res.json(mockChats);
-  } catch (error) {
-    console.error('Error fetching WhatsApp chats:', error);
-    res.status(500).json({ error: 'Failed to fetch chats' });
-  }
-}
 
 // Get messages for a specific chat
 export async function getWhatsAppMessages(req: Request, res: Response) {
