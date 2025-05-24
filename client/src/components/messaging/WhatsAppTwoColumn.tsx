@@ -44,6 +44,7 @@ import { AccountSelector } from './AccountSelector';
 import ChatAssignmentDialog from './ChatAssignmentDialog';
 import { ChatCommentsDialog } from './ChatCommentsDialog';
 import { AutoResponseDialog } from './AutoResponseDialog';
+import { VoiceNoteMessage } from './VoiceNoteMessage';
 
 function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
   const { data: category } = useQuery({
