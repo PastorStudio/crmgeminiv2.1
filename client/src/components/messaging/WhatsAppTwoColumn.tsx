@@ -692,7 +692,12 @@ export function WhatsAppTwoColumn() {
                               </div>
                             )}
                             
-                            <div className={`flex items-end gap-1 ${message.fromMe ? 'flex-row-reverse justify-end' : 'flex-row'}`}>
+                            <div className={`flex items-end gap-1 ${message.fromMe ? 'justify-end' : 'flex-row'}`}>
+                              {message.fromMe && (
+                                <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[2px] flex-shrink-0">
+                                  {formatTime(message.timestamp)}
+                                </div>
+                              )}
                               <div
                                 className={`px-4 py-2 rounded-2xl ${
                                   message.fromMe
@@ -702,9 +707,11 @@ export function WhatsAppTwoColumn() {
                               >
                                 <p className="text-sm whitespace-pre-wrap">{message.body}</p>
                               </div>
-                              <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[2px] flex-shrink-0">
-                                {formatTime(message.timestamp)}
-                              </div>
+                              {!message.fromMe && (
+                                <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[2px] flex-shrink-0">
+                                  {formatTime(message.timestamp)}
+                                </div>
+                              )}
                               {message.fromMe && (
                                 <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[8px] flex-shrink-0">
                                   <span>
