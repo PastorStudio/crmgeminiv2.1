@@ -4115,6 +4115,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Crear agente desde URL
+  app.post('/api/external-agents/create-from-url', async (req: Request, res: Response) => {
+    try {
+      const { agentUrl, triggerKeywords } = req.body;
+      
+      if (!agentUrl) {
+        return res.status(400).json({
+          success: false,
+          error: 'URL del agente es requerida'
+        });
+      }
+
+      const { externalAgentService } = await import('./services/externalAgentService');
+      
+      const result = await externalAgentService.createAgentFromUrl(agentUrl, triggerKeywords);
+
+      if (result.success) {
+        res.json({
+          success: true,
+          agent: result.agent,
+          message: `Agente creado exitosamente`
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error || 'Error al crear agente'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error creando agente desde URL:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
+  // Activar agente
+  app.post('/api/external-agents/:agentId/activate', async (req: Request, res: Response) => {
+    try {
+      const { agentId } = req.params;
+      const { externalAgentService } = await import('./services/externalAgentService');
+      
+      const success = externalAgentService.activateAgent(agentId);
+      
+      if (success) {
+        res.json({ success: true, message: 'Agente activado exitosamente' });
+      } else {
+        res.status(404).json({ success: false, error: 'Agente no encontrado' });
+      }
+    } catch (error) {
+      console.error('❌ Error activando agente:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  // Desactivar agente
+  app.post('/api/external-agents/:agentId/deactivate', async (req: Request, res: Response) => {
+    try {
+      const { agentId } = req.params;
+      const { externalAgentService } = await import('./services/externalAgentService');
+      
+      const success = externalAgentService.deactivateAgent(agentId);
+      
+      if (success) {
+        res.json({ success: true, message: 'Agente desactivado exitosamente' });
+      } else {
+        res.status(404).json({ success: false, error: 'Agente no encontrado' });
+      }
+    } catch (error) {
+      console.error('❌ Error desactivando agente:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  // Eliminar agente
+  app.delete('/api/external-agents/:agentId', async (req: Request, res: Response) => {
+    try {
+      const { agentId } = req.params;
+      const { externalAgentService } = await import('./services/externalAgentService');
+      
+      const agent = externalAgentService.getAgent(agentId);
+      if (!agent) {
+        return res.status(404).json({ success: false, error: 'Agente no encontrado' });
+      }
+
+      // Desactivar y eliminar el agente
+      externalAgentService.deactivateAgent(agentId);
+      
+      res.json({ success: true, message: 'Agente eliminado exitosamente' });
+    } catch (error) {
+      console.error('❌ Error eliminando agente:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
   app.post('/api/external-agents/:agentId/send', async (req: Request, res: Response) => {
     try {
       const { agentId } = req.params;
@@ -4129,11 +4225,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { externalAgentService } = await import('./services/externalAgentService');
       
-      const agentResponse = await externalAgentService.sendMessageToAgent(
-        agentId,
+      const agentResponse = await externalAgentService.processMessageForAgent(
         message,
-        chatContext,
-        userInfo
+        userInfo?.chatId || 'test-chat',
+        userInfo?.accountId || 1,
+        { contactName: userInfo?.name }
       );
 
       res.json(agentResponse);

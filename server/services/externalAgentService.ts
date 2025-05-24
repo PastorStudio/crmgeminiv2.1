@@ -1,38 +1,28 @@
-import OpenAI from 'openai';
+import puppeteer from 'puppeteer';
 
 interface ExternalAgent {
   id: string;
   name: string;
-  description: string;
-  chatId: string; // El chat ID donde este agente "vive"
-  accountId: number; // La cuenta de WhatsApp donde está el agente
+  agentUrl: string; // URL del agente externo (ej: ChatGPT, Claude, etc.)
+  description?: string;
   triggerKeywords?: string[]; // Palabras clave que activan al agente
   isActive: boolean;
   responseDelay?: number; // Delay en segundos para simular tiempo de respuesta
-  specialization?: string; // Especialización del agente
+  accountId?: number; // Cuenta de WhatsApp donde opera
 }
 
 interface ExternalAgentResponse {
   success: boolean;
   response: string;
   error?: string;
-  usage?: {
-    tokens?: number;
-    cost?: number;
-  };
+  agentName?: string;
 }
 
 export class ExternalAgentService {
   private agents: Map<string, ExternalAgent> = new Map();
-  private openai: OpenAI;
+  private browserInstance: any = null;
 
   constructor() {
-    // Inicializar OpenAI para generar respuestas inteligentes
-    this.openai = new OpenAI({ 
-      apiKey: process.env.OPENAI_API_KEY 
-    });
-    
-    // Cargar agentes desde configuración o base de datos
     this.loadDefaultAgents();
   }
 
@@ -40,68 +30,289 @@ export class ExternalAgentService {
    * Cargar agentes predeterminados del sistema
    */
   private loadDefaultAgents() {
-    // Agente de ejemplo - Asistente de Ventas
-    this.addAgent({
-      id: 'sales-assistant',
-      name: 'Asistente de Ventas',
-      description: 'Especialista en ventas y consultas comerciales',
-      chatId: 'ventas@empresa.com',
-      accountId: 1,
-      triggerKeywords: ['precio', 'comprar', 'venta', 'cotización', 'producto', 'costo', 'oferta'],
-      specialization: 'ventas',
-      isActive: true,
-      responseDelay: 2
-    });
-
-    // Agente de ejemplo - Soporte Técnico
-    this.addAgent({
-      id: 'support-tech',
-      name: 'Soporte Técnico',
-      description: 'Especialista en problemas técnicos y configuración',
-      chatId: 'soporte@empresa.com',
-      accountId: 1,
-      triggerKeywords: ['problema', 'error', 'no funciona', 'ayuda', 'configurar', 'bug', 'falla'],
-      specialization: 'soporte',
-      isActive: true,
-      responseDelay: 3
-    });
-
-    // Agente de ejemplo - Información General
-    this.addAgent({
-      id: 'info-general',
-      name: 'Información General',
-      description: 'Responde preguntas generales sobre la empresa y servicios',
-      chatId: 'info@empresa.com',
-      accountId: 1,
-      triggerKeywords: ['información', 'horario', 'ubicación', 'contacto', 'empresa', 'servicios'],
-      specialization: 'informacion',
-      isActive: true,
-      responseDelay: 1
-    });
-
-    console.log('🤖 Agentes intermediarios cargados exitosamente');
+    // Por ahora no cargamos agentes por defecto, se crearán desde la UI
+    console.log('🤖 Sistema de agentes intermediarios inicializado');
   }
 
   /**
-   * Agregar un nuevo agente externo
+   * Extraer nombre del agente desde la URL
    */
-  addAgent(agent: ExternalAgent): void {
-    this.agents.set(agent.id, agent);
-    console.log(`✅ Agente ${agent.name} agregado exitosamente`);
+  private extractAgentNameFromUrl(url: string): string {
+    try {
+      // Para ChatGPT URLs como: https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots
+      if (url.includes('chatgpt.com/g/')) {
+        const parts = url.split('-');
+        if (parts.length > 1) {
+          return parts[parts.length - 1].replace(/[^a-zA-Z0-9]/g, ' ').trim();
+        }
+      }
+      
+      // Para otras URLs, extraer de manera genérica
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/').filter(p => p);
+      return pathParts[pathParts.length - 1] || 'Agente Externo';
+    } catch (error) {
+      return 'Agente Externo';
+    }
   }
 
   /**
-   * Obtener lista de agentes disponibles
+   * Crear un nuevo agente desde URL
    */
-  getAgents(): ExternalAgent[] {
-    return Array.from(this.agents.values());
+  async createAgentFromUrl(agentUrl: string, triggerKeywords?: string[]): Promise<{
+    success: boolean;
+    agent?: ExternalAgent;
+    error?: string;
+  }> {
+    try {
+      // Validar URL
+      new URL(agentUrl);
+      
+      // Extraer nombre del agente
+      const agentName = this.extractAgentNameFromUrl(agentUrl);
+      
+      // Crear ID único
+      const agentId = `agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      const newAgent: ExternalAgent = {
+        id: agentId,
+        name: agentName,
+        agentUrl: agentUrl,
+        description: `Agente intermediario conectado a ${agentName}`,
+        triggerKeywords: triggerKeywords || [],
+        isActive: true,
+        responseDelay: 3,
+        accountId: 1
+      };
+
+      this.agents.set(agentId, newAgent);
+      
+      console.log(`✅ Agente ${agentName} creado exitosamente desde URL: ${agentUrl}`);
+      
+      return {
+        success: true,
+        agent: newAgent
+      };
+    } catch (error) {
+      console.error('Error creando agente desde URL:', error);
+      return {
+        success: false,
+        error: 'URL inválida o error al crear agente'
+      };
+    }
   }
 
   /**
-   * Obtener un agente específico
+   * Obtener instancia del navegador
    */
-  getAgent(agentId: string): ExternalAgent | undefined {
-    return this.agents.get(agentId);
+  private async getBrowserInstance() {
+    if (!this.browserInstance) {
+      this.browserInstance = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu'
+        ]
+      });
+    }
+    return this.browserInstance;
+  }
+
+  /**
+   * Enviar mensaje al agente externo y obtener respuesta
+   */
+  async sendMessageToExternalAgent(agentUrl: string, message: string): Promise<ExternalAgentResponse> {
+    let page;
+    
+    try {
+      console.log(`🤖 Enviando mensaje a agente externo: ${agentUrl}`);
+      
+      const browser = await this.getBrowserInstance();
+      page = await browser.newPage();
+      
+      // Configurar user agent para evitar detección
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      
+      // Ir a la URL del agente
+      await page.goto(agentUrl, { waitUntil: 'networkidle2' });
+      
+      // Esperar un momento para que cargue la página
+      await page.waitForTimeout(3000);
+      
+      // Buscar el input de texto (específico para ChatGPT)
+      let textInput;
+      
+      if (agentUrl.includes('chatgpt.com')) {
+        // Selectors para ChatGPT
+        const selectors = [
+          'textarea[placeholder*="Message"]',
+          'textarea[data-id="root"]',
+          '#prompt-textarea',
+          'textarea',
+          '[contenteditable="true"]'
+        ];
+        
+        for (const selector of selectors) {
+          try {
+            textInput = await page.$(selector);
+            if (textInput) break;
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+      
+      if (!textInput) {
+        // Buscar cualquier input de texto disponible
+        textInput = await page.$('textarea, input[type="text"], [contenteditable="true"]');
+      }
+      
+      if (!textInput) {
+        throw new Error('No se encontró campo de entrada de texto');
+      }
+      
+      // Limpiar el campo y escribir el mensaje
+      await textInput.click();
+      await page.keyboard.down('Control');
+      await page.keyboard.press('a');
+      await page.keyboard.up('Control');
+      await textInput.type(message);
+      
+      // Esperar un momento
+      await page.waitForTimeout(1000);
+      
+      // Enviar el mensaje (Enter o buscar botón)
+      await page.keyboard.press('Enter');
+      
+      // Esperar respuesta (tiempo variable según el agente)
+      await page.waitForTimeout(5000);
+      
+      // Intentar obtener la respuesta
+      let response = '';
+      
+      if (agentUrl.includes('chatgpt.com')) {
+        // Selectors para respuestas de ChatGPT
+        const responseSelectors = [
+          '[data-message-author-role="assistant"] .markdown',
+          '[data-message-author-role="assistant"]',
+          '.group .markdown',
+          '.prose'
+        ];
+        
+        for (const selector of responseSelectors) {
+          try {
+            const responseElement = await page.$(selector);
+            if (responseElement) {
+              response = await responseElement.textContent() || '';
+              if (response.trim()) break;
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+      
+      // Si no se encontró respuesta específica, buscar el último texto generado
+      if (!response.trim()) {
+        const allText = await page.evaluate(() => {
+          const elements = document.querySelectorAll('div, p, span');
+          const texts = Array.from(elements)
+            .map(el => el.textContent?.trim())
+            .filter(text => text && text.length > 10);
+          return texts[texts.length - 1] || '';
+        });
+        response = allText;
+      }
+      
+      await page.close();
+      
+      if (!response.trim()) {
+        throw new Error('No se pudo obtener respuesta del agente');
+      }
+      
+      console.log(`✅ Respuesta obtenida del agente: ${response.substring(0, 100)}...`);
+      
+      return {
+        success: true,
+        response: response.trim(),
+        agentName: this.extractAgentNameFromUrl(agentUrl)
+      };
+      
+    } catch (error: any) {
+      console.error('Error comunicándose con agente externo:', error);
+      
+      if (page) {
+        await page.close().catch(() => {});
+      }
+      
+      return {
+        success: false,
+        response: '',
+        error: `Error: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Procesar mensaje para agente intermediario
+   */
+  async processMessageForAgent(
+    message: string,
+    chatId: string,
+    accountId: number,
+    context?: {
+      contactName?: string;
+      messageHistory?: any[];
+    }
+  ): Promise<ExternalAgentResponse> {
+    // Buscar agente apropiado para este mensaje
+    const agent = this.findAgentForMessage(message, chatId, accountId);
+    
+    if (!agent || !agent.isActive) {
+      return {
+        success: false,
+        response: '',
+        error: 'No hay agente disponible para este mensaje'
+      };
+    }
+
+    try {
+      console.log(`🤖 Procesando mensaje para agente ${agent.name}: "${message}"`);
+      
+      // Simular delay de respuesta
+      if (agent.responseDelay) {
+        await new Promise(resolve => setTimeout(resolve, agent.responseDelay * 1000));
+      }
+      
+      // Enviar mensaje al agente externo
+      const agentResponse = await this.sendMessageToExternalAgent(agent.agentUrl, message);
+      
+      if (agentResponse.success && agentResponse.response) {
+        // Enviar la respuesta del agente como mensaje de nuestro sistema
+        await this.sendAgentResponseAsMessage(agent, agentResponse.response, chatId, accountId);
+        
+        return {
+          success: true,
+          response: agentResponse.response,
+          agentName: agent.name
+        };
+      } else {
+        throw new Error(agentResponse.error || 'Error obteniendo respuesta del agente');
+      }
+      
+    } catch (error: any) {
+      console.error(`Error al procesar mensaje con agente ${agent.id}:`, error);
+      return {
+        success: false,
+        response: '',
+        error: `Error de procesamiento: ${error.message}`
+      };
+    }
   }
 
   /**
@@ -111,10 +322,10 @@ export class ExternalAgentService {
     const messageLower = message.toLowerCase();
     
     // Buscar agente por palabras clave
-    for (const agent of this.agents.values()) {
+    for (const agent of Array.from(this.agents.values())) {
       if (!agent.isActive) continue;
       
-      if (agent.triggerKeywords) {
+      if (agent.triggerKeywords && agent.triggerKeywords.length > 0) {
         for (const keyword of agent.triggerKeywords) {
           if (messageLower.includes(keyword.toLowerCase())) {
             return agent;
@@ -123,86 +334,8 @@ export class ExternalAgentService {
       }
     }
     
-    // Si no se encuentra por palabras clave, usar agente de información general
-    return Array.from(this.agents.values()).find(agent => 
-      agent.specialization === 'informacion' && agent.isActive
-    );
-  }
-
-  /**
-   * Generar respuesta inteligente del agente
-   */
-  private async generateAgentResponse(
-    agent: ExternalAgent, 
-    message: string, 
-    context?: {
-      contactName?: string;
-      messageHistory?: any[];
-    }
-  ): Promise<string> {
-    try {
-      const systemPrompt = this.getSystemPromptForAgent(agent);
-      const userContext = context?.contactName ? `El usuario se llama ${context.contactName}. ` : '';
-      
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: `${userContext}Mensaje: ${message}`
-          }
-        ],
-        max_tokens: 150,
-        temperature: 0.7
-      });
-
-      return response.choices[0].message.content || "Lo siento, no pude procesar tu mensaje en este momento.";
-    } catch (error) {
-      console.error('Error generando respuesta del agente:', error);
-      return this.getFallbackResponse(agent, message);
-    }
-  }
-
-  /**
-   * Obtener prompt del sistema para cada tipo de agente
-   */
-  private getSystemPromptForAgent(agent: ExternalAgent): string {
-    switch (agent.specialization) {
-      case 'ventas':
-        return `Eres un asistente de ventas profesional y amigable. Tu trabajo es ayudar a los clientes con consultas sobre productos, precios y servicios. Mantén un tono profesional pero cálido. Siempre intenta convertir la conversación hacia una venta o una cita. Responde en español de manera concisa y útil.`;
-      
-      case 'soporte':
-        return `Eres un especialista en soporte técnico. Tu trabajo es ayudar a resolver problemas técnicos, errores de configuración y dudas sobre el funcionamiento de productos o servicios. Sé paciente, claro y paso a paso en tus explicaciones. Responde en español de manera técnica pero comprensible.`;
-      
-      case 'informacion':
-        return `Eres un asistente de información general de la empresa. Proporciona información sobre horarios, ubicación, servicios generales y datos básicos de la empresa. Mantén un tono profesional y servicial. Responde en español de manera clara y directa.`;
-      
-      default:
-        return `Eres un asistente virtual útil y profesional. Responde de manera clara, concisa y útil. Mantén un tono amigable y profesional. Responde en español.`;
-    }
-  }
-
-  /**
-   * Respuesta de fallback en caso de error
-   */
-  private getFallbackResponse(agent: ExternalAgent, message: string): string {
-    switch (agent.specialization) {
-      case 'ventas':
-        return "Gracias por tu consulta sobre nuestros productos. Un representante de ventas se pondrá en contacto contigo pronto para brindarte información detallada.";
-      
-      case 'soporte':
-        return "He recibido tu consulta técnica. Nuestro equipo de soporte técnico revisará tu caso y te proporcionará una solución en breve.";
-      
-      case 'informacion':
-        return "Gracias por contactarnos. Para información general sobre nuestra empresa, puedes visitar nuestro sitio web o llamar a nuestro número principal.";
-      
-      default:
-        return "Gracias por tu mensaje. Te responderemos lo antes posible.";
-    }
+    // Si no se encuentra por palabras clave, usar el primer agente activo
+    return Array.from(this.agents.values()).find(agent => agent.isActive);
   }
 
   /**
@@ -228,79 +361,25 @@ export class ExternalAgentService {
   }
 
   /**
-   * Procesar mensaje para agente intermediario
-   * El sistema envía el mensaje al agente externo (como mensaje enviado)
-   * y espera la respuesta del agente (como mensaje recibido)
+   * Obtener lista de agentes disponibles
    */
-  async processMessageForAgent(
-    message: string,
-    chatId: string,
-    accountId: number,
-    context?: {
-      contactName?: string;
-      messageHistory?: any[];
-    }
-  ): Promise<ExternalAgentResponse> {
-    // Buscar agente asignado a este chat o por palabras clave
-    const agent = this.findAgentForMessage(message, chatId, accountId);
-    
-    if (!agent || !agent.isActive) {
-      return {
-        success: false,
-        response: '',
-        error: 'No hay agente disponible para este mensaje'
-      };
-    }
-
-    try {
-      console.log(`🤖 Procesando mensaje para agente ${agent.name}: "${message}"`);
-      
-      // Simular delay de respuesta del agente
-      if (agent.responseDelay) {
-        await new Promise(resolve => setTimeout(resolve, agent.responseDelay * 1000));
-      }
-      
-      // Generar respuesta inteligente basada en el tipo de agente
-      const response = await this.generateAgentResponse(agent, message, context);
-      
-      // Enviar la respuesta del agente como mensaje enviado por nuestro sistema
-      await this.sendAgentResponseAsMessage(agent, response, chatId, accountId);
-      
-      return {
-        success: true,
-        response: response,
-        usage: {
-          tokens: message.length + response.length,
-          cost: 0.001
-        }
-      };
-    } catch (error: any) {
-      console.error(`Error al procesar mensaje con agente ${agent.id}:`, error);
-      return {
-        success: false,
-        response: '',
-        error: `Error de procesamiento: ${error.message}`
-      };
-    }
+  getAgents(): ExternalAgent[] {
+    return Array.from(this.agents.values());
   }
 
   /**
-   * Configurar un agente personalizado
+   * Obtener un agente específico
    */
-  configureCustomAgent(config: {
-    id: string;
-    name: string;
-    description: string;
-    chatId: string;
-    accountId: number;
-    triggerKeywords?: string[];
-    specialization?: string;
-    responseDelay?: number;
-  }): void {
-    this.addAgent({
-      ...config,
-      isActive: true
-    });
+  getAgent(agentId: string): ExternalAgent | undefined {
+    return this.agents.get(agentId);
+  }
+
+  /**
+   * Agregar un nuevo agente
+   */
+  addAgent(agent: ExternalAgent): void {
+    this.agents.set(agent.id, agent);
+    console.log(`✅ Agente ${agent.name} agregado exitosamente`);
   }
 
   /**
@@ -336,15 +415,25 @@ export class ExternalAgentService {
     const stats = {
       totalAgents: this.agents.size,
       activeAgents: Array.from(this.agents.values()).filter(a => a.isActive).length,
-      agentsBySpecialization: {} as Record<string, number>
+      agentsByUrl: {} as Record<string, number>
     };
 
     Array.from(this.agents.values()).forEach(agent => {
-      const spec = agent.specialization || 'general';
-      stats.agentsBySpecialization[spec] = (stats.agentsBySpecialization[spec] || 0) + 1;
+      const domain = new URL(agent.agentUrl).hostname;
+      stats.agentsByUrl[domain] = (stats.agentsByUrl[domain] || 0) + 1;
     });
 
     return stats;
+  }
+
+  /**
+   * Cerrar navegador cuando se termine
+   */
+  async cleanup() {
+    if (this.browserInstance) {
+      await this.browserInstance.close();
+      this.browserInstance = null;
+    }
   }
 }
 
