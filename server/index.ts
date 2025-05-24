@@ -9,6 +9,8 @@ import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import * as agentAssignmentRoutes from "./routes/agentAssignments";
+import { invisibleAgentIntegrator } from "./services/invisibleAgentIntegrator";
 
 // Sistema iniciado correctamente
 console.log('✅ Sistema CRM WhatsApp iniciado correctamente');
@@ -147,6 +149,15 @@ app.use((req, res, next) => {
   } catch (error) {
     console.error("Error al inicializar la base de datos:", error);
   }
+
+  // Iniciar el sistema de asignaciones de agentes invisible
+  try {
+    console.log("🚀 Iniciando sistema de asignaciones de agentes invisible...");
+    await invisibleAgentIntegrator.start();
+    console.log("✅ Sistema de asignaciones invisible iniciado exitosamente");
+  } catch (error) {
+    console.error("❌ Error al iniciar sistema de asignaciones invisible:", error);
+  }
   
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
   app.get('/api/system/users', async (req, res) => {
@@ -186,6 +197,15 @@ app.use((req, res, next) => {
 
   // Registramos rutas directas para evitar la interceptación de Vite
   registerDirectAPIRoutes(app);
+
+  // Sistema de asignaciones de agentes invisible
+  app.post('/api/agent-assignments/assign', agentAssignmentRoutes.assignChatToAgent);
+  app.get('/api/agent-assignments/chat', agentAssignmentRoutes.getChatAssignment);
+  app.post('/api/agent-assignments/auto-assign', agentAssignmentRoutes.autoAssignChat);
+  app.get('/api/agent-assignments/workloads', agentAssignmentRoutes.getAgentWorkloads);
+  app.post('/api/agent-assignments/close', agentAssignmentRoutes.closeChatAssignment);
+  app.post('/api/agent-assignments/activity', agentAssignmentRoutes.updateChatActivity);
+  app.get('/api/agent-assignments/stats', agentAssignmentRoutes.getAgentStats);
 
   // API para asignaciones de chat sin autenticación
   app.get('/api/chat-assignments/:chatId', async (req, res) => {
