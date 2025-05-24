@@ -540,7 +540,10 @@ export function WhatsAppTwoColumn() {
       try {
         const response = await fetch('/api/external-agents');
         if (response.ok) {
-          return await response.json();
+          const result = await response.json();
+          console.log('🔍 Agentes externos recibidos:', result);
+          // El backend devuelve {success: true, agents: [...]}
+          return result.agents || [];
         }
         return [];
       } catch (error) {
