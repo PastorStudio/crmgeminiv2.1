@@ -13,7 +13,7 @@ export class VoiceNoteTranscriptionService {
   }
 
   /**
-   * Transcribir un archivo de audio usando OpenAI Whisper
+   * Transcribir un archivo de audio usando OpenAI Whisper (optimizado para WhatsApp)
    */
   async transcribeAudio(audioBuffer: Buffer, messageId: string): Promise<string> {
     try {
@@ -29,25 +29,31 @@ export class VoiceNoteTranscriptionService {
         fs.mkdirSync(tempDir, { recursive: true });
       }
       
-      const tempFile = path.join(tempDir, `voice_${messageId}.ogg`);
+      // Usar formato OGG que es nativo de WhatsApp
+      const tempFile = path.join(tempDir, `voice_${messageId.replace(/[^a-zA-Z0-9]/g, '_')}.ogg`);
       fs.writeFileSync(tempFile, audioBuffer);
       
-      // Transcribir usando OpenAI Whisper
+      console.log(`📁 Archivo temporal creado: ${tempFile} (${audioBuffer.length} bytes)`);
+      
+      // Transcribir usando OpenAI Whisper con configuración optimizada
       const transcription = await this.openai.audio.transcriptions.create({
         file: fs.createReadStream(tempFile),
         model: "whisper-1",
         language: "es", // Español por defecto
+        response_format: "text", // Solo texto plano
+        temperature: 0, // Más preciso
       });
       
       // Limpiar archivo temporal
       fs.unlinkSync(tempFile);
       
-      console.log(`✅ Transcripción completada: "${transcription.text}"`);
-      return transcription.text;
+      console.log(`✅ Transcripción completada: "${transcription}"`);
+      return transcription || '[Audio sin contenido audible]';
       
     } catch (error) {
       console.error('❌ Error en transcripción:', error);
-      return '[Error al transcribir audio]';
+      console.error('Detalles del error:', error.message);
+      return '[Error al transcribir audio - formato no compatible]';
     }
   }
 

@@ -4066,10 +4066,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { messageId } = req.params;
       
-      console.log(`📝 Obteniendo transcripción para mensaje ${messageId}...`);
+      console.log(`📝 Buscando transcripción para mensaje ${messageId}...`);
       
       const { voiceNoteTranscriptionService } = await import('./services/voiceNoteTranscriptionService');
-      const transcription = await voiceNoteTranscriptionService.getTranscription(messageId);
+      let transcription = await voiceNoteTranscriptionService.getTranscription(messageId);
       
       if (transcription) {
         console.log(`✅ Transcripción encontrada: "${transcription}"`);
@@ -4078,10 +4078,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           transcription
         });
       } else {
-        console.log(`❌ Transcripción no encontrada para mensaje ${messageId}`);
-        res.status(404).json({
-          success: false,
-          error: 'Transcripción no encontrada'
+        console.log(`⚠️ Transcripción no encontrada para ${messageId}, intentando procesar desde WhatsApp...`);
+        
+        // Intentar obtener la nota de voz desde WhatsApp y procesarla
+        const { accountId, chatId } = req.query;
+        
+        if (accountId && chatId) {
+          try {
+            const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+            const instance = whatsappMultiAccountManager.getInstance(parseInt(accountId as string));
+            
+            if (instance && instance.client) {
+              const chat = await instance.client.getChatById(chatId as string);
+              const messages = await chat.fetchMessages({ limit: 50 });
+              const audioMessage = messages.find(msg => 
+                msg.id._serialized === messageId && 
+                (msg.type === 'ptt' || msg.type === 'audio')
+              );
+              
+              if (audioMessage) {
+                console.log(`🎤 Procesando nota de voz desde WhatsApp...`);
+                const media = await audioMessage.downloadMedia();
+                
+                if (media) {
+                  const audioBuffer = Buffer.from(media.data, 'base64');
+                  transcription = await voiceNoteTranscriptionService.processVoiceNote(
+                    messageId,
+                    chatId as string,
+                    parseInt(accountId as string),
+                    audioBuffer
+                  );
+                  
+                  console.log(`✅ Nota de voz procesada exitosamente: "${transcription}"`);
+                  res.json({
+                    success: true,
+                    transcription
+                  });
+                  return;
+                }
+              }
+            }
+          } catch (processError) {
+            console.error('❌ Error procesando nota de voz:', processError);
+          }
+        }
+        
+        // Si no se pudo procesar, devolver mensaje apropiado
+        res.json({
+          success: true,
+          transcription: 'Transcripción no disponible'
         });
       }
       
