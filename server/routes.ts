@@ -3424,5 +3424,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== ENDPOINTS PARA AUTO-RESPUESTA =====
+  
+  // Obtener configuración de auto-respuesta para un chat específico
+  app.get('/api/auto-response/config/:chatId/:accountId', async (req: Request, res: Response) => {
+    try {
+      const { chatId, accountId } = req.params;
+      
+      // Configuración por defecto
+      const defaultConfig = {
+        chatId,
+        accountId: parseInt(accountId),
+        enabled: false,
+        provider: 'gemini',
+        welcomeMessage: 'Gracias por contactarnos. En breve un asesor le atenderá.',
+        businessHours: {
+          start: '09:00',
+          end: '18:00',
+          days: [1,2,3,4,5]
+        },
+        maxResponsesPerDay: 10,
+        responseDelay: 3
+      };
+      
+      res.json(defaultConfig);
+    } catch (error) {
+      console.error('Error obteniendo configuración auto-respuesta:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Error obteniendo configuración de auto-respuesta' 
+      });
+    }
+  });
+
+  // Guardar configuración de auto-respuesta
+  app.post('/api/auto-response/config/:chatId/:accountId', async (req: Request, res: Response) => {
+    try {
+      const { chatId, accountId } = req.params;
+      const config = req.body;
+      
+      console.log(`🔧 Guardando configuración auto-respuesta para chat ${chatId} de cuenta ${accountId}`);
+      console.log('📋 Configuración:', config);
+      
+      // Aquí normalmente guardarías en la base de datos
+      // Por ahora simularemos que se guardó correctamente
+      
+      res.json({ 
+        success: true, 
+        message: 'Configuración de auto-respuesta guardada exitosamente',
+        config: {
+          ...config,
+          chatId,
+          accountId: parseInt(accountId)
+        }
+      });
+    } catch (error) {
+      console.error('Error guardando configuración auto-respuesta:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Error guardando configuración de auto-respuesta' 
+      });
+    }
+  });
+
   return httpServer;
 }

@@ -329,12 +329,15 @@ export function WhatsAppTwoColumn() {
     }
   }, [messages]);
 
-  // Initialize with first account if none selected
+  // Initialize with connected accounts if none selected
   useEffect(() => {
-    if (accounts.length > 0 && selectedAccounts.length === 0) {
-      const connectedAccounts = accounts.filter(acc => acc.status === 'connected');
-      if (connectedAccounts.length > 0) {
-        setSelectedAccounts([connectedAccounts[0].id]);
+    if (accounts && accounts.length > 0 && selectedAccounts.length === 0) {
+      // Select all connected accounts by default
+      const connectedAccountIds = accounts
+        .filter(acc => acc.status === 'connected' || acc.status === 'ready')
+        .map(acc => acc.id);
+      if (connectedAccountIds.length > 0) {
+        setSelectedAccounts(connectedAccountIds);
       }
     }
   }, [accounts, selectedAccounts]);
@@ -413,12 +416,12 @@ export function WhatsAppTwoColumn() {
       {/* Left Panel - Chat List */}
       <div className="w-1/3 bg-white border-r border-gray-200 flex flex-col">
         {/* Header with Account Selector */}
-        <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50">
+        <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50 ml-[1px] mr-[1px] pt-[0px] pb-[0px] mt-[-4px] mb-[-4px] text-[14px]">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">WhatsApp Business</h2>
               <Badge variant="secondary" className="bg-green-100 text-green-800">
-                {accounts.filter(acc => acc.status === 'connected').length} conectadas
+                {selectedAccounts.length}/{accounts.length} seleccionadas
               </Badge>
             </div>
             
