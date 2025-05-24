@@ -563,6 +563,58 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         if (!message.fromMe) {
           console.log(`📨 Nuevo mensaje recibido en cuenta ${id}: ${message.body.substring(0, 50)}...`);
           
+          let messageBody = message.body;
+          
+          // Transcripción automática de notas de voz
+          if (message.type === 'ptt' || message.type === 'audio') {
+            console.log('🎤 Nota de voz recibida, iniciando transcripción automática...');
+            
+            try {
+              const media = await message.downloadMedia();
+              if (media && process.env.OPENAI_API_KEY) {
+                // Importar OpenAI dinámicamente
+                const OpenAI = (await import('openai')).default;
+                const openai = new OpenAI({
+                  apiKey: process.env.OPENAI_API_KEY
+                });
+                
+                // Crear un archivo temporal para la transcripción
+                const audioBuffer = Buffer.from(media.data, 'base64');
+                const audioFile = new File([audioBuffer], 'voice_note.ogg', {
+                  type: 'audio/ogg'
+                });
+                
+                // Transcribir usando OpenAI Whisper
+                const transcription = await openai.audio.transcriptions.create({
+                  file: audioFile,
+                  model: 'whisper-1',
+                  language: 'es',
+                  response_format: 'text'
+                });
+                
+                messageBody = transcription.trim();
+                console.log(`✅ Nota de voz transcrita: "${messageBody}"`);
+                
+                // Emitir evento de transcripción para la interfaz
+                setTimeout(() => {
+                  this.emit('transcription_complete', {
+                    chatId: message.from,
+                    accountId: id,
+                    originalMessageId: message.id,
+                    transcription: messageBody,
+                    timestamp: Date.now()
+                  });
+                }, 1000);
+              } else {
+                console.log('⚠️ OpenAI API key no disponible para transcripción');
+                messageBody = '[Nota de voz recibida - transcripción no disponible]';
+              }
+            } catch (error) {
+              console.error('❌ Error transcribiendo nota de voz:', error);
+              messageBody = '[Nota de voz recibida - error en transcripción]';
+            }
+          }
+          
           // Importar dinámicamente el sistema de tickets para evitar dependencias circulares
           const { AutomaticTicketingSystem } = await import('./ticketingSystem');
           const ticketingSystem = new AutomaticTicketingSystem();
@@ -572,7 +624,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             message.from, // chatId
             id, // accountId
             {
-              body: message.body,
+              body: messageBody, // Usar el texto transcrito si es una nota de voz
               from: message.from,
               contact: {
                 name: message._data.notifyName || 'Cliente Anónimo',

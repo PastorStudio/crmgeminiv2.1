@@ -1524,34 +1524,38 @@ export function WhatsAppTwoColumn() {
                                       <div className="flex flex-col">
                                         <span className="text-xs text-gray-600">Nota de voz</span>
                                         <div className="flex items-center space-x-2">
-                                          {message.mediaUrl || message._data?.mediaUrl || message.body ? (
-                                            <audio 
-                                              controls 
-                                              className="max-w-[200px] h-8"
-                                              src={message.mediaUrl || message._data?.mediaUrl || `/api/whatsapp-accounts/${selectedChat.accountId}/messages/${selectedChat.id}/audio/${message.id}`}
-                                              onError={(e) => console.log('Error cargando audio:', e)}
+                                          <audio 
+                                            controls 
+                                            className="max-w-[200px] h-8"
+                                            src={`/api/whatsapp-accounts/${selectedChat.accountId}/messages/${selectedChat.id}/audio/${message.id}`}
+                                            onLoadStart={() => console.log('🎵 Cargando audio...')}
+                                            onCanPlay={() => console.log('✅ Audio listo para reproducir')}
+                                            onError={(e) => {
+                                              console.log('❌ Error cargando audio:', e);
+                                              // Mostrar mensaje de error al usuario
+                                              const audioElement = e.currentTarget;
+                                              audioElement.style.display = 'none';
+                                              if (audioElement.nextElementSibling) {
+                                                (audioElement.nextElementSibling as HTMLElement).style.display = 'block';
+                                              }
+                                            }}
                                             >
                                               Tu navegador no soporta audio.
                                             </audio>
-                                          ) : (
-                                            <div className="flex items-center text-gray-500">
-                                              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zM9.049 8.684a1 1 0 011.902 0l.053.174a1 1 0 01-.53 1.233l-2.25 1.05a1 1 0 01-.854 0l-2.25-1.05a1 1 0 01-.53-1.233l.053-.174z" clipRule="evenodd" />
-                                              </svg>
-                                              Audio no disponible
-                                            </div>
-                                          )}
-                                          {(message.mediaUrl || message._data?.mediaUrl) && (
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              className="h-6 px-2 text-xs"
-                                              onClick={() => handleAudioMessage(message)}
-                                            >
-                                              📝 Transcribir
-                                            </Button>
-                                          )}
+                                          <div style={{ display: 'none' }} className="text-xs text-red-500">
+                                            ⚠️ Audio no disponible
+                                          </div>
                                         </div>
+                                        {(message.mediaUrl || message._data?.mediaUrl) && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-6 px-2 text-xs"
+                                            onClick={() => handleAudioMessage(message)}
+                                          >
+                                            📝 Transcribir
+                                          </Button>
+                                        )}
                                       </div>
                                     </div>
                                   </div>

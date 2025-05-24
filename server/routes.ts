@@ -3680,21 +3680,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { accountId, chatId, messageId } = req.params;
       
-      console.log('🔊 Solicitando audio para mensaje:', messageId);
+      console.log(`🎵 Solicitando audio para mensaje ${messageId} en chat ${chatId} cuenta ${accountId}`);
       
-      // Aquí integrarías con tu servicio de WhatsApp para obtener el archivo de audio
-      // Por ahora devolvemos un error apropiado
+      // Obtener el servicio de WhatsApp para la cuenta
+      const whatsappService = multiAccountManager.getWhatsAppService(parseInt(accountId));
       
-      res.status(404).json({
-        success: false,
-        error: 'Audio no disponible - funcionalidad en desarrollo'
-      });
+      if (!whatsappService) {
+        return res.status(404).json({
+          success: false,
+          error: `Cuenta WhatsApp ${accountId} no encontrada`
+        });
+      }
+
+      // Obtener los mensajes del chat para encontrar el mensaje de audio
+      const messages = await whatsappService.getChatMessages(chatId, 50);
+      const audioMessage = messages.find(msg => msg.id === messageId && (msg.type === 'ptt' || msg.type === 'audio'));
       
+      if (!audioMessage) {
+        return res.status(404).json({
+          success: false,
+          error: 'Mensaje de audio no encontrado'
+        });
+      }
+
+      // Descargar el media del mensaje
+      const media = await audioMessage.downloadMedia();
+      
+      if (media && media.data) {
+        const audioBuffer = Buffer.from(media.data, 'base64');
+        
+        // Configurar headers para audio
+        res.setHeader('Content-Type', 'audio/ogg');
+        res.setHeader('Content-Length', audioBuffer.length);
+        res.setHeader('Accept-Ranges', 'bytes');
+        
+        console.log(`✅ Enviando audio de ${audioBuffer.length} bytes`);
+        res.send(audioBuffer);
+      } else {
+        res.status(404).json({
+          success: false,
+          error: 'Audio no disponible'
+        });
+      }
     } catch (error) {
       console.error('❌ Error obteniendo audio:', error);
       res.status(500).json({
         success: false,
-        error: 'Error interno del servidor'
+        error: 'Error obteniendo audio del mensaje'
       });
     }
   });
