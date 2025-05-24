@@ -4149,18 +4149,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             agentName = 'SmartBots';
           } else if (fullId.includes('smartplanner')) {
             agentName = 'SmartPlanner IA';
+          } else if (fullId.includes('smartflyer')) {
+            agentName = 'SmartFlyer IA';
           } else if (fullId.includes('682ceb8bfa4c81918b3ff66abe6f3480')) {
             agentName = 'SmartBots';
           } else if (fullId.includes('682e61ce2364819196df9641616414b1')) {
             agentName = 'SmartPlanner IA';
+          } else if (fullId.includes('682f551bee70819196aeb603eb638762')) {
+            agentName = 'SmartFlyer IA';
           } else {
-            // Extraer nombre genérico del final de la URL
-            const nameParts = fullId.split('-').slice(1);
-            if (nameParts.length > 0) {
-              agentName = nameParts.join(' ')
-                .split('-')
+            // Extraer nombre real del final de la URL
+            const urlEnd = fullId.split('-');
+            if (urlEnd.length > 1) {
+              // Tomar las últimas partes después del último guión como nombre
+              const nameParts = urlEnd.slice(1);
+              agentName = nameParts
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                 .join(' ');
+              
+              // Si termina en 'ia', convertir a 'IA'
+              if (agentName.toLowerCase().endsWith(' ia')) {
+                agentName = agentName.slice(0, -3) + ' IA';
+              }
             } else {
               agentName = 'ChatGPT Personalizado';
             }
