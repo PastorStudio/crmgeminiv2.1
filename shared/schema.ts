@@ -359,16 +359,16 @@ export const chatComments = pgTable("chat_comments", {
   isInternal: boolean("isInternal").default(true),
 });
 
-// Tabla de categorización automática de chats
+// Categorización automática de chats
 export const chatCategories = pgTable("chat_categories", {
   id: serial("id").primaryKey(),
-  chatId: text("chatId").notNull().unique(),
-  category: text("category").notNull(), // ventas, soporte, informacion, consulta
-  confidence: doublePrecision("confidence").notNull(), // 0.0 - 1.0
-  reason: text("reason"),
-  detectedAt: timestamp("detectedAt").defaultNow(),
-  isManual: boolean("isManual").default(false), // true si fue categorizado manualmente
-  agentId: integer("agentId").references(() => users.id), // quien lo categorizó manualmente
+  chatId: text("chatId").notNull(),
+  accountId: integer("accountId").notNull().references(() => whatsappAccounts.id),
+  category: text("category").notNull(), // sales, support, information, consultation
+  confidence: doublePrecision("confidence").default(0),
+  aiModel: text("aiModel").default("gemini"),
+  lastAnalyzedAt: timestamp("lastAnalyzedAt").defaultNow(),
+  createdAt: timestamp("createdAt").defaultNow(),
 });
 
 // Tabla de notificaciones en tiempo real
