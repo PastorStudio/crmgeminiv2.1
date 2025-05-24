@@ -4109,7 +4109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: description || null,
         triggerKeywords: triggerKeywords || [],
         responseDelay: responseDelay || 3,
-        accountId: null,
+        accountId: 1,
         isActive: true
       });
 
@@ -4127,8 +4127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Lista global de agentes creados
-  const globalAgents: any[] = [];
+
 
   // Crear agente desde URL
   app.post('/api/external-agents/create-from-url', async (req: Request, res: Response) => {
