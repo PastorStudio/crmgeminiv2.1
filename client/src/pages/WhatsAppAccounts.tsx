@@ -366,7 +366,7 @@ const WhatsAppAccounts = () => {
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-6 mt-[-10px] mb-[-10px] pt-[47px] pb-[47px] ml-[3px] mr-[3px] pl-[-6px] pr-[-6px]">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold mb-2">Cuentas de WhatsApp</h1>
@@ -472,7 +472,6 @@ const WhatsAppAccounts = () => {
           </Dialog>
         </div>
       </div>
-      
       {/* Lista de posiciones fijas del 1 al 10 */}
       <div className="mb-6 p-4 bg-gray-50 border rounded-lg">
         <h2 className="text-xl font-semibold mb-4">Posiciones disponibles</h2>
@@ -538,7 +537,6 @@ const WhatsAppAccounts = () => {
           })}
         </div>
       </div>
-      
       {/* Lista de cuentas actuales */}
       <h2 className="text-xl font-semibold mb-4">Detalles de cuentas</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -630,7 +628,6 @@ const WhatsAppAccounts = () => {
           </div>
         )}
       </div>
-      
       {/* Diálogo de código QR */}
       <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
         <DialogContent className="max-w-md">
