@@ -113,10 +113,12 @@ const AppRoutes: React.FC = () => {
     enabled: isAuthenticated // Solo cargar si está autenticado
   });
 
-  // Verificar si el usuario tiene rol de administrador o supervisor
+  // Verificar si el usuario tiene rol de administrador, supervisor o superadministrador
+  const isSuperAdmin = user?.role === 'superadmin';
   const isAdmin = user?.role === 'admin';
   const isSupervisor = user?.role === 'supervisor';
-  const canManageUsers = isAdmin || isSupervisor;
+  const canManageUsers = isSuperAdmin || isAdmin || isSupervisor;
+  const hasFullAccess = isSuperAdmin; // DJP tiene acceso completo como superadministrador
 
   return (
     <div className="min-h-screen flex bg-gray-50">

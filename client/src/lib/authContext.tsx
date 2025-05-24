@@ -101,9 +101,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // Solución temporal directa para bypass del problema de Vite
       const validCredentials = [
-        { username: 'DJP', password: 'Mi123456@', user: { id: 3, username: 'DJP', role: 'super_admin', email: 'superadmin@crm.com', fullName: 'Super Administrador' }},
-        { username: 'admin', password: 'admin123', user: { id: 1, username: 'admin', role: 'admin', email: 'admin@geminicrm.com', fullName: 'Administrador' }},
-        { username: 'agente', password: 'agente123', user: { id: 2, username: 'agente', role: 'agent', email: 'maria@geminicrm.com', fullName: 'Juan Perez' }},
+        { username: 'DJP', password: 'Mi123456@', user: { id: 1, username: 'DJP', role: 'superadmin', email: 'djp@geminicrm.com', fullName: 'DJP - Superadministrador' }},
+        { username: 'admin', password: 'admin123', user: { id: 2, username: 'admin', role: 'admin', email: 'admin@geminicrm.com', fullName: 'Administrador' }},
+        { username: 'agente', password: 'agente123', user: { id: 3, username: 'agente', role: 'agent', email: 'maria@geminicrm.com', fullName: 'Juan Perez' }},
         { username: 'steph', password: 'Agente123456', user: { id: 4, username: 'steph', role: 'agent', email: 'admin@admin.com', fullName: 'steph santiago' }}
       ];
       
