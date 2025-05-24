@@ -3,6 +3,8 @@ import { storage } from '../storage';
 
 const router = Router();
 
+export default router;
+
 // MOSTRAR CARLOS LÓPEZ ASIGNADO AL CHAT
 router.get('/by-chat', async (req, res) => {
   console.log('🎯 MOSTRANDO CARLOS LÓPEZ ASIGNADO AL CHAT');
@@ -116,4 +118,3 @@ router.post('/', async (req, res) => {
   }
 });
 
-export { router };
