@@ -412,7 +412,7 @@ export function WhatsAppTwoColumn() {
       {/* Left Panel - Chat List */}
       <div className="w-1/3 bg-white border-r border-gray-200 flex flex-col">
         {/* Header with Account Selector */}
-        <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50 ml-[1px] mr-[1px] pt-[0px] pb-[0px] mt-[-4px] mb-[-4px] text-[14px]">
+        <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50 pt-[0px] pb-[0px] text-[14px] mt-[6px] mb-[6px] ml-[0px] mr-[0px] pl-[6px] pr-[6px]">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">WhatsApp Business</h2>
@@ -436,7 +436,7 @@ export function WhatsAppTwoColumn() {
             placeholder="Buscar conversaciones..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full"
+            className="w-full pl-[100px] pr-[100px] pt-[4px] pb-[4px] mt-[10px] mb-[10px] ml-[-5px] mr-[-5px]"
           />
         </div>
 
