@@ -399,16 +399,7 @@ export const autoResponseConfig = pgTable("auto_response_config", {
   updatedBy: integer("updated_by").references(() => users.id),
 });
 
-// Categorías para organizar chats
-export const chatCategories = pgTable("chat_categories", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  color: text("color").default("#3b82f6"), // Color para UI
-  icon: text("icon"),
-  createdAt: timestamp("createdAt").defaultNow(),
-  createdBy: integer("createdBy").references(() => users.id),
-});
+// Categorías predefinidas para organizar chats (se eliminó la tabla duplicada)
 
 // Relaciones para cuentas de WhatsApp
 export const whatsappAccountsRelations = relations(whatsappAccounts, ({ one, many }) => ({

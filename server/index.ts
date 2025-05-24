@@ -11,6 +11,8 @@ import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import * as agentAssignmentRoutes from "./routes/agentAssignments";
 import { invisibleAgentIntegrator } from "./services/invisibleAgentIntegrator";
+import { realTimeNotificationService } from "./services/realTimeNotificationService";
+import * as whatsappAPI from "./routes/whatsappAPI";
 
 // Sistema iniciado correctamente
 console.log('✅ Sistema CRM WhatsApp iniciado correctamente');
@@ -195,6 +197,16 @@ app.use((req, res, next) => {
     }
   });
 
+  // Registrar rutas de WhatsApp API
+  app.get('/api/whatsapp/accounts', whatsappAPI.getWhatsAppAccounts);
+  app.get('/api/whatsapp/chats', whatsappAPI.getWhatsAppChats);
+  app.get('/api/whatsapp/messages/:chatId', whatsappAPI.getWhatsAppMessages);
+  app.post('/api/whatsapp/send-message', whatsappAPI.sendWhatsAppMessage);
+  app.get('/api/chat-categories/:chatId', whatsappAPI.getChatCategory);
+  app.post('/api/chat-categories/:chatId', whatsappAPI.setChatCategory);
+  app.get('/api/auto-response/config/:chatId', whatsappAPI.getAutoResponseConfig);
+  app.put('/api/auto-response/config/:chatId', whatsappAPI.updateAutoResponseConfig);
+
   // Registramos rutas directas para evitar la interceptación de Vite
   registerDirectAPIRoutes(app);
 
@@ -348,6 +360,15 @@ app.use((req, res, next) => {
   
   // Crear servidor HTTP manualmente para evitar conflictos
   const server = createServer(app);
+  
+  // Inicializar sistema de notificaciones en tiempo real
+  try {
+    console.log('🔔 Iniciando sistema de notificaciones en tiempo real...');
+    realTimeNotificationService.initialize(server);
+    console.log('✅ Sistema de notificaciones WebSocket iniciado exitosamente');
+  } catch (error) {
+    console.error('❌ Error al inicializar notificaciones en tiempo real:', error);
+  }
   
   // Registrar rutas de WhatsApp accounts sin autenticación
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
