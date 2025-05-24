@@ -205,17 +205,30 @@ export function WhatsAppTwoColumn() {
       console.log('🔄 Obteniendo mensajes reales para chat:', selectedChat.id);
       
       try {
-        const response = await fetch(`/api/whatsapp/messages/${selectedChat.id}`);
-        const data = await response.json();
-        
-        if (Array.isArray(data)) {
-          console.log(`✅ ${data.length} mensajes reales obtenidos para chat ${selectedChat.id}`);
-          return data;
+        // Usar el endpoint que devuelve mensajes REALES de WhatsApp
+        const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/messages/${selectedChat.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data) && data.length > 0) {
+            console.log(`✅ ${data.length} mensajes REALES obtenidos para chat ${selectedChat.id}`);
+            return data;
+          }
         }
         
+        // Fallback: intentar con API directa de WhatsApp
+        const directResponse = await fetch(`/api/direct/whatsapp/messages/${selectedChat.id}`);
+        if (directResponse.ok) {
+          const directData = await directResponse.json();
+          if (Array.isArray(directData) && directData.length > 0) {
+            console.log(`✅ ${directData.length} mensajes DIRECTOS obtenidos para chat ${selectedChat.id}`);
+            return directData;
+          }
+        }
+        
+        console.log('⚠️ No se encontraron mensajes reales para este chat');
         return [];
       } catch (error) {
-        console.error('❌ Error obteniendo mensajes:', error);
+        console.error('❌ Error obteniendo mensajes reales:', error);
         return [];
       }
     },
