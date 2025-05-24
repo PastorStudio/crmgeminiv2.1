@@ -231,6 +231,13 @@ const AppRoutes: React.FC = () => {
                 </svg>
                 Gestor WhatsApp
               </a>
+
+              <a href="/whatsapp-connection" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-connection' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+                Conectar WhatsApp
+              </a>
               
               {/* Menú oculto: Conexión, Código QR e Integraciones - Se mantiene en el código pero no se muestra */}
               {false && (
@@ -366,6 +373,7 @@ const AppRoutes: React.FC = () => {
                 {/* Ruta de demostración eliminada - solo chats reales */}
                 <Route path="/users" component={() => <PrivateRoute component={UserManagement} path="/users" />} />
                 <Route path="/whatsapp-accounts" component={() => <PrivateRoute component={WhatsAppAccounts} path="/whatsapp-accounts" />} />
+                <Route path="/whatsapp-connection" component={() => <PrivateRoute component={WhatsAppConnection} path="/whatsapp-connection" />} />
                 <Route path="/chat-assignments" component={() => <PrivateRoute component={ChatAssignments} path="/chat-assignments" />} />
                 <Route path="/profile" component={() => <PrivateRoute component={Profile} path="/profile" />} />
                 <Route component={() => <PrivateRoute component={NotFound} path="*" />} />
