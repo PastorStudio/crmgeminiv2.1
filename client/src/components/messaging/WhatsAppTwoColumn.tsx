@@ -173,8 +173,90 @@ export function WhatsAppTwoColumn() {
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [translatorEnabled, setTranslatorEnabled] = useState(false);
   const [smartBotsEnabled, setSmartBotsEnabled] = useState(false);
+  
+  // Estados para auto-envío con delay de 5 segundos
+  const [autoSendTimer, setAutoSendTimer] = useState<NodeJS.Timeout | null>(null);
+  const [isAutoSending, setIsAutoSending] = useState(false);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [fileMenuOpen, setFileMenuOpen] = useState(false);
+  
+  // Estados para respuestas automáticas a mensajes recibidos
+  const [lastProcessedMessageId, setLastProcessedMessageId] = useState<string | null>(null);
+  const [lastMessageCount, setLastMessageCount] = useState(0);
 
-  // Función para generar respuesta automática con SmartBots
+  // Función específica para generar respuestas automáticas a mensajes recibidos (burbujas verdes)
+  const generateSmartBotsAutoResponse = async (userMessage: string, contactName: string) => {
+    try {
+      console.log('🟢 Generando respuesta automática para mensaje recibido:', userMessage);
+      
+      const response = await fetch('/api/smartbots/generate-response', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          contactName: contactName,
+          context: `Respuesta automática para mensaje recibido de ${contactName}`,
+          autoResponse: true
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.response) {
+        console.log('✅ Respuesta automática generada:', data.response);
+        return data.response;
+      } else {
+        console.error('❌ Error generando respuesta automática:', data.error);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error en generación de respuesta automática:', error);
+      return null;
+    }
+  };
+
+  // Función para enviar mensaje automático
+  const sendAutoMessage = async (message: string) => {
+    if (!selectedChat) return;
+    
+    try {
+      const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/send-message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify({
+          chatId: selectedChat.id,
+          message: message,
+          isAutoResponse: true
+        })
+      });
+
+      if (response.ok) {
+        console.log('✅ Respuesta automática enviada exitosamente');
+        toast({
+          title: "🤖 Respuesta automática enviada",
+          description: "SmartBots ha respondido al mensaje recibido",
+          duration: 3000
+        });
+        
+        // Actualizar los mensajes del chat
+        queryClient.invalidateQueries({
+          queryKey: ['/api/whatsapp-accounts', selectedChat.accountId, 'chats', selectedChat.id, 'messages']
+        });
+      } else {
+        console.error('❌ Error enviando respuesta automática');
+      }
+    } catch (error) {
+      console.error('❌ Error en envío de respuesta automática:', error);
+    }
+  };
+
+  // Función para generar respuesta manual con SmartBots
   const generateSmartBotsResponse = async (userMessage: string, contactName: string, isIncomingMessage = false) => {
     try {
       console.log('🤖 Generando respuesta SmartBots para:', userMessage);
@@ -197,7 +279,44 @@ export function WhatsAppTwoColumn() {
         console.log('✅ Respuesta SmartBots:', data.response);
         
         if (isIncomingMessage) {
-          // Para mensajes entrantes, pre-llenar el campo de texto con la respuesta sugerida
+          // Para mensajes entrantes (burbujas verdes), enviar respuesta automática
+          console.log('🟢 Mensaje recibido (burbuja verde) - enviando respuesta automática');
+          
+          // Enviar la respuesta automáticamente al servidor
+          setTimeout(async () => {
+            try {
+              const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/send-message`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                },
+                body: JSON.stringify({
+                  chatId: selectedChat.id,
+                  message: data.response,
+                  isAutoResponse: true
+                })
+              });
+
+              if (response.ok) {
+                console.log('✅ Respuesta automática enviada exitosamente');
+                toast({
+                  title: "Respuesta automática enviada",
+                  description: "SmartBots ha respondido automáticamente al mensaje recibido",
+                  duration: 3000
+                });
+                
+                // Actualizar los mensajes del chat
+                queryClient.invalidateQueries({
+                  queryKey: ['/api/whatsapp-accounts', selectedChat.accountId, 'chats', selectedChat.id, 'messages']
+                });
+              } else {
+                console.error('❌ Error enviando respuesta automática');
+              }
+            } catch (error) {
+              console.error('❌ Error en respuesta automática:', error);
+            }
+          }, 2000); // Delay de 2 segundos para parecer más natural
           setNewMessage(data.response);
           
           toast({
@@ -223,40 +342,14 @@ export function WhatsAppTwoColumn() {
     }
   };
 
-  // Función para generar respuesta automática de SmartBots (sin modificar el input)
-  const generateSmartBotsAutoResponse = async (userMessage: string, contactName: string) => {
-    try {
-      console.log('🤖 Generando respuesta automática SmartBots para:', userMessage);
-      console.log('🔗 Llamando a /api/smartbots/generate-response...');
-      
-      const response = await fetch('/api/smartbots/generate-response', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: userMessage,
-          contactName: contactName,
-          context: `Conversación de WhatsApp con ${contactName}`
-        })
-      });
-
-      console.log('📡 Respuesta del servidor recibida:', response.status, response.statusText);
-
-      if (!response.ok) {
-        console.error('❌ Error HTTP:', response.status, response.statusText);
-        return null;
-      }
-
-      const data = await response.json();
-      console.log('📋 Datos recibidos:', data);
-      
-      if (data.success && data.response) {
-        console.log('✅ Respuesta automática SmartBots:', data.response);
-        
-        toast({
-          title: "🤖 Respuesta AI enviada automáticamente",
-          description: `SmartBots respondió: "${data.response.substring(0, 50)}..."`,
+  // Función para limpiar timer de auto-envío
+  const clearAutoSendTimer = () => {
+    if (autoSendTimer) {
+      clearTimeout(autoSendTimer);
+      setAutoSendTimer(null);
+      setIsAutoSending(false);
+    }
+  };
         });
         
         return data.response;
@@ -1369,11 +1462,43 @@ export function WhatsAppTwoColumn() {
               {/* Message Input */}
               <div className="flex space-x-2">
                 <Input
-                  placeholder={translatorEnabled ? "Escribe un mensaje (se traducirá automáticamente)..." : "Escribe un mensaje..."}
+                  placeholder={translatorEnabled ? "Escribe un mensaje (se traducirá automáticamente)..." : isAutoSending ? "Auto-enviando en 5 segundos..." : "Escribe un mensaje..."}
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  className="flex-1"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setNewMessage(value);
+                    
+                    // Auto-envío con delay de 5 segundos
+                    if (autoSendTimer) {
+                      clearTimeout(autoSendTimer);
+                      setAutoSendTimer(null);
+                      setIsAutoSending(false);
+                    }
+                    
+                    if (value.trim().length > 0) {
+                      setIsAutoSending(true);
+                      const timer = setTimeout(() => {
+                        if (newMessage.trim().length > 0) {
+                          handleSendMessage();
+                        }
+                        setIsAutoSending(false);
+                        setAutoSendTimer(null);
+                      }, 5000);
+                      setAutoSendTimer(timer);
+                    }
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      // Cancelar auto-envío si el usuario presiona Enter manualmente
+                      if (autoSendTimer) {
+                        clearTimeout(autoSendTimer);
+                        setAutoSendTimer(null);
+                        setIsAutoSending(false);
+                      }
+                      handleSendMessage();
+                    }
+                  }}
+                  className={`flex-1 ${isAutoSending ? 'border-orange-400 bg-orange-50' : ''}`}
                   disabled={sendMessageMutation.isPending}
                 />
                 <Button 
