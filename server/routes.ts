@@ -4061,6 +4061,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/translate', translateText);
   app.post('/api/detect-language', detectLanguage);
 
+  // External Agents routes
+  app.get('/api/external-agents', async (req: Request, res: Response) => {
+    try {
+      const { externalAgentService } = await import('./services/externalAgentService');
+      const agents = externalAgentService.getAgents();
+      
+      res.json({
+        success: true,
+        agents
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo agentes externos:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
+  app.post('/api/external-agents', async (req: Request, res: Response) => {
+    try {
+      const { id, name, url, apiKey, headers, requestFormat } = req.body;
+      
+      if (!id || !name || !url) {
+        return res.status(400).json({
+          success: false,
+          error: 'ID, nombre y URL son requeridos'
+        });
+      }
+
+      const { externalAgentService } = await import('./services/externalAgentService');
+      
+      externalAgentService.configureCustomAgent({
+        id,
+        name,
+        url,
+        apiKey,
+        headers,
+        requestFormat: requestFormat || 'custom'
+      });
+
+      res.json({
+        success: true,
+        message: `Agente ${name} configurado exitosamente`
+      });
+    } catch (error) {
+      console.error('❌ Error configurando agente externo:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
+  app.post('/api/external-agents/:agentId/send', async (req: Request, res: Response) => {
+    try {
+      const { agentId } = req.params;
+      const { message, chatContext, userInfo } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({
+          success: false,
+          error: 'Mensaje es requerido'
+        });
+      }
+
+      const { externalAgentService } = await import('./services/externalAgentService');
+      
+      const agentResponse = await externalAgentService.sendMessageToAgent(
+        agentId,
+        message,
+        chatContext,
+        userInfo
+      );
+
+      res.json(agentResponse);
+    } catch (error) {
+      console.error('❌ Error enviando mensaje a agente externo:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
+  app.patch('/api/external-agents/:agentId/toggle', async (req: Request, res: Response) => {
+    try {
+      const { agentId } = req.params;
+      const { activate } = req.body;
+      
+      const { externalAgentService } = await import('./services/externalAgentService');
+      
+      const result = activate 
+        ? externalAgentService.activateAgent(agentId)
+        : externalAgentService.deactivateAgent(agentId);
+
+      if (result) {
+        res.json({
+          success: true,
+          message: `Agente ${activate ? 'activado' : 'desactivado'} exitosamente`
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: 'Agente no encontrado'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error cambiando estado del agente:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
+  app.get('/api/external-agents/stats', async (req: Request, res: Response) => {
+    try {
+      const { externalAgentService } = await import('./services/externalAgentService');
+      const stats = externalAgentService.getAgentStats();
+      
+      res.json({
+        success: true,
+        ...stats
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo estadísticas de agentes:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
   // Endpoint para obtener transcripciones de notas de voz
   app.get('/api/voice-transcriptions/:messageId', async (req: Request, res: Response) => {
     try {
