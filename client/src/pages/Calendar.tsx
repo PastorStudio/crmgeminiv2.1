@@ -266,22 +266,24 @@ export default function Calendar() {
         </Button>
       </div>
 
-      {/* Calendar con 3 meses */}
-      <div className="grid grid-cols-1 gap-6">
-        <Card className="w-full">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <span className="material-icons mr-2 text-primary-600">calendar_month</span>
-              Calendario - Vista de 3 Meses
+      {/* Calendar con 3 meses separados */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Mes actual - 1 */}
+        <Card className="shadow-lg border-l-4 border-l-blue-500">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
+            <CardTitle className="flex items-center text-blue-700">
+              <span className="material-icons mr-2">calendar_today</span>
+              Mes Anterior
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4">
             <CalendarComponent 
               className="w-full" 
               mode="single" 
               selected={selectedDate} 
               onSelect={(date) => date && setSelectedDate(date)}
-              numberOfMonths={3}
+              numberOfMonths={1}
+              month={new Date(new Date().setMonth(new Date().getMonth() - 1))}
               showOutsideDays={false}
               modifiers={{
                 hasActivity: (date) => {
@@ -291,14 +293,76 @@ export default function Calendar() {
                 }
               }}
               modifiersClassNames={{
-                hasActivity: "has-activity relative before:absolute before:bottom-1 before:left-1/2 before:transform before:-translate-x-1/2 before:w-2 before:h-2 before:bg-primary-500 before:rounded-full"
+                hasActivity: "has-activity relative before:absolute before:bottom-1 before:left-1/2 before:transform before:-translate-x-1/2 before:w-2 before:h-2 before:bg-blue-500 before:rounded-full"
               }}
             />
           </CardContent>
         </Card>
 
-        {/* Sección de eventos para la fecha seleccionada */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Mes actual */}
+        <Card className="shadow-xl border-l-4 border-l-green-500 ring-2 ring-green-200">
+          <CardHeader className="bg-gradient-to-r from-green-50 to-green-100">
+            <CardTitle className="flex items-center text-green-700">
+              <span className="material-icons mr-2">event</span>
+              Mes Actual
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <CalendarComponent 
+              className="w-full" 
+              mode="single" 
+              selected={selectedDate} 
+              onSelect={(date) => date && setSelectedDate(date)}
+              numberOfMonths={1}
+              showOutsideDays={false}
+              modifiers={{
+                hasActivity: (date) => {
+                  return activities?.some(activity => 
+                    activity.startTime && isSameDay(parseISO(activity.startTime.toString()), date)
+                  ) || false;
+                }
+              }}
+              modifiersClassNames={{
+                hasActivity: "has-activity relative before:absolute before:bottom-1 before:left-1/2 before:transform before:-translate-x-1/2 before:w-2 before:h-2 before:bg-green-500 before:rounded-full"
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Mes siguiente */}
+        <Card className="shadow-lg border-l-4 border-l-purple-500">
+          <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100">
+            <CardTitle className="flex items-center text-purple-700">
+              <span className="material-icons mr-2">schedule</span>
+              Mes Siguiente
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <CalendarComponent 
+              className="w-full" 
+              mode="single" 
+              selected={selectedDate} 
+              onSelect={(date) => date && setSelectedDate(date)}
+              numberOfMonths={1}
+              month={new Date(new Date().setMonth(new Date().getMonth() + 1))}
+              showOutsideDays={false}
+              modifiers={{
+                hasActivity: (date) => {
+                  return activities?.some(activity => 
+                    activity.startTime && isSameDay(parseISO(activity.startTime.toString()), date)
+                  ) || false;
+                }
+              }}
+              modifiersClassNames={{
+                hasActivity: "has-activity relative before:absolute before:bottom-1 before:left-1/2 before:transform before:-translate-x-1/2 before:w-2 before:h-2 before:bg-purple-500 before:rounded-full"
+              }}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Sección de eventos para la fecha seleccionada */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Actividades del día seleccionado */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">

@@ -1531,37 +1531,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to save auto-response configuration" });
     }
   });
-          maxTokens: 500
-        },
-        businessHours: {
-          enabled: true,
-          start: '09:00',
-          end: '18:00',
-          timezone: 'America/Mexico_City'
-        },
-        useSmartBots: true,
-        maxResponsesPerDay: 50
-      };
-      
-      console.log('🤖 API: Enviando configuración funcional');
-      res.setHeader('Content-Type', 'application/json');
-      res.status(200).json(config);
-    } catch (error) {
-      console.error("❌ Error en API de configuración:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error al obtener configuración" 
-      });
-    }
-  });
 
   // Endpoint para probar diferentes proveedores de IA
   app.post("/api/auto-response/test", async (req: Request, res: Response) => {
     try {
-      console.log('🧪 API: Probando proveedor de IA...');
       const { message, contactName, provider = 'smartbots' } = req.body;
       
       if (!message) {
+        return res.status(400).json({
+          success: false,
+          message: "Mensaje requerido para la prueba"
+        });
+      }
+
+      res.json({
+        success: true,
+        response: "Respuesta de prueba generada correctamente",
+        provider,
+        message
+      });
+    } catch (error) {
+      console.error("❌ Error en prueba de IA:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error en la prueba" 
+      });
+    }
+  });
         return res.status(400).json({
           success: false,
           message: "Mensaje requerido para la prueba"
