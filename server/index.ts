@@ -355,7 +355,59 @@ app.use((req, res, next) => {
     }
   });
 
-  // Registrar todas las rutas incluyendo autenticación
+  // RUTAS DE AUTENTICACIÓN CRÍTICAS - REGISTRAR ANTES DE VITE
+  const jwt = await import('jsonwebtoken');
+  const { authService } = await import('./services/authService');
+
+  // Ruta de login directa en el servidor principal
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+      
+      console.log('🔐 Intento de login:', { username, password: password ? '[PRESENTE]' : '[AUSENTE]' });
+      
+      if (!username || !password) {
+        console.log('❌ Faltan credenciales');
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere nombre de usuario y contraseña"
+        });
+      }
+      
+      // Verificar credenciales
+      const user = await authService.verifyCredentials(username, password);
+      
+      if (!user) {
+        console.log('❌ Credenciales inválidas para:', username);
+        return res.status(401).json({
+          success: false,
+          message: "Credenciales inválidas"
+        });
+      }
+      
+      // Generar token JWT
+      const token = authService.generateToken(user);
+      
+      // Devolver información del usuario (sin contraseña)
+      const { password: _, ...userInfo } = user;
+      
+      console.log('✅ Login exitoso para:', username);
+      res.json({
+        success: true,
+        message: "Inicio de sesión exitoso",
+        token,
+        user: userInfo
+      });
+    } catch (error) {
+      console.error("❌ Error en login:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al procesar la solicitud de inicio de sesión"
+      });
+    }
+  });
+
+  // Registrar todas las demás rutas
   const server = await registerRoutes(app);
   
   // Inicializar sistema de notificaciones en tiempo real
