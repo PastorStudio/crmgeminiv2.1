@@ -673,7 +673,7 @@ export function WhatsAppTwoColumn() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
-                        className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}
+                        className={`flex ${message.fromMe ? 'justify-end pt-[-34px] pb-[-34px] mt-[6px] mb-[6px] ml-[-4px] mr-[-4px] pl-[-20px] pr-[-20px] text-[14px]' : 'justify-start pt-[-34px] pb-[-34px] mt-[6px] mb-[6px] ml-[-4px] mr-[-4px] pl-[-20px] pr-[-20px] text-[14px]'}`}
                       >
                         <div className={`flex space-x-2 max-w-[70%] ${message.fromMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
                           {showAvatar && isFirstFromAuthor && (
