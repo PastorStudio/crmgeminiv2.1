@@ -432,7 +432,7 @@ export function WhatsAppTwoColumn() {
         </div>
 
         {/* Search */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 mt-[-1px] mb-[-1px] pl-[20px] pr-[20px] pt-[2px] pb-[2px] ml-[2px] mr-[2px]">
           <Input
             placeholder="Buscar conversaciones..."
             value={searchQuery}
@@ -534,7 +534,7 @@ export function WhatsAppTwoColumn() {
         {selectedChat ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 bg-white">
+            <div className="p-4 border-b border-gray-200 bg-white pl-[10px] pr-[10px] mt-[8px] mb-[8px] ml-[1px] mr-[1px] text-[18px]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="relative">
