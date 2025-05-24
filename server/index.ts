@@ -454,6 +454,41 @@ app.use((req, res, next) => {
     res.status(200).json(carlosAssignment);
   });
 
+  // ENDPOINT PARA OBTENER CÓDIGOS QR DE WHATSAPP
+  app.get('/api/whatsapp/qr/:accountId', async (req, res) => {
+    try {
+      const { accountId } = req.params;
+      console.log(`📱 Solicitando código QR para cuenta ${accountId}`);
+      
+      // Leer el código QR del archivo
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      const qrPath = path.join(process.cwd(), 'temp', 'whatsapp-accounts', `account_${accountId}`, 'qr.txt');
+      
+      if (fs.existsSync(qrPath)) {
+        const qrCode = fs.readFileSync(qrPath, 'utf8').trim();
+        console.log(`✅ Código QR encontrado para cuenta ${accountId}`);
+        
+        res.json({
+          success: true,
+          qrCode: qrCode,
+          accountId: parseInt(accountId),
+          message: 'Código QR disponible para escanear'
+        });
+      } else {
+        console.log(`❌ No hay código QR disponible para cuenta ${accountId}`);
+        res.json({
+          success: false,
+          message: 'Código QR no disponible. Espera a que se genere.'
+        });
+      }
+    } catch (error) {
+      console.error('Error al obtener código QR:', error);
+      res.status(500).json({ error: 'Error al obtener código QR' });
+    }
+  });
+
   // ENDPOINT DE PRUEBA PARA VERIFICAR ASIGNACIONES EXISTENTES
   app.get('/api/test-assignment/:chatId', async (req, res) => {
     try {

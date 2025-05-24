@@ -28,6 +28,7 @@ import Profile from './pages/Profile';
 import WhatsAppManager from './pages/WhatsAppManager';
 import SimpleWhatsApp from './pages/SimpleWhatsApp';
 import UltraSimpleChat from './pages/UltraSimpleChat';
+import WhatsAppConnection from './pages/WhatsAppConnection';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
