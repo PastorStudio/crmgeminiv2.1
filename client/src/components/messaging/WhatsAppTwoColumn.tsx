@@ -349,13 +349,47 @@ export function WhatsAppTwoColumn() {
     }
   }, [accounts, selectedAccounts]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedChat) return;
+    
+    let finalMessage = newMessage.trim();
+    
+    // Si el traductor está activado, traducir el mensaje antes de enviarlo
+    if (translatorEnabled) {
+      try {
+        const translateResponse = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: finalMessage,
+            targetLanguage: 'auto' // Detectar idioma automáticamente
+          })
+        });
+        
+        if (translateResponse.ok) {
+          const translateData = await translateResponse.json();
+          if (translateData.success && translateData.translatedText) {
+            finalMessage = translateData.translatedText;
+            toast({
+              title: "Mensaje traducido",
+              description: `De "${translateData.sourceLanguage}" a "${translateData.targetLanguage}"`,
+            });
+          }
+        }
+      } catch (translateError) {
+        console.warn('Translation failed, sending original message:', translateError);
+        toast({
+          title: "Error de traducción",
+          description: "Se enviará el mensaje original",
+          variant: "destructive",
+        });
+      }
+    }
     
     sendMessageMutation.mutate({
       chatId: selectedChat.id,
       accountId: selectedChat.accountId,
-      message: newMessage.trim()
+      message: finalMessage
     });
   };
 
