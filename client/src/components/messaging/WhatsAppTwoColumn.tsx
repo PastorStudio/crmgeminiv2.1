@@ -174,6 +174,8 @@ export function WhatsAppTwoColumn() {
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [translatorEnabled, setTranslatorEnabled] = useState(false);
   const [smartBotsEnabled, setSmartBotsEnabled] = useState(false);
+  const [selectedExternalAgent, setSelectedExternalAgent] = useState<string | null>(null);
+  const [agentSelectorOpen, setAgentSelectorOpen] = useState(false);
   
   // Estados para auto-envío con delay de 5 segundos
   const [autoSendTimer, setAutoSendTimer] = useState<NodeJS.Timeout | null>(null);
@@ -496,6 +498,23 @@ export function WhatsAppTwoColumn() {
         }
       }
       return allChats;
+    }
+  });
+
+  // Fetch external agents
+  const { data: externalAgents = [] } = useQuery({
+    queryKey: ['/api/external-agents'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/external-agents');
+        if (response.ok) {
+          return await response.json();
+        }
+        return [];
+      } catch (error) {
+        console.error('Error fetching external agents:', error);
+        return [];
+      }
     }
   });
 
