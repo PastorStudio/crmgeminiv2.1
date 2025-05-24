@@ -3610,40 +3610,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('🤖 Consultando SmartBots API externa para:', message);
       
-      // Usar OpenAI directamente (tu configuración actual)
-      console.log('🚀 Usando tu OpenAI configurado para respuesta automática...');
-      
-      const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY
-      });
+      // Intentar usar OpenAI si está disponible
+      if (process.env.OPENAI_API_KEY) {
+        console.log('🚀 Usando OpenAI para respuesta automática...');
+        
+        try {
+          const OpenAI = (await import('openai')).default;
+          const openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY
+          });
 
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4o', // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: 'system',
-            content: 'Eres un asistente virtual profesional para WhatsApp. Responde de manera amigable, concisa y útil en español. Mantén un tono profesional pero cercano. Responde máximo en 2-3 oraciones.'
-          },
-          {
-            role: 'user',
-            content: `Mensaje de ${contactName || 'Usuario'}: ${message}`
-          }
-        ],
-        max_tokens: 150,
-        temperature: 0.7
-      });
+          const response = await openai.chat.completions.create({
+            model: 'gpt-4o', // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+            messages: [
+              {
+                role: 'system',
+                content: 'Eres un asistente virtual profesional para WhatsApp. Responde de manera amigable, concisa y útil en español. Mantén un tono profesional pero cercano. Responde máximo en 2-3 oraciones.'
+              },
+              {
+                role: 'user',
+                content: `Mensaje de ${contactName || 'Usuario'}: ${message}`
+              }
+            ],
+            max_tokens: 150,
+            temperature: 0.7
+          });
 
-      const aiResponse = response.choices[0]?.message?.content || 'Gracias por tu mensaje. Te responderemos pronto.';
+          const aiResponse = response.choices[0]?.message?.content || 'Gracias por tu mensaje. Te responderemos pronto.';
+          
+          console.log('✅ Respuesta OpenAI generada:', aiResponse);
+          
+          return res.json({
+            success: true,
+            response: aiResponse.trim(),
+            originalMessage: message,
+            confidence: 0.95,
+            model: 'OpenAI GPT-4o'
+          });
+        } catch (openaiError) {
+          console.error('⚠️ Error con OpenAI, usando respuesta inteligente:', openaiError.message);
+        }
+      } else {
+        console.log('⚠️ OPENAI_API_KEY no configurada, usando respuestas inteligentes');
+      }
+
+      // Respuestas inteligentes de respaldo
+      console.log('🤖 Generando respuesta inteligente de respaldo...');
       
-      console.log('✅ Respuesta OpenAI generada:', aiResponse);
+      const messageText = message.toLowerCase();
+      let smartResponse = '';
+      
+      // Saludos
+      if (/hola|hello|hi|buenos días|buenas tardes|buenas noches|hey/i.test(messageText)) {
+        const responses = [
+          `¡Hola ${contactName}! 👋 ¿En qué puedo ayudarte hoy?`,
+          `¡Bienvenido ${contactName}! ¿Cómo puedo asistirte?`,
+          `Hola ${contactName}, es un gusto saludarte. ¿En qué te puedo ayudar?`
+        ];
+        smartResponse = responses[Math.floor(Math.random() * responses.length)];
+      }
+      // Preguntas sobre productos/servicios
+      else if (/precio|cost|cuanto|información|info|servicio|product/i.test(messageText)) {
+        const responses = [
+          `Gracias por tu interés ${contactName}. Te enviaré información detallada sobre nuestros productos y precios. 💼`,
+          `Perfecto ${contactName}, permíteme enviarte nuestra lista de precios actualizada. 📋`,
+          `Excelente pregunta ${contactName}. Te compartiré toda la información sobre nuestros servicios. ✨`
+        ];
+        smartResponse = responses[Math.floor(Math.random() * responses.length)];
+      }
+      // Consultas generales
+      else if (/ayuda|help|support|consulta|pregunta/i.test(messageText)) {
+        const responses = [
+          `Por supuesto ${contactName}, estoy aquí para ayudarte. ¿Cuál es tu consulta específica? 🤝`,
+          `Claro ${contactName}, cuéntame en qué puedo asistirte y te ayudo de inmediato. 💪`,
+          `¡Perfecto ${contactName}! Dime qué necesitas y te brindo toda la información necesaria. 📞`
+        ];
+        smartResponse = responses[Math.floor(Math.random() * responses.length)];
+      }
+      // Respuesta general para otros casos
+      else {
+        const responses = [
+          `Gracias por tu mensaje ${contactName}. Un agente te contactará pronto para darte la mejor atención. 🌟`,
+          `Hola ${contactName}, hemos recibido tu mensaje. Te responderemos a la brevedad con toda la información. ⚡`,
+          `Excelente ${contactName}, tu consulta es importante para nosotros. Te daremos seguimiento personal muy pronto. 🎯`
+        ];
+        smartResponse = responses[Math.floor(Math.random() * responses.length)];
+      }
+      
+      console.log('✅ Respuesta inteligente generada:', smartResponse);
       
       res.json({
         success: true,
-        response: aiResponse.trim(),
+        response: smartResponse,
         originalMessage: message,
-        confidence: 0.95,
-        model: 'OpenAI GPT-4o (Respaldo)'
+        confidence: 0.85,
+        model: 'Respuestas Inteligentes'
       });
       
     } catch (error) {
