@@ -30,7 +30,7 @@ import SimpleWhatsApp from './pages/SimpleWhatsApp';
 import UltraSimpleChat from './pages/UltraSimpleChat';
 import WhatsAppConnection from './pages/WhatsAppConnection';
 import AgentMonitoring from './pages/AgentMonitoring';
-import Tickets from './pages/Tickets';
+import TicketsSimple from './pages/TicketsSimple';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
@@ -450,7 +450,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/messages" component={() => <PrivateRoute component={Messages} path="/messages" />} />
                 <Route path="/calendar" component={() => <PrivateRoute component={Calendar} path="/calendar" />} />
                 <Route path="/tasks" component={() => <PrivateRoute component={Tasks} path="/tasks" />} />
-                <Route path="/tickets" component={() => <PrivateRoute component={Tickets} path="/tickets" />} />
+                <Route path="/tickets" component={() => <PrivateRoute component={TicketsSimple} path="/tickets" />} />
                 <Route path="/analytics" component={() => <PrivateRoute component={Analytics} path="/analytics" />} />
                 <Route path="/settings" component={() => <PrivateRoute component={Settings} path="/settings" />} />
                 <Route path="/media-gallery" component={() => <PrivateRoute component={MediaGallery} path="/media-gallery" />} />

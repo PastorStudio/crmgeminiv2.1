@@ -187,8 +187,9 @@ const Tickets = () => {
   };
 
   const safeTicketsData = ticketsData || { tickets: [] };
+  const safeTicketsArray = Array.isArray(safeTicketsData.tickets) ? safeTicketsData.tickets : [];
 
-  const filteredTickets = safeTicketsData.tickets.filter((ticket: TicketData) => {
+  const filteredTickets = safeTicketsArray.filter((ticket: TicketData) => {
     const matchesSearch = ticket.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.customerPhone?.includes(searchTerm) ||
                          ticket.lastMessage?.toLowerCase().includes(searchTerm.toLowerCase());
