@@ -591,7 +591,7 @@ export function WhatsAppTwoColumn() {
                   <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                   <span className="ml-2 text-gray-500">Cargando mensajes...</span>
                 </div>
-              ) : messages.length === 0 ? (
+              ) : (!messages || !Array.isArray(messages) || messages.length === 0) ? (
                 <div className="flex flex-col items-center justify-center h-32 text-gray-500">
                   <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
                   <p>No hay mensajes en este chat</p>
