@@ -357,44 +357,80 @@ export function WhatsAppTwoColumn() {
     // Si el traductor está activado, traducir el mensaje antes de enviarlo
     if (translatorEnabled) {
       try {
-        console.log('🌐 Iniciando traducción para:', finalMessage);
+        console.log('🌐 Traduciendo mensaje:', finalMessage);
         
-        const translateResponse = await fetch('/api/translate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            text: finalMessage,
-            targetLanguage: 'auto' // Detectar idioma automáticamente
-          })
+        // Detectar idioma
+        const isSpanish = /[áéíóúñ¿¡]|hola|como|que|para|con|una|este|todo|pero|muy|cuando|hasta|donde|gracias|por favor|buenos días|buenas tardes|buenas noches/i.test(finalMessage);
+        const sourceLanguage = isSpanish ? 'es' : 'en';
+        const targetLanguage = isSpanish ? 'en' : 'es';
+        
+        // Usar Google Translate API directamente
+        const googleTranslateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLanguage}&tl=${targetLanguage}&dt=t&q=${encodeURIComponent(finalMessage)}`;
+        
+        const response = await fetch(googleTranslateUrl, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
         });
         
-        console.log('📡 Respuesta del servidor:', translateResponse.status);
-        
-        if (translateResponse.ok) {
-          const translateData = await translateResponse.json();
-          console.log('📋 Datos de traducción:', translateData);
+        if (response.ok) {
+          const data = await response.json();
+          const translatedText = data[0]?.map((item: any) => item[0]).join('') || finalMessage;
           
-          if (translateData.success && translateData.translatedText) {
-            finalMessage = translateData.translatedText;
+          if (translatedText && translatedText !== finalMessage) {
+            finalMessage = translatedText;
             console.log('✅ Mensaje traducido:', finalMessage);
             
             toast({
-              title: translateData.demo ? "Traducción Demo" : "Mensaje traducido",
-              description: `De "${translateData.sourceLanguage}" a "${translateData.targetLanguage}"`,
+              title: "Mensaje traducido",
+              description: `De ${sourceLanguage === 'es' ? 'Español' : 'Inglés'} a ${targetLanguage === 'es' ? 'Español' : 'Inglés'}`,
             });
           } else {
-            console.warn('❌ No se pudo traducir:', translateData);
+            throw new Error('No se pudo obtener traducción');
           }
         } else {
-          const errorText = await translateResponse.text();
-          console.error('❌ Error del servidor:', errorText);
+          throw new Error('Error en Google Translate API');
         }
+        
       } catch (translateError) {
-        console.warn('Translation failed, sending original message:', translateError);
+        console.warn('Google Translate falló, usando traducción básica:', translateError);
+        
+        // Traducción básica de respaldo
+        const isSpanish = /[áéíóúñ¿¡]|hola|como|que|para|con|una|este|todo|pero|muy|cuando|hasta|donde|gracias|por favor/i.test(finalMessage);
+        
+        if (isSpanish) {
+          finalMessage = finalMessage
+            .replace(/hola/gi, 'hello')
+            .replace(/como estas/gi, 'how are you')
+            .replace(/como/gi, 'how')
+            .replace(/que tal/gi, 'how are you')
+            .replace(/que/gi, 'what')
+            .replace(/donde/gi, 'where')
+            .replace(/cuando/gi, 'when')
+            .replace(/por favor/gi, 'please')
+            .replace(/gracias/gi, 'thank you')
+            .replace(/buenos días/gi, 'good morning')
+            .replace(/buenas tardes/gi, 'good afternoon')
+            .replace(/buenas noches/gi, 'good night');
+        } else {
+          finalMessage = finalMessage
+            .replace(/hello/gi, 'hola')
+            .replace(/how are you/gi, 'como estas')
+            .replace(/how/gi, 'como')
+            .replace(/what/gi, 'que')
+            .replace(/where/gi, 'donde')
+            .replace(/when/gi, 'cuando')
+            .replace(/please/gi, 'por favor')
+            .replace(/thank you/gi, 'gracias')
+            .replace(/good morning/gi, 'buenos días')
+            .replace(/good afternoon/gi, 'buenas tardes')
+            .replace(/good night/gi, 'buenas noches');
+        }
+        
         toast({
-          title: "Error de traducción",
-          description: "Se enviará el mensaje original",
-          variant: "destructive",
+          title: "Traducción básica aplicada",
+          description: "Se usó traducción simplificada",
         });
       }
     }
