@@ -833,6 +833,30 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
+   * Obtiene el cliente de WhatsApp para una cuenta específica
+   */
+  getClient(accountId: number): Client | null {
+    const instance = this.instances.get(accountId);
+    return instance ? instance.client : null;
+  }
+
+  /**
+   * Obtiene el estado de una cuenta específica
+   */
+  getAccountStatus(accountId: number): WhatsAppStatus | null {
+    const instance = this.instances.get(accountId);
+    return instance ? instance.status : null;
+  }
+
+  /**
+   * Verifica si una cuenta está conectada
+   */
+  isAccountConnected(accountId: number): boolean {
+    const instance = this.instances.get(accountId);
+    return instance ? instance.status.authenticated && instance.status.ready : false;
+  }
+
+  /**
    * Obtiene cuentas activas
    */
   getActiveAccounts(): { id: number, name: string, status: string }[] {
