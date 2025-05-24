@@ -448,7 +448,8 @@ const AppRoutes: React.FC = () => {
             </div>
           ) : (
             <PageTransition>
-              <Switch>
+              <ErrorBoundary>
+                <Switch>
                 {/* Ruta de login pública */}
                 <Route path="/login" component={Login} />
                 
@@ -482,7 +483,8 @@ const AppRoutes: React.FC = () => {
                 <Route path="/chat-assignments" component={() => <PrivateRoute component={ChatAssignments} path="/chat-assignments" />} />
                 <Route path="/profile" component={() => <PrivateRoute component={Profile} path="/profile" />} />
                 <Route component={() => <PrivateRoute component={NotFound} path="*" />} />
-              </Switch>
+                </Switch>
+              </ErrorBoundary>
             </PageTransition>
           )}
         </div>
