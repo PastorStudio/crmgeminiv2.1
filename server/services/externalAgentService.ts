@@ -2,6 +2,7 @@ import { db } from '../db';
 import { externalAgents, agentResponses, type ExternalAgent, type InsertExternalAgent, type AgentResponse, type InsertAgentResponse } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { chatGPTConnector } from './chatgptConnector';
 
 export class ExternalAgentService {
   // Crear un nuevo agente externo
@@ -202,22 +203,40 @@ export class ExternalAgentService {
 
       const { message, contactName, context, targetLanguage, translateResponse } = messageData;
       
-      // Crear una respuesta simulada inteligente como intermediario
-      console.log(`🔄 Generando respuesta intermediaria para agente: ${agent.name}`);
+      console.log(`🔗 Conectando directamente con ${agent.name} en ChatGPT...`);
       console.log(`💬 Mensaje recibido: "${message}" de ${contactName}`);
       
-      // Simular respuesta basada en el agente seleccionado
       let agentResponse = '';
       
-      if (agent.name.includes('SmartBots') || agent.name.includes('ChatGPT')) {
-        agentResponse = await this.generateSmartBotsResponse(message, contactName, targetLanguage);
-      } else if (agent.name.includes('SmartFlyer') || agent.name.includes('viaje')) {
-        agentResponse = await this.generateTravelResponse(message, contactName, targetLanguage);
-      } else {
-        agentResponse = await this.generateGenericResponse(message, contactName, targetLanguage);
-      }
+      try {
+        // Intentar conexión directa con ChatGPT
+        const extractedAgentId = this.extractAgentIdFromUrl(agent.agentUrl);
+        
+        if (!chatGPTConnector.isAgentConnected(extractedAgentId)) {
+          console.log(`🚀 Estableciendo conexión con ${agent.agentUrl}...`);
+          await chatGPTConnector.connectToAgent(agent.agentUrl);
+        }
 
-      console.log(`✅ Respuesta generada por ${agent.name}: ${agentResponse}`);
+        // Preparar mensaje contextualizado para el agente real
+        const contextualizedMessage = `${contactName} dice: "${message}"`;
+        
+        // Enviar mensaje al agente REAL de ChatGPT
+        agentResponse = await chatGPTConnector.sendMessage(extractedAgentId, contextualizedMessage);
+        console.log(`✅ Respuesta REAL obtenida de ${agent.name}: ${agentResponse}`);
+
+      } catch (directError: any) {
+        console.log(`⚠️ Error conexión directa, usando respuesta personalizada:`, directError?.message || 'Error desconocido');
+        
+        // Fallback con respuestas personalizadas específicas
+        if (agent.name.includes('SmartBots') || agent.name.includes('ChatGPT')) {
+          agentResponse = await this.generateSmartBotsResponse(message, contactName, targetLanguage);
+        } else if (agent.name.includes('SmartFlyer') || agent.name.includes('viaje')) {
+          agentResponse = await this.generateTravelResponse(message, contactName, targetLanguage);
+        } else {
+          agentResponse = await this.generateGenericResponse(message, contactName, targetLanguage);
+        }
+        console.log(`✅ Respuesta fallback generada por ${agent.name}: ${agentResponse}`);
+      }
 
       // Intentar guardar respuesta (opcional)
       try {
@@ -229,8 +248,8 @@ export class ExternalAgentService {
           confidence: 0.9,
           responseTime: Math.floor(Date.now() / 1000)
         });
-      } catch (saveError) {
-        console.log('📊 Respuesta no guardada (continuando sin error):', saveError.message);
+      } catch (saveError: any) {
+        console.log('📊 Respuesta no guardada (continuando sin error):', saveError?.message || 'Error desconocido');
       }
 
       return agentResponse;
@@ -238,6 +257,16 @@ export class ExternalAgentService {
     } catch (error) {
       console.error(`❌ Error procesando mensaje con agente ${agentId}:`, error);
       return null;
+    }
+  }
+
+  // Extraer ID del agente desde URL de ChatGPT
+  private extractAgentIdFromUrl(url: string): string {
+    try {
+      const match = url.match(/g-([a-zA-Z0-9]+)/);
+      return match ? match[1] : 'unknown-agent';
+    } catch (error) {
+      return 'unknown-agent';
     }
   }
 
