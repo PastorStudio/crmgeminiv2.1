@@ -458,7 +458,17 @@ app.use((req, res, next) => {
   app.get('/api/whatsapp/qr/:accountId', async (req, res) => {
     try {
       const { accountId } = req.params;
-      console.log(`📱 Solicitando código QR para cuenta ${accountId}`);
+      console.log(`📱 Solicitando código QR para cuenta existente ${accountId}`);
+      
+      // Verificar que la cuenta existe en la base de datos
+      const account = await storage.getWhatsappAccount(parseInt(accountId));
+      if (!account) {
+        console.log(`❌ Cuenta ${accountId} no existe en el sistema`);
+        return res.status(404).json({
+          success: false,
+          message: `Cuenta ${accountId} no encontrada en el sistema`
+        });
+      }
       
       // Leer el código QR del archivo
       const fs = await import('fs');
@@ -468,19 +478,20 @@ app.use((req, res, next) => {
       
       if (fs.existsSync(qrPath)) {
         const qrCode = fs.readFileSync(qrPath, 'utf8').trim();
-        console.log(`✅ Código QR encontrado para cuenta ${accountId}`);
+        console.log(`✅ Código QR encontrado para cuenta existente ${account.name} (ID: ${accountId})`);
         
         res.json({
           success: true,
           qrCode: qrCode,
           accountId: parseInt(accountId),
-          message: 'Código QR disponible para escanear'
+          accountName: account.name,
+          message: `Código QR disponible para cuenta ${account.name}`
         });
       } else {
-        console.log(`❌ No hay código QR disponible para cuenta ${accountId}`);
+        console.log(`❌ No hay código QR disponible para cuenta ${account.name} (ID: ${accountId})`);
         res.json({
           success: false,
-          message: 'Código QR no disponible. Espera a que se genere.'
+          message: `Código QR no disponible para ${account.name}. Espera a que se genere.`
         });
       }
     } catch (error) {
