@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ChatAssignmentDialog from './ChatAssignmentDialog';
 import { AutoResponseConfigDialog } from './AutoResponseConfigDialog';
 import { ChatCommentsDialog } from './ChatCommentsDialog';
+import { ChatAssignmentHeader } from './ChatAssignmentHeader';
 
 // Componente para mostrar el agente asignado en cada chat de la lista con animaciones
 function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
@@ -183,6 +184,25 @@ export function WhatsAppTwoColumn() {
     }
   });
 
+  // Cargar asignación actual del chat
+  const { data: currentAssignment, refetch: refetchCurrentAssignment } = useQuery({
+    queryKey: ['current-assignment', selectedChat?.id, selectedAccount?.id],
+    queryFn: async () => {
+      if (!selectedChat?.id || !selectedAccount?.id) return null;
+      try {
+        const response = await fetch(`/api/agent-assignments/chat?chatId=${encodeURIComponent(selectedChat.id)}&accountId=${selectedAccount.id}`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data.success ? data.assignment : null;
+      } catch (error) {
+        console.log('No se pudo cargar asignación:', error);
+        return null;
+      }
+    },
+    enabled: !!selectedChat?.id && !!selectedAccount?.id,
+    refetchInterval: 10000 // Actualizar cada 10 segundos
+  });
+
   // Cargar comentarios del chat actual (con manejo de errores)
   const { data: chatComments = [], refetch: refetchComments } = useQuery({
     queryKey: ['chat-comments', selectedChat?.id],
@@ -201,7 +221,7 @@ export function WhatsAppTwoColumn() {
   });
 
   // Cargar asignación de agente del chat - CONEXIÓN REAL A POSTGRESQL
-  const { data: assignmentData, refetch: refetchAssignment } = useQuery({
+  const { data: assignmentData, refetch: refetchAssignmentData } = useQuery({
     queryKey: ['chat-assignment', selectedChat?.id, selectedAccount?.id],
     queryFn: async () => {
       if (!selectedChat?.id || !selectedAccount?.id) return null;
@@ -811,16 +831,34 @@ export function WhatsAppTwoColumn() {
                   </Dialog>
 
                   <div className="flex-1">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 mb-2">
                       <h3 className="font-semibold text-gray-900">{selectedChat.name}</h3>
                       {!selectedChat.isGroup && (
                         <span className="text-sm text-gray-500">+{extractPhoneNumber(selectedChat.id)}</span>
                       )}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {/* Mostrar agente asignado de forma prominente con animaciones */}
-                      <AnimatePresence mode="wait">
-                        {assignmentData?.assignedTo ? (
+                    
+                    {/* Componente dedicado para mostrar el agente asignado */}
+                    <div className="flex items-center justify-between">
+                      <ChatAssignmentHeader 
+                        chatId={selectedChat.id}
+                        accountId={selectedAccount.id}
+                        onTransferClick={() => setAssignmentDialogOpen(true)}
+                      />
+                      <div className="flex items-center space-x-2 text-sm text-gray-500">
+                        {!selectedChat.isGroup && (
+                          <>
+                            {isContactOnline(selectedChat) ? (
+                              <span className="text-green-600">En línea</span>
+                            ) : (
+                              `Últ. vez: ${formatLastSeen(selectedChat.timestamp)}`
+                            )}
+                            {' • '}
+                          </>
+                        )}
+                        {messages.length} mensajes
+                      </div>
+                    </div>
                           <motion.span
                             key={`assigned-${assignmentData.assignedTo.id}`}
                             initial={{ opacity: 0, scale: 0.9, y: -10 }}
