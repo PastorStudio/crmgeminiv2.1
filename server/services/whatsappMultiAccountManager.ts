@@ -555,6 +555,39 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       instance.status.ready = false;
       this.deactivateConnectionTimers(instance);
     });
+
+    // Evento de mensajes entrantes para sistema de tickets
+    client.on('message', async (message) => {
+      try {
+        // Solo procesar mensajes entrantes (no enviados por nosotros)
+        if (!message.fromMe) {
+          console.log(`📨 Nuevo mensaje recibido en cuenta ${id}: ${message.body.substring(0, 50)}...`);
+          
+          // Importar dinámicamente el sistema de tickets para evitar dependencias circulares
+          const { AutomaticTicketingSystem } = await import('./ticketingSystem');
+          const ticketingSystem = new AutomaticTicketingSystem();
+          
+          // Procesar mensaje y crear/actualizar ticket automáticamente
+          await ticketingSystem.processIncomingMessage(
+            message.from, // chatId
+            id, // accountId
+            {
+              body: message.body,
+              from: message.from,
+              contact: {
+                name: message._data.notifyName || 'Cliente Anónimo',
+                pushname: message._data.notifyName || 'Cliente Anónimo'
+              },
+              timestamp: message.timestamp
+            }
+          );
+          
+          console.log(`✅ Mensaje procesado por sistema de tickets automáticos`);
+        }
+      } catch (error) {
+        console.error(`❌ Error procesando mensaje para tickets automáticos:`, error);
+      }
+    });
   }
 
   /**
