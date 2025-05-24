@@ -12,7 +12,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MessageCircle, 
   Send, 
-  User, 
+  User,
+  Building,
+  MessageSquareMore, 
   Clock, 
   Users, 
   Smartphone,
@@ -92,16 +94,26 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
   if (!assignment) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex items-center space-x-2"
-    >
-      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-        <UserPlus className="h-3 w-3 mr-1" />
-        Asignado a {assignment.agentName}
-      </Badge>
-    </motion.div>
+    <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
+      <UserPlus className="h-3 w-3 mr-1" />
+      {assignment.agentName}
+    </Badge>
+  );
+}
+
+function ChatCommentsIndicator({ chatId }: { chatId: string }) {
+  const { data: comments = [] } = useQuery({
+    queryKey: ['/api/chat-comments', chatId],
+    enabled: !!chatId
+  });
+
+  if (!comments || comments.length === 0) return null;
+
+  return (
+    <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
+      <MessageSquareMore className="h-3 w-3 mr-1" />
+      {comments.length}
+    </Badge>
   );
 }
 
@@ -461,9 +473,20 @@ export function WhatsAppTwoColumn() {
                         </div>
                         
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600 truncate flex-1">
-                            {chat.lastMessage}
-                          </span>
+                          <div className="flex items-center space-x-2 flex-1">
+                            {/* Chat Assignment Info */}
+                            <ChatAssignmentBadge chatId={chat.id} accountId={chat.accountId} />
+                            
+                            {/* Account Badge */}
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                              <Building className="h-3 w-3 mr-1" />
+                              Cuenta #{chat.accountId}
+                            </Badge>
+                            
+                            {/* Comments Indicator */}
+                            <ChatCommentsIndicator chatId={chat.id} />
+                          </div>
+                          
                           {chat.unreadCount > 0 && (
                             <Badge className="bg-green-500 text-white ml-2">
                               {chat.unreadCount}
