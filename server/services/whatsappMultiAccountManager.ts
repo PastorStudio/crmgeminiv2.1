@@ -588,40 +588,40 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             
             try {
               const media = await message.downloadMedia();
-              if (media && process.env.OPENAI_API_KEY) {
-                // Importar OpenAI dinámicamente
-                const OpenAI = (await import('openai')).default;
-                const openai = new OpenAI({
-                  apiKey: process.env.OPENAI_API_KEY
-                });
+              if (media) {
+                // Importar el servicio de almacenamiento de notas de voz
+                const { voiceNoteStorage } = await import('./voiceNoteStorage');
                 
-                // Crear un archivo temporal para la transcripción
+                // Convertir el archivo de audio a buffer
                 const audioBuffer = Buffer.from(media.data, 'base64');
-                const audioFile = new File([audioBuffer], 'voice_note.ogg', {
-                  type: 'audio/ogg'
-                });
                 
-                // Transcribir usando OpenAI Whisper
-                const transcription = await openai.audio.transcriptions.create({
-                  file: audioFile,
-                  model: 'whisper-1',
-                  language: 'es',
-                  response_format: 'text'
-                });
+                // Guardar la nota de voz con transcripción automática
+                const voiceNote = await voiceNoteStorage.saveVoiceNote(
+                  message.id._serialized,
+                  message.from,
+                  id,
+                  audioBuffer,
+                  message.timestamp * 1000
+                );
                 
-                messageBody = transcription.trim();
-                console.log(`✅ Nota de voz transcrita: "${messageBody}"`);
-                
-                // Emitir evento de transcripción para la interfaz
-                setTimeout(() => {
-                  this.emit('transcription_complete', {
-                    chatId: message.from,
-                    accountId: id,
-                    originalMessageId: message.id,
-                    transcription: messageBody,
-                    timestamp: Date.now()
-                  });
-                }, 1000);
+                if (voiceNote && voiceNote.transcription) {
+                  console.log(`✅ Nota de voz guardada y transcrita: "${voiceNote.transcription}"`);
+                  messageBody = voiceNote.transcription;
+                  
+                  // Emitir evento de transcripción para la interfaz
+                  setTimeout(() => {
+                    this.emit('transcription_complete', {
+                      chatId: message.from,
+                      accountId: id,
+                      originalMessageId: message.id._serialized,
+                      transcription: voiceNote.transcription,
+                      timestamp: Date.now()
+                    });
+                  }, 1000);
+                } else {
+                  console.log(`💾 Nota de voz guardada sin transcripción automática`);
+                  messageBody = '[Nota de voz guardada - transcripción pendiente]';
+                }
               } else {
                 console.log('⚠️ OpenAI API key no disponible para transcripción');
                 messageBody = '[Nota de voz recibida - transcripción no disponible]';
