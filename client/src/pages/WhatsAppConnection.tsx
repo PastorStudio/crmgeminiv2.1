@@ -8,38 +8,62 @@ interface QRResponse {
   success: boolean;
   qrCode?: string;
   accountId?: number;
+  accountName?: string;
   message?: string;
 }
 
+interface WhatsAppAccount {
+  id: number;
+  name: string;
+  description?: string;
+  qrCode?: string;
+  connected: boolean;
+}
+
 export default function WhatsAppConnection() {
-  const [qrCode1, setQrCode1] = useState<string | null>(null);
-  const [qrCode2, setQrCode2] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<WhatsAppAccount[]>([]);
   const [loading, setLoading] = useState(false);
-  const [connected1, setConnected1] = useState(false);
-  const [connected2, setConnected2] = useState(false);
   const { toast } = useToast();
 
-  // Obtener códigos QR para ambas cuentas
+  // Obtener códigos QR para todas las cuentas existentes del sistema
   const fetchQRCodes = async () => {
     setLoading(true);
     try {
-      // Obtener QR para cuenta 1 (Ventas)
-      const response1 = await fetch('/api/whatsapp/qr/1');
-      const data1: QRResponse = await response1.json();
-      if (data1.success && data1.qrCode) {
-        setQrCode1(data1.qrCode);
-      }
-
-      // Obtener QR para cuenta 2 (com)
-      const response2 = await fetch('/api/whatsapp/qr/2');
-      const data2: QRResponse = await response2.json();
-      if (data2.success && data2.qrCode) {
-        setQrCode2(data2.qrCode);
-      }
-
+      // Obtener las cuentas existentes del sistema
+      const accountsResponse = await fetch('/api/whatsapp-accounts');
+      const systemAccounts = await accountsResponse.json();
+      
+      // Obtener códigos QR para cada cuenta
+      const accountsWithQR: WhatsAppAccount[] = await Promise.all(
+        systemAccounts.map(async (account: any) => {
+          try {
+            const qrResponse = await fetch(`/api/whatsapp/qr/${account.id}`);
+            const qrData: QRResponse = await qrResponse.json();
+            
+            return {
+              id: account.id,
+              name: account.name,
+              description: account.description,
+              qrCode: qrData.success ? qrData.qrCode : null,
+              connected: false // Se actualizará en checkConnectionStatus
+            };
+          } catch {
+            return {
+              id: account.id,
+              name: account.name,
+              description: account.description,
+              qrCode: null,
+              connected: false
+            };
+          }
+        })
+      );
+      
+      setAccounts(accountsWithQR);
+      
       toast({
         title: "Códigos QR actualizados",
-        description: "Los códigos QR están listos para escanear",
+        description: `${accountsWithQR.length} cuenta(s) listas para conectar`,
       });
     } catch (error) {
       console.error('Error al obtener códigos QR:', error);
@@ -53,13 +77,17 @@ export default function WhatsAppConnection() {
     }
   };
 
-  // Verificar estado de conexión
+  // Verificar estado de conexión para todas las cuentas
   const checkConnectionStatus = async () => {
     try {
       const response = await fetch('/api/direct/whatsapp/status');
       const status = await response.json();
-      setConnected1(status.authenticated);
-      setConnected2(status.authenticated);
+      
+      // Actualizar estado de conexión para todas las cuentas
+      setAccounts(prev => prev.map(account => ({
+        ...account,
+        connected: status.authenticated // Por ahora todas las cuentas tienen el mismo estado
+      })));
     } catch (error) {
       console.error('Error al verificar estado:', error);
     }
@@ -85,78 +113,62 @@ export default function WhatsAppConnection() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Conexión WhatsApp</h1>
         <p className="text-gray-600">
-          Escanea los códigos QR con tu teléfono para conectar las cuentas de WhatsApp
+          Escanea los códigos QR con tu teléfono para conectar las cuentas de WhatsApp al CRM
         </p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6 mb-6">
-        {/* Cuenta 1 - Ventas */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Cuenta Ventas</span>
-              {connected1 ? (
-                <CheckCircle className="h-5 w-5 text-green-500" />
-              ) : (
-                <AlertCircle className="h-5 w-5 text-orange-500" />
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {qrCode1 ? (
-              <div className="text-center">
-                <div className="bg-white p-4 inline-block rounded-lg border">
-                  <img 
-                    src={generateQRImageUrl(qrCode1)} 
-                    alt="QR Code Cuenta Ventas" 
-                    className="w-64 h-64"
-                  />
+        {accounts.map((account) => (
+          <Card key={account.id}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>{account.name} (ID: {account.id})</span>
+                {account.connected ? (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-orange-500" />
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {account.qrCode ? (
+                <div className="text-center">
+                  <div className="bg-white p-4 inline-block rounded-lg border">
+                    <img 
+                      src={generateQRImageUrl(account.qrCode)} 
+                      alt={`QR Code ${account.name}`} 
+                      className="w-64 h-64"
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Estado: {account.connected ? 'Conectado' : 'Esperando escaneo'}
+                  </p>
+                  {account.description && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {account.description}
+                    </p>
+                  )}
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Estado: {connected1 ? 'Conectado' : 'Esperando escaneo'}
-                </p>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">Código QR no disponible</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Cuenta 2 - com */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Cuenta com</span>
-              {connected2 ? (
-                <CheckCircle className="h-5 w-5 text-green-500" />
               ) : (
-                <AlertCircle className="h-5 w-5 text-orange-500" />
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {qrCode2 ? (
-              <div className="text-center">
-                <div className="bg-white p-4 inline-block rounded-lg border">
-                  <img 
-                    src={generateQRImageUrl(qrCode2)} 
-                    alt="QR Code Cuenta com" 
-                    className="w-64 h-64"
-                  />
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Código QR no disponible</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Esperando generación del código QR...
+                  </p>
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Estado: {connected2 ? 'Conectado' : 'Esperando escaneo'}
-                </p>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">Código QR no disponible</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+        
+        {accounts.length === 0 && !loading && (
+          <div className="col-span-2 text-center py-8">
+            <p className="text-gray-500">No hay cuentas WhatsApp configuradas</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Agrega cuentas desde la sección "Cuentas WhatsApp"
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Botón para actualizar */}
@@ -187,7 +199,7 @@ export default function WhatsAppConnection() {
           <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-sm text-blue-700">
               <strong>Importante:</strong> Una vez conectadas las cuentas, podrás gestionar los chats, 
-              asignar agentes y utilizar todas las funciones del CRM WhatsApp.
+              asignar agentes como Carlos López y utilizar todas las funciones del CRM WhatsApp.
             </p>
           </div>
         </CardContent>
