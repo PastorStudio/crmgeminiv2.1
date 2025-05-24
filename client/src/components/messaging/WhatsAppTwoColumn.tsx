@@ -465,9 +465,7 @@ export function WhatsAppTwoColumn() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2, delay: index * 0.05 }}
-                    className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 ${
-                      selectedChat?.id === chat.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-                    }`}
+                    className="p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 pl-[-2px] pr-[-2px] mt-[2px] mb-[2px] pt-[8px] pb-[8px] text-right text-[13px]"
                     onClick={() => setSelectedChat(chat)}
                   >
                     <div className="flex items-center space-x-3">
@@ -505,7 +503,7 @@ export function WhatsAppTwoColumn() {
                             <ChatAssignmentBadge chatId={chat.id} accountId={chat.accountId} />
                             
                             {/* Account Badge */}
-                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 ml-[74px] mr-[74px]">
                               <Building className="h-3 w-3 mr-1" />
                               Cuenta #{chat.accountId}
                             </Badge>
@@ -531,7 +529,6 @@ export function WhatsAppTwoColumn() {
           )}
         </ScrollArea>
       </div>
-
       {/* Right Panel - Chat Messages */}
       <div className="flex-1 flex flex-col">
         {selectedChat ? (
@@ -757,7 +754,6 @@ export function WhatsAppTwoColumn() {
           </div>
         )}
       </div>
-
       {/* Dialogs */}
       {selectedChat && (
         <ChatAssignmentDialog
@@ -767,7 +763,6 @@ export function WhatsAppTwoColumn() {
           accountId={selectedChat.accountId}
         />
       )}
-
       {selectedChat && (
         <AutoResponseDialog
           open={autoResponseConfigOpen}
@@ -777,7 +772,6 @@ export function WhatsAppTwoColumn() {
           accountId={selectedChat.accountId}
         />
       )}
-
       {selectedChat && (
         <ChatCommentsDialog
           open={commentsDialogOpen}
