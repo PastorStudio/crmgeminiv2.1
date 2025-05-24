@@ -3367,5 +3367,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Real-time message sending endpoint
+  app.post("/api/whatsapp/send-message", async (req: Request, res: Response) => {
+    const { chatId, accountId, message } = req.body;
+    
+    if (!chatId || !accountId || !message) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "chatId, accountId y message son requeridos" 
+      });
+    }
+
+    try {
+      console.log(`📤 Enviando mensaje a chat ${chatId} desde cuenta ${accountId}: "${message}"`);
+      
+      // Importar el servicio de múltiples cuentas
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      
+      // Obtener la instancia de WhatsApp para la cuenta específica
+      const instance = whatsappMultiAccountManager.getInstance(accountId);
+      
+      if (!instance || !instance.client) {
+        return res.status(400).json({ 
+          success: false, 
+          error: `Cuenta WhatsApp ${accountId} no encontrada o no conectada` 
+        });
+      }
+
+      const state = await instance.client.getState();
+      if (state !== 'CONNECTED') {
+        return res.status(400).json({ 
+          success: false, 
+          error: `WhatsApp cuenta ${accountId} no está conectada (estado: ${state})` 
+        });
+      }
+
+      // Enviar el mensaje
+      const sentMessage = await instance.client.sendMessage(chatId, message);
+      
+      console.log(`✅ Mensaje enviado exitosamente:`, sentMessage.id);
+      
+      // Respuesta exitosa
+      res.json({
+        success: true,
+        messageId: sentMessage.id?.id || sentMessage.id?._serialized,
+        timestamp: sentMessage.timestamp,
+        message: "Mensaje enviado exitosamente"
+      });
+
+    } catch (error) {
+      console.error('❌ Error enviando mensaje:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: `Error enviando mensaje: ${(error as Error).message}` 
+      });
+    }
+  });
+
   return httpServer;
 }
