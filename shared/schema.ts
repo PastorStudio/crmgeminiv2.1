@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, jsonb, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, jsonb, doublePrecision, real } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -351,6 +351,53 @@ export type Survey = typeof surveys.$inferSelect;
 export type DashboardStats = typeof dashboardStats.$inferSelect;
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
 export type MarketingCampaign = typeof marketingCampaigns.$inferSelect;
+
+// Tablas para agentes externos
+export const externalAgents = pgTable('external_agents', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  agentUrl: text('agent_url').notNull(),
+  description: text('description'),
+  triggerKeywords: text('trigger_keywords').array(),
+  isActive: boolean('is_active').default(true),
+  responseDelay: integer('response_delay').default(3),
+  accountId: integer('account_id'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const agentResponses = pgTable('agent_responses', {
+  id: serial('id').primaryKey(),
+  agentId: text('agent_id').notNull().references(() => externalAgents.id),
+  chatId: text('chat_id').notNull(),
+  originalMessage: text('original_message').notNull(),
+  agentResponse: text('agent_response').notNull(),
+  confidence: real('confidence'),
+  responseTime: integer('response_time'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Relaciones para agentes externos
+export const externalAgentsRelations = relations(externalAgents, ({ many }) => ({
+  responses: many(agentResponses)
+}));
+
+export const agentResponsesRelations = relations(agentResponses, ({ one }) => ({
+  agent: one(externalAgents, {
+    fields: [agentResponses.agentId],
+    references: [externalAgents.id]
+  })
+}));
+
+// Esquemas de inserción para agentes externos
+export const insertExternalAgentSchema = createInsertSchema(externalAgents).omit({ createdAt: true, updatedAt: true });
+export const insertAgentResponseSchema = createInsertSchema(agentResponses).omit({ id: true, createdAt: true });
+
+// Types para agentes externos
+export type ExternalAgent = typeof externalAgents.$inferSelect;
+export type InsertExternalAgent = z.infer<typeof insertExternalAgentSchema>;
+export type AgentResponse = typeof agentResponses.$inferSelect;
+export type InsertAgentResponse = z.infer<typeof insertAgentResponseSchema>;
 
 // Tabla para galería de archivos
 export const mediaGallery = pgTable("media_gallery", {
