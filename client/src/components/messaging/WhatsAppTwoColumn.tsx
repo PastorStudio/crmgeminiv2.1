@@ -357,6 +357,8 @@ export function WhatsAppTwoColumn() {
     // Si el traductor está activado, traducir el mensaje antes de enviarlo
     if (translatorEnabled) {
       try {
+        console.log('🌐 Iniciando traducción para:', finalMessage);
+        
         const translateResponse = await fetch('/api/translate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -366,15 +368,26 @@ export function WhatsAppTwoColumn() {
           })
         });
         
+        console.log('📡 Respuesta del servidor:', translateResponse.status);
+        
         if (translateResponse.ok) {
           const translateData = await translateResponse.json();
+          console.log('📋 Datos de traducción:', translateData);
+          
           if (translateData.success && translateData.translatedText) {
             finalMessage = translateData.translatedText;
+            console.log('✅ Mensaje traducido:', finalMessage);
+            
             toast({
-              title: "Mensaje traducido",
+              title: translateData.demo ? "Traducción Demo" : "Mensaje traducido",
               description: `De "${translateData.sourceLanguage}" a "${translateData.targetLanguage}"`,
             });
+          } else {
+            console.warn('❌ No se pudo traducir:', translateData);
           }
+        } else {
+          const errorText = await translateResponse.text();
+          console.error('❌ Error del servidor:', errorText);
         }
       } catch (translateError) {
         console.warn('Translation failed, sending original message:', translateError);
