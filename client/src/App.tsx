@@ -230,15 +230,23 @@ const AppRoutes: React.FC = () => {
               </div>
               
               <a href="/analytics" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/analytics' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="12" width="4" height="8" rx="1" fill="#3B82F6"/>
+                  <rect x="8" y="8" width="4" height="12" rx="1" fill="#10B981"/>
+                  <rect x="13" y="4" width="4" height="16" rx="1" fill="#F59E0B"/>
+                  <rect x="18" y="10" width="4" height="10" rx="1" fill="#EF4444"/>
                 </svg>
                 Análisis
               </a>
               
               <a href="/media-gallery" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/media-gallery' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="18" height="18" rx="2" fill="#8B5CF6"/>
+                  <rect x="6" y="6" width="5" height="5" rx="1" fill="#A855F7"/>
+                  <rect x="13" y="6" width="5" height="5" rx="1" fill="#C084FC"/>
+                  <rect x="6" y="13" width="5" height="5" rx="1" fill="#DDD6FE"/>
+                  <rect x="13" y="13" width="5" height="5" rx="1" fill="#EDE9FE"/>
+                  <circle cx="8.5" cy="8.5" r="1" fill="white"/>
                 </svg>
                 Galería
               </a>
