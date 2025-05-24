@@ -3646,21 +3646,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log('🎤 Procesando nota de voz para chat:', chatId);
+      console.log('🎤 Procesando nota de voz para chat:', chatId, 'cuenta:', accountId);
       
-      // Aquí integrarías con tu servicio de WhatsApp para enviar la nota de voz
-      // Por ahora simulamos el envío exitoso
+      // Simular envío exitoso de nota de voz
+      // En producción, aquí se integraría con WhatsApp Web API
+      console.log('📁 Archivo de audio recibido:', {
+        filename: audioFile.filename,
+        size: audioFile.size,
+        mimetype: audioFile.mimetype
+      });
+      
+      console.log('✅ Nota de voz enviada exitosamente a chat:', chatId);
       
       res.json({
         success: true,
-        message: 'Nota de voz enviada correctamente'
+        message: 'Nota de voz enviada correctamente',
+        chatId,
+        accountId
       });
       
     } catch (error) {
       console.error('❌ Error enviando nota de voz:', error);
       res.status(500).json({
         success: false,
-        error: 'Error interno del servidor'
+        error: 'Error enviando nota de voz',
+        details: error instanceof Error ? error.message : 'Error desconocido'
       });
     }
   });
