@@ -1513,8 +1513,10 @@ export function WhatsAppTwoColumn() {
                                     : 'bg-green-100 text-black rounded-bl-md'
                                 }`}
                               >
-                                {/* Mensajes de audio/nota de voz */}
+                                {/* Mensajes de audio/nota de voz con transcripción */}
                                 {(message.type === 'ptt' || message.type === 'audio') ? (
+                                  <VoiceNoteMessage messageId={message.id} />
+                                ) : (message.type === 'ptt' || message.type === 'audio') ? (
                                   <div className="flex items-center space-x-3">
                                     <div className="flex items-center space-x-2">
                                       <div className="bg-gray-600 rounded-full p-2">
