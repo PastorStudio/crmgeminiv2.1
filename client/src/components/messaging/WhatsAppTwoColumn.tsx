@@ -110,7 +110,7 @@ function ChatCommentsIndicator({ chatId }: { chatId: string }) {
   if (!comments || comments.length === 0) return null;
 
   return (
-    <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
+    <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200 mt-[0px] mb-[0px] ml-[90px] mr-[90px]">
       <MessageSquareMore className="h-3 w-3 mr-1" />
       {comments.length}
     </Badge>
