@@ -34,6 +34,7 @@ import UltraSimpleChat from './pages/UltraSimpleChat';
 import WhatsAppConnection from './pages/WhatsAppConnection';
 import AgentMonitoring from './pages/AgentMonitoring';
 import TicketsSimple from './pages/TicketsSimple';
+import ExternalAgents from './pages/ExternalAgents';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
@@ -203,6 +204,17 @@ const AppRoutes: React.FC = () => {
                   <path d="M10 10l4 4M14 10l-4 4" stroke="#06B6D4" strokeWidth="1.5"/>
                 </svg>
                 Respuestas Auto
+              </a>
+
+              <a href="/external-agents" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/external-agents' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="18" height="18" rx="3" fill="#F59E0B"/>
+                  <circle cx="8" cy="8" r="2" fill="white"/>
+                  <circle cx="16" cy="8" r="2" fill="white"/>
+                  <rect x="7" y="13" width="10" height="2" rx="1" fill="white"/>
+                  <rect x="9" y="16" width="6" height="2" rx="1" fill="white"/>
+                </svg>
+                Agentes Externos
               </a>
               
               {/* Planificación */}
@@ -467,6 +479,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/mass-sender" component={() => <PrivateRoute component={MassSender} path="/mass-sender" />} />
                 <Route path="/integrations" component={() => <PrivateRoute component={Integrations} path="/integrations" />} />
                 <Route path="/auto-response-settings" component={() => <PrivateRoute component={AutoResponseSettings} path="/auto-response-settings" />} />
+                <Route path="/external-agents" component={() => <PrivateRoute component={ExternalAgents} path="/external-agents" />} />
                 <Route path="/connection" component={() => <PrivateRoute component={Connection} path="/connection" />} />
                 <Route path="/qrcode" component={() => <PrivateRoute component={QRCode} path="/qrcode" />} />
                 <Route path="/qr-viewer" component={() => <PrivateRoute component={QrViewer} path="/qr-viewer" />} />
