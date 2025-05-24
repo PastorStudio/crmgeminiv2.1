@@ -257,29 +257,51 @@ const AppRoutes: React.FC = () => {
               </div>
               
               <a href="/whatsapp-accounts" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-accounts' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="4" width="18" height="16" rx="3" fill="#25D366"/>
+                  <circle cx="8" cy="10" r="2" fill="white"/>
+                  <circle cx="16" cy="10" r="2" fill="white"/>
+                  <path d="M6 14h4v2H6zM14 14h4v2h-4z" fill="white"/>
+                  <rect x="10" y="6" width="4" height="1" fill="white" opacity="0.8"/>
                 </svg>
                 Cuentas WhatsApp
               </a>
               
               <a href="/whatsapp-manager" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-manager' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9" fill="#128C7E"/>
+                  <rect x="8" y="8" width="8" height="8" rx="2" fill="white"/>
+                  <circle cx="10" cy="10" r="1" fill="#25D366"/>
+                  <circle cx="14" cy="10" r="1" fill="#25D366"/>
+                  <path d="M9 13h6v1H9z" fill="#25D366"/>
+                  <path d="M10 15h4v1h-4z" fill="#25D366"/>
                 </svg>
                 Gestor WhatsApp
               </a>
 
               <a href="/whatsapp-connection" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-connection' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="2" width="20" height="20" rx="4" fill="#DCF2F1"/>
+                  <rect x="4" y="4" width="6" height="6" rx="1" fill="#0EA5E9"/>
+                  <rect x="14" y="4" width="6" height="6" rx="1" fill="#10B981"/>
+                  <rect x="4" y="14" width="6" height="6" rx="1" fill="#F59E0B"/>
+                  <rect x="14" y="14" width="6" height="6" rx="1" fill="#EF4444"/>
+                  <circle cx="12" cy="12" r="2" fill="white" stroke="#374151" strokeWidth="1"/>
                 </svg>
                 Conectar WhatsApp
               </a>
 
               <a href="/agent-monitoring" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/agent-monitoring' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="2" width="20" height="20" rx="2" fill="#1F2937"/>
+                  <circle cx="8" cy="8" r="2" fill="#10B981"/>
+                  <circle cx="16" cy="8" r="2" fill="#3B82F6"/>
+                  <circle cx="8" cy="16" r="2" fill="#F59E0B"/>
+                  <circle cx="16" cy="16" r="2" fill="#EF4444"/>
+                  <rect x="6" y="11" width="4" height="1" fill="#10B981"/>
+                  <rect x="14" y="11" width="4" height="1" fill="#3B82F6"/>
+                  <rect x="10" y="6" width="4" height="1" fill="#6B7280"/>
+                  <rect x="10" y="17" width="4" height="1" fill="#6B7280"/>
                 </svg>
                 Monitoreo Agentes
               </a>
@@ -317,8 +339,13 @@ const AppRoutes: React.FC = () => {
               
               {/* Gestión de agentes - Temporalmente visible para todos */}
               <a href="/users" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/users' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="8" r="4" fill="#3B82F6"/>
+                  <circle cx="8" cy="15" r="2" fill="#10B981"/>
+                  <circle cx="16" cy="15" r="2" fill="#F59E0B"/>
+                  <path d="M12 13v6" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M8 17h8" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"/>
+                  <rect x="2" y="20" width="20" height="2" rx="1" fill="#EF4444"/>
                 </svg>
                 <span className="relative">
                   Agentes
@@ -330,16 +357,26 @@ const AppRoutes: React.FC = () => {
               </a>
               
               <a href="/chat-assignments" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/chat-assignments' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="4" width="18" height="14" rx="3" fill="#8B5CF6"/>
+                  <circle cx="8" cy="9" r="1.5" fill="white"/>
+                  <circle cx="16" cy="9" r="1.5" fill="white"/>
+                  <path d="M6 13h12v2H6z" fill="white"/>
+                  <path d="M18 18l-3-3H6a1 1 0 01-1-1v-1h14v1a1 1 0 01-1 1z" fill="#A855F7"/>
                 </svg>
                 Asignar Chats
               </a>
               
               <a href="/settings" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/settings' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="8" fill="#374151"/>
+                  <circle cx="12" cy="12" r="3" fill="#F59E0B"/>
+                  <rect x="11" y="2" width="2" height="4" rx="1" fill="#6B7280"/>
+                  <rect x="11" y="18" width="2" height="4" rx="1" fill="#6B7280"/>
+                  <rect x="18" y="11" width="4" height="2" rx="1" fill="#6B7280"/>
+                  <rect x="2" y="11" width="4" height="2" rx="1" fill="#6B7280"/>
+                  <rect x="17.5" y="4.9" width="2" height="4" rx="1" fill="#6B7280" transform="rotate(45 18.5 6.9)"/>
+                  <rect x="4.5" y="4.9" width="2" height="4" rx="1" fill="#6B7280" transform="rotate(-45 5.5 6.9)"/>
                 </svg>
                 Configuración
               </a>
