@@ -546,62 +546,26 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWhatsappAccount(id: number): Promise<void> {
     try {
-      // Primero, eliminar la cuenta solicitada
+      // Eliminar la cuenta solicitada sin reorganizar IDs
       await db.delete(whatsappAccounts)
         .where(eq(whatsappAccounts.id, id));
       
-      console.log(`Cuenta WhatsApp ID ${id} eliminada correctamente`);
+      console.log(`✅ Cuenta WhatsApp ID ${id} eliminada correctamente`);
       
-      // Obtener todas las cuentas restantes para reorganizar IDs
-      const remainingAccounts = await this.getAllWhatsappAccounts();
-      
-      // Ordenar las cuentas por ID
-      remainingAccounts.sort((a, b) => a.id - b.id);
-      
-      // Iniciar transacción para reorganizar IDs
-      console.log("Iniciando reorganización de IDs para cuentas de WhatsApp...");
-      
-      // Reorganizar IDs secuencialmente (1, 2, 3...)
-      for (let i = 0; i < remainingAccounts.length; i++) {
-        const account = remainingAccounts[i];
-        const expectedId = i + 1; // El ID debería ser la posición + 1
+      // También eliminar referencias relacionadas para mantener integridad
+      await db.delete(chatAssignments)
+        .where(eq(chatAssignments.accountId, id));
         
-        // Si el ID actual no coincide con el esperado, actualizar
-        if (account.id !== expectedId) {
-          console.log(`Reorganizando cuenta "${account.name}" de ID ${account.id} a ID ${expectedId}`);
-          
-          try {
-            // Actualizar el ID de la cuenta
-            await db.update(whatsappAccounts)
-              .set({ id: expectedId })
-              .where(eq(whatsappAccounts.id, account.id));
-              
-            // Actualizar también cualquier referencia en otras tablas (chatAssignments, etc.)
-            await db.update(chatAssignments)
-              .set({ accountId: expectedId })
-              .where(eq(chatAssignments.accountId, account.id));
-              
-            // Actualizar referencias en whatsappMessages
-            await db.update(whatsappMessages)
-              .set({ accountId: expectedId })
-              .where(eq(whatsappMessages.accountId, account.id));
-              
-            // Actualizar referencias en userWhatsappAccounts
-            await db.update(userWhatsappAccounts)
-              .set({ accountId: expectedId })
-              .where(eq(userWhatsappAccounts.accountId, account.id));
-              
-          } catch (updateError) {
-            console.error(`Error al reorganizar ID de cuenta ${account.id} a ${expectedId}:`, updateError);
-            // Continuar con la siguiente cuenta a pesar del error
-          }
-        }
-      }
-      
-      console.log("Reorganización de IDs de cuentas WhatsApp completada");
+      await db.delete(whatsappMessages)
+        .where(eq(whatsappMessages.accountId, id));
+        
+      await db.delete(userWhatsappAccounts)
+        .where(eq(userWhatsappAccounts.accountId, id));
+        
+      console.log(`✅ Referencias relacionadas con cuenta ID ${id} eliminadas`);
       
     } catch (error) {
-      console.error(`Error al eliminar cuenta WhatsApp ${id}:`, error);
+      console.error(`❌ Error al eliminar cuenta WhatsApp ${id}:`, error);
       throw error;
     }
   }
