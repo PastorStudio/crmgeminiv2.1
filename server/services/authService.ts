@@ -127,20 +127,22 @@ class AuthService {
    * @param next Función next
    */
   authenticate(req: Request, res: Response, next: NextFunction): void {
-    try {
-      // Obtener el token del header Authorization
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        res.status(401).json({ success: false, message: 'Token no proporcionado' });
-        return;
-      }
+    // Obtener el token del header Authorization
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ success: false, message: 'Token no proporcionado' });
+      return;
+    }
 
-      // Extraer el token
-      const token = authHeader.substring(7); // Quitar 'Bearer ' del inicio
+    // Extraer el token
+    const token = authHeader.substring(7); // Quitar 'Bearer ' del inicio
 
-      // Verificar si es un token temporal del frontend (bypass para usuarios autorizados)
-      if (token.startsWith('temp-token-')) {
-        const username = token.split('-')[2]; // Extraer el nombre de usuario del token
+    // BYPASS: Verificar si es un token temporal del frontend (para usuarios autorizados)
+    if (token.startsWith('temp-token-')) {
+      const tokenParts = token.split('-');
+      if (tokenParts.length >= 3) {
+        const username = tokenParts[2]; // Extraer el nombre de usuario del token
+        
         if (username === 'DJP') {
           // Token temporal válido para DJP con permisos de superadministrador
           (req as any).user = { userId: 1, username: 'DJP', role: 'superadmin' };
@@ -158,13 +160,15 @@ class AuthService {
           return;
         }
       }
+    }
 
-      // Verificar el token JWT normal
+    // Verificar el token JWT normal solo si no es temporal
+    try {
       const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string; role: string };
-
+      
       // Añadir información del usuario a la solicitud
       (req as any).user = decoded;
-
+      
       // Continuar con la siguiente middleware/ruta
       next();
     } catch (error) {
