@@ -28,7 +28,15 @@ export class ExternalAgentService {
 
   // Obtener todos los agentes externos
   async getAllAgents(): Promise<ExternalAgent[]> {
-    return await db.select().from(externalAgents);
+    try {
+      console.log('🔍 Consultando agentes desde base de datos...');
+      const agents = await db.select().from(externalAgents);
+      console.log('📊 Agentes encontrados en base de datos:', agents.length, agents);
+      return agents;
+    } catch (error) {
+      console.error('❌ Error consultando agentes desde base de datos:', error);
+      return [];
+    }
   }
 
   // Obtener agente por ID
