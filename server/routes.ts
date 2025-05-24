@@ -4443,6 +4443,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para procesar mensajes con agentes externos
+  app.post('/api/external-agents/process-message', async (req: Request, res: Response) => {
+    try {
+      const { agentId, message, contactName, context, targetLanguage, translateResponse } = req.body;
+      
+      if (!agentId || !message) {
+        return res.status(400).json({
+          success: false,
+          error: 'Se requiere agentId y mensaje'
+        });
+      }
+
+      const { externalAgentService } = await import('./services/externalAgentService');
+      
+      // Obtener el agente
+      const agent = await externalAgentService.getAgentById(agentId);
+      if (!agent) {
+        return res.status(404).json({
+          success: false,
+          error: 'Agente no encontrado'
+        });
+      }
+
+      // Procesar el mensaje con el agente externo
+      const response = await externalAgentService.processMessageWithAgent(agentId, {
+        message,
+        contactName: contactName || 'Usuario',
+        context: context || 'Conversación de WhatsApp',
+        targetLanguage: targetLanguage || 'es',
+        translateResponse: translateResponse || false
+      });
+
+      if (response) {
+        res.json({
+          success: true,
+          response: response,
+          agentName: agent.name
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'No se pudo generar respuesta con el agente externo'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error procesando mensaje con agente externo:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
   // Endpoint para obtener transcripciones de notas de voz
   app.get('/api/voice-transcriptions/:messageId', async (req: Request, res: Response) => {
     try {
