@@ -532,7 +532,8 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
     // Evento de autenticación exitosa
     client.on('authenticated', () => {
-      console.log(`Cuenta WhatsApp ${id} (${name}) autenticada correctamente`);
+      console.log(`✅ Cuenta WhatsApp ${id} (${name}) autenticada correctamente`);
+      console.log(`🔔 Activando listeners de mensajes para cuenta ${id}`);
       instance.status.authenticated = true;
       instance.status.qrCode = undefined;
       instance.status.ready = true;
