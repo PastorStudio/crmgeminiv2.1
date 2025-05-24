@@ -7,6 +7,7 @@ import {
   dashboardStats,
   whatsappAccounts,
   chatAssignments,
+  chatComments,
   type User, 
   type InsertUser,
   type Lead,
@@ -546,23 +547,21 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWhatsappAccount(id: number): Promise<void> {
     try {
-      // Eliminar la cuenta solicitada sin reorganizar IDs
+      // PRIMERO eliminar todas las asignaciones de chat que referencian esta cuenta
+      console.log(`🔄 Eliminando asignaciones de chat para cuenta ID ${id}...`);
+      
+      await db.delete(chatAssignments)
+        .where(eq(chatAssignments.accountId, id));
+      
+      console.log(`✅ Asignaciones de chat eliminadas para cuenta ID ${id}`);
+      
+      // DESPUÉS eliminar la cuenta principal
+      console.log(`🔄 Eliminando cuenta WhatsApp ID ${id}...`);
+      
       await db.delete(whatsappAccounts)
         .where(eq(whatsappAccounts.id, id));
       
       console.log(`✅ Cuenta WhatsApp ID ${id} eliminada correctamente`);
-      
-      // También eliminar referencias relacionadas para mantener integridad
-      await db.delete(chatAssignments)
-        .where(eq(chatAssignments.accountId, id));
-        
-      await db.delete(whatsappMessages)
-        .where(eq(whatsappMessages.accountId, id));
-        
-      await db.delete(userWhatsappAccounts)
-        .where(eq(userWhatsappAccounts.accountId, id));
-        
-      console.log(`✅ Referencias relacionadas con cuenta ID ${id} eliminadas`);
       
     } catch (error) {
       console.error(`❌ Error al eliminar cuenta WhatsApp ${id}:`, error);
