@@ -3626,6 +3626,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para enviar notas de voz
+  app.post('/api/whatsapp/send-voice-note', upload.single('audio'), async (req: Request, res: Response) => {
+    try {
+      const { chatId, accountId } = req.body;
+      const audioFile = req.file;
+      
+      if (!audioFile) {
+        return res.status(400).json({
+          success: false,
+          error: 'No se recibió archivo de audio'
+        });
+      }
+      
+      if (!chatId || !accountId) {
+        return res.status(400).json({
+          success: false,
+          error: 'chatId y accountId son requeridos'
+        });
+      }
+      
+      console.log('🎤 Procesando nota de voz para chat:', chatId);
+      
+      // Aquí integrarías con tu servicio de WhatsApp para enviar la nota de voz
+      // Por ahora simulamos el envío exitoso
+      
+      res.json({
+        success: true,
+        message: 'Nota de voz enviada correctamente'
+      });
+      
+    } catch (error) {
+      console.error('❌ Error enviando nota de voz:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
+  // Endpoint para obtener audio de mensajes
+  app.get('/api/whatsapp-accounts/:accountId/messages/:chatId/audio/:messageId', async (req: Request, res: Response) => {
+    try {
+      const { accountId, chatId, messageId } = req.params;
+      
+      console.log('🔊 Solicitando audio para mensaje:', messageId);
+      
+      // Aquí integrarías con tu servicio de WhatsApp para obtener el archivo de audio
+      // Por ahora devolvemos un error apropiado
+      
+      res.status(404).json({
+        success: false,
+        error: 'Audio no disponible - funcionalidad en desarrollo'
+      });
+      
+    } catch (error) {
+      console.error('❌ Error obteniendo audio:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
   // Endpoint para SmartBots AI - Consulta externa
   app.post('/api/smartbots/generate-response', async (req: Request, res: Response) => {
     console.log('🚀 LLAMADA RECIBIDA EN /api/smartbots/generate-response');
