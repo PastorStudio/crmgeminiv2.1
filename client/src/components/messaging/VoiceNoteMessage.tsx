@@ -3,9 +3,11 @@ import { Mic, FileText, Loader2 } from 'lucide-react';
 
 interface VoiceNoteMessageProps {
   messageId: string;
+  chatId?: string;
+  accountId?: number;
 }
 
-export const VoiceNoteMessage: React.FC<VoiceNoteMessageProps> = ({ messageId }) => {
+export const VoiceNoteMessage: React.FC<VoiceNoteMessageProps> = ({ messageId, chatId, accountId }) => {
   const [transcription, setTranscription] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +20,13 @@ export const VoiceNoteMessage: React.FC<VoiceNoteMessageProps> = ({ messageId })
         
         console.log(`📝 Cargando transcripción para mensaje ${messageId}...`);
         
-        const response = await fetch(`/api/voice-transcriptions/${messageId}`);
+        // Incluir parámetros para procesamiento automático desde WhatsApp
+        const queryParams = new URLSearchParams();
+        if (chatId) queryParams.append('chatId', chatId);
+        if (accountId) queryParams.append('accountId', accountId.toString());
+        
+        const url = `/api/voice-transcriptions/${messageId}?${queryParams.toString()}`;
+        const response = await fetch(url);
         const data = await response.json();
         
         if (data.success && data.transcription) {
@@ -37,7 +45,7 @@ export const VoiceNoteMessage: React.FC<VoiceNoteMessageProps> = ({ messageId })
     };
 
     fetchTranscription();
-  }, [messageId]);
+  }, [messageId, chatId, accountId]);
 
   return (
     <div className="bg-green-50 p-3 rounded-lg border border-green-200">
