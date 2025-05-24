@@ -2,6 +2,7 @@ import React from 'react';
 import { Switch, Route, useLocation } from "wouter";
 import { Toaster } from '@/components/ui/toaster';
 import { Spinner } from '@/components/ui/spinner';
+import PageTransition from '@/components/ui/page-transition';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import Messages from './pages/Messages';
@@ -34,7 +35,7 @@ import TicketsSimple from './pages/TicketsSimple';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
-import { PageTransition } from '@/components/ui/page-transition';
+
 import { AuthProvider, useAuth } from './lib/authContext';
 import { Loader2 } from 'lucide-react';
 
@@ -119,7 +120,7 @@ const AppRoutes: React.FC = () => {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
-      {/* Sidebar con menú vertical organizado por categorías - solo se muestra si está autenticado */}
+      {/* Sidebar con menú vertical - siempre visible cuando está autenticado */}
       {showSidebar && (
         <aside className="fixed h-full w-44 bg-gradient-to-b from-black via-black to-red-600 shadow-2xl z-50 overflow-y-auto" style={{backgroundImage: 'linear-gradient(180deg, #000000 0%, #000000 65%, #dc2626 100%)'}}>
           <div className="p-2">
