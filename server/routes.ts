@@ -3592,7 +3592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoint para SmartBots AI con OpenAI
+  // Endpoint para SmartBots AI - Consulta externa
   app.post('/api/smartbots/generate-response', async (req: Request, res: Response) => {
     try {
       const { message, contactName, context } = req.body;
@@ -3604,9 +3604,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log('🤖 Generando respuesta automática para:', message);
+      console.log('🤖 Consultando SmartBots API externa para:', message);
       
-      // Usar OpenAI directamente
+      // Consultar la API externa de SmartBots
+      const smartbotsResponse = await fetch('https://api.smartbots.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer sk-smartbots-demo-key', // Usar clave demo primero
+          'User-Agent': 'WhatsApp-CRM/1.0'
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: 'Eres un asistente virtual profesional para WhatsApp. Responde de manera amigable, concisa y útil en español. Mantén un tono profesional pero cercano. Responde máximo en 2-3 oraciones.'
+            },
+            {
+              role: 'user',
+              content: `Mensaje de ${contactName || 'Usuario'}: ${message}`
+            }
+          ],
+          max_tokens: 150,
+          temperature: 0.7
+        })
+      });
+
+      if (smartbotsResponse.ok) {
+        const smartbotsData = await smartbotsResponse.json();
+        const aiResponse = smartbotsData.choices?.[0]?.message?.content || '';
+        
+        if (aiResponse) {
+          console.log('✅ Respuesta de SmartBots API externa:', aiResponse);
+          
+          res.json({
+            success: true,
+            response: aiResponse.trim(),
+            originalMessage: message,
+            confidence: 0.9,
+            model: 'SmartBots API Externa'
+          });
+          return;
+        }
+      }
+      
+      // Si SmartBots externa falla, usar OpenAI como respaldo
+      console.log('⚠️ SmartBots externa no disponible, usando OpenAI...');
+      
       const OpenAI = (await import('openai')).default;
       const openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY
@@ -3637,11 +3682,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         response: aiResponse.trim(),
         originalMessage: message,
         confidence: 0.95,
-        model: 'OpenAI GPT-4o'
+        model: 'OpenAI GPT-4o (Respaldo)'
       });
       
     } catch (error) {
-      console.error('❌ Error con OpenAI:', error);
+      console.error('❌ Error generando respuesta:', error);
       
       // Respuesta de emergencia con patrones básicos
       let fallbackResponse = 'Gracias por tu mensaje. Te responderemos pronto.';
@@ -3654,6 +3699,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (/gracias|thanks|thank you/i.test(msg)) {
         fallbackResponse = `¡De nada! Estamos aquí para ayudarte. 😊`;
       }
+      
+      console.log('🔄 Usando respuesta de emergencia:', fallbackResponse);
       
       res.json({ 
         success: true, // Enviamos success: true para que funcione
