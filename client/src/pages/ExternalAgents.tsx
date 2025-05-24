@@ -94,8 +94,9 @@ export default function ExternalAgents() {
       });
 
       const data = await response.json();
+      console.log('Respuesta del servidor:', data);
 
-      if (data.success) {
+      if (data.success && data.agent) {
         toast({
           title: "¡Éxito!",
           description: `Agente "${data.agent.name}" creado exitosamente`
@@ -106,6 +107,7 @@ export default function ExternalAgents() {
         fetchAgents();
         fetchStats();
       } else {
+        console.error('Error en respuesta:', data);
         throw new Error(data.error || 'Error al crear agente');
       }
     } catch (error: any) {
