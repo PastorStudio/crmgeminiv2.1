@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
     const limitNum = parseInt(limit as string);
     const offset = (pageNum - 1) * limitNum;
 
-    let query = db
+    let baseQuery = db
       .select({
         id: tickets.id,
         chatId: tickets.chatId,
@@ -49,13 +49,13 @@ router.get('/', async (req, res) => {
 
     // Aplicar filtros si se proporcionan
     if (status) {
-      query = query.where(eq(tickets.status, status as string));
+      baseQuery = baseQuery.where(eq(tickets.status, status as string));
     }
     if (assignedTo) {
-      query = query.where(eq(tickets.assignedToId, parseInt(assignedTo as string)));
+      baseQuery = baseQuery.where(eq(tickets.assignedToId, parseInt(assignedTo as string)));
     }
 
-    const allTickets = await query;
+    const allTickets = await baseQuery;
 
     res.json({
       tickets: allTickets,
