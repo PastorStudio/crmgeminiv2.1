@@ -163,7 +163,24 @@ export function WhatsAppTwoColumn() {
   // Fetch chats based on selected accounts
   const { data: chats = [], isLoading: loadingChats } = useQuery({
     queryKey: ['/api/whatsapp/chats', selectedAccounts],
-    enabled: selectedAccounts.length > 0
+    enabled: selectedAccounts.length > 0,
+    queryFn: async () => {
+      if (selectedAccounts.length === 0) return [];
+      
+      const allChats = [];
+      for (const accountId of selectedAccounts) {
+        try {
+          const response = await fetch(`/api/whatsapp-accounts/${accountId}/chats`);
+          if (response.ok) {
+            const accountChats = await response.json();
+            allChats.push(...accountChats);
+          }
+        } catch (error) {
+          console.error(`Error fetching chats for account ${accountId}:`, error);
+        }
+      }
+      return allChats;
+    }
   });
 
   // Fetch messages for selected chat
