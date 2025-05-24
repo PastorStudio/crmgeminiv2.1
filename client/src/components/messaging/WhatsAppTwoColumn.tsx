@@ -380,7 +380,21 @@ export function WhatsAppTwoColumn() {
     return accounts.find(acc => acc.id === selectedChat?.accountId);
   };
 
-  const filteredChats = chats.filter(chat => 
+  // Sort chats by activity: unread messages first, then by most recent timestamp
+  const sortedChats = useMemo(() => {
+    return [...chats].sort((a, b) => {
+      // Priority 1: Chats with unread messages first
+      if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+      if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+      
+      // Priority 2: Most recent activity (highest timestamp first)
+      const timestampA = a.timestamp || 0;
+      const timestampB = b.timestamp || 0;
+      return timestampB - timestampA;
+    });
+  }, [chats]);
+
+  const filteredChats = sortedChats.filter(chat => 
     chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
   );
