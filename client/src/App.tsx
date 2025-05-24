@@ -114,7 +114,7 @@ const AppRoutes: React.FC = () => {
   });
 
   // Verificar si el usuario tiene rol de administrador, supervisor o superadministrador
-  const isSuperAdmin = user?.role === 'superadmin';
+  const isSuperAdmin = user?.role === 'superadmin' || user?.role === 'super_admin';
   const isAdmin = user?.role === 'admin';
   const isSupervisor = user?.role === 'supervisor';
   const canManageUsers = isSuperAdmin || isAdmin || isSupervisor;
