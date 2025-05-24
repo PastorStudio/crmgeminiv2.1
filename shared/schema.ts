@@ -359,6 +359,33 @@ export const chatComments = pgTable("chat_comments", {
   isInternal: boolean("isInternal").default(true),
 });
 
+// Tabla de categorización automática de chats
+export const chatCategories = pgTable("chat_categories", {
+  id: serial("id").primaryKey(),
+  chatId: text("chatId").notNull().unique(),
+  category: text("category").notNull(), // ventas, soporte, informacion, consulta
+  confidence: doublePrecision("confidence").notNull(), // 0.0 - 1.0
+  reason: text("reason"),
+  detectedAt: timestamp("detectedAt").defaultNow(),
+  isManual: boolean("isManual").default(false), // true si fue categorizado manualmente
+  agentId: integer("agentId").references(() => users.id), // quien lo categorizó manualmente
+});
+
+// Tabla de notificaciones en tiempo real
+export const realTimeNotifications = pgTable("real_time_notifications", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull(), // new_message, new_assignment, chat_categorized, account_status
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  chatId: text("chatId"),
+  accountId: integer("accountId").references(() => whatsappAccounts.id),
+  agentId: integer("agentId").references(() => users.id),
+  category: text("category"),
+  priority: text("priority").default("medium"), // low, medium, high
+  isRead: boolean("isRead").default(false),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
 // Configuración de respuestas automáticas
 export const autoResponseConfig = pgTable("auto_response_config", {
   id: serial("id").primaryKey(),
