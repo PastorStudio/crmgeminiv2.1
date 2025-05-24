@@ -227,6 +227,7 @@ export function WhatsAppTwoColumn() {
   const generateSmartBotsAutoResponse = async (userMessage: string, contactName: string) => {
     try {
       console.log('🤖 Generando respuesta automática SmartBots para:', userMessage);
+      console.log('🔗 Llamando a /api/smartbots/generate-response...');
       
       const response = await fetch('/api/smartbots/generate-response', {
         method: 'POST',
@@ -240,7 +241,15 @@ export function WhatsAppTwoColumn() {
         })
       });
 
+      console.log('📡 Respuesta del servidor recibida:', response.status, response.statusText);
+
+      if (!response.ok) {
+        console.error('❌ Error HTTP:', response.status, response.statusText);
+        return null;
+      }
+
       const data = await response.json();
+      console.log('📋 Datos recibidos:', data);
       
       if (data.success && data.response) {
         console.log('✅ Respuesta automática SmartBots:', data.response);
@@ -257,6 +266,7 @@ export function WhatsAppTwoColumn() {
       }
     } catch (error) {
       console.error('❌ Error conectando con SmartBots automático:', error);
+      console.error('🔍 Detalles del error:', error.message, error.name);
       return null;
     }
   };
