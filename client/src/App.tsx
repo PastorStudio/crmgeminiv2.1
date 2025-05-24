@@ -3,6 +3,8 @@ import { Switch, Route, useLocation } from "wouter";
 import { Toaster } from '@/components/ui/toaster';
 import { Spinner } from '@/components/ui/spinner';
 import PageTransition from '@/components/ui/page-transition';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { PersistentMenu, useMenuLoading } from '@/components/ui/persistent-menu';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import Messages from './pages/Messages';
