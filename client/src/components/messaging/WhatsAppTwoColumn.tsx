@@ -976,44 +976,7 @@ export function WhatsAppTwoColumn() {
     }
   }, [accounts, selectedAccounts]);
 
-  // Función para manejar mensajes de audio (transcripción)
-  const handleAudioMessage = useCallback(async (message: any) => {
-    try {
-      toast({
-        title: "🎧 Procesando audio...",
-        description: "Transcribiendo mensaje de voz...",
-      });
 
-      const response = await fetch('/api/audio/transcribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messageId: message.id,
-          audioUrl: message.mediaUrl || message._data?.mediaUrl
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        toast({
-          title: "✅ Audio transcrito",
-          description: `Transcripción: "${result.text}"`,
-          duration: 5000
-        });
-      } else {
-        throw new Error('Error en la transcripción');
-      }
-    } catch (error) {
-      console.error('Error transcribiendo audio:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo transcribir el audio",
-        variant: "destructive"
-      });
-    }
-  }, [toast]);
 
 
 
