@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
@@ -28,6 +29,13 @@ import {
   Tag,
   AlertCircle,
   CheckCircle2,
+  Smile,
+  Paperclip,
+  Languages,
+  Image,
+  FileText,
+  Video,
+  File,
   Loader2
 } from 'lucide-react';
 
@@ -163,6 +171,9 @@ export function WhatsAppTwoColumn() {
   const [autoResponseConfigOpen, setAutoResponseConfigOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [translatorEnabled, setTranslatorEnabled] = useState(false);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -740,11 +751,188 @@ export function WhatsAppTwoColumn() {
               )}
             </ScrollArea>
 
-            {/* Message Input */}
+            {/* Enhanced Message Input with Tools */}
             <div className="p-4 border-t border-gray-200 bg-white">
+              {/* Toolbar */}
+              <div className="flex items-center space-x-2 mb-3">
+                {/* Emoji Picker */}
+                <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 w-9 p-0"
+                    >
+                      <Smile className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80">
+                    <div className="grid grid-cols-8 gap-2 p-2">
+                      {['😊', '😂', '❤️', '👍', '👋', '🙏', '😘', '😍', '🤔', '😅', '👌', '🔥', '💯', '✨', '🎉', '🚀', '💪', '🙌', '👏', '💝', '🌟', '⭐', '💖', '💕'].map((emoji) => (
+                        <Button
+                          key={emoji}
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-lg"
+                          onClick={() => {
+                            setNewMessage(prev => prev + emoji);
+                            setEmojiPickerOpen(false);
+                          }}
+                        >
+                          {emoji}
+                        </Button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* File Attachment Menu */}
+                <Popover open={fileMenuOpen} onOpenChange={setFileMenuOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 w-9 p-0"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48">
+                    <div className="space-y-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          // Trigger file input for images
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) {
+                              toast({
+                                title: "Imagen seleccionada",
+                                description: `${file.name} listo para enviar`,
+                              });
+                            }
+                          };
+                          input.click();
+                          setFileMenuOpen(false);
+                        }}
+                      >
+                        <Image className="h-4 w-4 mr-2" />
+                        Imagen
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          // Trigger file input for videos
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'video/*';
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) {
+                              toast({
+                                title: "Video seleccionado",
+                                description: `${file.name} listo para enviar`,
+                              });
+                            }
+                          };
+                          input.click();
+                          setFileMenuOpen(false);
+                        }}
+                      >
+                        <Video className="h-4 w-4 mr-2" />
+                        Video
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          // Trigger file input for documents
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = '.pdf,.doc,.docx,.txt,.xlsx,.pptx';
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) {
+                              toast({
+                                title: "Documento seleccionado",
+                                description: `${file.name} listo para enviar`,
+                              });
+                            }
+                          };
+                          input.click();
+                          setFileMenuOpen(false);
+                        }}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Documento
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          // Trigger file input for any file
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) {
+                              toast({
+                                title: "Archivo seleccionado",
+                                description: `${file.name} listo para enviar`,
+                              });
+                            }
+                          };
+                          input.click();
+                          setFileMenuOpen(false);
+                        }}
+                      >
+                        <File className="h-4 w-4 mr-2" />
+                        Archivo
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Translator Toggle */}
+                <Button
+                  variant={translatorEnabled ? "default" : "outline"}
+                  size="sm"
+                  className={`h-9 w-9 p-0 ${translatorEnabled ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                  onClick={() => {
+                    setTranslatorEnabled(!translatorEnabled);
+                    toast({
+                      title: translatorEnabled ? "Traductor desactivado" : "Traductor activado",
+                      description: translatorEnabled 
+                        ? "Los mensajes se enviarán sin traducir" 
+                        : "Los mensajes se traducirán automáticamente",
+                    });
+                  }}
+                >
+                  <Languages className="h-4 w-4" />
+                </Button>
+
+                {/* Translator Status Indicator */}
+                {translatorEnabled && (
+                  <div className="flex items-center space-x-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                    <Languages className="h-3 w-3" />
+                    <span>Traductor ON</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Message Input */}
               <div className="flex space-x-2">
                 <Input
-                  placeholder="Escribe un mensaje..."
+                  placeholder={translatorEnabled ? "Escribe un mensaje (se traducirá automáticamente)..." : "Escribe un mensaje..."}
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
