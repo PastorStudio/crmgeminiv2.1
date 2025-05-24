@@ -3,45 +3,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Settings, Trash2, Bot, CheckCircle, XCircle, MessageSquare, Users, Clock, Brain } from 'lucide-react';
+import { Plus, Link as LinkIcon, CheckCircle, XCircle, Bot, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ExternalAgent {
   id: string;
   name: string;
-  description: string;
-  chatId: string;
-  accountId: number;
+  agentUrl: string;
+  description?: string;
   triggerKeywords?: string[];
-  specialization?: string;
   isActive: boolean;
   responseDelay?: number;
+  accountId?: number;
 }
 
 interface AgentStats {
   totalAgents: number;
   activeAgents: number;
-  agentsBySpecialization: Record<string, number>;
+  agentsByUrl: Record<string, number>;
 }
 
 export default function ExternalAgents() {
   const [agents, setAgents] = useState<ExternalAgent[]>([]);
   const [stats, setStats] = useState<AgentStats | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newAgent, setNewAgent] = useState<Partial<ExternalAgent>>({
-    name: '',
-    description: '',
-    chatId: '',
-    accountId: 1,
-    triggerKeywords: [],
-    specialization: 'general',
-    isActive: true,
-    responseDelay: 2
-  });
+  const [newAgentUrl, setNewAgentUrl] = useState('');
+  const [newAgentKeywords, setNewAgentKeywords] = useState('');
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -74,58 +64,58 @@ export default function ExternalAgents() {
     }
   };
 
-  const addAgent = async () => {
-    if (!newAgent.name || !newAgent.description || !newAgent.chatId) {
+  const createAgentFromUrl = async () => {
+    if (!newAgentUrl.trim()) {
       toast({
         title: "Error",
-        description: "Por favor completa todos los campos requeridos",
+        description: "Por favor ingresa la URL del agente",
         variant: "destructive"
       });
       return;
     }
 
+    setLoading(true);
+    
     try {
-      const response = await fetch('/api/external-agents', {
+      const keywords = newAgentKeywords
+        .split(',')
+        .map(k => k.trim())
+        .filter(k => k);
+
+      const response = await fetch('/api/external-agents/create-from-url', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...newAgent,
-          id: `agent-${Date.now()}`,
-          triggerKeywords: typeof newAgent.triggerKeywords === 'string' 
-            ? newAgent.triggerKeywords.split(',').map(k => k.trim()).filter(k => k)
-            : newAgent.triggerKeywords
+          agentUrl: newAgentUrl.trim(),
+          triggerKeywords: keywords
         }),
       });
 
-      if (response.ok) {
+      const data = await response.json();
+
+      if (data.success) {
         toast({
-          title: "Éxito",
-          description: "Agente intermediario creado exitosamente"
+          title: "¡Éxito!",
+          description: `Agente "${data.agent.name}" creado exitosamente`
         });
         setShowAddForm(false);
-        setNewAgent({
-          name: '',
-          description: '',
-          chatId: '',
-          accountId: 1,
-          triggerKeywords: [],
-          specialization: 'general',
-          isActive: true,
-          responseDelay: 2
-        });
+        setNewAgentUrl('');
+        setNewAgentKeywords('');
         fetchAgents();
         fetchStats();
       } else {
-        throw new Error('Error al crear agente');
+        throw new Error(data.error || 'Error al crear agente');
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "No se pudo crear el agente intermediario",
+        description: error.message || "No se pudo crear el agente intermediario",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -153,21 +143,34 @@ export default function ExternalAgents() {
     }
   };
 
-  const getSpecializationColor = (specialization?: string) => {
-    switch (specialization) {
-      case 'ventas': return 'bg-green-100 text-green-800';
-      case 'soporte': return 'bg-blue-100 text-blue-800';
-      case 'informacion': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const deleteAgent = async (agentId: string) => {
+    try {
+      const response = await fetch(`/api/external-agents/${agentId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Éxito",
+          description: "Agente eliminado exitosamente"
+        });
+        fetchAgents();
+        fetchStats();
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el agente",
+        variant: "destructive"
+      });
     }
   };
 
-  const getSpecializationIcon = (specialization?: string) => {
-    switch (specialization) {
-      case 'ventas': return '💰';
-      case 'soporte': return '🔧';
-      case 'informacion': return '📋';
-      default: return '🤖';
+  const getUrlDomain = (url: string) => {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return 'URL inválida';
     }
   };
 
@@ -177,12 +180,12 @@ export default function ExternalAgents() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Agentes Intermediarios</h1>
           <p className="text-gray-600 mt-2">
-            Gestiona agentes conversacionales que responden automáticamente a mensajes específicos
+            Conecta agentes externos como ChatGPT, Claude, etc. como intermediarios automáticos
           </p>
         </div>
         <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
           <Plus className="w-4 h-4" />
-          Nuevo Agente
+          Agregar Agente
         </Button>
       </div>
 
@@ -217,12 +220,12 @@ export default function ExternalAgents() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Especializaciones</p>
+                  <p className="text-sm font-medium text-gray-600">Plataformas</p>
                   <p className="text-2xl font-bold text-purple-600">
-                    {Object.keys(stats.agentsBySpecialization).length}
+                    {Object.keys(stats.agentsByUrl).length}
                   </p>
                 </div>
-                <Brain className="w-8 h-8 text-purple-600" />
+                <LinkIcon className="w-8 h-8 text-purple-600" />
               </div>
             </CardContent>
           </Card>
@@ -233,116 +236,54 @@ export default function ExternalAgents() {
       {showAddForm && (
         <Card>
           <CardHeader>
-            <CardTitle>Configurar Nuevo Agente Intermediario</CardTitle>
+            <CardTitle>Agregar Agente Intermediario</CardTitle>
             <CardDescription>
-              Los agentes intermediarios responden automáticamente a mensajes basándose en palabras clave
+              Simplemente pega la URL de tu agente (ChatGPT, Claude, etc.) y el sistema lo configurará automáticamente
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name">Nombre del Agente *</Label>
-                <Input
-                  id="name"
-                  placeholder="Ej: Asistente de Ventas"
-                  value={newAgent.name || ''}
-                  onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="chatId">ID del Chat *</Label>
-                <Input
-                  id="chatId"
-                  placeholder="Ej: ventas@empresa.com"
-                  value={newAgent.chatId || ''}
-                  onChange={(e) => setNewAgent({ ...newAgent, chatId: e.target.value })}
-                />
-              </div>
-            </div>
-
             <div>
-              <Label htmlFor="description">Descripción *</Label>
-              <Textarea
-                id="description"
-                placeholder="Describe las funciones y especialidad de este agente"
-                value={newAgent.description || ''}
-                onChange={(e) => setNewAgent({ ...newAgent, description: e.target.value })}
+              <Label htmlFor="agentUrl">URL del Agente *</Label>
+              <Input
+                id="agentUrl"
+                placeholder="https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots"
+                value={newAgentUrl}
+                onChange={(e) => setNewAgentUrl(e.target.value)}
+                className="mt-1"
               />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="specialization">Especialización</Label>
-                <Select
-                  value={newAgent.specialization || 'general'}
-                  onValueChange={(value) => setNewAgent({ ...newAgent, specialization: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ventas">💰 Ventas</SelectItem>
-                    <SelectItem value="soporte">🔧 Soporte Técnico</SelectItem>
-                    <SelectItem value="informacion">📋 Información General</SelectItem>
-                    <SelectItem value="general">🤖 General</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="accountId">Cuenta WhatsApp</Label>
-                <Select
-                  value={newAgent.accountId?.toString() || '1'}
-                  onValueChange={(value) => setNewAgent({ ...newAgent, accountId: parseInt(value) })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Cuenta 1</SelectItem>
-                    <SelectItem value="2">Cuenta 2</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="responseDelay">Delay de Respuesta (seg)</Label>
-                <Input
-                  id="responseDelay"
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={newAgent.responseDelay || 2}
-                  onChange={(e) => setNewAgent({ ...newAgent, responseDelay: parseInt(e.target.value) })}
-                />
-              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Ejemplos: ChatGPT GPTs, Claude, Gemini, etc.
+              </p>
             </div>
 
             <div>
-              <Label htmlFor="keywords">Palabras Clave (separadas por comas)</Label>
+              <Label htmlFor="keywords">Palabras Clave (opcional)</Label>
               <Input
                 id="keywords"
-                placeholder="Ej: precio, comprar, venta, cotización"
-                value={Array.isArray(newAgent.triggerKeywords) 
-                  ? newAgent.triggerKeywords.join(', ') 
-                  : newAgent.triggerKeywords || ''}
-                onChange={(e) => setNewAgent({ 
-                  ...newAgent, 
-                  triggerKeywords: e.target.value.split(',').map(k => k.trim()).filter(k => k)
-                })}
+                placeholder="precio, venta, soporte, ayuda"
+                value={newAgentKeywords}
+                onChange={(e) => setNewAgentKeywords(e.target.value)}
+                className="mt-1"
               />
+              <p className="text-sm text-gray-500 mt-1">
+                Separadas por comas. El agente responderá cuando detecte estas palabras.
+              </p>
             </div>
 
             <div className="flex justify-end gap-2">
               <Button 
                 variant="outline" 
-                onClick={() => setShowAddForm(false)}
+                onClick={() => {
+                  setShowAddForm(false);
+                  setNewAgentUrl('');
+                  setNewAgentKeywords('');
+                }}
+                disabled={loading}
               >
                 Cancelar
               </Button>
-              <Button onClick={addAgent}>
-                Crear Agente
+              <Button onClick={createAgentFromUrl} disabled={loading}>
+                {loading ? 'Creando...' : 'Crear Agente'}
               </Button>
             </div>
           </CardContent>
@@ -356,27 +297,32 @@ export default function ExternalAgents() {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
-                  <div className="text-2xl">
-                    {getSpecializationIcon(agent.specialization)}
-                  </div>
+                  <div className="text-2xl">🤖</div>
                   <div>
                     <CardTitle className="text-lg">{agent.name}</CardTitle>
                     <CardDescription className="mt-1">
-                      {agent.description}
+                      {getUrlDomain(agent.agentUrl)}
                     </CardDescription>
                   </div>
                 </div>
-                <Switch
-                  checked={agent.isActive}
-                  onCheckedChange={(checked) => toggleAgent(agent.id, checked)}
-                />
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={agent.isActive}
+                    onCheckedChange={(checked) => toggleAgent(agent.id, checked)}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteAgent(agent.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center gap-2">
-                <Badge className={getSpecializationColor(agent.specialization)}>
-                  {agent.specialization || 'general'}
-                </Badge>
                 {agent.isActive ? (
                   <Badge className="bg-green-100 text-green-800">
                     <CheckCircle className="w-3 h-3 mr-1" />
@@ -388,20 +334,17 @@ export default function ExternalAgents() {
                     Inactivo
                   </Badge>
                 )}
+                <Badge variant="outline">{getUrlDomain(agent.agentUrl)}</Badge>
               </div>
 
               <div className="text-sm text-gray-600 space-y-1">
                 <div className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Chat ID: {agent.chatId}</span>
+                  <LinkIcon className="w-4 h-4" />
+                  <span className="truncate">{agent.agentUrl}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  <span>Cuenta WhatsApp: {agent.accountId}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  <span>Delay: {agent.responseDelay || 2}s</span>
+                  <span>⏱️</span>
+                  <span>Delay: {agent.responseDelay || 3}s</span>
                 </div>
               </div>
 
@@ -435,17 +378,30 @@ export default function ExternalAgents() {
                   No hay agentes configurados
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Crea tu primer agente intermediario para comenzar a automatizar respuestas
+                  Conecta tu primer agente externo para comenzar a automatizar respuestas
                 </p>
                 <Button onClick={() => setShowAddForm(true)}>
                   <Plus className="w-4 h-4 mr-2" />
-                  Crear Primer Agente
+                  Agregar Primer Agente
                 </Button>
               </CardContent>
             </Card>
           </div>
         )}
       </div>
+
+      {/* Información adicional */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardContent className="p-6">
+          <h3 className="font-semibold text-blue-900 mb-2">💡 ¿Cómo funciona?</h3>
+          <div className="text-blue-800 space-y-2 text-sm">
+            <p>1. <strong>Mensaje entrante:</strong> Tu cliente envía un mensaje a WhatsApp (burbuja verde)</p>
+            <p>2. <strong>Detección automática:</strong> El sistema detecta palabras clave y selecciona el agente apropiado</p>
+            <p>3. <strong>Procesamiento:</strong> El mensaje se envía al agente externo como si fuera un usuario normal</p>
+            <p>4. <strong>Respuesta automática:</strong> La respuesta del agente se envía al cliente como mensaje tuyo (burbuja azul)</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
