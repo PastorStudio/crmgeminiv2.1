@@ -43,6 +43,13 @@ async function seedDatabase() {
 async function createUsers() {
   const usersData: InsertUser[] = [
     {
+      username: 'superadmin',
+      password: 'super123',
+      fullName: 'Super Administrador',
+      email: 'superadmin@geminicrm.com',
+      role: 'superadmin'
+    },
+    {
       username: 'admin',
       password: 'admin123', // En producción deberían estar hasheadas
       fullName: 'Administrador',
