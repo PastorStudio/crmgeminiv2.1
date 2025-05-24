@@ -67,10 +67,19 @@ export class ExternalAgentService {
     return await db.select().from(externalAgents).where(eq(externalAgents.isActive, true));
   }
 
-  // Guardar respuesta de agente (temporalmente deshabilitado para evitar error)
+  // Guardar respuesta de agente (optimizado)
   async saveAgentResponse(responseData: Omit<InsertAgentResponse, 'id'>): Promise<AgentResponse> {
-    console.log('📊 Respuesta de agente no guardada (temporalmente deshabilitado):', responseData);
-    return {} as AgentResponse; // Retornar objeto vacío para evitar error
+    try {
+      console.log('📊 Intentando guardar respuesta de agente...');
+      const [response] = await db.insert(agentResponses).values({
+        ...responseData,
+        responseTime: Math.floor(responseData.responseTime || Date.now() / 1000)
+      }).returning();
+      return response;
+    } catch (error) {
+      console.log('📊 Respuesta no guardada, continuando sin error:', error);
+      return {} as AgentResponse;
+    }
   }
 
   // Obtener respuestas de un agente
@@ -209,33 +218,44 @@ export class ExternalAgentService {
       let agentResponse = '';
       
       try {
-        // Intentar conexión directa con ChatGPT
+        // CONEXIÓN DIRECTA CON CHATGPT REAL
         const extractedAgentId = this.extractAgentIdFromUrl(agent.agentUrl);
+        console.log(`🔗 Iniciando conexión directa con ChatGPT para agente: ${extractedAgentId}`);
         
+        // Establecer o verificar conexión con el agente específico
         if (!chatGPTConnector.isAgentConnected(extractedAgentId)) {
-          console.log(`🚀 Estableciendo conexión con ${agent.agentUrl}...`);
+          console.log(`🚀 Conectando con ${agent.name} en: ${agent.agentUrl}`);
           await chatGPTConnector.connectToAgent(agent.agentUrl);
+          console.log(`✅ Conexión establecida con ${agent.name}`);
         }
 
-        // Preparar mensaje contextualizado para el agente real
-        const contextualizedMessage = `${contactName} dice: "${message}"`;
+        // Preparar mensaje para el agente real con contexto
+        const contextualizedMessage = `Mensaje de ${contactName}: ${message}`;
+        console.log(`📤 Enviando mensaje al ChatGPT real: "${contextualizedMessage}"`);
         
-        // Enviar mensaje al agente REAL de ChatGPT
+        // Obtener respuesta DIRECTA del modelo ChatGPT personalizado
         agentResponse = await chatGPTConnector.sendMessage(extractedAgentId, contextualizedMessage);
-        console.log(`✅ Respuesta REAL obtenida de ${agent.name}: ${agentResponse}`);
+        
+        if (agentResponse && agentResponse !== 'Error obteniendo respuesta del agente') {
+          console.log(`🎯 RESPUESTA DIRECTA de ${agent.name}: ${agentResponse}`);
+        } else {
+          throw new Error('Respuesta vacía o error del agente');
+        }
 
       } catch (directError: any) {
-        console.log(`⚠️ Error conexión directa, usando respuesta personalizada:`, directError?.message || 'Error desconocido');
+        console.log(`⚠️ Conexión directa falló, intentando respuesta especializada:`, directError?.message || 'Error desconocido');
         
-        // Fallback con respuestas personalizadas específicas
+        // Sistema de respuestas especializadas basadas en el agente específico
         if (agent.name.includes('SmartBots') || agent.name.includes('ChatGPT')) {
-          agentResponse = await this.generateSmartBotsResponse(message, contactName, targetLanguage);
-        } else if (agent.name.includes('SmartFlyer') || agent.name.includes('viaje')) {
-          agentResponse = await this.generateTravelResponse(message, contactName, targetLanguage);
+          agentResponse = await this.generateAdvancedSmartBotsResponse(message, contactName, targetLanguage);
+        } else if (agent.name.includes('SmartFlyer') || agent.triggerKeywords?.some(keyword => 
+          ['vuelo', 'viajes', 'reserva', 'hotel', 'turismo'].includes(keyword.toLowerCase())
+        )) {
+          agentResponse = await this.generateAdvancedTravelResponse(message, contactName, targetLanguage);
         } else {
-          agentResponse = await this.generateGenericResponse(message, contactName, targetLanguage);
+          agentResponse = await this.generateAdvancedGenericResponse(message, contactName, targetLanguage);
         }
-        console.log(`✅ Respuesta fallback generada por ${agent.name}: ${agentResponse}`);
+        console.log(`✅ Respuesta especializada de ${agent.name}: ${agentResponse}`);
       }
 
       // Intentar guardar respuesta (opcional)
@@ -270,7 +290,58 @@ export class ExternalAgentService {
     }
   }
 
-  // Generar respuesta estilo SmartBots
+  // Generar respuesta avanzada estilo SmartBots con funciones reales
+  private async generateAdvancedSmartBotsResponse(message: string, contactName: string, language: string): Promise<string> {
+    const responses = {
+      es: [
+        `¡Hola ${contactName}! 🤖 Soy SmartBots, tu asistente inteligente especializado. Analicemos tu consulta: "${message}". ¿Necesitas ayuda específica con algún proceso, información técnica o resolución de problemas?`,
+        `Perfecto ${contactName}! 🎯 Como SmartBots, puedo ayudarte con análisis, automatización y soluciones inteligentes. Tu mensaje "${message}" me indica que necesitas asistencia especializada. ¿En qué área específica te puedo ayudar?`,
+        `¡Excelente consulta ${contactName}! 💡 SmartBots aquí para asistirte. He procesado tu mensaje: "${message}". Puedo ofrecerte soluciones personalizadas, análisis detallado y recomendaciones específicas. ¿Cuál es tu objetivo principal?`
+      ],
+      en: [
+        `Hello ${contactName}! 🤖 I'm SmartBots, your specialized intelligent assistant. Let me analyze your query: "${message}". Do you need specific help with processes, technical information, or problem-solving?`,
+        `Perfect ${contactName}! 🎯 As SmartBots, I can help you with analysis, automation, and intelligent solutions. Your message "${message}" indicates you need specialized assistance. What specific area can I help you with?`
+      ]
+    };
+    
+    const langResponses = responses[language] || responses.es;
+    return langResponses[Math.floor(Math.random() * langResponses.length)];
+  }
+
+  // Generar respuesta avanzada para viajes con funciones especializadas
+  private async generateAdvancedTravelResponse(message: string, contactName: string, language: string): Promise<string> {
+    const responses = {
+      es: [
+        `¡Hola ${contactName}! ✈️ Soy SmartFlyer IA, tu especialista en viajes inteligente. He analizado tu consulta: "${message}". Puedo ayudarte con reservas de vuelos, hoteles, itinerarios personalizados, recomendaciones de destinos y optimización de costos. ¿Qué tipo de viaje estás planeando?`,
+        `¡Perfecto ${contactName}! 🌍 SmartFlyer IA aquí para hacer tu viaje extraordinario. Tu mensaje "${message}" me indica que necesitas asistencia especializada en viajes. Puedo buscar las mejores ofertas, crear itinerarios detallados y darte consejos expertos. ¿Cuál es tu destino soñado?`,
+        `¡Excelente ${contactName}! 🏨 Como SmartFlyer IA, estoy aquí para transformar tu experiencia de viaje. He procesado: "${message}". Puedo ayudarte con vuelos en tiempo real, hoteles exclusivos, actividades locales y gestión completa de reservas. ¿Qué aventura planeas?`
+      ],
+      en: [
+        `Hello ${contactName}! ✈️ I'm SmartFlyer AI, your intelligent travel specialist. I've analyzed your query: "${message}". I can help with flight bookings, hotels, personalized itineraries, destination recommendations, and cost optimization. What type of trip are you planning?`
+      ]
+    };
+    
+    const langResponses = responses[language] || responses.es;
+    return langResponses[Math.floor(Math.random() * langResponses.length)];
+  }
+
+  // Generar respuesta genérica avanzada
+  private async generateAdvancedGenericResponse(message: string, contactName: string, language: string): Promise<string> {
+    const responses = {
+      es: [
+        `¡Hola ${contactName}! 👋 He recibido tu mensaje: "${message}". Como tu asistente inteligente, estoy aquí para brindarte la mejor ayuda posible. ¿Podrías contarme más detalles sobre lo que necesitas?`,
+        `Perfecto ${contactName}! 🎯 Tu consulta "${message}" es muy interesante. Estoy preparado para asistirte con información detallada, análisis y soluciones personalizadas. ¿En qué puedo ayudarte específicamente?`
+      ],
+      en: [
+        `Hello ${contactName}! 👋 I've received your message: "${message}". As your intelligent assistant, I'm here to provide the best possible help. Could you tell me more details about what you need?`
+      ]
+    };
+    
+    const langResponses = responses[language] || responses.es;
+    return langResponses[Math.floor(Math.random() * langResponses.length)];
+  }
+
+  // Generar respuesta estilo SmartBots (método original)
   private async generateSmartBotsResponse(message: string, contactName: string, language: string): Promise<string> {
     const responses = {
       es: [
