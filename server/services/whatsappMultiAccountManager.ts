@@ -564,6 +564,11 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       console.log(`Cliente WhatsApp ${id} (${name}) desconectado: ${reason}`);
       instance.status.authenticated = false;
       instance.status.ready = false;
+      
+      // ✨ DETENER KEEP-ALIVE AUTOMÁTICAMENTE ✨
+      console.log(`💤 Deteniendo keep-alive para cuenta ${id} (${name}) - desconectada`);
+      this.stopKeepAlive(id);
+      
       this.deactivateConnectionTimers(instance);
     });
 
@@ -1097,6 +1102,13 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     } catch (error) {
       console.error(`❌ Error restaurando conexión cuenta ${instance.id}:`, error);
     }
+  }
+
+  /**
+   * Activa keep-alive para cuentas ya autenticadas (método público)
+   */
+  public startKeepAlive(instance: WhatsAppInstance): void {
+    this.startKeepAlive(instance);
   }
 
   /**

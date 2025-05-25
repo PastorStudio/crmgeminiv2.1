@@ -4608,5 +4608,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ✨ ENDPOINTS PARA MONITOREAR PING/KEEP-ALIVE ✨
+  
+  // Obtener estado del ping para una cuenta específica
+  app.get("/api/whatsapp/:accountId/ping-status", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
+      
+      const pingStatus = whatsappMultiAccountManager.getPingStatus(accountId);
+      
+      res.json({
+        success: true,
+        accountId,
+        pingStatus
+      });
+    } catch (error) {
+      console.error(`❌ Error obteniendo estado de ping para cuenta ${req.params.accountId}:`, error);
+      res.status(500).json({
+        success: false,
+        error: 'Error obteniendo estado de ping'
+      });
+    }
+  });
+
+  // Obtener estado del ping para todas las cuentas
+  app.get("/api/whatsapp/ping-status/all", async (req: Request, res: Response) => {
+    try {
+      const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
+      
+      const accounts = whatsappMultiAccountManager.getActiveAccounts();
+      const allPingStatus = [];
+      
+      for (const account of accounts) {
+        const pingStatus = whatsappMultiAccountManager.getPingStatus(account.id);
+        allPingStatus.push({
+          accountId: account.id,
+          accountName: account.name,
+          connectionStatus: account.status,
+          pingStatus
+        });
+      }
+      
+      res.json({
+        success: true,
+        accounts: allPingStatus
+      });
+    } catch (error) {
+      console.error(`❌ Error obteniendo estado de ping de todas las cuentas:`, error);
+      res.status(500).json({
+        success: false,
+        error: 'Error obteniendo estado de ping'
+      });
+    }
+  });
+
+  // Activar keep-alive manualmente para una cuenta
+  app.post("/api/whatsapp/:accountId/start-keepalive", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
+      
+      const instance = whatsappMultiAccountManager.getInstance(accountId);
+      if (!instance) {
+        return res.status(404).json({
+          success: false,
+          error: 'Cuenta no encontrada'
+        });
+      }
+      
+      if (!instance.status.authenticated) {
+        return res.status(400).json({
+          success: false,
+          error: 'Cuenta no autenticada - no se puede activar keep-alive'
+        });
+      }
+      
+      // Activar keep-alive manualmente
+      whatsappMultiAccountManager.startKeepAlive(instance);
+      
+      res.json({
+        success: true,
+        message: `Keep-alive activado para cuenta ${accountId}`,
+        pingStatus: whatsappMultiAccountManager.getPingStatus(accountId)
+      });
+    } catch (error) {
+      console.error(`❌ Error activando keep-alive para cuenta ${req.params.accountId}:`, error);
+      res.status(500).json({
+        success: false,
+        error: 'Error activando keep-alive'
+      });
+    }
+  });
+
+  // Desactivar keep-alive manualmente para una cuenta
+  app.post("/api/whatsapp/:accountId/stop-keepalive", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
+      
+      whatsappMultiAccountManager.stopKeepAlive(accountId);
+      
+      res.json({
+        success: true,
+        message: `Keep-alive desactivado para cuenta ${accountId}`,
+        pingStatus: whatsappMultiAccountManager.getPingStatus(accountId)
+      });
+    } catch (error) {
+      console.error(`❌ Error desactivando keep-alive para cuenta ${req.params.accountId}:`, error);
+      res.status(500).json({
+        success: false,
+        error: 'Error desactivando keep-alive'
+      });
+    }
+  });
+
   return httpServer;
 }
