@@ -396,24 +396,39 @@ export class ExternalAgentService {
     userInfo: any = {}
   ): Promise<any> {
     try {
+      if (!process.env.OPENAI_API_KEY) {
+        console.log(`❌ No hay clave API de OpenAI configurada`);
+        return {
+          response: "Error: No hay clave API configurada",
+          timestamp: new Date().toISOString(),
+          agent: agent.name,
+          processingTime: 0
+        };
+      }
+
       const startTime = Date.now();
       
-      // Usar el servicio OpenAI existente que ya funcionaba
-      const responseText = await generateChatResponse(agent.name, message);
+      // Usar tu clave API de OpenAI para respuestas reales
+      const response = await generateChatResponse(agent.name, message);
       const responseTime = Date.now() - startTime;
 
-      console.log(`✅ Respuesta generada para ${agent.name} (${responseTime}ms): ${responseText.substring(0, 100)}...`);
+      console.log(`✅ Respuesta generada para ${agent.name} (${responseTime}ms): ${response.substring(0, 100)}...`);
 
       return {
-        response: responseText,
+        response: response,
         timestamp: new Date().toISOString(),
         agent: agent.name,
         processingTime: responseTime
       };
 
     } catch (error: any) {
-      console.log(`❌ Error usando OpenAI: ${error instanceof Error ? error.message : String(error)}`);
-      return null;
+      console.log(`❌ Error procesando mensaje: ${error instanceof Error ? error.message : String(error)}`);
+      return {
+        response: "Error al conectar con el agente",
+        timestamp: new Date().toISOString(),
+        agent: agent.name,
+        processingTime: 0
+      };
     }
   }
 }
