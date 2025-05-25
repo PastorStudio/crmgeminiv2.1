@@ -427,9 +427,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('🔐 Verificando permisos:', { username, userRole });
       
-      // DJP tiene acceso TOTAL como superadministrador - sin restricciones
-      if (username === 'DJP') {
-        console.log('✅ DJP identificado - acceso completo de superadministrador concedido');
+      // DJP SUPERADMINISTRADOR - ACCESO TOTAL GARANTIZADO
+      if (username === 'DJP' || (req as any).user.hasUnlimitedAccess) {
+        console.log('👑 ACCESO TOTAL GARANTIZADO PARA DJP SUPERADMINISTRADOR');
+        // DJP puede hacer TODO - nunca denegar
       } else {
         // Para otros usuarios, verificar roles estándar
         const allowedRoles = ['admin', 'supervisor', 'superadmin', 'super_admin'];
@@ -4083,16 +4084,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('🔐 Verificando permisos para agentes externos:', { username, userRole });
       
-      // Solo DJP (superadministrador) puede gestionar agentes externos
-      if (username !== 'DJP') {
+      // DJP SUPERADMINISTRADOR - ACCESO TOTAL A AGENTES EXTERNOS
+      if (username === 'DJP' || (req as any).user.hasUnlimitedAccess) {
+        console.log('👑 DJP SUPERADMINISTRADOR - ACCESO TOTAL A AGENTES EXTERNOS GARANTIZADO');
+      } else {
         console.log('❌ Acceso denegado - solo DJP puede gestionar agentes externos');
         return res.status(403).json({ 
           success: false, 
           message: "Solo el superadministrador puede gestionar agentes externos" 
         });
       }
-      
-      console.log('✅ DJP autorizado para gestionar agentes externos');
       
       const { name, agentUrl, description, triggerKeywords, responseDelay } = req.body;
       
