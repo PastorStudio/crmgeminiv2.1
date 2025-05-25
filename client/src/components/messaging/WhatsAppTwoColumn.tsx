@@ -1481,38 +1481,7 @@ export function WhatsAppTwoColumn() {
                     </motion.div>
                   )}
 
-                  {/* Test Auto Response Button - Only show when SmartBots is enabled */}
-                  {smartBotsEnabled && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, delay: 0.2 }}
-                    >
-                      <Button
-                        onClick={async () => {
-                          if (!selectedChat) return;
-                          
-                          console.log('🧪 Probando respuesta automática con agente seleccionado:', selectedExternalAgent);
-                          const testMessage = "Hola, estoy interesado en sus servicios";
-                          const contactName = selectedChat.name || "Cliente";
-                          
-                          const response = await generateSmartBotsResponse(testMessage, contactName, true);
-                          if (response) {
-                            toast({
-                              title: "🤖 Prueba de respuesta automática",
-                              description: "Respuesta generada y enviada automáticamente",
-                            });
-                          }
-                        }}
-                        size="sm"
-                        variant="outline"
-                        className="border-green-600 text-green-600 hover:bg-green-50"
-                      >
-                        <Zap className="h-4 w-4 mr-1" />
-                        Probar Auto
-                      </Button>
-                    </motion.div>
-                  )}
+
                   
                   {/* Comments Button */}
                   <motion.div
