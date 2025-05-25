@@ -88,18 +88,33 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
   });
 
   const handleToggleAI = (enabled: boolean) => {
+    const currentAgentId = autoConfig?.assignedAgentId || selectedAgentId;
+    
+    // Si se está activando pero no hay agente seleccionado, mostrar error
+    if (enabled && !currentAgentId) {
+      toast({
+        title: "⚠️ Agente requerido",
+        description: "Selecciona un agente antes de activar las respuestas automáticas",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     updateConfigMutation.mutate({
       enabled,
-      agentId: enabled ? (selectedAgentId || autoConfig?.assignedAgentId) : null
+      agentId: enabled ? currentAgentId : null
     });
   };
 
   const handleAgentChange = (agentId: string) => {
-    setSelectedAgentId(agentId);
+    const finalAgentId = agentId === 'none' ? null : agentId;
+    setSelectedAgentId(finalAgentId || '');
+    
+    // Si el AI está activado, actualizar inmediatamente
     if (autoConfig?.enabled) {
       updateConfigMutation.mutate({
         enabled: true,
-        agentId: agentId === 'none' ? null : agentId
+        agentId: finalAgentId
       });
     }
   };
@@ -179,10 +194,10 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
           <Switch
             checked={autoConfig?.enabled || false}
             onCheckedChange={handleToggleAI}
-            disabled={updateConfigMutation.isPending || !assignedAgent}
+            disabled={updateConfigMutation.isPending}
           />
           <span className="text-xs font-medium text-gray-700">
-            {autoConfig?.enabled ? 'Respuestas automáticas activas' : 'Respuestas automáticas inactivas'}
+            Respuestas automáticas
           </span>
         </div>
         
@@ -191,16 +206,22 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
         )}
       </div>
 
-      {/* Mensaje de ayuda */}
+      {/* Estados del sistema */}
       {!assignedAgent && (
         <div className="mt-2 text-xs text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
           ⚠️ Selecciona un agente para habilitar respuestas automáticas
         </div>
       )}
 
+      {assignedAgent && !autoConfig?.enabled && (
+        <div className="mt-2 text-xs text-blue-700 bg-blue-50 p-2 rounded border border-blue-200">
+          🤖 Agente {assignedAgent.name} listo - Activa el AI ON para comenzar
+        </div>
+      )}
+
       {autoConfig?.enabled && assignedAgent && (
         <div className="mt-2 text-xs text-green-700 bg-green-50 p-2 rounded border border-green-200">
-          ✅ Sistema activo - Los mensajes entrantes serán procesados automáticamente por {assignedAgent.name}
+          ✅ Sistema activo - {assignedAgent.name} procesando mensajes automáticamente
         </div>
       )}
     </div>
