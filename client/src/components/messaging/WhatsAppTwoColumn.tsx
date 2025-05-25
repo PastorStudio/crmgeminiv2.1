@@ -1654,9 +1654,60 @@ export function WhatsAppTwoColumn() {
                                 <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[2px] flex-shrink-0 flex items-center gap-1">
                                   {formatTime(message.timestamp)}
                                   {isLastIncomingMessage && (
-                                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium animate-pulse">
-                                      ÚLTIMO RECIBIDO
-                                    </span>
+                                    <div className="flex items-center gap-1">
+                                      <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium animate-pulse">
+                                        ÚLTIMO RECIBIDO
+                                      </span>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-6 px-2 text-[10px] bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100"
+                                        onClick={async () => {
+                                          try {
+                                            // Generar respuesta automática para este mensaje
+                                            const response = await fetch('/api/external-agents/chat', {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({
+                                                message: message.body,
+                                                chatId: selectedChat.id,
+                                                accountId: selectedChat.accountId,
+                                                agentId: 'test-agent-123' // Usar el agente configurado
+                                              })
+                                            });
+                                            
+                                            if (response.ok) {
+                                              const result = await response.json();
+                                              if (result.success) {
+                                                // Enviar la respuesta generada
+                                                await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/send-message`, {
+                                                  method: 'POST',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({
+                                                    chatId: selectedChat.id,
+                                                    message: result.response
+                                                  })
+                                                });
+                                                
+                                                toast({
+                                                  title: "Respuesta automática enviada",
+                                                  description: `Agente externo respondió: ${result.response.substring(0, 50)}...`,
+                                                });
+                                              }
+                                            }
+                                          } catch (error) {
+                                            console.error('Error generando respuesta automática:', error);
+                                            toast({
+                                              title: "Error",
+                                              description: "No se pudo generar la respuesta automática",
+                                              variant: "destructive"
+                                            });
+                                          }
+                                        }}
+                                      >
+                                        🤖 Responder
+                                      </Button>
+                                    </div>
                                   )}
                                 </div>
                               )}
