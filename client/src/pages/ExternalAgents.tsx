@@ -61,6 +61,11 @@ export default function ExternalAgents() {
     'Gracias por tu ayuda',
     '¿Cuáles son sus horarios de atención?'
   ]);
+  // Estados para la prueba directa
+  const [testMessage, setTestMessage] = useState('');
+  const [selectedAgentForTest, setSelectedAgentForTest] = useState<string>('');
+  const [testResponse, setTestResponse] = useState<string>('');
+  const [testLoading, setTestLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -271,6 +276,64 @@ export default function ExternalAgents() {
       });
     } finally {
       setPreviewLoading(false);
+    }
+  };
+
+  const sendDirectTestMessage = async () => {
+    if (!testMessage.trim() || !selectedAgentForTest) {
+      toast({
+        title: "Error",
+        description: "Selecciona un agente y escribe un mensaje",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setTestLoading(true);
+    setTestResponse('');
+
+    try {
+      const response = await fetch(`/api/external-agents/${selectedAgentForTest}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: testMessage,
+          chatContext: {},
+          userInfo: {
+            chatId: 'test-direct-chat',
+            accountId: 1,
+            name: 'Usuario de Prueba'
+          }
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.response) {
+        setTestResponse(data.response);
+        toast({
+          title: "Respuesta recibida",
+          description: `El agente ${data.agent || 'seleccionado'} respondió correctamente`
+        });
+      } else {
+        setTestResponse(`Error: ${data.error || 'No se pudo obtener respuesta del agente'}`);
+        toast({
+          title: "Error",
+          description: data.error || "No se pudo obtener respuesta",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      setTestResponse(`Error de conexión: ${error.message}`);
+      toast({
+        title: "Error",
+        description: "Error conectando con el agente",
+        variant: "destructive"
+      });
+    } finally {
+      setTestLoading(false);
     }
   };
 
@@ -564,6 +627,120 @@ export default function ExternalAgents() {
             <p>2. <strong>Detección automática:</strong> El sistema detecta palabras clave y selecciona el agente apropiado</p>
             <p>3. <strong>Procesamiento:</strong> El mensaje se envía al agente externo como si fuera un usuario normal</p>
             <p>4. <strong>Respuesta automática:</strong> La respuesta del agente se envía al cliente como mensaje tuyo (burbuja azul)</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sección de Prueba Directa */}
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-green-600" />
+            Probar Agente Intermediario
+          </CardTitle>
+          <CardDescription>
+            Envía un mensaje directamente a cualquier agente y ve su respuesta inmediata
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Selector de Agente */}
+          <div>
+            <Label htmlFor="agent-selector">Seleccionar Agente</Label>
+            <Select value={selectedAgentForTest} onValueChange={setSelectedAgentForTest}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Selecciona un agente para probar" />
+              </SelectTrigger>
+              <SelectContent>
+                {agents.filter(agent => agent.isActive).map((agent) => (
+                  <SelectItem key={agent.id} value={agent.id}>
+                    {agent.name} - {getUrlDomain(agent.agentUrl)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Campo de Mensaje */}
+          <div>
+            <Label htmlFor="test-message">Tu Mensaje</Label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                id="test-message"
+                placeholder="Escribe tu mensaje para el agente..."
+                value={testMessage}
+                onChange={(e) => setTestMessage(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !testLoading) {
+                    sendDirectTestMessage();
+                  }
+                }}
+                disabled={testLoading}
+              />
+              <Button 
+                onClick={sendDirectTestMessage}
+                disabled={testLoading || !testMessage.trim() || !selectedAgentForTest}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {testLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Enviar
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Respuesta del Agente */}
+          {testResponse && (
+            <div>
+              <Label>Respuesta del Agente</Label>
+              <div className={`mt-1 p-4 rounded-lg border ${
+                testResponse.startsWith('Error') 
+                  ? 'bg-red-50 border-red-200 text-red-800' 
+                  : 'bg-green-50 border-green-200 text-green-800'
+              }`}>
+                <div className="flex items-start gap-2">
+                  <Bot className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium mb-1">
+                      {agents.find(a => a.id === selectedAgentForTest)?.name || 'Agente'}
+                    </p>
+                    <p className="whitespace-pre-wrap">{testResponse}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mensajes Sugeridos */}
+          <div>
+            <Label>Mensajes Sugeridos</Label>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {[
+                'Hola, ¿cómo estás?',
+                '¿Podrías ayudarme?',
+                '¿Cuáles son tus servicios?',
+                '¿Cuál es tu horario de atención?',
+                'Gracias por tu ayuda'
+              ].map((suggestion, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTestMessage(suggestion)}
+                  disabled={testLoading}
+                  className="text-xs"
+                >
+                  {suggestion}
+                </Button>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
