@@ -37,7 +37,8 @@ import {
   FileText,
   Video,
   File,
-  Loader2
+  Loader2,
+  Zap
 } from 'lucide-react';
 
 // Import components
@@ -370,17 +371,34 @@ export function WhatsAppTwoColumn() {
   const generateSmartBotsResponse = async (userMessage: string, contactName: string, isIncomingMessage = false) => {
     try {
       console.log('🤖 Generando respuesta SmartBots para:', userMessage);
+      console.log('🔍 Agente seleccionado:', selectedExternalAgent);
       
-      const response = await fetch('/api/smartbots/generate-response', {
+      // Usar agente específico si está seleccionado, o endpoint genérico si no
+      const endpoint = selectedExternalAgent && selectedExternalAgent !== 'none'
+        ? '/api/external-agents/chat'
+        : '/api/smartbots/generate-response';
+      
+      const requestBody = selectedExternalAgent && selectedExternalAgent !== 'none' 
+        ? {
+            agentId: selectedExternalAgent,
+            message: userMessage,
+            context: `Conversación de WhatsApp con ${contactName}`
+          }
+        : {
+            message: userMessage,
+            contactName: contactName,
+            context: `Conversación de WhatsApp con ${contactName}`
+          };
+
+      console.log('🔗 Usando endpoint:', endpoint);
+      console.log('📦 Datos enviados:', requestBody);
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message: userMessage,
-          contactName: contactName,
-          context: `Conversación de WhatsApp con ${contactName}`
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
@@ -1460,6 +1478,39 @@ export function WhatsAppTwoColumn() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </motion.div>
+                  )}
+
+                  {/* Test Auto Response Button - Only show when SmartBots is enabled */}
+                  {smartBotsEnabled && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3, delay: 0.2 }}
+                    >
+                      <Button
+                        onClick={async () => {
+                          if (!selectedChat) return;
+                          
+                          console.log('🧪 Probando respuesta automática con agente seleccionado:', selectedExternalAgent);
+                          const testMessage = "Hola, estoy interesado en sus servicios";
+                          const contactName = selectedChat.name || "Cliente";
+                          
+                          const response = await generateSmartBotsResponse(testMessage, contactName, true);
+                          if (response) {
+                            toast({
+                              title: "🤖 Prueba de respuesta automática",
+                              description: "Respuesta generada y enviada automáticamente",
+                            });
+                          }
+                        }}
+                        size="sm"
+                        variant="outline"
+                        className="border-green-600 text-green-600 hover:bg-green-50"
+                      >
+                        <Zap className="h-4 w-4 mr-1" />
+                        Probar Auto
+                      </Button>
                     </motion.div>
                   )}
                   
