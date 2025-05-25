@@ -102,7 +102,7 @@ export class ExternalAgentService {
 
       // Si es un agente de ChatGPT, usar OpenAI API directamente
       if (agent.agentUrl.includes('chatgpt.com')) {
-        const openaiResult = await this.sendMessageToOpenAI(agent, message, { chatId }, { chatId });
+        const openaiResult = await this.sendMessageToOpenAI(agent, message, {}, {});
         if (openaiResult && openaiResult.response) {
           return openaiResult.response;
         }
