@@ -80,63 +80,36 @@ export async function updateAutoResponseConfig(req: Request, res: Response) {
       }
     }
 
-    // Buscar configuración existente
-    const [existingConfig] = await db
-      .select()
-      .from(autoResponseConfig)
-      .where(eq(autoResponseConfig.accountId, accountId));
+    // Actualizar la cuenta de WhatsApp
+    const [updatedAccount] = await db
+      .update(whatsappAccounts)
+      .set({
+        autoResponseEnabled: enabled || false,
+        assignedExternalAgentId: assignedAgentId || null,
+        lastActiveAt: new Date()
+      })
+      .where(eq(whatsappAccounts.id, accountId))
+      .returning();
 
-    if (existingConfig) {
-      // Actualizar configuración existente
-      const [updatedConfig] = await db
-        .update(autoResponseConfig)
-        .set({
-          enabled: enabled || false,
-          assignedAgentId: assignedAgentId || null,
-          updatedBy: 1, // Usuario por defecto
-          updatedAt: new Date()
-        })
-        .where(eq(autoResponseConfig.accountId, accountId))
-        .returning();
-
-      console.log(`✅ Configuración actualizada para cuenta ${accountId}:`, {
-        enabled: updatedConfig.enabled,
-        assignedAgentId: updatedConfig.assignedAgentId
-      });
-
-      return res.json({
-        success: true,
-        config: {
-          enabled: updatedConfig.enabled,
-          assignedAgentId: updatedConfig.assignedAgentId
-        }
-      });
-    } else {
-      // Crear nueva configuración
-      const [newConfig] = await db
-        .insert(autoResponseConfig)
-        .values({
-          accountId,
-          enabled: enabled || false,
-          assignedAgentId: assignedAgentId || null,
-          createdBy: 1,
-          updatedBy: 1
-        })
-        .returning();
-
-      console.log(`✅ Nueva configuración creada para cuenta ${accountId}:`, {
-        enabled: newConfig.enabled,
-        assignedAgentId: newConfig.assignedAgentId
-      });
-
-      return res.json({
-        success: true,
-        config: {
-          enabled: newConfig.enabled,
-          assignedAgentId: newConfig.assignedAgentId
-        }
+    if (!updatedAccount) {
+      return res.status(404).json({
+        success: false,
+        error: 'Cuenta no encontrada'
       });
     }
+
+    console.log(`✅ Configuración actualizada para cuenta ${accountId}:`, {
+      enabled: updatedAccount.autoResponseEnabled,
+      assignedAgentId: updatedAccount.assignedExternalAgentId
+    });
+
+    return res.json({
+      success: true,
+      config: {
+        enabled: updatedAccount.autoResponseEnabled,
+        assignedAgentId: updatedAccount.assignedExternalAgentId
+      }
+    });
 
   } catch (error) {
     console.error('❌ Error actualizando configuración de respuestas automáticas:', error);
@@ -152,16 +125,16 @@ export async function updateAutoResponseConfig(req: Request, res: Response) {
  */
 export async function getAllAutoResponseConfigs(req: Request, res: Response) {
   try {
-    const configs = await db
+    const accounts = await db
       .select()
-      .from(autoResponseConfig);
+      .from(whatsappAccounts);
 
     res.json({
       success: true,
-      configs: configs.map(config => ({
-        accountId: config.accountId,
-        enabled: config.enabled,
-        assignedAgentId: config.assignedAgentId
+      configs: accounts.map(account => ({
+        accountId: account.id,
+        enabled: account.autoResponseEnabled || false,
+        assignedAgentId: account.assignedExternalAgentId || null
       }))
     });
 

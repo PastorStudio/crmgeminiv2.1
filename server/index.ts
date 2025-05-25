@@ -400,6 +400,11 @@ app.use((req, res, next) => {
   app.post('/api/agent-assignments/activity', agentAssignmentRoutes.updateChatActivity);
   app.get('/api/agent-assignments/stats', agentAssignmentRoutes.getAgentStats);
 
+  // Rutas para configuración de respuestas automáticas por cuenta
+  app.get('/api/auto-response-config/:accountId', autoResponseConfigRoutes.getAutoResponseConfig);
+  app.post('/api/auto-response-config/:accountId', autoResponseConfigRoutes.updateAutoResponseConfig);
+  app.get('/api/auto-response-configs', autoResponseConfigRoutes.getAllAutoResponseConfigs);
+
   // API para asignaciones de chat sin autenticación
   app.get('/api/chat-assignments/:chatId', async (req, res) => {
     try {
