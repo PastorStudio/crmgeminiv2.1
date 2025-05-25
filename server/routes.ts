@@ -4382,6 +4382,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generar preview de respuestas del agente
+  app.post('/api/external-agents/:agentId/preview', async (req: Request, res: Response) => {
+    try {
+      const { agentId } = req.params;
+      const { testMessages } = req.body;
+      
+      if (!testMessages || !Array.isArray(testMessages) || testMessages.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Se requieren mensajes de prueba'
+        });
+      }
+
+      const { externalAgentService } = await import('./services/externalAgentService');
+      
+      const previewResult = await externalAgentService.generateAgentPreview(agentId, testMessages);
+
+      console.log(`🔍 Preview generado para agente ${agentId}:`, previewResult);
+      res.json(previewResult);
+    } catch (error) {
+      console.error('❌ Error generando preview del agente:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
   app.post('/api/external-agents/:agentId/send', async (req: Request, res: Response) => {
     try {
       const { agentId } = req.params;

@@ -265,6 +265,119 @@ export class ExternalAgentService {
       };
     }
   }
+
+  // Generar preview de respuestas del agente
+  async generateAgentPreview(agentId: string, testMessages: string[]): Promise<any> {
+    try {
+      const agent = await this.getAgentById(agentId);
+      
+      if (!agent) {
+        return {
+          success: false,
+          error: 'Agente no encontrado'
+        };
+      }
+
+      console.log(`🔍 Generando preview para agente: ${agent.name}`);
+      
+      const previews = [];
+      
+      for (const message of testMessages) {
+        try {
+          const startTime = Date.now();
+          
+          // Preparar el payload para el agente externo
+          const payload = {
+            message: message,
+            chatId: `preview-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            preview: true
+          };
+
+          console.log(`🤖 Enviando mensaje de preview: ${message}`);
+
+          // Hacer la petición al agente externo con timeout corto para preview
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+          const response = await fetch(agent.agentUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+          const responseTime = Date.now() - startTime;
+
+          if (!response.ok) {
+            previews.push({
+              message: message,
+              response: `Error: ${response.status} - ${response.statusText}`,
+              responseTime: responseTime,
+              success: false
+            });
+            continue;
+          }
+
+          const responseData = await response.json();
+          
+          // Extraer la respuesta del agente
+          let agentResponseText = '';
+          
+          if (typeof responseData === 'string') {
+            agentResponseText = responseData;
+          } else if (responseData.response) {
+            agentResponseText = responseData.response;
+          } else if (responseData.message) {
+            agentResponseText = responseData.message;
+          } else if (responseData.text) {
+            agentResponseText = responseData.text;
+          } else {
+            agentResponseText = JSON.stringify(responseData);
+          }
+
+          previews.push({
+            message: message,
+            response: agentResponseText,
+            responseTime: responseTime,
+            success: true,
+            confidence: responseData.confidence || null
+          });
+
+          console.log(`✅ Preview generado para "${message}": ${agentResponseText}`);
+
+        } catch (error) {
+          console.error(`❌ Error generando preview para "${message}":`, error);
+          previews.push({
+            message: message,
+            response: `Error: ${error.message}`,
+            responseTime: 0,
+            success: false
+          });
+        }
+      }
+
+      return {
+        success: true,
+        agent: agent.name,
+        agentUrl: agent.agentUrl,
+        previews: previews,
+        totalTests: testMessages.length,
+        successfulTests: previews.filter(p => p.success).length
+      };
+
+    } catch (error) {
+      console.error('❌ Error generando preview del agente:', error);
+      return {
+        success: false,
+        error: 'Error interno del servidor'
+      };
+    }
+  }
 }
 
 export const externalAgentService = new ExternalAgentService();
