@@ -1446,7 +1446,7 @@ export function WhatsAppTwoColumn() {
                       onClick={() => {
                         setSmartBotsEnabled(!smartBotsEnabled);
                         toast({
-                          title: smartBotsEnabled ? "SmartBots desactivado" : "SmartBots activado",
+                          title: smartBotsEnabled ? "AI desactivado" : "AI activado",
                           description: smartBotsEnabled 
                             ? "Las respuestas automáticas están desactivadas" 
                             : "Las respuestas se generarán automáticamente con IA",
