@@ -126,6 +126,83 @@ app.use((req, res, next) => {
   next();
 });
 
+// RUTAS DE KEEP-ALIVE (ANTES DE VITE)
+app.get("/api/whatsapp/ping-status/all", async (req: Request, res: Response) => {
+  try {
+    const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
+    const allStatus = whatsappMultiAccountManager.getAllPingStatus();
+    
+    res.json({
+      success: true,
+      accounts: allStatus
+    });
+  } catch (error) {
+    console.error('❌ Error obteniendo estado de ping:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error obteniendo estado de ping'
+    });
+  }
+});
+
+app.post("/api/whatsapp/:accountId/start-keepalive", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
+    
+    const instance = whatsappMultiAccountManager.getInstance(accountId);
+    if (!instance) {
+      return res.status(404).json({
+        success: false,
+        error: 'Cuenta no encontrada'
+      });
+    }
+    
+    if (!instance.status.authenticated) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cuenta no autenticada - no se puede activar keep-alive'
+      });
+    }
+    
+    // Activar keep-alive manualmente
+    whatsappMultiAccountManager.activateKeepAlive(accountId);
+    
+    res.json({
+      success: true,
+      message: `Keep-alive activado para cuenta ${accountId}`,
+      pingStatus: whatsappMultiAccountManager.getPingStatus(accountId)
+    });
+  } catch (error) {
+    console.error(`❌ Error activando keep-alive para cuenta ${req.params.accountId}:`, error);
+    res.status(500).json({
+      success: false,
+      error: 'Error activando keep-alive'
+    });
+  }
+});
+
+app.post("/api/whatsapp/:accountId/stop-keepalive", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
+    
+    whatsappMultiAccountManager.deactivateKeepAlive(accountId);
+    
+    res.json({
+      success: true,
+      message: `Keep-alive desactivado para cuenta ${accountId}`,
+      pingStatus: whatsappMultiAccountManager.getPingStatus(accountId)
+    });
+  } catch (error) {
+    console.error(`❌ Error desactivando keep-alive para cuenta ${req.params.accountId}:`, error);
+    res.status(500).json({
+      success: false,
+      error: 'Error desactivando keep-alive'
+    });
+  }
+});
+
 // ENDPOINT DIRECTO - GET CONFIG 
 app.get("/api/config/auto-response", (req, res) => {
   try {
