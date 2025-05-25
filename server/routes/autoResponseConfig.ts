@@ -65,21 +65,18 @@ export async function updateAutoResponseConfig(req: Request, res: Response) {
       });
     }
 
-    // Si solo se está cambiando enabled (toggle AI), usar toggleAI
+    // Si solo se está cambiando enabled (toggle AI), actualizar directamente whatsappAccounts
     if (enabled !== undefined && assignedAgentId === undefined) {
       console.log(`🎯 Ejecutando toggle AI para cuenta ${accountId}: ${enabled ? 'ACTIVAR' : 'DESACTIVAR'}`);
       
-      const success = await agentConfigManager.toggleAI(accountId, enabled);
+      // Actualizar directamente en whatsappAccounts
+      const { whatsappAccounts } = await import('../../shared/schema');
+      await db
+        .update(whatsappAccounts)
+        .set({ autoResponseEnabled: enabled })
+        .where(eq(whatsappAccounts.id, accountId));
       
-      if (!success) {
-        console.log(`❌ Falló toggle AI para cuenta ${accountId}`);
-        return res.status(500).json({
-          success: false,
-          error: 'Error activando/desactivando AI'
-        });
-      }
-      
-      console.log(`✅ Toggle AI exitoso para cuenta ${accountId}`);
+      console.log(`✅ Toggle AI exitoso para cuenta ${accountId} - AI ${enabled ? 'ACTIVADO' : 'DESACTIVADO'}`);
     }
     // Si se está asignando un agente específico
     else if (assignedAgentId !== undefined) {
