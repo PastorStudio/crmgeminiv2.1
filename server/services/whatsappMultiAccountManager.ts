@@ -1105,10 +1105,24 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
-   * Activa keep-alive para cuentas ya autenticadas (método público)
+   * Activa keep-alive para una cuenta específica por ID
    */
-  public startKeepAlive(instance: WhatsAppInstance): void {
+  public activateKeepAlive(accountId: number): boolean {
+    const instance = this.instances.get(accountId);
+    if (!instance) return false;
+
+    if (!instance.status.authenticated) return false;
+
     this.startKeepAlive(instance);
+    return true;
+  }
+
+  /**
+   * Desactiva keep-alive para una cuenta específica por ID
+   */
+  public deactivateKeepAlive(accountId: number): boolean {
+    this.stopKeepAlive(accountId);
+    return true;
   }
 
   /**
@@ -1149,6 +1163,24 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       timeSinceLastPing: Date.now() - instance.status.pingStatus.lastPing,
       timeToNextPing: Math.max(0, instance.status.pingStatus.nextPing - Date.now())
     };
+  }
+
+  /**
+   * Obtiene el estado del ping para todas las cuentas
+   */
+  getAllPingStatus(): any[] {
+    const allStatus: any[] = [];
+    
+    for (const [accountId, instance] of this.instances.entries()) {
+      const pingStatus = this.getPingStatus(accountId);
+      allStatus.push({
+        accountId,
+        accountName: instance.name,
+        pingStatus
+      });
+    }
+    
+    return allStatus;
   }
 }
 
