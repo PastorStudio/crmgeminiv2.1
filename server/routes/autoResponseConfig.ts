@@ -33,6 +33,11 @@ export async function getAutoResponseConfig(req: Request, res: Response) {
       });
     }
 
+    console.log(`📊 Configuración para cuenta ${accountId}:`, {
+      enabled: account.autoResponseEnabled,
+      assignedAgentId: account.assignedExternalAgentId
+    });
+
     res.json({
       success: true,
       config: {
