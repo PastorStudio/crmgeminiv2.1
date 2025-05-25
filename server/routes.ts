@@ -421,16 +421,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/users", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {
-      // Verificar que el usuario tiene permisos de admin, supervisor o superadmin
+      // Verificar que el usuario tiene permisos administrativos
       const userRole = (req as any).user.role;
       const username = (req as any).user.username;
       
-      // DJP siempre tiene acceso completo como superadministrador
-      if (username !== 'DJP' && userRole !== 'admin' && userRole !== 'supervisor' && userRole !== 'superadmin' && userRole !== 'super_admin') {
-        return res.status(403).json({ 
-          success: false, 
-          message: "No tienes permisos para crear usuarios" 
-        });
+      console.log('🔐 Verificando permisos:', { username, userRole });
+      
+      // DJP tiene acceso TOTAL como superadministrador - sin restricciones
+      if (username === 'DJP') {
+        console.log('✅ DJP identificado - acceso completo de superadministrador concedido');
+      } else {
+        // Para otros usuarios, verificar roles estándar
+        const allowedRoles = ['admin', 'supervisor', 'superadmin', 'super_admin'];
+        if (!allowedRoles.includes(userRole)) {
+          console.log('❌ Acceso denegado para usuario:', username, 'con rol:', userRole);
+          return res.status(403).json({ 
+            success: false, 
+            message: "No tienes permisos para crear usuarios" 
+          });
+        }
       }
       
       const userData = insertUserSchema.parse(req.body);
@@ -4066,8 +4075,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // External Agents routes - endpoint duplicado eliminado
 
-  app.post('/api/external-agents', async (req: Request, res: Response) => {
+  app.post('/api/external-agents', authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {
+      // Verificar permisos de superadministrador
+      const userRole = (req as any).user.role;
+      const username = (req as any).user.username;
+      
+      console.log('🔐 Verificando permisos para agentes externos:', { username, userRole });
+      
+      // Solo DJP (superadministrador) puede gestionar agentes externos
+      if (username !== 'DJP') {
+        console.log('❌ Acceso denegado - solo DJP puede gestionar agentes externos');
+        return res.status(403).json({ 
+          success: false, 
+          message: "Solo el superadministrador puede gestionar agentes externos" 
+        });
+      }
+      
+      console.log('✅ DJP autorizado para gestionar agentes externos');
+      
       const { name, agentUrl, description, triggerKeywords, responseDelay } = req.body;
       
       if (!agentUrl) {
