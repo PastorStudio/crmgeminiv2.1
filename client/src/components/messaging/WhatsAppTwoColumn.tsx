@@ -1190,6 +1190,17 @@ export function WhatsAppTwoColumn() {
     });
   };
 
+  // Función para identificar el último mensaje recibido (no enviado por nosotros)
+  const getLastIncomingMessageId = (messages: WhatsAppMessage[]) => {
+    // Encontrar el último mensaje que no sea enviado por nosotros (fromMe: false)
+    const incomingMessages = messages.filter(msg => !msg.fromMe);
+    if (incomingMessages.length === 0) return null;
+    
+    // Ordenar por timestamp descendente y tomar el primero (más reciente)
+    const sortedIncoming = incomingMessages.sort((a, b) => b.timestamp - a.timestamp);
+    return sortedIncoming[0]?.id || null;
+  };
+
   const isContactOnline = (chat: WhatsAppChat) => {
     if (chat.isOnline) return true;
     if (chat.lastSeen) {
@@ -1518,6 +1529,10 @@ export function WhatsAppTwoColumn() {
                       messages[index - 1].author !== message.author || 
                       messages[index - 1].fromMe !== message.fromMe;
                     
+                    // Identificar si este es el último mensaje recibido (no enviado por nosotros)
+                    const lastIncomingMessageId = getLastIncomingMessageId(messages);
+                    const isLastIncomingMessage = !message.fromMe && message.id === lastIncomingMessageId;
+                    
                     return (
                       <motion.div
                         key={message.id}
@@ -1636,8 +1651,13 @@ export function WhatsAppTwoColumn() {
                                 )}
                               </div>
                               {!message.fromMe && (
-                                <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[2px] flex-shrink-0">
+                                <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[2px] flex-shrink-0 flex items-center gap-1">
                                   {formatTime(message.timestamp)}
+                                  {isLastIncomingMessage && (
+                                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium animate-pulse">
+                                      ÚLTIMO RECIBIDO
+                                    </span>
+                                  )}
                                 </div>
                               )}
                               {message.fromMe && (
