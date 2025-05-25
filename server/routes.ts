@@ -421,9 +421,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/users", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {
-      // Verificar que el usuario tiene permisos de admin o supervisor
+      // Verificar que el usuario tiene permisos de admin, supervisor o superadmin
       const userRole = (req as any).user.role;
-      if (userRole !== 'admin' && userRole !== 'supervisor') {
+      const username = (req as any).user.username;
+      
+      // DJP siempre tiene acceso completo como superadministrador
+      if (username !== 'DJP' && userRole !== 'admin' && userRole !== 'supervisor' && userRole !== 'superadmin' && userRole !== 'super_admin') {
         return res.status(403).json({ 
           success: false, 
           message: "No tienes permisos para crear usuarios" 
