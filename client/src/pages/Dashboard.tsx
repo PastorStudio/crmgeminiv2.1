@@ -167,14 +167,9 @@ export default function Dashboard() {
               </div>
               
               {/* Reloj del sistema */}
-              <div className="flex items-center space-x-3 bg-white/10 px-4 py-2 rounded-lg border border-white/20">
-                <div className="flex items-center space-x-2">
-                  <span className="text-yellow-400 text-lg">🕐</span>
-                  <div className="text-right">
-                    <div className="text-sm font-semibold">{formatDateTime()}</div>
-                    <div className="text-xs text-gray-300">Hora del Sistema</div>
-                  </div>
-                </div>
+              <div className="flex items-center space-x-2 bg-white/10 px-3 py-2 rounded-lg border border-white/20">
+                <span className="text-yellow-400 text-lg">🕐</span>
+                <div className="text-sm font-semibold">{formatDateTime()}</div>
               </div>
             </div>
           </div>
