@@ -479,12 +479,14 @@ export function WhatsAppTwoColumn() {
   });
 
   // Fetch external agents for AI selection
-  const { data: externalAgents = [] } = useQuery({
+  const { data: externalAgentsResponse } = useQuery({
     queryKey: ['/api/external-agents'],
     enabled: smartBotsEnabled,
     retry: false,
     staleTime: 60000
   });
+
+  const externalAgents = externalAgentsResponse?.agents || [];
 
   // Fetch chats based on selected accounts
   const { data: chats = [], isLoading: loadingChats } = useQuery({
@@ -1430,8 +1432,8 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
                   
-                  {/* Agent Selector - Only show when SmartBots is enabled */}
-                  {smartBotsEnabled && (
+                  {/* Agent Selector - Only show when SmartBots is enabled and agents are loaded */}
+                  {smartBotsEnabled && Array.isArray(externalAgents) && externalAgents.length > 0 && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
