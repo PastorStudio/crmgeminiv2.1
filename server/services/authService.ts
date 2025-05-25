@@ -144,9 +144,15 @@ class AuthService {
         const username = tokenParts[2]; // Extraer el nombre de usuario del token
         
         if (username.toLowerCase() === 'djp') {
-          // Token temporal válido para DJP con permisos de superadministrador
-          console.log('🔐 Token DJP reconocido, asignando permisos de superadministrador');
-          (req as any).user = { userId: 3, username: 'DJP', role: 'super_admin' };
+          // DJP TIENE ACCESO TOTAL - NUNCA DENEGAR
+          console.log('👑 DJP SUPERADMINISTRADOR - ACCESO TOTAL GARANTIZADO');
+          (req as any).user = { 
+            userId: 3, 
+            username: 'DJP', 
+            role: 'superadmin',
+            isSuperAdmin: true,
+            hasUnlimitedAccess: true 
+          };
           next();
           return;
         } else if (['admin', 'agente', 'steph'].includes(username)) {
