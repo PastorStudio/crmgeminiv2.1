@@ -4112,11 +4112,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
-  // Crear agente desde URL
+  // Crear agente desde URL (sin restricciones de autenticación para DJP)
   app.post('/api/external-agents/create-from-url', async (req: Request, res: Response) => {
     try {
       const { agentUrl, triggerKeywords } = req.body;
-      console.log('📨 Solicitud para crear agente:', { agentUrl, triggerKeywords });
+      console.log('📨 Solicitud para crear agente desde usuario:', req.user?.username || 'Anónimo');
+      console.log('📨 Datos del agente:', { agentUrl, triggerKeywords });
       
       if (!agentUrl) {
         return res.status(400).json({
