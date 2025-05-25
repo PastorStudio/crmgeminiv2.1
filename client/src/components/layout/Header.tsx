@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AiAssistant from "@/components/assistant/AiAssistant";
 import LeadForm from "@/components/leads/LeadForm";
 
@@ -12,6 +12,31 @@ export default function Header({ onMenuButtonClick }: HeaderProps) {
   const [location] = useLocation();
   const [showAssistant, setShowAssistant] = useState(false);
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format time and date for display
+  const formatDateTime = () => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    };
+    return currentTime.toLocaleDateString('es-ES', options);
+  };
 
   // Get the current page title
   const getPageTitle = () => {
@@ -56,10 +81,20 @@ export default function Header({ onMenuButtonClick }: HeaderProps) {
       <div className="bg-white shadow hidden md:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-semibold text-gray-900">{getPageTitle()}</h1>
-            <div className="flex items-center space-x-2">
-              {/* Espacio para futuras notificaciones */}
+            <div className="flex items-center space-x-6">
+              <h1 className="text-2xl font-semibold text-gray-900">{getPageTitle()}</h1>
               
+              {/* Reloj del sistema */}
+              <div className="flex items-center space-x-2 bg-gray-50 px-4 py-2 rounded-lg border">
+                <span className="material-icons text-primary-600 text-lg">schedule</span>
+                <div className="text-sm">
+                  <div className="font-semibold text-gray-900">{formatDateTime()}</div>
+                  <div className="text-xs text-gray-500">Hora del Sistema</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
               {/* Botones de acción */}
               {(location === "/" || location === "/leads") && (
                 <Button 
