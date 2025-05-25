@@ -231,6 +231,49 @@ export default function ExternalAgents() {
     setShowConfigDialog(true);
   };
 
+  const generatePreview = async (agent: ExternalAgent) => {
+    setPreviewAgent(agent);
+    setPreviewLoading(true);
+    setPreviewResult(null);
+    setShowPreviewDialog(true);
+
+    try {
+      const response = await fetch(`/api/external-agents/${agent.id}/preview`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          testMessages: testMessages
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setPreviewResult(data);
+        toast({
+          title: "Preview generado",
+          description: `Se generaron ${data.successfulTests} de ${data.totalTests} respuestas exitosamente`
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "No se pudo generar el preview",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error conectando con el agente",
+        variant: "destructive"
+      });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   const testAgent = async (agentId: string) => {
     try {
       const response = await fetch(`/api/external-agents/${agentId}/test`, {
@@ -412,6 +455,15 @@ export default function ExternalAgents() {
                     title="Configuración Avanzada"
                   >
                     <Settings className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => generatePreview(agent)}
+                    className="text-purple-600 hover:text-purple-700"
+                    title="Ver Preview de Respuestas"
+                  >
+                    <Eye className="w-4 h-4" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -656,6 +708,125 @@ export default function ExternalAgents() {
                   </Button>
                 </div>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Preview de Respuestas */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5 text-purple-600" />
+              Preview de Respuestas - {previewAgent?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Ve cómo responde el agente a diferentes tipos de mensajes
+            </DialogDescription>
+          </DialogHeader>
+
+          {previewLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="flex flex-col items-center gap-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                <p className="text-sm text-gray-600">Generando respuestas de preview...</p>
+              </div>
+            </div>
+          ) : previewResult ? (
+            <div className="space-y-6">
+              {/* Resumen */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Agente:</span>
+                    <p className="text-gray-600">{previewResult.agent}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Pruebas Exitosas:</span>
+                    <p className="text-green-600 font-semibold">
+                      {previewResult.successfulTests} de {previewResult.totalTests}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Tasa de Éxito:</span>
+                    <p className="text-blue-600 font-semibold">
+                      {Math.round((previewResult.successfulTests / previewResult.totalTests) * 100)}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Respuestas */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Respuestas del Agente</h3>
+                {previewResult.previews.map((preview, index) => (
+                  <div key={index} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Send className="w-4 h-4 text-blue-500" />
+                          <span className="font-medium text-sm">Mensaje de Prueba:</span>
+                        </div>
+                        <p className="bg-blue-50 p-3 rounded text-sm">{preview.message}</p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-500">{preview.responseTime}ms</span>
+                        {preview.success ? (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-500" />
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Bot className="w-4 h-4 text-purple-500" />
+                        <span className="font-medium text-sm">Respuesta del Agente:</span>
+                        {preview.confidence && (
+                          <Badge variant="outline" className="text-xs">
+                            Confianza: {Math.round(preview.confidence * 100)}%
+                          </Badge>
+                        )}
+                      </div>
+                      <p className={`p-3 rounded text-sm ${
+                        preview.success 
+                          ? 'bg-green-50 text-green-800' 
+                          : 'bg-red-50 text-red-800'
+                      }`}>
+                        {preview.response}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Botones */}
+              <div className="flex justify-between pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => generatePreview(previewAgent!)}
+                  disabled={previewLoading}
+                  className="text-purple-600 border-purple-300 hover:bg-purple-50"
+                >
+                  🔄 Regenerar Preview
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setShowPreviewDialog(false);
+                    setPreviewResult(null);
+                    setPreviewAgent(null);
+                  }}
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No hay resultados de preview disponibles</p>
             </div>
           )}
         </DialogContent>
