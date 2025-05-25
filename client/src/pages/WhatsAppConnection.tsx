@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Smartphone, CheckCircle, AlertCircle, Wifi, WifiOff, Heart, Square } from 'lucide-react';
+import { RefreshCw, Smartphone, CheckCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface QRResponse {
@@ -13,22 +12,12 @@ interface QRResponse {
   message?: string;
 }
 
-interface PingStatus {
-  isActive: boolean;
-  lastPing: number;
-  pingCount: number;
-  nextPing: number;
-  timeSinceLastPing?: number;
-  timeToNextPing?: number;
-}
-
 interface WhatsAppAccount {
   id: number;
   name: string;
   description?: string;
   qrCode?: string;
   connected: boolean;
-  pingStatus?: PingStatus;
 }
 
 export default function WhatsAppConnection() {
