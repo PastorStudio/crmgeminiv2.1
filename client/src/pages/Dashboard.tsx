@@ -22,8 +22,33 @@ export default function Dashboard() {
     createdLeads: any[];
     updatedLeads: any[];
   }>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format time and date for display
+  const formatDateTime = () => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    };
+    return currentTime.toLocaleDateString('es-ES', options);
+  };
 
   // Función para obtener el saludo según la hora
   const getGreeting = () => {
@@ -130,14 +155,27 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold text-gray-800">CRM con Gemini</h1>
         </div>
 
-        {/* Saludo personalizado */}
+        {/* Saludo personalizado con reloj del sistema */}
         <div className="mb-8">
           <div className="bg-gray-900 p-4 rounded-lg shadow-lg text-white">
-            <div className="flex items-center space-x-3">
-              {greeting.icon}
-              <p className="text-sm">
-                {greeting.text}, {user?.fullName || user?.username || 'Usuario'}! - Bienvenido de vuelta al sistema de gestión WhatsApp
-              </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                {greeting.icon}
+                <p className="text-sm">
+                  {greeting.text}, {user?.fullName || user?.username || 'Usuario'}! - Bienvenido de vuelta al sistema de gestión WhatsApp
+                </p>
+              </div>
+              
+              {/* Reloj del sistema */}
+              <div className="flex items-center space-x-3 bg-white/10 px-4 py-2 rounded-lg border border-white/20">
+                <div className="flex items-center space-x-2">
+                  <span className="text-yellow-400 text-lg">🕐</span>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold">{formatDateTime()}</div>
+                    <div className="text-xs text-gray-300">Hora del Sistema</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
