@@ -1,11 +1,8 @@
-import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Bot, Settings, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Bot, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
 interface AgentConfigSectionProps {
   accountId: number;
@@ -27,7 +24,6 @@ interface AutoResponseConfig {
 export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
 
   // Obtener agentes externos disponibles
   const { data: externalAgents = [], isLoading: loadingAgents } = useQuery({
@@ -95,21 +91,10 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
     });
   };
 
-  const handleAgentChange = (agentId: string) => {
-    const finalAgentId = agentId === 'none' ? null : agentId;
-    setSelectedAgentId(finalAgentId || '');
-    
-    // Si el AI está activado, actualizar inmediatamente
-    if (autoConfig?.enabled) {
-      updateConfigMutation.mutate({
-        enabled: true,
-        agentId: finalAgentId
-      });
-    }
-  };
+
 
   const assignedAgent = externalAgents.find((agent: ExternalAgent) => 
-    agent.id === (autoConfig?.assignedAgentId || selectedAgentId)
+    agent.id === autoConfig?.assignedAgentId
   );
 
   if (loadingAgents || loadingConfig) {
@@ -145,31 +130,7 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
         </div>
       </div>
 
-      {/* Selector de Agente */}
-      <div className="mb-3">
-        <label className="text-xs font-medium text-gray-700 block mb-1">
-          Agente Asignado:
-        </label>
-        <Select
-          value={autoConfig?.assignedAgentId || selectedAgentId || 'none'}
-          onValueChange={handleAgentChange}
-          disabled={updateConfigMutation.isPending}
-        >
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue placeholder="Seleccionar agente" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Sin agente asignado</SelectItem>
-            {externalAgents.map((agent: ExternalAgent) => (
-              <SelectItem key={agent.id} value={agent.id}>
-                {agent.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Información del agente asignado */}
+      {/* Información del agente asignado (solo lectura) */}
       {assignedAgent && (
         <div className="mb-3 p-2 bg-white rounded border text-xs">
           <div className="font-medium text-gray-800">{assignedAgent.name}</div>
