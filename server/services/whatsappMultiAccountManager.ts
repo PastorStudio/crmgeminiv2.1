@@ -571,8 +571,11 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         
         // Solo procesar mensajes entrantes (no enviados por nosotros)
         if (!message.fromMe) {
-          console.log(`📨 Nuevo mensaje recibido en cuenta ${id}: ${message.body?.substring(0, 50) || '[Sin texto]'}...`);
-          console.log(`🔍 Tipo de mensaje: ${message.type}, hasMedia: ${message.hasMedia}`);
+          console.log(`📨 🟢 MENSAJE ENTRANTE DETECTADO (BURBUJA VERDE) en cuenta ${id}`);
+          console.log(`📱 Contenido: "${message.body?.substring(0, 50) || '[Sin texto]'}..."`);
+          console.log(`👤 De: ${message.from} (${message._data.notifyName || 'Sin nombre'})`);
+          console.log(`🔍 Tipo: ${message.type}, hasMedia: ${message.hasMedia}`);
+          console.log(`⚡ INICIANDO PROCESO DE RESPUESTA AUTOMÁTICA PARA MENSAJE ENTRANTE`);
           
           let messageBody = message.body || '';
           
@@ -653,9 +656,16 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           
           console.log(`✅ Mensaje procesado por sistema de tickets automáticos`);
 
-          // Procesar mensaje con agentes intermediarios
+          // Procesar mensaje con agentes intermediarios SOLO PARA MENSAJES ENTRANTES
+          console.log(`🤖 EJECUTANDO RESPUESTA AUTOMÁTICA para mensaje entrante (burbuja verde)`);
+          console.log(`📝 Contenido del mensaje a procesar: "${messageBody}"`);
+          console.log(`📞 Chat ID: ${message.from}`);
+          console.log(`🏢 Cuenta ID: ${id}`);
+          
           try {
             const { externalAgentService } = await import('./externalAgentService');
+            
+            console.log(`🔄 Iniciando procesamiento con agentes externos...`);
             
             const agentResponse = await externalAgentService.processMessageForAgent(
               messageBody,
@@ -668,12 +678,15 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             );
 
             if (agentResponse.success) {
-              console.log(`🤖 Agente intermediario respondió exitosamente: "${agentResponse.response}"`);
+              console.log(`✅ 🟢 RESPUESTA AUTOMÁTICA ENVIADA EXITOSAMENTE para mensaje entrante`);
+              console.log(`🤖 Agente usado: ${agentResponse.agent}`);
+              console.log(`💬 Respuesta enviada: "${agentResponse.response}"`);
             } else {
-              console.log(`🤖 No hay agente intermediario disponible para este mensaje`);
+              console.log(`⚠️ No se pudo generar respuesta automática para mensaje entrante`);
+              console.log(`🤖 Error: ${agentResponse.message || 'Error desconocido'}`);
             }
           } catch (error) {
-            console.error(`❌ Error procesando mensaje con agentes intermediarios:`, error);
+            console.error(`❌ Error crítico procesando respuesta automática para mensaje entrante:`, error);
           }
         }
       } catch (error) {
