@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Bot, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
@@ -91,6 +92,16 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
     });
   };
 
+  const handleAgentChange = (agentId: string) => {
+    const finalAgentId = agentId === 'none' ? null : agentId;
+    
+    // Actualizar la configuración con el nuevo agente
+    updateConfigMutation.mutate({
+      enabled: autoConfig?.enabled || false,
+      agentId: finalAgentId
+    });
+  };
+
 
 
   const assignedAgent = externalAgents.find((agent: ExternalAgent) => 
@@ -130,7 +141,31 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
         </div>
       </div>
 
-      {/* Información del agente asignado (solo lectura) */}
+      {/* Selector de Agente */}
+      <div className="mb-3">
+        <label className="text-xs font-medium text-gray-700 block mb-1">
+          Agente Asignado:
+        </label>
+        <Select
+          value={autoConfig?.assignedAgentId || 'none'}
+          onValueChange={handleAgentChange}
+          disabled={updateConfigMutation.isPending}
+        >
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Seleccionar agente" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Sin agente asignado</SelectItem>
+            {externalAgents.map((agent: ExternalAgent) => (
+              <SelectItem key={agent.id} value={agent.id}>
+                {agent.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Información del agente asignado */}
       {assignedAgent && (
         <div className="mb-3 p-2 bg-white rounded border text-xs">
           <div className="font-medium text-gray-800">{assignedAgent.name}</div>
