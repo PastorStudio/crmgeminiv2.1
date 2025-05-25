@@ -3,6 +3,9 @@ import { createServer } from "http";
 import { registerRoutes } from "./routes";
 // Comentado temporalmente para evitar errores de inicio
 import { setupVite, serveStatic, log } from "./vite";
+
+// Configurar zona horaria para Panamá (GMT-5)
+process.env.TZ = 'America/Panama';
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
