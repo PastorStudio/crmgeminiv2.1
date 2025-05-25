@@ -86,6 +86,7 @@ export interface IStorage {
   getWhatsappAccount(id: number): Promise<WhatsappAccount | undefined>;
   createWhatsappAccount(account: InsertWhatsappAccount): Promise<WhatsappAccount>;
   updateWhatsappAccount(id: number, data: Partial<InsertWhatsappAccount>): Promise<WhatsappAccount | undefined>;
+  updateWhatsappAccountAgentConfig(id: number, config: { assignedExternalAgentId?: string | null, autoResponseEnabled?: boolean, responseDelay?: number }): Promise<void>;
   deleteWhatsappAccount(id: number): Promise<void>;
   
   // Chat Assignment methods
@@ -588,6 +589,23 @@ export class DatabaseStorage implements IStorage {
       return updatedAccount;
     } catch (error) {
       console.error(`Error al actualizar cuenta WhatsApp ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async updateWhatsappAccountAgentConfig(id: number, config: { assignedExternalAgentId?: string | null, autoResponseEnabled?: boolean, responseDelay?: number }): Promise<void> {
+    try {
+      await db.update(whatsappAccounts)
+        .set({
+          assignedExternalAgentId: config.assignedExternalAgentId,
+          autoResponseEnabled: config.autoResponseEnabled,
+          responseDelay: config.responseDelay
+        })
+        .where(eq(whatsappAccounts.id, id));
+      
+      console.log(`✅ Configuración de agente actualizada para cuenta ${id}`);
+    } catch (error) {
+      console.error(`Error al actualizar configuración de agente para cuenta ${id}:`, error);
       throw error;
     }
   }

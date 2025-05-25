@@ -912,7 +912,56 @@ app.use((req, res, next) => {
     next();
   });
 
+  // RUTAS DE CONFIGURACIÓN DE AGENTES POR CUENTA - ANTES DE VITE
+  app.get("/api/whatsapp-accounts/:accountId/agent-config", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { storage } = await import('./storage');
+      
+      // Obtener la configuración del agente para esta cuenta
+      const account = await storage.getWhatsappAccount(accountId);
+      if (!account) {
+        return res.status(404).json({ error: 'Cuenta no encontrada' });
+      }
+      
+      res.json({
+        success: true,
+        config: {
+          assignedExternalAgentId: account.assignedExternalAgentId,
+          autoResponseEnabled: account.autoResponseEnabled,
+          responseDelay: account.responseDelay
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo configuración de agente:', error);
+      res.status(500).json({ error: 'Error obteniendo configuración' });
+    }
+  });
 
+  app.post("/api/whatsapp-accounts/:accountId/assign-agent", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { agentId, autoResponseEnabled, responseDelay } = req.body;
+      const { storage } = await import('./storage');
+      
+      // Actualizar la configuración del agente
+      await storage.updateWhatsappAccountAgentConfig(accountId, {
+        assignedExternalAgentId: agentId || null,
+        autoResponseEnabled: autoResponseEnabled || false,
+        responseDelay: responseDelay || 3
+      });
+      
+      console.log(`✅ Agente ${agentId} asignado a cuenta ${accountId}`);
+      
+      res.json({
+        success: true,
+        message: `Configuración de agente actualizada para cuenta ${accountId}`
+      });
+    } catch (error) {
+      console.error('❌ Error asignando agente:', error);
+      res.status(500).json({ error: 'Error asignando agente' });
+    }
+  });
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route

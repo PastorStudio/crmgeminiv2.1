@@ -41,6 +41,12 @@ export const whatsappAccounts = pgTable("whatsapp_accounts", {
   status: text("status").default("inactive"),
   // Usuario asignado como administrador de esta cuenta
   adminId: integer("adminId").references(() => users.id),
+  // Agente externo asignado para respuestas automáticas
+  assignedExternalAgentId: text("assignedExternalAgentId").references(() => externalAgents.id),
+  // Configuración de respuestas automáticas
+  autoResponseEnabled: boolean("autoResponseEnabled").default(false),
+  // Tiempo de respuesta en segundos
+  responseDelay: integer("responseDelay").default(3),
   createdAt: timestamp("createdAt").defaultNow(),
   lastActiveAt: timestamp("lastActiveAt"),
 });
