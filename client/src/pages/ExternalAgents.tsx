@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Link as LinkIcon, CheckCircle, XCircle, Bot, Trash2, Settings, Timer, MessageSquare } from 'lucide-react';
+import { Plus, Link as LinkIcon, CheckCircle, XCircle, Bot, Trash2, Settings, Timer, MessageSquare, Eye, Send, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ExternalAgent {
@@ -27,6 +27,21 @@ interface AgentStats {
   agentsByUrl: Record<string, number>;
 }
 
+interface PreviewResult {
+  success: boolean;
+  agent: string;
+  agentUrl: string;
+  previews: Array<{
+    message: string;
+    response: string;
+    responseTime: number;
+    success: boolean;
+    confidence?: number;
+  }>;
+  totalTests: number;
+  successfulTests: number;
+}
+
 export default function ExternalAgents() {
   const [agents, setAgents] = useState<ExternalAgent[]>([]);
   const [stats, setStats] = useState<AgentStats | null>(null);
@@ -36,6 +51,16 @@ export default function ExternalAgents() {
   const [loading, setLoading] = useState(false);
   const [editingAgent, setEditingAgent] = useState<ExternalAgent | null>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [previewAgent, setPreviewAgent] = useState<ExternalAgent | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null);
+  const [testMessages, setTestMessages] = useState<string[]>([
+    'Hola, ¿cómo estás?',
+    '¿Podrías ayudarme con información sobre sus servicios?',
+    'Gracias por tu ayuda',
+    '¿Cuáles son sus horarios de atención?'
+  ]);
   const { toast } = useToast();
 
   useEffect(() => {
