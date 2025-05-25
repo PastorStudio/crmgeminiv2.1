@@ -50,16 +50,19 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
 
   // Mutation para actualizar configuración de respuestas automáticas
   const updateConfigMutation = useMutation({
-    mutationFn: async ({ enabled, agentId }: { enabled: boolean; agentId: string | null }) => {
+    mutationFn: async ({ enabled, agentId }: { enabled?: boolean; agentId?: string | null }) => {
+      const body: any = {};
+      if (enabled !== undefined) body.enabled = enabled;
+      if (agentId !== undefined) body.assignedAgentId = agentId;
+
+      console.log('📤 Enviando al servidor:', body);
+
       const response = await fetch(`/api/auto-response-config/${accountId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          enabled,
-          assignedAgentId: agentId
-        })
+        body: JSON.stringify(body)
       });
 
       if (!response.ok) {
@@ -87,10 +90,10 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
   const handleToggleAI = (enabled: boolean) => {
     console.log('🔄 Toggle AI clicked:', { enabled, accountId, currentAgentId: autoConfig?.assignedAgentId });
     
-    // Solo activar/desactivar el agente ya asignado sin cambiar la asignación
+    // Solo enviar el estado enabled, sin cambiar el agente asignado
     updateConfigMutation.mutate({
-      enabled,
-      agentId: autoConfig?.assignedAgentId || null
+      enabled
+      // No enviar agentId para evitar cambios no deseados
     });
   };
 
