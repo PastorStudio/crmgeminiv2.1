@@ -86,12 +86,24 @@ class AutoMessageProcessor {
    */
   private async getAutoResponseConfig(accountId: number) {
     try {
-      const [config] = await db
-        .select()
-        .from(autoResponseConfig)
-        .where(eq(autoResponseConfig.accountId, accountId));
+      // Usar la configuración directa de whatsappAccounts en lugar de autoResponseConfig
+      const { whatsappAccounts } = await import('../../shared/schema');
+      const [account] = await db
+        .select({
+          enabled: whatsappAccounts.autoResponseEnabled,
+          assignedAgentId: whatsappAccounts.assignedExternalAgentId
+        })
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.id, accountId));
       
-      return config || null;
+      if (!account) return null;
+      
+      console.log(`📊 Config para cuenta ${accountId}:`, account);
+      
+      return {
+        enabled: account.enabled || false,
+        assignedAgentId: account.assignedAgentId
+      };
     } catch (error) {
       console.error('❌ Error obteniendo configuración de respuestas automáticas:', error);
       return null;
@@ -103,15 +115,26 @@ class AutoMessageProcessor {
    */
   private async getAssignedAgent(accountId: number) {
     try {
+      // Obtener el ID del agente asignado desde la configuración de la cuenta
+      const config = await this.getAutoResponseConfig(accountId);
+      if (!config || !config.assignedAgentId) {
+        console.log(`🔍 No hay agente asignado para cuenta ${accountId}`);
+        return null;
+      }
+
+      // Obtener los datos completos del agente
       const [agent] = await db
         .select()
         .from(externalAgents)
-        .where(and(
-          eq(externalAgents.accountId, accountId),
-          eq(externalAgents.isActive, true)
-        ));
+        .where(eq(externalAgents.id, config.assignedAgentId));
       
-      return agent || null;
+      if (!agent) {
+        console.log(`❌ Agente ${config.assignedAgentId} no encontrado para cuenta ${accountId}`);
+        return null;
+      }
+
+      console.log(`✅ Agente encontrado: ${agent.name} para cuenta ${accountId}`);
+      return agent;
     } catch (error) {
       console.error('❌ Error obteniendo agente asignado:', error);
       return null;
