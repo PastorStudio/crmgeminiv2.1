@@ -436,32 +436,108 @@ export class ExternalAgentService {
     return languageResponses[Math.floor(Math.random() * languageResponses.length)];
   }
 
-  // Procesar mensaje para agente específico (método existente)
+  // Procesar mensaje para agente específico con respuesta automática
   async processMessageForAgent(message: string, chatId: string, accountId: number, context?: any): Promise<any> {
     try {
-      const agent = await this.shouldProcessMessage(message);
+      // Obtener todos los agentes disponibles
+      const agents = await this.getAllAgents();
       
-      if (!agent) {
+      if (agents.length === 0) {
+        console.log('🤖 No hay agentes externos configurados, creando agente predeterminado...');
+        
+        // Crear agente SmartBots predeterminado si no existe
+        const defaultAgent = await this.createAgent({
+          name: 'SmartBots ChatGPT',
+          agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
+          description: 'Asistente inteligente especializado en automatización empresarial',
+          triggerKeywords: ['automatización', 'procesos', 'sistemas', 'consultoría'],
+          responseTimeMs: 3000,
+          isActive: true
+        });
+        
+        console.log('✅ Agente SmartBots ChatGPT creado automáticamente');
+      }
+
+      // Buscar agente SmartBots ChatGPT como predeterminado
+      const updatedAgents = await this.getAllAgents();
+      let selectedAgent = updatedAgents.find(agent => 
+        agent.name.includes('SmartBots') || agent.name.includes('ChatGPT')
+      );
+      
+      // Si no hay SmartBots, usar el primer agente disponible
+      if (!selectedAgent) {
+        selectedAgent = updatedAgents[0];
+      }
+      
+      if (!selectedAgent) {
         return {
           success: false,
           message: 'No hay agentes disponibles para procesar este mensaje'
         };
       }
 
-      const response = await this.sendMessageToAgent(agent.id, message, chatId);
+      console.log(`🤖 Procesando mensaje automáticamente con ${selectedAgent.name}`);
       
-      return {
-        success: true,
-        response: response,
-        agent: agent.name,
-        processingTime: Date.now()
-      };
+      // Generar respuesta usando el agente con tu clave API de OpenAI
+      const agentResponse = await this.processMessageWithAgent(selectedAgent.id, {
+        message,
+        contactName: context?.contactName || 'Cliente',
+        context: `Auto-respuesta para chat ${chatId}`,
+        targetLanguage: 'es',
+        translateResponse: false
+      });
+
+      if (agentResponse) {
+        // Enviar respuesta automáticamente vía WhatsApp
+        await this.sendAutoResponseToWhatsApp(accountId, chatId, agentResponse);
+        
+        return {
+          success: true,
+          response: agentResponse,
+          agent: selectedAgent.name,
+          processingTime: Date.now()
+        };
+      } else {
+        return {
+          success: false,
+          message: 'No se pudo generar respuesta automática'
+        };
+      }
     } catch (error) {
       console.error('❌ Error procesando mensaje para agente:', error);
       return {
         success: false,
         error: 'Error procesando mensaje'
       };
+    }
+  }
+
+  // Enviar respuesta automática a WhatsApp
+  async sendAutoResponseToWhatsApp(accountId: number, chatId: string, message: string): Promise<boolean> {
+    try {
+      console.log(`📤 Enviando respuesta automática a chat ${chatId}: "${message}"`);
+      
+      const response = await fetch(`http://localhost:5000/api/whatsapp-accounts/${accountId}/send-message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chatId: chatId,
+          message: message
+        })
+      });
+
+      if (response.ok) {
+        console.log(`✅ Respuesta automática enviada exitosamente`);
+        return true;
+      } else {
+        console.error(`❌ Error enviando respuesta automática: ${response.statusText}`);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error enviando respuesta automática:', error);
+      return false;
     }
   }
 
