@@ -1185,7 +1185,8 @@ export function WhatsAppTwoColumn() {
     return new Date(timestamp).toLocaleTimeString('es-ES', { 
       hour: '2-digit', 
       minute: '2-digit',
-      hour12: true
+      hour12: true,
+      timeZone: 'America/Panama'
     });
   };
 
