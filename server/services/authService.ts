@@ -77,7 +77,7 @@ class AuthService {
         if (user.id !== 3) { // No actualizar si es el superadmin con ID 3
           try {
             await storage.updateUser(user.id, {
-              lastLoginAt: new Date().toISOString()
+              lastLoginAt: new Date()
             });
           } catch (err) {
             console.error("Error al actualizar lastLoginAt:", err);
