@@ -100,6 +100,11 @@ export class ExternalAgentService {
       console.log(`📡 URL: ${agent.agentUrl}`);
       console.log(`💬 Mensaje: ${message}`);
 
+      // Si es un agente de ChatGPT, usar OpenAI API directamente
+      if (agent.agentUrl.includes('chatgpt.com')) {
+        return await this.sendMessageToOpenAI(agent, message, chatContext, userInfo);
+      }
+
       // Hacer la petición al agente externo con AbortController para timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -376,6 +381,69 @@ export class ExternalAgentService {
         success: false,
         error: 'Error interno del servidor'
       };
+    }
+  }
+  // Función para enviar mensajes a OpenAI (agentes de ChatGPT)
+  private async sendMessageToOpenAI(
+    agent: any, 
+    message: string, 
+    chatContext: any = {}, 
+    userInfo: any = {}
+  ): Promise<any> {
+    try {
+      const OpenAI = require('openai');
+      
+      if (!process.env.OPENAI_API_KEY) {
+        console.log(`❌ No hay clave API de OpenAI configurada`);
+        return null;
+      }
+
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      // Crear un prompt que simule el comportamiento del agente específico
+      let agentPersonality = '';
+      if (agent.name.toLowerCase().includes('smartbots')) {
+        agentPersonality = 'Eres SmartBots, un asistente inteligente especializado en automatización y respuestas conversacionales para WhatsApp. Responde de manera amigable, profesional y útil. Ayudas con consultas de servicio al cliente, ventas y soporte técnico.';
+      } else if (agent.name.toLowerCase().includes('smartplanner')) {
+        agentPersonality = 'Eres SmartPlanner IA, un asistente especializado en planificación, organización y gestión de tareas. Ayudas a las personas a organizar su tiempo, crear horarios, planificar proyectos y gestionar actividades de manera eficiente.';
+      } else {
+        agentPersonality = `Eres ${agent.name}, un asistente inteligente que ayuda a los usuarios con sus consultas de manera profesional y útil.`;
+      }
+
+      const startTime = Date.now();
+      
+      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: agentPersonality
+          },
+          {
+            role: "user",
+            content: message
+          }
+        ],
+        max_tokens: 500,
+        temperature: 0.7
+      });
+
+      const responseTime = Date.now() - startTime;
+      const text = completion.choices[0].message.content;
+
+      console.log(`✅ Respuesta generada por OpenAI para ${agent.name} (${responseTime}ms): ${text.substring(0, 100)}...`);
+
+      return {
+        response: text,
+        timestamp: new Date().toISOString(),
+        agent: agent.name,
+        responseTime: responseTime
+      };
+
+    } catch (error: any) {
+      console.log(`❌ Error usando OpenAI: ${error.message}`);
+      return null;
     }
   }
 }
