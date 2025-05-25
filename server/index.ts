@@ -13,6 +13,8 @@ import * as agentAssignmentRoutes from "./routes/agentAssignments";
 import { invisibleAgentIntegrator } from "./services/invisibleAgentIntegrator";
 import { realTimeNotificationService } from "./services/realTimeNotificationService";
 import * as whatsappAPI from "./routes/whatsappAPI";
+import { autoMessageProcessor } from "./services/autoMessageProcessor";
+import { messageMonitor } from "./services/messageMonitor";
 
 // Sistema iniciado correctamente
 console.log('✅ Sistema CRM WhatsApp iniciado correctamente');
