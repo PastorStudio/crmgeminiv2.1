@@ -5,6 +5,7 @@ import { Request, Response } from 'express';
 import { db } from '../db';
 import { whatsappAccounts, externalAgents } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
+import { agentConfigManager } from '../services/agentConfigManager';
 
 /**
  * Obtener configuración de respuestas automáticas para una cuenta
@@ -20,29 +21,20 @@ export async function getAutoResponseConfig(req: Request, res: Response) {
       });
     }
 
-    // Buscar la cuenta de WhatsApp
-    const [account] = await db
-      .select()
-      .from(whatsappAccounts)
-      .where(eq(whatsappAccounts.id, accountId));
-
-    if (!account) {
+    const config = await agentConfigManager.getAgentConfig(accountId);
+    
+    if (!config) {
       return res.status(404).json({
         success: false,
-        error: 'Cuenta no encontrada'
+        error: 'Configuración no encontrada'
       });
     }
-
-    console.log(`📊 Configuración para cuenta ${accountId}:`, {
-      enabled: account.autoResponseEnabled,
-      assignedAgentId: account.assignedExternalAgentId
-    });
 
     res.json({
       success: true,
       config: {
-        enabled: account.autoResponseEnabled || false,
-        assignedAgentId: account.assignedExternalAgentId || null
+        enabled: config.enabled,
+        assignedAgentId: config.agentId
       }
     });
 
@@ -73,55 +65,50 @@ export async function updateAutoResponseConfig(req: Request, res: Response) {
       });
     }
 
-    // Validar que el agente existe si se está asignando
-    if (assignedAgentId) {
-      const [agent] = await db
-        .select()
-        .from(externalAgents)
-        .where(eq(externalAgents.id, assignedAgentId));
-
-      if (!agent) {
-        return res.status(400).json({
+    // Si solo se está cambiando enabled (toggle AI), usar toggleAI
+    if (enabled !== undefined && assignedAgentId === undefined) {
+      const success = await agentConfigManager.toggleAI(accountId, enabled);
+      
+      if (!success) {
+        return res.status(500).json({
           success: false,
-          error: 'Agente externo no encontrado'
+          error: 'Error activando/desactivando AI'
+        });
+      }
+    }
+    // Si se está asignando un agente específico
+    else if (assignedAgentId !== undefined) {
+      const config = {
+        accountId,
+        agentId: assignedAgentId,
+        enabled: enabled || false
+      };
+      
+      const success = await agentConfigManager.setAgentConfig(config);
+      
+      if (!success) {
+        return res.status(500).json({
+          success: false,
+          error: 'Error configurando agente'
         });
       }
     }
 
-    // Actualizar solo el estado de respuestas automáticas, manteniendo el agente asignado
-    const updateData: any = {
-      autoResponseEnabled: enabled || false,
-      lastActiveAt: new Date()
-    };
-
-    // Solo cambiar el agente si se proporciona uno específico
-    if (assignedAgentId !== undefined) {
-      updateData.assignedExternalAgentId = assignedAgentId;
-    }
-
-    const [updatedAccount] = await db
-      .update(whatsappAccounts)
-      .set(updateData)
-      .where(eq(whatsappAccounts.id, accountId))
-      .returning();
-
-    if (!updatedAccount) {
+    // Obtener configuración actualizada
+    const updatedConfig = await agentConfigManager.getAgentConfig(accountId);
+    
+    if (!updatedConfig) {
       return res.status(404).json({
         success: false,
-        error: 'Cuenta no encontrada'
+        error: 'Configuración no encontrada'
       });
     }
-
-    console.log(`✅ Configuración actualizada para cuenta ${accountId}:`, {
-      enabled: updatedAccount.autoResponseEnabled,
-      assignedAgentId: updatedAccount.assignedExternalAgentId
-    });
 
     return res.json({
       success: true,
       config: {
-        enabled: updatedAccount.autoResponseEnabled,
-        assignedAgentId: updatedAccount.assignedExternalAgentId
+        enabled: updatedConfig.enabled,
+        assignedAgentId: updatedConfig.agentId
       }
     });
 
