@@ -85,6 +85,8 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
   });
 
   const handleToggleAI = (enabled: boolean) => {
+    console.log('🔄 Toggle AI clicked:', { enabled, accountId, currentAgentId: autoConfig?.assignedAgentId });
+    
     // Solo activar/desactivar el agente ya asignado sin cambiar la asignación
     updateConfigMutation.mutate({
       enabled,

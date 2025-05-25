@@ -63,7 +63,10 @@ export async function updateAutoResponseConfig(req: Request, res: Response) {
     const accountId = parseInt(req.params.accountId);
     const { enabled, assignedAgentId } = req.body;
 
+    console.log('🔄 UPDATE AUTO RESPONSE CONFIG:', { accountId, enabled, assignedAgentId, body: req.body });
+
     if (isNaN(accountId)) {
+      console.log('❌ Account ID inválido:', req.params.accountId);
       return res.status(400).json({
         success: false,
         error: 'ID de cuenta inválido'
