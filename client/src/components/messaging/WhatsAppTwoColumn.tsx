@@ -488,6 +488,14 @@ export function WhatsAppTwoColumn() {
 
   const externalAgents = (externalAgentsResponse as any)?.agents || [];
 
+  // Debug logs for AI selector
+  console.log('🔍 Debug AI Selector:', {
+    smartBotsEnabled,
+    externalAgentsResponse,
+    externalAgents,
+    agentsCount: externalAgents.length
+  });
+
   // Fetch chats based on selected accounts
   const { data: chats = [], isLoading: loadingChats } = useQuery({
     queryKey: ['/api/whatsapp/chats', selectedAccounts],
