@@ -4112,6 +4112,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/translate', translateText);
   app.post('/api/detect-language', detectLanguage);
 
+  // External Agents Chat Endpoint - Para respuestas automáticas
+  app.post('/api/external-agents/chat', async (req: Request, res: Response) => {
+    try {
+      const { agentId, message, context } = req.body;
+      
+      if (!agentId || !message) {
+        return res.status(400).json({
+          success: false,
+          error: 'Se requieren agentId y message'
+        });
+      }
+
+      const { externalAgentService } = await import('./services/externalAgentService');
+      
+      // Generar respuesta usando el agente externo
+      const response = await externalAgentService.sendMessageToAgent(agentId, message, context?.chatId || 'default-chat');
+      
+      if (response) {
+        console.log(`✅ Respuesta generada exitosamente para agente ${agentId}`);
+        res.json({
+          success: true,
+          response: response,
+          agentId: agentId
+        });
+      } else {
+        console.log(`❌ No se pudo generar respuesta para agente ${agentId}`);
+        res.status(500).json({
+          success: false,
+          error: 'No se pudo generar respuesta del agente'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error en endpoint de chat de agentes externos:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
   // External Agents routes - endpoint duplicado eliminado
 
   app.post('/api/external-agents', authService.authenticate.bind(authService), async (req: Request, res: Response) => {
