@@ -404,6 +404,8 @@ app.use((req, res, next) => {
   app.get('/api/auto-response-config/:accountId', autoResponseConfigRoutes.getAutoResponseConfig);
   app.post('/api/auto-response-config/:accountId', async (req: Request, res: Response) => {
     try {
+      console.log('🚨 ENDPOINT INTERCEPTADO - NUEVO SISTEMA ACTIVADO');
+      
       const accountId = parseInt(req.params.accountId);
       const { enabled, assignedAgentId } = req.body;
 
