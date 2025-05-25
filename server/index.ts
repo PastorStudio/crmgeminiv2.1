@@ -344,6 +344,15 @@ app.use((req, res, next) => {
   } catch (error) {
     console.error("❌ Error al iniciar sistema de asignaciones invisible:", error);
   }
+
+  // Iniciar el monitor automático de mensajes para respuestas con agentes externos
+  try {
+    console.log("🚀 Iniciando monitor automático de mensajes...");
+    messageMonitor.startMonitoring();
+    console.log("✅ Monitor de respuestas automáticas iniciado exitosamente");
+  } catch (error) {
+    console.error("❌ Error al iniciar monitor de mensajes:", error);
+  }
   
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
   app.get('/api/system/users', async (req, res) => {
