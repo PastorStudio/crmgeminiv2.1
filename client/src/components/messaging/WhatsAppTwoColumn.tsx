@@ -481,7 +481,9 @@ export function WhatsAppTwoColumn() {
   // Fetch external agents for AI selection
   const { data: externalAgents = [] } = useQuery({
     queryKey: ['/api/external-agents'],
-    enabled: smartBotsEnabled
+    enabled: smartBotsEnabled,
+    retry: false,
+    staleTime: 60000
   });
 
   // Fetch chats based on selected accounts
