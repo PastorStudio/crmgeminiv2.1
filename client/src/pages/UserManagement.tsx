@@ -135,12 +135,22 @@ export default function UserManagement() {
 
         const data = await response.json();
         
-        if (data.success && Array.isArray(data.users)) {
+        // La API devuelve directamente un array de usuarios, no un objeto con success
+        if (Array.isArray(data)) {
+          console.log('✅ Frontend: Usuarios reales cargados desde DB:', data.length);
+          return data.map((user: any) => ({
+            ...user,
+            status: 'active', // Agregar status por defecto
+            department: user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
+                       user.role === 'admin' ? 'administracion' : 
+                       user.role === 'supervisor' ? 'supervision' : 'atencion_cliente'
+          }));
+        } else if (data.success && Array.isArray(data.users)) {
           console.log('✅ Frontend: Usuarios reales cargados desde DB:', data.users.length);
           return data.users.map((user: any) => ({
             ...user,
-            status: 'active', // Agregar status por defecto
-            department: user.role === 'super_admin' ? 'administracion' : 
+            status: 'active',
+            department: user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
                        user.role === 'admin' ? 'administracion' : 
                        user.role === 'supervisor' ? 'supervision' : 'atencion_cliente'
           }));
