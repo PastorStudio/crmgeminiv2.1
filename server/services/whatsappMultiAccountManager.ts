@@ -1171,14 +1171,14 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   getAllPingStatus(): any[] {
     const allStatus: any[] = [];
     
-    for (const [accountId, instance] of this.instances.entries()) {
+    this.instances.forEach((instance, accountId) => {
       const pingStatus = this.getPingStatus(accountId);
       allStatus.push({
         accountId,
         accountName: instance.name,
         pingStatus
       });
-    }
+    });
     
     return allStatus;
   }
