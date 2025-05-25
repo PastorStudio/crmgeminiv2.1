@@ -17,6 +17,12 @@ interface WhatsAppStatus {
   error?: string;
   qrCode?: string;
   qrDataUrl?: string;
+  pingStatus?: {
+    isActive: boolean;
+    lastPing: number;
+    pingCount: number;
+    nextPing: number;
+  };
 }
 
 interface WhatsAppInstance {
@@ -540,6 +546,10 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       
       // Limpiar cache de QR
       this.qrCodeCache.delete(id);
+      
+      // ✨ ACTIVAR KEEP-ALIVE AUTOMÁTICAMENTE ✨
+      console.log(`💓 Iniciando keep-alive automático para cuenta ${id} (${name})`);
+      this.startKeepAlive(instance);
     });
 
     // Evento cuando está listo
@@ -996,6 +1006,137 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     });
     
     return activeAccounts;
+  }
+
+  /**
+   * Sistema de Keep-Alive/Ping para mantener sesiones activas
+   */
+  private startKeepAlive(instance: WhatsAppInstance): void {
+    // Limpiar timer existente si hay uno
+    if (instance.connectionTimers.keepAlive) {
+      clearInterval(instance.connectionTimers.keepAlive);
+    }
+
+    // Inicializar estado de ping
+    instance.status.pingStatus = {
+      isActive: true,
+      lastPing: Date.now(),
+      pingCount: 0,
+      nextPing: Date.now() + 30000 // 30 segundos
+    };
+
+    // Crear timer de keep-alive cada 30 segundos
+    instance.connectionTimers.keepAlive = setInterval(async () => {
+      try {
+        if (!instance.client || !instance.status.authenticated) {
+          console.log(`🔄 Keep-alive pausado para cuenta ${instance.id} - no autenticada`);
+          return;
+        }
+
+        // Realizar ping simple verificando estado del cliente
+        const isConnected = await this.performPing(instance);
+        
+        if (isConnected) {
+          instance.status.pingStatus!.lastPing = Date.now();
+          instance.status.pingStatus!.pingCount++;
+          instance.status.pingStatus!.nextPing = Date.now() + 30000;
+          console.log(`💓 Ping exitoso cuenta ${instance.id} (${instance.name}) - Ping #${instance.status.pingStatus!.pingCount}`);
+        } else {
+          console.log(`❌ Ping fallido cuenta ${instance.id} - intentando reconectar...`);
+          await this.handlePingFailure(instance);
+        }
+      } catch (error) {
+        console.error(`❌ Error en keep-alive cuenta ${instance.id}:`, error);
+        await this.handlePingFailure(instance);
+      }
+    }, 30000); // 30 segundos
+
+    console.log(`💓 Keep-alive iniciado para cuenta ${instance.id} (${instance.name})`);
+  }
+
+  private async performPing(instance: WhatsAppInstance): Promise<boolean> {
+    try {
+      // Verificar si el cliente está listo
+      if (!instance.client) return false;
+      
+      // Intentar obtener info del cliente (ping ligero)
+      const info = await instance.client.getState();
+      return info === 'CONNECTED';
+    } catch (error) {
+      console.log(`🔄 Ping simple falló, intentando método alternativo para cuenta ${instance.id}`);
+      try {
+        // Método alternativo: verificar si se pueden obtener chats
+        await instance.client.getChats();
+        return true;
+      } catch (altError) {
+        return false;
+      }
+    }
+  }
+
+  private async handlePingFailure(instance: WhatsAppInstance): Promise<void> {
+    console.log(`🔧 Manejando fallo de ping para cuenta ${instance.id}`);
+    
+    // Marcar como inactivo temporalmente
+    if (instance.status.pingStatus) {
+      instance.status.pingStatus.isActive = false;
+    }
+
+    // Intentar restaurar conexión
+    try {
+      await instance.client.pupPage?.reload();
+      console.log(`🔄 Página recargada para cuenta ${instance.id}`);
+      
+      // Esperar un poco y reactivar
+      setTimeout(() => {
+        if (instance.status.pingStatus) {
+          instance.status.pingStatus.isActive = true;
+          console.log(`✅ Keep-alive reactivado para cuenta ${instance.id}`);
+        }
+      }, 5000);
+    } catch (error) {
+      console.error(`❌ Error restaurando conexión cuenta ${instance.id}:`, error);
+    }
+  }
+
+  /**
+   * Detiene el keep-alive para una cuenta específica
+   */
+  stopKeepAlive(accountId: number): void {
+    const instance = this.instances.get(accountId);
+    if (!instance) return;
+
+    if (instance.connectionTimers.keepAlive) {
+      clearInterval(instance.connectionTimers.keepAlive);
+      instance.connectionTimers.keepAlive = null;
+    }
+
+    if (instance.status.pingStatus) {
+      instance.status.pingStatus.isActive = false;
+    }
+
+    console.log(`💤 Keep-alive detenido para cuenta ${accountId} (${instance.name})`);
+  }
+
+  /**
+   * Obtiene el estado del ping para una cuenta
+   */
+  getPingStatus(accountId: number): any {
+    const instance = this.instances.get(accountId);
+    if (!instance || !instance.status.pingStatus) {
+      return {
+        isActive: false,
+        lastPing: 0,
+        pingCount: 0,
+        nextPing: 0
+      };
+    }
+
+    return {
+      ...instance.status.pingStatus,
+      timeSinceLastPing: Date.now() - instance.status.pingStatus.lastPing,
+      timeToNextPing: Math.max(0, instance.status.pingStatus.nextPing - Date.now())
+    };
   }
 }
 
