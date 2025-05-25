@@ -43,6 +43,9 @@ import {
   CheckCircle,
   XCircle,
   Smartphone,
+  Heart,
+  Square,
+  Activity,
 } from 'lucide-react';
 
 // Importar componente de conexión por teléfono
@@ -97,6 +100,16 @@ const accountSchema = z.object({
   ownerPhone: z.string().optional(),
 });
 
+// Interface para el estado de ping/keep-alive
+interface PingStatus {
+  isActive: boolean;
+  lastPing: number;
+  pingCount: number;
+  nextPing: number;
+  timeSinceLastPing?: number;
+  timeToNextPing?: number;
+}
+
 // Tipo para cuenta de WhatsApp con estado
 type WhatsAppAccount = {
   id: number;
@@ -109,6 +122,7 @@ type WhatsAppAccount = {
   createdAt: string;
   lastActiveAt?: string | null;
   sessionData?: any;
+  pingStatus?: PingStatus;
   currentStatus?: {
     initialized: boolean;
     ready: boolean;
@@ -134,6 +148,20 @@ const WhatsAppAccounts = () => {
     queryFn: async () => {
       return await apiRequest('/api/whatsapp-accounts');
     }
+  });
+
+  // Consulta para obtener estado de ping de todas las cuentas
+  const { data: pingStatusData } = useQuery({
+    queryKey: ['/api/whatsapp/ping-status/all'],
+    queryFn: async () => {
+      try {
+        return await apiRequest('/api/whatsapp/ping-status/all');
+      } catch (error) {
+        console.error('Error obteniendo estado de ping:', error);
+        return { success: false, accounts: [] };
+      }
+    },
+    refetchInterval: 5000, // Actualizar cada 5 segundos
   });
   
   // Consulta para obtener código QR
@@ -320,6 +348,79 @@ const WhatsAppAccounts = () => {
       deleteAccountMutation.mutate(account.id);
     }
   };
+
+  // Activar keep-alive para una cuenta específica
+  const startKeepAlive = async (accountId: number) => {
+    try {
+      const response = await apiRequest(`/api/whatsapp/${accountId}/start-keepalive`, {
+        method: 'POST'
+      });
+      
+      if (response.success) {
+        toast({
+          title: "Keep-alive activado",
+          description: `Ping automático iniciado para cuenta ${accountId}`,
+        });
+        // Actualizar datos
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/ping-status/all'] });
+      } else {
+        toast({
+          title: "Error",
+          description: response.error || "No se pudo activar el keep-alive",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error activando keep-alive:', error);
+      toast({
+        title: "Error",
+        description: "Error al activar keep-alive",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Desactivar keep-alive para una cuenta específica
+  const stopKeepAlive = async (accountId: number) => {
+    try {
+      const response = await apiRequest(`/api/whatsapp/${accountId}/stop-keepalive`, {
+        method: 'POST'
+      });
+      
+      if (response.success) {
+        toast({
+          title: "Keep-alive desactivado",
+          description: `Ping automático detenido para cuenta ${accountId}`,
+        });
+        // Actualizar datos
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/ping-status/all'] });
+      } else {
+        toast({
+          title: "Error",
+          description: response.error || "No se pudo desactivar el keep-alive",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error desactivando keep-alive:', error);
+      toast({
+        title: "Error",
+        description: "Error al desactivar keep-alive",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Formatear tiempo transcurrido
+  const formatTimeAgo = (timestamp: number) => {
+    if (!timestamp) return 'Nunca';
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h`;
+  };
   
   // Renderizar badge de estado
   const renderStatusBadge = (status: string, isAuthenticated?: boolean) => {
@@ -339,6 +440,23 @@ const WhatsAppAccounts = () => {
     }
   };
   
+  // Combinar datos de cuentas con información de ping
+  const accountsWithPing = accounts.map(account => {
+    if (pingStatusData?.success && pingStatusData.accounts) {
+      const pingInfo = pingStatusData.accounts.find((acc: any) => acc.accountId === account.id);
+      return {
+        ...account,
+        pingStatus: pingInfo?.pingStatus || {
+          isActive: false,
+          lastPing: 0,
+          pingCount: 0,
+          nextPing: 0
+        }
+      };
+    }
+    return account;
+  });
+
   // Auto-refrescar la lista de cuentas cada 30 segundos
   useEffect(() => {
     const interval = setInterval(() => {
