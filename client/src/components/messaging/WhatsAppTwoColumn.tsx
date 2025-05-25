@@ -1182,11 +1182,11 @@ export function WhatsAppTwoColumn() {
   };
 
   const formatTime = (timestamp: number) => {
+    // Usar el timestamp exacto que viene de WhatsApp sin modificar zona horaria
     return new Date(timestamp).toLocaleTimeString('es-ES', { 
       hour: '2-digit', 
       minute: '2-digit',
-      hour12: true,
-      timeZone: 'America/Panama'
+      hour12: true
     });
   };
 

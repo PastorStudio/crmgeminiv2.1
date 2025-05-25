@@ -555,7 +555,7 @@ router.get('/:id/messages/:chatId', async (req, res) => {
           id: msg.id._serialized || msg.id,
           body: msg.body || '',
           fromMe: Boolean(msg.fromMe),
-          timestamp: msg.timestamp || Date.now() / 1000,
+          timestamp: msg.timestamp * 1000, // Usar timestamp exacto de WhatsApp (convertir segundos a milisegundos)
           hasMedia: Boolean(msg.hasMedia),
           type: msg.type || 'chat',
           author: msg.author || null,
