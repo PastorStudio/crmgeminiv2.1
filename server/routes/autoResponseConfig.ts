@@ -80,37 +80,45 @@ export async function updateAutoResponseConfig(req: Request, res: Response) {
     }
     // Si se está asignando un agente específico
     else if (assignedAgentId !== undefined) {
-      const config = {
-        accountId,
-        agentId: assignedAgentId,
-        enabled: enabled || false
-      };
+      console.log(`🎯 Asignando agente ${assignedAgentId} a cuenta ${accountId}`);
       
-      const success = await agentConfigManager.setAgentConfig(config);
+      // Actualizar directamente en whatsappAccounts
+      const { whatsappAccounts } = await import('../../shared/schema');
+      await db
+        .update(whatsappAccounts)
+        .set({ 
+          assignedExternalAgentId: assignedAgentId === 'none' ? null : assignedAgentId,
+          autoResponseEnabled: enabled !== undefined ? enabled : false
+        })
+        .where(eq(whatsappAccounts.id, accountId));
       
-      if (!success) {
-        return res.status(500).json({
-          success: false,
-          error: 'Error configurando agente'
-        });
-      }
+      console.log(`✅ Agente ${assignedAgentId} asignado exitosamente a cuenta ${accountId}`);
     }
 
-    // Obtener configuración actualizada
-    const updatedConfig = await agentConfigManager.getAgentConfig(accountId);
+    // Obtener configuración actualizada directamente de whatsappAccounts
+    const { whatsappAccounts } = await import('../../shared/schema');
+    const [account] = await db
+      .select({
+        enabled: whatsappAccounts.autoResponseEnabled,
+        assignedAgentId: whatsappAccounts.assignedExternalAgentId
+      })
+      .from(whatsappAccounts)
+      .where(eq(whatsappAccounts.id, accountId));
     
-    if (!updatedConfig) {
+    if (!account) {
       return res.status(404).json({
         success: false,
-        error: 'Configuración no encontrada'
+        error: 'Cuenta no encontrada'
       });
     }
+
+    console.log(`📊 Configuración actualizada para cuenta ${accountId}:`, account);
 
     return res.json({
       success: true,
       config: {
-        enabled: updatedConfig.enabled,
-        assignedAgentId: updatedConfig.agentId
+        enabled: account.enabled || false,
+        assignedAgentId: account.assignedAgentId
       }
     });
 
