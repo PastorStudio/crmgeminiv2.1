@@ -658,8 +658,8 @@ const WhatsAppAccounts = () => {
       {/* Lista de cuentas actuales */}
       <h2 className="text-xl font-semibold mb-4">Detalles de cuentas</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {accounts.length > 0 ? (
-          accounts.map((account) => (
+        {accountsWithPing.length > 0 ? (
+          accountsWithPing.map((account) => (
             <Card key={account.id} className="overflow-hidden">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
@@ -688,6 +688,68 @@ const WhatsAppAccounts = () => {
                       : 'Nunca'}
                   </div>
                 </div>
+
+                {/* Sección de Keep-Alive/Ping */}
+                {account.currentStatus?.authenticated && (
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-gray-700">Keep-Alive</h4>
+                      <div className="flex items-center gap-2">
+                        {account.pingStatus?.isActive ? (
+                          <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
+                            <Heart className="w-3 h-3 mr-1" />
+                            Activo
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-gray-100 text-gray-800 border-gray-200">
+                            <Square className="w-3 h-3 mr-1" />
+                            Inactivo
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {account.pingStatus?.isActive && (
+                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 mb-2">
+                        <div>Pings: {account.pingStatus.pingCount || 0}</div>
+                        <div>Último: {formatTimeAgo(account.pingStatus.lastPing)}</div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-1">
+                      {account.pingStatus?.isActive ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 border-red-200 hover:bg-red-50 text-xs h-7"
+                          onClick={() => stopKeepAlive(account.id)}
+                        >
+                          <Square className="w-3 h-3 mr-1" />
+                          Desactivar
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-green-600 border-green-200 hover:bg-green-50 text-xs h-7"
+                          onClick={() => startKeepAlive(account.id)}
+                        >
+                          <Heart className="w-3 h-3 mr-1" />
+                          Activar
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs h-7"
+                        onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/ping-status/all'] })}
+                      >
+                        <Activity className="w-3 h-3 mr-1" />
+                        Estado
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
               <CardFooter className="flex justify-between border-t p-4">
                 <div className="flex gap-1">
