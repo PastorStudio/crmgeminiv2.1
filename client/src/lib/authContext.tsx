@@ -99,12 +99,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       
-      // Solución temporal directa para bypass del problema de Vite
+      // Credenciales de usuarios reales registrados en PostgreSQL
       const validCredentials = [
-        { username: 'DJP', password: 'Mi123456@', user: { id: 1, username: 'DJP', role: 'superadmin', email: 'djp@geminicrm.com', fullName: 'DJP - Superadministrador' }},
-        { username: 'admin', password: 'admin123', user: { id: 2, username: 'admin', role: 'admin', email: 'admin@geminicrm.com', fullName: 'Administrador' }},
-        { username: 'agente', password: 'agente123', user: { id: 3, username: 'agente', role: 'agent', email: 'maria@geminicrm.com', fullName: 'Juan Perez' }},
-        { username: 'steph', password: 'Agente123456', user: { id: 4, username: 'steph', role: 'agent', email: 'admin@admin.com', fullName: 'steph santiago' }}
+        { username: 'DJP', password: 'Mi123456@', user: { id: 3, username: 'DJP', role: 'superadmin', email: 'superadmin@crm.com', fullName: 'Super Administrador' }},
+        { username: 'admin', password: 'admin123', user: { id: 1, username: 'admin', role: 'admin', email: 'admin@sistema.com', fullName: 'Administrador' }},
+        { username: 'agente', password: 'agente123', user: { id: 2, username: 'agente', role: 'agent', email: 'agente@sistema.com', fullName: 'Agente Principal' }},
+        { username: 'steph', password: 'Agente123456', user: { id: 4, username: 'steph', role: 'agent', email: 'steph@sistema.com', fullName: 'Steph Santiago' }},
+        { username: 'EvoGonz', password: 'Yoel123456', user: { id: 6, username: 'EvoGonz', role: 'admin', email: 'yoel@sistema.com', fullName: 'Yoel Gonzalez' }},
+        { username: 'CRMYMAS', password: 'admin123', user: { id: 7, username: 'CRMYMAS', role: 'admin', email: 'crmymas@sistema.com', fullName: 'CRM Y MAS' }}
       ];
       
       const validUser = validCredentials.find(cred => cred.username === username && cred.password === password);
