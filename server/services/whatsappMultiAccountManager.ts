@@ -670,6 +670,9 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
           // Procesar mensaje con autoMessageProcessor (sistema AI ON/OFF)
           try {
+            console.log(`🔄 INICIANDO PROCESAMIENTO AUTOMÁTICO para mensaje en cuenta ${id}`);
+            console.log(`📝 Mensaje: "${messageBody}" | fromMe: ${message.fromMe} | Chat: ${message.from}`);
+            
             const { autoMessageProcessor } = await import('./autoMessageProcessor');
             
             await autoMessageProcessor.processIncomingMessage({
