@@ -75,6 +75,11 @@ async function processChat(chat: any) {
       return; // Ya procesamos este mensaje
     }
 
+    // Verificar que el mensaje no esté vacío
+    if (!lastIncomingMessage.body || lastIncomingMessage.body.trim() === '') {
+      return; // Ignorar mensajes vacíos
+    }
+
     console.log(`📨 Nuevo mensaje encontrado en chat ${chat.name}: "${lastIncomingMessage.body}"`);
 
     // Generar respuesta usando agente externo (mismo código que funciona en las pruebas)
