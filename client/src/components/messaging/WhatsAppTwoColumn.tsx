@@ -486,7 +486,7 @@ export function WhatsAppTwoColumn() {
     staleTime: 60000
   });
 
-  const externalAgents = externalAgentsResponse?.agents || [];
+  const externalAgents = (externalAgentsResponse as any)?.agents || [];
 
   // Fetch chats based on selected accounts
   const { data: chats = [], isLoading: loadingChats } = useQuery({
@@ -1432,8 +1432,8 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
                   
-                  {/* Agent Selector - Only show when SmartBots is enabled and agents are loaded */}
-                  {smartBotsEnabled && Array.isArray(externalAgents) && externalAgents.length > 0 && (
+                  {/* Agent Selector - Only show when SmartBots is enabled */}
+                  {smartBotsEnabled && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -1445,7 +1445,7 @@ export function WhatsAppTwoColumn() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="">Sin agente específico</SelectItem>
-                          {externalAgents.map((agent: any) => (
+                          {Array.isArray(externalAgents) && externalAgents.map((agent: any) => (
                             <SelectItem key={agent.id} value={agent.id}>
                               {agent.name}
                             </SelectItem>
