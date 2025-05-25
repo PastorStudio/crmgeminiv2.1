@@ -571,11 +571,8 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         
         // Solo procesar mensajes entrantes (no enviados por nosotros)
         if (!message.fromMe) {
-          console.log(`📨 🟢 MENSAJE ENTRANTE DETECTADO (BURBUJA VERDE) en cuenta ${id}`);
-          console.log(`📱 Contenido: "${message.body?.substring(0, 50) || '[Sin texto]'}..."`);
-          console.log(`👤 De: ${message.from} (${message._data.notifyName || 'Sin nombre'})`);
-          console.log(`🔍 Tipo: ${message.type}, hasMedia: ${message.hasMedia}`);
-          console.log(`⚡ INICIANDO PROCESO DE RESPUESTA AUTOMÁTICA PARA MENSAJE ENTRANTE`);
+          console.log(`📨 Nuevo mensaje recibido en cuenta ${id}: ${message.body?.substring(0, 50) || '[Sin texto]'}...`);
+          console.log(`🔍 Tipo de mensaje: ${message.type}, hasMedia: ${message.hasMedia}`);
           
           let messageBody = message.body || '';
           
@@ -656,24 +653,27 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           
           console.log(`✅ Mensaje procesado por sistema de tickets automáticos`);
 
-          // Sistema de respuesta automática simple y directo
-          console.log(`🤖 ACTIVANDO RESPUESTA AUTOMÁTICA SIMPLE para mensaje entrante (burbuja verde)`);
-          console.log(`📝 Mensaje: "${messageBody}"`);
-          console.log(`👤 De: ${message.from}`);
-          
+          // Procesar mensaje con agentes intermediarios
           try {
-            // Generar respuesta automática directa
-            const autoResponse = await this.generateSimpleAutoResponse(messageBody, message._data.notifyName || 'Cliente');
+            const { externalAgentService } = await import('./externalAgentService');
             
-            if (autoResponse) {
-              // Enviar respuesta automáticamente
-              await this.sendAutoResponse(id, message.from, autoResponse);
-              console.log(`✅ 🟢 RESPUESTA AUTOMÁTICA ENVIADA: "${autoResponse}"`);
+            const agentResponse = await externalAgentService.processMessageForAgent(
+              messageBody,
+              message.from,
+              id,
+              {
+                contactName: message._data.notifyName || 'Cliente Anónimo',
+                messageHistory: [] // Se puede expandir para incluir historial
+              }
+            );
+
+            if (agentResponse.success) {
+              console.log(`🤖 Agente intermediario respondió exitosamente: "${agentResponse.response}"`);
             } else {
-              console.log(`⚠️ No se pudo generar respuesta automática`);
+              console.log(`🤖 No hay agente intermediario disponible para este mensaje`);
             }
           } catch (error) {
-            console.error(`❌ Error en respuesta automática:`, error);
+            console.error(`❌ Error procesando mensaje con agentes intermediarios:`, error);
           }
         }
       } catch (error) {
@@ -996,72 +996,6 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     });
     
     return activeAccounts;
-  }
-
-  /**
-   * Generar respuesta automática simple
-   */
-  async generateSimpleAutoResponse(message: string, contactName: string): Promise<string | null> {
-    try {
-      // Si tenemos OpenAI disponible, usar IA
-      if (process.env.OPENAI_API_KEY) {
-        const OpenAI = await import('openai');
-        const openai = new OpenAI.default({
-          apiKey: process.env.OPENAI_API_KEY,
-        });
-
-        const response = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [
-            {
-              role: "system",
-              content: "Eres un asistente de atención al cliente. Responde de manera profesional, amigable y útil. Mantén las respuestas breves y directas."
-            },
-            {
-              role: "user",
-              content: `Cliente ${contactName} dice: ${message}`
-            }
-          ],
-          max_tokens: 150,
-          temperature: 0.7
-        });
-
-        return response.choices[0]?.message?.content || null;
-      }
-
-      // Respuestas predefinidas simples si no hay OpenAI
-      const predefinedResponses = [
-        `Hola ${contactName}, gracias por tu mensaje. Te responderemos lo antes posible.`,
-        `Hola ${contactName}, hemos recibido tu consulta y la atenderemos pronto.`,
-        `Gracias por contactarnos ${contactName}. Un agente se comunicará contigo en breve.`,
-        `Hola ${contactName}, tu mensaje es importante para nosotros. Te respondemos enseguida.`
-      ];
-
-      return predefinedResponses[Math.floor(Math.random() * predefinedResponses.length)];
-    } catch (error) {
-      console.error('❌ Error generando respuesta automática:', error);
-      return `Hola ${contactName}, gracias por tu mensaje. Te contactaremos pronto.`;
-    }
-  }
-
-  /**
-   * Enviar respuesta automática
-   */
-  async sendAutoResponse(accountId: number, chatId: string, message: string): Promise<boolean> {
-    try {
-      const client = this.clients.get(accountId);
-      if (!client) {
-        console.error(`❌ Cliente WhatsApp no encontrado para cuenta ${accountId}`);
-        return false;
-      }
-
-      await client.sendMessage(chatId, message);
-      console.log(`📤 Respuesta automática enviada a ${chatId}: "${message}"`);
-      return true;
-    } catch (error) {
-      console.error(`❌ Error enviando respuesta automática:`, error);
-      return false;
-    }
   }
 }
 
