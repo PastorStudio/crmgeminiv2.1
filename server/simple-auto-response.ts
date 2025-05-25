@@ -7,6 +7,12 @@ let isMonitoring = false;
 let monitorInterval: NodeJS.Timeout | null = null;
 let lastProcessedMessages = new Map<string, string>(); // chatId -> lastMessageId
 
+// Función para resetear mensajes procesados
+export function resetProcessedMessages() {
+  lastProcessedMessages.clear();
+  console.log('🔄 CACHE DE MENSAJES PROCESADOS LIMPIADO - detectará todos los mensajes como nuevos');
+}
+
 export function startSimpleAutoResponse() {
   if (isMonitoring) {
     console.log('✅ Sistema de respuestas automáticas ya está activo');
@@ -15,6 +21,9 @@ export function startSimpleAutoResponse() {
 
   console.log('🚀 Iniciando sistema simple de respuestas automáticas...');
   isMonitoring = true;
+  
+  // Limpiar cache de mensajes procesados al inicio para detectar mensajes nuevos
+  resetProcessedMessages();
 
   // Verificar nuevos mensajes cada 3 segundos para respuesta casi instantánea
   monitorInterval = setInterval(async () => {
