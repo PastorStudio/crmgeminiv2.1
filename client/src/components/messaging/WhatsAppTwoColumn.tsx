@@ -1182,8 +1182,8 @@ export function WhatsAppTwoColumn() {
   };
 
   const formatTime = (timestamp: number) => {
-    // Usar el timestamp exacto que viene de WhatsApp sin modificar zona horaria
-    return new Date(timestamp).toLocaleTimeString('es-ES', { 
+    // WhatsApp envía timestamps en segundos Unix, convertir a milisegundos para JavaScript
+    return new Date(timestamp * 1000).toLocaleTimeString('es-ES', { 
       hour: '2-digit', 
       minute: '2-digit',
       hour12: true
