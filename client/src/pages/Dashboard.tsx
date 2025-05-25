@@ -10,7 +10,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/authContext";
+import { Loader2, Sun, Moon, Coffee, Star } from "lucide-react";
 
 export default function Dashboard() {
   // Estados para el proceso de importación
@@ -22,6 +23,40 @@ export default function Dashboard() {
     updatedLeads: any[];
   }>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Función para obtener el saludo según la hora
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    
+    if (hour >= 5 && hour < 12) {
+      return {
+        text: "¡Buenos días",
+        icon: <Sun className="h-5 w-5 text-yellow-500" />,
+        gradient: "from-yellow-400 to-orange-500"
+      };
+    } else if (hour >= 12 && hour < 18) {
+      return {
+        text: "¡Buenas tardes",
+        icon: <Coffee className="h-5 w-5 text-amber-600" />,
+        gradient: "from-amber-400 to-orange-600"
+      };
+    } else if (hour >= 18 && hour < 22) {
+      return {
+        text: "¡Buenas noches",
+        icon: <Star className="h-5 w-5 text-purple-500" />,
+        gradient: "from-purple-400 to-pink-500"
+      };
+    } else {
+      return {
+        text: "¡Buenas madrugadas",
+        icon: <Moon className="h-5 w-5 text-blue-400" />,
+        gradient: "from-blue-400 to-indigo-600"
+      };
+    }
+  };
+
+  const greeting = getGreeting();
   
   // Mobile-friendly header
   useEffect(() => {
@@ -90,9 +125,31 @@ export default function Dashboard() {
       </Helmet>
       
       <PageContainer>
+        {/* Título del sistema separado */}
+        <div className="mb-4">
+          <h1 className="text-3xl font-bold text-gray-800">CRM con Gemini</h1>
+        </div>
+
+        {/* Saludo personalizado */}
+        <div className="mb-8">
+          <div className={`bg-gradient-to-r ${greeting.gradient} p-6 rounded-lg shadow-lg text-white`}>
+            <div className="flex items-center space-x-3">
+              {greeting.icon}
+              <div>
+                <h2 className="text-2xl font-bold">
+                  {greeting.text}, {user?.fullName || user?.username || 'Usuario'}!
+                </h2>
+                <p className="text-lg opacity-90 mt-1">
+                  Bienvenido de vuelta al sistema de gestión WhatsApp
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Acción para importar contactos */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">CRM con Gemini</h2>
+          <h3 className="text-xl font-semibold text-gray-700">Panel de Control</h3>
           <Button 
             onClick={importWhatsAppContacts} 
             disabled={isImporting}
