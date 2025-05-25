@@ -4152,6 +4152,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para procesar mensajes entrantes y activar respuestas automáticas
+  app.post('/api/whatsapp-accounts/:accountId/process-message', async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      const { chatId, messageBody, fromNumber, fromMe = false, timestamp } = req.body;
+      
+      if (!chatId || !messageBody) {
+        return res.status(400).json({
+          success: false,
+          error: 'Se requieren chatId y messageBody'
+        });
+      }
+
+      // Solo procesar mensajes entrantes (no enviados por nosotros)
+      if (fromMe) {
+        return res.json({
+          success: true,
+          message: 'Mensaje enviado por nosotros, no requiere respuesta automática'
+        });
+      }
+
+      console.log(`🔄 PROCESANDO MENSAJE ENTRANTE - Cuenta: ${accountId}, Chat: ${chatId}`);
+      console.log(`📝 Mensaje: "${messageBody}" | fromMe: ${fromMe}`);
+
+      // Importar y usar el autoMessageProcessor
+      const { autoMessageProcessor } = await import('./services/autoMessageProcessor');
+      
+      await autoMessageProcessor.processIncomingMessage({
+        id: `manual_${Date.now()}`,
+        body: messageBody,
+        fromMe: false,
+        timestamp: timestamp || Date.now(),
+        chatId: chatId,
+        accountId: parseInt(accountId),
+        contactName: fromNumber || 'Cliente',
+        contactPhone: fromNumber?.replace('@c.us', '') || 'desconocido'
+      });
+
+      console.log(`✅ Mensaje procesado exitosamente para cuenta ${accountId}`);
+      
+      res.json({
+        success: true,
+        message: 'Mensaje procesado exitosamente',
+        accountId: accountId,
+        chatId: chatId
+      });
+    } catch (error) {
+      console.error('❌ Error procesando mensaje entrante:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
   // External Agents routes - endpoint duplicado eliminado
 
   app.post('/api/external-agents', authService.authenticate.bind(authService), async (req: Request, res: Response) => {
