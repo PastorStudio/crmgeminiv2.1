@@ -106,6 +106,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (req: Request, res: Response) => {
     res.json({ status: "ok" });
   });
+
+  // Endpoint para mostrar usuarios válidos y sus credenciales (solo para desarrollo)
+  app.get("/api/auth/valid-users", async (req: Request, res: Response) => {
+    try {
+      const validUsers = await db.select({
+        id: users.id,
+        username: users.username,
+        password: users.password,
+        fullName: users.fullName,
+        role: users.role,
+        status: users.status,
+        department: users.department
+      }).from(users).where(eq(users.status, 'active'));
+
+      res.json({
+        success: true,
+        message: "Usuarios válidos del sistema",
+        users: validUsers,
+        totalUsers: validUsers.length
+      });
+    } catch (error) {
+      console.error("Error obteniendo usuarios válidos:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
   
   // Rutas de autenticación
   
@@ -158,9 +186,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await authService.verifyCredentials(username, password);
       
       if (!user) {
+        console.log(`❌ Login fallido para: ${username} con contraseña: ${password}`);
+        
+        // Mostrar ayuda para usuarios válidos registrados
+        const validUsers = await db.select({
+          username: users.username,
+          status: users.status
+        }).from(users).where(eq(users.status, 'active'));
+        
+        console.log('👥 Usuarios válidos disponibles:', validUsers.map(u => u.username));
+        
         return res.status(401).json({
           success: false,
-          message: "Credenciales inválidas"
+          message: "Credenciales inválidas - Verifica tu usuario y contraseña"
         });
       }
       
