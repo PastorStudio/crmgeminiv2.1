@@ -345,13 +345,14 @@ app.use((req, res, next) => {
     console.error("❌ Error al iniciar sistema de asignaciones invisible:", error);
   }
 
-  // Iniciar el monitor automático de mensajes para respuestas con agentes externos
+  // Iniciar el sistema simple de respuestas automáticas (usa el mismo código que funciona en las pruebas)
   try {
-    console.log("🚀 Iniciando monitor automático de mensajes...");
-    messageMonitor.startMonitoring();
-    console.log("✅ Monitor de respuestas automáticas iniciado exitosamente");
+    console.log("🚀 Iniciando sistema simple de respuestas automáticas...");
+    const { startSimpleAutoResponse } = await import('./simple-auto-response');
+    startSimpleAutoResponse();
+    console.log("✅ Sistema simple de respuestas automáticas iniciado exitosamente");
   } catch (error) {
-    console.error("❌ Error al iniciar monitor de mensajes:", error);
+    console.error("❌ Error al iniciar sistema de respuestas automáticas:", error);
   }
   
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
