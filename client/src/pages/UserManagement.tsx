@@ -115,25 +115,43 @@ export default function UserManagement() {
     defaultValues,
   });
 
-  // SOLUCIÓN TEMPORAL: Datos hardcodeados mientras arreglo la API
-  const mockUsers = [
-    { id: 1, username: 'admin', fullName: 'Administrador', email: 'admin@sistema.com', role: 'admin', status: 'active', department: 'administracion' },
-    { id: 2, username: 'agente', fullName: 'Agente Principal', email: 'agente@sistema.com', role: 'agent', status: 'active', department: 'soporte' },
-    { id: 3, username: 'DJP', fullName: 'DJP - Superadministrador', email: 'djp@sistema.com', role: 'super_admin', status: 'active', department: 'administracion' },
-    { id: 4, username: 'steph', fullName: 'Stephanie', email: 'steph@sistema.com', role: 'agent', status: 'active', department: 'atencion_cliente' }
-  ];
-
-  // Obtener lista de usuarios - usando datos temporales
-  const { data: users, isLoading, error } = useQuery({
-    queryKey: ['/api/temp/users'],
+  // Obtener lista de usuarios reales desde la base de datos PostgreSQL
+  const { data: users, isLoading, error, refetch } = useQuery({
+    queryKey: ['/api/users'],
     queryFn: async () => {
-      console.log('🔄 Frontend: Usando datos temporales de usuarios...');
+      console.log('🔄 Frontend: Cargando usuarios reales desde PostgreSQL...');
       
-      // Simular llamada a API
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log('✅ Frontend: Datos temporales cargados:', mockUsers.length);
-      return mockUsers;
+      try {
+        const response = await fetch('/api/users', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.success && Array.isArray(data.users)) {
+          console.log('✅ Frontend: Usuarios reales cargados desde DB:', data.users.length);
+          return data.users.map((user: any) => ({
+            ...user,
+            status: 'active', // Agregar status por defecto
+            department: user.role === 'super_admin' ? 'administracion' : 
+                       user.role === 'admin' ? 'administracion' : 
+                       user.role === 'supervisor' ? 'supervision' : 'atencion_cliente'
+          }));
+        } else {
+          console.error('❌ Respuesta inválida del servidor:', data);
+          throw new Error('Respuesta inválida del servidor');
+        }
+      } catch (error) {
+        console.error('❌ Error cargando usuarios:', error);
+        throw error;
+      }
     },
     enabled: true,
     retry: 1
