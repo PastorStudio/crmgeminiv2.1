@@ -2,7 +2,7 @@ import { db } from '../db';
 import { externalAgents, agentResponses, type ExternalAgent, type InsertExternalAgent, type AgentResponse, type InsertAgentResponse } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { OpenAIHelper } from './openaiHelper';
+import { generateChatResponse } from './simpleOpenAI';
 
 export class ExternalAgentService {
   // Crear un nuevo agente externo
@@ -408,16 +408,8 @@ export class ExternalAgentService {
 
       const startTime = Date.now();
       
-      // Crear respuesta simulada basada en el agente
-      let response = "";
-      if (agent.name.toLowerCase().includes('smartbots')) {
-        response = `¡Hola! Soy SmartBots, tu asistente inteligente de WhatsApp. Estoy aquí para ayudarte con consultas de servicio al cliente, ventas y soporte técnico. ¿En qué puedo asistirte hoy?`;
-      } else if (agent.name.toLowerCase().includes('smartplanner')) {
-        response = `¡Hola! Soy SmartPlanner IA, tu asistente de planificación personal. Te ayudo a organizar tu tiempo, crear horarios eficientes y gestionar tus tareas diarias. ¿Qué necesitas planificar hoy?`;
-      } else {
-        response = `Hola, soy ${agent.name}, un asistente inteligente. Estoy aquí para ayudarte con tus consultas de manera profesional y útil. ¿En qué puedo asistirte?`;
-      }
-
+      // Usar tu clave API de OpenAI para respuestas reales
+      const response = await generateChatResponse(agent.name, message);
       const responseTime = Date.now() - startTime;
 
       console.log(`✅ Respuesta generada para ${agent.name} (${responseTime}ms): ${response.substring(0, 100)}...`);
