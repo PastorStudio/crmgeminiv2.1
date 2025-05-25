@@ -138,14 +138,15 @@ class AuthService {
     const token = authHeader.substring(7); // Quitar 'Bearer ' del inicio
 
     // BYPASS: Verificar si es un token temporal del frontend (para usuarios autorizados)
-    if (token.startsWith('temp-token-')) {
+    if (token.startsWith('temp-token-') || token.startsWith('demo-token-')) {
       const tokenParts = token.split('-');
       if (tokenParts.length >= 3) {
         const username = tokenParts[2]; // Extraer el nombre de usuario del token
         
-        if (username === 'DJP') {
+        if (username.toLowerCase() === 'djp') {
           // Token temporal válido para DJP con permisos de superadministrador
-          (req as any).user = { userId: 1, username: 'DJP', role: 'superadmin' };
+          console.log('🔐 Token DJP reconocido, asignando permisos de superadministrador');
+          (req as any).user = { userId: 3, username: 'DJP', role: 'super_admin' };
           next();
           return;
         } else if (['admin', 'agente', 'steph'].includes(username)) {
