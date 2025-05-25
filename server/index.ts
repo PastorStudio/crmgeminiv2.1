@@ -7,7 +7,7 @@ import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import { db } from "./db";
-import { users } from "@shared/schema";
+import { users, whatsappAccounts } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import * as agentAssignmentRoutes from "./routes/agentAssignments";
 import { invisibleAgentIntegrator } from "./services/invisibleAgentIntegrator";
@@ -414,24 +414,25 @@ app.use((req, res, next) => {
       });
 
       // Actualizar directamente en la base de datos
+      const { whatsappAccounts: whatsappAccountsTable } = await import('../shared/schema');
       await db
-        .update(whatsappAccounts)
+        .update(whatsappAccountsTable)
         .set({
           autoResponseEnabled: enabled,
           assignedExternalAgentId: assignedAgentId
         })
-        .where(eq(whatsappAccounts.id, accountId));
+        .where(eq(whatsappAccountsTable.id, accountId));
 
       console.log(`✅ GUARDADO EXITOSO cuenta ${accountId}: AI=${enabled}, Agente=${assignedAgentId}`);
 
       // Verificar que se guardó correctamente
       const [result] = await db
         .select({
-          enabled: whatsappAccounts.autoResponseEnabled,
-          agentId: whatsappAccounts.assignedExternalAgentId
+          enabled: whatsappAccountsTable.autoResponseEnabled,
+          agentId: whatsappAccountsTable.assignedExternalAgentId
         })
-        .from(whatsappAccounts)
-        .where(eq(whatsappAccounts.id, accountId));
+        .from(whatsappAccountsTable)
+        .where(eq(whatsappAccountsTable.id, accountId));
 
       console.log(`📊 VERIFICACIÓN: ${JSON.stringify(result)}`);
 
