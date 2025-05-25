@@ -1452,7 +1452,7 @@ export function WhatsAppTwoColumn() {
                           <SelectValue placeholder="Seleccionar agente" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Sin agente específico</SelectItem>
+                          <SelectItem value="none">Sin agente específico</SelectItem>
                           {Array.isArray(externalAgents) && externalAgents.map((agent: any) => (
                             <SelectItem key={agent.id} value={agent.id}>
                               {agent.name}
