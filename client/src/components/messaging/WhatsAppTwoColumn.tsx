@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
@@ -475,6 +476,12 @@ export function WhatsAppTwoColumn() {
   const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
     queryKey: ['/api/whatsapp/accounts'],
     refetchInterval: 5000 // Refresh every 5 seconds to check status
+  });
+
+  // Fetch external agents for AI selection
+  const { data: externalAgents = [] } = useQuery({
+    queryKey: ['/api/external-agents'],
+    enabled: smartBotsEnabled
   });
 
   // Fetch chats based on selected accounts
@@ -1420,6 +1427,29 @@ export function WhatsAppTwoColumn() {
                       {smartBotsEnabled ? "AI ON" : "AI OFF"}
                     </Button>
                   </motion.div>
+                  
+                  {/* Agent Selector - Only show when SmartBots is enabled */}
+                  {smartBotsEnabled && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3, delay: 0.15 }}
+                    >
+                      <Select value={selectedExternalAgent} onValueChange={setSelectedExternalAgent}>
+                        <SelectTrigger className="w-[180px] border-purple-600 text-purple-600 hover:bg-purple-50">
+                          <SelectValue placeholder="Seleccionar agente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Sin agente específico</SelectItem>
+                          {externalAgents.map((agent: any) => (
+                            <SelectItem key={agent.id} value={agent.id}>
+                              {agent.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </motion.div>
+                  )}
                   
                   {/* Comments Button */}
                   <motion.div
