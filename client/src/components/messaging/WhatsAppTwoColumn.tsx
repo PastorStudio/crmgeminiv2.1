@@ -1458,28 +1458,7 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
                   
-                  {/* Agent Selector - Only show when SmartBots is enabled */}
-                  {smartBotsEnabled && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, delay: 0.15 }}
-                    >
-                      <Select value={selectedExternalAgent} onValueChange={setSelectedExternalAgent}>
-                        <SelectTrigger className="w-[180px] border-purple-600 text-purple-600 hover:bg-purple-50">
-                          <SelectValue placeholder="Seleccionar agente" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Sin agente específico</SelectItem>
-                          {Array.isArray(externalAgents) && externalAgents.map((agent: any) => (
-                            <SelectItem key={agent.id} value={agent.id}>
-                              {agent.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </motion.div>
-                  )}
+
 
 
                   
