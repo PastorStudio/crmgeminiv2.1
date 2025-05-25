@@ -47,6 +47,7 @@ import {
   Square,
   Activity,
 } from 'lucide-react';
+import { AgentConfigSection } from '@/components/AgentConfigSection';
 
 // Importar componente de conexión por teléfono
 import { WhatsAppPhoneConnect } from '@/components/messaging/WhatsAppPhoneConnect';
@@ -750,6 +751,9 @@ const WhatsAppAccounts = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Sección de Configuración de Agentes Externos */}
+                <AgentConfigSection accountId={account.id} />
               </CardContent>
               <CardFooter className="flex justify-between border-t p-4">
                 <div className="flex gap-1">
