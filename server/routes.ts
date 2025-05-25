@@ -4149,28 +4149,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             agentName = 'SmartBots';
           } else if (fullId.includes('smartplanner')) {
             agentName = 'SmartPlanner IA';
-          } else if (fullId.includes('smartflyer')) {
-            agentName = 'SmartFlyer IA';
           } else if (fullId.includes('682ceb8bfa4c81918b3ff66abe6f3480')) {
             agentName = 'SmartBots';
           } else if (fullId.includes('682e61ce2364819196df9641616414b1')) {
             agentName = 'SmartPlanner IA';
-          } else if (fullId.includes('682f551bee70819196aeb603eb638762')) {
-            agentName = 'SmartFlyer IA';
           } else {
-            // Extraer nombre real del final de la URL
-            const urlEnd = fullId.split('-');
-            if (urlEnd.length > 1) {
-              // Tomar las últimas partes después del último guión como nombre
-              const nameParts = urlEnd.slice(1);
-              agentName = nameParts
+            // Extraer nombre genérico del final de la URL
+            const nameParts = fullId.split('-').slice(1);
+            if (nameParts.length > 0) {
+              agentName = nameParts.join(' ')
+                .split('-')
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                 .join(' ');
-              
-              // Si termina en 'ia', convertir a 'IA'
-              if (agentName.toLowerCase().endsWith(' ia')) {
-                agentName = agentName.slice(0, -3) + ' IA';
-              }
             } else {
               agentName = 'ChatGPT Personalizado';
             }
@@ -4436,65 +4426,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('❌ Error obteniendo estadísticas de agentes:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error interno del servidor'
-      });
-    }
-  });
-
-  // Endpoint para procesar mensajes con agentes externos
-  app.post('/api/external-agents/process-message', async (req: Request, res: Response) => {
-    try {
-      console.log('🎯 ENDPOINT EJECUTADO: /api/external-agents/process-message');
-      console.log('📦 Datos recibidos:', req.body);
-      
-      const { agentId, message, contactName, context, targetLanguage, translateResponse } = req.body;
-      
-      console.log(`🔍 Procesando: agentId=${agentId}, mensaje="${message}", contacto="${contactName}"`);
-      
-      if (!agentId || !message) {
-        console.log('❌ Datos faltantes:', { agentId, message });
-        return res.status(400).json({
-          success: false,
-          error: 'Se requiere agentId y mensaje'
-        });
-      }
-
-      const { externalAgentService } = await import('./services/externalAgentService');
-      
-      // Obtener el agente
-      const agent = await externalAgentService.getAgentById(agentId);
-      if (!agent) {
-        return res.status(404).json({
-          success: false,
-          error: 'Agente no encontrado'
-        });
-      }
-
-      // Procesar el mensaje con el agente externo
-      const response = await externalAgentService.processMessageWithAgent(agentId, {
-        message,
-        contactName: contactName || 'Usuario',
-        context: context || 'Conversación de WhatsApp',
-        targetLanguage: targetLanguage || 'es',
-        translateResponse: translateResponse || false
-      });
-
-      if (response) {
-        res.json({
-          success: true,
-          response: response,
-          agentName: agent.name
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          error: 'No se pudo generar respuesta con el agente externo'
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error procesando mensaje con agente externo:', error);
       res.status(500).json({
         success: false,
         error: 'Error interno del servidor'
