@@ -102,7 +102,11 @@ export class ExternalAgentService {
 
       // Si es un agente de ChatGPT, usar OpenAI API directamente
       if (agent.agentUrl.includes('chatgpt.com')) {
-        return await this.sendMessageToOpenAI(agent, message, chatContext, userInfo);
+        const openaiResult = await this.sendMessageToOpenAI(agent, message, { chatId }, { chatId });
+        if (openaiResult && openaiResult.response) {
+          return openaiResult.response;
+        }
+        return null;
       }
 
       // Hacer la petición al agente externo con AbortController para timeout
