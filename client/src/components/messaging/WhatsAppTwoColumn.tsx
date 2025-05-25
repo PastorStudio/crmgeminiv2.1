@@ -174,6 +174,7 @@ export function WhatsAppTwoColumn() {
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [translatorEnabled, setTranslatorEnabled] = useState(false);
   const [smartBotsEnabled, setSmartBotsEnabled] = useState(false);
+  const [selectedExternalAgent, setSelectedExternalAgent] = useState<string>('');
   
   // Estados para auto-envío con delay de 5 segundos
   const [autoSendTimer, setAutoSendTimer] = useState<NodeJS.Timeout | null>(null);
