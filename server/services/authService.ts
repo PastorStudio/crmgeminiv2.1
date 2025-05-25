@@ -193,10 +193,17 @@ class AuthService {
 
         // Obtener el rol del usuario
         const userRole = (req as any).user.role;
+        const username = (req as any).user.username;
+
+        // DJP siempre tiene acceso completo como superadministrador
+        if (username === 'DJP' || userRole === 'superadmin' || userRole === 'super_admin') {
+          next();
+          return;
+        }
 
         // Verificar si el rol está permitido
         if (!allowedRoles.includes(userRole)) {
-          res.status(403).json({ success: false, message: 'Acceso denegado - No tienes permisos suficientes' });
+          res.status(403).json({ success: false, message: 'No tienes permisos para realizar esta acción' });
           return;
         }
 
