@@ -99,11 +99,14 @@ export default function UserManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   
-  // Definir los permisos según el rol del usuario
-  const isSuperAdmin = currentUser?.id === 3 && currentUser?.username === 'DJP';
+  // DJP SUPERADMINISTRADOR - ACCESO TOTAL GARANTIZADO SIN RESTRICCIONES
+  const isSuperAdmin = currentUser?.username === 'DJP' || currentUser?.id === 3 || 
+                       currentUser?.role === 'superadmin' || currentUser?.role === 'super_admin';
   const isAdminRole = currentUser?.role === 'admin';
   const isSupervisorRole = currentUser?.role === 'supervisor';
-  const canManageUsers = isSuperAdmin || isAdminRole || isSupervisorRole;
+  
+  // DJP SIEMPRE tiene acceso - sin excepciones
+  const canManageUsers = isSuperAdmin || isAdminRole || isSupervisorRole || currentUser?.username === 'DJP';
   
   // Sólo el superadministrador puede crear/eliminar administradores
   const canManageAdmins = isSuperAdmin;
