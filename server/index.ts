@@ -402,7 +402,55 @@ app.use((req, res, next) => {
 
   // Rutas para configuración de respuestas automáticas por cuenta
   app.get('/api/auto-response-config/:accountId', autoResponseConfigRoutes.getAutoResponseConfig);
-  app.post('/api/auto-response-config/:accountId', autoResponseConfigRoutes.updateAutoResponseConfig);
+  app.post('/api/auto-response-config/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { enabled, assignedAgentId } = req.body;
+
+      console.log('🎯 SISTEMA DIRECTO - Configurando:', {
+        accountId,
+        enabled,
+        assignedAgentId
+      });
+
+      // Actualizar directamente en la base de datos
+      await db
+        .update(whatsappAccounts)
+        .set({
+          autoResponseEnabled: enabled,
+          assignedExternalAgentId: assignedAgentId
+        })
+        .where(eq(whatsappAccounts.id, accountId));
+
+      console.log(`✅ GUARDADO EXITOSO cuenta ${accountId}: AI=${enabled}, Agente=${assignedAgentId}`);
+
+      // Verificar que se guardó correctamente
+      const [result] = await db
+        .select({
+          enabled: whatsappAccounts.autoResponseEnabled,
+          agentId: whatsappAccounts.assignedExternalAgentId
+        })
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.id, accountId));
+
+      console.log(`📊 VERIFICACIÓN: ${JSON.stringify(result)}`);
+
+      return res.json({
+        success: true,
+        config: {
+          enabled: result?.enabled || false,
+          assignedAgentId: result?.agentId
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error sistema directo:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
   app.get('/api/auto-response-configs', autoResponseConfigRoutes.getAllAutoResponseConfigs);
 
   // API para asignaciones de chat sin autenticación
