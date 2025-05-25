@@ -585,8 +585,9 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         });
         
         // Solo procesar mensajes entrantes (no enviados por nosotros)
-        if (!message.fromMe) {
-          console.log(`📨 Nuevo mensaje recibido en cuenta ${id}: ${message.body?.substring(0, 50) || '[Sin texto]'}...`);
+        // Validación estricta: debe ser fromMe=false Y el chat debe ser diferente al número de la cuenta
+        if (!message.fromMe && message.from !== client.info?.wid?._serialized) {
+          console.log(`📨 Nuevo mensaje ENTRANTE recibido en cuenta ${id}: ${message.body?.substring(0, 50) || '[Sin texto]'}...`);
           console.log(`🔍 Tipo de mensaje: ${message.type}, hasMedia: ${message.hasMedia}`);
           
           let messageBody = message.body || '';
