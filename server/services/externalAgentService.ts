@@ -436,43 +436,68 @@ export class ExternalAgentService {
     return languageResponses[Math.floor(Math.random() * languageResponses.length)];
   }
 
-  // Procesar mensaje para agente específico con respuesta automática
+  // Procesar mensaje para agente específico con respuesta automática FORZADA
   async processMessageForAgent(message: string, chatId: string, accountId: number, context?: any): Promise<any> {
+    console.log(`🚀 ACTIVANDO RESPUESTA AUTOMÁTICA FORZADA para chat ${chatId}`);
+    console.log(`📨 Mensaje recibido: "${message}"`);
+    
     try {
+      // FORZAR RESPUESTA AUTOMÁTICA SIEMPRE
+      console.log('🤖 Iniciando respuesta automática obligatoria...');
+      
       // Obtener todos los agentes disponibles
-      const agents = await this.getAllAgents();
+      let agents = await this.getAllAgents();
       
       if (agents.length === 0) {
         console.log('🤖 No hay agentes externos configurados, creando agente predeterminado...');
         
         // Crear agente SmartBots predeterminado si no existe
-        const defaultAgent = await this.createAgent({
-          name: 'SmartBots ChatGPT',
-          agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
-          description: 'Asistente inteligente especializado en automatización empresarial',
-          triggerKeywords: ['automatización', 'procesos', 'sistemas', 'consultoría'],
-          responseTimeMs: 3000,
-          isActive: true
-        });
-        
-        console.log('✅ Agente SmartBots ChatGPT creado automáticamente');
+        try {
+          const defaultAgent = await this.createAgent({
+            name: 'SmartBots ChatGPT',
+            agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
+            description: 'Asistente inteligente especializado en automatización empresarial',
+            triggerKeywords: ['automatización', 'procesos', 'sistemas', 'consultoría'],
+            responseTimeMs: 3000,
+            isActive: true
+          });
+          
+          console.log('✅ Agente SmartBots ChatGPT creado automáticamente');
+          agents = await this.getAllAgents(); // Refrescar lista
+        } catch (agentError) {
+          console.error('❌ Error creando agente predeterminado:', agentError);
+        }
       }
 
       // Buscar agente SmartBots ChatGPT como predeterminado
-      const updatedAgents = await this.getAllAgents();
-      let selectedAgent = updatedAgents.find(agent => 
+      let selectedAgent = agents.find(agent => 
         agent.name.includes('SmartBots') || agent.name.includes('ChatGPT')
       );
       
       // Si no hay SmartBots, usar el primer agente disponible
-      if (!selectedAgent) {
-        selectedAgent = updatedAgents[0];
+      if (!selectedAgent && agents.length > 0) {
+        selectedAgent = agents[0];
       }
       
       if (!selectedAgent) {
+        console.log('⚠️ No hay agentes disponibles, generando respuesta directa con OpenAI...');
+        
+        // Respuesta directa con OpenAI si no hay agentes
+        const directResponse = await this.generateDirectOpenAIResponse(message, context?.contactName || 'Cliente');
+        
+        if (directResponse) {
+          await this.sendAutoResponseToWhatsApp(accountId, chatId, directResponse);
+          return {
+            success: true,
+            response: directResponse,
+            agent: 'SmartBots ChatGPT (directo)',
+            processingTime: Date.now()
+          };
+        }
+        
         return {
           success: false,
-          message: 'No hay agentes disponibles para procesar este mensaje'
+          message: 'No se pudo generar respuesta automática'
         };
       }
 
@@ -489,6 +514,7 @@ export class ExternalAgentService {
 
       if (agentResponse) {
         // Enviar respuesta automáticamente vía WhatsApp
+        console.log(`📤 Enviando respuesta automática: "${agentResponse}"`);
         await this.sendAutoResponseToWhatsApp(accountId, chatId, agentResponse);
         
         return {
@@ -498,6 +524,21 @@ export class ExternalAgentService {
           processingTime: Date.now()
         };
       } else {
+        console.log('⚠️ No se pudo generar respuesta con agente, intentando respuesta directa...');
+        
+        // Fallback: respuesta directa con OpenAI
+        const fallbackResponse = await this.generateDirectOpenAIResponse(message, context?.contactName || 'Cliente');
+        
+        if (fallbackResponse) {
+          await this.sendAutoResponseToWhatsApp(accountId, chatId, fallbackResponse);
+          return {
+            success: true,
+            response: fallbackResponse,
+            agent: 'SmartBots ChatGPT (fallback)',
+            processingTime: Date.now()
+          };
+        }
+        
         return {
           success: false,
           message: 'No se pudo generar respuesta automática'
@@ -505,10 +546,66 @@ export class ExternalAgentService {
       }
     } catch (error) {
       console.error('❌ Error procesando mensaje para agente:', error);
+      
+      // Último recurso: respuesta directa con OpenAI
+      try {
+        console.log('🔄 Intentando respuesta de emergencia con OpenAI...');
+        const emergencyResponse = await this.generateDirectOpenAIResponse(message, context?.contactName || 'Cliente');
+        
+        if (emergencyResponse) {
+          await this.sendAutoResponseToWhatsApp(accountId, chatId, emergencyResponse);
+          return {
+            success: true,
+            response: emergencyResponse,
+            agent: 'SmartBots ChatGPT (emergencia)',
+            processingTime: Date.now()
+          };
+        }
+      } catch (emergencyError) {
+        console.error('❌ Error en respuesta de emergencia:', emergencyError);
+      }
+      
       return {
         success: false,
         error: 'Error procesando mensaje'
       };
+    }
+  }
+
+  // Generar respuesta directa con OpenAI (sin usar URL externa)
+  async generateDirectOpenAIResponse(message: string, contactName: string): Promise<string | null> {
+    try {
+      const OpenAI = await import('openai');
+      const openai = new OpenAI.default({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+
+      const systemPrompt = `Eres SmartBots ChatGPT, un asistente inteligente especializado en automatización, análisis de procesos y soluciones empresariales. SIEMPRE identifícate como "SmartBots ChatGPT" al responder. Tu función es ayudar con:
+      - Automatización de workflows empresariales
+      - Análisis de datos y procesos
+      - Soluciones tecnológicas inteligentes
+      - Optimización de sistemas
+      - Consultoría especializada
+      
+      Responde de manera profesional, técnica pero accesible, siempre enfocándote en dar soluciones prácticas y específicas. Comienza tus respuestas mencionando tu nombre: "SmartBots ChatGPT".`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // el modelo más avanzado disponible
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Mensaje de ${contactName}: ${message}` }
+        ],
+        max_tokens: 500,
+        temperature: 0.7
+      });
+
+      const responseText = response.choices[0]?.message?.content || null;
+      console.log(`🎯 Respuesta directa OpenAI generada: ${responseText}`);
+      
+      return responseText;
+    } catch (error) {
+      console.error('❌ Error generando respuesta directa con OpenAI:', error);
+      return null;
     }
   }
 
