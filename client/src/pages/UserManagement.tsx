@@ -620,10 +620,10 @@ export default function UserManagement() {
                             badgeStyle = 'outline';
                             badgeText = 'Especialista';
                             badgeColor = 'bg-teal-50 text-teal-700 border-teal-200';
-                          } else if (user.role === 'super_admin') {
+                          } else if (user.role === 'super_admin' || user.role === 'superadmin') {
                             badgeStyle = 'destructive';
-                            badgeText = 'Super Admin';
-                            badgeColor = 'bg-red-700 text-white';
+                            badgeText = 'SUPERADMINISTRADOR';
+                            badgeColor = 'bg-gradient-to-r from-red-600 to-red-800 text-white font-bold shadow-lg';
                           }
                           
                           return (
