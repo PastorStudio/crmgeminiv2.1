@@ -16,12 +16,12 @@ export function startSimpleAutoResponse() {
   console.log('🚀 Iniciando sistema simple de respuestas automáticas...');
   isMonitoring = true;
 
-  // Verificar nuevos mensajes cada 15 segundos
+  // Verificar nuevos mensajes cada 3 segundos para respuesta casi instantánea
   monitorInterval = setInterval(async () => {
     await checkAndRespondToNewMessages();
-  }, 15000);
+  }, 3000);
 
-  console.log('✅ Sistema de respuestas automáticas iniciado - revisando cada 15 segundos');
+  console.log('✅ Sistema de respuestas automáticas iniciado - revisando cada 3 segundos');
 }
 
 export function stopSimpleAutoResponse() {
