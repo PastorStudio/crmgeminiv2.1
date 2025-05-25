@@ -15,6 +15,7 @@ import { realTimeNotificationService } from "./services/realTimeNotificationServ
 import * as whatsappAPI from "./routes/whatsappAPI";
 import { autoMessageProcessor } from "./services/autoMessageProcessor";
 import { messageMonitor } from "./services/messageMonitor";
+import * as autoResponseConfigRoutes from "./routes/autoResponseConfig";
 
 // Sistema iniciado correctamente
 console.log('✅ Sistema CRM WhatsApp iniciado correctamente');
