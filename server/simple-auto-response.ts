@@ -47,56 +47,87 @@ async function checkAndRespondToNewMessages() {
     const chats = await chatsResponse.json();
     console.log(`📋 Verificando ${chats.length} chats para nuevos mensajes...`);
 
+    let processedChats = 0;
+    let newMessagesFound = 0;
+
     for (const chat of chats) {
-      await processChat(chat);
+      const result = await processChat(chat);
+      processedChats++;
+      if (result === true) {
+        newMessagesFound++;
+      }
     }
+
+    console.log(`✅ Procesados ${processedChats} chats, ${newMessagesFound} con mensajes nuevos`);
 
   } catch (error) {
     console.error('❌ Error verificando nuevos mensajes:', error);
   }
 }
 
-async function processChat(chat: any) {
+async function processChat(chat: any): Promise<boolean> {
   try {
     // Obtener mensajes del chat
     const messagesResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/1/messages/${chat.id}`);
-    if (!messagesResponse.ok) return;
+    if (!messagesResponse.ok) {
+      console.log(`⚠️ No se pudieron obtener mensajes para chat ${chat.name}`);
+      return false;
+    }
 
     const messages = await messagesResponse.json();
-    if (!messages || messages.length === 0) return;
+    if (!messages || messages.length === 0) {
+      console.log(`📭 Sin mensajes en chat ${chat.name}`);
+      return false;
+    }
 
     // Encontrar el último mensaje recibido (no enviado por nosotros)
     const lastIncomingMessage = findLastIncomingMessage(messages);
-    if (!lastIncomingMessage) return;
+    if (!lastIncomingMessage) {
+      console.log(`🤖 Sin mensajes entrantes en chat ${chat.name}`);
+      return false;
+    }
 
     // Verificar si ya procesamos este mensaje
     const lastProcessedId = lastProcessedMessages.get(chat.id);
     if (lastProcessedId === lastIncomingMessage.id) {
-      return; // Ya procesamos este mensaje
+      console.log(`✓ Mensaje ya procesado en chat ${chat.name}`);
+      return false; // Ya procesamos este mensaje
     }
 
     // Verificar que el mensaje no esté vacío
     if (!lastIncomingMessage.body || lastIncomingMessage.body.trim() === '') {
-      return; // Ignorar mensajes vacíos
+      console.log(`📝 Mensaje vacío ignorado en chat ${chat.name}`);
+      return false; // Ignorar mensajes vacíos
     }
 
-    console.log(`📨 Nuevo mensaje encontrado en chat ${chat.name}: "${lastIncomingMessage.body}"`);
+    console.log(`📨 NUEVO MENSAJE DETECTADO en chat ${chat.name}: "${lastIncomingMessage.body}"`);
+    console.log(`🆔 ID del mensaje: ${lastIncomingMessage.id}`);
 
     // Generar respuesta usando agente externo (mismo código que funciona en las pruebas)
     const response = await generateResponseWithExternalAgent(lastIncomingMessage.body);
     
     if (response) {
       // Enviar la respuesta
-      await sendAutoResponse(chat.id, response);
+      const sent = await sendAutoResponse(chat.id, response);
       
-      // Marcar este mensaje como procesado
-      lastProcessedMessages.set(chat.id, lastIncomingMessage.id);
-      
-      console.log(`✅ Respuesta automática enviada a ${chat.name}: "${response}"`);
+      if (sent) {
+        // Marcar este mensaje como procesado
+        lastProcessedMessages.set(chat.id, lastIncomingMessage.id);
+        
+        console.log(`✅ RESPUESTA AUTOMÁTICA ENVIADA a ${chat.name}: "${response}"`);
+        return true;
+      } else {
+        console.log(`❌ No se pudo enviar respuesta a ${chat.name}`);
+        return false;
+      }
+    } else {
+      console.log(`❌ No se pudo generar respuesta para chat ${chat.name}`);
+      return false;
     }
 
   } catch (error) {
     console.error(`❌ Error procesando chat ${chat.id}:`, error);
+    return false;
   }
 }
 
