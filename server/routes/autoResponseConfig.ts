@@ -80,14 +80,20 @@ export async function updateAutoResponseConfig(req: Request, res: Response) {
       }
     }
 
-    // Actualizar la cuenta de WhatsApp
+    // Actualizar solo el estado de respuestas automáticas, manteniendo el agente asignado
+    const updateData: any = {
+      autoResponseEnabled: enabled || false,
+      lastActiveAt: new Date()
+    };
+
+    // Solo cambiar el agente si se proporciona uno específico
+    if (assignedAgentId !== undefined) {
+      updateData.assignedExternalAgentId = assignedAgentId;
+    }
+
     const [updatedAccount] = await db
       .update(whatsappAccounts)
-      .set({
-        autoResponseEnabled: enabled || false,
-        assignedExternalAgentId: assignedAgentId || null,
-        lastActiveAt: new Date()
-      })
+      .set(updateData)
       .where(eq(whatsappAccounts.id, accountId))
       .returning();
 
