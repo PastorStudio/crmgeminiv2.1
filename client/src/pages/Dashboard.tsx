@@ -132,17 +132,12 @@ export default function Dashboard() {
 
         {/* Saludo personalizado */}
         <div className="mb-8">
-          <div className={`bg-gradient-to-r ${greeting.gradient} p-6 rounded-lg shadow-lg text-white`}>
+          <div className="bg-gray-900 p-4 rounded-lg shadow-lg text-white">
             <div className="flex items-center space-x-3">
               {greeting.icon}
-              <div>
-                <h2 className="text-2xl font-bold">
-                  {greeting.text}, {user?.fullName || user?.username || 'Usuario'}!
-                </h2>
-                <p className="text-lg opacity-90 mt-1">
-                  Bienvenido de vuelta al sistema de gestión WhatsApp
-                </p>
-              </div>
+              <p className="text-sm">
+                {greeting.text}, {user?.fullName || user?.username || 'Usuario'}! - Bienvenido de vuelta al sistema de gestión WhatsApp
+              </p>
             </div>
           </div>
         </div>
