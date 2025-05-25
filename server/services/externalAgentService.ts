@@ -2,6 +2,7 @@ import { db } from '../db';
 import { externalAgents, agentResponses, type ExternalAgent, type InsertExternalAgent, type AgentResponse, type InsertAgentResponse } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import OpenAI from 'openai';
 
 export class ExternalAgentService {
   // Crear un nuevo agente externo
@@ -395,7 +396,7 @@ export class ExternalAgentService {
     userInfo: any = {}
   ): Promise<any> {
     try {
-      const OpenAI = require('openai');
+      // OpenAI ya está importado al inicio del archivo
       
       if (!process.env.OPENAI_API_KEY) {
         console.log(`❌ No hay clave API de OpenAI configurada`);
@@ -434,7 +435,7 @@ export class ExternalAgentService {
       });
 
       const responseTime = Date.now() - startTime;
-      const text = completion.choices[0].message.content;
+      const text = completion.choices[0].message.content || "No se pudo generar respuesta";
 
       console.log(`✅ Respuesta generada por OpenAI para ${agent.name} (${responseTime}ms): ${text.substring(0, 100)}...`);
 
