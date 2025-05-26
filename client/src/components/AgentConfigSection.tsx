@@ -47,10 +47,11 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
       const response = await fetch(`/api/whatsapp-accounts/${accountId}/agent-config`);
       if (!response.ok) throw new Error('Error obteniendo configuración');
       const data = await response.json();
-      return data.success ? {
+      console.log('🔍 Configuración recibida del servidor:', data);
+      return {
         enabled: data.autoResponseEnabled || false,
         assignedAgentId: data.assignedAgentId || null
-      } : { enabled: false, assignedAgentId: null };
+      };
     }
   });
 
