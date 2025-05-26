@@ -41,9 +41,11 @@ export class GeminiLeadOrganizer {
   constructor() {
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) {
-      throw new Error('Google API Key no encontrada');
+      console.error('GOOGLE_API_KEY no encontrada en variables de entorno');
+      throw new Error('GOOGLE_API_KEY no encontrada');
     }
     
+    console.log('🤖 Inicializando Gemini AI con clave API configurada');
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
   }
