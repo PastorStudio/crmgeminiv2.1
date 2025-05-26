@@ -35,14 +35,7 @@ import { registerTemplateVariablesRoutes } from "./services/templateVariablesRou
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import chatAssignmentsRouter from "./routes/chatAssignments";
 import ticketsRouter from "./routes/tickets";
-import { 
-  getAssignmentByChat, 
-  createAssignmentFixed, 
-  getCommentsFixed, 
-  createCommentFixed,
-  getAutoResponseConfigFixed,
-  saveAutoResponseConfigFixed 
-} from "./fix-all-apis";
+// Referencias de APIs corregidas removidas para optimización
 import { translateText, detectLanguage } from "./routes/translation";
 import {
   createRealAssignment,

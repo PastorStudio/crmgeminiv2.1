@@ -1,11 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { registerRoutes } from "./routes";
-// Comentado temporalmente para evitar errores de inicio
 import { setupVite, serveStatic, log } from "./vite";
-
-// Configurar zona horaria para Panamá (GMT-5)
-process.env.TZ = 'America/Panama';
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
@@ -17,15 +13,11 @@ import { invisibleAgentIntegrator } from "./services/invisibleAgentIntegrator";
 import { realTimeNotificationService } from "./services/realTimeNotificationService";
 import * as whatsappAPI from "./routes/whatsappAPI";
 
+// Configurar zona horaria para Panamá (GMT-5)
+process.env.TZ = 'America/Panama';
 
-// Sistema iniciado correctamente
 console.log('✅ Sistema CRM WhatsApp iniciado correctamente');
-// Configuración específica para WhatsApp QR
-console.log(`Modo de ejecución: ${process.env.NODE_ENV || 'development'}`);
-// No cambiamos NODE_ENV para no afectar a Vite
-// La ruta de chat assignments se registrará en routes.ts
-
-// R.A. AI system removed - cleaned up
+console.log(`Modo de ejecución: ${process.env.NODE_ENV || 'development'}`)
 
 const app = express();
 app.use(express.json());
@@ -209,91 +201,7 @@ app.post("/api/whatsapp/:accountId/stop-keepalive", async (req: Request, res: Re
   }
 });
 
-// ENDPOINT DIRECTO - GET CONFIG 
-app.get("/api/config/auto-response", (req, res) => {
-  try {
-    let config = global.autoResponseConfig;
-    
-    if (!config) {
-      config = {
-        enabled: false,
-        delaySeconds: 10,
-        templates: [{
-          id: "1",
-          name: "Saludo automático",
-          content: "¡Hola! Gracias por contactarnos. Te atenderemos pronto.",
-          variables: []
-        }],
-        useProfessionLevel: true,
-        defaultTemplate: "1",
-        enabledForGroups: false,
-        enabledForBroadcast: false,
-        excludedContacts: [],
-        aiProvider: "smartbots",
-        customPrompts: {
-          enabled: true,
-          system: "Eres SmartBots, un asistente virtual especializado en atención al cliente para WhatsApp. Responde de manera amable, profesional y útil.",
-          temperature: 0.7,
-          maxTokens: 500
-        }
-      };
-    }
-
-    res.writeHead(200, {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache'
-    });
-    res.end(JSON.stringify(config));
-  } catch (error) {
-    console.error('❌ Error obteniendo configuración:', error);
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: error.message }));
-  }
-});
-
-// ENDPOINT DIRECTO SIN CONFLICTOS CON VITE - CON PERSISTENCIA REAL
-app.post("/api/config/auto-response", async (req, res) => {
-  try {
-    console.log('✅ ENDPOINT FUNCIONAL - /api/config/auto-response');
-    console.log('📦 Body:', req.body);
-    
-    // Guardar en la base de datos o storage
-    const storage = require('./storage').storage;
-    
-    // Guardar la configuración en el storage
-    if (storage.setAutoResponseConfig) {
-      await storage.setAutoResponseConfig(req.body);
-      console.log('💾 Configuración guardada en storage');
-    } else {
-      // Si no existe el método, guardarlo en memoria global temporalmente
-      global.autoResponseConfig = req.body;
-      console.log('💾 Configuración guardada en memoria global');
-    }
-    
-    res.writeHead(200, {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache'
-    });
-    
-    const response = {
-      success: true,
-      message: "✅ Configuración guardada y persistida correctamente",
-      config: req.body,
-      timestamp: new Date().toISOString()
-    };
-    
-    res.end(JSON.stringify(response));
-  } catch (error) {
-    console.error('❌ Error guardando configuración:', error);
-    res.writeHead(500, {
-      'Content-Type': 'application/json'
-    });
-    res.end(JSON.stringify({
-      success: false,
-      error: error.message
-    }));
-  }
-});
+// Código de configuración de respuestas automáticas removido para optimización
 
 app.use((req, res, next) => {
   const start = Date.now();
