@@ -87,8 +87,14 @@ export class OptimizedAutoResponseService {
         return; // Sin agente asignado
       }
 
-      // Obtiene chats de WhatsApp
-      const chats = await whatsappMultiAccountManager.getChats(accountId);
+      // Obtiene chats de WhatsApp usando el endpoint interno
+      const response = await fetch(`http://localhost:5000/api/whatsapp-accounts/${accountId}/chats`);
+      if (!response.ok) {
+        console.log(`⚠️ No se pudieron obtener chats para cuenta ${accountId}`);
+        return;
+      }
+      
+      const chats = await response.json();
       if (!chats || chats.length === 0) {
         return;
       }
@@ -113,8 +119,13 @@ export class OptimizedAutoResponseService {
    */
   private async processChatOptimized(accountId: number, chatId: string, agentId: string): Promise<number> {
     try {
-      // Obtiene mensajes recientes de WhatsApp
-      const messages = await whatsappMultiAccountManager.getMessages(accountId, chatId, 5);
+      // Obtiene mensajes recientes de WhatsApp usando el endpoint interno
+      const messagesResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/${accountId}/messages/${chatId}`);
+      if (!messagesResponse.ok) {
+        return 0;
+      }
+      
+      const messages = await messagesResponse.json();
       if (!messages || messages.length === 0) {
         return 0;
       }
@@ -176,20 +187,46 @@ export class OptimizedAutoResponseService {
     try {
       // Genera respuesta usando agente externo
       const contactName = (message as any).contact?.name || chatId;
-      const response = await externalAgentService.generateResponse(
-        agentId,
-        message.body,
-        contactName
-      );
+      const response = await fetch(`http://localhost:5000/api/external-agents/${agentId}/generate-response`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: message.body,
+          contactName: contactName
+        })
+      });
 
-      if (response.success && response.response) {
-        // Envía la respuesta
-        await whatsappMultiAccountManager.sendMessage(accountId, chatId, response.response);
-        
-        console.log(`✅ RESPUESTA AUTOMÁTICA ENVIADA a ${contactName}: "${response.response}"`);
-        return true;
+      if (!response.ok) {
+        console.log(`⚠️ Error llamando al agente externo ${agentId}`);
+        return false;
+      }
+
+      const responseData = await response.json();
+
+      if (responseData.success && responseData.response) {
+        // Envía la respuesta usando el endpoint interno
+        const sendResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/${accountId}/send-message`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chatId: chatId,
+            message: responseData.response
+          })
+        });
+
+        if (sendResponse.ok) {
+          console.log(`✅ RESPUESTA AUTOMÁTICA ENVIADA a ${contactName}: "${responseData.response}"`);
+          return true;
+        } else {
+          console.log(`⚠️ Error enviando respuesta a ${contactName}`);
+          return false;
+        }
       } else {
-        console.log(`⚠️ No se pudo generar respuesta para ${contactName}: ${response.error}`);
+        console.log(`⚠️ No se pudo generar respuesta para ${contactName}: ${responseData.error || 'Error desconocido'}`);
         return false;
       }
     } catch (error) {
