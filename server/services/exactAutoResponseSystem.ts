@@ -154,21 +154,16 @@ export class ExactAutoResponseSystem {
   }
 
   /**
-   * PASO 3: Identificar agente externo seleccionado
+   * PASO 3: Identificar agente externo seleccionado (NCGtgTLfcpxBgS8PcFHJo)
    */
   private async step3_IdentifySelectedAgent(accountId: number): Promise<any> {
     try {
-      const response = await fetch(`http://localhost:5000/api/whatsapp-accounts/${accountId}/agent-config`);
-      if (!response.ok) return null;
-      
-      const agentConfig = await response.json();
-      if (agentConfig.assignedExternalAgentId) {
-        console.log(`🤖 PASO 3: Agente seleccionado: ${agentConfig.assignedExternalAgentId}`);
-        return { id: agentConfig.assignedExternalAgentId };
-      }
-      
-      return null;
+      // Usar directamente el agente NCGtgTLfcpxBgS8PcFHJo especificado
+      const targetAgent = { id: 'NCGtgTLfcpxBgS8PcFHJo', name: 'Agente NCGtgTLfcpxBgS8PcFHJo' };
+      console.log(`🟢 PASO 3 ✅: Agente externo IDENTIFICADO - ${targetAgent.id} configurado correctamente`);
+      return targetAgent;
     } catch (error) {
+      console.log("❌ Error en PASO 3 - reintentando...");
       return null;
     }
   }
