@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
-import { registerRoutes } from "./routes";
+import { registerOptimizedRoutes } from "./routes-optimized";
 import { setupVite, serveStatic, log } from "./vite";
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
@@ -454,8 +454,8 @@ app.use((req, res, next) => {
 
 
 
-  // Registrar todas las demás rutas
-  const server = await registerRoutes(app);
+  // Registrar rutas optimizadas y limpias
+  const server = registerOptimizedRoutes(app);
   
   // Inicializar sistema de notificaciones en tiempo real
   try {

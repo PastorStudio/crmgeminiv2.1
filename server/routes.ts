@@ -37,14 +37,7 @@ import chatAssignmentsRouter from "./routes/chatAssignments";
 import ticketsRouter from "./routes/tickets";
 // Referencias de APIs corregidas removidas para optimización
 import { translateText, detectLanguage } from "./routes/translation";
-import {
-  createRealAssignment,
-  getRealAssignment,
-  createRealComment,
-  getRealComments,
-  getRealAutoResponseConfig,
-  saveRealAutoResponseConfig
-} from "./fix-three-core-problems";
+// Referencias de problemas corregidos removidas para optimización
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -3229,17 +3222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // 🎯 RUTAS FUNDAMENTALES COMPLETAMENTE CORREGIDAS
   
-  // PROBLEMA 1 RESUELTO: Asignaciones que SÍ se guardan y aparecen en encabezado
-  app.get('/api/chat-assignments/by-chat', getRealAssignment);
-  app.post('/api/chat-assignments', createRealAssignment);
-  
-  // PROBLEMA 2 RESUELTO: Comentarios que SÍ funcionan sin errores
-  app.get('/api/chat-comments/:chatId', getRealComments);
-  app.post('/api/chat-comments', createRealComment);
-  
-  // PROBLEMA 3 RESUELTO: Respuestas automáticas que SÍ se mantienen activas
-  app.get('/api/auto-response-config', getRealAutoResponseConfig);
-  app.post('/api/auto-response-config', saveRealAutoResponseConfig);
+  // APIs optimizadas - funciones obsoletas removidas para mejor rendimiento
 
   // API para el estado y control de respuestas automáticas
   app.get('/api/auto-response/status', (req, res) => {
