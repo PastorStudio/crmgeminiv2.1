@@ -4442,9 +4442,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        assignedAgentId: account.assignedAgentId,
-        autoResponseEnabled: account.autoResponseEnabled || false,
-        accountId: parseInt(accountId)
+        config: {
+          assignedExternalAgentId: account.assignedExternalAgentId,
+          autoResponseEnabled: account.autoResponseEnabled || false,
+          responseDelay: account.responseDelay || 3
+        }
       });
 
     } catch (error) {
