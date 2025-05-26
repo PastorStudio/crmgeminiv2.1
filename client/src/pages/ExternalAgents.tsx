@@ -374,6 +374,25 @@ export default function ExternalAgents() {
     }
   };
 
+  // Función para limpiar nombres de agentes y mostrar solo el nombre legible
+  const cleanAgentName = (name: string) => {
+    // Si el nombre contiene un ID al inicio (formato: ID + espacio + nombre real)
+    // Ejemplo: "682f9b5208988191b08215b3d8f65333 agente de ventas de telca panama"
+    const parts = name.trim().split(' ');
+    
+    // Si el primer elemento parece un ID (solo números y letras, más de 10 caracteres)
+    if (parts.length > 1 && parts[0].length > 10 && /^[a-f0-9]+$/i.test(parts[0])) {
+      // Devolver solo la parte del nombre real (sin el ID)
+      return parts.slice(1).join(' ')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+    }
+    
+    // Si no hay ID al inicio, devolver el nombre como está
+    return name;
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -499,7 +518,7 @@ export default function ExternalAgents() {
                 <div className="flex items-start gap-3">
                   <div className="text-2xl">🤖</div>
                   <div>
-                    <CardTitle className="text-lg">{agent.name}</CardTitle>
+                    <CardTitle className="text-lg">{cleanAgentName(agent.name)}</CardTitle>
                     <CardDescription className="mt-1">
                       {getUrlDomain(agent.agentUrl)}
                     </CardDescription>
