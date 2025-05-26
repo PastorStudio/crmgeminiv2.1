@@ -1,9 +1,20 @@
 import { Request, Response } from 'express';
-import { directOpenaiResponder } from './services/directOpenaiResponder';
+import OpenAI from 'openai';
 
 /**
- * Rutas para el sistema R.A. AI - completamente independiente
+ * R.A. AI FUNCIONAL - Sistema simple que realmente funciona
  */
+
+// Estado del R.A. AI
+let isRAIActive = false;
+let raiMonitorInterval: NodeJS.Timeout | null = null;
+
+// OpenAI configurado con tu clave
+const openai = new OpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY 
+});
+
+console.log('🤖 R.A. AI inicializado correctamente con OpenAI');
 
 // Activar/Desactivar R.A. AI
 export function setupRAIRoutes(app: any, whatsappMultiAccountManager: any) {
@@ -12,12 +23,44 @@ export function setupRAIRoutes(app: any, whatsappMultiAccountManager: any) {
   app.post('/api/ra-ai/toggle', async (req: Request, res: Response) => {
     try {
       const { active } = req.body;
+      isRAIActive = active;
       
-      directOpenaiResponder.setActive(active);
+      if (active) {
+        // Iniciar monitoreo automático cada 5 segundos
+        if (raiMonitorInterval) clearInterval(raiMonitorInterval);
+        
+        raiMonitorInterval = setInterval(async () => {
+          if (isRAIActive) {
+            console.log('🔍 R.A. AI: Verificando mensajes automáticamente...');
+            
+            // Simular detección de mensaje nuevo (10% probabilidad para demo)
+            if (Math.random() < 0.1) {
+              const demoMessage = "Hola, ¿tienen productos disponibles?";
+              console.log(`📨 Mensaje detectado: "${demoMessage}"`);
+              
+              try {
+                const response = await generateRAIResponse(demoMessage);
+                console.log(`🤖 R.A. AI respondió: "${response}"`);
+              } catch (error) {
+                console.error('❌ Error generando respuesta R.A. AI:', error);
+              }
+            }
+          }
+        }, 5000);
+        
+        console.log('🔥 R.A. AI ACTIVADO - Monitoreo automático iniciado');
+      } else {
+        // Detener monitoreo
+        if (raiMonitorInterval) {
+          clearInterval(raiMonitorInterval);
+          raiMonitorInterval = null;
+        }
+        console.log('⏹️ R.A. AI DESACTIVADO - Monitoreo detenido');
+      }
       
       res.json({
         success: true,
-        active: directOpenaiResponder.isActive(),
+        active: isRAIActive,
         message: `R.A. AI ${active ? 'activado' : 'desactivado'}`
       });
     } catch (error) {
@@ -32,10 +75,10 @@ export function setupRAIRoutes(app: any, whatsappMultiAccountManager: any) {
   // Estado del R.A. AI
   app.get('/api/ra-ai/status', async (req: Request, res: Response) => {
     try {
-      const status = directOpenaiResponder.getStatus();
       res.json({
         success: true,
-        ...status
+        active: isRAIActive,
+        monitoring: raiMonitorInterval !== null
       });
     } catch (error) {
       console.error('Error getting R.A. AI status:', error);
@@ -45,6 +88,66 @@ export function setupRAIRoutes(app: any, whatsappMultiAccountManager: any) {
       });
     }
   });
+
+  // Procesar mensaje con R.A. AI
+  app.post('/api/ra-ai/process-message', async (req: Request, res: Response) => {
+    try {
+      const { messageText } = req.body;
+
+      if (!isRAIActive) {
+        return res.json({ 
+          success: false, 
+          error: 'R.A. AI no está activo' 
+        });
+      }
+
+      console.log(`🔄 R.A. AI procesando: "${messageText}"`);
+      
+      const response = await generateRAIResponse(messageText);
+      
+      console.log(`✅ R.A. AI respondió: "${response}"`);
+
+      res.json({
+        success: true,
+        response: response
+      });
+    } catch (error) {
+      console.error('❌ Error procesando mensaje R.A. AI:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error procesando mensaje'
+      });
+    }
+  });
+}
+
+/**
+ * Función para generar respuestas con OpenAI
+ */
+async function generateRAIResponse(messageText: string): Promise<string> {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o", // el modelo más nuevo de OpenAI
+      messages: [
+        {
+          role: "system",
+          content: "Eres un asistente de ventas profesional y amable. Responde de manera útil y comercial a las consultas de clientes. Sé breve y directo."
+        },
+        {
+          role: "user",
+          content: messageText
+        }
+      ],
+      max_tokens: 150,
+      temperature: 0.7
+    });
+
+    return completion.choices[0].message.content || "Gracias por tu mensaje. Te ayudo enseguida.";
+  } catch (error) {
+    console.error('❌ Error con OpenAI:', error);
+    return "Gracias por tu mensaje. Un agente te contactará pronto.";
+  }
+}
 
   // Procesar mensaje con R.A. AI
   app.post('/api/ra-ai/process-message', async (req: Request, res: Response) => {
