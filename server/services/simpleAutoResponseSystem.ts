@@ -29,8 +29,16 @@ export class SimpleAutoResponseSystem {
     console.log("🚀 Iniciando sistema simple de respuestas automáticas...");
     this.isRunning = true;
 
-    // SISTEMA DIRECTO ACTIVADO - Bloqueadores desactivados temporalmente para evitar conflictos
-    console.log("🚀 SISTEMA DIRECTO DE AGENTES EXTERNOS ACTIVO - Enfoque en NCGtgTLfcpxBgS8PcFHJo");
+    // ACTIVAR BLOQUEADOR DEFINITIVO ANTI-RESPUESTAS GENÉRICAS
+    console.log("🚀 ACTIVANDO BLOQUEADOR DEFINITIVO ANTI-RESPUESTAS GENÉRICAS...");
+    finalGenericBlocker.activate();
+    realAgentOnly.activate();
+    realAgentOnly.enforceExternalAgentsOnly();
+    agentOnlySystem.activate();
+    agentOnlySystem.enforceAgentResponsesOnly();
+    ultimateAntiGeneric.activate();
+    ultimateAntiGeneric.enforceZeroToleranceMode();
+    console.log("🛡️ BLOQUEADOR DEFINITIVO ACTIVADO - ELIMINACIÓN TOTAL DE RESPUESTAS GENÉRICAS");
 
     // Inicia el bucle de verificación
     this.intervalId = setInterval(async () => {
@@ -63,15 +71,13 @@ export class SimpleAutoResponseSystem {
         .from(whatsappAccounts)
         .where(eq(whatsappAccounts.autoResponseEnabled, true));
 
-      console.log(`🔍 Verificando ${accounts.length} cuentas con AI ON...`);
-
       if (accounts.length === 0) {
-        console.log("⚠️ No hay cuentas con respuestas automáticas activadas");
         return; // No hay cuentas con AI activado
       }
 
+      console.log(`🔍 Verificando ${accounts.length} cuentas con AI ON...`);
+
       for (const account of accounts) {
-        console.log(`🔍 Procesando cuenta: ${account.name} (ID: ${account.id}) con agente: ${account.assignedExternalAgentId}`);
         await this.processAccount(account);
       }
     } catch (error) {
@@ -168,25 +174,51 @@ export class SimpleAutoResponseSystem {
     try {
       console.log(`🤖 Enviando a agente ${agentId}: "${message}"`);
 
-      // Usar fetch para comunicarse con el agente externo
-      const response = await fetch(`http://localhost:5000/api/external-agents/${agentId}/generate-response`, {
+      // Usar HTTP nativo para obtener la respuesta exacta del agente
+      const http = require('http');
+      
+      const postData = JSON.stringify({
+        message: message,
+        contactName: contactName
+      });
+
+      const options = {
+        hostname: 'localhost',
+        port: 5000,
+        path: `/api/external-agents/${agentId}/generate-response`,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: message,
-          contactName: contactName,
-          context: `Conversación de WhatsApp con ${contactName}`
-        }),
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      };
+
+      const agentResponse = await new Promise<string>((resolve, reject) => {
+        const req = http.request(options, (res) => {
+          let data = '';
+          
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+          
+          res.on('end', () => {
+            if (res.statusCode !== 200) {
+              console.log(`⚠️ Agente no disponible - Status: ${res.statusCode}`);
+              resolve('');
+            } else {
+              resolve(data);
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          console.error(`❌ Error conectando con agente:`, error);
+          resolve('');
+        });
+
+        req.write(postData);
+        req.end();
       });
-
-      if (!response.ok) {
-        console.log(`⚠️ Agente no disponible - Status: ${response.status}`);
-        return null;
-      }
-
-      const agentResponse = await response.text();
 
       if (!agentResponse || agentResponse.trim().length === 0) {
         console.log(`❌ Sin respuesta del agente ${agentId}`);

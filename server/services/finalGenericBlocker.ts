@@ -65,21 +65,30 @@ export class FinalGenericBlocker {
    */
   private blockGenericResponseFunctions(): void {
     // Interceptar cualquier función que construya respuestas inmediatas
-    console.log('🚫 Bloqueando funciones que generan respuestas genéricas');
+    const originalFetch = global.fetch || (() => {});
     
-    // Interceptar template strings que puedan contener patrones genéricos
-    const originalStringTemplate = String.prototype.concat;
-    String.prototype.concat = function(...args: string[]): string {
-      const result = originalStringTemplate.apply(this, args);
+    // Interceptar calls HTTP que puedan generar respuestas de prueba
+    if (typeof global !== 'undefined') {
+      (global as any).originalHttpRequest = require('http').request;
       
-      // Bloquear si contiene patrones genéricos
-      if (result.includes('he recibido tu mensaje') && result.includes('Te responderé pronto')) {
-        console.log('🚫 CONSTRUCCIÓN DE MENSAJE GENÉRICO BLOQUEADA VIA CONCAT');
-        return ''; // Devolver cadena vacía para evitar envío
-      }
-      
-      return result;
-    };
+      require('http').request = function(...args: any[]) {
+        const req = (global as any).originalHttpRequest.apply(this, args);
+        
+        // Interceptar el write para detectar payloads con respuestas genéricas
+        const originalWrite = req.write;
+        req.write = function(chunk: any) {
+          if (typeof chunk === 'string' && 
+              chunk.includes('he recibido tu mensaje') && 
+              chunk.includes('Te responderé pronto')) {
+            console.log('🚫 HTTP REQUEST CON CONTENIDO GENÉRICO BLOQUEADO');
+            return; // No enviar la request
+          }
+          return originalWrite.call(this, chunk);
+        };
+        
+        return req;
+      };
+    }
   }
 
   /**
