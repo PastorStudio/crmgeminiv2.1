@@ -551,6 +551,48 @@ export function GeminiAIPanel() {
             </Card>
           )}
 
+          {chatConversionResult && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-green-600" />
+                  Conversión de Chats de WhatsApp
+                </CardTitle>
+                <CardDescription>
+                  Resultados de la conversión automática de chats en leads analizados con IA
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">{chatConversionResult.processed}</div>
+                    <div className="text-sm text-blue-700">Chats Procesados</div>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">{chatConversionResult.created}</div>
+                    <div className="text-sm text-green-700">Leads Creados</div>
+                  </div>
+                  <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                    <div className="text-2xl font-bold text-yellow-600">{chatConversionResult.updated}</div>
+                    <div className="text-sm text-yellow-700">Leads Actualizados</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">{chatConversionResult.analyzed}</div>
+                    <div className="text-sm text-purple-700">Analizados con IA</div>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                  <div className="text-sm text-green-800 font-medium">
+                    ✅ Sistema completamente actualizado con conversaciones reales de WhatsApp
+                  </div>
+                  <div className="text-xs text-green-700 mt-1">
+                    Cada chat ha sido convertido en un lead con análisis de sentimiento, probabilidad de conversión y próximas acciones sugeridas
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {smartReport && (
             <Card className="mt-6">
               <CardHeader>
