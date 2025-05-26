@@ -4336,7 +4336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { accountId } = req.params;
       
       // Get account from database
-      const account = await storage.getWhatsAppAccount(parseInt(accountId));
+      const account = await storage.getWhatsappAccount(parseInt(accountId));
       if (!account) {
         return res.status(404).json({
           success: false,
@@ -4365,7 +4365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { enabled } = req.body;
       
       // Update account in database
-      const updatedAccount = await storage.updateWhatsAppAccount(parseInt(accountId), {
+      const updatedAccount = await storage.updateWhatsappAccount(parseInt(accountId), {
         autoResponseEnabled: enabled
       });
 
