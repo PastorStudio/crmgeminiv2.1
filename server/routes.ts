@@ -5062,5 +5062,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Nueva API para sugerencias inteligentes basadas en mensajes recibidos
+  app.post('/api/suggest-response', async (req: Request, res: Response) => {
+    try {
+      const { chatId, accountId } = req.body;
+      
+      if (!chatId || !accountId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Se requiere chatId y accountId'
+        });
+      }
+
+      // Obtener los últimos mensajes del chat
+      const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
+      const messages = await whatsappMultiAccountManager.getMessagesForChat(accountId, chatId);
+      
+      if (!messages || messages.length === 0) {
+        return res.json({
+          success: true,
+          suggestions: ["¡Hola! ¿En qué puedo ayudarte?", "Gracias por contactarnos", "¿Cómo puedo asistirte hoy?"]
+        });
+      }
+
+      // Encontrar el último mensaje recibido (no enviado por nosotros)
+      const lastReceivedMessage = messages
+        .filter(msg => !msg.fromMe)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+
+      if (!lastReceivedMessage) {
+        return res.json({
+          success: true,
+          suggestions: ["¡Hola! ¿En qué puedo ayudarte?", "Gracias por contactarnos", "¿Cómo puedo asistirte hoy?"]
+        });
+      }
+
+      // Obtener contexto de los últimos 5 mensajes para mejor comprensión
+      const recentMessages = messages.slice(-5).map(msg => ({
+        fromMe: msg.fromMe,
+        content: msg.body || msg.content
+      }));
+
+      // Generar sugerencias usando OpenAI basadas en el mensaje recibido
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      const contextMessages = recentMessages.map(msg => 
+        `${msg.fromMe ? 'Yo' : 'Cliente'}: ${msg.content}`
+      ).join('\n');
+
+      const prompt = `Analiza esta conversación de WhatsApp y el último mensaje del cliente para generar 3 respuestas sugeridas apropiadas:
+
+Contexto de la conversación:
+${contextMessages}
+
+Último mensaje del cliente: "${lastReceivedMessage.body || lastReceivedMessage.content}"
+
+Genera exactamente 3 sugerencias de respuesta que sean:
+1. Profesionales y amigables
+2. Relevantes al mensaje del cliente
+3. Útiles para continuar la conversación
+4. En español
+5. Máximo 100 caracteres cada una
+
+Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni explicaciones adicionales.`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          {
+            role: "system",
+            content: "Eres un asistente que genera sugerencias de respuesta para conversaciones de WhatsApp de atención al cliente. Siempre responde en español con un tono profesional pero amigable."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        max_tokens: 300,
+        temperature: 0.7
+      });
+
+      const suggestions = completion.choices[0]?.message?.content?.split('\n').filter(s => s.trim()).slice(0, 3) || [
+        "Entiendo tu consulta, déjame ayudarte",
+        "Gracias por contactarnos, ¿puedes darme más detalles?",
+        "Perfecto, voy a revisar eso para ti"
+      ];
+
+      console.log(`💡 Sugerencias generadas para mensaje "${lastReceivedMessage.body?.substring(0, 30)}...": ${suggestions.length} opciones`);
+
+      res.json({
+        success: true,
+        suggestions,
+        lastMessage: lastReceivedMessage.body || lastReceivedMessage.content
+      });
+      
+    } catch (error) {
+      console.error('Error generando sugerencias:', error);
+      res.json({
+        success: true,
+        suggestions: ["¡Hola! ¿En qué puedo ayudarte?", "Gracias por tu mensaje", "¿Cómo puedo asistirte?"]
+      });
+    }
+  });
+
   return httpServer;
 }
