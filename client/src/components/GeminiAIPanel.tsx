@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Brain, Zap, Target, TrendingUp, FileText, Activity, Ticket, KanbanSquare, Loader2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Brain, Zap, Target, TrendingUp, FileText, Activity, Ticket, KanbanSquare, Loader2, Clock, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface LeadAnalysis {
@@ -26,16 +27,66 @@ export function GeminiAIPanel() {
   const [ticketsResult, setTicketsResult] = useState<any>(null);
   const [kanbanResult, setKanbanResult] = useState<any>(null);
   const [automationResult, setAutomationResult] = useState<any>(null);
+  const [currentTask, setCurrentTask] = useState<string>("");
+  const [progress, setProgress] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const { toast } = useToast();
 
+  // Timer para tiempo restante
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (timeRemaining > 0) {
+      interval = setInterval(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1) {
+            setIsQuotaExceeded(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timeRemaining]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleQuotaError = () => {
+    setIsQuotaExceeded(true);
+    setTimeRemaining(60); // 1 minuto de espera
+    toast({
+      title: "⏳ Cuota de Gemini AI excedida",
+      description: "Esperando 1 minuto antes del próximo intento...",
+      variant: "destructive",
+    });
+  };
+
   const analyzeFirstLead = async () => {
+    if (isQuotaExceeded) return;
+    
     setIsProcessing(true);
+    setCurrentTask("Analizando lead con Gemini AI...");
+    setProgress(20);
+    
     try {
       const response = await fetch('/api/ai/analyze-lead/1');
+      setProgress(60);
       const data = await response.json();
+      setProgress(80);
+      
+      if (response.status === 429) {
+        handleQuotaError();
+        return;
+      }
       
       if (data.success) {
         setAnalysis(data.analysis);
+        setProgress(100);
         toast({
           title: "✅ Análisis completado",
           description: `Lead analizado con score ${data.analysis.score}/100`,
@@ -43,14 +94,20 @@ export function GeminiAIPanel() {
       } else {
         throw new Error(data.error || 'Error en análisis');
       }
-    } catch (error) {
-      toast({
-        title: "❌ Error",
-        description: "Error al analizar lead con Gemini AI",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      if (error.message?.includes('429') || error.message?.includes('quota')) {
+        handleQuotaError();
+      } else {
+        toast({
+          title: "❌ Error",
+          description: "Error al analizar lead con Gemini AI",
+          variant: "destructive",
+        });
+      }
     }
     setIsProcessing(false);
+    setProgress(0);
+    setCurrentTask("");
   };
 
   const organizeAllLeads = async () => {
@@ -218,6 +275,55 @@ export function GeminiAIPanel() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Barra de progreso y estado */}
+          {(isProcessing || isQuotaExceeded) && (
+            <div className="space-y-3 p-4 bg-gray-50 rounded-lg border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {isQuotaExceeded ? (
+                    <>
+                      <AlertTriangle className="h-4 w-4 text-orange-500" />
+                      <span className="text-sm font-medium text-orange-700">
+                        Cuota de Gemini AI excedida
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                      <span className="text-sm font-medium text-blue-700">
+                        {currentTask || "Procesando..."}
+                      </span>
+                    </>
+                  )}
+                </div>
+                {timeRemaining > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Clock className="h-4 w-4" />
+                    <span>Próximo intento en: {formatTime(timeRemaining)}</span>
+                  </div>
+                )}
+              </div>
+              
+              {isProcessing && !isQuotaExceeded && (
+                <div className="space-y-2">
+                  <Progress value={progress} className="h-2" />
+                  <div className="text-xs text-gray-500 text-center">
+                    {progress}% completado
+                  </div>
+                </div>
+              )}
+              
+              {isQuotaExceeded && (
+                <div className="space-y-2">
+                  <Progress value={Math.max(0, 100 - (timeRemaining / 60 * 100))} className="h-2 bg-orange-100" />
+                  <div className="text-xs text-orange-600 text-center">
+                    Esperando para restablecer cuota de API...
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Button
               onClick={analyzeFirstLead}
