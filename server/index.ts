@@ -348,8 +348,8 @@ app.use((req, res, next) => {
   // Iniciar el sistema simple exacto que pidió el usuario
   try {
     console.log("🚀 Iniciando sistema simple de respuestas automáticas...");
-    const { simpleIntermediarySystem } = await import('./services/simpleIntermediarySystem');
-    await simpleIntermediarySystem.start();
+    const { directIntermediarySystem } = await import('./services/directIntermediarySystem');
+    await directIntermediarySystem.start();
     console.log("✅ Sistema simple de respuestas automáticas iniciado exitosamente");
   } catch (error) {
     console.error("❌ Error al iniciar sistema simple de respuestas automáticas:", error);
