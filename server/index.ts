@@ -348,21 +348,12 @@ app.use((req, res, next) => {
   // Iniciar el sistema simple exacto que pidió el usuario
   // 🚀 Iniciar sistema directo de agentes externos para NCGtgTLfcpxBgS8PcFHJo
   try {
-    console.log("🚀 Iniciando sistema directo de agentes externos...");
-    const { directExternalAgentSystem } = await import('./services/directExternalAgentSystem');
-    await directExternalAgentSystem.start();
-    console.log("✅ Sistema directo de agentes externos iniciado exitosamente");
+    console.log("🚀 Iniciando sistema exacto de respuestas automáticas (10 pasos específicos)...");
+    const { exactAutoResponseSystem } = await import('./services/exactAutoResponseSystem');
+    await exactAutoResponseSystem.start();
+    console.log("✅ Sistema exacto de respuestas automáticas iniciado exitosamente");
   } catch (error) {
-    console.error("❌ Error al iniciar sistema directo de agentes externos:", error);
-  }
-
-  try {
-    console.log("🚀 Iniciando sistema simple de respuestas automáticas...");
-    const { simpleAutoResponseSystem } = await import('./services/simpleAutoResponseSystem');
-    await simpleAutoResponseSystem.start();
-    console.log("✅ Sistema simple de respuestas automáticas iniciado exitosamente");
-  } catch (error) {
-    console.error("❌ Error al iniciar sistema simple de respuestas automáticas:", error);
+    console.error("❌ Error al iniciar sistema exacto de respuestas automáticas:", error);
   }
   
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
