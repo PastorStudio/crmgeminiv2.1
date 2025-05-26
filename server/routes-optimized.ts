@@ -169,13 +169,79 @@ export function registerOptimizedRoutes(app: Express): Server {
       res.json({
         success: true,
         organized: result.organized,
+        moved: result.moved,
         insights: result.insights,
-        message: `✅ ${result.organized} leads organizados exitosamente`,
+        message: `✅ ${result.organized} leads organizados, ${result.moved} movidos automáticamente`,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
       console.error('Error organizando leads:', error);
       res.status(500).json({ error: "Error en organización automática" });
+    }
+  });
+
+  // Gestión automática de tickets
+  app.post("/api/ai/manage-tickets", async (_req: Request, res: Response) => {
+    try {
+      console.log('🎫 Iniciando gestión automática de tickets...');
+      const result = await geminiLeadOrganizer.autoManageTickets();
+      
+      res.json({
+        success: true,
+        processed: result.processed,
+        created: result.created,
+        moved: result.moved,
+        message: `🎫 ${result.processed} mensajes procesados, ${result.created} tickets creados`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error gestionando tickets:', error);
+      res.status(500).json({ error: "Error en gestión automática de tickets" });
+    }
+  });
+
+  // Organizar tarjetas Kanban
+  app.get("/api/ai/kanban-organize", async (_req: Request, res: Response) => {
+    try {
+      console.log('📋 Organizando tarjetas Kanban...');
+      const result = await geminiLeadOrganizer.organizeKanbanCards();
+      
+      res.json({
+        success: true,
+        organized: result.organized,
+        columns: result.columns,
+        message: `📋 ${result.organized} tarjetas organizadas en tablero Kanban`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error organizando Kanban:', error);
+      res.status(500).json({ error: "Error al organizar tablero Kanban" });
+    }
+  });
+
+  // Automatización completa del sistema
+  app.post("/api/ai/full-automation", async (_req: Request, res: Response) => {
+    try {
+      console.log('🚀 Ejecutando automatización completa del sistema...');
+      const result = await geminiLeadOrganizer.runFullAutomation();
+      
+      res.json({
+        success: true,
+        results: {
+          leadsOrganized: result.leadsOrganized,
+          leadsMovedStatus: result.leadsMovedStatus,
+          ticketsProcessed: result.ticketsProcessed,
+          ticketsCreated: result.ticketsCreated,
+          ticketsMoved: result.ticketsMoved,
+          kanbanOrganized: result.kanbanOrganized
+        },
+        summary: result.summary,
+        message: "🚀 Automatización completa del sistema ejecutada exitosamente",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error en automatización completa:', error);
+      res.status(500).json({ error: "Error en automatización completa del sistema" });
     }
   });
 
