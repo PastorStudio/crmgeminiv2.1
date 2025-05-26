@@ -36,20 +36,32 @@ class DirectIntermediarySystem {
   }
 
   private async checkForNewMessages(): Promise<void> {
-    // 1. Obtener cuenta configurada (cualquier estado que no sea 'disconnected')
-    const accounts = await db
-      .select()
-      .from(whatsappAccounts);
+    try {
+      console.log("🔄 SISTEMA DIRECTO: Verificando mensajes...");
+      
+      // 1. Obtener cuenta configurada (cualquier estado que no sea 'disconnected')
+      const accounts = await db
+        .select()
+        .from(whatsappAccounts);
 
-    for (const account of accounts) {
-      if (account.assignedExternalAgentId && account.autoResponseEnabled && account.status !== 'disconnected') {
-        console.log(`🔍 Verificando cuenta ${account.id} (${account.name}) con agente ${account.assignedExternalAgentId}`);
-        await this.processAccount(account);
-      } else if (account.assignedExternalAgentId && account.autoResponseEnabled) {
-        console.log(`⚠️ Cuenta ${account.id} (${account.name}) configurada pero desconectada`);
-      } else if (account.assignedExternalAgentId) {
-        console.log(`💤 Cuenta ${account.id} (${account.name}) con agente pero auto-respuestas deshabilitadas`);
+      console.log(`📊 SISTEMA DIRECTO: Encontradas ${accounts.length} cuentas`);
+
+      for (const account of accounts) {
+        console.log(`🔍 SISTEMA DIRECTO: Cuenta ${account.id} (${account.name}) - Estado: ${account.status} - Agente: ${account.assignedExternalAgentId} - Auto: ${account.autoResponseEnabled}`);
+        
+        if (account.assignedExternalAgentId && account.autoResponseEnabled && account.status !== 'disconnected') {
+          console.log(`✅ SISTEMA DIRECTO: Procesando cuenta ${account.id} (${account.name}) con agente ${account.assignedExternalAgentId}`);
+          await this.processAccount(account);
+        } else if (account.assignedExternalAgentId && account.autoResponseEnabled) {
+          console.log(`⚠️ SISTEMA DIRECTO: Cuenta ${account.id} (${account.name}) configurada pero desconectada`);
+        } else if (account.assignedExternalAgentId) {
+          console.log(`💤 SISTEMA DIRECTO: Cuenta ${account.id} (${account.name}) con agente pero auto-respuestas deshabilitadas`);
+        } else {
+          console.log(`🚫 SISTEMA DIRECTO: Cuenta ${account.id} (${account.name}) sin agente asignado`);
+        }
       }
+    } catch (error) {
+      console.error("❌ SISTEMA DIRECTO: Error verificando mensajes:", error);
     }
   }
 
