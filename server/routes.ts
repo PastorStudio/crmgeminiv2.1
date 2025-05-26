@@ -4330,6 +4330,282 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Toggle Status endpoints
+  app.get('/api/whatsapp-accounts/:accountId/ai-toggle-status', async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      
+      // Get account from database
+      const account = await storage.getWhatsAppAccount(parseInt(accountId));
+      if (!account) {
+        return res.status(404).json({
+          success: false,
+          error: 'WhatsApp account not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        aiEnabled: account.autoResponseEnabled || false,
+        accountId: parseInt(accountId)
+      });
+
+    } catch (error) {
+      console.error('Error getting AI toggle status:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get AI toggle status'
+      });
+    }
+  });
+
+  app.post('/api/whatsapp-accounts/:accountId/ai-toggle', async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      const { enabled } = req.body;
+      
+      // Update account in database
+      const updatedAccount = await storage.updateWhatsAppAccount(parseInt(accountId), {
+        autoResponseEnabled: enabled
+      });
+
+      if (!updatedAccount) {
+        return res.status(404).json({
+          success: false,
+          error: 'WhatsApp account not found'
+        });
+      }
+
+      console.log(`🔄 AI toggle ${enabled ? 'enabled' : 'disabled'} for account ${accountId}`);
+
+      res.json({
+        success: true,
+        aiEnabled: enabled,
+        accountId: parseInt(accountId),
+        message: `AI automation ${enabled ? 'enabled' : 'disabled'} successfully`
+      });
+
+    } catch (error) {
+      console.error('Error updating AI toggle:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update AI toggle'
+      });
+    }
+  });
+
+  // Recent messages endpoint
+  app.get('/api/whatsapp-accounts/:accountId/recent-messages', async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      
+      // Get recent messages from the last 5 minutes
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const messages = await storage.getRecentMessages(parseInt(accountId), fiveMinutesAgo);
+
+      res.json({
+        success: true,
+        messages: messages.map(msg => ({
+          id: msg.messageId || `${msg.chatId}_${msg.timestamp}`,
+          chatId: msg.chatId,
+          body: msg.body,
+          fromMe: msg.fromMe,
+          timestamp: msg.timestamp ? new Date(msg.timestamp).getTime() : Date.now(),
+          contactName: msg.contactName || 'Unknown Contact',
+          contactPhone: msg.from || 'unknown'
+        }))
+      });
+
+    } catch (error) {
+      console.error('Error getting recent messages:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get recent messages',
+        messages: []
+      });
+    }
+  });
+
+  // WhatsApp Account Agent Configuration endpoints
+  app.get('/api/whatsapp-accounts/:accountId/agent-config', async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      
+      // Get account from database
+      const account = await storage.getWhatsappAccount(parseInt(accountId));
+      if (!account) {
+        return res.status(404).json({
+          success: false,
+          error: 'WhatsApp account not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        assignedAgentId: account.assignedAgentId,
+        autoResponseEnabled: account.autoResponseEnabled || false,
+        accountId: parseInt(accountId)
+      });
+
+    } catch (error) {
+      console.error('Error getting agent config:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get agent configuration'
+      });
+    }
+  });
+
+  app.post('/api/whatsapp-accounts/:accountId/status', async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      
+      // Get account status from WhatsApp service
+      const account = await storage.getWhatsappAccount(parseInt(accountId));
+      if (!account) {
+        return res.status(404).json({
+          success: false,
+          error: 'WhatsApp account not found'
+        });
+      }
+
+      // Check if WhatsApp client is ready
+      const isReady = account.status === 'ready' || account.status === 'connected';
+
+      res.json({
+        success: true,
+        status: isReady ? 'ready' : 'not_ready',
+        accountId: parseInt(accountId),
+        connected: isReady
+      });
+
+    } catch (error) {
+      console.error('Error getting WhatsApp status:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get WhatsApp status'
+      });
+    }
+  });
+
+  app.post('/api/whatsapp-accounts/:accountId/send-message', async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      const { chatId, message, automated = false } = req.body;
+
+      if (!chatId || !message) {
+        return res.status(400).json({
+          success: false,
+          error: 'ChatId and message are required'
+        });
+      }
+
+      // Use the WhatsApp service to send message
+      const result = await whatsappMultiAccountManager.sendMessage(parseInt(accountId), chatId, message);
+
+      if (result.success) {
+        console.log(`✅ ${automated ? 'Automated' : 'Manual'} message sent to chat ${chatId}: "${message}"`);
+        
+        res.json({
+          success: true,
+          messageId: result.messageId,
+          message: 'Message sent successfully'
+        });
+      } else {
+        console.log(`❌ Failed to send message to chat ${chatId}: ${result.error}`);
+        
+        res.status(500).json({
+          success: false,
+          error: result.error || 'Failed to send message'
+        });
+      }
+
+    } catch (error) {
+      console.error('Error sending WhatsApp message:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to send message'
+      });
+    }
+  });
+
+  // Automatic Responder Control endpoints
+  app.get('/api/automatic-responder/status', async (req: Request, res: Response) => {
+    try {
+      const { automaticWhatsAppResponder } = await import('./services/automaticWhatsAppResponder');
+      const status = automaticWhatsAppResponder.getStatus();
+      
+      res.json({
+        success: true,
+        ...status
+      });
+
+    } catch (error) {
+      console.error('Error getting automatic responder status:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get responder status'
+      });
+    }
+  });
+
+  app.post('/api/automatic-responder/start', async (req: Request, res: Response) => {
+    try {
+      const { automaticWhatsAppResponder } = await import('./services/automaticWhatsAppResponder');
+      await automaticWhatsAppResponder.start();
+      
+      res.json({
+        success: true,
+        message: 'Automatic responder started successfully'
+      });
+
+    } catch (error) {
+      console.error('Error starting automatic responder:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to start automatic responder'
+      });
+    }
+  });
+
+  app.post('/api/automatic-responder/stop', async (req: Request, res: Response) => {
+    try {
+      const { automaticWhatsAppResponder } = await import('./services/automaticWhatsAppResponder');
+      automaticWhatsAppResponder.stop();
+      
+      res.json({
+        success: true,
+        message: 'Automatic responder stopped successfully'
+      });
+
+    } catch (error) {
+      console.error('Error stopping automatic responder:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to stop automatic responder'
+      });
+    }
+  });
+
+  app.post('/api/automatic-responder/clear-cache', async (req: Request, res: Response) => {
+    try {
+      const { automaticWhatsAppResponder } = await import('./services/automaticWhatsAppResponder');
+      automaticWhatsAppResponder.clearProcessedMessages();
+      
+      res.json({
+        success: true,
+        message: 'Message cache cleared successfully'
+      });
+
+    } catch (error) {
+      console.error('Error clearing message cache:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to clear message cache'
+      });
+    }
+  });
+
   // Activar agente
   app.post('/api/external-agents/:agentId/activate', async (req: Request, res: Response) => {
     try {

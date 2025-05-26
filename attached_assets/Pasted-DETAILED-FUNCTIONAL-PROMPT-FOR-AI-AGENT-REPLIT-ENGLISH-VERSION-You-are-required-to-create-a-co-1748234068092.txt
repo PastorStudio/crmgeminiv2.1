@@ -1,0 +1,64 @@
+DETAILED FUNCTIONAL PROMPT FOR AI AGENT (REPLIT – ENGLISH VERSION):
+
+You are required to create a complete function for an external AI agent operating in a Replit environment. This function must enable automatic WhatsApp message replies with full validation and control logic. Follow these specifications exactly:
+
+🔁 FUNCTION PURPOSE:
+Automatically respond to incoming WhatsApp messages only when AI is activated, using an external agent for response generation.
+
+🧠 FUNCTIONAL REQUIREMENTS (STEP BY STEP):
+CHECK WHATSAPP CONNECTION STATUS:
+
+Before executing anything, validate that the WhatsApp account is connected.
+
+If not connected, return immediately and log: "WhatsApp account not connected".
+
+VERIFY ASSIGNED AGENT:
+
+Access the WhatsApp account “card” (object or UI structure).
+
+Confirm that this card includes a reference to a selected AI agent.
+
+If no agent is assigned, log and return: "No AI agent assigned to this WhatsApp account".
+
+MONITOR INCOMING MESSAGES:
+
+Detect every new incoming message in real-time (webhook or polling logic).
+
+When a message is received:
+
+Mark it with a red visual indicator.
+
+Display the message title as: "Last Received".
+
+GENERATE RESPONSE WITH EXTERNAL AGENT:
+
+Automatically send the message content to the assigned external agent.
+
+The agent must return an appropriate reply based on the context of the message.
+
+SEND REPLY BACK TO WHATSAPP CHAT:
+
+Once the agent provides a response, immediately send that reply back to the same WhatsApp conversation from which the message was received.
+
+INTEGRATE AI ON/OFF TOGGLE:
+
+In the WhatsApp UI message area, there is a button labeled "AI ON/OFF".
+
+This button acts as a toggle switch:
+
+If set to OFF, the entire automation process is disabled.
+
+If set to ON, the automation process is active.
+
+Make sure the system checks the status of this toggle before responding or processing any message.
+
+🧱 TECHNICAL CONSIDERATIONS:
+This function must run in a Replit-compatible environment.
+
+Structure the code to allow for scalability (e.g., handling multiple chats or agents).
+
+Use clear comments and modular structure (separate logic for connection check, agent call, toggle status check, message handler).
+
+Ensure safe error handling and logging for debugging.
+
+Do not skip any of these steps. The system must only operate when the WhatsApp is connected, an AI agent is assigned, and the AI toggle is set to ON.

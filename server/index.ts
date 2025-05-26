@@ -352,6 +352,16 @@ app.use((req, res, next) => {
   } catch (error) {
     console.error("❌ Error al iniciar sistema simple de respuestas automáticas:", error);
   }
+
+  // Iniciar el sistema automático completo de respuestas WhatsApp
+  try {
+    console.log("🚀 Iniciando sistema automático completo de respuestas WhatsApp...");
+    const { automaticWhatsAppResponder } = await import('./services/automaticWhatsAppResponder');
+    await automaticWhatsAppResponder.start();
+    console.log("✅ Sistema automático completo de respuestas WhatsApp iniciado exitosamente");
+  } catch (error) {
+    console.error("❌ Error al iniciar sistema automático de respuestas WhatsApp:", error);
+  }
   
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
   app.get('/api/system/users', async (req, res) => {
