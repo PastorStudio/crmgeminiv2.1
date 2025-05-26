@@ -304,8 +304,8 @@ export class ExactAutoResponseSystem {
       console.log(`🤖 PASO 6: Seleccionando agente ${agentId} para cuenta`);
       console.log(`📝 PASO 7: Pegando mensaje en "Tu mensaje": "${message}"`);
       
-      // Enviar mensaje al agente externo
-      const response = await fetch(`http://localhost:5000/api/external-agents/${agentId}/generate-response`, {
+      // Enviar mensaje al agente externo real NCGtgTLfcpxBgS8PcFHJo
+      const response = await fetch(`http://localhost:5000/api/external-agents/NCGtgTLfcpxBgS8PcFHJo/generate-response`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -313,7 +313,8 @@ export class ExactAutoResponseSystem {
         body: JSON.stringify({
           message: message,
           contactName: chatName,
-          context: `Conversación de WhatsApp con ${chatName}`
+          context: `Conversación de WhatsApp con ${chatName}`,
+          agentId: 'NCGtgTLfcpxBgS8PcFHJo'
         }),
       });
 
