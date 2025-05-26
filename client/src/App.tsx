@@ -35,6 +35,7 @@ import WhatsAppConnection from './pages/WhatsAppConnection';
 import AgentMonitoring from './pages/AgentMonitoring';
 import TicketsSimple from './pages/TicketsSimple';
 import ExternalAgents from './pages/ExternalAgents';
+import GeminiAI from './pages/GeminiAI';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
@@ -271,6 +272,18 @@ const AppRoutes: React.FC = () => {
                 </svg>
                 Análisis
               </a>
+
+              <a href="/gemini-ai" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/gemini-ai' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="8" fill="#9333EA"/>
+                  <path d="M8 12h8M12 8v8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                  <circle cx="9" cy="9" r="1.5" fill="#C084FC"/>
+                  <circle cx="15" cy="15" r="1.5" fill="#A855F7"/>
+                  <circle cx="15" cy="9" r="1" fill="white"/>
+                  <circle cx="9" cy="15" r="1" fill="white"/>
+                </svg>
+                Gemini AI
+              </a>
               
               <a href="/media-gallery" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/media-gallery' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -473,6 +486,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/tasks" component={() => <PrivateRoute component={Tasks} path="/tasks" />} />
                 <Route path="/tickets" component={() => <PrivateRoute component={TicketsSimple} path="/tickets" />} />
                 <Route path="/analytics" component={() => <PrivateRoute component={Analytics} path="/analytics" />} />
+                <Route path="/gemini-ai" component={() => <PrivateRoute component={GeminiAI} path="/gemini-ai" />} />
                 <Route path="/settings" component={() => <PrivateRoute component={Settings} path="/settings" />} />
                 <Route path="/media-gallery" component={() => <PrivateRoute component={MediaGallery} path="/media-gallery" />} />
                 <Route path="/message-templates" component={() => <PrivateRoute component={MessageTemplates} path="/message-templates" />} />
