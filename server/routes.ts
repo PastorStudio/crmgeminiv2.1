@@ -4266,15 +4266,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else if (fullId.includes('682e61ce2364819196df9641616414b1')) {
             agentName = 'SmartPlanner IA';
           } else {
-            // Extraer nombre genérico del final de la URL
-            const nameParts = fullId.split('-').slice(1);
-            if (nameParts.length > 0) {
+            // Extraer nombre limpio removiendo el ID de la URL
+            // Para URLs como: 682f9b5208988191b08215b3d8f65333-agente-de-ventas-de-telca-panama
+            // Solo queremos: agente de ventas de telca panama
+            
+            // Separar por guiones y buscar la parte del nombre real
+            const parts = fullId.split('-');
+            
+            // Si el primer elemento parece un ID (solo números y letras, más de 10 caracteres)
+            if (parts.length > 1 && parts[0].length > 10 && /^[a-f0-9]+$/.test(parts[0])) {
+              // Tomar todas las partes después del ID
+              const nameParts = parts.slice(1);
               agentName = nameParts.join(' ')
-                .split('-')
+                .split(' ')
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                 .join(' ');
             } else {
-              agentName = 'ChatGPT Personalizado';
+              // Si no hay ID al inicio, procesar normalmente
+              const nameParts = fullId.split('-').slice(1);
+              if (nameParts.length > 0) {
+                agentName = nameParts.join(' ')
+                  .split('-')
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(' ');
+              } else {
+                agentName = 'ChatGPT Personalizado';
+              }
             }
           }
         }
