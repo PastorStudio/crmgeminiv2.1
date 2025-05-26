@@ -1944,6 +1944,46 @@ export function WhatsAppTwoColumn() {
                   </PopoverContent>
                 </Popover>
 
+                {/* R.A. AI Button - Nuevo Sistema Independiente */}
+                <Button
+                  variant={raAiEnabled ? "default" : "outline"}
+                  size="sm"
+                  className={`h-9 px-3 ${raAiEnabled ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'border-purple-300 text-purple-600 hover:bg-purple-50'}`}
+                  onClick={toggleRaAi}
+                  disabled={raAiProcessing}
+                  title={raAiEnabled ? "R.A. AI Activado - Click para desactivar" : "R.A. AI Desactivado - Click para activar"}
+                >
+                  {raAiProcessing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <div className="flex items-center space-x-1">
+                      <span>🤖</span>
+                      <span className="text-xs font-medium">R.A. AI</span>
+                    </div>
+                  )}
+                </Button>
+
+                {/* Botón para procesar mensaje actual con R.A. AI */}
+                {raAiEnabled && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-3 border-purple-300 text-purple-600 hover:bg-purple-50"
+                    onClick={processWithRaAi}
+                    disabled={!selectedChat || raAiProcessing}
+                    title="Generar respuesta con R.A. AI para el último mensaje recibido"
+                  >
+                    {raAiProcessing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <div className="flex items-center space-x-1">
+                        <span>✨</span>
+                        <span className="text-xs">Generar</span>
+                      </div>
+                    )}
+                  </Button>
+                )}
+
                 {/* Voice Note Button with Sound Waves */}
                 <Button
                   variant={isRecording ? "destructive" : "outline"}
