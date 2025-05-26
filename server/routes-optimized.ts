@@ -35,6 +35,75 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   };
 
+  // ***** RUTAS DE TICKETS CRÍTICAS *****
+  app.get("/api/tickets", async (_req: Request, res: Response) => {
+    try {
+      const tickets = await storage.getAllLeads(); // Los tickets son leads con formato diferente
+      const formattedTickets = tickets.map(lead => ({
+        id: lead.id,
+        customerName: lead.name,
+        customerPhone: lead.phone,
+        customerEmail: lead.email,
+        status: lead.status || 'nuevo',
+        priority: lead.priority || 'medium',
+        lastMessage: `Lead: ${lead.name}`,
+        assignedToId: lead.assignedTo,
+        createdAt: lead.createdAt,
+        lastActivityAt: lead.createdAt,
+        notes: lead.notes
+      }));
+      res.json({ tickets: formattedTickets });
+    } catch (error) {
+      console.error('Error obteniendo tickets:', error);
+      res.status(500).json({ error: "Error al obtener tickets" });
+    }
+  });
+
+  app.get("/api/tickets/stats", async (_req: Request, res: Response) => {
+    try {
+      const leads = await storage.getAllLeads();
+      const stats = {
+        byStatus: {
+          nuevo: leads.filter(l => l.status === 'new').length,
+          interesado: leads.filter(l => l.status === 'interested').length,
+          no_leido: leads.filter(l => l.status === 'unread').length,
+          pendiente_demo: leads.filter(l => l.status === 'demo_pending').length,
+          completado: leads.filter(l => l.status === 'converted').length,
+          no_interesado: leads.filter(l => l.status === 'not_interested').length
+        },
+        totals: {
+          total: leads.length,
+          active: leads.filter(l => l.status !== 'converted' && l.status !== 'not_interested').length,
+          today: leads.filter(l => {
+            const today = new Date();
+            const leadDate = new Date(l.createdAt);
+            return leadDate.toDateString() === today.toDateString();
+          }).length
+        }
+      };
+      res.json(stats);
+    } catch (error) {
+      console.error('Error obteniendo estadísticas de tickets:', error);
+      res.status(500).json({ error: "Error al obtener estadísticas" });
+    }
+  });
+
+  // ***** RUTAS DE GALERÍA DE MEDIOS *****
+  app.get("/api/media-gallery/list", async (_req: Request, res: Response) => {
+    try {
+      // Datos simulados para la galería de medios mientras se implementa la funcionalidad completa
+      const mediaItems = [];
+      res.json({
+        success: true,
+        items: mediaItems,
+        total: 0
+      });
+    } catch (error) {
+      console.error('Error obteniendo galería de medios:', error);
+      res.status(500).json({ error: "Error al obtener galería de medios" });
+    }
+  });
+
   // ***** RUTAS DE USUARIOS OPTIMIZADAS *****
   app.get("/api/users", async (_req: Request, res: Response) => {
     try {
