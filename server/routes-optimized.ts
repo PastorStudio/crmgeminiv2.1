@@ -160,31 +160,77 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
-  // Organizar todos los leads con Gemini AI
+  // Organizar leads básico (sin Gemini AI)
   app.post("/api/ai/organize-leads", async (_req: Request, res: Response) => {
     try {
-      console.log('🤖 Iniciando organización automática con Gemini AI...');
-      const result = await geminiLeadOrganizer.organizeAllLeads();
+      console.log('📋 Iniciando organización básica de leads...');
+      
+      const leads = await storage.getAllLeads();
+      const insights: string[] = [];
+      let organized = 0;
+      let moved = 0;
+
+      for (const lead of leads) {
+        // Análisis básico basado en datos existentes
+        let priority = lead.priority || 'medium';
+        
+        // Determinar prioridad basada en presupuesto
+        if (lead.budget && lead.budget > 50000) priority = 'high';
+        else if (lead.budget && lead.budget < 5000) priority = 'low';
+        
+        // Actualizar si cambió la prioridad
+        if (lead.priority !== priority) {
+          await storage.updateLead(lead.id, { priority });
+          insights.push(`📊 Lead ${lead.name} - Prioridad actualizada a: ${priority}`);
+          moved++;
+        }
+        
+        organized++;
+      }
       
       res.json({
         success: true,
-        organized: result.organized,
-        moved: result.moved,
-        insights: result.insights,
-        message: `✅ ${result.organized} leads organizados, ${result.moved} movidos automáticamente`,
+        organized,
+        moved,
+        insights,
+        message: `✅ ${organized} leads organizados, ${moved} movidos automáticamente`,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
       console.error('Error organizando leads:', error);
-      res.status(500).json({ error: "Error en organización automática" });
+      res.status(500).json({ error: "Error en organización básica" });
     }
   });
 
   // Gestión automática de tickets
   app.post("/api/ai/manage-tickets", async (_req: Request, res: Response) => {
     try {
-      console.log('🎫 Iniciando gestión automática de tickets...');
-      const result = await geminiLeadOrganizer.autoManageTickets();
+      console.log('🎫 Iniciando gestión básica de tickets...');
+      
+      // Gestión básica de tickets sin Gemini AI
+      const leads = await storage.getAllLeads();
+      let processed = 0;
+      let created = 0;
+      let moved = 0;
+
+      for (const lead of leads) {
+        // Crear actividades automáticas basadas en estado
+        if (lead.status === 'new') {
+          await storage.createActivity({
+            leadId: lead.id,
+            userId: 1,
+            type: 'call',
+            subject: 'Primera llamada de contacto',
+            description: 'Realizar contacto inicial con lead nuevo',
+            dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 horas
+            completed: false
+          });
+          created++;
+        }
+        processed++;
+      }
+
+      const result = { processed, created, moved };
       
       res.json({
         success: true,
