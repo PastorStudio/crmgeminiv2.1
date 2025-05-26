@@ -6,7 +6,8 @@
 export class ExactAutoResponseSystem {
   private isRunning = false;
   private intervalId: NodeJS.Timeout | null = null;
-  private readonly CHECK_INTERVAL = 5000; // 5 segundos
+  private readonly CHECK_INTERVAL = 2000; // 2 segundos para verificación general
+  private readonly CHAT_PROCESS_DELAY = 1000; // 1 segundo entre chats
   private processedMessages = new Set<string>();
 
   /**
