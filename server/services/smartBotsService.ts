@@ -186,18 +186,14 @@ function generateFallbackResponse(userMessage: string, contactName: string): Sma
     };
   }
 
-  // Respuesta general inteligente
-  const generalResponses = [
-    `Entiendo ${contactName}. Permíteme revisar tu consulta y te daré una respuesta detallada. 🔍`,
-    `Gracias por escribir ${contactName}. Estoy procesando tu mensaje para darte la mejor respuesta. ⚡`,
-    `Hola ${contactName}, he recibido tu mensaje. Te responderé en breve con toda la información. 📩`,
-    `${contactName}, agradezco tu mensaje. Un momento mientras busco la información que necesitas. 🔎`
-  ];
-
+  // DESHABILITADO: No usar respuestas genéricas, solo usar respuestas del agente externo
+  console.log(`⚠️ SmartBots: No se genera respuesta genérica para "${userMessage}" de ${contactName}. Solo usar agente externo.`);
+  
   return {
-    success: true,
-    response: generalResponses[Math.floor(Math.random() * generalResponses.length)],
+    success: false,
+    response: null,
     originalMessage: userMessage,
-    confidence: 0.7
+    confidence: 0,
+    error: "Solo usar respuestas del agente externo asignado"
   };
 }
