@@ -42,44 +42,61 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
 
   // Obtener configuración actual de respuestas automáticas para esta cuenta
   const { data: autoConfig, isLoading: loadingConfig } = useQuery({
-    queryKey: ['/api/auto-response-config', accountId],
+    queryKey: ['/api/whatsapp-accounts', accountId, 'agent-config'],
     queryFn: async () => {
-      const response = await fetch(`/api/auto-response-config/${accountId}`);
+      const response = await fetch(`/api/whatsapp-accounts/${accountId}/agent-config`);
       if (!response.ok) throw new Error('Error obteniendo configuración');
       const data = await response.json();
-      return data.success ? data.config : { enabled: false, assignedAgentId: null };
+      return data.success ? {
+        enabled: data.autoResponseEnabled || false,
+        assignedAgentId: data.assignedAgentId || null
+      } : { enabled: false, assignedAgentId: null };
     }
   });
 
   // Mutation para actualizar configuración de respuestas automáticas
   const updateConfigMutation = useMutation({
     mutationFn: async ({ enabled, agentId }: { enabled?: boolean; agentId?: string | null }) => {
-      const body: any = {};
-      if (enabled !== undefined) body.enabled = enabled;
-      if (agentId !== undefined) body.assignedAgentId = agentId;
+      console.log('📤 Enviando al servidor:', { enabled, agentId });
 
-      console.log('📤 Enviando al servidor:', body);
+      // Si se está actualizando el toggle AI
+      if (enabled !== undefined) {
+        const response = await fetch(`/api/whatsapp-accounts/${accountId}/ai-toggle`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ enabled })
+        });
 
-      const response = await fetch(`/api/auto-response-config/${accountId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (!response.ok) {
-        throw new Error('Error actualizando configuración');
+        if (!response.ok) {
+          throw new Error('Error actualizando toggle AI');
+        }
       }
 
-      return response.json();
+      // Si se está actualizando el agente asignado
+      if (agentId !== undefined) {
+        const response = await fetch(`/api/whatsapp-accounts/${accountId}/assign-agent`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ agentId })
+        });
+
+        if (!response.ok) {
+          throw new Error('Error asignando agente');
+        }
+      }
+
+      return { success: true };
     },
     onSuccess: () => {
       toast({
         title: "✅ Configuración actualizada",
         description: "Los cambios se han guardado exitosamente",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/auto-response-config', accountId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts', accountId, 'agent-config'] });
     },
     onError: (error: any) => {
       toast({
