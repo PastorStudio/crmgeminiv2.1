@@ -165,14 +165,21 @@ export class SimpleAutoResponseSystem {
         return null;
       }
 
-      const responseData = await response.json();
-
-      if (responseData.success && responseData.response) {
-        console.log(`✅ Agente respondió: "${responseData.response}"`);
-        return responseData.response;
-      } else {
-        console.log(`⚠️ Agente no pudo generar respuesta: ${responseData.error || 'Error desconocido'}`);
-        return null;
+      const responseText = await response.text();
+      
+      try {
+        const responseData = JSON.parse(responseText);
+        if (responseData.success && responseData.response) {
+          console.log(`✅ Agente respondió: "${responseData.response}"`);
+          return responseData.response;
+        } else {
+          console.log(`⚠️ Agente no pudo generar respuesta: ${responseData.error || 'Error desconocido'}`);
+          return null;
+        }
+      } catch (parseError) {
+        // Si no es JSON, usar la respuesta directamente como texto
+        console.log(`✅ Agente respondió (texto): "${responseText}"`);
+        return responseText;
       }
     } catch (error) {
       console.error(`❌ Error llamando al agente externo:`, error);
