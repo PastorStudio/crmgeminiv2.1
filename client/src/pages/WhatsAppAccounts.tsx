@@ -444,7 +444,7 @@ const WhatsAppAccounts = () => {
   // Combinar datos de cuentas con información de ping
   const accountsWithPing = (Array.isArray(accounts) ? accounts : []).map(account => {
     if (pingStatusData?.success && pingStatusData.accounts) {
-      const pingInfo = pingStatusData.accounts.find((acc: any) => acc.accountId === account.id);
+      const pingInfo = Array.isArray(pingStatusData.accounts) ? pingStatusData.accounts.find((acc: any) => acc.accountId === account.id) : null;
       return {
         ...account,
         pingStatus: pingInfo?.pingStatus || {
@@ -601,7 +601,7 @@ const WhatsAppAccounts = () => {
           {/* Generar 10 posiciones fijas */}
           {Array.from({ length: 10 }, (_, index) => {
             const position = index + 1;
-            const existingAccount = accounts.find(acc => acc.id === position);
+            const existingAccount = (Array.isArray(accounts) ? accounts : []).find(acc => acc.id === position);
             const isOccupied = !!existingAccount;
             
             return (
