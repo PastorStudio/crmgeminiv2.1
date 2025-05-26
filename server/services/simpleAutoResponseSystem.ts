@@ -168,51 +168,25 @@ export class SimpleAutoResponseSystem {
     try {
       console.log(`🤖 Enviando a agente ${agentId}: "${message}"`);
 
-      // Usar HTTP nativo para obtener la respuesta exacta del agente
-      const http = require('http');
-      
-      const postData = JSON.stringify({
-        message: message,
-        contactName: contactName
-      });
-
-      const options = {
-        hostname: 'localhost',
-        port: 5000,
-        path: `/api/external-agents/${agentId}/generate-response`,
+      // Usar fetch para comunicarse con el agente externo
+      const response = await fetch(`http://localhost:5000/api/external-agents/${agentId}/generate-response`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(postData)
-        }
-      };
-
-      const agentResponse = await new Promise<string>((resolve, reject) => {
-        const req = http.request(options, (res) => {
-          let data = '';
-          
-          res.on('data', (chunk) => {
-            data += chunk;
-          });
-          
-          res.on('end', () => {
-            if (res.statusCode !== 200) {
-              console.log(`⚠️ Agente no disponible - Status: ${res.statusCode}`);
-              resolve('');
-            } else {
-              resolve(data);
-            }
-          });
-        });
-
-        req.on('error', (error) => {
-          console.error(`❌ Error conectando con agente:`, error);
-          resolve('');
-        });
-
-        req.write(postData);
-        req.end();
+        },
+        body: JSON.stringify({
+          message: message,
+          contactName: contactName,
+          context: `Conversación de WhatsApp con ${contactName}`
+        }),
       });
+
+      if (!response.ok) {
+        console.log(`⚠️ Agente no disponible - Status: ${response.status}`);
+        return null;
+      }
+
+      const agentResponse = await response.text();
 
       if (!agentResponse || agentResponse.trim().length === 0) {
         console.log(`❌ Sin respuesta del agente ${agentId}`);
