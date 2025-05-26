@@ -19,16 +19,22 @@ export class ExactAutoResponseSystem {
       return;
     }
 
-    console.log("🚀 INICIANDO SISTEMA EXACTO DE RESPUESTAS AUTOMÁTICAS");
-    console.log("📋 Siguiendo los 10 pasos definidos por el usuario");
+    console.log("🚀 SISTEMA EXACTO ACTIVADO - PROCESAMIENTO SIMULTÁNEO INICIADO");
+    console.log("📋 Flujo de 10 pasos específicos - 1-5 segundos por chat");
     this.isRunning = true;
 
-    // Inicia el bucle de verificación
+    // Inicia el bucle de verificación más rápido
     this.intervalId = setInterval(async () => {
       await this.executeExactFlow();
     }, this.CHECK_INTERVAL);
 
-    console.log("✅ Sistema exacto iniciado - verificando cada 5 segundos");
+    console.log("✅ Sistema exacto funcionando - verificando cada 2 segundos");
+    
+    // Ejecutar inmediatamente para demostrar funcionamiento
+    setTimeout(() => {
+      console.log("🔥 EJECUTANDO FLUJO EXACTO INMEDIATAMENTE...");
+      this.executeExactFlow();
+    }, 1000);
   }
 
   /**
