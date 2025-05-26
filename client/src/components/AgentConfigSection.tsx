@@ -33,7 +33,10 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
       const response = await fetch('/api/external-agents');
       if (!response.ok) throw new Error('Error obteniendo agentes');
       const data = await response.json();
-      return data.success ? data.agents : [];
+      // Asegurar que siempre devolvamos un array
+      const agents = data.success && Array.isArray(data.agents) ? data.agents : [];
+      console.log('🔍 Agentes obtenidos:', agents);
+      return agents;
     }
   });
 
