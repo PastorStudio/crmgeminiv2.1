@@ -134,8 +134,11 @@ export class SimpleAutoResponseSystem {
       );
 
       if (agentResponse) {
-        // 4. Enviar respuesta automática por WhatsApp
+        // 4. Enviar respuesta automática por WhatsApp usando la respuesta REAL del agente
+        console.log(`🚀 Enviando respuesta REAL del agente: "${agentResponse}"`);
         await this.sendWhatsAppResponse(account.id, chat.id, agentResponse, chat.name || chat.id);
+      } else {
+        console.log(`❌ No se recibió respuesta del agente ${account.assignedExternalAgentId}, no enviando respuesta automática`);
       }
     } catch (error) {
       console.error(`❌ Error verificando chat ${chat.id}:`, error);
@@ -200,11 +203,21 @@ export class SimpleAutoResponseSystem {
         return null;
       }
 
-      // Limpiar la respuesta del agente si contiene HTML
-      let cleanResponse = agentResponse;
+      // Parsear la respuesta JSON del agente
+      let parsedResponse;
+      try {
+        parsedResponse = JSON.parse(agentResponse);
+      } catch (error) {
+        // Si no es JSON válido, usar como texto plano
+        parsedResponse = { response: agentResponse };
+      }
+
+      // Extraer la respuesta del agente
+      let cleanResponse = parsedResponse.response || parsedResponse.text || parsedResponse.message || agentResponse;
       
-      if (agentResponse.includes('<') && agentResponse.includes('>')) {
-        cleanResponse = agentResponse
+      // Limpiar la respuesta del agente si contiene HTML
+      if (typeof cleanResponse === 'string' && cleanResponse.includes('<') && cleanResponse.includes('>')) {
+        cleanResponse = cleanResponse
           .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
           .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
           .replace(/<[^>]*>/g, '')
@@ -217,13 +230,9 @@ export class SimpleAutoResponseSystem {
           .trim();
       }
 
-      // Formato final: respuesta del agente + nombre del usuario
-      const finalResponse = `${cleanResponse} - ${contactName}`;
+      console.log(`✅ Respuesta real del agente ${agentId}: "${cleanResponse}"`);
       
-      console.log(`✅ Respuesta del agente: "${cleanResponse}"`);
-      console.log(`✅ Respuesta final con nombre: "${finalResponse}"`);
-      
-      return finalResponse;
+      return cleanResponse;
     } catch (error) {
       console.error(`❌ Error llamando al agente externo:`, error);
       return null;
