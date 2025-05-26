@@ -23,6 +23,74 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// RUTAS CRÍTICAS DE TICKETS ANTES QUE VITE
+app.get("/api/tickets", async (_req: Request, res: Response) => {
+  try {
+    const leads = await storage.getAllLeads();
+    const formattedTickets = leads.map(lead => ({
+      id: lead.id,
+      customerName: lead.name,
+      customerPhone: lead.phone,
+      customerEmail: lead.email,
+      status: lead.status || 'nuevo',
+      priority: lead.priority || 'medium',
+      lastMessage: `Lead: ${lead.name}`,
+      assignedToId: lead.assigneeId,
+      createdAt: lead.createdAt,
+      lastActivityAt: lead.createdAt,
+      notes: lead.notes
+    }));
+    res.json({ tickets: formattedTickets });
+  } catch (error) {
+    console.error('Error obteniendo tickets:', error);
+    res.status(500).json({ error: "Error al obtener tickets" });
+  }
+});
+
+app.get("/api/tickets/stats", async (_req: Request, res: Response) => {
+  try {
+    const leads = await storage.getAllLeads();
+    const stats = {
+      byStatus: {
+        nuevo: leads.filter(l => l.status === 'new').length,
+        interesado: leads.filter(l => l.status === 'interested').length,
+        no_leido: leads.filter(l => l.status === 'unread').length,
+        pendiente_demo: leads.filter(l => l.status === 'demo_pending').length,
+        completado: leads.filter(l => l.status === 'converted').length,
+        no_interesado: leads.filter(l => l.status === 'not_interested').length
+      },
+      totals: {
+        total: leads.length,
+        active: leads.filter(l => l.status !== 'converted' && l.status !== 'not_interested').length,
+        today: leads.filter(l => {
+          if (!l.createdAt) return false;
+          const today = new Date();
+          const leadDate = new Date(l.createdAt);
+          return leadDate.toDateString() === today.toDateString();
+        }).length
+      }
+    };
+    res.json(stats);
+  } catch (error) {
+    console.error('Error obteniendo estadísticas de tickets:', error);
+    res.status(500).json({ error: "Error al obtener estadísticas" });
+  }
+});
+
+app.get("/api/media-gallery/list", async (_req: Request, res: Response) => {
+  try {
+    const mediaItems: any[] = [];
+    res.json({
+      success: true,
+      items: mediaItems,
+      total: 0
+    });
+  } catch (error) {
+    console.error('Error obteniendo galería de medios:', error);
+    res.status(500).json({ error: "Error al obtener galería de medios" });
+  }
+});
+
 // INTERCEPTAR RUTAS DE AUTENTICACIÓN ANTES QUE VITE
 app.use((req, res, next) => {
   // Solo interceptar login
