@@ -192,6 +192,36 @@ app.use((req, res, next) => {
   next();
 });
 
+// NUEVA FUNCIONALIDAD: CONVERSIÓN DE CHATS A LEADS
+app.post("/api/whatsapp/:accountId/convert-chats-to-leads", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    const { whatsappLeadConverter } = await import("./services/whatsappLeadConverter");
+    
+    console.log(`🔄 Iniciando conversión de chats a leads para cuenta ${accountId}...`);
+    
+    const result = await whatsappLeadConverter.convertChatsToLeads(accountId);
+    
+    res.json({
+      success: true,
+      message: `Conversión completada exitosamente`,
+      data: {
+        processed: result.processed,
+        created: result.created,
+        updated: result.updated,
+        analyzed: result.analyzed
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error convirtiendo chats a leads:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al convertir chats a leads',
+      details: (error as Error).message
+    });
+  }
+});
+
 // RUTAS DE KEEP-ALIVE (ANTES DE VITE)
 app.get("/api/whatsapp/ping-status/all", async (req: Request, res: Response) => {
   try {
