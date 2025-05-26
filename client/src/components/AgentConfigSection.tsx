@@ -50,7 +50,7 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
       console.log('🔍 Configuración recibida del servidor:', data);
       return {
         enabled: data.autoResponseEnabled || false,
-        assignedAgentId: data.assignedAgentId || null
+        assignedAgentId: data.assignedAgentId || data.config?.assignedExternalAgentId || null
       };
     }
   });
