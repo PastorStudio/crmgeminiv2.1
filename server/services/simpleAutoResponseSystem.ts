@@ -149,14 +149,84 @@ export class SimpleAutoResponseSystem {
     try {
       console.log(`🤖 Enviando a agente ${agentId}: "${message}"`);
 
-      // Por ahora, simplemente devolver una respuesta de prueba hasta que el agente esté configurado
-      const testResponse = `Hola ${contactName}, he recibido tu mensaje: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}". Te responderé pronto.`;
+      // Usar HTTP nativo para obtener la respuesta exacta del agente
+      const http = require('http');
       
-      console.log(`✅ Respuesta de prueba enviada: "${testResponse}"`);
-      return testResponse;
+      const postData = JSON.stringify({
+        message: message,
+        contactName: contactName
+      });
+
+      const options = {
+        hostname: 'localhost',
+        port: 5000,
+        path: `/api/external-agents/${agentId}/generate-response`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      };
+
+      const agentResponse = await new Promise<string>((resolve, reject) => {
+        const req = http.request(options, (res) => {
+          let data = '';
+          
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+          
+          res.on('end', () => {
+            if (res.statusCode !== 200) {
+              console.log(`⚠️ Agente no disponible - Status: ${res.statusCode}`);
+              resolve('');
+            } else {
+              resolve(data);
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          console.error(`❌ Error conectando con agente:`, error);
+          resolve('');
+        });
+
+        req.write(postData);
+        req.end();
+      });
+
+      if (!agentResponse || agentResponse.trim().length === 0) {
+        console.log(`❌ Sin respuesta del agente ${agentId}`);
+        return null;
+      }
+
+      // Limpiar la respuesta del agente si contiene HTML
+      let cleanResponse = agentResponse;
+      
+      if (agentResponse.includes('<') && agentResponse.includes('>')) {
+        cleanResponse = agentResponse
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+          .replace(/<[^>]*>/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&quot;/g, '"')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
+
+      // Formato final: respuesta del agente + nombre del usuario
+      const finalResponse = `${cleanResponse} - ${contactName}`;
+      
+      console.log(`✅ Respuesta del agente: "${cleanResponse}"`);
+      console.log(`✅ Respuesta final con nombre: "${finalResponse}"`);
+      
+      return finalResponse;
     } catch (error) {
       console.error(`❌ Error llamando al agente externo:`, error);
-      return "Hola, he recibido tu mensaje. Te responderé pronto.";
+      return null;
     }
   }
 
