@@ -1963,25 +1963,12 @@ export function WhatsAppTwoColumn() {
                   )}
                 </Button>
 
-                {/* Botón para procesar mensaje actual con R.A. AI */}
+                {/* Indicador de estado cuando R.A. AI está activo */}
                 {raAiEnabled && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 px-3 border-purple-300 text-purple-600 hover:bg-purple-50"
-                    onClick={processWithRaAi}
-                    disabled={!selectedChat || raAiProcessing}
-                    title="Generar respuesta con R.A. AI para el último mensaje recibido"
-                  >
-                    {raAiProcessing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <div className="flex items-center space-x-1">
-                        <span>✨</span>
-                        <span className="text-xs">Generar</span>
-                      </div>
-                    )}
-                  </Button>
+                  <div className="flex items-center space-x-2 px-3 py-1 bg-purple-50 border border-purple-200 rounded-md">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-purple-700 font-medium">R.A. AI Activo</span>
+                  </div>
                 )}
 
                 {/* Voice Note Button with Sound Waves */}

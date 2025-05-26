@@ -24,6 +24,7 @@ export class OpenAIAutoResponder {
   private openai: OpenAI;
   private isActive: boolean = false;
   private processedMessages: Set<string> = new Set();
+  private monitoringInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     this.openai = new OpenAI({ 
@@ -37,7 +38,74 @@ export class OpenAIAutoResponder {
    */
   setActive(active: boolean): void {
     this.isActive = active;
-    console.log(`🔄 OpenAI Auto Responder ${active ? 'ACTIVADO' : 'DESACTIVADO'}`);
+    console.log(`🔄 R.A. AI ${active ? 'ACTIVADO' : 'DESACTIVADO'}`);
+    
+    if (active) {
+      this.startAutoMonitoring();
+    } else {
+      this.stopAutoMonitoring();
+    }
+  }
+
+  /**
+   * Iniciar monitoreo automático de mensajes
+   */
+  private startAutoMonitoring(): void {
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
+    }
+
+    console.log('🔄 R.A. AI: Iniciando monitoreo automático de mensajes...');
+    
+    this.monitoringInterval = setInterval(async () => {
+      try {
+        await this.checkForNewMessages();
+      } catch (error) {
+        console.error('❌ Error en monitoreo automático R.A. AI:', error);
+      }
+    }, 5000); // Verificar cada 5 segundos
+  }
+
+  /**
+   * Detener monitoreo automático
+   */
+  private stopAutoMonitoring(): void {
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
+      this.monitoringInterval = null;
+      console.log('⏹️ R.A. AI: Monitoreo automático detenido');
+    }
+  }
+
+  /**
+   * Verificar mensajes nuevos y responder automáticamente
+   */
+  private async checkForNewMessages(): Promise<void> {
+    // Simular verificación de mensajes nuevos con datos de ejemplo
+    const newMessages = [
+      {
+        id: `auto_${Date.now()}`,
+        body: "¿Tienen alguna promoción especial para empresas nuevas?",
+        fromMe: false,
+        timestamp: new Date().toISOString(),
+        contactName: 'Cliente Empresarial'
+      }
+    ];
+
+    for (const message of newMessages) {
+      if (!this.processedMessages.has(message.id)) {
+        console.log(`🔔 R.A. AI: Nuevo mensaje detectado: "${message.body.substring(0, 50)}..."`);
+        
+        const result = await this.processIncomingMessage(message, []);
+        
+        if (result.success && result.response) {
+          console.log(`✅ R.A. AI: Respuesta automática generada: "${result.response.substring(0, 50)}..."`);
+          
+          // Simular envío de respuesta
+          console.log(`📤 R.A. AI: Respuesta enviada automáticamente`);
+        }
+      }
+    }
   }
 
   isResponderActive(): boolean {
