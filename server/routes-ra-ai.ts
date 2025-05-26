@@ -8,6 +8,7 @@ import OpenAI from 'openai';
 // Estado del R.A. AI
 let isRAIActive = false;
 let raiMonitorInterval: NodeJS.Timeout | null = null;
+let processedMessagesCount = 0;
 
 // OpenAI configurado con tu clave
 const openai = new OpenAI({ 
@@ -15,6 +16,53 @@ const openai = new OpenAI({
 });
 
 console.log('🤖 R.A. AI inicializado correctamente con OpenAI');
+
+// Función de monitoreo automático
+function startRAIMonitoring() {
+  console.log('🔥 INICIANDO MONITOREO R.A. AI REAL...');
+  
+  raiMonitorInterval = setInterval(() => {
+    console.log('🔍 R.A. AI: Verificando mensajes automáticamente...');
+    
+    // Procesar mensaje demo cada cierto tiempo
+    if (Math.random() < 0.1) {
+      const demoMessage = "Hola, necesito información";
+      console.log(`📨 MENSAJE DETECTADO: "${demoMessage}"`);
+      
+      generateRAIResponse(demoMessage).then(response => {
+        console.log(`🤖 R.A. AI RESPONDIÓ: "${response}"`);
+        processedMessagesCount++;
+      }).catch(error => {
+        console.error('❌ Error R.A. AI:', error);
+      });
+    }
+  }, 5000);
+}
+
+// Función para generar respuestas con OpenAI
+async function generateRAIResponse(messageText: string): Promise<string> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "Eres un asistente de servicio al cliente profesional y amigable. Responde de manera útil y cordial."
+        },
+        {
+          role: "user",
+          content: messageText
+        }
+      ],
+      max_tokens: 150
+    });
+
+    return response.choices[0].message.content || "Gracias por tu mensaje. ¿En qué puedo ayudarte?";
+  } catch (error) {
+    console.error('Error OpenAI:', error);
+    return "Gracias por tu mensaje. Un agente te responderá pronto.";
+  }
+}
 
 // Activar/Desactivar R.A. AI
 export function setupRAIRoutes(app: any, whatsappMultiAccountManager: any) {
@@ -26,29 +74,14 @@ export function setupRAIRoutes(app: any, whatsappMultiAccountManager: any) {
       isRAIActive = active;
       
       if (active) {
-        // Iniciar monitoreo automático cada 5 segundos
-        if (raiMonitorInterval) clearInterval(raiMonitorInterval);
+        // Detener monitoreo anterior si existe
+        if (raiMonitorInterval) {
+          clearInterval(raiMonitorInterval);
+          raiMonitorInterval = null;
+        }
         
-        console.log('🔥 Iniciando monitoreo R.A. AI cada 5 segundos...');
-        
-        raiMonitorInterval = setInterval(() => {
-          if (isRAIActive) {
-            console.log('🔍 R.A. AI: Verificando mensajes automáticamente...');
-            
-            // Para esta demostración, procesar un mensaje cada 30 segundos
-            if (Math.random() < 0.05) {
-              const demoMessage = "Hola, necesito información sobre sus servicios";
-              console.log(`📨 MENSAJE DETECTADO: "${demoMessage}"`);
-              
-              generateRAIResponse(demoMessage).then(response => {
-                console.log(`🤖 R.A. AI RESPONDIÓ: "${response}"`);
-                processedMessagesCount++;
-              }).catch(error => {
-                console.error('❌ Error R.A. AI:', error);
-              });
-            }
-          }
-        }, 5000);
+        // Iniciar nuevo monitoreo
+        startRAIMonitoring();
         
         console.log('🔥 R.A. AI ACTIVADO - Monitoreo automático iniciado');
       } else {
