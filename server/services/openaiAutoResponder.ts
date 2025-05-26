@@ -81,30 +81,68 @@ export class OpenAIAutoResponder {
    * Verificar mensajes nuevos y responder automáticamente
    */
   private async checkForNewMessages(): Promise<void> {
-    // Simular verificación de mensajes nuevos con datos de ejemplo
-    const newMessages = [
-      {
-        id: `auto_${Date.now()}`,
-        body: "¿Tienen alguna promoción especial para empresas nuevas?",
-        fromMe: false,
-        timestamp: new Date().toISOString(),
-        contactName: 'Cliente Empresarial'
-      }
-    ];
+    try {
+      // Obtener chats activos de WhatsApp
+      const response = await fetch('http://localhost:5000/api/whatsapp-accounts/1/chats');
+      if (!response.ok) return;
+      
+      const chats = await response.json();
+      if (!Array.isArray(chats) || chats.length === 0) return;
 
-    for (const message of newMessages) {
-      if (!this.processedMessages.has(message.id)) {
-        console.log(`🔔 R.A. AI: Nuevo mensaje detectado: "${message.body.substring(0, 50)}..."`);
-        
-        const result = await this.processIncomingMessage(message, []);
-        
-        if (result.success && result.response) {
-          console.log(`✅ R.A. AI: Respuesta automática generada: "${result.response.substring(0, 50)}..."`);
+      // Verificar los primeros 3 chats para mensajes nuevos
+      for (const chat of chats.slice(0, 3)) {
+        try {
+          const messagesResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/1/messages/${chat.id}`);
+          if (!messagesResponse.ok) continue;
           
-          // Simular envío de respuesta
-          console.log(`📤 R.A. AI: Respuesta enviada automáticamente`);
+          const messages = await messagesResponse.json();
+          if (!Array.isArray(messages)) continue;
+
+          // Buscar el último mensaje recibido (no enviado por nosotros)
+          const lastReceivedMessage = messages
+            .filter(msg => !msg.fromMe)
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+
+          if (lastReceivedMessage && !this.processedMessages.has(lastReceivedMessage.id)) {
+            console.log(`🔔 R.A. AI: Nuevo mensaje de ${chat.name}: "${lastReceivedMessage.body?.substring(0, 50) || 'Sin texto'}..."`);
+            
+            // Procesar el mensaje y generar respuesta
+            const result = await this.processIncomingMessage(lastReceivedMessage, messages.slice(0, 10));
+            
+            if (result.success && result.response) {
+              console.log(`✅ R.A. AI: Respuesta generada para ${chat.name}: "${result.response.substring(0, 50)}..."`);
+              
+              try {
+                // Intentar enviar la respuesta automáticamente
+                const sendResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/1/send-message`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    to: chat.id,
+                    message: result.response
+                  })
+                });
+                
+                if (sendResponse.ok) {
+                  console.log(`📤 R.A. AI: Respuesta enviada automáticamente a ${chat.name}`);
+                } else {
+                  console.log(`⚠️ R.A. AI: Respuesta generada pero no enviada (WhatsApp no conectado)`);
+                }
+              } catch (sendError) {
+                console.log(`⚠️ R.A. AI: Error enviando respuesta: ${sendError.message}`);
+              }
+            }
+            
+            // Marcar mensaje como procesado
+            this.processedMessages.add(lastReceivedMessage.id);
+          }
+        } catch (chatError) {
+          // Continuar con el siguiente chat si hay error
+          continue;
         }
       }
+    } catch (error) {
+      console.error('❌ R.A. AI: Error verificando mensajes:', error.message);
     }
   }
 
