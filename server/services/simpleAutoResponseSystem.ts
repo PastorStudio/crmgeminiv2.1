@@ -6,6 +6,8 @@
 import { db } from "../db";
 import { whatsappAccounts } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { antiGenericFilter } from './antiGenericResponseFilter';
+import { realAgentOnly } from './realAgentOnlySystem';
 
 export class SimpleAutoResponseSystem {
   private isRunning = false;
@@ -244,6 +246,15 @@ export class SimpleAutoResponseSystem {
    */
   private async sendWhatsAppResponse(accountId: number, chatId: string, response: string, contactName: string): Promise<void> {
     try {
+      // VALIDACIÓN ANTI-RESPUESTAS GENÉRICAS
+      const messageToSend = typeof response === 'string' ? response : (response.content || response.text || response);
+      
+      // Bloquear mensajes genéricos o de prueba
+      if (antiGenericFilter.shouldBlockMessage(messageToSend, 'simpleAutoResponseSystem')) {
+        console.log(`🛑 RESPUESTA BLOQUEADA - No se enviará mensaje genérico a ${contactName}`);
+        return;
+      }
+
       // Si es string, convertir a formato JSON básico
       if (typeof response === 'string') {
         response = { type: 'text', content: response };
@@ -251,7 +262,7 @@ export class SimpleAutoResponseSystem {
 
       // Manejar diferentes tipos de respuesta
       if (response.type === 'text' || !response.type) {
-        // Respuesta de texto
+        // Respuesta de texto SOLO si no es genérica
         const sendResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/${accountId}/send-message`, {
           method: 'POST',
           headers: {
@@ -264,7 +275,7 @@ export class SimpleAutoResponseSystem {
         });
 
         if (sendResponse.ok) {
-          console.log(`✅ RESPUESTA AUTOMÁTICA (texto) ENVIADA a ${contactName}: "${response.content || response.text || response}"`);
+          console.log(`✅ RESPUESTA AUTÉNTICA ENVIADA a ${contactName}: "${response.content || response.text || response}"`);
         } else {
           console.log(`⚠️ Error enviando respuesta de texto a ${contactName}`);
         }
