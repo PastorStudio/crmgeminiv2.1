@@ -49,7 +49,7 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
       const data = await response.json();
       console.log('🔍 Configuración recibida del servidor:', data);
       return {
-        enabled: data.autoResponseEnabled || false,
+        enabled: data.autoResponseEnabled || data.config?.autoResponseEnabled || false,
         assignedAgentId: data.assignedAgentId || data.config?.assignedExternalAgentId || null
       };
     }
