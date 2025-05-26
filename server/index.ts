@@ -25,8 +25,8 @@ console.log(`Modo de ejecución: ${process.env.NODE_ENV || 'development'}`);
 // No cambiamos NODE_ENV para no afectar a Vite
 // La ruta de chat assignments se registrará en routes.ts
 
-// Importar R.A. AI FINAL
-import { setupFinalRAI } from './ra-ai-final.js';
+// Importar R.A. AI ULTIMATE
+import { setupUltimateRAI } from './ra-ai-ultimate.js';
 
 const app = express();
 app.use(express.json());
@@ -350,9 +350,9 @@ app.use((req, res, next) => {
   console.log("✅ R.A. AI configurado como sistema principal de respuestas automáticas");
   console.log("🤖 Use el botón R.A. AI para activar respuestas automáticas con OpenAI");
 
-  // Configurar R.A. AI FINAL que funciona automáticamente de verdad
-  setupFinalRAI(app);
-  console.log("🤖 R.A. AI FINAL configurado y funcionando automáticamente");
+  // Configurar R.A. AI ULTIMATE que garantiza monitoreo automático
+  setupUltimateRAI(app);
+  console.log("🤖 R.A. AI ULTIMATE configurado - Monitoreo automático garantizado");
   
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
   app.get('/api/system/users', async (req, res) => {
