@@ -5166,5 +5166,145 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
     }
   });
 
+  // ==========================================
+  // NUEVO SISTEMA R.A. AI - OPENAI AUTO RESPONDER
+  // ==========================================
+  
+  app.post('/api/ra-ai/toggle', async (req: Request, res: Response) => {
+    try {
+      const { active } = req.body;
+      
+      const { openaiAutoResponder } = await import('./services/openaiAutoResponder');
+      openaiAutoResponder.setActive(active);
+      
+      res.json({
+        success: true,
+        active: openaiAutoResponder.isResponderActive(),
+        message: `R.A. AI ${active ? 'activado' : 'desactivado'}`
+      });
+    } catch (error) {
+      console.error('Error en toggle R.A. AI:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
+  app.get('/api/ra-ai/status', async (req: Request, res: Response) => {
+    try {
+      const { openaiAutoResponder } = await import('./services/openaiAutoResponder');
+      const stats = openaiAutoResponder.getStats();
+      
+      res.json({
+        success: true,
+        ...stats
+      });
+    } catch (error) {
+      console.error('Error obteniendo status R.A. AI:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
+  app.post('/api/ra-ai/process-message', async (req: Request, res: Response) => {
+    try {
+      const { chatId, accountId } = req.body;
+      
+      if (!chatId || !accountId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Se requiere chatId y accountId'
+        });
+      }
+
+      // Obtener mensajes del chat
+      const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
+      const messages = await whatsappMultiAccountManager.getMessagesForChat(accountId, chatId);
+      
+      if (!messages || messages.length === 0) {
+        return res.json({
+          success: false,
+          error: 'No hay mensajes en este chat'
+        });
+      }
+
+      // Encontrar el último mensaje recibido
+      const lastReceivedMessage = messages
+        .filter(msg => !msg.fromMe)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+
+      if (!lastReceivedMessage) {
+        return res.json({
+          success: false,
+          error: 'No hay mensajes recibidos en este chat'
+        });
+      }
+
+      // Procesar con OpenAI Auto Responder
+      const { openaiAutoResponder } = await import('./services/openaiAutoResponder');
+      
+      const chatMessage = {
+        id: lastReceivedMessage.id,
+        body: lastReceivedMessage.body || lastReceivedMessage.content || '',
+        fromMe: lastReceivedMessage.fromMe,
+        timestamp: lastReceivedMessage.timestamp,
+        contactName: lastReceivedMessage.contactName || 'Cliente'
+      };
+
+      const result = await openaiAutoResponder.processIncomingMessage(chatMessage, messages);
+      
+      if (result.success && result.response) {
+        console.log(`🤖 R.A. AI generó respuesta para ${chatId}: "${result.response.substring(0, 50)}..."`);
+        
+        // Intentar enviar mensaje automáticamente si WhatsApp está conectado
+        try {
+          const sendResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/${accountId}/chats/${chatId}/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: result.response,
+              isAutoResponse: true,
+              source: 'R.A. AI'
+            })
+          });
+
+          if (sendResponse.ok) {
+            console.log('✅ Mensaje R.A. AI enviado automáticamente');
+            return res.json({
+              success: true,
+              response: result.response,
+              sent: true,
+              message: 'Respuesta generada y enviada automáticamente'
+            });
+          } else {
+            console.log('⚠️ No se pudo enviar automáticamente, WhatsApp desconectado');
+          }
+        } catch (sendError) {
+          console.log('⚠️ Error enviando mensaje automático:', sendError);
+        }
+        
+        // Si no se pudo enviar, devolver solo la respuesta generada
+        return res.json({
+          success: true,
+          response: result.response,
+          sent: false,
+          message: 'Respuesta generada (WhatsApp desconectado, no se envió automáticamente)'
+        });
+      }
+
+      res.json(result);
+      
+    } catch (error) {
+      console.error('Error procesando mensaje R.A. AI:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
   return httpServer;
 }

@@ -182,6 +182,107 @@ export function WhatsAppTwoColumn() {
   const [autoSendTimer, setAutoSendTimer] = useState<NodeJS.Timeout | null>(null);
   const [isAutoSending, setIsAutoSending] = useState(false);
   
+  // Estados para R.A. AI
+  const [raAiEnabled, setRaAiEnabled] = useState(false);
+  const [raAiProcessing, setRaAiProcessing] = useState(false);
+
+  // Función para alternar R.A. AI
+  const toggleRaAi = async () => {
+    try {
+      setRaAiProcessing(true);
+      const newState = !raAiEnabled;
+      
+      const response = await fetch('/api/ra-ai/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: newState })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setRaAiEnabled(result.active);
+        toast({
+          title: `🤖 R.A. AI ${result.active ? 'Activado' : 'Desactivado'}`,
+          description: result.message,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudo cambiar el estado de R.A. AI",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error toggle R.A. AI:', error);
+      toast({
+        title: "Error",
+        description: "Error de conexión con R.A. AI",
+        variant: "destructive"
+      });
+    } finally {
+      setRaAiProcessing(false);
+    }
+  };
+
+  // Función para procesar mensaje con R.A. AI
+  const processWithRaAi = async () => {
+    if (!selectedChat) {
+      toast({
+        title: "Error",
+        description: "Selecciona un chat primero",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setRaAiProcessing(true);
+      
+      const response = await fetch('/api/ra-ai/process-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          chatId: selectedChat.id, 
+          accountId: selectedChat.accountId 
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.response) {
+        if (result.sent) {
+          toast({
+            title: "🤖 R.A. AI Respondió",
+            description: "Respuesta enviada automáticamente",
+          });
+        } else {
+          // Mostrar la respuesta en el campo de texto para que el usuario pueda editarla
+          setNewMessage(result.response);
+          toast({
+            title: "🤖 R.A. AI Generó Respuesta",
+            description: "Puedes editarla antes de enviar",
+          });
+        }
+      } else {
+        toast({
+          title: "R.A. AI",
+          description: result.error || "No se pudo generar respuesta",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error procesando con R.A. AI:', error);
+      toast({
+        title: "Error",
+        description: "Error al procesar con R.A. AI",
+        variant: "destructive"
+      });
+    } finally {
+      setRaAiProcessing(false);
+    }
+  };
+  
   // Estados para respuestas automáticas a mensajes recibidos
   const [lastProcessedMessageId, setLastProcessedMessageId] = useState<string | null>(null);
   const [lastMessageCount, setLastMessageCount] = useState(0);
