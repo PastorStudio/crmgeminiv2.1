@@ -73,6 +73,15 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
         if (!response.ok) {
           throw new Error('Error actualizando toggle AI');
         }
+        
+        const data = await response.json();
+        console.log('🔍 Respuesta toggle AI:', data);
+        
+        // Actualizar el cache inmediatamente con la nueva configuración
+        queryClient.setQueryData(['agent-config', accountId], {
+          enabled: data.config?.autoResponseEnabled || false,
+          assignedAgentId: data.config?.assignedExternalAgentId || null
+        });
       }
 
       // Si se está actualizando el agente asignado
