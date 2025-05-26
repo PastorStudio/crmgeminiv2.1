@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 import { antiGenericFilter } from './antiGenericResponseFilter';
 import { realAgentOnly } from './realAgentOnlySystem';
 import { agentOnlySystem } from './agentOnlyResponseSystem';
+import { ultimateAntiGeneric } from './ultimateAntiGenericSystem';
 
 export class SimpleAutoResponseSystem {
   private isRunning = false;
@@ -27,13 +28,15 @@ export class SimpleAutoResponseSystem {
     console.log("🚀 Iniciando sistema simple de respuestas automáticas...");
     this.isRunning = true;
 
-    // ACTIVAR SISTEMA COMPLETO ANTI-RESPUESTAS GENÉRICAS
-    console.log("🚀 ACTIVANDO SISTEMAS DE PROTECCIÓN TOTAL...");
+    // ACTIVAR SISTEMA DEFINITIVO ANTI-RESPUESTAS GENÉRICAS
+    console.log("🚀 ACTIVANDO SISTEMA DEFINITIVO ANTI-RESPUESTAS GENÉRICAS...");
     realAgentOnly.activate();
     realAgentOnly.enforceExternalAgentsOnly();
     agentOnlySystem.activate();
     agentOnlySystem.enforceAgentResponsesOnly();
-    console.log("🛡️ SISTEMA DE PROTECCIÓN TOTAL ACTIVADO - CERO TOLERANCIA A RESPUESTAS GENÉRICAS");
+    ultimateAntiGeneric.activate();
+    ultimateAntiGeneric.enforceZeroToleranceMode();
+    console.log("🛡️ SISTEMA DEFINITIVO ACTIVADO - ELIMINACIÓN TOTAL DE RESPUESTAS GENÉRICAS");
 
     // Inicia el bucle de verificación
     this.intervalId = setInterval(async () => {
