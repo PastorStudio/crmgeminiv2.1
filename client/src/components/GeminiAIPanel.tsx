@@ -27,6 +27,7 @@ export function GeminiAIPanel() {
   const [ticketsResult, setTicketsResult] = useState<any>(null);
   const [kanbanResult, setKanbanResult] = useState<any>(null);
   const [automationResult, setAutomationResult] = useState<any>(null);
+  const [chatConversionResult, setChatConversionResult] = useState<any>(null);
   const [currentTask, setCurrentTask] = useState<string>("");
   const [progress, setProgress] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -244,6 +245,67 @@ export function GeminiAIPanel() {
     setIsProcessing(false);
   };
 
+  const convertChatsToLeads = async () => {
+    if (isQuotaExceeded) return;
+    
+    setIsProcessing(true);
+    setCurrentTask("Convirtiendo chats de WhatsApp en leads...");
+    setProgress(10);
+    
+    try {
+      // Convertir chats de ambas cuentas
+      const accounts = [1, 2];
+      let totalResults = {
+        processed: 0,
+        created: 0,
+        updated: 0,
+        analyzed: 0
+      };
+      
+      for (let i = 0; i < accounts.length; i++) {
+        const accountId = accounts[i];
+        setCurrentTask(`Procesando cuenta WhatsApp ${accountId}...`);
+        setProgress(20 + (i * 30));
+        
+        const response = await fetch(`/api/whatsapp/${accountId}/convert-chats-to-leads`, {
+          method: 'POST',
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          totalResults.processed += data.data.processed;
+          totalResults.created += data.data.created;
+          totalResults.updated += data.data.updated;
+          totalResults.analyzed += data.data.analyzed;
+        }
+      }
+      
+      setProgress(90);
+      setCurrentTask("Finalizando conversión...");
+      
+      setChatConversionResult(totalResults);
+      setProgress(100);
+      
+      toast({
+        title: "✅ Conversión completada",
+        description: `${totalResults.created} nuevos leads creados, ${totalResults.updated} actualizados, ${totalResults.analyzed} analizados con IA`,
+      });
+      
+    } catch (error: any) {
+      if (error.message.includes('quota') || error.message.includes('rate limit')) {
+        handleQuotaError();
+      } else {
+        toast({
+          title: "❌ Error",
+          description: "Error convirtiendo chats a leads",
+          variant: "destructive",
+        });
+      }
+    }
+    setIsProcessing(false);
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'bg-red-100 text-red-800';
@@ -325,6 +387,15 @@ export function GeminiAIPanel() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Button
+              onClick={convertChatsToLeads}
+              disabled={isProcessing}
+              className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+            >
+              <Activity className="h-4 w-4" />
+              {isProcessing ? "Convirtiendo..." : "🚀 Chats → Leads con IA"}
+            </Button>
+
             <Button
               onClick={analyzeFirstLead}
               disabled={isProcessing}
