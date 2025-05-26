@@ -154,6 +154,8 @@ export const marketingCampaigns = pgTable("marketing_campaigns", {
   createdBy: integer("createdBy").references(() => users.id),
 });
 
+
+
 // Insert schemas for each model
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
