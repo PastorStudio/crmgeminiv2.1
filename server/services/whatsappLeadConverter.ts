@@ -39,12 +39,13 @@ export class WhatsAppLeadConverter {
 
   private initializeAI() {
     try {
-      if (process.env.GEMINI_API_KEY) {
-        this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+      if (apiKey) {
+        this.genAI = new GoogleGenerativeAI(apiKey);
         this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         console.log('🤖 WhatsApp Lead Converter con Gemini AI inicializado');
       } else {
-        console.log('⚠️ Gemini API key no configurada para análisis de conversaciones');
+        console.log('⚠️ Google API key no configurada para análisis de conversaciones');
       }
     } catch (error) {
       console.error('Error inicializando Gemini AI:', error);
