@@ -350,10 +350,9 @@ app.use((req, res, next) => {
   console.log("✅ R.A. AI configurado como sistema principal de respuestas automáticas");
   console.log("🤖 Use el botón R.A. AI para activar respuestas automáticas con OpenAI");
 
-  // Configurar R.A. AI simple que funciona
-  const simpleRAI = await import('./routes/simple-rai');
-  app.use('/api/rai', simpleRAI.default);
-  console.log("🤖 R.A. AI Simple configurado y listo para usar");
+  // Configurar R.A. AI REAL que funciona automáticamente
+  setupRealRAI(app);
+  console.log("🤖 R.A. AI REAL configurado y listo para usar automáticamente");
   
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
   app.get('/api/system/users', async (req, res) => {
