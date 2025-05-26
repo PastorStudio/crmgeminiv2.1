@@ -25,6 +25,9 @@ console.log(`Modo de ejecución: ${process.env.NODE_ENV || 'development'}`);
 // No cambiamos NODE_ENV para no afectar a Vite
 // La ruta de chat assignments se registrará en routes.ts
 
+// Importar R.A. AI REAL
+import { setupRealRAI } from './ra-ai-real.js';
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
