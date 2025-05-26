@@ -1,4 +1,7 @@
-import { Client, LocalAuth, Message, Chat, Contact } from 'whatsapp-web.js';
+import { Client, Message, Chat, Contact } from 'whatsapp-web.js';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { LocalAuth } = require('whatsapp-web.js');
 import { db } from '../db';
 import { whatsappAccounts, externalAgents, agentResponses } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
