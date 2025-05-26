@@ -149,41 +149,127 @@ export class SimpleAutoResponseSystem {
     try {
       console.log(`🤖 Enviando a agente ${agentId}: "${message}"`);
 
-      const response = await fetch(`http://localhost:5000/api/external-agents/${agentId}/generate-response`, {
+      // Hacer la petición HTTP directamente para evitar el parseo automático
+      const https = require('https');
+      const http = require('http');
+      const querystring = require('querystring');
+      
+      const postData = JSON.stringify({
+        message: message,
+        contactName: contactName
+      });
+
+      const options = {
+        hostname: 'localhost',
+        port: 5000,
+        path: `/api/external-agents/${agentId}/generate-response`,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: message,
-          contactName: contactName
-        })
+          'Accept': 'text/html,text/plain,*/*',
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      };
+
+      const responseText = await new Promise<string>((resolve, reject) => {
+        const req = http.request(options, (res) => {
+          let data = '';
+          
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+          
+          res.on('end', () => {
+            if (res.statusCode !== 200) {
+              console.log(`⚠️ Error llamando al agente ${agentId} - Status: ${res.statusCode}`);
+              resolve('');
+            } else {
+              resolve(data);
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          console.error(`❌ Error de conexión:`, error);
+          reject(error);
+        });
+
+        req.write(postData);
+        req.end();
       });
 
-      if (!response.ok) {
-        console.log(`⚠️ Error llamando al agente ${agentId}`);
+      if (!responseText) {
         return null;
       }
-
-      const responseText = await response.text();
+      console.log(`🔍 Respuesta del agente (primeros 300 chars):`, responseText.substring(0, 300));
       
-      try {
-        const responseData = JSON.parse(responseText);
-        if (responseData.success && responseData.response) {
-          console.log(`✅ Agente respondió (JSON):`, responseData.response);
-          return responseData.response;
-        } else {
-          console.log(`⚠️ Agente no pudo generar respuesta: ${responseData.error || 'Error desconocido'}`);
-          return null;
+      // Intentar extraer respuesta del HTML - buscar texto visible
+      let cleanResponse = responseText;
+      
+      // Si contiene HTML, extraer solo el contenido de texto
+      if (responseText.includes('<!DOCTYPE') || responseText.includes('<html>')) {
+        
+        // 1. Buscar patrones específicos de respuesta
+        const responsePatterns = [
+          // Buscar divs con clase que contenga "response" o "answer"
+          /<div[^>]*class="[^"]*(?:response|answer|result|output)[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+          // Buscar divs con id que contenga "response" o "answer"  
+          /<div[^>]*id="[^"]*(?:response|answer|result|output)[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+          // Buscar el primer párrafo con contenido sustancial
+          /<p[^>]*>([^<]{10,}[\s\S]*?)<\/p>/i,
+          // Buscar contenido del body (fallback)
+          /<body[^>]*>([\s\S]*?)<\/body>/i
+        ];
+        
+        for (const pattern of responsePatterns) {
+          const match = responseText.match(pattern);
+          if (match && match[1]) {
+            let extracted = match[1]
+              .replace(/<[^>]*>/g, '') // Remover todas las etiquetas HTML
+              .replace(/&nbsp;/g, ' ') 
+              .replace(/&quot;/g, '"') 
+              .replace(/&amp;/g, '&')  
+              .replace(/&lt;/g, '<')   
+              .replace(/&gt;/g, '>')   
+              .replace(/&apos;/g, "'")
+              .replace(/\s+/g, ' ')    // Normalizar espacios múltiples
+              .trim();
+            
+            // Si el texto extraído tiene contenido sustancial, usarlo
+            if (extracted && extracted.length >= 10) {
+              cleanResponse = extracted;
+              break;
+            }
+          }
         }
-      } catch (parseError) {
-        // Si no es JSON, crear formato JSON básico
-        console.log(`✅ Agente respondió (texto convertido):`, responseText);
-        return {
-          type: 'text',
-          content: responseText
-        };
+        
+        // Si aún no hay respuesta útil, extraer todo el texto visible
+        if (!cleanResponse || cleanResponse.length < 10) {
+          cleanResponse = responseText
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Remover scripts
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')   // Remover estilos
+            .replace(/<[^>]*>/g, '')  // Remover todas las etiquetas
+            .replace(/&[a-zA-Z0-9#]+;/g, ' ') // Remover entidades HTML
+            .replace(/\s+/g, ' ')     // Normalizar espacios
+            .trim();
+        }
       }
+      
+      // Limpiar y validar respuesta final
+      cleanResponse = cleanResponse.trim();
+      
+      // Si la respuesta es muy corta o vacía, usar mensaje por defecto
+      if (!cleanResponse || cleanResponse.length < 3) {
+        cleanResponse = "Hola, he recibido tu mensaje. Te responderé pronto.";
+      }
+      
+      // Limitar longitud de respuesta si es muy larga
+      if (cleanResponse.length > 500) {
+        cleanResponse = cleanResponse.substring(0, 497) + "...";
+      }
+      
+      console.log(`✅ Respuesta procesada: "${cleanResponse}"`);
+      return cleanResponse;
     } catch (error) {
       console.error(`❌ Error llamando al agente externo:`, error);
       return null;
@@ -193,7 +279,7 @@ export class SimpleAutoResponseSystem {
   /**
    * Envía respuesta automática por WhatsApp (soporta texto e imágenes)
    */
-  private async sendWhatsAppResponse(accountId: number, chatId: string, response: any, contactName: string): Promise<void> {
+  private async sendWhatsAppResponse(accountId: number, chatId: string, response: string, contactName: string): Promise<void> {
     try {
       // Si es string, convertir a formato JSON básico
       if (typeof response === 'string') {
