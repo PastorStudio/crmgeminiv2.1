@@ -289,9 +289,8 @@ export function registerOptimizedRoutes(app: Express): Server {
             leadId: lead.id,
             userId: 1,
             type: 'call',
-            subject: 'Primera llamada de contacto',
-            description: 'Realizar contacto inicial con lead nuevo',
-            dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 horas
+            scheduled: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 horas
+            notes: 'Primera llamada de contacto - Realizar contacto inicial con lead nuevo',
             completed: false
           });
           created++;
