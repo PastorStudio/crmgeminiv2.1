@@ -434,64 +434,106 @@ router.get('/:id/chats', async (req, res) => {
     
     console.log(`🔄 Solicitando chats reales para cuenta ${id}...`);
     
-    // Obtener la instancia de WhatsApp
+    // Verificar que la cuenta existe en la base de datos
+    const account = await storage.getWhatsappAccount(id);
+    if (!account) {
+      console.log(`❌ Cuenta ${id} no encontrada en BD`);
+      res.json([]);
+      return;
+    }
+
+    // Verificar si la cuenta está activa/conectada
+    if (account.status !== 'active') {
+      console.log(`⚠️ Cuenta ${id} no está activa (estado: ${account.status})`);
+      res.json([]);
+      return;
+    }
+    
+    // Obtener la instancia de WhatsApp con validaciones adicionales
     const instance = whatsappMultiAccountManager.getInstance(id);
-    if (!instance || !instance.client) {
+    if (!instance) {
       console.log(`❌ No hay instancia de WhatsApp para cuenta ${id}`);
       res.json([]);
       return;
     }
 
+    if (!instance.client) {
+      console.log(`❌ Cliente no inicializado para cuenta ${id}`);
+      res.json([]);
+      return;
+    }
+
     try {
-      // Obtener chats directamente del cliente de WhatsApp
-      const chats = await instance.client.getChats();
-      if (!Array.isArray(chats)) {
-        console.log(`⚠️ No se obtuvieron chats válidos`);
+      // Verificar estado del cliente antes de hacer llamadas
+      const clientState = await instance.client.getState().catch(() => 'UNKNOWN');
+      if (clientState !== 'CONNECTED') {
+        console.log(`⚠️ Cliente no conectado para cuenta ${id} (estado: ${clientState})`);
         res.json([]);
         return;
       }
 
-      // Procesar y formatear chats con fotos de perfil
-      const processedChats = await Promise.all(
-        chats
-          .filter(chat => chat && chat.id)
-          .slice(0, 50) // Limitar a 50 chats
-          .map(async (chat) => {
-            let profilePicUrl = null;
-            try {
-              // Obtener foto de perfil real de WhatsApp
-              profilePicUrl = await chat.getProfilePicUrl();
-            } catch (error) {
-              // Si no hay foto de perfil, usar null (fallback al avatar por defecto)
-              profilePicUrl = null;
-            }
-
-            return {
-              id: chat.id._serialized || chat.id,
-              name: chat.name || chat.id.user || 'Sin nombre',
-              isGroup: Boolean(chat.isGroup),
-              timestamp: chat.timestamp || Date.now() / 1000,
-              unreadCount: chat.unreadCount || 0,
-              lastMessage: chat.lastMessage?.body || '',
-              muteExpiration: chat.muteExpiration || 0,
-              archived: Boolean(chat.archived),
-              pinned: Boolean(chat.pinned),
-              profilePicUrl: profilePicUrl,
-              accountId: id
-            };
-          })
+      // Obtener chats con timeout de seguridad
+      const chatsPromise = instance.client.getChats();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout obteniendo chats')), 8000)
       );
+
+      const chats = await Promise.race([chatsPromise, timeoutPromise]);
+      
+      if (!Array.isArray(chats)) {
+        console.log(`⚠️ No se obtuvieron chats válidos para cuenta ${id}`);
+        res.json([]);
+        return;
+      }
+
+      // Procesar y formatear chats con manejo seguro de errores
+      const processedChats = [];
+      const chatsToProcess = chats.filter(chat => chat && chat.id).slice(0, 50);
+
+      for (const chat of chatsToProcess) {
+        try {
+          let profilePicUrl = null;
+          try {
+            // Obtener foto de perfil con timeout
+            const picPromise = chat.getProfilePicUrl();
+            const picTimeout = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout foto perfil')), 3000)
+            );
+            profilePicUrl = await Promise.race([picPromise, picTimeout]);
+          } catch (picError) {
+            // Ignorar errores de foto de perfil
+            profilePicUrl = null;
+          }
+
+          processedChats.push({
+            id: chat.id._serialized || chat.id,
+            name: chat.name || chat.id.user || 'Sin nombre',
+            isGroup: Boolean(chat.isGroup),
+            timestamp: chat.timestamp || Date.now() / 1000,
+            unreadCount: chat.unreadCount || 0,
+            lastMessage: chat.lastMessage?.body || '',
+            muteExpiration: chat.muteExpiration || 0,
+            archived: Boolean(chat.archived),
+            pinned: Boolean(chat.pinned),
+            profilePicUrl: profilePicUrl,
+            accountId: id
+          });
+        } catch (chatError) {
+          console.warn(`Error procesando chat para cuenta ${id}:`, chatError.message);
+          // Continuar con el siguiente chat
+        }
+      }
 
       const sortedChats = processedChats.sort((a, b) => b.timestamp - a.timestamp);
 
-      console.log(`✅ Enviando ${sortedChats.length} chats reales al frontend`);
+      console.log(`✅ Enviando ${sortedChats.length} chats reales al frontend para cuenta ${id}`);
       res.json(sortedChats);
     } catch (whatsappError) {
-      console.error(`❌ Error obteniendo chats de WhatsApp:`, whatsappError);
+      console.error(`❌ Error obteniendo chats de WhatsApp para cuenta ${id}:`, whatsappError.message);
       res.json([]);
     }
   } catch (error) {
-    console.error('❌ Error general al obtener chats:', error);
+    console.error(`❌ Error general al obtener chats para cuenta ${id}:`, error.message);
     res.json([]);
   }
 });
@@ -507,75 +549,113 @@ router.get('/:id/messages/:chatId', async (req, res) => {
     const { chatId } = req.params;
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
     
-    console.log(`🔄 Solicitando mensajes reales para chat ${chatId}...`);
+    console.log(`🔄 Solicitando mensajes reales para chat ${chatId} de cuenta ${id}...`);
     
-    // Obtener la instancia de WhatsApp
+    // Verificar que la cuenta existe y está activa
+    const account = await storage.getWhatsappAccount(id);
+    if (!account || account.status !== 'active') {
+      console.log(`❌ Cuenta ${id} no existe o no está activa`);
+      res.json([]);
+      return;
+    }
+    
+    // Obtener la instancia de WhatsApp con validaciones
     const instance = whatsappMultiAccountManager.getInstance(id);
-    if (!instance || !instance.client) {
+    if (!instance) {
       console.log(`❌ No hay instancia de WhatsApp para cuenta ${id}`);
       res.json([]);
       return;
     }
 
+    if (!instance.client) {
+      console.log(`❌ Cliente no inicializado para cuenta ${id}`);
+      res.json([]);
+      return;
+    }
+
     try {
-      // Verificar que el cliente esté completamente listo
-      const clientState = await instance.client.getState();
-      if (clientState !== 'CONNECTED') {
-        console.log(`⚠️ Cliente no conectado (estado: ${clientState})`);
-        res.json([]);
-        return;
-      }
-
-      // Obtener el chat específico
-      const chat = await instance.client.getChatById(chatId);
-      if (!chat) {
-        console.log(`⚠️ Chat ${chatId} no encontrado`);
-        res.json([]);
-        return;
-      }
-
-      console.log(`🔄 Obteniendo ${limit} mensajes del chat...`);
+      // Verificar que el cliente esté completamente listo con timeout
+      const statePromise = instance.client.getState();
+      const stateTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout verificando estado')), 5000)
+      );
       
-      // Obtener mensajes del chat con timeout
-      const messages = await Promise.race([
-        chat.fetchMessages({ limit }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
-      ]);
+      const clientState = await Promise.race([statePromise, stateTimeout]).catch(() => 'UNKNOWN');
+      
+      if (clientState !== 'CONNECTED') {
+        console.log(`⚠️ Cliente cuenta ${id} no conectado (estado: ${clientState})`);
+        res.json([]);
+        return;
+      }
+
+      // Obtener el chat específico con timeout
+      const chatPromise = instance.client.getChatById(chatId);
+      const chatTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout obteniendo chat')), 8000)
+      );
+      
+      const chat = await Promise.race([chatPromise, chatTimeout]);
+      
+      if (!chat) {
+        console.log(`⚠️ Chat ${chatId} no encontrado en cuenta ${id}`);
+        res.json([]);
+        return;
+      }
+
+      console.log(`🔄 Obteniendo ${limit} mensajes del chat ${chatId}...`);
+      
+      // Obtener mensajes del chat con timeout más largo
+      const messagesPromise = chat.fetchMessages({ limit });
+      const messagesTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout obteniendo mensajes')), 12000)
+      );
+      
+      const messages = await Promise.race([messagesPromise, messagesTimeout]);
 
       if (!Array.isArray(messages)) {
-        console.log(`⚠️ No se obtuvieron mensajes válidos`);
+        console.log(`⚠️ No se obtuvieron mensajes válidos para chat ${chatId}`);
         res.json([]);
         return;
       }
 
-      // Procesar y formatear mensajes
-      const processedMessages = messages
-        .filter(msg => msg && msg.id)
-        .map(msg => ({
-          id: msg.id._serialized || msg.id,
-          body: msg.body || '',
-          fromMe: Boolean(msg.fromMe),
-          timestamp: msg.timestamp, // Usar timestamp exacto de WhatsApp sin modificar
-          hasMedia: Boolean(msg.hasMedia),
-          type: msg.type || 'chat',
-          author: msg.author || null,
-          quotedMsg: msg.hasQuotedMsg ? {
-            id: msg.quotedMsg?.id?._serialized,
-            body: msg.quotedMsg?.body
-          } : null,
-          chatId: chatId
-        }))
-        .sort((a, b) => a.timestamp - b.timestamp); // Cronológico
+      // Procesar y formatear mensajes con manejo seguro de errores
+      const processedMessages = [];
+      
+      for (const msg of messages) {
+        try {
+          if (!msg || !msg.id) continue;
+          
+          processedMessages.push({
+            id: msg.id._serialized || msg.id,
+            body: msg.body || '',
+            fromMe: Boolean(msg.fromMe),
+            timestamp: msg.timestamp || Date.now() / 1000,
+            hasMedia: Boolean(msg.hasMedia),
+            type: msg.type || 'chat',
+            author: msg.author || null,
+            quotedMsg: msg.hasQuotedMsg ? {
+              id: msg.quotedMsg?.id?._serialized || null,
+              body: msg.quotedMsg?.body || ''
+            } : null,
+            chatId: chatId
+          });
+        } catch (msgError) {
+          console.warn(`Error procesando mensaje en chat ${chatId}:`, msgError.message);
+          // Continuar con el siguiente mensaje
+        }
+      }
 
-      console.log(`✅ Enviando ${processedMessages.length} mensajes reales al frontend`);
-      res.json(processedMessages);
+      // Ordenar cronológicamente
+      const sortedMessages = processedMessages.sort((a, b) => a.timestamp - b.timestamp);
+
+      console.log(`✅ Enviando ${sortedMessages.length} mensajes reales para chat ${chatId} de cuenta ${id}`);
+      res.json(sortedMessages);
     } catch (whatsappError) {
-      console.error(`❌ Error obteniendo mensajes de WhatsApp:`, whatsappError);
-      // Si hay error, devolver array vacío en lugar de fallar
+      console.error(`❌ Error obteniendo mensajes de WhatsApp para cuenta ${id}:`, whatsappError.message);
       res.json([]);
     }
   } catch (error) {
-    console.error('❌ Error general al obtener mensajes:', error);
+    console.error(`❌ Error general al obtener mensajes para cuenta ${id}:`, error.message);
     res.json([]);
   }
 });
