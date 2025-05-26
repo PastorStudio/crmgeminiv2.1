@@ -343,25 +343,12 @@ app.use((req, res, next) => {
     console.error("❌ Error al iniciar sistema de asignaciones invisible:", error);
   }
 
-  // Iniciar el sistema simple exacto que pidió el usuario
-  try {
-    console.log("🚀 Iniciando sistema simple de respuestas automáticas...");
-    const { directIntermediarySystem } = await import('./services/directIntermediarySystem');
-    await directIntermediarySystem.start();
-    console.log("✅ Sistema simple de respuestas automáticas iniciado exitosamente");
-  } catch (error) {
-    console.error("❌ Error al iniciar sistema simple de respuestas automáticas:", error);
-  }
+  // SISTEMA ORIGINAL DESACTIVADO - Ahora R.A. AI es el sistema principal
+  console.log("✅ R.A. AI configurado como sistema principal de respuestas automáticas");
+  console.log("🤖 Use el botón R.A. AI para activar respuestas automáticas con OpenAI");
 
-  // Iniciar el sistema automático completo de respuestas WhatsApp
-  try {
-    console.log("🚀 Iniciando sistema automático completo de respuestas WhatsApp...");
-    const { automaticWhatsAppResponder } = await import('./services/automaticWhatsAppResponder');
-    await automaticWhatsAppResponder.start();
-    console.log("✅ Sistema automático completo de respuestas WhatsApp iniciado exitosamente");
-  } catch (error) {
-    console.error("❌ Error al iniciar sistema automático de respuestas WhatsApp:", error);
-  }
+  // Sistema automático desactivado - Solo usamos R.A. AI ahora
+  console.log("🤖 Sistema listo - R.A. AI es tu nueva herramienta de respuestas automáticas");
   
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
   app.get('/api/system/users', async (req, res) => {
