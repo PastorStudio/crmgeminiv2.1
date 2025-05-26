@@ -238,63 +238,7 @@ app.post('/api/whatsapp/read/:chatId', async (req, res) => {
 
 // === API proxy para respuestas automáticas ===
 
-// Obtener configuración de respuestas automáticas
-app.get('/api/auto-response/config', async (req, res) => {
-  try {
-    const response = await axios.get(`${DATABASE_SERVER_URL}/auto-response/config`);
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error al obtener configuración de respuestas automáticas:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error al obtener configuración de respuestas automáticas',
-      error: error.message
-    });
-  }
-});
 
-// Actualizar configuración de respuestas automáticas
-app.post('/api/auto-response/config', async (req, res) => {
-  try {
-    const response = await axios.post(`${DATABASE_SERVER_URL}/auto-response/config`, req.body);
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error al actualizar configuración de respuestas automáticas:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error al actualizar configuración de respuestas automáticas',
-      error: error.message
-    });
-  }
-});
-
-// Generar respuesta automática para un mensaje
-app.post('/api/auto-response/generate', async (req, res) => {
-  try {
-    const { message, contactName } = req.body;
-    
-    if (!message) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Se requiere el campo message'
-      });
-    }
-    
-    const response = await axios.post(`${PROCESSOR_SERVER_URL}/generate-response`, { 
-      message, 
-      contactName: contactName || 'Cliente'
-    });
-    
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error al generar respuesta automática:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error al generar respuesta automática',
-      error: error.message
-    });
-  }
-});
 
 // Ruta para servir la aplicación frontend
 app.get('/', (req, res) => {
@@ -318,9 +262,7 @@ app.get('/docs', (req, res) => {
       { path: '/api/whatsapp/chats/:chatId/messages', method: 'GET', description: 'Obtiene los mensajes de un chat específico' },
       { path: '/api/whatsapp/send', method: 'POST', description: 'Envía un mensaje de WhatsApp (body: {chatId, message})' },
       { path: '/api/whatsapp/read/:chatId', method: 'POST', description: 'Marca un chat como leído' },
-      { path: '/api/auto-response/config', method: 'GET', description: 'Obtiene la configuración de respuestas automáticas' },
-      { path: '/api/auto-response/config', method: 'POST', description: 'Actualiza la configuración de respuestas automáticas' },
-      { path: '/api/auto-response/generate', method: 'POST', description: 'Genera una respuesta automática (body: {message, contactName})' },
+
       { path: '/system/status', method: 'GET', description: 'Obtiene el estado de todos los microservicios' }
     ]
   });
