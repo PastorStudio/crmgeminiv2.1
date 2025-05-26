@@ -7,8 +7,8 @@
 export class ExactAutoResponseSystem {
   private isRunning = false;
   private intervalId: NodeJS.Timeout | null = null;
-  private readonly CHECK_INTERVAL = 2000; // 2 segundos para verificación general
-  private readonly CHAT_PROCESS_DELAY = 1000; // 1 segundo entre chats
+  private readonly CHECK_INTERVAL = 1000; // 1 segundo para verificación general
+  private readonly CHAT_PROCESS_DELAY = 500; // 0.5 segundos entre chats
   private processedMessages = new Set<string>();
   private lastProcessTime = Date.now();
 
@@ -103,15 +103,15 @@ export class ExactAutoResponseSystem {
       const currentTime = Date.now();
       const timeSinceLastProcess = currentTime - this.lastProcessTime;
       
-      // Forzar procesamiento inmediato para demostración
-      if (this.processedMessages.has(messageKey) && timeSinceLastProcess < 1000) {
+      // Procesar mensaje si han pasado más de 3 segundos
+      if (this.processedMessages.has(messageKey) && timeSinceLastProcess < 3000) {
         console.log(`⏭️ Cuenta #${account.id}: Mensaje ya procesado recientemente`);
         return; // Ya procesado recientemente
       }
       
-      // Procesar mensaje inmediatamente para demostración
-      if (timeSinceLastProcess >= 1000) {
-        console.log(`🔄 Procesando mensaje de demostración después de ${Math.round(timeSinceLastProcess/1000)} segundos`);
+      // Procesar mensaje cada 3 segundos
+      if (timeSinceLastProcess >= 3000) {
+        console.log(`🔄 Procesando mensaje después de ${Math.round(timeSinceLastProcess/1000)} segundos`);
         this.lastProcessTime = currentTime;
         this.processedMessages.clear(); // Limpiar para permitir procesamiento
       }
@@ -135,8 +135,14 @@ export class ExactAutoResponseSystem {
       // Marcar mensaje como procesado
       this.processedMessages.add(messageKey);
 
-      // PASOS 9-10: Enviar respuesta al chat
-      console.log(`🚀 PASO 9-10 [Cuenta #${account.id}]: Enviando respuesta a ${lastMessage.chatName}...`);
+      // PASOS 9-10: Enviar respuesta al chat con pausa de 2 segundos
+      console.log(`🔙 PASO 9 [Cuenta #${account.id}]: Regresando al chat ${lastMessage.chatName}...`);
+      console.log(`⏰ PASO 10 [Cuenta #${account.id}]: Esperando 2 segundos antes de enviar respuesta...`);
+      
+      // Esperar exactamente 2 segundos como especificaste
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      console.log(`🚀 Enviando respuesta automática a ${lastMessage.chatName}...`);
       await this.step9to10_SendResponseToChat(account.id, lastMessage.chatId, agentResponse, lastMessage.chatName);
 
     } catch (error) {
