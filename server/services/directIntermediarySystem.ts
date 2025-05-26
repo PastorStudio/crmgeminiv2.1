@@ -49,11 +49,9 @@ class DirectIntermediarySystem {
       for (const account of accounts) {
         console.log(`🔍 SISTEMA DIRECTO: Cuenta ${account.id} (${account.name}) - Estado: ${account.status} - Agente: ${account.assignedExternalAgentId} - Auto: ${account.autoResponseEnabled}`);
         
-        if (account.assignedExternalAgentId && account.autoResponseEnabled && account.status !== 'disconnected') {
+        if (account.assignedExternalAgentId && account.autoResponseEnabled) {
           console.log(`✅ SISTEMA DIRECTO: Procesando cuenta ${account.id} (${account.name}) con agente ${account.assignedExternalAgentId}`);
           await this.processAccount(account);
-        } else if (account.assignedExternalAgentId && account.autoResponseEnabled) {
-          console.log(`⚠️ SISTEMA DIRECTO: Cuenta ${account.id} (${account.name}) configurada pero desconectada`);
         } else if (account.assignedExternalAgentId) {
           console.log(`💤 SISTEMA DIRECTO: Cuenta ${account.id} (${account.name}) con agente pero auto-respuestas deshabilitadas`);
         } else {
