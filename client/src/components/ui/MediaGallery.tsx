@@ -354,7 +354,7 @@ export const MediaGallery = ({
                     Reintentar
                   </Button>
                 </div>
-              ) : data?.items.length === 0 ? (
+              ) : (data?.items && data.items.length === 0) ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
                   <p className="mt-2">No hay archivos en la galería.</p>
