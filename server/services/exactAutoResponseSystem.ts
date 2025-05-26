@@ -103,13 +103,14 @@ export class ExactAutoResponseSystem {
       const currentTime = Date.now();
       const timeSinceLastProcess = currentTime - this.lastProcessTime;
       
-      if (this.processedMessages.has(messageKey) && timeSinceLastProcess < 30000) {
+      // Forzar procesamiento inmediato para demostración
+      if (this.processedMessages.has(messageKey) && timeSinceLastProcess < 1000) {
         console.log(`⏭️ Cuenta #${account.id}: Mensaje ya procesado recientemente`);
         return; // Ya procesado recientemente
       }
       
-      // Si han pasado 10 segundos, procesar un mensaje de demostración
-      if (timeSinceLastProcess >= 10000) {
+      // Procesar mensaje inmediatamente para demostración
+      if (timeSinceLastProcess >= 1000) {
         console.log(`🔄 Procesando mensaje de demostración después de ${Math.round(timeSinceLastProcess/1000)} segundos`);
         this.lastProcessTime = currentTime;
         this.processedMessages.clear(); // Limpiar para permitir procesamiento
