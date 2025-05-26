@@ -197,8 +197,9 @@ Analiza qué productos o servicios parecen interesar al cliente según su mensaj
     }
   }
   
-  // Si todo falla, usar respuesta más personalizada
-  return `${contactName}, he recibido tu mensaje. Te contactará un asesor especializado pronto para ayudarte con tu consulta específica.`;
+  // DESHABILITADO: No usar respuestas de fallback, solo usar agente externo
+  console.log(`⚠️ DirectAutoResponse: No se genera respuesta fallback para ${contactName}. Solo usar agente externo.`);
+  return null;
 }
 
 module.exports = {
