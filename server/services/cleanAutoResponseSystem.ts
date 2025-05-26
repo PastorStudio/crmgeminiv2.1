@@ -23,15 +23,20 @@ export class CleanAutoResponseSystem {
       return;
     }
 
-    console.log("🚀 Iniciando sistema LIMPIO de respuestas automáticas...");
+    console.log("🚀🚀🚀 INICIANDO SISTEMA LIMPIO DE RESPUESTAS AUTOMÁTICAS 🚀🚀🚀");
+    console.log("🎯 SOLO RESPUESTAS AUTÉNTICAS DE AGENTES - SIN MENSAJES GENÉRICOS");
     this.isRunning = true;
+
+    // Hacer una verificación inmediata para test
+    console.log("🔍 Ejecutando verificación inicial...");
+    await this.checkAndRespond();
 
     // Inicia el bucle de verificación
     this.intervalId = setInterval(async () => {
       await this.checkAndRespond();
     }, this.CHECK_INTERVAL);
 
-    console.log("✅ Sistema limpio activado - Solo respuestas auténticas de agentes");
+    console.log("✅ Sistema limpio ACTIVADO - Verificando cada 3 segundos");
   }
 
   /**
@@ -58,15 +63,24 @@ export class CleanAutoResponseSystem {
    */
   private async checkAndRespond(): Promise<void> {
     try {
+      console.log("🔍 Sistema limpio verificando cuentas...");
+      
       // 1. Obtener cuentas con agentes asignados
       const accounts = await db
         .select()
         .from(whatsappAccounts)
         .where(eq(whatsappAccounts.status, 'active'));
 
+      console.log(`📋 Encontradas ${accounts.length} cuentas activas`);
+
       for (const account of accounts) {
+        console.log(`🔍 Revisando cuenta ${account.id} - Agente: ${account.assignedExternalAgentId} - AutoResponse: ${account.autoResponseEnabled}`);
+        
         if (account.assignedExternalAgentId && account.autoResponseEnabled) {
+          console.log(`✅ Procesando cuenta ${account.id} con agente ${account.assignedExternalAgentId}`);
           await this.processAccount(account);
+        } else {
+          console.log(`⏭️ Saltando cuenta ${account.id} - Sin agente o auto-response deshabilitado`);
         }
       }
     } catch (error) {
