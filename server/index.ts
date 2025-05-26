@@ -16,9 +16,7 @@ import * as agentAssignmentRoutes from "./routes/agentAssignments";
 import { invisibleAgentIntegrator } from "./services/invisibleAgentIntegrator";
 import { realTimeNotificationService } from "./services/realTimeNotificationService";
 import * as whatsappAPI from "./routes/whatsappAPI";
-import { autoMessageProcessor } from "./services/autoMessageProcessor";
-import { messageMonitor } from "./services/messageMonitor";
-import * as autoResponseConfigRoutes from "./routes/autoResponseConfig";
+
 
 // Sistema iniciado correctamente
 console.log('✅ Sistema CRM WhatsApp iniciado correctamente');
@@ -413,61 +411,7 @@ app.use((req, res, next) => {
   app.post('/api/agent-assignments/activity', agentAssignmentRoutes.updateChatActivity);
   app.get('/api/agent-assignments/stats', agentAssignmentRoutes.getAgentStats);
 
-  // Rutas para configuración de respuestas automáticas por cuenta
-  app.get('/api/auto-response-config/:accountId', autoResponseConfigRoutes.getAutoResponseConfig);
-  app.post('/api/auto-response-config/:accountId', async (req: Request, res: Response) => {
-    try {
-      console.log('🚨 ENDPOINT INTERCEPTADO - NUEVO SISTEMA ACTIVADO');
-      
-      const accountId = parseInt(req.params.accountId);
-      const { enabled, assignedAgentId } = req.body;
 
-      console.log('🎯 SISTEMA DIRECTO - Configurando:', {
-        accountId,
-        enabled,
-        assignedAgentId
-      });
-
-      // Actualizar directamente en la base de datos
-      const { whatsappAccounts: whatsappAccountsTable } = await import('../shared/schema');
-      await db
-        .update(whatsappAccountsTable)
-        .set({
-          autoResponseEnabled: enabled,
-          assignedExternalAgentId: assignedAgentId
-        })
-        .where(eq(whatsappAccountsTable.id, accountId));
-
-      console.log(`✅ GUARDADO EXITOSO cuenta ${accountId}: AI=${enabled}, Agente=${assignedAgentId}`);
-
-      // Verificar que se guardó correctamente
-      const [result] = await db
-        .select({
-          enabled: whatsappAccountsTable.autoResponseEnabled,
-          agentId: whatsappAccountsTable.assignedExternalAgentId
-        })
-        .from(whatsappAccountsTable)
-        .where(eq(whatsappAccountsTable.id, accountId));
-
-      console.log(`📊 VERIFICACIÓN: ${JSON.stringify(result)}`);
-
-      return res.json({
-        success: true,
-        config: {
-          enabled: result?.enabled || false,
-          assignedAgentId: result?.agentId
-        }
-      });
-
-    } catch (error) {
-      console.error('❌ Error sistema directo:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error interno del servidor'
-      });
-    }
-  });
-  app.get('/api/auto-response-configs', autoResponseConfigRoutes.getAllAutoResponseConfigs);
 
   // API para asignaciones de chat sin autenticación
   app.get('/api/chat-assignments/:chatId', async (req, res) => {

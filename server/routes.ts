@@ -22,7 +22,7 @@ import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
 import { authService } from "./services/authService";
 import { eq, and, ne, not, isNull } from "drizzle-orm";
 import { users, whatsappAccounts, userWhatsappAccounts, chatAssignments, chatCategories } from "@shared/schema";
-import { autoResponseService } from "./services/autoResponseService";
+
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import multer from "multer";
 import { messageTemplateService } from "./services/messageTemplateService";
@@ -1613,59 +1613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ENDPOINT DUPLICADO REMOVIDO - YA ESTÁ AL INICIO
 
-  app.post("/api/auto-response/cancel", async (req: Request, res: Response) => {
-    try {
-      const { contactId } = req.body;
-      
-      if (!contactId) {
-        return res.status(400).json({
-          success: false,
-          message: "Se requiere ID del contacto"
-        });
-      }
-      
-      // Intentar cancelar con el servicio mejorado
-      try {
-        const { setAutoResponseConfig, getAutoResponseConfig } = await import('./services/autoResponseIntegration');
-        const currentConfig = getAutoResponseConfig();
-        
-        // Añadir este chat a la lista de excluidos si no está ya
-        if (!currentConfig.excludedChats) {
-          currentConfig.excludedChats = [];
-        }
-        
-        if (!currentConfig.excludedChats.includes(contactId)) {
-          currentConfig.excludedChats.push(contactId);
-          setAutoResponseConfig({
-            ...currentConfig,
-            excludedChats: currentConfig.excludedChats
-          });
-        }
-        
-        console.log(`Chat ${contactId} agregado a la lista de exclusión de respuestas automáticas`);
-        res.json({ 
-          success: true, 
-          message: "Respuestas automáticas desactivadas para este contacto",
-          cancelled: true 
-        });
-        return;
-      } catch (importError) {
-        console.log("Usando servicio de respuestas automáticas clásico para cancelar");
-        // Fallback al servicio original
-        const cancelled = autoResponseService.cancelPendingResponse(contactId);
-        res.json({ 
-          success: true, 
-          cancelled 
-        });
-      }
-    } catch (error) {
-      console.error("Error al cancelar respuesta automática:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error al cancelar respuesta automática" 
-      });
-    }
-  });
+
   
   // API Key Management endpoints
   app.get("/api/settings/gemini-key-status", async (req: Request, res: Response) => {
