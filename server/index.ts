@@ -952,8 +952,11 @@ app.use((req, res, next) => {
       
       res.json({
         success: true,
-        assignedAgentId: account.assignedExternalAgentId,
-        autoResponseEnabled: account.autoResponseEnabled || false
+        config: {
+          assignedExternalAgentId: account.assignedExternalAgentId,
+          autoResponseEnabled: account.autoResponseEnabled || false,
+          responseDelay: account.responseDelay || 3
+        }
       });
     } catch (error) {
       console.error('Error obteniendo configuración de agente:', error);
