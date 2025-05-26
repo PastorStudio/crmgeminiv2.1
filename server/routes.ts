@@ -4366,7 +4366,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update account in database
       const updatedAccount = await storage.updateWhatsappAccount(parseInt(accountId), {
-        autoResponseEnabled: enabled
+        autoResponseEnabled: enabled,
+        assignedExternalAgentId: req.body.agentId || null
       });
 
       if (!updatedAccount) {
