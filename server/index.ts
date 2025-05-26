@@ -37,14 +37,14 @@ app.use((req, res, next) => {
   if (req.method === 'POST' && req.path === '/auth/login') {
     console.log('🔐 Interceptando login antes de Vite');
     const { username, password } = req.body;
-    
+
     if (!username || !password) {
       return res.status(400).json({
         success: false,
         message: "Se requiere nombre de usuario y contraseña"
       });
     }
-    
+
     // Verificación directa sin servicios externos
     if (username === 'DJP' && password === 'Mi123456@') {
       const token = 'demo-token-djp';
@@ -55,7 +55,7 @@ app.use((req, res, next) => {
         email: 'superadmin@crm.com',
         fullName: 'Super Administrador'
       };
-      
+
       console.log('✅ Login exitoso para DJP');
       return res.json({
         success: true,
@@ -64,7 +64,7 @@ app.use((req, res, next) => {
         user
       });
     }
-    
+
     if (username === 'admin' && password === 'admin123') {
       const token = 'demo-token-admin';
       const user = {
@@ -74,7 +74,7 @@ app.use((req, res, next) => {
         email: 'admin@geminicrm.com',
         fullName: 'Administrador'
       };
-      
+
       console.log('✅ Login exitoso para admin');
       return res.json({
         success: true,
@@ -83,7 +83,7 @@ app.use((req, res, next) => {
         user
       });
     }
-    
+
     if (username === 'agente' && password === 'agente123') {
       const token = 'demo-token-agente';
       const user = {
@@ -93,7 +93,7 @@ app.use((req, res, next) => {
         email: 'maria@geminicrm.com',
         fullName: 'Juan Perez'
       };
-      
+
       console.log('✅ Login exitoso para agente');
       return res.json({
         success: true,
@@ -102,7 +102,7 @@ app.use((req, res, next) => {
         user
       });
     }
-    
+
     if (username === 'steph' && password === 'Agente123456') {
       const token = 'demo-token-steph';
       const user = {
@@ -112,7 +112,7 @@ app.use((req, res, next) => {
         email: 'admin@admin.com',
         fullName: 'steph santiago'
       };
-      
+
       console.log('✅ Login exitoso para steph');
       return res.json({
         success: true,
@@ -121,14 +121,14 @@ app.use((req, res, next) => {
         user
       });
     }
-    
+
     console.log('❌ Credenciales inválidas para:', username);
     return res.status(401).json({
       success: false,
       message: "Credenciales inválidas"
     });
   }
-  
+
   next();
 });
 
@@ -137,7 +137,7 @@ app.get("/api/whatsapp/ping-status/all", async (req: Request, res: Response) => 
   try {
     const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
     const allStatus = whatsappMultiAccountManager.getAllPingStatus();
-    
+
     res.json({
       success: true,
       accounts: allStatus
@@ -155,7 +155,7 @@ app.post("/api/whatsapp/:accountId/start-keepalive", async (req: Request, res: R
   try {
     const accountId = parseInt(req.params.accountId);
     const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
-    
+
     const instance = whatsappMultiAccountManager.getInstance(accountId);
     if (!instance) {
       return res.status(404).json({
@@ -163,17 +163,17 @@ app.post("/api/whatsapp/:accountId/start-keepalive", async (req: Request, res: R
         error: 'Cuenta no encontrada'
       });
     }
-    
+
     if (!instance.status.authenticated) {
       return res.status(400).json({
         success: false,
         error: 'Cuenta no autenticada - no se puede activar keep-alive'
       });
     }
-    
+
     // Activar keep-alive manualmente
     whatsappMultiAccountManager.activateKeepAlive(accountId);
-    
+
     res.json({
       success: true,
       message: `Keep-alive activado para cuenta ${accountId}`,
@@ -192,9 +192,9 @@ app.post("/api/whatsapp/:accountId/stop-keepalive", async (req: Request, res: Re
   try {
     const accountId = parseInt(req.params.accountId);
     const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
-    
+
     whatsappMultiAccountManager.deactivateKeepAlive(accountId);
-    
+
     res.json({
       success: true,
       message: `Keep-alive desactivado para cuenta ${accountId}`,
@@ -213,7 +213,7 @@ app.post("/api/whatsapp/:accountId/stop-keepalive", async (req: Request, res: Re
 app.get("/api/config/auto-response", (req, res) => {
   try {
     let config = global.autoResponseConfig;
-    
+
     if (!config) {
       config = {
         enabled: false,
@@ -256,10 +256,10 @@ app.post("/api/config/auto-response", async (req, res) => {
   try {
     console.log('✅ ENDPOINT FUNCIONAL - /api/config/auto-response');
     console.log('📦 Body:', req.body);
-    
+
     // Guardar en la base de datos o storage
     const storage = require('./storage').storage;
-    
+
     // Guardar la configuración en el storage
     if (storage.setAutoResponseConfig) {
       await storage.setAutoResponseConfig(req.body);
@@ -269,19 +269,19 @@ app.post("/api/config/auto-response", async (req, res) => {
       global.autoResponseConfig = req.body;
       console.log('💾 Configuración guardada en memoria global');
     }
-    
+
     res.writeHead(200, {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-cache'
     });
-    
+
     const response = {
       success: true,
       message: "✅ Configuración guardada y persistida correctamente",
       config: req.body,
       timestamp: new Date().toISOString()
     };
-    
+
     res.end(JSON.stringify(response));
   } catch (error) {
     console.error('❌ Error guardando configuración:', error);
@@ -355,7 +355,7 @@ app.use((req, res, next) => {
   } catch (error) {
     console.error("❌ Error al iniciar sistema exacto de respuestas automáticas:", error);
   }
-  
+
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
   app.get('/api/system/users', async (req, res) => {
     try {
@@ -419,7 +419,7 @@ app.use((req, res, next) => {
   app.post('/api/auto-response-config/:accountId', async (req: Request, res: Response) => {
     try {
       console.log('🚨 ENDPOINT INTERCEPTADO - NUEVO SISTEMA ACTIVADO');
-      
+
       const accountId = parseInt(req.params.accountId);
       const { enabled, assignedAgentId } = req.body;
 
@@ -498,7 +498,7 @@ app.use((req, res, next) => {
         assignedAt: new Date(),
         agent: agentId ? { id: agentId, name: `Agente ${agentId}` } : null
       };
-      
+
       res.json(assignment);
     } catch (error) {
       console.error('Error al asignar agente:', error);
@@ -511,7 +511,7 @@ app.use((req, res, next) => {
     try {
       const { chatId } = req.params;
       console.log('💬 Obteniendo comentarios para chat:', chatId);
-      
+
       // CONSULTAR DIRECTAMENTE POSTGRESQL
       const { sql } = await import('drizzle-orm');
       const commentsQuery = sql`
@@ -521,9 +521,9 @@ app.use((req, res, next) => {
         WHERE cc."chatId" = ${chatId}
         ORDER BY cc.timestamp DESC
       `;
-      
+
       const result = await db.execute(commentsQuery);
-      
+
       const comments = result.rows.map((row: any) => ({
         id: row.id,
         chatId: row.chatId,
@@ -536,7 +536,7 @@ app.use((req, res, next) => {
           email: row.email || ""
         }
       }));
-      
+
       console.log('✅ Comentarios encontrados:', comments.length);
       res.json(comments);
     } catch (error) {
@@ -550,7 +550,7 @@ app.use((req, res, next) => {
       console.log('💬 CREANDO COMENTARIO - Datos recibidos:', req.body);
       const { chatId, comment, text, userId = 3 } = req.body; // Default to Super Administrador (id: 3)
       const commentText = comment || text;
-      
+
       if (!chatId || !commentText) {
         console.log('❌ Faltan datos requeridos:', { chatId: !!chatId, commentText: !!commentText, received: req.body });
         return res.status(400).json({ 
@@ -565,25 +565,25 @@ app.use((req, res, next) => {
       console.log('👤 Usuario identificado para comentario:', currentUser);
 
       console.log('💬 INSERTANDO COMENTARIO EN POSTGRESQL:', { chatId, text: commentText, userId });
-      
+
       // Usar importación dinámica para evitar problemas de dependencias
       const { sql } = await import('drizzle-orm');
       const { eq } = await import('drizzle-orm');
       const { users } = await import('@shared/schema');
-      
+
       // INSERTAR COMENTARIO DIRECTAMENTE EN POSTGRESQL
       const insertQuery = sql`
         INSERT INTO chat_comments ("chatId", "userId", text, timestamp, "isInternal")
         VALUES (${chatId}, ${parseInt(userId)}, ${commentText}, NOW(), true)
         RETURNING *
       `;
-      
+
       const result = await db.execute(insertQuery);
       const newComment = result.rows[0];
-      
+
       // OBTENER INFORMACIÓN DEL USUARIO
       const [user] = await db.select().from(users).where(eq(users.id, parseInt(userId)));
-      
+
       const response = {
         id: newComment.id,
         chatId: newComment.chatId,
@@ -597,7 +597,7 @@ app.use((req, res, next) => {
           email: user?.email || currentUser?.email || "superadmin@crm.com"
         }
       };
-      
+
       console.log('✅ COMENTARIO GUARDADO EN POSTGRESQL:', response);
       res.json(response);
     } catch (error) {
@@ -610,7 +610,7 @@ app.use((req, res, next) => {
 
   // Registrar todas las demás rutas
   const server = await registerRoutes(app);
-  
+
   // Inicializar sistema de notificaciones en tiempo real
   try {
     console.log('🔔 Iniciando sistema de notificaciones en tiempo real...');
@@ -619,7 +619,7 @@ app.use((req, res, next) => {
   } catch (error) {
     console.error('❌ Error al inicializar notificaciones en tiempo real:', error);
   }
-  
+
   // Registrar rutas de WhatsApp accounts sin autenticación
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
 
@@ -628,7 +628,7 @@ app.use((req, res, next) => {
     try {
       const { chatId, accountId } = req.query;
       console.log('🔍 Consulta asignación NUEVA RUTA:', chatId);
-      
+
       if (!chatId) {
         return res.json(null);
       }
@@ -641,9 +641,9 @@ app.use((req, res, next) => {
         WHERE ca."chatId" = ${chatId}
         LIMIT 1
       `;
-      
+
       const result = await db.execute(assignmentQuery);
-      
+
       if (result.rows.length > 0) {
         const assignment = result.rows[0];
         const response = {
@@ -678,19 +678,19 @@ app.use((req, res, next) => {
     try {
       console.log('📝 Creando/actualizando asignación (nueva ruta):', req.body);
       const { chatId, accountId, assignedToId, category = 'general' } = req.body;
-      
+
       if (!chatId || !accountId) {
         return res.status(400).json({ error: 'Se requiere chatId y accountId' });
       }
 
       const { sql } = await import('drizzle-orm');
-      
+
       // Verificar si ya existe una asignación
       const existingQuery = sql`
         SELECT * FROM chat_assignments WHERE "chatId" = ${chatId} LIMIT 1
       `;
       const existingResult = await db.execute(existingQuery);
-      
+
       if (existingResult.rows.length > 0) {
         // Actualizar asignación existente
         const updateQuery = sql`
@@ -718,11 +718,11 @@ app.use((req, res, next) => {
       res.status(500).json({ error: 'Error al crear asignación: ' + (error as Error).message });
     }
   });
-  
+
   // ENDPOINT FUNCIONANDO PARA MOSTRAR CARLOS LÓPEZ ASIGNADO
   app.get('/api/chat-assignments/by-chat', (req, res) => {
     console.log('🎯 ENDPOINT FINAL: Carlos López asignado al chat');
-    
+
     // Respuesta directa mostrando que Carlos López está asignado
     const carlosAssignment = {
       id: 1,
@@ -739,7 +739,7 @@ app.use((req, res, next) => {
         role: 'supervisor'
       }
     };
-    
+
     console.log('✅ Carlos López asignado correctamente');
     res.setHeader('Content-Type', 'application/json');
     res.status(200).json(carlosAssignment);
@@ -750,7 +750,7 @@ app.use((req, res, next) => {
     try {
       const { accountId } = req.params;
       console.log(`📱 Solicitando código QR para cuenta existente ${accountId}`);
-      
+
       // Verificar que la cuenta existe en la base de datos
       const account = await storage.getWhatsappAccount(parseInt(accountId));
       if (!account) {
@@ -760,17 +760,17 @@ app.use((req, res, next) => {
           message: `Cuenta ${accountId} no encontrada en el sistema`
         });
       }
-      
+
       // Leer el código QR del archivo
       const fs = await import('fs');
       const path = await import('path');
-      
+
       const qrPath = path.join(process.cwd(), 'temp', 'whatsapp-accounts', `account_${accountId}`, 'qr.txt');
-      
+
       if (fs.existsSync(qrPath)) {
         const qrCode = fs.readFileSync(qrPath, 'utf8').trim();
         console.log(`✅ Código QR encontrado para cuenta existente ${account.name} (ID: ${accountId})`);
-        
+
         res.json({
           success: true,
           qrCode: qrCode,
@@ -796,7 +796,7 @@ app.use((req, res, next) => {
     try {
       const { chatId } = req.params;
       console.log('🧪 Prueba de asignación para:', chatId);
-      
+
       const { chatAssignments, users } = await import('@shared/schema');
       const { eq } = await import('drizzle-orm');
 
@@ -820,7 +820,7 @@ app.use((req, res, next) => {
         .leftJoin(users, eq(chatAssignments.assignedToId, users.id))
         .where(eq(chatAssignments.chatId, chatId))
         .limit(1);
-      
+
       if (assignments.length > 0) {
         console.log('✅ Asignación de prueba encontrada:', assignments[0]);
         res.json({ success: true, assignment: assignments[0] });
@@ -839,19 +839,19 @@ app.use((req, res, next) => {
     try {
       console.log('📝 Creando/actualizando asignación:', req.body);
       const { chatId, accountId, assignedToId, category = 'general' } = req.body;
-      
+
       if (!chatId || !accountId) {
         return res.status(400).json({ error: 'Se requiere chatId y accountId' });
       }
 
       const { sql } = await import('drizzle-orm');
-      
+
       // Verificar si ya existe una asignación
       const existingQuery = sql`
         SELECT * FROM chat_assignments WHERE "chatId" = ${chatId} LIMIT 1
       `;
       const existingResult = await db.execute(existingQuery);
-      
+
       if (existingResult.rows.length > 0) {
         // Actualizar asignación existente
         const updateQuery = sql`
@@ -884,14 +884,14 @@ app.use((req, res, next) => {
   app.get('/api/auto-response/config', async (req, res) => {
     try {
       console.log('⚙️ Obteniendo configuración de respuestas automáticas');
-      
+
       const { sql } = await import('drizzle-orm');
       const configQuery = sql`
         SELECT * FROM auto_response_config ORDER BY id DESC LIMIT 1
       `;
-      
+
       const result = await db.execute(configQuery);
-      
+
       if (result.rows.length > 0) {
         console.log('✅ Configuración encontrada:', result.rows[0]);
         res.json(result.rows[0]);
@@ -905,13 +905,13 @@ app.use((req, res, next) => {
           responseDelay: 2,
           businessHours: { start: '09:00', end: '18:00', timezone: 'America/Mexico_City' }
         };
-        
+
         const insertQuery = sql`
           INSERT INTO auto_response_config (enabled, provider, "welcomeMessage", "maxResponsesPerDay", "responseDelay", "businessHours")
           VALUES (${defaultConfig.enabled}, ${defaultConfig.provider}, ${defaultConfig.welcomeMessage}, ${defaultConfig.maxResponsesPerDay}, ${defaultConfig.responseDelay}, ${JSON.stringify(defaultConfig.businessHours)})
           RETURNING *
         `;
-        
+
         const insertResult = await db.execute(insertQuery);
         console.log('✅ Configuración por defecto creada:', insertResult.rows[0]);
         res.json(insertResult.rows[0]);
@@ -925,15 +925,15 @@ app.use((req, res, next) => {
   app.post('/api/auto-response/config', async (req, res) => {
     try {
       console.log('⚙️ Guardando configuración de respuestas automáticas:', req.body);
-      
+
       const { enabled, provider, welcomeMessage, maxResponsesPerDay, responseDelay, businessHours } = req.body;
-      
+
       const { sql } = await import('drizzle-orm');
-      
+
       // Verificar si existe configuración
       const existingQuery = sql`SELECT id FROM auto_response_config LIMIT 1`;
       const existingResult = await db.execute(existingQuery);
-      
+
       if (existingResult.rows.length > 0) {
         // Actualizar configuración existente
         const updateQuery = sql`
@@ -980,7 +980,7 @@ app.use((req, res, next) => {
     res.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.header('Pragma', 'no-cache');
     res.header('Expires', '0');
-    
+
     log(`Procesando ruta directa API: ${req.path}`);
     next();
   });
@@ -990,13 +990,13 @@ app.use((req, res, next) => {
     try {
       const accountId = parseInt(req.params.accountId);
       const { storage } = await import('./storage');
-      
+
       // Obtener la configuración del agente para esta cuenta
       const account = await storage.getWhatsappAccount(accountId);
       if (!account) {
         return res.status(404).json({ error: 'Cuenta no encontrada' });
       }
-      
+
       res.json({
         success: true,
         config: {
@@ -1016,16 +1016,16 @@ app.use((req, res, next) => {
       const accountId = parseInt(req.params.accountId);
       const { agentId, autoResponseEnabled, responseDelay } = req.body;
       const { storage } = await import('./storage');
-      
+
       // Actualizar la configuración del agente
       await storage.updateWhatsappAccountAgentConfig(accountId, {
         assignedExternalAgentId: agentId || null,
         autoResponseEnabled: autoResponseEnabled || false,
         responseDelay: responseDelay || 3
       });
-      
+
       console.log(`✅ Agente ${agentId} asignado a cuenta ${accountId}`);
-      
+
       res.json({
         success: true,
         message: `Configuración de agente actualizada para cuenta ${accountId}`
@@ -1035,6 +1035,9 @@ app.use((req, res, next) => {
       res.status(500).json({ error: 'Error asignando agente' });
     }
   });
+
+  // Sistema directo deshabilitado para evitar conflictos
+  // El sistema principal de WhatsApp Manager manejará las respuestas automáticas
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
@@ -1057,3 +1060,9 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
   });
 })();
+// Configurar rutas
+import { whatsappMultiAccountManager } from './services/whatsappMultiAccountManager';
+setTimeout(async () => {
+  console.log('🚀 Inicializando cuentas de WhatsApp...');
+  await whatsappMultiAccountManager.initializeAllAccounts();
+}, 2000);
