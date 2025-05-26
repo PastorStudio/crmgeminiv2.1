@@ -25,8 +25,7 @@ console.log(`Modo de ejecución: ${process.env.NODE_ENV || 'development'}`);
 // No cambiamos NODE_ENV para no afectar a Vite
 // La ruta de chat assignments se registrará en routes.ts
 
-// Importar R.A. AI ULTIMATE
-import { setupUltimateRAI } from './ra-ai-ultimate.js';
+// R.A. AI system removed - cleaned up
 
 const app = express();
 app.use(express.json());
@@ -346,13 +345,8 @@ app.use((req, res, next) => {
     console.error("❌ Error al iniciar sistema de asignaciones invisible:", error);
   }
 
-  // SISTEMA ORIGINAL DESACTIVADO - Ahora R.A. AI es el sistema principal
-  console.log("✅ R.A. AI configurado como sistema principal de respuestas automáticas");
-  console.log("🤖 Use el botón R.A. AI para activar respuestas automáticas con OpenAI");
-
-  // Configurar R.A. AI ULTIMATE que garantiza monitoreo automático
-  setupUltimateRAI(app);
-  console.log("🤖 R.A. AI ULTIMATE configurado - Monitoreo automático garantizado");
+  // Sistema limpio sin respuestas automáticas
+  console.log("✅ Sistema inicializado correctamente sin respuestas automáticas");
   
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
   app.get('/api/system/users', async (req, res) => {
