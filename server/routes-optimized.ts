@@ -11,8 +11,9 @@ import {
   insertDashboardStatsSchema
 } from "@shared/schema";
 import { z } from "zod";
+import { geminiLeadOrganizer } from "./services/geminiLeadOrganizer";
 
-// SISTEMA DE RUTAS OPTIMIZADO Y LIMPIO
+// SISTEMA DE RUTAS OPTIMIZADO Y LIMPIO CON GEMINI AI
 export function registerOptimizedRoutes(app: Express): Server {
   
   // Validación de esquemas
@@ -132,12 +133,147 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // ***** RUTAS DE GEMINI AI PARA ORGANIZACIÓN INTELIGENTE *****
+
+  // Analizar lead específico con Gemini AI
+  app.get("/api/ai/analyze-lead/:id", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      const lead = await storage.getLead(leadId);
+      
+      if (!lead) {
+        return res.status(404).json({ error: "Lead no encontrado" });
+      }
+
+      const messages = await storage.getMessagesByLead(leadId);
+      const analysis = await geminiLeadOrganizer.analyzeLeadPriority(lead, messages);
+      
+      res.json({
+        success: true,
+        leadId,
+        analysis,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error analizando lead:', error);
+      res.status(500).json({ error: "Error al analizar lead con IA" });
+    }
+  });
+
+  // Organizar todos los leads con Gemini AI
+  app.post("/api/ai/organize-leads", async (_req: Request, res: Response) => {
+    try {
+      console.log('🤖 Iniciando organización automática con Gemini AI...');
+      const result = await geminiLeadOrganizer.organizeAllLeads();
+      
+      res.json({
+        success: true,
+        organized: result.organized,
+        insights: result.insights,
+        message: `✅ ${result.organized} leads organizados exitosamente`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error organizando leads:', error);
+      res.status(500).json({ error: "Error en organización automática" });
+    }
+  });
+
+  // Optimizar pipeline de ventas
+  app.get("/api/ai/optimize-pipeline/:leadId", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.leadId);
+      const lead = await storage.getLead(leadId);
+      
+      if (!lead) {
+        return res.status(404).json({ error: "Lead no encontrado" });
+      }
+
+      const activities = await storage.getActivitiesByLead(leadId);
+      const optimization = await geminiLeadOrganizer.optimizeSalesPipeline(lead, activities);
+      
+      res.json({
+        success: true,
+        leadId,
+        optimization,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error optimizando pipeline:', error);
+      res.status(500).json({ error: "Error al optimizar pipeline" });
+    }
+  });
+
+  // Clasificar ticket con Gemini AI
+  app.post("/api/ai/classify-ticket", async (req: Request, res: Response) => {
+    try {
+      const ticketData = req.body;
+      const classification = await geminiLeadOrganizer.classifyTicket(ticketData);
+      
+      res.json({
+        success: true,
+        classification,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error clasificando ticket:', error);
+      res.status(500).json({ error: "Error al clasificar ticket" });
+    }
+  });
+
+  // Generar reporte inteligente
+  app.get("/api/ai/smart-report", async (_req: Request, res: Response) => {
+    try {
+      const leads = await storage.getAllLeads();
+      const report = await geminiLeadOrganizer.generateSmartReport(leads);
+      
+      res.json({
+        success: true,
+        report,
+        leadsAnalyzed: leads.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error generando reporte:', error);
+      res.status(500).json({ error: "Error al generar reporte inteligente" });
+    }
+  });
+
+  // Dashboard de IA con insights
+  app.get("/api/ai/dashboard", async (_req: Request, res: Response) => {
+    try {
+      const leads = await storage.getAllLeads();
+      const highPriorityLeads = leads.filter(lead => lead.priority === 'high').length;
+      const totalLeads = leads.length;
+      
+      res.json({
+        success: true,
+        dashboard: {
+          totalLeads,
+          highPriorityLeads,
+          aiReadiness: highPriorityLeads > 0 ? 'Listo para análisis' : 'Sin leads prioritarios',
+          lastAnalysis: new Date().toISOString(),
+          recommendations: [
+            'Analizar leads de alta prioridad',
+            'Optimizar pipeline de ventas',
+            'Revisar clasificación de tickets'
+          ]
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error en dashboard de IA:', error);
+      res.status(500).json({ error: "Error al obtener dashboard de IA" });
+    }
+  });
+
   // ***** RUTA DE SALUD DEL SISTEMA *****
   app.get("/api/health", (_req: Request, res: Response) => {
     res.json({
       status: "ok",
       timestamp: new Date().toISOString(),
-      message: "Sistema optimizado funcionando correctamente"
+      message: "Sistema optimizado funcionando correctamente",
+      geminiAI: "Integrado y listo"
     });
   });
 
