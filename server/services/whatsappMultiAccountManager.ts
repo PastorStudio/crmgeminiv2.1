@@ -72,7 +72,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   constructor() {
     super();
     this.loadAccountsFromDatabase();
-    
+
     // Limpiar cache cada 10 minutos
     setInterval(() => {
       this.cleanExpiredQRCache();
@@ -86,14 +86,14 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     if (!qrText || typeof qrText !== 'string') {
       return false;
     }
-    
+
     // Los códigos QR de WhatsApp tienen un formato específico
     const isValidFormat = qrText.length > 20 && (
       qrText.startsWith('1@') || 
       qrText.startsWith('2@') ||
       qrText.includes('@')
     );
-    
+
     return isValidFormat;
   }
 
@@ -113,7 +113,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           light: '#FFFFFF'
         }
       });
-      
+
       return qrDataUrl;
     } catch (error) {
       console.error('Error generando imagen QR:', error);
@@ -213,7 +213,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       }
 
       const qrText = fs.readFileSync(filePath, 'utf8').trim();
-      
+
       if (this.isValidQRCode(qrText)) {
         return qrText;
       } else {
@@ -233,18 +233,18 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     let cleaned = 0;
     const now = Date.now();
     const maxAge = 20 * 60 * 1000; // 20 minutos - tiempo extendido para conexión
-    
+
     Array.from(this.qrCodeCache.entries()).forEach(([accountId, qrData]) => {
       if (now - qrData.generatedAt > maxAge) {
         this.qrCodeCache.delete(accountId);
         cleaned++;
       }
     });
-    
+
     if (cleaned > 0) {
       console.log(`Limpiados ${cleaned} códigos QR expirados del cache`);
     }
-    
+
     return cleaned;
   }
 
@@ -255,14 +255,14 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     try {
       const accounts = await storage.getAllWhatsappAccounts();
       console.log(`Encontradas ${accounts.length} cuentas de WhatsApp en la base de datos`);
-      
+
       for (const account of accounts) {
         if (account.status === 'active' || account.status === 'pending_auth') {
           console.log(`Inicializando cuenta WhatsApp: ${account.name} (ID: ${account.id})`);
           await this.initializeAccount(account.id);
         }
       }
-      
+
       console.log('Cuentas de WhatsApp cargadas desde la base de datos');
     } catch (error) {
       console.error('Error cargando cuentas desde la base de datos:', error);
@@ -441,7 +441,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       // Inicializar cliente
       console.log(`Iniciando cliente WhatsApp para cuenta ID ${accountId} (${account.name})`);
       await client.initialize();
-      
+
       instance.status.initialized = true;
       console.log(`Cliente WhatsApp inicializado para cuenta ID ${accountId}`);
 
@@ -462,15 +462,15 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     client.on('qr', async (qr) => {
       try {
         console.log(`📱 Código QR recibido para cuenta ${id}: ${qr.substring(0, 50)}...`);
-        
+
         // Validar formato del código QR
         if (qr && qr.startsWith('2@')) {
           // Usar el gestor mejorado de QR
           await improvedQRManager.generateQRCode(id, qr);
-          
+
           const remainingMinutes = improvedQRManager.getRemainingValidityMinutes(id);
           console.log(`✅ Código QR generado para cuenta ${id} (válido por ${remainingMinutes} minutos)`);
-          
+
           // También mantener compatibilidad con el cache actual
           this.qrCodeCache.set(id, {
             text: qr,
@@ -486,7 +486,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     });
     client.on('qr', async (qrText) => {
       console.log(`Nuevo código QR recibido para cuenta ID ${id} (${name})`);
-      
+
       try {
         // Validar QR
         if (!this.isValidQRCode(qrText)) {
@@ -496,18 +496,18 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
         // Guardar en archivo de manera segura
         this.saveQRToFile(qrText, qrCodePath);
-        
+
         // Generar imagen optimizada para producción
         const qrDataUrl = await this.generateQRImage(qrText);
-        
+
         // Actualizar estado
         instance.status.qrCode = qrText;
         instance.status.qrDataUrl = qrDataUrl;
         instance.status.ready = true;
-        
+
         // Almacenar en cache optimizado
         this.cacheQRCode(id, qrText, qrDataUrl);
-        
+
         // Actualizar en base de datos
         try {
           await storage.updateWhatsappAccount(id, { 
@@ -521,7 +521,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         } catch (dbError) {
           console.warn(`No se pudo actualizar estado en BD para cuenta ${id}:`, dbError);
         }
-        
+
         // Emitir evento
         this.emit('qr', { 
           accountId: id, 
@@ -529,7 +529,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           qrText, 
           qrDataUrl 
         });
-      
+
       } catch (qrError) {
         console.error(`Error procesando código QR para cuenta ${id}:`, qrError);
         instance.status.error = 'Error generando código QR';
@@ -543,10 +543,10 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       instance.status.authenticated = true;
       instance.status.qrCode = undefined;
       instance.status.ready = true;
-      
+
       // Limpiar cache de QR
       this.qrCodeCache.delete(id);
-      
+
       // ✨ ACTIVAR KEEP-ALIVE AUTOMÁTICAMENTE ✨
       console.log(`💓 Iniciando keep-alive automático para cuenta ${id} (${name})`);
       this.startKeepAlive(instance);
@@ -564,11 +564,11 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       console.log(`Cliente WhatsApp ${id} (${name}) desconectado: ${reason}`);
       instance.status.authenticated = false;
       instance.status.ready = false;
-      
+
       // ✨ DETENER KEEP-ALIVE AUTOMÁTICAMENTE ✨
       console.log(`💤 Deteniendo keep-alive para cuenta ${id} (${name}) - desconectada`);
       this.stopKeepAlive(id);
-      
+
       this.deactivateConnectionTimers(instance);
     });
 
@@ -583,34 +583,34 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           body: message.body?.substring(0, 50) || '[Sin texto]',
           chatId: message.from
         });
-        
+
         // Solo procesar mensajes entrantes (no enviados por nosotros)
         // Validación estricta: debe ser fromMe=false Y el chat debe ser diferente al número de la cuenta
         if (!message.fromMe && message.from !== client.info?.wid?._serialized) {
           console.log(`📨 Nuevo mensaje ENTRANTE recibido en cuenta ${id}: ${message.body?.substring(0, 50) || '[Sin texto]'}...`);
           console.log(`🔍 Tipo de mensaje: ${message.type}, hasMedia: ${message.hasMedia}`);
-          
+
           let messageBody = message.body || '';
-          
+
           // Transcripción automática de notas de voz
           // Detectar múltiples tipos de audio de WhatsApp
           const isVoiceMessage = message.type === 'ptt' || 
                                  message.type === 'audio';
-          
+
           console.log(`🎵 ¿Es mensaje de voz? ${isVoiceMessage} (tipo: ${message.type}, hasMedia: ${message.hasMedia})`);
-          
+
           if (isVoiceMessage) {
             console.log(`🎤 NOTA DE VOZ DETECTADA (tipo: ${message.type}), iniciando transcripción automática...`);
-            
+
             try {
               const media = await message.downloadMedia();
               if (media) {
                 // Importar el servicio de almacenamiento de notas de voz
                 const { voiceNoteStorage } = await import('./voiceNoteStorage');
-                
+
                 // Convertir el archivo de audio a buffer
                 const audioBuffer = Buffer.from(media.data, 'base64');
-                
+
                 // Guardar la nota de voz con transcripción automática
                 const voiceNote = await voiceNoteStorage.saveVoiceNote(
                   message.id._serialized,
@@ -619,11 +619,11 @@ class WhatsAppMultiAccountManager extends EventEmitter {
                   audioBuffer,
                   message.timestamp * 1000
                 );
-                
+
                 if (voiceNote && voiceNote.transcription) {
                   console.log(`✅ Nota de voz guardada y transcrita: "${voiceNote.transcription}"`);
                   messageBody = voiceNote.transcription;
-                  
+
                   // Emitir evento de transcripción para la interfaz
                   setTimeout(() => {
                     this.emit('transcription_complete', {
@@ -647,11 +647,11 @@ class WhatsAppMultiAccountManager extends EventEmitter {
               messageBody = '[Nota de voz recibida - error en transcripción]';
             }
           }
-          
+
           // Importar dinámicamente el sistema de tickets para evitar dependencias circulares
           const { AutomaticTicketingSystem } = await import('./ticketingSystem');
           const ticketingSystem = new AutomaticTicketingSystem();
-          
+
           // Procesar mensaje y crear/actualizar ticket automáticamente
           await ticketingSystem.processIncomingMessage(
             message.from, // chatId
@@ -666,16 +666,16 @@ class WhatsAppMultiAccountManager extends EventEmitter {
               timestamp: message.timestamp
             }
           );
-          
+
           console.log(`✅ Mensaje procesado por sistema de tickets automáticos`);
 
           // Procesar mensaje con autoMessageProcessor (sistema AI ON/OFF)
           try {
             console.log(`🔄 INICIANDO PROCESAMIENTO AUTOMÁTICO para mensaje en cuenta ${id}`);
             console.log(`📝 Mensaje: "${messageBody}" | fromMe: ${message.fromMe} | Chat: ${message.from}`);
-            
+
             const { autoMessageProcessor } = await import('./autoMessageProcessor');
-            
+
             await autoMessageProcessor.processIncomingMessage({
               id: message.id._serialized,
               body: messageBody,
@@ -869,7 +869,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       // Recrear instancia
       this.instances.delete(accountId);
       const success = await this.initializeAccount(accountId);
-      
+
       if (success) {
         console.log(`Reconexión exitosa para cuenta ID ${accountId}`);
         return true;
@@ -886,16 +886,28 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene estado de una cuenta
    */
-  getStatus(accountId: number): WhatsAppStatus {
+  getStatus(accountId: number): any {
     const instance = this.instances.get(accountId);
     if (!instance) {
       return {
-        initialized: false,
-        ready: false,
         authenticated: false,
-        error: 'Cuenta no inicializada'
+        status: 'disconnected',
+        qrCode: null,
+        timestamp: new Date().toISOString(),
+        error: 'Instancia no encontrada'
       };
     }
+
+    if (!instance.client) {
+      return {
+        authenticated: false,
+        status: 'disconnected',
+        qrCode: null,
+        timestamp: new Date().toISOString(),
+        error: 'Cliente no inicializado'
+      };
+    }
+
     return instance.status;
   }
 
@@ -903,7 +915,18 @@ class WhatsAppMultiAccountManager extends EventEmitter {
    * Obtiene instancia de cuenta
    */
   getInstance(accountId: number): WhatsAppInstance | undefined {
-    return this.instances.get(accountId);
+    const instance = this.instances.get(accountId);
+    if (!instance) {
+      console.log(`⚠️ No hay instancia para cuenta ${accountId}`);
+      return undefined;
+    }
+
+    if (!instance.client) {
+      console.log(`⚠️ Cliente no inicializado para cuenta ${accountId}`);
+      return undefined;
+    }
+
+    return instance;
   }
 
   /**
@@ -1002,7 +1025,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
    */
   getActiveAccounts(): { id: number, name: string, status: string }[] {
     const activeAccounts: { id: number, name: string, status: string }[] = [];
-    
+
     Array.from(this.instances.entries()).forEach(([id, instance]) => {
       activeAccounts.push({
         id,
@@ -1010,7 +1033,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         status: instance.status.authenticated ? 'connected' : 'disconnected'
       });
     });
-    
+
     return activeAccounts;
   }
 
@@ -1041,7 +1064,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
         // Realizar ping simple verificando estado del cliente
         const isConnected = await this.performPing(instance);
-        
+
         if (isConnected) {
           instance.status.pingStatus!.lastPing = Date.now();
           instance.status.pingStatus!.pingCount++;
@@ -1064,7 +1087,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     try {
       // Verificar si el cliente está listo
       if (!instance.client) return false;
-      
+
       // Intentar obtener info del cliente (ping ligero)
       const info = await instance.client.getState();
       return info === 'CONNECTED';
@@ -1082,7 +1105,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
   private async handlePingFailure(instance: WhatsAppInstance): Promise<void> {
     console.log(`🔧 Manejando fallo de ping para cuenta ${instance.id}`);
-    
+
     // Marcar como inactivo temporalmente
     if (instance.status.pingStatus) {
       instance.status.pingStatus.isActive = false;
@@ -1092,7 +1115,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     try {
       await instance.client.pupPage?.reload();
       console.log(`🔄 Página recargada para cuenta ${instance.id}`);
-      
+
       // Esperar un poco y reactivar
       setTimeout(() => {
         if (instance.status.pingStatus) {
@@ -1171,7 +1194,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
    */
   getAllPingStatus(): any[] {
     const allStatus: any[] = [];
-    
+
     this.instances.forEach((instance, accountId) => {
       const pingStatus = this.getPingStatus(accountId);
       allStatus.push({
@@ -1180,7 +1203,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         pingStatus
       });
     });
-    
+
     return allStatus;
   }
 }
