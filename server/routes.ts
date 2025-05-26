@@ -5268,7 +5268,7 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
       }
 
       // Encontrar el último mensaje recibido
-      const lastReceivedMessage = messages
+      const lastReceivedMessage = realMessages
         .filter(msg => !msg.fromMe)
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
 
