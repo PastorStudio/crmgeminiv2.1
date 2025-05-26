@@ -8,6 +8,7 @@ import { whatsappAccounts } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { antiGenericFilter } from './antiGenericResponseFilter';
 import { realAgentOnly } from './realAgentOnlySystem';
+import { agentOnlySystem } from './agentOnlyResponseSystem';
 
 export class SimpleAutoResponseSystem {
   private isRunning = false;
@@ -25,6 +26,14 @@ export class SimpleAutoResponseSystem {
 
     console.log("🚀 Iniciando sistema simple de respuestas automáticas...");
     this.isRunning = true;
+
+    // ACTIVAR SISTEMA COMPLETO ANTI-RESPUESTAS GENÉRICAS
+    console.log("🚀 ACTIVANDO SISTEMAS DE PROTECCIÓN TOTAL...");
+    realAgentOnly.activate();
+    realAgentOnly.enforceExternalAgentsOnly();
+    agentOnlySystem.activate();
+    agentOnlySystem.enforceAgentResponsesOnly();
+    console.log("🛡️ SISTEMA DE PROTECCIÓN TOTAL ACTIVADO - CERO TOLERANCIA A RESPUESTAS GENÉRICAS");
 
     // Inicia el bucle de verificación
     this.intervalId = setInterval(async () => {
@@ -136,9 +145,15 @@ export class SimpleAutoResponseSystem {
       );
 
       if (agentResponse) {
-        // 4. Enviar respuesta automática por WhatsApp usando la respuesta REAL del agente
-        console.log(`🚀 Enviando respuesta REAL del agente: "${agentResponse}"`);
-        await this.sendWhatsAppResponse(account.id, chat.id, agentResponse, chat.name || chat.id);
+        // 4. VALIDACIÓN FINAL: Solo enviar si es respuesta auténtica del agente
+        const validatedResponse = agentOnlySystem.validateAndFilterResponse(agentResponse, account.assignedExternalAgentId);
+        
+        if (validatedResponse) {
+          console.log(`🚀 Enviando respuesta REAL VALIDADA del agente: "${validatedResponse}"`);
+          await this.sendWhatsAppResponse(account.id, chat.id, validatedResponse, chat.name || chat.id);
+        } else {
+          console.log(`🛑 RESPUESTA RECHAZADA - No pasó la validación de autenticidad`);
+        }
       } else {
         console.log(`❌ No se recibió respuesta del agente ${account.assignedExternalAgentId}, no enviando respuesta automática`);
       }
