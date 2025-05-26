@@ -205,8 +205,9 @@ Tu respuesta:`;
         }
       }
 
-      // Respuesta de fallback personalizada
-      return `Hola ${contactName}, he recibido tu mensaje y te contactará un asesor especializado pronto para ayudarte.`;
+      // DESHABILITADO: No usar respuestas de fallback, solo usar agente externo
+      console.log(`⚠️ ActiveConnection: No se genera respuesta fallback para ${contactName}. Solo usar agente externo.`);
+      return null;
 
     } catch (error) {
       console.error('❌ Error generando respuesta con AI:', error);
