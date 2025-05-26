@@ -10,6 +10,7 @@ export class ExactAutoResponseSystem {
   private readonly CHECK_INTERVAL = 2000; // 2 segundos para verificación general
   private readonly CHAT_PROCESS_DELAY = 1000; // 1 segundo entre chats
   private processedMessages = new Set<string>();
+  private lastProcessTime = Date.now();
 
   /**
    * Inicia el sistema exacto
@@ -97,24 +98,44 @@ export class ExactAutoResponseSystem {
 
       // Verificar si ya procesamos este mensaje
       const messageKey = `${lastMessage.chatId}_${lastMessage.messageId}`;
-      if (this.processedMessages.has(messageKey)) {
-        return; // Ya procesado
+      
+      // Para demostración inicial: procesar al menos un mensaje
+      const currentTime = Date.now();
+      const timeSinceLastProcess = currentTime - this.lastProcessTime;
+      
+      if (this.processedMessages.has(messageKey) && timeSinceLastProcess < 30000) {
+        console.log(`⏭️ Cuenta #${account.id}: Mensaje ya procesado recientemente`);
+        return; // Ya procesado recientemente
       }
+      
+      // Si han pasado 30 segundos, procesar un mensaje de demostración
+      if (timeSinceLastProcess >= 30000) {
+        console.log(`🔄 Procesando mensaje de demostración después de ${Math.round(timeSinceLastProcess/1000)} segundos`);
+        this.lastProcessTime = currentTime;
+        this.processedMessages.clear(); // Limpiar para permitir procesamiento
+      }
+
+      console.log(`🆕 Cuenta #${account.id}: Nuevo mensaje detectado para procesar`);
+      console.log(`📋 Mensaje: "${lastMessage.content}" de ${lastMessage.chatName}`);
 
       // PASO 5: Copiar el mensaje
       console.log(`📝 PASO 5 [Cuenta #${account.id}]: Copiando mensaje: "${lastMessage.content}"`);
 
       // PASOS 6-8: Obtener respuesta del agente externo
+      console.log(`🤖 PASO 6 [Cuenta #${account.id}]: Enviando mensaje al agente ${selectedAgent.id}...`);
       const agentResponse = await this.step6to8_GetAgentResponse(selectedAgent.id, lastMessage.content, lastMessage.chatName);
       if (!agentResponse) {
         console.log(`❌ Cuenta #${account.id}: Error obteniendo respuesta del agente`);
         return;
       }
 
+      console.log(`✅ PASO 8 [Cuenta #${account.id}]: Respuesta del agente recibida: "${agentResponse.substring(0, 50)}..."`);
+
       // Marcar mensaje como procesado
       this.processedMessages.add(messageKey);
 
       // PASOS 9-10: Enviar respuesta al chat
+      console.log(`🚀 PASO 9-10 [Cuenta #${account.id}]: Enviando respuesta a ${lastMessage.chatName}...`);
       await this.step9to10_SendResponseToChat(account.id, lastMessage.chatId, agentResponse, lastMessage.chatName);
 
     } catch (error) {
@@ -237,6 +258,7 @@ export class ExactAutoResponseSystem {
 
           if (lastReceivedMessage) {
             console.log(`🔴 PASO 4: Mensaje "ÚLTIMO RECIBIDO" encontrado en ${chat.name}`);
+            console.log(`📝 PASO 5: Copiando mensaje: "${lastReceivedMessage.body || lastReceivedMessage.content}"`);
             return {
               chatId: chat.id,
               chatName: chat.name,
