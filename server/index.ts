@@ -982,7 +982,12 @@ app.use((req, res, next) => {
       
       res.json({
         success: true,
-        message: `AI ${enabled ? 'activado' : 'desactivado'} exitosamente`
+        message: `AI ${enabled ? 'activado' : 'desactivado'} exitosamente`,
+        config: {
+          assignedExternalAgentId: updatedAccount.assignedExternalAgentId,
+          autoResponseEnabled: updatedAccount.autoResponseEnabled,
+          responseDelay: updatedAccount.responseDelay || 3
+        }
       });
     } catch (error) {
       console.error('Error toggle AI:', error);
