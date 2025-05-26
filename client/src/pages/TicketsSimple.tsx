@@ -91,8 +91,22 @@ const TicketsSimple = () => {
     }
   });
 
-  // Valores seguros para evitar errores
-  const safeStats = stats || {
+  // Valores seguros para evitar errores - usando datos reales de la API
+  const safeStats = stats ? {
+    byStatus: stats.byStatus || {
+      nuevo: 0,
+      interesado: 0,
+      no_leido: 0,
+      pendiente_demo: 0,
+      completado: 0,
+      no_interesado: 0
+    },
+    totals: stats.totals || {
+      total: 0,
+      active: 0,
+      today: 0
+    }
+  } : {
     byStatus: {
       nuevo: 0,
       interesado: 0,
