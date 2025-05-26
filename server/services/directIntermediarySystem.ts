@@ -45,6 +45,12 @@ class DirectIntermediarySystem {
         .from(whatsappAccounts);
 
       console.log(`📊 SISTEMA DIRECTO: Encontradas ${accounts.length} cuentas`);
+      console.log('🔍 DEBUG: Datos desde DB:', JSON.stringify(accounts.map(a => ({
+        id: a.id,
+        name: a.name,
+        assignedExternalAgentId: a.assignedExternalAgentId,
+        autoResponseEnabled: a.autoResponseEnabled
+      })), null, 2));
 
       for (const account of accounts) {
         console.log(`🔍 SISTEMA DIRECTO: Cuenta ${account.id} (${account.name}) - Estado: ${account.status} - Agente: ${account.assignedExternalAgentId} - Auto: ${account.autoResponseEnabled}`);
