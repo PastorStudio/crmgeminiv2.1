@@ -36,16 +36,19 @@ class DirectIntermediarySystem {
   }
 
   private async checkForNewMessages(): Promise<void> {
-    // 1. Obtener cuenta configurada
+    // 1. Obtener cuenta configurada (cualquier estado que no sea 'disconnected')
     const accounts = await db
       .select()
-      .from(whatsappAccounts)
-      .where(eq(whatsappAccounts.status, 'active'));
+      .from(whatsappAccounts);
 
     for (const account of accounts) {
-      if (account.assignedExternalAgentId && account.autoResponseEnabled) {
-        console.log(`🔍 Verificando cuenta ${account.id} con agente ${account.assignedExternalAgentId}`);
+      if (account.assignedExternalAgentId && account.autoResponseEnabled && account.status !== 'disconnected') {
+        console.log(`🔍 Verificando cuenta ${account.id} (${account.name}) con agente ${account.assignedExternalAgentId}`);
         await this.processAccount(account);
+      } else if (account.assignedExternalAgentId && account.autoResponseEnabled) {
+        console.log(`⚠️ Cuenta ${account.id} (${account.name}) configurada pero desconectada`);
+      } else if (account.assignedExternalAgentId) {
+        console.log(`💤 Cuenta ${account.id} (${account.name}) con agente pero auto-respuestas deshabilitadas`);
       }
     }
   }
