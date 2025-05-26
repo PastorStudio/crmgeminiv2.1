@@ -348,8 +348,8 @@ app.use((req, res, next) => {
   // Iniciar el sistema simple exacto que pidió el usuario
   try {
     console.log("🚀 Iniciando sistema simple de respuestas automáticas...");
-    const { simpleAutoResponseSystem } = await import('./services/simpleAutoResponseSystem');
-    await simpleAutoResponseSystem.start();
+    const { cleanAutoResponseSystem } = await import('./services/cleanAutoResponseSystem');
+    await cleanAutoResponseSystem.start();
     console.log("✅ Sistema simple de respuestas automáticas iniciado exitosamente");
   } catch (error) {
     console.error("❌ Error al iniciar sistema simple de respuestas automáticas:", error);
