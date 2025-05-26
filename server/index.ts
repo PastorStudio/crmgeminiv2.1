@@ -346,6 +346,16 @@ app.use((req, res, next) => {
   }
 
   // Iniciar el sistema simple exacto que pidió el usuario
+  // 🚀 Iniciar sistema directo de agentes externos para NCGtgTLfcpxBgS8PcFHJo
+  try {
+    console.log("🚀 Iniciando sistema directo de agentes externos...");
+    const { directExternalAgentSystem } = await import('./services/directExternalAgentSystem');
+    await directExternalAgentSystem.start();
+    console.log("✅ Sistema directo de agentes externos iniciado exitosamente");
+  } catch (error) {
+    console.error("❌ Error al iniciar sistema directo de agentes externos:", error);
+  }
+
   try {
     console.log("🚀 Iniciando sistema simple de respuestas automáticas...");
     const { simpleAutoResponseSystem } = await import('./services/simpleAutoResponseSystem');

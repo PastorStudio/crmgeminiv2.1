@@ -29,16 +29,8 @@ export class SimpleAutoResponseSystem {
     console.log("🚀 Iniciando sistema simple de respuestas automáticas...");
     this.isRunning = true;
 
-    // ACTIVAR BLOQUEADOR DEFINITIVO ANTI-RESPUESTAS GENÉRICAS
-    console.log("🚀 ACTIVANDO BLOQUEADOR DEFINITIVO ANTI-RESPUESTAS GENÉRICAS...");
-    finalGenericBlocker.activate();
-    realAgentOnly.activate();
-    realAgentOnly.enforceExternalAgentsOnly();
-    agentOnlySystem.activate();
-    agentOnlySystem.enforceAgentResponsesOnly();
-    ultimateAntiGeneric.activate();
-    ultimateAntiGeneric.enforceZeroToleranceMode();
-    console.log("🛡️ BLOQUEADOR DEFINITIVO ACTIVADO - ELIMINACIÓN TOTAL DE RESPUESTAS GENÉRICAS");
+    // SISTEMA DIRECTO ACTIVADO - Bloqueadores desactivados temporalmente para evitar conflictos
+    console.log("🚀 SISTEMA DIRECTO DE AGENTES EXTERNOS ACTIVO - Enfoque en NCGtgTLfcpxBgS8PcFHJo");
 
     // Inicia el bucle de verificación
     this.intervalId = setInterval(async () => {
@@ -71,13 +63,15 @@ export class SimpleAutoResponseSystem {
         .from(whatsappAccounts)
         .where(eq(whatsappAccounts.autoResponseEnabled, true));
 
+      console.log(`🔍 Verificando ${accounts.length} cuentas con AI ON...`);
+
       if (accounts.length === 0) {
+        console.log("⚠️ No hay cuentas con respuestas automáticas activadas");
         return; // No hay cuentas con AI activado
       }
 
-      console.log(`🔍 Verificando ${accounts.length} cuentas con AI ON...`);
-
       for (const account of accounts) {
+        console.log(`🔍 Procesando cuenta: ${account.name} (ID: ${account.id}) con agente: ${account.assignedExternalAgentId}`);
         await this.processAccount(account);
       }
     } catch (error) {
