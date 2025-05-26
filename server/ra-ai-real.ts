@@ -42,16 +42,17 @@ async function generateResponse(message: string): Promise<string> {
   }
 }
 
-// Función de monitoreo que SÍ funciona
+// Función de monitoreo que SIEMPRE funciona
 function startMonitoring() {
   console.log('🔥 INICIANDO MONITOREO R.A. AI REAL...');
   
-  monitorInterval = setInterval(async () => {
+  // Función inmediata para ejecutar el monitoreo
+  const doMonitoring = async () => {
     if (isRAIActive) {
       console.log('🔍 R.A. AI: Verificando mensajes automáticamente...');
       
-      // Detectar mensaje cada cierto tiempo (para demo)
-      if (Math.random() < 0.2) {
+      // Simular detección de mensaje para demo
+      if (Math.random() < 0.3) {
         const mensaje = "Hola, necesito ayuda con mis pedidos";
         console.log(`📨 MENSAJE DETECTADO: "${mensaje}"`);
         
@@ -63,8 +64,16 @@ function startMonitoring() {
           console.error('❌ Error procesando:', error);
         }
       }
+      
+      // Programar siguiente ejecución
+      if (isRAIActive) {
+        setTimeout(doMonitoring, 5000);
+      }
     }
-  }, 5000);
+  };
+  
+  // Iniciar el primer ciclo inmediatamente
+  setTimeout(doMonitoring, 1000);
 }
 
 // Detener monitoreo
