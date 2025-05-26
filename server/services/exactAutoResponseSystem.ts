@@ -103,14 +103,14 @@ export class ExactAutoResponseSystem {
       const currentTime = Date.now();
       const timeSinceLastProcess = currentTime - this.lastProcessTime;
       
-      // Procesar mensaje si han pasado más de 3 segundos
-      if (this.processedMessages.has(messageKey) && timeSinceLastProcess < 3000) {
+      // Procesar mensaje si han pasado más de 1 segundo
+      if (this.processedMessages.has(messageKey) && timeSinceLastProcess < 1000) {
         console.log(`⏭️ Cuenta #${account.id}: Mensaje ya procesado recientemente`);
         return; // Ya procesado recientemente
       }
       
-      // Procesar mensaje cada 3 segundos
-      if (timeSinceLastProcess >= 3000) {
+      // Procesar mensaje cada 1 segundo para máxima velocidad
+      if (timeSinceLastProcess >= 1000) {
         console.log(`🔄 Procesando mensaje después de ${Math.round(timeSinceLastProcess/1000)} segundos`);
         this.lastProcessTime = currentTime;
         this.processedMessages.clear(); // Limpiar para permitir procesamiento
@@ -119,30 +119,41 @@ export class ExactAutoResponseSystem {
       console.log(`🆕 Cuenta #${account.id}: Nuevo mensaje detectado para procesar`);
       console.log(`📋 Mensaje: "${lastMessage.content}" de ${lastMessage.chatName}`);
 
-      // PASO 5: Copiar el mensaje
-      console.log(`📝 PASO 5 [Cuenta #${account.id}]: Copiando mensaje: "${lastMessage.content}"`);
+      // PASO 5: Copiar el mensaje (0.3s)
+      console.log(`⚡ PASO 5 [Cuenta #${account.id}]: Copiando mensaje: "${lastMessage.content}"`);
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      // PASOS 6-8: Obtener respuesta del agente externo
-      console.log(`🤖 PASO 6 [Cuenta #${account.id}]: Enviando mensaje al agente ${selectedAgent.id}...`);
+      // PASO 6: Ir al agente externo (0.3s)
+      console.log(`⚡ PASO 6 [Cuenta #${account.id}]: Navegando al agente ${selectedAgent.id}...`);
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // PASO 7: Enviar mensaje al agente (0.3s)
+      console.log(`⚡ PASO 7 [Cuenta #${account.id}]: Enviando mensaje al agente...`);
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // PASO 8: Obtener respuesta del agente (0.3s)
+      console.log(`⚡ PASO 8 [Cuenta #${account.id}]: Obteniendo respuesta del agente...`);
+      await new Promise(resolve => setTimeout(resolve, 300));
       const agentResponse = await this.step6to8_GetAgentResponse(selectedAgent.id, lastMessage.content, lastMessage.chatName);
       if (!agentResponse) {
         console.log(`❌ Cuenta #${account.id}: Error obteniendo respuesta del agente`);
         return;
       }
 
-      console.log(`✅ PASO 8 [Cuenta #${account.id}]: Respuesta del agente recibida: "${agentResponse.substring(0, 50)}..."`);
+      console.log(`✅ PASO 8 ✅: Respuesta del agente recibida: "${agentResponse.substring(0, 50)}..."`);
 
       // Marcar mensaje como procesado
       this.processedMessages.add(messageKey);
 
-      // PASOS 9-10: Enviar respuesta al chat con pausa de 2 segundos
-      console.log(`🔙 PASO 9 [Cuenta #${account.id}]: Regresando al chat ${lastMessage.chatName}...`);
-      console.log(`⏰ PASO 10 [Cuenta #${account.id}]: Esperando 2 segundos antes de enviar respuesta...`);
+      // PASO 9: Regresar al chat (0.3s)
+      console.log(`⚡ PASO 9 [Cuenta #${account.id}]: Regresando al chat ${lastMessage.chatName}...`);
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // PASO 10: Enviar respuesta (0.3s)
+      console.log(`⚡ PASO 10 [Cuenta #${account.id}]: Enviando respuesta automática...`);
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Esperar exactamente 2 segundos como especificaste
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log(`🚀 Enviando respuesta automática a ${lastMessage.chatName}...`);
+      console.log(`🚀 Respuesta enviada a ${lastMessage.chatName}!`);
       await this.step9to10_SendResponseToChat(account.id, lastMessage.chatId, agentResponse, lastMessage.chatName);
 
     } catch (error) {
