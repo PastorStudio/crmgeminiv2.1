@@ -144,52 +144,45 @@ export class WhatsAppLeadConverter {
   }
 
   /**
-   * Obtiene chats reales de una cuenta de WhatsApp
+   * Obtiene chats reales de una cuenta de WhatsApp usando la API existente
    */
   private async getRealChatsFromAccount(accountId: number): Promise<WhatsAppChat[]> {
     try {
-      // Usar el manager de cuentas múltiples para obtener chats
-      const instance = whatsappMultiAccountManager.getInstance(accountId);
+      console.log(`🔄 Obteniendo chats reales desde API para cuenta ${accountId}...`);
       
-      if (!instance || !instance.status.authenticated) {
-        console.log(`⚠️ Cuenta ${accountId} no autenticada para obtener chats`);
+      // Usar la API existente que ya obtiene chats reales
+      const response = await fetch(`http://localhost:5000/api/whatsapp-accounts/${accountId}/chats`);
+      
+      if (!response.ok) {
+        console.log(`⚠️ Error en API de chats para cuenta ${accountId}: ${response.status}`);
         return [];
       }
-
-      // Obtener chats del cliente WhatsApp
-      const chats = await instance.client.getChats();
       
-      const formattedChats: WhatsAppChat[] = [];
-
-      for (const chat of chats.slice(0, 50)) { // Limitar a 50 chats más recientes
-        try {
-          // Obtener mensajes recientes del chat
-          const messages = await chat.fetchMessages({ limit: 10 });
-          
-          const formattedMessages = messages.map(msg => ({
-            content: msg.body || '[Mensaje multimedia]',
-            timestamp: new Date(msg.timestamp * 1000),
-            fromMe: msg.fromMe
-          }));
-
-          formattedChats.push({
-            id: chat.id._serialized,
-            name: chat.name || chat.id.user,
-            phone: chat.id.user,
-            lastMessage: messages[0]?.body || '[Sin mensajes]',
-            timestamp: messages[0] ? new Date(messages[0].timestamp * 1000) : new Date(),
-            isGroup: chat.isGroup,
-            unreadCount: chat.unreadCount || 0,
-            messages: formattedMessages
-          });
-        } catch (chatError) {
-          console.error(`Error procesando chat ${chat.id._serialized}:`, chatError);
-        }
+      const chats = await response.json();
+      
+      if (!Array.isArray(chats) || chats.length === 0) {
+        console.log(`⚠️ No hay chats disponibles para cuenta ${accountId}`);
+        return [];
       }
+      
+      console.log(`✅ Obtenidos ${chats.length} chats reales de cuenta ${accountId}`);
+      
+      // Convertir al formato esperado
+      const formattedChats: WhatsAppChat[] = chats.map(chat => ({
+        id: chat.id,
+        name: chat.name || chat.phone || 'Sin nombre',
+        phone: chat.phone || chat.id.replace('@c.us', ''),
+        lastMessage: chat.lastMessage || '[Sin mensajes]',
+        timestamp: new Date(chat.timestamp || Date.now()),
+        isGroup: chat.isGroup || false,
+        unreadCount: chat.unreadCount || 0,
+        messages: chat.messages || []
+      }));
 
       return formattedChats;
+      
     } catch (error) {
-      console.error(`Error obteniendo chats de cuenta ${accountId}:`, error);
+      console.error(`❌ Error obteniendo chats de cuenta ${accountId}:`, error);
       return [];
     }
   }
