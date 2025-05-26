@@ -13,7 +13,7 @@ const router = Router();
 router.get('/', async (req, res) => {
   try {
     const accounts = await storage.getAllWhatsappAccounts();
-    
+
     // Obtener el estado actual de cada cuenta desde el administrador de múltiples cuentas
     const accountsWithStatus = accounts.map(account => {
       const statusInfo = whatsappMultiAccountManager.getStatus(account.id);
@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
         currentStatus: statusInfo
       };
     });
-    
+
     res.json(accountsWithStatus);
   } catch (error) {
     console.error('Error al obtener cuentas de WhatsApp:', error);
@@ -37,15 +37,15 @@ router.get('/:id', async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID inválido' });
     }
-    
+
     const account = await storage.getWhatsappAccount(id);
     if (!account) {
       return res.status(404).json({ error: 'Cuenta no encontrada' });
     }
-    
+
     // Obtener estado actualizado desde el administrador de múltiples cuentas
     const statusInfo = whatsappMultiAccountManager.getStatus(id);
-    
+
     res.json({
       ...account,
       currentStatus: statusInfo
@@ -76,7 +76,7 @@ router.post('/', async (req, res) => {
         details: validation.error.format() 
       });
     }
-    
+
     // Crear cuenta en la base de datos
     const newAccount = await storage.createWhatsappAccount({
       ...validation.data,
@@ -84,7 +84,7 @@ router.post('/', async (req, res) => {
       sessionData: {},
       createdAt: new Date()
     });
-    
+
     res.status(201).json(newAccount);
   } catch (error) {
     console.error('Error al crear cuenta de WhatsApp:', error);
@@ -99,7 +99,7 @@ router.patch('/:id', async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID inválido' });
     }
-    
+
     // Validar datos de entrada
     const validation = accountSchema.partial().safeParse(req.body);
     if (!validation.success) {
@@ -108,13 +108,13 @@ router.patch('/:id', async (req, res) => {
         details: validation.error.format() 
       });
     }
-    
+
     // Actualizar cuenta en la base de datos
     const updatedAccount = await storage.updateWhatsappAccount(id, validation.data);
     if (!updatedAccount) {
       return res.status(404).json({ error: 'Cuenta no encontrada' });
     }
-    
+
     res.json(updatedAccount);
   } catch (error) {
     console.error('Error al actualizar cuenta de WhatsApp:', error);
@@ -129,16 +129,16 @@ router.delete('/:id', async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID inválido' });
     }
-    
+
     // Primero desconectar la cuenta si está activa
     await whatsappMultiAccountManager.disconnectAccount(id);
-    
+
     // Luego eliminar de la base de datos
     await storage.deleteWhatsappAccount(id);
-    
+
     // Sincronizar carpetas de sesión con los nuevos IDs
     await syncSessionFolders();
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error al eliminar cuenta de WhatsApp:', error);
@@ -153,39 +153,39 @@ router.delete('/:id', async (req, res) => {
 async function syncSessionFolders() {
   try {
     console.log("Sincronizando carpetas de sesión con IDs reorganizados...");
-    
+
     // Importar módulos necesarios
     const path = require('path');
     const fs = require('fs');
-    
+
     // Definir directorio de cuentas
     const TEMP_DIR = path.join(process.cwd(), 'temp');
     const ACCOUNTS_DIR = path.join(TEMP_DIR, 'whatsapp-accounts');
-    
+
     // Obtener todas las cuentas con sus IDs actualizados
     const accounts = await storage.getAllWhatsappAccounts();
     accounts.sort((a, b) => a.id - b.id);
-    
+
     // Para cada cuenta, asegurar que su carpeta tenga el nombre correcto
     for (const account of accounts) {
       const expectedFolderPath = path.join(ACCOUNTS_DIR, `account_${account.id}`);
-      
+
       // Buscar posibles carpetas antiguas para esta cuenta 
       for (let i = 1; i <= 10; i++) {
         // Evitar revisar la carpeta con el ID correcto
         if (i === account.id) continue;
-        
+
         const oldFolderPath = path.join(ACCOUNTS_DIR, `account_${i}`);
-        
+
         // Si existe una carpeta con nombre antiguo y no existe la nueva
         if (fs.existsSync(oldFolderPath) && !fs.existsSync(expectedFolderPath)) {
           // Intentar determinar si esta carpeta pertenece a esta cuenta
           const oldSessionFile = path.join(oldFolderPath, 'session_status.json');
-          
+
           if (fs.existsSync(oldSessionFile)) {
             try {
               const sessionData = JSON.parse(fs.readFileSync(oldSessionFile, 'utf8'));
-              
+
               // Si la carpeta pertenece a esta cuenta o no hay forma de saberlo
               // (en el peor caso, es mejor reasignar la carpeta)
               if (!sessionData.name || sessionData.name === account.name) {
@@ -207,20 +207,20 @@ async function syncSessionFolders() {
           }
         }
       }
-      
+
       // Si después de la búsqueda, la carpeta esperada no existe, crearla
       if (!fs.existsSync(expectedFolderPath)) {
         console.log(`Creando nueva carpeta para cuenta ${account.name} en ${expectedFolderPath}`);
         fs.mkdirSync(expectedFolderPath, { recursive: true });
       }
     }
-    
+
     console.log("Sincronización de carpetas de sesión completada");
-    
+
     // Reiniciar el administrador de cuentas (opcional, pero asegura consistencia)
     if (accounts.length > 0) {
       console.log("Reiniciando administrador de cuentas para aplicar cambios...");
-      
+
       // Reiniciar las cuentas activas
       for (const account of accounts) {
         if (account.status === 'active' || account.status === 'pending_auth') {
@@ -245,28 +245,28 @@ router.post('/:id/initialize', async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID inválido' });
     }
-    
+
     // Verificar que la cuenta existe
     const account = await storage.getWhatsappAccount(id);
     if (!account) {
       return res.status(404).json({ error: 'Cuenta no encontrada' });
     }
-    
+
     // Inicializar la cuenta
     const success = await whatsappServiceMulti.initializeAccount(id);
     if (!success) {
       return res.status(500).json({ error: 'Error al inicializar cuenta' });
     }
-    
+
     // Obtener estado actualizado
     const status = whatsappServiceMulti.getStatus(id);
-    
+
     // Actualizar estado en base de datos
     await storage.updateWhatsappAccount(id, {
       status: 'pending_auth',
       sessionData: status
     });
-    
+
     res.json({ success: true, status });
   } catch (error) {
     console.error('Error al inicializar cuenta de WhatsApp:', error);
@@ -281,13 +281,13 @@ router.get('/:id/qrcode', async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID inválido' });
     }
-    
+
     // Obtener código QR
     const qrCode = await whatsappServiceMulti.getLatestQR(id);
     if (!qrCode) {
       return res.status(404).json({ error: 'Código QR no disponible' });
     }
-    
+
     // Respuesta con el código QR
     res.json({ success: true, qrcode: qrCode });
   } catch (error) {
@@ -303,10 +303,10 @@ router.get('/:id/status', async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID inválido' });
     }
-    
+
     // Obtener estado actualizado
     const status = whatsappServiceMulti.getStatus(id);
-    
+
     res.json(status);
   } catch (error) {
     console.error('Error al obtener estado de cuenta:', error);
@@ -321,19 +321,19 @@ router.post('/:id/disconnect', async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID inválido' });
     }
-    
+
     // Desconectar la cuenta
     const success = await whatsappServiceMulti.disconnectAccount(id);
     if (!success) {
       return res.status(500).json({ error: 'Error al desconectar cuenta' });
     }
-    
+
     // Actualizar estado en base de datos
     await storage.updateWhatsappAccount(id, {
       status: 'inactive',
       sessionData: { disconnectedAt: new Date().toISOString() }
     });
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error al desconectar cuenta de WhatsApp:', error);
@@ -348,12 +348,12 @@ router.post('/:id/reinitialize', async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID inválido' });
     }
-    
+
     console.log(`Solicitud para reinicializar cuenta ID ${id}`);
-    
+
     // Primero desconectar si está conectada
     await whatsappServiceMulti.disconnectAccount(id);
-    
+
     // Forzar eliminación de sesión anterior
     try {
       const account = await storage.getWhatsappAccount(id);
@@ -367,18 +367,18 @@ router.post('/:id/reinitialize', async (req, res) => {
     } catch (dbError) {
       console.error(`Error actualizando BD para reinicialización de cuenta ${id}:`, dbError);
     }
-    
+
     // Intentar inicializar nuevamente
     try {
       // Inicializar la cuenta en lugar de usar attemptConnectionRecovery
       await whatsappServiceMulti.initializeAccount(id);
-      
+
       // Esperar un momento para que comience la inicialización
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // Verificar estado actual
       const status = whatsappServiceMulti.getStatus(id);
-      
+
       res.json({ 
         success: true, 
         message: 'Cuenta reinicializada correctamente',
@@ -407,16 +407,16 @@ router.post('/:id/send', async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID inválido' });
     }
-    
+
     // Validar datos de entrada
     const { to, message } = req.body;
     if (!to || !message) {
       return res.status(400).json({ error: 'Se requieren los campos "to" y "message"' });
     }
-    
+
     // Enviar mensaje
     const result = await whatsappServiceMulti.sendMessage(id, to, message);
-    
+
     res.json({ success: true, messageId: result.id?._serialized || result.id });
   } catch (error) {
     console.error('Error al enviar mensaje:', error);
@@ -431,9 +431,9 @@ router.get('/:id/chats', async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID inválido' });
     }
-    
+
     console.log(`🔄 Solicitando chats reales para cuenta ${id}...`);
-    
+
     // Verificar que la cuenta existe en la base de datos
     const account = await storage.getWhatsappAccount(id);
     if (!account) {
@@ -448,7 +448,7 @@ router.get('/:id/chats', async (req, res) => {
       res.json([]);
       return;
     }
-    
+
     // Obtener la instancia de WhatsApp con validaciones adicionales
     const instance = whatsappMultiAccountManager.getInstance(id);
     if (!instance) {
@@ -479,7 +479,7 @@ router.get('/:id/chats', async (req, res) => {
       );
 
       const chats = await Promise.race([chatsPromise, timeoutPromise]);
-      
+
       if (!Array.isArray(chats)) {
         console.log(`⚠️ No se obtuvieron chats válidos para cuenta ${id}`);
         res.json([]);
@@ -545,12 +545,12 @@ router.get('/:id/messages/:chatId', async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID inválido' });
     }
-    
+
     const { chatId } = req.params;
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
-    
+
     console.log(`🔄 Solicitando mensajes reales para chat ${chatId} de cuenta ${id}...`);
-    
+
     // Verificar que la cuenta existe y está activa
     const account = await storage.getWhatsappAccount(id);
     if (!account || account.status !== 'active') {
@@ -558,7 +558,7 @@ router.get('/:id/messages/:chatId', async (req, res) => {
       res.json([]);
       return;
     }
-    
+
     // Obtener la instancia de WhatsApp con validaciones
     const instance = whatsappMultiAccountManager.getInstance(id);
     if (!instance) {
@@ -579,9 +579,9 @@ router.get('/:id/messages/:chatId', async (req, res) => {
       const stateTimeout = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Timeout verificando estado')), 5000)
       );
-      
+
       const clientState = await Promise.race([statePromise, stateTimeout]).catch(() => 'UNKNOWN');
-      
+
       if (clientState !== 'CONNECTED') {
         console.log(`⚠️ Cliente cuenta ${id} no conectado (estado: ${clientState})`);
         res.json([]);
@@ -593,9 +593,9 @@ router.get('/:id/messages/:chatId', async (req, res) => {
       const chatTimeout = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Timeout obteniendo chat')), 8000)
       );
-      
+
       const chat = await Promise.race([chatPromise, chatTimeout]);
-      
+
       if (!chat) {
         console.log(`⚠️ Chat ${chatId} no encontrado en cuenta ${id}`);
         res.json([]);
@@ -603,13 +603,13 @@ router.get('/:id/messages/:chatId', async (req, res) => {
       }
 
       console.log(`🔄 Obteniendo ${limit} mensajes del chat ${chatId}...`);
-      
+
       // Obtener mensajes del chat con timeout más largo
       const messagesPromise = chat.fetchMessages({ limit });
       const messagesTimeout = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Timeout obteniendo mensajes')), 12000)
       );
-      
+
       const messages = await Promise.race([messagesPromise, messagesTimeout]);
 
       if (!Array.isArray(messages)) {
@@ -620,11 +620,11 @@ router.get('/:id/messages/:chatId', async (req, res) => {
 
       // Procesar y formatear mensajes con manejo seguro de errores
       const processedMessages = [];
-      
+
       for (const msg of messages) {
         try {
           if (!msg || !msg.id) continue;
-          
+
           processedMessages.push({
             id: msg.id._serialized || msg.id,
             body: msg.body || '',
@@ -678,7 +678,7 @@ router.post('/:id/phone-connect/request', async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID inválido' });
     }
-    
+
     // Validar datos de entrada
     const validation = phoneConnectRequestSchema.safeParse(req.body);
     if (!validation.success) {
@@ -688,9 +688,9 @@ router.post('/:id/phone-connect/request', async (req, res) => {
         details: validation.error.format() 
       });
     }
-    
+
     const { phoneNumber } = validation.data;
-    
+
     // Verificar que la cuenta existe
     const account = await storage.getWhatsappAccount(id);
     if (!account) {
@@ -699,10 +699,10 @@ router.post('/:id/phone-connect/request', async (req, res) => {
         message: 'Cuenta no encontrada' 
       });
     }
-    
+
     // Enviar solicitud de código al servicio WhatsApp
     const result = await whatsappMultiAccountManager.requestPhoneNumberCode(id, phoneNumber);
-    
+
     if (result.success) {
       // Actualizar los datos de la cuenta con el número de teléfono para la siguiente etapa
       await storage.updateWhatsappAccount(id, {
@@ -714,7 +714,7 @@ router.post('/:id/phone-connect/request', async (req, res) => {
           phoneNumber
         }
       });
-      
+
       res.json({
         success: true,
         message: 'Código solicitado exitosamente. Revisa tu WhatsApp.'
@@ -744,7 +744,7 @@ router.post('/:id/phone-connect/verify', async (req, res) => {
         message: 'ID inválido' 
       });
     }
-    
+
     // Validar datos de entrada
     const validation = phoneConnectVerifySchema.safeParse(req.body);
     if (!validation.success) {
@@ -754,12 +754,12 @@ router.post('/:id/phone-connect/verify', async (req, res) => {
         details: validation.error.format() 
       });
     }
-    
+
     const { phoneNumber, code } = validation.data;
-    
+
     // Verificar código en el servicio WhatsApp
     const result = await whatsappMultiAccountManager.verifyPhoneNumberCode(id, phoneNumber, code);
-    
+
     if (result.success) {
       // Actualizar estado de la cuenta a conectada
       await storage.updateWhatsappAccount(id, {
@@ -771,7 +771,7 @@ router.post('/:id/phone-connect/verify', async (req, res) => {
           phoneNumber
         }
       });
-      
+
       res.json({
         success: true,
         message: 'Conexión completada exitosamente'
@@ -787,6 +787,68 @@ router.post('/:id/phone-connect/verify', async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Error al verificar código para conexión por teléfono'
+    });
+  }
+});
+
+// Actualizar configuración de respuesta automática para una cuenta específica
+router.post('/:accountId/auto-response-config', async (req, res) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    const { enabled, assignedAgentId } = req.body;
+
+    console.log('🔄 UPDATE AUTO RESPONSE CONFIG:', { accountId, enabled, assignedAgentId, body: req.body });
+
+    if (isNaN(accountId)) {
+      console.log('❌ Account ID inválido:', req.params.accountId);
+      return res.status(400).json({
+        success: false,
+        error: 'ID de cuenta inválido'
+      });
+    }
+
+    // Si solo se está cambiando enabled (toggle AI), actualizar directamente whatsappAccounts
+    if (enabled !== undefined && assignedAgentId === undefined) {
+      console.log(`🎯 Ejecutando toggle AI para cuenta ${accountId}: ${enabled ? 'ACTIVAR' : 'DESACTIVAR'}`);
+
+      // Actualizar directamente en whatsappAccounts
+      const { whatsappAccounts } = await import('../../shared/schema');
+      await db
+        .update(whatsappAccounts)
+        .set({ autoResponseEnabled: enabled })
+        .where(eq(whatsappAccounts.id, accountId));
+
+      console.log(`✅ Toggle AI exitoso para cuenta ${accountId} - AI ${enabled ? 'ACTIVADO' : 'DESACTIVADO'}`);
+    }
+    // Si se está asignando un agente específico
+    else if (assignedAgentId !== undefined) {
+      console.log(`🎯 Asignando agente ${assignedAgentId} a cuenta ${accountId}`);
+
+      // Actualizar directamente en whatsappAccounts
+      const { whatsappAccounts } = await import('../../shared/schema');
+      await db
+        .update(whatsappAccounts)
+        .set({ 
+          assignedExternalAgentId: assignedAgentId === 'none' ? null : assignedAgentId,
+          autoResponseEnabled: enabled !== undefined ? enabled : false
+        })
+        .where(eq(whatsappAccounts.id, accountId));
+
+      console.log(`✅ Agente ${assignedAgentId} asignado exitosamente a cuenta ${accountId}`);
+    }
+
+    // Actualizar configuración en el manager de WhatsApp
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+    await whatsappMultiAccountManager.updateAccountConfig(accountId);
+
+    res.json({ success: true, message: 'Configuración de respuesta automática actualizada' });
+
+  } catch (error) {
+    console.error('Error al actualizar configuración de respuesta automática:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar configuración de respuesta automática',
+      error: error.message
     });
   }
 });
