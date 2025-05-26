@@ -145,7 +145,7 @@ export class SimpleAutoResponseSystem {
   /**
    * Envía mensaje al agente externo y obtiene respuesta
    */
-  private async sendToExternalAgent(agentId: string, message: string, contactName: string): Promise<string | null> {
+  private async sendToExternalAgent(agentId: string, message: string, contactName: string): Promise<any> {
     try {
       console.log(`🤖 Enviando a agente ${agentId}: "${message}"`);
 
@@ -170,16 +170,19 @@ export class SimpleAutoResponseSystem {
       try {
         const responseData = JSON.parse(responseText);
         if (responseData.success && responseData.response) {
-          console.log(`✅ Agente respondió: "${responseData.response}"`);
+          console.log(`✅ Agente respondió (JSON):`, responseData.response);
           return responseData.response;
         } else {
           console.log(`⚠️ Agente no pudo generar respuesta: ${responseData.error || 'Error desconocido'}`);
           return null;
         }
       } catch (parseError) {
-        // Si no es JSON, usar la respuesta directamente como texto
-        console.log(`✅ Agente respondió (texto): "${responseText}"`);
-        return responseText;
+        // Si no es JSON, crear formato JSON básico
+        console.log(`✅ Agente respondió (texto convertido):`, responseText);
+        return {
+          type: 'text',
+          content: responseText
+        };
       }
     } catch (error) {
       console.error(`❌ Error llamando al agente externo:`, error);
@@ -188,25 +191,85 @@ export class SimpleAutoResponseSystem {
   }
 
   /**
-   * Envía respuesta automática por WhatsApp
+   * Envía respuesta automática por WhatsApp (soporta texto e imágenes)
    */
-  private async sendWhatsAppResponse(accountId: number, chatId: string, message: string, contactName: string): Promise<void> {
+  private async sendWhatsAppResponse(accountId: number, chatId: string, response: any, contactName: string): Promise<void> {
     try {
-      const sendResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/${accountId}/send-message`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chatId: chatId,
-          message: message
-        })
-      });
+      // Si es string, convertir a formato JSON básico
+      if (typeof response === 'string') {
+        response = { type: 'text', content: response };
+      }
 
-      if (sendResponse.ok) {
-        console.log(`✅ RESPUESTA AUTOMÁTICA ENVIADA a ${contactName}: "${message}"`);
-      } else {
-        console.log(`⚠️ Error enviando respuesta a ${contactName}`);
+      // Manejar diferentes tipos de respuesta
+      if (response.type === 'text' || !response.type) {
+        // Respuesta de texto
+        const sendResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/${accountId}/send-message`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chatId: chatId,
+            message: response.content || response.text || response
+          })
+        });
+
+        if (sendResponse.ok) {
+          console.log(`✅ RESPUESTA AUTOMÁTICA (texto) ENVIADA a ${contactName}: "${response.content || response.text || response}"`);
+        } else {
+          console.log(`⚠️ Error enviando respuesta de texto a ${contactName}`);
+        }
+      } 
+      else if (response.type === 'image') {
+        // Respuesta de imagen
+        const sendResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/${accountId}/send-media`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chatId: chatId,
+            mediaUrl: response.url || response.image_url,
+            caption: response.caption || response.text || '',
+            type: 'image'
+          })
+        });
+
+        if (sendResponse.ok) {
+          console.log(`✅ RESPUESTA AUTOMÁTICA (imagen) ENVIADA a ${contactName}: ${response.url || response.image_url}`);
+        } else {
+          console.log(`⚠️ Error enviando respuesta de imagen a ${contactName}`);
+        }
+      }
+      else if (response.type === 'multimedia' || Array.isArray(response.content)) {
+        // Respuesta multimedia (múltiples mensajes)
+        const messages = Array.isArray(response.content) ? response.content : [response];
+        
+        for (const msg of messages) {
+          await this.sendWhatsAppResponse(accountId, chatId, msg, contactName);
+          // Pequeña pausa entre mensajes
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      else {
+        // Formato desconocido, enviar como texto
+        const textContent = response.content || response.message || response.text || JSON.stringify(response);
+        const sendResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/${accountId}/send-message`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chatId: chatId,
+            message: textContent
+          })
+        });
+
+        if (sendResponse.ok) {
+          console.log(`✅ RESPUESTA AUTOMÁTICA (formato genérico) ENVIADA a ${contactName}: "${textContent}"`);
+        } else {
+          console.log(`⚠️ Error enviando respuesta genérica a ${contactName}`);
+        }
       }
     } catch (error) {
       console.error(`❌ Error enviando respuesta automática:`, error);
