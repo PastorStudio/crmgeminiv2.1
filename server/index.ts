@@ -222,6 +222,72 @@ app.post("/api/whatsapp/:accountId/convert-chats-to-leads", async (req: Request,
   }
 });
 
+// RESET TOTAL DEL SISTEMA CON AUTENTICACIÓN
+app.post("/api/system/reset-all", async (req: Request, res: Response) => {
+  try {
+    const { adminPassword } = req.body;
+    
+    // Validar clave de administrador
+    const ADMIN_PASSWORD = "admin123"; // En producción usar variable de entorno
+    
+    if (!adminPassword || adminPassword !== ADMIN_PASSWORD) {
+      return res.status(401).json({
+        success: false,
+        error: 'Clave de administrador incorrecta'
+      });
+    }
+    
+    console.log('🗑️ Iniciando reset total del sistema...');
+    
+    // Obtener conteos antes de eliminar
+    const leadsCount = await storage.getAllLeads();
+    const activitiesCount = await storage.getActivitiesByUser(1); // Aproximación
+    
+    // Ejecutar reset en orden correcto
+    const { pool } = await import("./db");
+    
+    const result = await pool.query(`
+      BEGIN;
+      DELETE FROM activities;
+      DELETE FROM messages;
+      DELETE FROM surveys;
+      DELETE FROM tickets;
+      DELETE FROM leads;
+      
+      -- Reiniciar secuencias
+      ALTER SEQUENCE leads_id_seq RESTART WITH 1;
+      ALTER SEQUENCE tickets_id_seq RESTART WITH 1;
+      ALTER SEQUENCE activities_id_seq RESTART WITH 1;
+      ALTER SEQUENCE messages_id_seq RESTART WITH 1;
+      ALTER SEQUENCE surveys_id_seq RESTART WITH 1;
+      
+      COMMIT;
+    `);
+    
+    console.log('✅ Reset total del sistema completado exitosamente');
+    
+    res.json({
+      success: true,
+      message: 'Sistema resetado completamente',
+      data: {
+        deletedLeads: leadsCount.length,
+        deletedTickets: 0,
+        deletedActivities: activitiesCount.length,
+        deletedMessages: 0,
+        timestamp: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en reset del sistema:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al resetear el sistema',
+      details: (error as Error).message
+    });
+  }
+});
+
 // RUTAS DE KEEP-ALIVE (ANTES DE VITE)
 app.get("/api/whatsapp/ping-status/all", async (req: Request, res: Response) => {
   try {

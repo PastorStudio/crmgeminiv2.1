@@ -4,7 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { Brain, Zap, Target, TrendingUp, FileText, Activity, Ticket, KanbanSquare, Loader2, Clock, AlertTriangle } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Brain, Zap, Target, TrendingUp, FileText, Activity, Ticket, KanbanSquare, Loader2, Clock, AlertTriangle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface LeadAnalysis {
@@ -28,6 +31,9 @@ export function GeminiAIPanel() {
   const [kanbanResult, setKanbanResult] = useState<any>(null);
   const [automationResult, setAutomationResult] = useState<any>(null);
   const [chatConversionResult, setChatConversionResult] = useState<any>(null);
+  const [systemResetResult, setSystemResetResult] = useState<any>(null);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
   const [currentTask, setCurrentTask] = useState<string>("");
   const [progress, setProgress] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -306,6 +312,55 @@ export function GeminiAIPanel() {
     setIsProcessing(false);
   };
 
+  const resetSystemData = async () => {
+    if (isQuotaExceeded) return;
+    
+    setIsProcessing(true);
+    setCurrentTask("Eliminando todos los datos del sistema...");
+    setProgress(10);
+    
+    try {
+      const response = await fetch('/api/system/reset-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ adminPassword })
+      });
+      
+      setProgress(50);
+      const data = await response.json();
+      setProgress(80);
+      
+      if (data.success) {
+        setSystemResetResult(data.data);
+        setProgress(100);
+        setShowResetDialog(false);
+        setAdminPassword("");
+        
+        toast({
+          title: "✅ Sistema resetado completamente",
+          description: `${data.data.deletedLeads} leads, ${data.data.deletedTickets} tickets, ${data.data.deletedActivities} actividades eliminados`,
+        });
+      } else {
+        throw new Error(data.error || 'Error en el reseteo del sistema');
+      }
+      
+    } catch (error: any) {
+      toast({
+        title: "❌ Error en reseteo",
+        description: error.message || "Error al resetear el sistema",
+        variant: "destructive",
+      });
+    }
+    setIsProcessing(false);
+  };
+
+  const handleResetClick = () => {
+    setShowResetDialog(true);
+    setAdminPassword("");
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'bg-red-100 text-red-800';
@@ -460,7 +515,82 @@ export function GeminiAIPanel() {
                 </>
               )}
             </Button>
+
+            <Button
+              onClick={handleResetClick}
+              disabled={isProcessing}
+              variant="destructive"
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold col-span-full"
+            >
+              <Trash2 className="h-4 w-4" />
+              {isProcessing ? "Eliminando..." : "🗑️ RESET TOTAL DEL SISTEMA"}
+            </Button>
           </div>
+
+          {/* Dialog de confirmación para reset del sistema */}
+          <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-red-600">
+                  <Trash2 className="h-5 w-5" />
+                  Reset Total del Sistema
+                </DialogTitle>
+                <DialogDescription className="text-gray-600">
+                  Esta acción eliminará TODOS los datos del sistema de forma permanente:
+                  <br />• Todos los leads y contactos
+                  <br />• Todos los tickets y actividades
+                  <br />• Todos los mensajes y conversaciones
+                  <br />• Todos los reportes y análisis
+                  <br /><br />
+                  <span className="font-semibold text-red-600">⚠️ Esta acción NO se puede deshacer</span>
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="admin-password" className="text-right font-semibold">
+                    Clave Admin:
+                  </Label>
+                  <Input
+                    id="admin-password"
+                    type="password"
+                    placeholder="Ingresa la clave de administrador"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="col-span-3"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowResetDialog(false);
+                    setAdminPassword("");
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={resetSystemData}
+                  disabled={!adminPassword || isProcessing}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Eliminando...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Confirmar Reset
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {analysis && (
             <Card className="mt-6">
@@ -587,6 +717,48 @@ export function GeminiAIPanel() {
                   </div>
                   <div className="text-xs text-green-700 mt-1">
                     Cada chat ha sido convertido en un lead con análisis de sentimiento, probabilidad de conversión y próximas acciones sugeridas
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {systemResetResult && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trash2 className="h-5 w-5 text-red-600" />
+                  Reset Total del Sistema Completado
+                </CardTitle>
+                <CardDescription>
+                  Todos los datos del sistema han sido eliminados exitosamente
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-red-50 rounded-lg">
+                    <div className="text-2xl font-bold text-red-600">{systemResetResult.deletedLeads}</div>
+                    <div className="text-sm text-red-700">Leads Eliminados</div>
+                  </div>
+                  <div className="text-center p-4 bg-orange-50 rounded-lg">
+                    <div className="text-2xl font-bold text-orange-600">{systemResetResult.deletedTickets}</div>
+                    <div className="text-sm text-orange-700">Tickets Eliminados</div>
+                  </div>
+                  <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                    <div className="text-2xl font-bold text-yellow-600">{systemResetResult.deletedActivities}</div>
+                    <div className="text-sm text-yellow-700">Actividades Eliminadas</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-gray-600">{systemResetResult.deletedMessages}</div>
+                    <div className="text-sm text-gray-700">Mensajes Eliminados</div>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border border-red-200">
+                  <div className="text-sm text-red-800 font-medium">
+                    ✅ Sistema completamente limpio y listo para nuevos datos
+                  </div>
+                  <div className="text-xs text-red-700 mt-1">
+                    Todos los datos anteriores han sido eliminados de forma permanente. El sistema está listo para comenzar con datos frescos.
                   </div>
                 </div>
               </CardContent>
