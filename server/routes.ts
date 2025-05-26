@@ -5220,32 +5220,52 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
         });
       }
 
-      // Crear mensajes de ejemplo para demostrar R.A. AI
-      const exampleMessages = [
-        {
-          id: `demo_msg_1`,
-          body: "Hola, estoy interesado en sus servicios de telecomunicaciones. ¿Podrían darme más información sobre los planes disponibles?",
-          fromMe: false,
-          timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // hace 5 minutos
-          contactName: 'Cliente Potencial'
-        },
-        {
-          id: `demo_msg_2`,
-          body: "¡Hola! Gracias por contactarnos. Tenemos excelentes planes de telecomunicaciones. ¿Qué tipo de servicio necesita?",
-          fromMe: true,
-          timestamp: new Date(Date.now() - 1000 * 60 * 3).toISOString(), // hace 3 minutos
-          contactName: 'Agente'
-        },
-        {
-          id: `demo_msg_3`,
-          body: "Necesito internet y telefonía para mi oficina. Somos una empresa pequeña de unos 15 empleados.",
-          fromMe: false,
-          timestamp: new Date(Date.now() - 1000 * 60 * 1).toISOString(), // hace 1 minuto
-          contactName: 'Cliente Potencial'
+      // Obtener mensajes reales del chat desde WhatsApp
+      try {
+        const whatsappMessages = await whatsappMultiAccountManager.getMessagesForChat(parseInt(accountId), chatId);
+        
+        if (whatsappMessages && whatsappMessages.length > 0) {
+          // Convertir mensajes de WhatsApp al formato esperado
+          const messages = whatsappMessages.slice(0, 10).map(msg => ({
+            id: msg.id || `msg_${Date.now()}_${Math.random()}`,
+            body: msg.body || msg.content || '',
+            fromMe: msg.fromMe || false,
+            timestamp: msg.timestamp || new Date().toISOString(),
+            contactName: msg.fromMe ? 'Agente' : 'Cliente'
+          }));
+          
+          console.log(`📨 R.A. AI: Usando ${messages.length} mensajes reales del chat ${chatId}`);
+        } else {
+          throw new Error('No hay mensajes reales disponibles');
         }
-      ];
-
-      const messages = exampleMessages;
+      } catch (error) {
+        console.log(`⚠️ R.A. AI: WhatsApp no conectado, usando mensajes de ejemplo`);
+        
+        // Mensajes de ejemplo solo si no hay WhatsApp conectado
+        const messages = [
+          {
+            id: `demo_msg_1`,
+            body: "Hola, estoy interesado en sus servicios de telecomunicaciones. ¿Podrían darme más información sobre los planes disponibles?",
+            fromMe: false,
+            timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+            contactName: 'Cliente Potencial'
+          },
+          {
+            id: `demo_msg_2`,
+            body: "¡Hola! Gracias por contactarnos. Tenemos excelentes planes de telecomunicaciones. ¿Qué tipo de servicio necesita?",
+            fromMe: true,
+            timestamp: new Date(Date.now() - 1000 * 60 * 3).toISOString(),
+            contactName: 'Agente'
+          },
+          {
+            id: `demo_msg_3`,
+            body: "Necesito internet y telefonía para mi oficina. Somos una empresa pequeña de unos 15 empleados.",
+            fromMe: false,
+            timestamp: new Date(Date.now() - 1000 * 60 * 1).toISOString(),
+            contactName: 'Cliente Potencial'
+          }
+        ];
+      }
 
       // Encontrar el último mensaje recibido
       const lastReceivedMessage = messages
