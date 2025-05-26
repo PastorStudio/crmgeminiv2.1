@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Brain, Zap, Target, TrendingUp, FileText, Activity } from "lucide-react";
+import { Brain, Zap, Target, TrendingUp, FileText, Activity, Ticket, KanbanSquare, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface LeadAnalysis {
@@ -23,6 +23,9 @@ export function GeminiAIPanel() {
   const [analysis, setAnalysis] = useState<LeadAnalysis | null>(null);
   const [organizeResult, setOrganizeResult] = useState<any>(null);
   const [smartReport, setSmartReport] = useState<string | null>(null);
+  const [ticketsResult, setTicketsResult] = useState<any>(null);
+  const [kanbanResult, setKanbanResult] = useState<any>(null);
+  const [automationResult, setAutomationResult] = useState<any>(null);
   const { toast } = useToast();
 
   const analyzeFirstLead = async () => {
@@ -103,6 +106,87 @@ export function GeminiAIPanel() {
     setIsProcessing(false);
   };
 
+  const manageTickets = async () => {
+    setIsProcessing(true);
+    try {
+      const response = await fetch('/api/ai/manage-tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setTicketsResult(data);
+        toast({
+          title: "🎫 Tickets gestionados",
+          description: `${data.processed} mensajes procesados, ${data.created} tickets creados`,
+        });
+      } else {
+        throw new Error(data.error || 'Error en gestión de tickets');
+      }
+    } catch (error) {
+      toast({
+        title: "❌ Error",
+        description: "Error al gestionar tickets automáticamente",
+        variant: "destructive",
+      });
+    }
+    setIsProcessing(false);
+  };
+
+  const organizeKanban = async () => {
+    setIsProcessing(true);
+    try {
+      const response = await fetch('/api/ai/kanban-organize');
+      const data = await response.json();
+      
+      if (data.success) {
+        setKanbanResult(data);
+        toast({
+          title: "📋 Kanban organizado",
+          description: `${data.organized} tarjetas organizadas en tablero`,
+        });
+      } else {
+        throw new Error(data.error || 'Error en organización Kanban');
+      }
+    } catch (error) {
+      toast({
+        title: "❌ Error",
+        description: "Error al organizar tablero Kanban",
+        variant: "destructive",
+      });
+    }
+    setIsProcessing(false);
+  };
+
+  const runFullAutomation = async () => {
+    setIsProcessing(true);
+    try {
+      const response = await fetch('/api/ai/full-automation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setAutomationResult(data);
+        toast({
+          title: "🚀 Automatización completa",
+          description: "Sistema automatizado exitosamente",
+        });
+      } else {
+        throw new Error(data.error || 'Error en automatización completa');
+      }
+    } catch (error) {
+      toast({
+        title: "❌ Error",
+        description: "Error en automatización completa del sistema",
+        variant: "destructive",
+      });
+    }
+    setIsProcessing(false);
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'bg-red-100 text-red-800';
@@ -134,7 +218,7 @@ export function GeminiAIPanel() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Button
               onClick={analyzeFirstLead}
               disabled={isProcessing}
@@ -151,7 +235,25 @@ export function GeminiAIPanel() {
               className="flex items-center gap-2"
             >
               <Zap className="h-4 w-4" />
-              {isProcessing ? "Organizando..." : "Organizar Todos"}
+              {isProcessing ? "Organizando..." : "Organizar Leads"}
+            </Button>
+            
+            <Button
+              onClick={manageTickets}
+              disabled={isProcessing}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+            >
+              <Ticket className="h-4 w-4" />
+              {isProcessing ? "Procesando..." : "Gestionar Tickets"}
+            </Button>
+            
+            <Button
+              onClick={organizeKanban}
+              disabled={isProcessing}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+            >
+              <KanbanSquare className="h-4 w-4" />
+              {isProcessing ? "Organizando..." : "Organizar Kanban"}
             </Button>
             
             <Button
@@ -162,6 +264,24 @@ export function GeminiAIPanel() {
             >
               <FileText className="h-4 w-4" />
               {isProcessing ? "Generando..." : "Reporte Inteligente"}
+            </Button>
+            
+            <Button
+              onClick={runFullAutomation}
+              disabled={isProcessing}
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold col-span-full"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Ejecutando Automatización...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4" />
+                  🚀 AUTOMATIZACIÓN COMPLETA DEL SISTEMA
+                </>
+              )}
             </Button>
           </div>
 
