@@ -952,15 +952,70 @@ app.use((req, res, next) => {
       
       res.json({
         success: true,
-        config: {
-          assignedExternalAgentId: account.assignedExternalAgentId,
-          autoResponseEnabled: account.autoResponseEnabled,
-          responseDelay: account.responseDelay
-        }
+        assignedAgentId: account.assignedExternalAgentId,
+        autoResponseEnabled: account.autoResponseEnabled || false
       });
     } catch (error) {
-      console.error('❌ Error obteniendo configuración de agente:', error);
-      res.status(500).json({ error: 'Error obteniendo configuración' });
+      console.error('Error obteniendo configuración de agente:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  });
+
+  // Toggle AI ON/OFF para una cuenta específica
+  app.post("/api/whatsapp-accounts/:accountId/ai-toggle", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { enabled } = req.body;
+      const { storage } = await import('./storage');
+      
+      console.log(`🔄 Toggle AI para cuenta ${accountId}: ${enabled ? 'ACTIVAR' : 'DESACTIVAR'}`);
+      
+      const updatedAccount = await storage.updateWhatsappAccount(accountId, {
+        autoResponseEnabled: enabled
+      });
+      
+      if (!updatedAccount) {
+        return res.status(404).json({ error: 'Cuenta no encontrada' });
+      }
+      
+      console.log(`✅ AI ${enabled ? 'ACTIVADO' : 'DESACTIVADO'} para cuenta ${accountId}`);
+      
+      res.json({
+        success: true,
+        message: `AI ${enabled ? 'activado' : 'desactivado'} exitosamente`
+      });
+    } catch (error) {
+      console.error('Error toggle AI:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  });
+
+  // Asignar agente a una cuenta específica
+  app.post("/api/whatsapp-accounts/:accountId/assign-agent", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { agentId } = req.body;
+      const { storage } = await import('./storage');
+      
+      console.log(`👤 Asignando agente ${agentId} a cuenta ${accountId}`);
+      
+      const updatedAccount = await storage.updateWhatsappAccount(accountId, {
+        assignedExternalAgentId: agentId
+      });
+      
+      if (!updatedAccount) {
+        return res.status(404).json({ error: 'Cuenta no encontrada' });
+      }
+      
+      console.log(`✅ Agente ${agentId} asignado a cuenta ${accountId}`);
+      
+      res.json({
+        success: true,
+        message: 'Agente asignado exitosamente'
+      });
+    } catch (error) {
+      console.error('Error asignando agente:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
     }
   });
 
