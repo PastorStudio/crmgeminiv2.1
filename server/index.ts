@@ -345,14 +345,14 @@ app.use((req, res, next) => {
     console.error("❌ Error al iniciar sistema de asignaciones invisible:", error);
   }
 
-  // Iniciar el sistema optimizado de respuestas automáticas (sin memoria virtual)
+  // Iniciar el sistema simple exacto que pidió el usuario
   try {
-    console.log("🚀 Iniciando sistema optimizado de respuestas automáticas...");
-    const { optimizedAutoResponseService } = await import('./services/optimizedAutoResponse');
-    await optimizedAutoResponseService.start();
-    console.log("✅ Sistema optimizado de respuestas automáticas iniciado exitosamente");
+    console.log("🚀 Iniciando sistema simple de respuestas automáticas...");
+    const { simpleAutoResponseSystem } = await import('./services/simpleAutoResponseSystem');
+    await simpleAutoResponseSystem.start();
+    console.log("✅ Sistema simple de respuestas automáticas iniciado exitosamente");
   } catch (error) {
-    console.error("❌ Error al iniciar sistema optimizado de respuestas automáticas:", error);
+    console.error("❌ Error al iniciar sistema simple de respuestas automáticas:", error);
   }
   
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
