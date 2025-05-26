@@ -79,7 +79,7 @@ export class SimpleIntermediarySystem {
   private async processAccountMessages(account: any): Promise<void> {
     try {
       // 2. Obtener chats de la cuenta
-      const chatsResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/${account.id}/chats`);
+      const chatsResponse = await fetch(`http://127.0.0.1:5000/api/whatsapp-accounts/${account.id}/chats`);
       if (!chatsResponse.ok) return;
 
       const chats = await chatsResponse.json();
@@ -98,7 +98,7 @@ export class SimpleIntermediarySystem {
   private async checkChatForNewMessages(account: any, chat: any): Promise<void> {
     try {
       // 3. Obtener mensajes del chat
-      const messagesResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/${account.id}/messages/${chat.id}`);
+      const messagesResponse = await fetch(`http://127.0.0.1:5000/api/whatsapp-accounts/${account.id}/messages/${chat.id}`);
       if (!messagesResponse.ok) return;
 
       const messages = await messagesResponse.json();
@@ -136,7 +136,7 @@ export class SimpleIntermediarySystem {
     try {
       console.log(`🤖 Enviando a agente ${agentId}: "${message}"`);
 
-      const response = await fetch(`http://localhost:5000/api/external-agents/${agentId}/send`, {
+      const response = await fetch(`http://127.0.0.1:5000/api/external-agents/${agentId}/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -178,7 +178,7 @@ export class SimpleIntermediarySystem {
    */
   private async sendWhatsAppMessage(accountId: number, chatId: string, message: string): Promise<void> {
     try {
-      const response = await fetch(`http://localhost:5000/api/whatsapp-accounts/${accountId}/send-message`, {
+      const response = await fetch(`http://127.0.0.1:5000/api/whatsapp-accounts/${accountId}/send-message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
