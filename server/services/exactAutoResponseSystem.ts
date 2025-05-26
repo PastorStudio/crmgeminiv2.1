@@ -108,8 +108,8 @@ export class ExactAutoResponseSystem {
         return; // Ya procesado recientemente
       }
       
-      // Si han pasado 30 segundos, procesar un mensaje de demostración
-      if (timeSinceLastProcess >= 30000) {
+      // Si han pasado 10 segundos, procesar un mensaje de demostración
+      if (timeSinceLastProcess >= 10000) {
         console.log(`🔄 Procesando mensaje de demostración después de ${Math.round(timeSinceLastProcess/1000)} segundos`);
         this.lastProcessTime = currentTime;
         this.processedMessages.clear(); // Limpiar para permitir procesamiento
