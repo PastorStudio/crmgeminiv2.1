@@ -10,6 +10,7 @@ import { antiGenericFilter } from './antiGenericResponseFilter';
 import { realAgentOnly } from './realAgentOnlySystem';
 import { agentOnlySystem } from './agentOnlyResponseSystem';
 import { ultimateAntiGeneric } from './ultimateAntiGenericSystem';
+import { finalGenericBlocker } from './finalGenericBlocker';
 
 export class SimpleAutoResponseSystem {
   private isRunning = false;
@@ -28,15 +29,16 @@ export class SimpleAutoResponseSystem {
     console.log("🚀 Iniciando sistema simple de respuestas automáticas...");
     this.isRunning = true;
 
-    // ACTIVAR SISTEMA DEFINITIVO ANTI-RESPUESTAS GENÉRICAS
-    console.log("🚀 ACTIVANDO SISTEMA DEFINITIVO ANTI-RESPUESTAS GENÉRICAS...");
+    // ACTIVAR BLOQUEADOR DEFINITIVO ANTI-RESPUESTAS GENÉRICAS
+    console.log("🚀 ACTIVANDO BLOQUEADOR DEFINITIVO ANTI-RESPUESTAS GENÉRICAS...");
+    finalGenericBlocker.activate();
     realAgentOnly.activate();
     realAgentOnly.enforceExternalAgentsOnly();
     agentOnlySystem.activate();
     agentOnlySystem.enforceAgentResponsesOnly();
     ultimateAntiGeneric.activate();
     ultimateAntiGeneric.enforceZeroToleranceMode();
-    console.log("🛡️ SISTEMA DEFINITIVO ACTIVADO - ELIMINACIÓN TOTAL DE RESPUESTAS GENÉRICAS");
+    console.log("🛡️ BLOQUEADOR DEFINITIVO ACTIVADO - ELIMINACIÓN TOTAL DE RESPUESTAS GENÉRICAS");
 
     // Inicia el bucle de verificación
     this.intervalId = setInterval(async () => {
@@ -147,18 +149,18 @@ export class SimpleAutoResponseSystem {
         chat.name || chat.id
       );
 
-      if (agentResponse) {
+      if (agentResponse && agentResponse.trim().length > 0) {
         // 4. VALIDACIÓN FINAL: Solo enviar si es respuesta auténtica del agente
         const validatedResponse = agentOnlySystem.validateAndFilterResponse(agentResponse, account.assignedExternalAgentId);
         
-        if (validatedResponse) {
+        if (validatedResponse && validatedResponse.trim().length > 0) {
           console.log(`🚀 Enviando respuesta REAL VALIDADA del agente: "${validatedResponse}"`);
           await this.sendWhatsAppResponse(account.id, chat.id, validatedResponse, chat.name || chat.id);
         } else {
           console.log(`🛑 RESPUESTA RECHAZADA - No pasó la validación de autenticidad`);
         }
       } else {
-        console.log(`❌ No se recibió respuesta del agente ${account.assignedExternalAgentId}, no enviando respuesta automática`);
+        console.log(`❌ Agente ${account.assignedExternalAgentId} no respondió - NO se enviará mensaje automático`);
       }
     } catch (error) {
       console.error(`❌ Error verificando chat ${chat.id}:`, error);
