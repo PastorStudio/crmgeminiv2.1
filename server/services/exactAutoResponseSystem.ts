@@ -140,7 +140,7 @@ export class ExactAutoResponseSystem {
   }
 
   /**
-   * PASO 2: Verificar cuenta WhatsApp conectada (verificando número #cuenta)
+   * PASO 2: Verificar cuenta WhatsApp conectada (verificando estado real con chats)
    */
   private async step2_VerifyWhatsAppAccount(): Promise<any> {
     try {
@@ -149,16 +149,26 @@ export class ExactAutoResponseSystem {
       
       const accounts = await response.json();
       
-      // Buscar cuenta conectada y activa
+      // Verificar conexión real probando si puede obtener chats
       for (const account of accounts) {
-        if (account.status === 'connected' || account.status === 'ready') {
-          console.log(`📱 PASO 2: Cuenta conectada #${account.id} (${account.name})`);
-          return account;
+        try {
+          const chatsResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/${account.id}/chats`);
+          if (chatsResponse.ok) {
+            const chats = await chatsResponse.json();
+            if (chats && chats.length > 0) {
+              console.log(`🟢 PASO 2 ✅: WhatsApp CONECTADO - Cuenta #${account.id} (${account.name}) con ${chats.length} chats activos`);
+              return account;
+            }
+          }
+        } catch (error) {
+          // Continuar con la siguiente cuenta
         }
       }
       
+      console.log("📱 Sin cuenta WhatsApp conectada - esperando...");
       return null;
     } catch (error) {
+      console.error("❌ Error verificando conexión WhatsApp:", error);
       return null;
     }
   }
