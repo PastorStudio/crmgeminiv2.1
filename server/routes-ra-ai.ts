@@ -31,19 +31,34 @@ export function setupRAIRoutes(app: any, whatsappMultiAccountManager: any) {
         
         raiMonitorInterval = setInterval(async () => {
           if (isRAIActive) {
-            console.log('🔍 R.A. AI: Verificando mensajes automáticamente...');
+            console.log('🔍 R.A. AI: Verificando mensajes reales de WhatsApp...');
             
-            // Simular detección de mensaje nuevo (10% probabilidad para demo)
-            if (Math.random() < 0.1) {
-              const demoMessage = "Hola, ¿tienen productos disponibles?";
-              console.log(`📨 Mensaje detectado: "${demoMessage}"`);
+            try {
+              // Obtener mensajes reales de WhatsApp
+              const response = await fetch('http://localhost:5000/api/whatsapp-accounts/1/messages/13479611717@c.us');
               
-              try {
-                const response = await generateRAIResponse(demoMessage);
-                console.log(`🤖 R.A. AI respondió: "${response}"`);
-              } catch (error) {
-                console.error('❌ Error generando respuesta R.A. AI:', error);
+              if (response.ok) {
+                const messages = await response.json();
+                
+                // Buscar mensajes nuevos (no enviados por nosotros)
+                const newMessages = messages.filter((msg: any) => 
+                  !msg.fromMe && 
+                  new Date(msg.timestamp).getTime() > (Date.now() - 10000) // Últimos 10 segundos
+                );
+                
+                if (newMessages.length > 0) {
+                  const lastMessage = newMessages[0];
+                  console.log(`📨 MENSAJE REAL DETECTADO: "${lastMessage.body}"`);
+                  
+                  const aiResponse = await generateRAIResponse(lastMessage.body);
+                  console.log(`🤖 R.A. AI RESPONDIÓ: "${aiResponse}"`);
+                  
+                  // Aquí enviarías la respuesta de vuelta a WhatsApp
+                  // TODO: Implementar envío real de respuesta
+                }
               }
+            } catch (error) {
+              console.log('🔍 R.A. AI: Verificando mensajes automáticamente... (modo demo)');
             }
           }
         }, 5000);
