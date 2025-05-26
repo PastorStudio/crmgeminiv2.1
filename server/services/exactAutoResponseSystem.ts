@@ -139,17 +139,45 @@ export class ExactAutoResponseSystem {
   }
 
   /**
-   * PASO 2: Verificar cuenta WhatsApp conectada (usando cuenta 1 que ya sabemos funciona)
+   * PASO 2: Obtener TODAS las cuentas WhatsApp conectadas dinámicamente
    */
-  private async step2_VerifyWhatsAppAccount(): Promise<any> {
+  private async step2_GetAllConnectedAccounts(): Promise<any[]> {
     try {
-      // Usar directamente la cuenta 1 que ya sabemos está funcionando
-      const account = { id: 1, name: "prueba" };
-      console.log(`🟢 PASO 2 ✅: WhatsApp CONECTADO - Cuenta #${account.id} (${account.name}) funcionando correctamente`);
-      return account;
+      const response = await fetch('http://localhost:5000/api/whatsapp/accounts');
+      if (!response.ok) return [];
+      
+      const accounts = await response.json();
+      const connectedAccounts = [];
+      
+      // Verificar cada cuenta para detectar cuáles están realmente conectadas
+      for (const account of accounts) {
+        try {
+          const chatsResponse = await fetch(`http://localhost:5000/api/whatsapp-accounts/${account.id}/chats`);
+          if (chatsResponse.ok) {
+            const chats = await chatsResponse.json();
+            if (chats && chats.length > 0) {
+              // Obtener número de teléfono de la cuenta si está disponible
+              const phoneNumber = chats[0]?.id?.split('@')[0] || 'Sin detectar';
+              account.phoneNumber = phoneNumber;
+              connectedAccounts.push(account);
+              console.log(`🟢 PASO 2 ✅: Cuenta #${account.id} (${account.name}) CONECTADA - Número: ${phoneNumber}`);
+            }
+          }
+        } catch (error) {
+          // Cuenta no conectada, continuar con la siguiente
+        }
+      }
+      
+      if (connectedAccounts.length > 0) {
+        console.log(`📱 ${connectedAccounts.length} cuenta(s) WhatsApp detectada(s) y conectada(s)`);
+        return connectedAccounts;
+      }
+      
+      console.log("📱 Sin cuentas WhatsApp conectadas - esperando...");
+      return [];
     } catch (error) {
-      console.log("📱 Error en PASO 2 - reintentando...");
-      return null;
+      console.log("📱 Error verificando cuentas - reintentando...");
+      return [];
     }
   }
 
