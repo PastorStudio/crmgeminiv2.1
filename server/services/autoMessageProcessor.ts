@@ -47,18 +47,16 @@ export class AutoMessageProcessor {
         return { success: false };
       }
 
-      // Verificar si tiene agente externo asignado y respuesta automática activada
-      if (!account.assignedExternalAgentId || !account.autoResponseEnabled) {
-        console.log(`⏭️ Cuenta ${message.accountId} no tiene agente externo activo`);
-        console.log(`🔍 Debug - assignedExternalAgentId: ${account.assignedExternalAgentId}, autoResponseEnabled: ${account.autoResponseEnabled}`);
-        
-        // Intentar consulta directa con SQL puro
-        try {
-          const directQuery = await db.execute(`
-            SELECT assigned_external_agent_id, auto_response_enabled 
-            FROM whatsapp_accounts 
-            WHERE id = $1
-          `, [message.accountId]);
+      // Intentar consulta directa con SQL puro primero
+      console.log(`🔍 Debug - Verificando agente para cuenta ${message.accountId}...`);
+      console.log(`🔍 Debug inicial - assignedExternalAgentId: ${account.assignedExternalAgentId}, autoResponseEnabled: ${account.autoResponseEnabled}`);
+      
+      try {
+        const directQuery = await db.execute(`
+          SELECT assigned_external_agent_id, auto_response_enabled 
+          FROM whatsapp_accounts 
+          WHERE id = $1
+        `, [message.accountId]);
           
           if (directQuery.rows.length > 0) {
             const directConfig = directQuery.rows[0];
