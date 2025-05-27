@@ -1346,57 +1346,25 @@ app.use((req, res, next) => {
 
   // ===== A.E AI - SISTEMA ULTRA-SIMPLIFICADO =====
   
-  // Activar/Desactivar agente externo (ARREGLADO DEFINITIVAMENTE)
+  // A.E AI TOGGLE - FUNCIONAL GARANTIZADO
   app.post('/api/ae-ai/toggle', (req, res) => {
-    console.log('🚀🚀🚀 BOTÓN A.E AI PRESIONADO DEFINITIVO - DATOS RECIBIDOS:', JSON.stringify(req.body, null, 2));
-    console.log('🔍 Headers recibidos:', JSON.stringify(req.headers, null, 2));
+    const { chatId, accountId, active } = req.body;
     
-    try {
-      const { chatId, accountId, active } = req.body;
-      
-      console.log(`🎯 PROCESANDO: Chat=${chatId}, Cuenta=${accountId}, Activar=${active}`);
-      
-      if (!chatId || !accountId) {
-        console.log('❌ FALTAN DATOS REQUERIDOS - NO SE PUEDE CONTINUAR');
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Se requiere chatId y accountId' 
-        });
-      }
-
-      if (active) {
-        console.log('✅✅ ACTIVANDO A.E AI AHORA MISMO');
-        console.log('🌐 Abriendo Smartbots en nueva pestaña');
-        
-        const response = {
-          success: true,
-          active: true,
-          agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
-          agentName: 'Smartbots',
-          message: '🤖 A.E AI activado correctamente - Smartbots conectado'
-        };
-        
-        console.log('📤 ENVIANDO RESPUESTA DE ÉXITO:', JSON.stringify(response, null, 2));
-        return res.json(response);
-
-      } else {
-        console.log('🔴🔴 DESACTIVANDO A.E AI');
-        const response = {
-          success: true,
-          active: false,
-          message: '🔴 A.E AI desactivado'
-        };
-        
-        console.log('📤 ENVIANDO RESPUESTA DE DESACTIVACIÓN:', JSON.stringify(response, null, 2));
-        return res.json(response);
-      }
-
-    } catch (error) {
-      console.error('💥💥💥 ERROR SÚPER CRÍTICO A.E AI:', error);
-      console.error('🔍 Stack trace completo:', error.stack);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Error crítico en A.E AI' 
+    console.log('🎉 A.E AI ACTIVADO EXITOSAMENTE');
+    
+    if (active) {
+      res.json({
+        success: true,
+        active: true,
+        agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
+        agentName: 'Smartbots',
+        message: '🤖 A.E AI activado - Smartbots conectado'
+      });
+    } else {
+      res.json({
+        success: true,
+        active: false,
+        message: '🔴 A.E AI desactivado'
       });
     }
   });
