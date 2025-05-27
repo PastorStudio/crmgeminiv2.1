@@ -454,7 +454,7 @@ export const externalAgentConfigs = pgTable('external_agent_configs', {
   accountId: integer('account_id').notNull(),
   isActive: boolean('is_active').default(false),
   selectedAgentId: integer('selected_agent_id'),
-  autoResponse: boolean('auto_response').default(true),
+  autoResponse: boolean('autoresponse').default(true),
   responseDelay: integer('response_delay').default(3), // segundos
   maxResponsesPerHour: integer('max_responses_per_hour').default(10),
   createdAt: timestamp('created_at').defaultNow(),
@@ -643,7 +643,7 @@ export const mediaGallery = pgTable("media_gallery", {
 // Configuración de AI para respuestas automáticas
 export const aiConfig = pgTable("ai_config", {
   id: serial("id").primaryKey(),
-  autoResponse: boolean("auto_response").default(false),
+  autoResponse: boolean("autoresponse").default(false),
   defaultModel: text("default_model").default("gemini"), // 'gemini', 'openai'
   confidenceThreshold: doublePrecision("confidence_threshold").default(0.75),
   geminiApiKey: text("gemini_api_key"),
