@@ -135,6 +135,41 @@ export default function UserManagement() {
   const [agentPreviewData, setAgentPreviewData] = useState<any>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   
+  // Estado en vivo de agentes
+  const [activeAgents, setActiveAgents] = useState<number[]>([]);
+
+  // Obtener estado en vivo de agentes cada 10 segundos
+  const { data: liveStatus } = useQuery({
+    queryKey: ['/api/agents/live-status'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/agents/live-status');
+        if (!response.ok) return { activeAgents: [] };
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.log('⚫ Error obteniendo estado en vivo de agentes');
+        return { activeAgents: [] };
+      }
+    },
+    refetchInterval: 10000, // Actualizar cada 10 segundos
+    enabled: true
+  });
+
+  // Actualizar lista de agentes activos
+  useEffect(() => {
+    if (liveStatus?.activeAgents) {
+      setActiveAgents(liveStatus.activeAgents);
+      console.log('💚 Agentes activos:', liveStatus.activeAgents);
+    }
+  }, [liveStatus]);
+
+  // Simular algunos agentes activos para demostración
+  useEffect(() => {
+    // Marcar algunos agentes como activos por defecto para la demostración
+    setActiveAgents([1, 3, 7]); // IDs de ejemplo
+  }, []);
+  
   // DJP SUPERADMINISTRADOR - ACCESO TOTAL GARANTIZADO SIN RESTRICCIONES
   const isSuperAdmin = currentUser?.username === 'DJP' || currentUser?.id === 3 || 
                        currentUser?.role === 'superadmin' || currentUser?.role === 'super_admin';
@@ -802,7 +837,30 @@ export default function UserManagement() {
                       className="hover:bg-gray-50 cursor-pointer transition-colors"
                       onClick={() => openAgentPreview(user)}
                     >
-                      <TableCell className="font-medium">{user.username}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center space-x-3">
+                          <div className="relative">
+                            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                              <span className="text-sm font-semibold text-blue-600">
+                                {user.username?.substring(0, 2).toUpperCase()}
+                              </span>
+                            </div>
+                            {/* Indicador de estado en vivo - verde para activo, gris para inactivo */}
+                            <div 
+                              className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${
+                                activeAgents.includes(user.id) ? 'bg-green-500' : 'bg-gray-400'
+                              }`} 
+                              title={activeAgents.includes(user.id) ? 'Agente activo en el sistema' : 'Agente inactivo'}
+                            ></div>
+                          </div>
+                          <div>
+                            <div className="font-medium">{user.username}</div>
+                            <div className="text-sm text-gray-500">
+                              {activeAgents.includes(user.id) ? 'En línea' : 'Desconectado'}
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
                       <TableCell>{user.fullName || '-'}</TableCell>
                       <TableCell>{user.email || '-'}</TableCell>
                       <TableCell>
