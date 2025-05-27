@@ -129,6 +129,12 @@ export default function UserManagement() {
   const [activityStats, setActivityStats] = useState<ActivityStats | null>(null);
   const [loadingActivities, setLoadingActivities] = useState(false);
   
+  // Estados para preview completo del agente
+  const [showAgentPreview, setShowAgentPreview] = useState(false);
+  const [selectedAgentPreview, setSelectedAgentPreview] = useState<User | null>(null);
+  const [agentPreviewData, setAgentPreviewData] = useState<any>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  
   // DJP SUPERADMINISTRADOR - ACCESO TOTAL GARANTIZADO SIN RESTRICCIONES
   const isSuperAdmin = currentUser?.username === 'DJP' || currentUser?.id === 3 || 
                        currentUser?.role === 'superadmin' || currentUser?.role === 'super_admin';
@@ -424,6 +430,75 @@ export default function UserManagement() {
     if (diffHours < 24) return `Hace ${diffHours}h`;
     if (diffDays < 30) return `Hace ${diffDays} días`;
     return formatDate(dateString);
+  };
+
+  // Función para abrir preview completo del agente
+  const openAgentPreview = async (user: User) => {
+    setSelectedAgentPreview(user);
+    setShowAgentPreview(true);
+    setLoadingPreview(true);
+    
+    try {
+      // Obtener datos completos del agente
+      const [activitiesResponse, chatsResponse, leadsResponse] = await Promise.all([
+        fetch(`/api/agent-activity/${user.id}`),
+        fetch(`/api/whatsapp-accounts/1/chats`), // Chats asignados
+        fetch(`/api/leads`) // Leads del agente
+      ]);
+
+      let activities = [];
+      let chats = [];
+      let leads = [];
+      let activityStats = null;
+
+      if (activitiesResponse.ok) {
+        const activityData = await activitiesResponse.json();
+        if (activityData.success) {
+          activities = activityData.activities || [];
+          activityStats = activityData.stats || null;
+        }
+      }
+
+      if (chatsResponse.ok) {
+        const chatData = await chatsResponse.json();
+        chats = Array.isArray(chatData) ? chatData : [];
+      }
+
+      if (leadsResponse.ok) {
+        const leadData = await leadsResponse.json();
+        leads = Array.isArray(leadData) ? leadData.filter((lead: any) => lead.assigneeId === user.id) : [];
+      }
+
+      setAgentPreviewData({
+        activities,
+        activityStats,
+        chats: chats.length,
+        leads: leads.length,
+        activeChats: chats.filter((chat: any) => chat.unreadCount > 0).length,
+        completedLeads: leads.filter((lead: any) => lead.status === 'convertido').length,
+        personalData: {
+          username: user.username,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role,
+          department: user.department,
+          status: user.status,
+          lastLoginAt: user.lastLoginAt,
+          totalLogins: user.totalLogins,
+          lastActivity: user.lastActivity
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error cargando datos del agente:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los datos completos del agente",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingPreview(false);
+    }
   };
 
   // Submit del formulario
@@ -722,7 +797,11 @@ export default function UserManagement() {
               <TableBody>
                 {users && users.length > 0 ? (
                   users.map((user: User) => (
-                    <TableRow key={user.id}>
+                    <TableRow 
+                      key={user.id}
+                      className="hover:bg-gray-50 cursor-pointer transition-colors"
+                      onClick={() => openAgentPreview(user)}
+                    >
                       <TableCell className="font-medium">{user.username}</TableCell>
                       <TableCell>{user.fullName || '-'}</TableCell>
                       <TableCell>{user.email || '-'}</TableCell>
@@ -1462,6 +1541,213 @@ export default function UserManagement() {
               Cerrar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Preview Completo del Agente */}
+      <Dialog open={showAgentPreview} onOpenChange={setShowAgentPreview}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-blue-600">
+              <Eye className="h-5 w-5 mr-2" />
+              Preview Completo del Agente
+            </DialogTitle>
+            <DialogDescription>
+              Información detallada de actividades, chats y rendimiento del agente
+            </DialogDescription>
+          </DialogHeader>
+          
+          {loadingPreview ? (
+            <div className="flex justify-center items-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2">Cargando datos del agente...</span>
+            </div>
+          ) : selectedAgentPreview && agentPreviewData ? (
+            <div className="space-y-6">
+              {/* Datos Personales */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border">
+                <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
+                  <User className="h-5 w-5 mr-2" />
+                  Datos Personales
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">Usuario:</span>
+                    <p className="font-semibold">{agentPreviewData.personalData.username}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">Nombre Completo:</span>
+                    <p className="font-semibold">{agentPreviewData.personalData.fullName || 'No especificado'}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">Email:</span>
+                    <p className="font-semibold">{agentPreviewData.personalData.email || 'No especificado'}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">Departamento:</span>
+                    <p className="font-semibold">{agentPreviewData.personalData.department || 'No asignado'}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">Rol:</span>
+                    <Badge variant="outline" className="font-semibold">
+                      {agentPreviewData.personalData.role?.toUpperCase() || 'AGENT'}
+                    </Badge>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">Estado:</span>
+                    <Badge 
+                      variant={agentPreviewData.personalData.status === 'active' ? 'default' : 'destructive'}
+                      className={agentPreviewData.personalData.status === 'active' ? 'bg-green-100 text-green-800' : ''}
+                    >
+                      {agentPreviewData.personalData.status?.toUpperCase() || 'ACTIVE'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Estadísticas Generales */}
+              <div className="grid grid-cols-4 gap-4">
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-green-600">Total Chats</p>
+                      <p className="text-2xl font-bold text-green-800">{agentPreviewData.chats}</p>
+                    </div>
+                    <MessageCircle className="h-8 w-8 text-green-500" />
+                  </div>
+                </div>
+                
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-600">Leads Gestionados</p>
+                      <p className="text-2xl font-bold text-blue-800">{agentPreviewData.leads}</p>
+                    </div>
+                    <Users className="h-8 w-8 text-blue-500" />
+                  </div>
+                </div>
+                
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-orange-600">Chats Activos</p>
+                      <p className="text-2xl font-bold text-orange-800">{agentPreviewData.activeChats}</p>
+                    </div>
+                    <Activity className="h-8 w-8 text-orange-500" />
+                  </div>
+                </div>
+                
+                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-purple-600">Leads Convertidos</p>
+                      <p className="text-2xl font-bold text-purple-800">{agentPreviewData.completedLeads}</p>
+                    </div>
+                    <CheckCircle className="h-8 w-8 text-purple-500" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Estadísticas de Actividad */}
+              {agentPreviewData.activityStats && (
+                <div className="bg-gray-50 p-4 rounded-lg border">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                    <Clock className="h-5 w-5 mr-2" />
+                    Estadísticas de Actividad
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-sm font-medium text-gray-600">Total Sesiones:</span>
+                      <p className="text-xl font-bold text-blue-600">{agentPreviewData.activityStats.totalSessions}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-600">Páginas Visitadas:</span>
+                      <p className="text-xl font-bold text-green-600">{agentPreviewData.activityStats.totalPageViews}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-600">Último Acceso:</span>
+                      <p className="font-semibold">{timeAgo(agentPreviewData.activityStats.lastLogin)}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-600">Tiempo Promedio:</span>
+                      <p className="font-semibold">{agentPreviewData.activityStats.averageSessionTime} min</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Actividades Recientes */}
+              <div className="border rounded-lg">
+                <div className="bg-gray-50 px-4 py-3 border-b">
+                  <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                    <Activity className="h-5 w-5 mr-2" />
+                    Actividades Recientes
+                  </h3>
+                </div>
+                <div className="p-4">
+                  {agentPreviewData.activities.length > 0 ? (
+                    <div className="space-y-3">
+                      {agentPreviewData.activities.slice(0, 10).map((activity: any, index: number) => (
+                        <div key={index} className="flex items-start space-x-3 p-3 bg-white border rounded-lg">
+                          <div className="flex-shrink-0">
+                            {activity.action === 'login' ? (
+                              <LogIn className="h-5 w-5 text-green-500" />
+                            ) : activity.action === 'page_view' ? (
+                              <Eye className="h-5 w-5 text-blue-500" />
+                            ) : (
+                              <Activity className="h-5 w-5 text-gray-500" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-gray-900">
+                                {activity.details || activity.action}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                {formatDate(activity.timestamp)}
+                              </p>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              Página: <span className="font-medium">{activity.page}</span>
+                            </p>
+                            {activity.ipAddress && (
+                              <p className="text-xs text-gray-500">
+                                IP: {activity.ipAddress}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <Activity className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                      <p>No hay actividades registradas</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Botón para ver actividades completas */}
+              <div className="flex justify-center">
+                <Button 
+                  onClick={() => {
+                    setShowAgentPreview(false);
+                    viewAgentActivities(selectedAgentPreview);
+                  }}
+                  className="flex items-center space-x-2"
+                >
+                  <Activity className="h-4 w-4" />
+                  <span>Ver Todas las Actividades</span>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <User className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <p>No se pudieron cargar los datos del agente</p>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
