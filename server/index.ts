@@ -59,20 +59,21 @@ app.post('/api/external-agents-direct', async (req: Request, res: Response) => {
     // Extraer el nombre real del agente desde el URL
     const extractAgentName = (url: string) => {
       if (url.includes('/g/g-')) {
+        // Ejemplo: https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots
+        // Queremos extraer "smartbots"
         const parts = url.split('/g/g-')[1];
         if (parts) {
-          // Extraer la parte después del primer guión que contiene el nombre
-          const namePart = parts.substring(parts.indexOf('-') + 1);
-          if (namePart) {
-            // Convertir guiones a espacios y capitalizar
-            const cleanName = namePart
-              .replace(/-/g, ' ')
+          // Buscar el último guión y tomar todo lo que viene después
+          const lastDashIndex = parts.lastIndexOf('-');
+          if (lastDashIndex !== -1 && lastDashIndex < parts.length - 1) {
+            const agentName = parts.substring(lastDashIndex + 1);
+            // Limpiar y capitalizar solo la primera letra
+            const cleanName = agentName
               .replace(/[^a-zA-Z0-9\s]/g, '')
-              .split(' ')
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(' ')
               .trim();
-            return cleanName || 'ChatGPT Agent';
+            if (cleanName) {
+              return cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
+            }
           }
         }
       }
@@ -131,20 +132,21 @@ app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response)
     // Extraer el nombre real del agente desde el URL
     const extractAgentName = (url: string) => {
       if (url.includes('/g/g-')) {
+        // Ejemplo: https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots
+        // Queremos extraer "smartbots"
         const parts = url.split('/g/g-')[1];
         if (parts) {
-          // Extraer la parte después del primer guión que contiene el nombre
-          const namePart = parts.substring(parts.indexOf('-') + 1);
-          if (namePart) {
-            // Convertir guiones a espacios y capitalizar
-            const cleanName = namePart
-              .replace(/-/g, ' ')
+          // Buscar el último guión y tomar todo lo que viene después
+          const lastDashIndex = parts.lastIndexOf('-');
+          if (lastDashIndex !== -1 && lastDashIndex < parts.length - 1) {
+            const agentName = parts.substring(lastDashIndex + 1);
+            // Limpiar y capitalizar solo la primera letra
+            const cleanName = agentName
               .replace(/[^a-zA-Z0-9\s]/g, '')
-              .split(' ')
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(' ')
               .trim();
-            return cleanName || 'ChatGPT Agent';
+            if (cleanName) {
+              return cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
+            }
           }
         }
       }
@@ -233,18 +235,21 @@ app.post('/api/external-agents/update-names', async (req: Request, res: Response
     // Función mejorada de extracción de nombres
     const extractAgentName = (url: string) => {
       if (url.includes('/g/g-')) {
+        // Ejemplo: https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots
+        // Queremos extraer "smartbots"
         const parts = url.split('/g/g-')[1];
         if (parts) {
-          const namePart = parts.substring(parts.indexOf('-') + 1);
-          if (namePart) {
-            const cleanName = namePart
-              .replace(/-/g, ' ')
+          // Buscar el último guión y tomar todo lo que viene después
+          const lastDashIndex = parts.lastIndexOf('-');
+          if (lastDashIndex !== -1 && lastDashIndex < parts.length - 1) {
+            const agentName = parts.substring(lastDashIndex + 1);
+            // Limpiar y capitalizar solo la primera letra
+            const cleanName = agentName
               .replace(/[^a-zA-Z0-9\s]/g, '')
-              .split(' ')
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(' ')
               .trim();
-            return cleanName || 'ChatGPT Agent';
+            if (cleanName) {
+              return cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
+            }
           }
         }
       }
