@@ -61,12 +61,22 @@ app.post('/api/external-agents-direct', async (req: Request, res: Response) => {
       if (url.includes('/g/g-')) {
         const parts = url.split('/g/g-')[1];
         if (parts) {
-          const namePart = parts.split('-').slice(1).join(' ');
-          const cleanName = namePart.replace(/[^a-zA-Z0-9\s]/g, '').trim();
-          return cleanName || 'ChatGPT Agent';
+          // Extraer la parte después del primer guión que contiene el nombre
+          const namePart = parts.substring(parts.indexOf('-') + 1);
+          if (namePart) {
+            // Convertir guiones a espacios y capitalizar
+            const cleanName = namePart
+              .replace(/-/g, ' ')
+              .replace(/[^a-zA-Z0-9\s]/g, '')
+              .split(' ')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+              .join(' ')
+              .trim();
+            return cleanName || 'ChatGPT Agent';
+          }
         }
       }
-      return agentUrl.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent';
+      return url.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent';
     };
     
     const extractedName = extractAgentName(agentUrl);
@@ -123,8 +133,19 @@ app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response)
       if (url.includes('/g/g-')) {
         const parts = url.split('/g/g-')[1];
         if (parts) {
-          const namePart = parts.split('-').slice(1).join(' ');
-          return namePart.replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'Agent';
+          // Extraer la parte después del primer guión que contiene el nombre
+          const namePart = parts.substring(parts.indexOf('-') + 1);
+          if (namePart) {
+            // Convertir guiones a espacios y capitalizar
+            const cleanName = namePart
+              .replace(/-/g, ' ')
+              .replace(/[^a-zA-Z0-9\s]/g, '')
+              .split(' ')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+              .join(' ')
+              .trim();
+            return cleanName || 'ChatGPT Agent';
+          }
         }
       }
       return 'ChatGPT Agent';
@@ -197,6 +218,67 @@ app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response)
       success: false,
       error: 'Error del servidor',
       message: error.message || 'No se pudo conectar con el agente'
+    });
+  }
+});
+
+// Endpoint para actualizar nombres de agentes existentes
+app.post('/api/external-agents/update-names', async (req: Request, res: Response) => {
+  try {
+    const { externalAgents } = await import('@shared/schema');
+    
+    // Obtener todos los agentes
+    const agents = await db.select().from(externalAgents);
+    
+    // Función mejorada de extracción de nombres
+    const extractAgentName = (url: string) => {
+      if (url.includes('/g/g-')) {
+        const parts = url.split('/g/g-')[1];
+        if (parts) {
+          const namePart = parts.substring(parts.indexOf('-') + 1);
+          if (namePart) {
+            const cleanName = namePart
+              .replace(/-/g, ' ')
+              .replace(/[^a-zA-Z0-9\s]/g, '')
+              .split(' ')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+              .join(' ')
+              .trim();
+            return cleanName || 'ChatGPT Agent';
+          }
+        }
+      }
+      return url.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent';
+    };
+    
+    let updatedCount = 0;
+    
+    // Actualizar cada agente con su nombre real
+    for (const agent of agents) {
+      const realName = extractAgentName(agent.agentUrl);
+      if (realName !== agent.name) {
+        await db
+          .update(externalAgents)
+          .set({ name: realName })
+          .where(eq(externalAgents.id, agent.id));
+        
+        console.log(`✅ Actualizado agente ${agent.id}: "${agent.name}" → "${realName}"`);
+        updatedCount++;
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Actualizados ${updatedCount} agentes con nombres reales`,
+      updatedCount
+    });
+    
+  } catch (error: any) {
+    console.error('❌ Error actualizando nombres:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error actualizando nombres',
+      message: error.message
     });
   }
 });
