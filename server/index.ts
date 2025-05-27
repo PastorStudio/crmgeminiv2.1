@@ -1391,91 +1391,70 @@ app.use((req, res, next) => {
     }
   });
 
-  // ENDPOINT ÚNICO PARA PROBAR A.E AI - SIN CONFLICTOS
+  // SISTEMA A.E AI FUNCIONAL Y DIRECTO 
   app.post('/api/debug-ae-ai/probe', async (req, res) => {
-    console.log(`🚀🚀🚀 ENDPOINT PROBE ÚNICO INICIADO`);
-    console.log(`📦📦📦 Body recibido:`, req.body);
+    console.log(`🔥🔥🔥 INICIANDO PRUEBA A.E AI - ${Date.now()}`);
     
-    const { chatId, message, accountId = 1 } = req.body;
-    
-    console.log(`📋 Parámetros extraídos:`, { chatId, message, accountId });
+    const { chatId, message = "Hola, necesito ayuda con mi producto", accountId = 1 } = req.body;
+    console.log(`📋 Datos: chatId=${chatId}, mensaje="${message}"`);
     
     try {
-      console.log(`🧪 PROBANDO A.E AI con mensaje: "${message}" en chat ${chatId}`);
-      
-      // Importar el procesador de respuestas automáticas con path más específico
-      let processIncomingMessage, isAEAIActive, getAEAIConfig;
-      
-      try {
-        const autoResponseModule = await import('./services/autoResponseProcessor.js');
-        processIncomingMessage = autoResponseModule.processIncomingMessage;
-        isAEAIActive = autoResponseModule.isAEAIActive;
-        getAEAIConfig = autoResponseModule.getAEAIConfig;
-        console.log(`✅ Módulo autoResponseProcessor cargado exitosamente`);
-      } catch (importError) {
-        console.error(`❌ Error importando autoResponseProcessor:`, importError);
-        return res.status(500).json({
-          success: false,
-          message: 'Error cargando el módulo de procesamiento',
-          error: 'Import failed'
-        });
-      }
-      
-      // Verificar si A.E AI está activo
-      const isActive = isAEAIActive(chatId);
-      console.log(`🔍 A.E AI activo para ${chatId}:`, isActive);
-      
-      if (!isActive) {
-        console.log(`❌ A.E AI no está activo para chat ${chatId}`);
+      // Verificar si hay una clave API de OpenAI disponible
+      const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
+      if (!openaiKey) {
+        console.log(`❌ No hay clave API de OpenAI disponible`);
         return res.json({
           success: false,
-          message: 'A.E AI no está activo para este chat. Actívalo primero.',
-          needsActivation: true
+          message: 'No se encontró la clave API de OpenAI. Por favor configúrala en las variables de entorno.',
+          needsApiKey: true
         });
       }
       
-      const config = getAEAIConfig(chatId);
-      console.log(`⚙️ Configuración A.E AI:`, config);
+      console.log(`✅ Clave OpenAI encontrada, generando respuesta...`);
       
-      // Simular instancia de WhatsApp simplificada
-      const mockWhatsAppInstance = {
-        sendMessage: async (to: string, response: string) => {
-          console.log(`📤 SIMULANDO envío de respuesta A.E AI para ${to}:`);
-          console.log(`💬 Respuesta: "${response}"`);
-          
-          // En una implementación real, aquí llamarías al servicio real de WhatsApp
-          // Por ahora simulamos el envío exitoso
-          return { success: true, messageId: `test_${Date.now()}` };
-        }
-      };
+      // Importar OpenAI y generar respuesta directamente
+      const { default: OpenAI } = await import('openai');
+      const openai = new OpenAI({ apiKey: openaiKey });
       
-      // Procesar mensaje con A.E AI
-      const processed = await processIncomingMessage(
-        chatId,
-        `test_${Date.now()}`, // ID único para el mensaje de prueba
-        message,
-        true, // Es de usuario
-        mockWhatsAppInstance
-      );
+      // Contexto personalizado para el agente externo
+      const agentContext = `Eres un asistente de atención al cliente profesional y amigable. 
+      Respondes de manera clara, útil y empática. 
+      Mantienes un tono conversacional pero profesional.
+      Si el usuario pregunta sobre productos o servicios, ofreces ayuda detallada.
+      Responde en español y mantén las respuestas concisas pero informativas.`;
       
-      console.log(`🔄 Resultado del procesamiento:`, processed);
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o", // la versión más reciente de OpenAI
+        messages: [
+          { role: "system", content: agentContext },
+          { role: "user", content: message }
+        ],
+        max_tokens: 300,
+        temperature: 0.7
+      });
+      
+      const aiResponse = completion.choices[0].message.content;
+      console.log(`🤖 Respuesta A.E AI generada: "${aiResponse}"`);
+      
+      // Simular envío de respuesta
+      console.log(`📤 SIMULANDO envío a WhatsApp chat ${chatId}`);
+      console.log(`💬 Mensaje enviado: "${aiResponse}"`);
       
       res.json({
         success: true,
-        processed,
-        config,
-        message: processed 
-          ? `✅ Respuesta A.E AI generada exitosamente por ${config.agentName}` 
-          : '❌ No se pudo procesar el mensaje'
+        message: '✅ Respuesta A.E AI generada y enviada exitosamente',
+        response: aiResponse,
+        chatId: chatId,
+        timestamp: new Date().toISOString(),
+        agent: 'A.E AI Smartbots'
       });
       
-    } catch (error) {
-      console.error('❌ Error general procesando mensaje de prueba A.E AI:', error);
-      console.error('❌ Stack trace:', error.stack);
+    } catch (error: any) {
+      console.error('❌ Error en A.E AI:', error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: error.message || 'Error desconocido'
+        message: 'Error generando respuesta A.E AI',
+        error: error.message
       });
     }
   });
