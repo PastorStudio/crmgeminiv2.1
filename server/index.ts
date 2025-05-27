@@ -27,6 +27,41 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// RUTAS CRÍTICAS ANTES QUE VITE - ESTADO EN VIVO DE AGENTES
+app.post('/api/agents/:agentId/heartbeat', async (req: Request, res: Response) => {
+  try {
+    const agentId = parseInt(req.params.agentId);
+    console.log(`💚 Heartbeat recibido del agente ${agentId}`);
+    simpleLiveStatus.markAgentActive(agentId);
+    res.json({ success: true, agentId, status: 'active' });
+  } catch (error) {
+    console.error('❌ Error procesando heartbeat:', error);
+    res.status(500).json({ error: 'Error procesando heartbeat' });
+  }
+});
+
+app.get('/api/agents/live-status', async (_req: Request, res: Response) => {
+  try {
+    const activeAgents = simpleLiveStatus.getActiveAgents();
+    console.log(`🟢 Estado en vivo - Agentes activos: [${activeAgents.join(', ')}]`);
+    res.json({ activeAgents });
+  } catch (error) {
+    console.error('❌ Error obteniendo estado en vivo:', error);
+    res.status(200).json({ activeAgents: [] });
+  }
+});
+
+app.get('/api/agents/:agentId/is-active', async (req: Request, res: Response) => {
+  try {
+    const agentId = parseInt(req.params.agentId);
+    const isActive = simpleLiveStatus.isAgentActive(agentId);
+    res.json({ agentId, isActive });
+  } catch (error) {
+    console.error('❌ Error verificando estado del agente:', error);
+    res.json({ agentId: parseInt(req.params.agentId), isActive: false });
+  }
+});
+
 // RUTAS CRÍTICAS DE TICKETS ANTES QUE VITE
 app.get("/api/tickets", async (_req: Request, res: Response) => {
   try {
@@ -634,41 +669,7 @@ app.use((req, res, next) => {
     console.error('❌ Error al inicializar notificaciones en tiempo real:', error);
   }
 
-  // API endpoints para estado en vivo de agentes
-  app.post('/api/agents/:agentId/heartbeat', async (req: Request, res: Response) => {
-    try {
-      const agentId = parseInt(req.params.agentId);
-      console.log(`💚 Heartbeat recibido del agente ${agentId}`);
-      simpleLiveStatus.markAgentActive(agentId);
-      res.json({ success: true, agentId, status: 'active' });
-    } catch (error) {
-      console.error('❌ Error procesando heartbeat:', error);
-      res.status(500).json({ error: 'Error procesando heartbeat' });
-    }
-  });
 
-  app.get('/api/agents/live-status', async (_req: Request, res: Response) => {
-    try {
-      const activeAgents = simpleLiveStatus.getActiveAgents();
-      console.log(`🟢 Estado en vivo - Agentes activos: [${activeAgents.join(', ')}]`);
-      res.json({ activeAgents });
-    } catch (error) {
-      console.error('❌ Error obteniendo estado en vivo:', error);
-      // Si hay error, devolver lista vacía pero exitosa
-      res.status(200).json({ activeAgents: [] });
-    }
-  });
-
-  app.get('/api/agents/:agentId/is-active', async (req: Request, res: Response) => {
-    try {
-      const agentId = parseInt(req.params.agentId);
-      const isActive = simpleLiveStatus.isAgentActive(agentId);
-      res.json({ agentId, isActive });
-    } catch (error) {
-      console.error('❌ Error verificando estado del agente:', error);
-      res.json({ agentId: parseInt(req.params.agentId), isActive: false });
-    }
-  });
   
   // Registrar rutas de WhatsApp accounts sin autenticación
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
