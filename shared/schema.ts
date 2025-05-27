@@ -452,11 +452,69 @@ export const insertDashboardStatsSchema = createInsertSchema(dashboardStats).omi
 export const insertMessageTemplateSchema = createInsertSchema(messageTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertMarketingCampaignSchema = createInsertSchema(marketingCampaigns).omit({ id: true, createdAt: true, updatedAt: true, stats: true });
 
+// ===== SISTEMA DE RASTREO DE AGENTES =====
+
+// Esquema de sesiones de agentes para rastreo de actividad
+export const agentSessions = pgTable("agent_sessions", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").notNull().references(() => internalAgents.id),
+  userId: integer("user_id").references(() => users.id), // Vinculación opcional con usuarios del sistema
+  sessionToken: text("session_token").notNull().unique(),
+  loginTime: timestamp("login_time").defaultNow().notNull(),
+  logoutTime: timestamp("logout_time"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  isActive: boolean("is_active").default(true),
+  totalDuration: integer("total_duration"), // en minutos
+  pagesVisited: integer("pages_visited").default(0),
+  actionsPerformed: integer("actions_performed").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
+// Esquema de actividades detalladas de agentes
+export const agentActivities = pgTable("agent_activities", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => agentSessions.id),
+  agentId: integer("agent_id").notNull().references(() => internalAgents.id),
+  activityType: text("activity_type").notNull(), // page_visit, chat_assignment, message_sent, etc.
+  page: text("page"), // URL o nombre de la página
+  action: text("action"), // Descripción de la acción
+  targetId: text("target_id"), // ID del chat, lead, ticket, etc.
+  metadata: jsonb("metadata"), // Datos adicionales de la actividad
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  duration: integer("duration"), // tiempo en la página/acción en segundos
+  success: boolean("success").default(true),
+  errorMessage: text("error_message")
+});
+
+// Esquema de estadísticas de acceso por agente
+export const agentAccessStats = pgTable("agent_access_stats", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").notNull().references(() => internalAgents.id),
+  totalSessions: integer("total_sessions").default(0),
+  totalLoginTime: integer("total_login_time").default(0), // en minutos
+  lastLoginTime: timestamp("last_login_time"),
+  lastLogoutTime: timestamp("last_logout_time"),
+  averageSessionDuration: integer("average_session_duration").default(0), // en minutos
+  mostVisitedPage: text("most_visited_page"),
+  totalPagesVisited: integer("total_pages_visited").default(0),
+  totalActionsPerformed: integer("total_actions_performed").default(0),
+  loginFrequency: text("login_frequency"), // daily, weekly, monthly
+  lastActivity: timestamp("last_activity"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
 // Esquemas de inserción para agentes internos
 export const insertInternalAgentSchema = createInsertSchema(internalAgents).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertInternalAgentPerformanceSchema = createInsertSchema(internalAgentPerformance).omit({ id: true, createdAt: true });
 export const insertInternalChatAssignmentSchema = createInsertSchema(internalChatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
 export const insertInternalAgentMetricsSchema = createInsertSchema(internalAgentMetrics).omit({ id: true, createdAt: true });
+
+// Esquemas de inserción para rastreo de agentes
+export const insertAgentSessionSchema = createInsertSchema(agentSessions).omit({ id: true, createdAt: true });
+export const insertAgentActivitySchema = createInsertSchema(agentActivities).omit({ id: true, timestamp: true });
+export const insertAgentAccessStatsSchema = createInsertSchema(agentAccessStats).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types for insert and select operations
 export type InsertUser = z.infer<typeof insertUserSchema>;
