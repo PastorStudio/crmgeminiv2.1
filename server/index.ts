@@ -3098,6 +3098,46 @@ app.use((req, res, next) => {
   });
 
   // Obtener agentes disponibles
+  // Endpoint para probar respuestas automáticas
+  app.post("/api/test-auto-response", async (req: Request, res: Response) => {
+    try {
+      const { accountId, messageText } = req.body;
+      
+      console.log(`🧪 Probando respuesta automática para cuenta ${accountId} con mensaje: "${messageText}"`);
+      
+      // Importar el procesador de mensajes automáticos
+      const { AutoMessageProcessor } = await import('./services/autoMessageProcessor');
+      const processor = new AutoMessageProcessor();
+      
+      // Simular mensaje entrante
+      const testMessage = {
+        id: `test_${Date.now()}`,
+        chatId: 'test-chat',
+        accountId: parseInt(accountId),
+        from: 'test-sender',
+        body: messageText,
+        timestamp: Date.now(),
+        fromMe: false,
+        contactName: 'Usuario de Prueba'
+      };
+      
+      const result = await processor.processIncomingMessage(testMessage);
+      
+      res.json({
+        success: true,
+        result,
+        message: 'Prueba de respuesta automática completada'
+      });
+      
+    } catch (error) {
+      console.error('❌ Error en prueba de respuesta automática:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
   app.get("/api/simple/available-agents", async (req: Request, res: Response) => {
     try {
       const { SimpleAutoResponseService } = await import('./services/simpleAutoResponse');
