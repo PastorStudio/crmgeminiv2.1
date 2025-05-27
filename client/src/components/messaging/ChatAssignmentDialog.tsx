@@ -92,40 +92,31 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
   ];
 
   // Cargar usuarios del sistema (con fallback a agentes predeterminados)
-  const { data: users = systemAgents, isLoading: isLoadingUsers } = useQuery<User[]>({
+  const { data: users = [], isLoading: isLoadingUsers } = useQuery<User[]>({
     queryKey: ['/api/users'],
     queryFn: async () => {
-      console.log('🔄 Intentando cargar agentes del sistema...');
+      console.log('🔄 Cargando agentes del sistema de usuarios...');
       
-      try {
-        const response = await fetch('/api/users');
-        if (!response.ok) {
-          console.log('⚠️ API no disponible, usando agentes predeterminados');
-          return systemAgents;
-        }
-        
-        const data = await response.json();
-        if (data.success && Array.isArray(data.users) && data.users.length > 0) {
-          const activeAgents = data.users.filter((user: User) => 
-            user.status === 'active' && 
-            ['agent', 'supervisor', 'admin'].includes(user.role.toLowerCase())
-          );
-          
-          if (activeAgents.length > 0) {
-            console.log('✅ Agentes de API cargados:', activeAgents.length);
-            return activeAgents;
-          }
-        }
-        
-        console.log('✅ Usando agentes predeterminados del sistema');
-        return systemAgents;
-      } catch (error) {
-        console.log('✅ Error en API, usando agentes predeterminados');
-        return systemAgents;
+      const response = await fetch('/api/users');
+      if (!response.ok) {
+        throw new Error('No se pudieron cargar los usuarios');
       }
+      
+      const data = await response.json();
+      if (data.success && Array.isArray(data.users)) {
+        const activeAgents = data.users.filter((user: User) => 
+          user.status === 'active' && 
+          ['agent', 'supervisor', 'admin'].includes(user.role.toLowerCase())
+        );
+        
+        console.log('✅ Agentes del sistema cargados:', activeAgents.map(a => ({ id: a.id, username: a.username, role: a.role })));
+        return activeAgents;
+      }
+      
+      throw new Error('Formato de respuesta inválido');
     },
     enabled: open,
-    staleTime: 30000, // Cache por 30 segundos
+    staleTime: 0, // Sin cache para datos frescos siempre
   });
 
   // Estados de leads disponibles

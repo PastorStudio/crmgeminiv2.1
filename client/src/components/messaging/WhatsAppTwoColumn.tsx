@@ -39,7 +39,8 @@ import {
   File,
   Loader2,
   Zap,
-  Ticket
+  Ticket,
+  Bot
 } from 'lucide-react';
 
 // Import components
@@ -284,6 +285,66 @@ export function WhatsAppTwoColumn() {
   // Estados para R.A. AI
   const [raAiEnabled, setRaAiEnabled] = useState(false);
   const [raAiProcessing, setRaAiProcessing] = useState(false);
+
+  // Estados para A.E AI (Agentes Externos)
+  const [externalAgentActive, setExternalAgentActive] = useState(false);
+  const [externalAgentProcessing, setExternalAgentProcessing] = useState(false);
+  const [externalAgentUrl, setExternalAgentUrl] = useState<string>('');
+
+  // Función para alternar A.E AI (Agentes Externos)
+  const toggleExternalAgent = async () => {
+    if (!selectedChat) {
+      toast({
+        title: "Error",
+        description: "Selecciona un chat primero",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setExternalAgentProcessing(true);
+      const newState = !externalAgentActive;
+      
+      const response = await fetch('/api/external-agents/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          chatId: selectedChat.id,
+          accountId: selectedChat.accountId,
+          active: newState
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setExternalAgentActive(result.active);
+        setExternalAgentUrl(result.agentUrl || '');
+        toast({
+          title: `🤖 A.E AI ${result.active ? 'Activado' : 'Desactivado'}`,
+          description: result.active 
+            ? `Agente externo conectado para ${selectedChat.name}`
+            : `Agente externo desconectado`,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.message || "No se pudo activar el agente externo",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error toggle A.E AI:', error);
+      toast({
+        title: "Error",
+        description: "Error de conexión con el agente externo",
+        variant: "destructive"
+      });
+    } finally {
+      setExternalAgentProcessing(false);
+    }
+  };
 
   // Función para alternar R.A. AI
   const toggleRaAi = async () => {
@@ -1601,13 +1662,33 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
                   
-                  {/* SmartBots AI Button */}
+                  {/* A.E AI External Agents Button */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
                   >
-                    {/* Botón AI ON/OFF eliminado según solicitud del usuario */}
+                    <Button
+                      size="sm"
+                      variant={externalAgentActive ? "default" : "outline"}
+                      className={`${
+                        externalAgentActive 
+                          ? "bg-purple-600 text-white hover:bg-purple-700 shadow-lg" 
+                          : "border-purple-600 text-purple-600 hover:bg-purple-50"
+                      } transition-all duration-300 relative`}
+                      onClick={toggleExternalAgent}
+                      disabled={externalAgentProcessing}
+                    >
+                      {externalAgentProcessing ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Bot className="h-4 w-4 mr-2" />
+                      )}
+                      A.E AI
+                      {externalAgentActive && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
+                      )}
+                    </Button>
                   </motion.div>
                   
 

@@ -432,6 +432,37 @@ export const internalAgentMetricsRelations = relations(internalAgentMetrics, ({ 
   })
 }));
 
+// Tabla para agentes externos A.E AI
+export const externalAgents = pgTable('external_agents', {
+  id: serial('id').primaryKey(),
+  chatId: varchar('chat_id', { length: 100 }).notNull(),
+  accountId: integer('account_id').notNull(),
+  agentName: varchar('agent_name', { length: 255 }).notNull(),
+  agentUrl: text('agent_url').notNull(),
+  provider: varchar('provider', { length: 50 }).default('chatgpt').notNull(),
+  status: varchar('status', { length: 20 }).default('active').notNull(),
+  lastUsed: timestamp('last_used').defaultNow(),
+  responseCount: integer('response_count').default(0),
+  averageResponseTime: integer('average_response_time').default(0), // en segundos
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
+// Tabla para configuración de agentes externos
+export const externalAgentConfigs = pgTable('external_agent_configs', {
+  id: serial('id').primaryKey(),
+  chatId: varchar('chat_id', { length: 100 }).notNull(),
+  accountId: integer('account_id').notNull(),
+  isActive: boolean('is_active').default(false),
+  selectedAgentId: integer('selected_agent_id'),
+  autoResponse: boolean('auto_response').default(true),
+  responseDelay: integer('response_delay').default(3), // segundos
+  maxResponsesPerHour: integer('max_responses_per_hour').default(10),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
 // Tipos para las nuevas tablas
 export type Ticket = typeof tickets.$inferSelect;
 export type InsertTicket = typeof tickets.$inferInsert;
@@ -439,11 +470,17 @@ export type AgentMetrics = typeof agentMetrics.$inferSelect;
 export type InsertAgentMetrics = typeof agentMetrics.$inferInsert;
 export type MessageActivity = typeof messageActivity.$inferSelect;
 export type InsertMessageActivity = typeof messageActivity.$inferInsert;
+export type ExternalAgent = typeof externalAgents.$inferSelect;
+export type InsertExternalAgent = typeof externalAgents.$inferInsert;
+export type ExternalAgentConfig = typeof externalAgentConfigs.$inferSelect;
+export type InsertExternalAgentConfig = typeof externalAgentConfigs.$inferInsert;
 
 // Esquemas de inserción para las nuevas tablas
 export const insertTicketSchema = createInsertSchema(tickets).omit({ id: true, createdAt: true });
 export const insertAgentMetricsSchema = createInsertSchema(agentMetrics).omit({ id: true, lastUpdated: true });
 export const insertMessageActivitySchema = createInsertSchema(messageActivity).omit({ id: true, sentAt: true });
+export const insertExternalAgentSchema = createInsertSchema(externalAgents).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertExternalAgentConfigSchema = createInsertSchema(externalAgentConfigs).omit({ id: true, createdAt: true, updatedAt: true });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true });
