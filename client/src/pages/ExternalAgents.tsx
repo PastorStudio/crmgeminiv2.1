@@ -756,7 +756,7 @@ export default function ExternalAgents() {
             <div>
               <Label>Respuesta del Agente</Label>
               <div className={`mt-1 p-4 rounded-lg border ${
-                testResponse.startsWith('Error') 
+                String(testResponse).startsWith('Error') 
                   ? 'bg-red-50 border-red-200 text-red-800' 
                   : 'bg-green-50 border-green-200 text-green-800'
               }`}>
