@@ -15,6 +15,7 @@ import * as whatsappAPI from "./routes/whatsappAPI";
 import { internalAgentManager } from "./services/internalAgentManager";
 import { agentActivityTracker } from "./services/agentActivityTracker";
 import { agentRoleManager } from "./services/agentRoleManager";
+import { liveStatusTracker } from "./services/liveStatusTracker";
 
 // Configurar zona horaria para Panamá (GMT-5)
 process.env.TZ = 'America/Panama';
@@ -632,6 +633,41 @@ app.use((req, res, next) => {
   } catch (error) {
     console.error('❌ Error al inicializar notificaciones en tiempo real:', error);
   }
+
+  // API endpoints para estado en vivo de agentes
+  app.post('/api/agents/:agentId/heartbeat', async (req: Request, res: Response) => {
+    try {
+      const agentId = parseInt(req.params.agentId);
+      console.log(`💚 Heartbeat recibido del agente ${agentId}`);
+      await liveStatusTracker.markAgentActive(agentId);
+      res.json({ success: true, agentId, status: 'active' });
+    } catch (error) {
+      console.error('❌ Error procesando heartbeat:', error);
+      res.status(500).json({ error: 'Error procesando heartbeat' });
+    }
+  });
+
+  app.get('/api/agents/live-status', async (_req: Request, res: Response) => {
+    try {
+      const activeAgents = await liveStatusTracker.getActiveAgents();
+      console.log(`🟢 Estado en vivo - Agentes activos: [${activeAgents.join(', ')}]`);
+      res.json({ activeAgents });
+    } catch (error) {
+      console.error('❌ Error obteniendo estado en vivo:', error);
+      res.json({ activeAgents: [] });
+    }
+  });
+
+  app.get('/api/agents/:agentId/is-active', async (req: Request, res: Response) => {
+    try {
+      const agentId = parseInt(req.params.agentId);
+      const isActive = await liveStatusTracker.isAgentActive(agentId);
+      res.json({ agentId, isActive });
+    } catch (error) {
+      console.error('❌ Error verificando estado del agente:', error);
+      res.json({ agentId: parseInt(req.params.agentId), isActive: false });
+    }
+  });
   
   // Registrar rutas de WhatsApp accounts sin autenticación
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
