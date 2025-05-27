@@ -179,14 +179,36 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
   // Para depuración
   console.log('Estado actual del formulario:', form.getValues());
 
-  // Mutation para crear asignación
+  // Mutation para crear asignación Y ticket al mismo tiempo
   const createAssignmentMutation = useMutation({
     mutationFn: async (data: z.infer<typeof assignmentSchema>) => {
       console.log('Enviando datos para crear asignación:', data);
-      return await apiRequest('/api/chat-assignments', {
+      
+      // Primero crear la asignación de agente
+      const assignmentResponse = await apiRequest('/api/chat-assignments', {
         method: 'POST',
         body: JSON.stringify(data),
       });
+      
+      // Si hay categoría (ticket), crear también la categoría
+      if (data.category && data.category !== '') {
+        try {
+          await apiRequest('/api/chat-categories', {
+            method: 'POST',
+            body: JSON.stringify({
+              chatId: data.chatId,
+              accountId: data.accountId,
+              status: data.category,
+              notes: `Ticket asignado junto con agente`
+            }),
+          });
+          console.log('✅ Ticket creado junto con asignación:', data.category);
+        } catch (error) {
+          console.error('❌ Error creando ticket:', error);
+        }
+      }
+      
+      return assignmentResponse;
     },
     onSuccess: (response) => {
       console.log('Asignación creada exitosamente:', response);
@@ -200,10 +222,9 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
         description: `El chat ha sido asignado a ${agentName}`,
       });
       
-      // Invalidar SOLO la consulta específica de este chat
+      // Invalidar SOLO las consultas específicas de ESTE chat individual
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments', chatId] });
-      
-      // NO invalidar consultas globales para evitar que se actualicen otros chats
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-categories', chatId] });
       
       // Cerrar diálogo
       onOpenChange(false);
@@ -218,14 +239,36 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     },
   });
 
-  // Mutation para actualizar asignación
+  // Mutation para actualizar asignación Y ticket al mismo tiempo
   const updateAssignmentMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<z.infer<typeof assignmentSchema>> }) => {
       console.log('Actualizando asignación:', id, 'con datos:', data);
-      return await apiRequest(`/api/chat-assignments/${id}`, {
+      
+      // Actualizar la asignación
+      const assignmentResponse = await apiRequest(`/api/chat-assignments/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
       });
+      
+      // Si hay categoría (ticket), actualizar también la categoría
+      if (data.category && data.category !== '') {
+        try {
+          await apiRequest('/api/chat-categories', {
+            method: 'POST',
+            body: JSON.stringify({
+              chatId: data.chatId,
+              accountId: data.accountId,
+              status: data.category,
+              notes: `Ticket actualizado junto con agente`
+            }),
+          });
+          console.log('✅ Ticket actualizado junto con asignación:', data.category);
+        } catch (error) {
+          console.error('❌ Error actualizando ticket:', error);
+        }
+      }
+      
+      return assignmentResponse;
     },
     onSuccess: (response) => {
       console.log('Asignación actualizada exitosamente:', response);
@@ -235,12 +278,13 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
       const agentName = assignedAgent ? assignedAgent.username : 'Agente';
       
       toast({
-        title: 'Chat asignado exitosamente',
+        title: 'Chat actualizado exitosamente',
         description: `El chat ha sido asignado a ${agentName}`,
       });
       
-      // Invalidar SOLO la consulta específica de este chat individual
+      // Invalidar SOLO las consultas específicas de ESTE chat individual
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments', chatId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-categories', chatId] });
       
       // Cerrar diálogo
       onOpenChange(false);

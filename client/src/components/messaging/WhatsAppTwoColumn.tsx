@@ -144,10 +144,15 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
 }
 
 function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
-  const { data: category } = useQuery({
+  const { data: category, error } = useQuery({
     queryKey: ['/api/chat-categories', chatId],
-    enabled: !!chatId
+    enabled: !!chatId,
+    retry: 1,
+    refetchOnWindowFocus: false
   });
+
+  // Debug para verificar qué está recibiendo
+  console.log('🎫 Debug Badge Category - chatId:', chatId, 'data:', category, 'error:', error);
 
   if (!category) {
     return (
@@ -182,15 +187,17 @@ function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accoun
     }
   };
 
+  const status = category?.status || 'sin-ticket';
+
   return (
-    <Badge variant="outline" className={`text-xs ${getTicketColor(category.status)}`}>
-      <span className="mr-1">{getTicketIcon(category.status)}</span>
-      {category.status === 'nuevos' ? 'Nuevos' :
-       category.status === 'interesados' ? 'Interesados' :
-       category.status === 'no-leidos' ? 'No Leidos' :
-       category.status === 'pendiente-demo' ? 'Pendiente Demo' :
-       category.status === 'completados' ? 'Completados' :
-       category.status === 'no-interesados' ? 'No Interesados' :
+    <Badge variant="outline" className={`text-xs ${getTicketColor(status)}`}>
+      <span className="mr-1">{getTicketIcon(status)}</span>
+      {status === 'nuevos' ? 'Nuevos' :
+       status === 'interesados' ? 'Interesados' :
+       status === 'no-leidos' ? 'No Leidos' :
+       status === 'pendiente-demo' ? 'Pendiente Demo' :
+       status === 'completados' ? 'Completados' :
+       status === 'no-interesados' ? 'No Interesados' :
        'Sin ticket'}
     </Badge>
   );
