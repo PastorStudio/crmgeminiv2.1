@@ -1647,12 +1647,12 @@ app.use((req, res, next) => {
 
       // Formatear los agentes para la interfaz
       const formattedAgents = dbAgents.map(agent => ({
-        id: agent.id,
-        name: agent.name,
-        agentUrl: agent.agentUrl,
+        id: agent.id.toString(),
+        name: agent.agent_name || agent.agentName,
+        agentUrl: agent.agent_url || agent.agentUrl,
         isActive: agent.status === 'active',
-        responseCount: agent.responseCount || 0,
-        createdAt: agent.createdAt,
+        responseCount: agent.response_count || agent.responseCount || 0,
+        createdAt: agent.created_at || agent.createdAt,
         provider: agent.provider,
         notes: agent.notes
       }));
