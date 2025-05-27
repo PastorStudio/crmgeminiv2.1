@@ -38,7 +38,8 @@ import {
   Video,
   File,
   Loader2,
-  Zap
+  Zap,
+  Ticket
 } from 'lucide-react';
 
 // Import components
@@ -247,6 +248,7 @@ export function WhatsAppTwoColumn() {
   const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<string>('nuevos'); // Estado para el ticket seleccionado
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserProfile, setShowUserProfile] = useState(false);
@@ -1429,6 +1431,23 @@ export function WhatsAppTwoColumn() {
           />
         </div>
 
+        {/* Ticket Selector */}
+        <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-blue-50">
+          <Select value={selectedTicket} onValueChange={setSelectedTicket}>
+            <SelectTrigger className="w-full h-8">
+              <SelectValue placeholder="Seleccionar tipo de ticket" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="nuevos">📋 Nuevos</SelectItem>
+              <SelectItem value="interesados">💡 Interesados</SelectItem>
+              <SelectItem value="no-leidos">📧 No Leidos</SelectItem>
+              <SelectItem value="pendiente-demo">🎯 Pendiente Demo</SelectItem>
+              <SelectItem value="completados">✅ Completados</SelectItem>
+              <SelectItem value="no-interesados">❌ No Interesados</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Chat List */}
         <ScrollArea className="flex-1">
           {loadingChats ? (
@@ -1490,10 +1509,16 @@ export function WhatsAppTwoColumn() {
                             {/* Chat Assignment Info */}
                             <ChatAssignmentBadge chatId={chat.id} accountId={chat.accountId} />
                             
-                            {/* Account Badge */}
-                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 ml-[74px] mr-[74px]">
-                              <Building className="h-3 w-3 mr-1" />
-                              Cuenta #{chat.accountId}
+                            {/* Ticket Badge */}
+                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 ml-[74px] mr-[74px]">
+                              <Ticket className="h-3 w-3 mr-1" />
+                              {selectedTicket === "nuevos" ? "Nuevos" :
+                               selectedTicket === "interesados" ? "Interesados" :
+                               selectedTicket === "no-leidos" ? "No Leidos" :
+                               selectedTicket === "pendiente-demo" ? "Pendiente Demo" :
+                               selectedTicket === "completados" ? "Completados" :
+                               selectedTicket === "no-interesados" ? "No Interesados" :
+                               "Sin Ticket"}
                             </Badge>
                             
                             {/* Comments Indicator */}
