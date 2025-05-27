@@ -541,46 +541,12 @@ const WhatsAppAccounts = () => {
   const AgentStatusDisplay = ({ accountId }: { accountId: number }) => {
     const { data: agentConfig } = getAgentConfig(accountId);
     
-    // Usar los mismos agentes predefinidos que funcionan en el resto del sistema
-    const defaultAgents = [
-      {
-        id: 'smartbots-001',
-        name: 'Smartbots',
-        agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
-        isActive: true,
-        responseCount: 0
-      },
-      {
-        id: 'smartplanner-001',
-        name: 'Smartplanner IA',
-        agentUrl: 'https://chatgpt.com/g/g-682e61ce2364819196df9641616414b1-smartplanner-ia',
-        isActive: true,
-        responseCount: 0
-      },
-      {
-        id: 'smartflyer-001',
-        name: 'Smartflyer IA',
-        agentUrl: 'https://chatgpt.com/g/g-682f551bee70819196aeb603eb638762-smartflyer-ia',
-        isActive: true,
-        responseCount: 0
-      },
-      {
-        id: 'telca-001',
-        name: 'Agente de Ventas de Telca Panama',
-        agentUrl: 'https://chatgpt.com/g/g-682f9b5208988191b08215b3d8f65333-agente-de-ventas-de-telca-panama',
-        isActive: true,
-        responseCount: 0
-      },
-      {
-        id: 'tecnico-001',
-        name: 'Asistente Técnico en Gestión en Campo',
-        agentUrl: 'https://chatgpt.com/g/g-682bb98fedf881918e0c4ed5fcf592e4-asistente-tecnico-en-gestion-en-campo',
-        isActive: true,
-        responseCount: 0
-      }
-    ];
+    // Cargar agentes reales desde la base de datos
+    const { data: externalAgentsData } = useQuery({
+      queryKey: ['/api/external-agents']
+    });
 
-    const externalAgents = defaultAgents;
+    const externalAgents = (externalAgentsData as any)?.agents || [];
     
     if (!agentConfig?.success) {
       return <div className="text-xs text-gray-500">Cargando...</div>;
@@ -601,7 +567,7 @@ const WhatsAppAccounts = () => {
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${config.autoResponseEnabled ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-          <span className="text-gray-700 font-medium">{assignedAgent.agentName || assignedAgent.name}</span>
+          <span className="text-gray-700 font-medium">{assignedAgent.agentName}</span>
         </div>
         <span className={`px-2 py-1 rounded text-xs ${config.autoResponseEnabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
           {config.autoResponseEnabled ? 'Activo' : 'Inactivo'}
