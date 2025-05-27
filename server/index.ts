@@ -662,7 +662,7 @@ app.use((req, res, next) => {
   app.get('/api/agents/:agentId/is-active', async (req: Request, res: Response) => {
     try {
       const agentId = parseInt(req.params.agentId);
-      const isActive = await liveStatusTracker.isAgentActive(agentId);
+      const isActive = simpleLiveStatus.isAgentActive(agentId);
       res.json({ agentId, isActive });
     } catch (error) {
       console.error('❌ Error verificando estado del agente:', error);
