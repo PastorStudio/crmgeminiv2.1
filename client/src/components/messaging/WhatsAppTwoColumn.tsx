@@ -117,14 +117,14 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
     );
   }
 
-  // Si hay asignación, encontrar el agente y mostrar el nombre
+  // Si hay asignación, encontrar el agente y mostrar el nombre de usuario
   const assignedAgent = users.find(user => user.id === assignment.assignedToId);
-  const agentName = assignedAgent ? assignedAgent.fullName : `Agente #${assignment.assignedToId}`;
+  const agentUsername = assignedAgent ? assignedAgent.username : `Agente #${assignment.assignedToId}`;
 
   return (
     <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
       <UserPlus className="h-3 w-3 mr-1" />
-      {agentName}
+      {agentUsername}
     </Badge>
   );
 }
