@@ -1398,41 +1398,62 @@ app.use((req, res, next) => {
     try {
       console.log(`🧪 PROBANDO A.E AI con mensaje: "${message}" en chat ${chatId}`);
       
-      const { processIncomingMessage } = await import('./services/autoResponseProcessor.js');
-      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager.js');
+      const { processIncomingMessage, isAEAIActive, getAEAIConfig } = await import('./services/autoResponseProcessor.js');
       
-      // Simular mensaje entrante y procesar con A.E AI
+      // Verificar si A.E AI está activo
+      const isActive = isAEAIActive(chatId);
+      console.log(`🔍 A.E AI activo para ${chatId}:`, isActive);
+      
+      if (!isActive) {
+        console.log(`❌ A.E AI no está activo para chat ${chatId}`);
+        return res.json({
+          success: false,
+          message: 'A.E AI no está activo para este chat. Actívalo primero.',
+          needsActivation: true
+        });
+      }
+      
+      const config = getAEAIConfig(chatId);
+      console.log(`⚙️ Configuración A.E AI:`, config);
+      
+      // Simular instancia de WhatsApp simplificada
+      const mockWhatsAppInstance = {
+        sendMessage: async (to: string, response: string) => {
+          console.log(`📤 SIMULANDO envío de respuesta A.E AI para ${to}:`);
+          console.log(`💬 Respuesta: "${response}"`);
+          
+          // En una implementación real, aquí llamarías al servicio real de WhatsApp
+          // Por ahora simulamos el envío exitoso
+          return { success: true, messageId: `test_${Date.now()}` };
+        }
+      };
+      
+      // Procesar mensaje con A.E AI
       const processed = await processIncomingMessage(
         chatId,
         `test_${Date.now()}`, // ID único para el mensaje de prueba
         message,
         true, // Es de usuario
-        {
-          sendMessage: async (to: string, response: string) => {
-            console.log(`📤 A.E AI respuesta automática para ${to}: "${response}"`);
-            try {
-              const result = await whatsappMultiAccountManager.sendMessage(accountId, to, response);
-              console.log(`✅ Respuesta A.E AI enviada exitosamente`);
-              return result;
-            } catch (error) {
-              console.error(`❌ Error enviando respuesta A.E AI:`, error);
-              throw error;
-            }
-          }
-        }
+        mockWhatsAppInstance
       );
+      
+      console.log(`🔄 Resultado del procesamiento:`, processed);
       
       res.json({
         success: true,
         processed,
-        message: processed ? 'Respuesta A.E AI generada y enviada' : 'A.E AI no está activo para este chat'
+        config,
+        message: processed 
+          ? `✅ Respuesta A.E AI generada exitosamente por ${config.agentName}` 
+          : '❌ No se pudo procesar el mensaje'
       });
       
     } catch (error) {
       console.error('❌ Error procesando mensaje de prueba A.E AI:', error);
       res.status(500).json({
         success: false,
-        message: 'Error procesando mensaje de prueba'
+        message: 'Error interno del servidor',
+        error: error.message
       });
     }
   });
