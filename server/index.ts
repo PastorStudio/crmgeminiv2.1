@@ -816,14 +816,17 @@ app.use((req, res, next) => {
       res.setHeader('Content-Type', 'application/json');
       console.log('🤖 Creando agente externo desde URL:', req.body);
       
-      const { name, description, agentUrl } = req.body;
+      const { agentUrl, triggerKeywords } = req.body;
       
-      if (!name || !agentUrl) {
+      if (!agentUrl) {
         return res.status(400).json({ 
           success: false, 
-          message: 'Se requieren name y agentUrl' 
+          message: 'Se requiere agentUrl' 
         });
       }
+
+      // Extraer nombre del agente desde la URL
+      const extractedName = agentUrl.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent';
 
       const { externalAgents } = await import('@shared/schema');
       
@@ -832,7 +835,7 @@ app.use((req, res, next) => {
         .values({
           chatId: `default-${Date.now()}`, // ID temporal hasta que se asigne a un chat
           accountId: 1, // Cuenta por defecto
-          agentName: name,
+          agentName: extractedName,
           agentUrl,
           provider: 'chatgpt',
           status: 'active'
