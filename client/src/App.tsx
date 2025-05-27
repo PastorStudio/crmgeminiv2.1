@@ -37,6 +37,7 @@ import TicketsSimple from './pages/TicketsSimple';
 import ExternalAgents from './pages/ExternalAgents';
 import InternalAgents from './pages/InternalAgents';
 import GeminiAI from './pages/GeminiAI';
+import AgentAnalysis from './pages/AgentAnalysis';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
@@ -229,6 +230,18 @@ const AppRoutes: React.FC = () => {
                   <path d="M12 11v4m0-4l2-2m-2 2l-2-2" stroke="white" strokeWidth="1" fill="none"/>
                 </svg>
                 Agentes Internos
+              </a>
+
+              <a href="/agent-analysis" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/agent-analysis' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="18" height="18" rx="3" fill="#8B5CF6"/>
+                  <rect x="6" y="8" width="12" height="2" rx="1" fill="white"/>
+                  <rect x="6" y="11" width="8" height="2" rx="1" fill="white"/>
+                  <rect x="6" y="14" width="10" height="2" rx="1" fill="white"/>
+                  <circle cx="18" cy="6" r="2" fill="#22C55E"/>
+                  <path d="M16 6h4m-2-2v4" stroke="white" strokeWidth="1"/>
+                </svg>
+                Análisis Completo
               </a>
               
               {/* Planificación */}

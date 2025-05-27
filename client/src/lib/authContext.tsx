@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useLocation } from 'wouter';
+import { useIntensiveActivityTracker } from '@/hooks/useIntensiveActivityTracker';
 
 interface User {
   id: number;
@@ -48,6 +49,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Activar rastreo intensivo de actividades
+  useIntensiveActivityTracker();
 
   // Cargar datos de sesión del localStorage al iniciar
   useEffect(() => {
