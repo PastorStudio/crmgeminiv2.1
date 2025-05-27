@@ -331,19 +331,14 @@ export default function ExternalAgents() {
     try {
       console.log('🧪 Enviando prueba a agente:', selectedAgentForTest);
       
-      const response = await fetch(`/api/external-agents-send-direct`, {
+      const response = await fetch(`/api/agent-test-bypass`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           agentId: selectedAgentForTest,
-          message: testMessage,
-          userInfo: {
-            chatId: 'test-direct-chat',
-            accountId: 1,
-            name: 'Usuario de Prueba'
-          }
+          message: testMessage
         }),
       });
 
