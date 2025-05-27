@@ -1559,10 +1559,20 @@ app.use((req, res, next) => {
       res.setHeader('Content-Type', 'application/json');
       console.log('📋 Obteniendo lista de agentes externos desde base de datos...');
       
-      // Obtener agentes de la base de datos PostgreSQL
+      // Obtener agentes de la base de datos PostgreSQL usando SQL directo
       let dbAgents = [];
       try {
-        dbAgents = await db.select().from(externalAgents);
+        // Usar SQL directo para evitar problemas de esquema
+        const result = await db.execute(`
+          SELECT id, agent_name as name, agent_url as agentUrl, status, 
+                 response_count as responseCount, created_at as createdAt,
+                 provider, notes
+          FROM external_agents 
+          WHERE status = 'active'
+          ORDER BY created_at ASC
+        `);
+        
+        dbAgents = result.rows;
         console.log(`🗄️ Agentes en base de datos: ${dbAgents.length}`);
       } catch (error) {
         console.error('❌ Error accediendo a la base de datos:', error);
@@ -1648,11 +1658,11 @@ app.use((req, res, next) => {
       // Formatear los agentes para la interfaz
       const formattedAgents = dbAgents.map(agent => ({
         id: agent.id.toString(),
-        name: agent.agent_name || agent.agentName,
-        agentUrl: agent.agent_url || agent.agentUrl,
+        name: agent.name,
+        agentUrl: agent.agentuRl,
         isActive: agent.status === 'active',
-        responseCount: agent.response_count || agent.responseCount || 0,
-        createdAt: agent.created_at || agent.createdAt,
+        responseCount: agent.responsecount || 0,
+        createdAt: agent.createdat,
         provider: agent.provider,
         notes: agent.notes
       }));
