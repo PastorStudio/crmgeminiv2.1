@@ -348,8 +348,23 @@ export default function ExternalAgents() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log('📨 Response data:', data);
+      const responseText = await response.text();
+      console.log('📨 Raw response:', responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('📨 Parsed data:', data);
+      } catch (parseError) {
+        console.error('❌ JSON Parse Error:', parseError);
+        setTestResponse(`Error de formato: ${responseText.substring(0, 200)}...`);
+        toast({
+          title: "❌ Error de formato",
+          description: "La respuesta no es JSON válido",
+          variant: "destructive"
+        });
+        return;
+      }
       
       if (data.success && data.response) {
         setTestResponse(data.response);
