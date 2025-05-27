@@ -47,6 +47,7 @@ import {
 import { AccountSelector } from './AccountSelector';
 import ChatAssignmentDialog from './ChatAssignmentDialog';
 import { ChatCommentsDialog } from './ChatCommentsDialog';
+import { ExternalAgentButton } from './ExternalAgentButton';
 
 import { VoiceNoteMessage } from './VoiceNoteMessage';
 
