@@ -173,7 +173,7 @@ interface WhatsAppAccount {
   profilePicUrl?: string;
 }
 
-export default function WhatsAppTwoColumn() {
+function WhatsAppTwoColumn() {
   const [selectedAccount, setSelectedAccount] = useState<number | null>(null);
   const [selectedChat, setSelectedChat] = useState<WhatsAppChat | null>(null);
   const [newMessage, setNewMessage] = useState('');
@@ -731,3 +731,5 @@ function formatTime(timestamp: number): string {
     minute: '2-digit'
   });
 }
+
+export default WhatsAppTwoColumn;
