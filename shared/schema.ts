@@ -435,12 +435,12 @@ export const internalAgentMetricsRelations = relations(internalAgentMetrics, ({ 
 // Tabla para agentes externos A.E AI
 export const externalAgents = pgTable('external_agents', {
   id: serial('id').primaryKey(),
-  chatId: varchar('chat_id', { length: 100 }).notNull(),
+  chatId: text('chat_id').notNull(),
   accountId: integer('account_id').notNull(),
-  agentName: varchar('agent_name', { length: 255 }).notNull(),
+  agentName: text('agent_name').notNull(),
   agentUrl: text('agent_url').notNull(),
-  provider: varchar('provider', { length: 50 }).default('chatgpt').notNull(),
-  status: varchar('status', { length: 20 }).default('active').notNull(),
+  provider: text('provider').default('chatgpt').notNull(),
+  status: text('status').default('active').notNull(),
   lastUsed: timestamp('last_used').defaultNow(),
   responseCount: integer('response_count').default(0),
   averageResponseTime: integer('average_response_time').default(0), // en segundos
@@ -452,7 +452,7 @@ export const externalAgents = pgTable('external_agents', {
 // Tabla para configuración de agentes externos
 export const externalAgentConfigs = pgTable('external_agent_configs', {
   id: serial('id').primaryKey(),
-  chatId: varchar('chat_id', { length: 100 }).notNull(),
+  chatId: text('chat_id').notNull(),
   accountId: integer('account_id').notNull(),
   isActive: boolean('is_active').default(false),
   selectedAgentId: integer('selected_agent_id'),
@@ -584,23 +584,22 @@ export type DashboardStats = typeof dashboardStats.$inferSelect;
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
 export type MarketingCampaign = typeof marketingCampaigns.$inferSelect;
 
-// Tablas para agentes externos
-export const externalAgents = pgTable('external_agents', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  agentUrl: text('agent_url').notNull(),
-  description: text('description'),
-  triggerKeywords: text('trigger_keywords').array(),
-  isActive: boolean('is_active').default(true),
-  responseDelay: integer('response_delay').default(3),
-  accountId: integer('account_id'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+// Relaciones para agentes externos (ya definidos arriba)
+export const externalAgentsRelations = relations(externalAgents, ({ many }) => ({
+  responses: many(agentResponses),
+  configs: many(externalAgentConfigs)
+}));
+
+export const externalAgentConfigsRelations = relations(externalAgentConfigs, ({ one }) => ({
+  agent: one(externalAgents, {
+    fields: [externalAgentConfigs.selectedAgentId],
+    references: [externalAgents.id]
+  })
+}));
 
 export const agentResponses = pgTable('agent_responses', {
   id: serial('id').primaryKey(),
-  agentId: text('agent_id').notNull().references(() => externalAgents.id),
+  agentId: integer('agent_id').notNull().references(() => externalAgents.id),
   chatId: text('chat_id').notNull(),
   originalMessage: text('original_message').notNull(),
   agentResponse: text('agent_response').notNull(),
@@ -609,11 +608,6 @@ export const agentResponses = pgTable('agent_responses', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// Relaciones para agentes externos
-export const externalAgentsRelations = relations(externalAgents, ({ many }) => ({
-  responses: many(agentResponses)
-}));
-
 export const agentResponsesRelations = relations(agentResponses, ({ one }) => ({
   agent: one(externalAgents, {
     fields: [agentResponses.agentId],
@@ -621,8 +615,7 @@ export const agentResponsesRelations = relations(agentResponses, ({ one }) => ({
   })
 }));
 
-// Esquemas de inserción para agentes externos
-export const insertExternalAgentSchema = createInsertSchema(externalAgents).omit({ createdAt: true, updatedAt: true });
+// Esquemas de inserción adicionales
 export const insertAgentResponseSchema = createInsertSchema(agentResponses).omit({ id: true, createdAt: true });
 
 // Types para agentes externos
