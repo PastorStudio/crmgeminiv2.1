@@ -847,6 +847,182 @@ app.use((req, res, next) => {
     }
   });
 
+  // ===== APIS PARA AGENTES INTERNOS =====
+  // Gestión completa de agentes internos con roles y actividades
+
+  // Obtener todos los agentes internos
+  app.get("/api/internal-agents", async (_req: Request, res: Response) => {
+    try {
+      const agents = await internalAgentManager.getAllAgents();
+      
+      // Obtener estadísticas de actividad para cada agente
+      const agentsWithStats = await Promise.all(
+        agents.map(async (agent) => {
+          const activities = await agentActivityTracker.getAgentActivities(agent.id);
+          
+          return {
+            ...agent,
+            totalLogins: activities.filter(a => a.action === 'login').length,
+            lastLogin: activities.find(a => a.action === 'login')?.timestamp || agent.updatedAt,
+            lastActivity: activities[0]?.timestamp || agent.updatedAt
+          };
+        })
+      );
+      
+      console.log(`👥 ${agentsWithStats.length} agentes internos enviados con estadísticas`);
+      res.json({
+        success: true,
+        agents: agentsWithStats,
+        totalAgents: agentsWithStats.length
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo agentes internos:', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo agentes internos',
+        details: (error as Error).message
+      });
+    }
+  });
+
+  // Crear nuevo agente interno
+  app.post("/api/internal-agents", async (req: Request, res: Response) => {
+    try {
+      const agentData = req.body;
+      
+      const agent = await internalAgentManager.createAgent(agentData);
+      
+      console.log(`✅ Agente interno creado: ${agent.name} (${agent.email})`);
+      res.json({
+        success: true,
+        agent,
+        message: 'Agente creado correctamente'
+      });
+    } catch (error) {
+      console.error('❌ Error creando agente interno:', error);
+      res.status(500).json({ 
+        error: 'Error creando agente interno',
+        details: (error as Error).message
+      });
+    }
+  });
+
+  // Actualizar agente interno
+  app.put("/api/internal-agents/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const agentData = req.body;
+      
+      const agent = await internalAgentManager.updateAgent(parseInt(id), agentData);
+      
+      if (agent) {
+        console.log(`✅ Agente interno actualizado: ${agent.name}`);
+        res.json({
+          success: true,
+          agent,
+          message: 'Agente actualizado correctamente'
+        });
+      } else {
+        res.status(404).json({ error: 'Agente no encontrado' });
+      }
+    } catch (error) {
+      console.error('❌ Error actualizando agente interno:', error);
+      res.status(500).json({ 
+        error: 'Error actualizando agente interno',
+        details: (error as Error).message
+      });
+    }
+  });
+
+  // Eliminar agente interno
+  app.delete("/api/internal-agents/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      
+      const deleted = await internalAgentManager.deleteAgent(parseInt(id));
+      
+      if (deleted) {
+        console.log(`🗑️ Agente interno eliminado: ID ${id}`);
+        res.json({
+          success: true,
+          message: 'Agente eliminado correctamente'
+        });
+      } else {
+        res.status(404).json({ error: 'Agente no encontrado' });
+      }
+    } catch (error) {
+      console.error('❌ Error eliminando agente interno:', error);
+      res.status(500).json({ 
+        error: 'Error eliminando agente interno',
+        details: (error as Error).message
+      });
+    }
+  });
+
+  // Obtener actividades de un agente específico
+  app.get("/api/agent-activity/:agentId", async (req: Request, res: Response) => {
+    try {
+      const { agentId } = req.params;
+      
+      const activities = await agentActivityTracker.getAgentActivities(parseInt(agentId));
+      
+      // Calcular estadísticas adicionales
+      const loginActivities = activities.filter(a => a.action === 'login');
+      const pageViewActivities = activities.filter(a => a.action === 'page_view');
+      
+      const activityStats = {
+        totalSessions: loginActivities.length,
+        lastLogin: loginActivities[0]?.timestamp || null,
+        totalPageViews: pageViewActivities.length,
+        mostVisitedPages: [], // Se puede expandir después
+        averageSessionTime: 0 // Se puede expandir después
+      };
+      
+      console.log(`📊 ${activities.length} actividades enviadas para agente ${agentId}`);
+      res.json({
+        success: true,
+        activities: activities.slice(0, 50), // Últimas 50 actividades
+        stats: activityStats,
+        totalActivities: activities.length
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo actividades del agente:', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo actividades del agente',
+        details: (error as Error).message
+      });
+    }
+  });
+
+  // Registrar actividad de agente (login, page_view, etc.)
+  app.post("/api/agent-activity", async (req: Request, res: Response) => {
+    try {
+      const { agentId, action, page, details, ipAddress, userAgent, sessionToken } = req.body;
+      
+      const activity = await agentActivityTracker.logActivity(
+        agentId,
+        action,
+        page,
+        details,
+        ipAddress,
+        userAgent,
+        sessionToken
+      );
+      
+      console.log(`📝 Actividad registrada: ${action} - Agente ${agentId}`);
+      res.json({
+        success: true,
+        activity,
+        message: 'Actividad registrada correctamente'
+      });
+    } catch (error) {
+      console.error('❌ Error registrando actividad:', error);
+      res.status(500).json({ 
+        error: 'Error registrando actividad',
+        details: (error as Error).message
+      });
+    }
+  });
+
   // ENDPOINT ARREGLADO PARA CREAR ASIGNACIONES DE AGENTES
   app.post('/api/chat-assignments', async (req, res) => {
     try {

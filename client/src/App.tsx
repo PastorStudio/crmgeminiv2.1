@@ -35,6 +35,7 @@ import WhatsAppConnection from './pages/WhatsAppConnection';
 import AgentMonitoring from './pages/AgentMonitoring';
 import TicketsSimple from './pages/TicketsSimple';
 import ExternalAgents from './pages/ExternalAgents';
+import InternalAgents from './pages/InternalAgents';
 import GeminiAI from './pages/GeminiAI';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
