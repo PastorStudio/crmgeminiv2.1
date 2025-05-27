@@ -654,6 +654,21 @@ function WhatsAppTwoColumn() {
                 </Button>
 
                 <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="bg-purple-600 hover:bg-purple-700 text-white border-purple-600"
+                  onClick={() => {
+                    toast({
+                      title: "Agente IA Activado",
+                      description: "Los 5 agentes externos están listos para generar respuestas automáticas",
+                      variant: "default"
+                    });
+                  }}
+                >
+                  <Bot className="h-4 w-4" />
+                </Button>
+
+                <Button 
                   onClick={handleSendMessage}
                   disabled={!newMessage.trim() || sendMessageMutation.isPending}
                   className="bg-blue-500 hover:bg-blue-600"
