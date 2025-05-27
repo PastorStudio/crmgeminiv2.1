@@ -1553,12 +1553,40 @@ app.use((req, res, next) => {
     console.log(`🎉 ${defaultAgents.length} agentes externos inicializados correctamente`);
   }
 
-  // Listar todos los agentes externos (SIMPLIFICADO Y CORREGIDO)
+  // Listar todos los agentes externos (SISTEMA UNIFICADO)
   app.get('/api/external-agents', async (req, res) => {
     try {
       res.setHeader('Content-Type', 'application/json');
       console.log('📋 Obteniendo lista de agentes externos...');
       
+      // Primero, intentar obtener agentes de la base de datos
+      let dbAgents = [];
+      try {
+        dbAgents = await db.select().from(externalAgents);
+        console.log(`🗄️ Agentes en base de datos: ${dbAgents.length}`);
+      } catch (error) {
+        console.log('⚠️ Error accediendo a la base de datos, usando sistema simplificado');
+      }
+
+      // Si hay agentes en la base de datos, usarlos
+      if (dbAgents.length > 0) {
+        const formattedDbAgents = dbAgents.map(agent => ({
+          id: agent.id,
+          name: agent.name,
+          agentUrl: agent.agentUrl,
+          isActive: agent.status === 'active',
+          responseCount: agent.responseCount || 0,
+          createdAt: agent.createdAt
+        }));
+
+        console.log(`✅ Retornando ${formattedDbAgents.length} agentes de la base de datos`);
+        return res.json({
+          success: true,
+          agents: formattedDbAgents
+        });
+      }
+
+      // Si no hay agentes en la base de datos, usar el sistema simplificado
       let agents = SimpleExternalAgentManager.getAllAgents();
       console.log('✅ Agentes externos encontrados:', agents.length);
 
