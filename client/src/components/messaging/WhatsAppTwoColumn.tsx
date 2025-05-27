@@ -113,19 +113,31 @@ function WhatsAppTwoColumn() {
   };
 
   const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp * 1000);
-    if (isToday(date)) {
-      return format(date, 'HH:mm');
-    } else if (isYesterday(date)) {
-      return 'Ayer';
-    } else {
-      return format(date, 'dd/MM/yyyy');
+    if (!timestamp || timestamp <= 0) return '';
+    try {
+      const date = new Date(timestamp * 1000);
+      if (isNaN(date.getTime())) return '';
+      if (isToday(date)) {
+        return format(date, 'HH:mm');
+      } else if (isYesterday(date)) {
+        return 'Ayer';
+      } else {
+        return format(date, 'dd/MM/yyyy');
+      }
+    } catch (error) {
+      return '';
     }
   };
 
   const formatMessageTime = (timestamp: number) => {
-    const date = new Date(timestamp * 1000);
-    return format(date, 'HH:mm');
+    if (!timestamp || timestamp <= 0) return '';
+    try {
+      const date = new Date(timestamp * 1000);
+      if (isNaN(date.getTime())) return '';
+      return format(date, 'HH:mm');
+    } catch (error) {
+      return '';
+    }
   };
 
   const getSelectedChat = () => {
