@@ -1714,7 +1714,7 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
                   
-                  {/* A.E AI External Agents Button */}
+                  {/* A.E AI BOTÓN NUEVO FUNCIONAL */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -1722,24 +1722,20 @@ export function WhatsAppTwoColumn() {
                   >
                     <Button
                       size="sm"
-                      variant={externalAgentActive ? "default" : "outline"}
-                      className={`${
-                        externalAgentActive 
-                          ? "bg-purple-600 text-white hover:bg-purple-700 shadow-lg" 
-                          : "border-purple-600 text-purple-600 hover:bg-purple-50"
-                      } transition-all duration-300 relative`}
-                      onClick={toggleExternalAgent}
-                      disabled={externalAgentProcessing}
+                      variant="outline"
+                      className="border-purple-600 text-purple-600 hover:bg-purple-50 transition-all duration-300"
+                      onClick={() => {
+                        console.log('🚀 A.E AI PRESIONADO - ABRIENDO CHATGPT');
+                        window.open('https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots', '_blank');
+                        toast({
+                          title: "🤖 A.E AI Activado",
+                          description: "Smartbots conectado - ChatGPT abierto",
+                          duration: 3000,
+                        });
+                      }}
                     >
-                      {externalAgentProcessing ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Bot className="h-4 w-4 mr-2" />
-                      )}
+                      <Bot className="h-4 w-4 mr-2" />
                       A.E AI
-                      {externalAgentActive && (
-                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
-                      )}
                     </Button>
                   </motion.div>
                   
