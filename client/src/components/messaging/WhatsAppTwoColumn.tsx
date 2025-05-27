@@ -45,7 +45,7 @@ import {
 import { AccountSelector } from './AccountSelector';
 import ChatAssignmentDialog from './ChatAssignmentDialog';
 import { ChatCommentsDialog } from './ChatCommentsDialog';
-import { AutoResponseDialog } from './AutoResponseDialog';
+
 import { VoiceNoteMessage } from './VoiceNoteMessage';
 
 function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
@@ -287,41 +287,7 @@ export function WhatsAppTwoColumn() {
   const [lastProcessedMessageId, setLastProcessedMessageId] = useState<string | null>(null);
   const [lastMessageCount, setLastMessageCount] = useState(0);
 
-  // Función específica para generar respuestas automáticas a mensajes recibidos (burbujas verdes)
-  const generateSmartBotsAutoResponse = async (userMessage: string, contactName: string) => {
-    try {
-      console.log('🟢 Generando respuesta automática para mensaje recibido:', userMessage);
-      
-      const response = await fetch('/api/smartbots/generate-response', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        },
-        body: JSON.stringify({
-          message: userMessage,
-          contactName: contactName,
-          context: `Respuesta automática para mensaje recibido de ${contactName}`,
-          autoResponse: true,
-          targetLanguage: translationEnabled ? selectedLanguage : 'es',
-          translateResponse: translationEnabled
-        })
-      });
 
-      const data = await response.json();
-      
-      if (data.success && data.response) {
-        console.log('✅ Respuesta automática generada:', data.response);
-        return data.response;
-      } else {
-        console.error('❌ Error generando respuesta automática:', data.error);
-        return null;
-      }
-    } catch (error) {
-      console.error('❌ Error en generación de respuesta automática:', error);
-      return null;
-    }
-  };
 
   // Función para enviar mensaje automático
   const sendAutoMessage = async (message: string) => {

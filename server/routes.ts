@@ -1549,26 +1549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Alternative endpoint for config (avoiding Vite interception)
-  app.get("/api/config/auto-response", async (req: Request, res: Response) => {
-    try {
-      const config = await storage.getAutoResponseConfig();
-      res.json(config);
-    } catch (error) {
-      console.error('Error getting auto-response config:', error);
-      res.status(500).json({ error: "Failed to get auto-response configuration" });
-    }
-  });
 
-  app.post("/api/config/auto-response", async (req: Request, res: Response) => {
-    try {
-      await storage.saveAutoResponseConfig(req.body);
-      res.json({ success: true, config: req.body });
-    } catch (error) {
-      console.error('Error saving auto-response config:', error);
-      res.status(500).json({ error: "Failed to save auto-response configuration" });
-    }
-  });
 
   // Endpoint para probar diferentes proveedores de IA
   app.post("/api/auto-response/test", async (req: Request, res: Response) => {

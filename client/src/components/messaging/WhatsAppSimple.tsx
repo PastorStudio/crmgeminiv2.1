@@ -3,8 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import { WhatsAppQRCode } from './WhatsAppQRCode';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { generateAutoResponse } from '@/lib/gemini';
-import { chatContext } from '@/lib/chatContext';
+
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
