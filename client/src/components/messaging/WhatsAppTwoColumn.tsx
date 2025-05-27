@@ -99,6 +99,7 @@ function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accoun
 function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
   const { data: assignmentResponse } = useQuery({
     queryKey: ['/api/chat-assignments', chatId],
+    queryFn: () => fetch(`/api/chat-assignments/${encodeURIComponent(chatId)}`).then(res => res.json()),
     enabled: !!chatId
   });
 
@@ -112,7 +113,7 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
   console.log('🔍 Debug Badge - Users:', usersResponse);
 
   const users = usersResponse?.users || usersResponse || [];
-  const assignment = assignmentResponse?.[0] || assignmentResponse;
+  const assignment = assignmentResponse;
 
   // Si no hay asignación, mostrar solo el muñequito sin texto
   if (!assignment || !assignment.assignedToId) {
@@ -127,6 +128,7 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
   const assignedAgent = users.find((user: any) => user.id === assignment.assignedToId);
   
   console.log('🔍 Debug Badge - Assigned Agent:', assignedAgent);
+  console.log('🔍 Debug Badge - Assignment ID:', assignment.assignedToId);
 
   // Si no se encuentra el agente, mostrar solo el icono
   if (!assignedAgent) {
@@ -148,6 +150,7 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
 function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
   const { data: assignmentResponse } = useQuery({
     queryKey: ['/api/chat-assignments', chatId],
+    queryFn: () => fetch(`/api/chat-assignments/${encodeURIComponent(chatId)}`).then(res => res.json()),
     enabled: !!chatId
   });
 
