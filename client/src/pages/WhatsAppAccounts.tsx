@@ -541,12 +541,23 @@ const WhatsAppAccounts = () => {
   const AgentStatusDisplay = ({ accountId }: { accountId: number }) => {
     const { data: agentConfig } = getAgentConfig(accountId);
     
+    // Obtener agentes externos para este componente
+    const { data: externalAgentsData } = useQuery({
+      queryKey: ['/api/external-agents'],
+      queryFn: async () => {
+        const response = await apiRequest('/api/external-agents');
+        return response;
+      }
+    });
+
+    const externalAgents = externalAgentsData?.agents || [];
+    
     if (!agentConfig?.success) {
       return <div className="text-xs text-gray-500">Cargando...</div>;
     }
 
     const config = agentConfig.config;
-    const assignedAgent = externalAgents.find(agent => agent.id === config.assignedExternalAgentId);
+    const assignedAgent = Array.isArray(externalAgents) ? externalAgents.find((agent: any) => agent.id === config.assignedExternalAgentId) : null;
     
     if (!assignedAgent) {
       return (

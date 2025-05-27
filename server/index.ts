@@ -1512,6 +1512,46 @@ app.use((req, res, next) => {
 
   // Sistema simplificado de agentes externos
   const { SimpleExternalAgentManager, WhatsAppAccountConfigManager } = await import('./externalAgentsSimple');
+  
+  // Forzar inicialización de agentes por defecto
+  console.log('🚀 Verificando agentes externos...');
+  const currentAgents = SimpleExternalAgentManager.getAllAgents();
+  console.log(`📊 Agentes existentes: ${currentAgents.length}`);
+  
+  if (currentAgents.length === 0) {
+    console.log('🔧 Creando agentes externos por defecto...');
+    
+    // Crear agentes manualmente
+    const defaultAgents = [
+      {
+        url: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
+        name: 'Smartbots'
+      },
+      {
+        url: 'https://chatgpt.com/g/g-682e61ce2364819196df9641616414b1-smartplanner-ia',
+        name: 'Smartplanner IA'
+      },
+      {
+        url: 'https://chatgpt.com/g/g-682f551bee70819196aeb603eb638762-smartflyer-ia',
+        name: 'Smartflyer IA'
+      },
+      {
+        url: 'https://chatgpt.com/g/g-682f9b5208988191b08215b3d8f65333-agente-de-ventas-de-telca-panama',
+        name: 'Agente de Ventas de Telca Panama'
+      },
+      {
+        url: 'https://chatgpt.com/g/g-682bb98fedf881918e0c4ed5fcf592e4-asistente-tecnico-en-gestion-en-campo',
+        name: 'Asistente Técnico en Gestión en Campo'
+      }
+    ];
+
+    for (const agent of defaultAgents) {
+      const createdAgent = SimpleExternalAgentManager.createAgent(agent.url);
+      console.log(`✅ Agente creado: ${createdAgent.name} (ID: ${createdAgent.id})`);
+    }
+    
+    console.log(`🎉 ${defaultAgents.length} agentes externos inicializados correctamente`);
+  }
 
   // Listar todos los agentes externos (SIMPLIFICADO Y CORREGIDO)
   app.get('/api/external-agents', async (req, res) => {
