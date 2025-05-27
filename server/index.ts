@@ -1232,8 +1232,8 @@ app.use((req, res, next) => {
         };
         
         const insertQuery = sql`
-          INSERT INTO auto_response_config (enabled, provider, "welcomeMessage", "maxResponsesPerDay", "responseDelay", "businessHours")
-          VALUES (${defaultConfig.enabled}, ${defaultConfig.provider}, ${defaultConfig.welcomeMessage}, ${defaultConfig.maxResponsesPerDay}, ${defaultConfig.responseDelay}, ${JSON.stringify(defaultConfig.businessHours)})
+          INSERT INTO auto_response_config (enabled, "greetingMessage")
+          VALUES (${defaultConfig.enabled}, ${defaultConfig.welcomeMessage})
           RETURNING *
         `;
         
@@ -1263,9 +1263,7 @@ app.use((req, res, next) => {
         // Actualizar configuración existente
         const updateQuery = sql`
           UPDATE auto_response_config 
-          SET enabled = ${enabled}, provider = ${provider}, "welcomeMessage" = ${welcomeMessage}, 
-              "maxResponsesPerDay" = ${maxResponsesPerDay}, "responseDelay" = ${responseDelay}, 
-              "businessHours" = ${JSON.stringify(businessHours)}, "updatedAt" = NOW()
+          SET enabled = ${enabled}, "greetingMessage" = ${welcomeMessage}, "updatedAt" = NOW()
           WHERE id = ${existingResult.rows[0].id}
           RETURNING *
         `;
@@ -1275,8 +1273,8 @@ app.use((req, res, next) => {
       } else {
         // Crear nueva configuración
         const insertQuery = sql`
-          INSERT INTO auto_response_config (enabled, provider, "welcomeMessage", "maxResponsesPerDay", "responseDelay", "businessHours")
-          VALUES (${enabled}, ${provider}, ${welcomeMessage}, ${maxResponsesPerDay}, ${responseDelay}, ${JSON.stringify(businessHours)})
+          INSERT INTO auto_response_config (enabled, "greetingMessage")
+          VALUES (${enabled}, ${welcomeMessage})
           RETURNING *
         `;
         const insertResult = await db.execute(insertQuery);
