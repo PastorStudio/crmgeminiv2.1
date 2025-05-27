@@ -1553,75 +1553,111 @@ app.use((req, res, next) => {
     console.log(`🎉 ${defaultAgents.length} agentes externos inicializados correctamente`);
   }
 
-  // Listar todos los agentes externos (SISTEMA UNIFICADO)
+  // Listar todos los agentes externos (BASE DE DATOS PERMANENTE)
   app.get('/api/external-agents', async (req, res) => {
     try {
       res.setHeader('Content-Type', 'application/json');
-      console.log('📋 Obteniendo lista de agentes externos...');
+      console.log('📋 Obteniendo lista de agentes externos desde base de datos...');
       
-      // Primero, intentar obtener agentes de la base de datos
+      // Obtener agentes de la base de datos PostgreSQL
       let dbAgents = [];
       try {
         dbAgents = await db.select().from(externalAgents);
         console.log(`🗄️ Agentes en base de datos: ${dbAgents.length}`);
       } catch (error) {
-        console.log('⚠️ Error accediendo a la base de datos, usando sistema simplificado');
-      }
-
-      // Si hay agentes en la base de datos, usarlos
-      if (dbAgents.length > 0) {
-        const formattedDbAgents = dbAgents.map(agent => ({
-          id: agent.id,
-          name: agent.name,
-          agentUrl: agent.agentUrl,
-          isActive: agent.status === 'active',
-          responseCount: agent.responseCount || 0,
-          createdAt: agent.createdAt
-        }));
-
-        console.log(`✅ Retornando ${formattedDbAgents.length} agentes de la base de datos`);
-        return res.json({
-          success: true,
-          agents: formattedDbAgents
+        console.error('❌ Error accediendo a la base de datos:', error);
+        
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Error accessing database',
+          agents: []
         });
       }
 
-      // Si no hay agentes en la base de datos, usar el sistema simplificado
-      let agents = SimpleExternalAgentManager.getAllAgents();
-      console.log('✅ Agentes externos encontrados:', agents.length);
-
-      // Si no hay agentes, crear los agentes por defecto ahora
-      if (agents.length === 0) {
-        console.log('🔧 Inicializando agentes por defecto en GET...');
+      // Si no hay agentes, crear los agentes por defecto en la base de datos
+      if (dbAgents.length === 0) {
+        console.log('🔧 Creando agentes por defecto en base de datos...');
         
         const defaultAgents = [
-          'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
-          'https://chatgpt.com/g/g-682e61ce2364819196df9641616414b1-smartplanner-ia',
-          'https://chatgpt.com/g/g-682f551bee70819196aeb603eb638762-smartflyer-ia',
-          'https://chatgpt.com/g/g-682f9b5208988191b08215b3d8f65333-agente-de-ventas-de-telca-panama',
-          'https://chatgpt.com/g/g-682bb98fedf881918e0c4ed5fcf592e4-asistente-tecnico-en-gestion-en-campo'
+          {
+            id: 'smartbots-001',
+            name: 'Smartbots',
+            agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
+            status: 'active',
+            provider: 'openai',
+            responseCount: 0,
+            averageResponseTime: 0,
+            notes: 'Bot inteligente para automatización'
+          },
+          {
+            id: 'smartplanner-001', 
+            name: 'Smartplanner IA',
+            agentUrl: 'https://chatgpt.com/g/g-682e61ce2364819196df9641616414b1-smartplanner-ia',
+            status: 'active',
+            provider: 'openai',
+            responseCount: 0,
+            averageResponseTime: 0,
+            notes: 'Asistente de planificación inteligente'
+          },
+          {
+            id: 'smartflyer-001',
+            name: 'Smartflyer IA',
+            agentUrl: 'https://chatgpt.com/g/g-682f551bee70819196aeb603eb638762-smartflyer-ia',
+            status: 'active',
+            provider: 'openai',
+            responseCount: 0,
+            averageResponseTime: 0,
+            notes: 'Agente especializado en viajes'
+          },
+          {
+            id: 'telca-001',
+            name: 'Agente de Ventas de Telca Panama',
+            agentUrl: 'https://chatgpt.com/g/g-682f9b5208988191b08215b3d8f65333-agente-de-ventas-de-telca-panama',
+            status: 'active',
+            provider: 'openai',
+            responseCount: 0,
+            averageResponseTime: 0,
+            notes: 'Especialista en ventas para Telca Panama'
+          },
+          {
+            id: 'tecnico-001',
+            name: 'Asistente Técnico en Gestión en Campo',
+            agentUrl: 'https://chatgpt.com/g/g-682bb98fedf881918e0c4ed5fcf592e4-asistente-tecnico-en-gestion-en-campo',
+            status: 'active',
+            provider: 'openai',
+            responseCount: 0,
+            averageResponseTime: 0,
+            notes: 'Asistente técnico para gestión de campo'
+          }
         ];
 
-        for (const url of defaultAgents) {
-          const agent = SimpleExternalAgentManager.createAgent(url);
-          console.log(`✅ Agente creado: ${agent.name} (ID: ${agent.id})`);
+        try {
+          for (const agent of defaultAgents) {
+            await db.insert(externalAgents).values(agent);
+            console.log(`✅ Agente creado en DB: ${agent.name}`);
+          }
+          
+          // Obtener la lista actualizada
+          dbAgents = await db.select().from(externalAgents);
+          console.log(`🎉 ${dbAgents.length} agentes creados en base de datos`);
+        } catch (insertError) {
+          console.error('❌ Error insertando agentes por defecto:', insertError);
         }
-
-        // Volver a obtener la lista actualizada
-        agents = SimpleExternalAgentManager.getAllAgents();
-        console.log(`🎉 ${agents.length} agentes inicializados correctamente`);
       }
 
       // Formatear los agentes para la interfaz
-      const formattedAgents = agents.map(agent => ({
+      const formattedAgents = dbAgents.map(agent => ({
         id: agent.id,
         name: agent.name,
         agentUrl: agent.agentUrl,
-        isActive: agent.isActive,
+        isActive: agent.status === 'active',
         responseCount: agent.responseCount || 0,
-        createdAt: agent.createdAt
+        createdAt: agent.createdAt,
+        provider: agent.provider,
+        notes: agent.notes
       }));
 
+      console.log(`✅ Retornando ${formattedAgents.length} agentes desde base de datos`);
       return res.json({
         success: true,
         agents: formattedAgents
