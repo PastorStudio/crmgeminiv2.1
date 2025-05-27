@@ -28,7 +28,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // RUTAS CRÍTICAS ANTES QUE VITE - AGENTES EXTERNOS Y ESTADO EN VIVO
-app.post('/api/agents/external', async (req: Request, res: Response) => {
+app.post('/api/create-external-agent', async (req: Request, res: Response) => {
   try {
     res.setHeader('Content-Type', 'application/json');
     console.log('🤖 Creando agente externo desde URL:', req.body);
@@ -82,7 +82,7 @@ app.post('/api/agents/external', async (req: Request, res: Response) => {
   }
 });
 
-app.get('/api/external-agents', async (req, res) => {
+app.get('/api/list-external-agents', async (req, res) => {
   try {
     res.setHeader('Content-Type', 'application/json');
     console.log('📋 Obteniendo lista de agentes externos...');
