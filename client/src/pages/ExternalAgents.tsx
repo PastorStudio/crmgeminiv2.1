@@ -116,7 +116,8 @@ export default function ExternalAgents() {
         .map(k => k.trim())
         .filter(k => k);
 
-      const response = await fetch('/api/external-agents-direct', {
+      // Usar endpoint de bypass directo que evita Vite
+      const response = await fetch('/auth/external-agent-create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

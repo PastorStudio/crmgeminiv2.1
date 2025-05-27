@@ -27,101 +27,100 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// BYPASS COMPLETO PARA AGENTES EXTERNOS - ANTES DE CUALQUIER MIDDLEWARE
-app.use('/api/external-agents-direct', express.Router()
-  .post('/', async (req: Request, res: Response) => {
-    try {
-      res.setHeader('Content-Type', 'application/json');
-      console.log('🤖 Creando agente externo (bypass directo):', req.body);
-      
-      const { agentUrl, triggerKeywords } = req.body;
-      
-      if (!agentUrl) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Se requiere agentUrl' 
-        });
-      }
-
-      const extractedName = agentUrl.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent';
-      const { externalAgents } = await import('@shared/schema');
-      
-      const [newAgent] = await db
-        .insert(externalAgents)
-        .values({
-          chatId: `default-${Date.now()}`,
-          accountId: 1,
-          agentName: extractedName,
-          agentUrl,
-          provider: 'chatgpt',
-          status: 'active'
-        })
-        .returning();
-
-      console.log('✅ Agente externo creado (bypass):', newAgent.id);
-
-      return res.json({
-        success: true,
-        agent: {
-          id: newAgent.id,
-          name: newAgent.agentName,
-          agentUrl: newAgent.agentUrl,
-          isActive: newAgent.status === 'active'
-        },
-        message: 'Agente externo creado exitosamente'
-      });
-
-    } catch (error) {
-      console.error('❌ Error creando agente externo (bypass):', error);
-      return res.status(500).json({ 
+// ENDPOINT DIRECTO PARA AGENTES EXTERNOS - SIMPLE Y FUNCIONAL
+app.post('/api/external-agents-direct', async (req: Request, res: Response) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    console.log('🤖 Creando agente externo:', req.body);
+    
+    const { agentUrl, triggerKeywords } = req.body;
+    
+    if (!agentUrl) {
+      return res.status(400).json({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'Error desconocido',
-        message: 'Error al crear agente externo' 
+        message: 'Se requiere agentUrl' 
       });
     }
-  })
-  .get('/', async (req: Request, res: Response) => {
-    try {
-      res.setHeader('Content-Type', 'application/json');
-      console.log('📋 Listando agentes externos (bypass directo)...');
-      
-      const { externalAgents } = await import('@shared/schema');
-      
-      const agents = await db
-        .select({
-          id: externalAgents.id,
-          name: externalAgents.agentName,
-          agentUrl: externalAgents.agentUrl,
-          provider: externalAgents.provider,
-          status: externalAgents.status,
-          responseCount: externalAgents.responseCount,
-          createdAt: externalAgents.createdAt
-        })
-        .from(externalAgents)
-        .orderBy(externalAgents.createdAt);
 
-      console.log('✅ Agentes externos encontrados (bypass):', agents.length);
+    const extractedName = agentUrl.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent';
+    const { externalAgents } = await import('@shared/schema');
+    
+    const [newAgent] = await db
+      .insert(externalAgents)
+      .values({
+        chatId: `default-${Date.now()}`,
+        accountId: 1,
+        agentName: extractedName,
+        agentUrl,
+        provider: 'chatgpt',
+        status: 'active'
+      })
+      .returning();
 
-      return res.json({
-        success: true,
-        agents: agents.map(agent => ({
-          id: agent.id,
-          name: agent.name,
-          agentUrl: agent.agentUrl,
-          isActive: agent.status === 'active',
-          responseCount: agent.responseCount || 0
-        }))
-      });
+    console.log('✅ Agente externo creado:', newAgent.id);
 
-    } catch (error) {
-      console.error('❌ Error listando agentes externos (bypass):', error);
-      return res.json({
-        success: false,
-        agents: []
-      });
-    }
-  })
-);
+    return res.json({
+      success: true,
+      agent: {
+        id: newAgent.id,
+        name: newAgent.agentName,
+        agentUrl: newAgent.agentUrl,
+        isActive: newAgent.status === 'active'
+      },
+      message: 'Agente externo creado exitosamente'
+    });
+
+  } catch (error) {
+    console.error('❌ Error creando agente externo:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Error desconocido',
+      message: 'Error al crear agente externo' 
+    });
+  }
+});
+
+app.get('/api/external-agents-direct', async (req: Request, res: Response) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    console.log('📋 Listando agentes externos...');
+    
+    const { externalAgents } = await import('@shared/schema');
+    
+    const agents = await db
+      .select({
+        id: externalAgents.id,
+        name: externalAgents.agentName,
+        agentUrl: externalAgents.agentUrl,
+        provider: externalAgents.provider,
+        status: externalAgents.status,
+        responseCount: externalAgents.responseCount,
+        createdAt: externalAgents.createdAt
+      })
+      .from(externalAgents)
+      .orderBy(externalAgents.createdAt);
+
+    console.log('✅ Agentes externos encontrados:', agents.length);
+
+    return res.json({
+      success: true,
+      agents: agents.map(agent => ({
+        id: agent.id,
+        name: agent.name,
+        agentUrl: agent.agentUrl,
+        isActive: agent.status === 'active',
+        responseCount: agent.responseCount || 0
+      }))
+    });
+
+  } catch (error) {
+    console.error('❌ Error listando agentes externos:', error);
+    return res.json({
+      success: false,
+      agents: []
+    });
+  }
+});
 
 // RUTAS CRÍTICAS ANTES QUE VITE - AGENTES EXTERNOS Y ESTADO EN VIVO
 app.post('/api/create-external-agent', async (req: Request, res: Response) => {
@@ -333,6 +332,57 @@ app.use((req, res, next) => {
   if (req.method === 'GET' && req.path === '/api/list-external-agents') {
     // Ya manejado arriba, pero asegurar que no pase por Vite
     return next();
+  }
+  
+  // Interceptar creación de agentes externos
+  if (req.method === 'POST' && req.path === '/auth/external-agent-create') {
+    console.log('🤖 Interceptando creación de agente externo antes de Vite');
+    const { agentUrl, triggerKeywords } = req.body;
+    
+    if (!agentUrl) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Se requiere agentUrl' 
+      });
+    }
+
+    try {
+      const extractedName = agentUrl.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent';
+      const { externalAgents } = await import('@shared/schema');
+      
+      const [newAgent] = await db
+        .insert(externalAgents)
+        .values({
+          chatId: `default-${Date.now()}`,
+          accountId: 1,
+          agentName: extractedName,
+          agentUrl,
+          provider: 'chatgpt',
+          status: 'active'
+        })
+        .returning();
+
+      console.log('✅ Agente externo creado exitosamente:', newAgent.id);
+
+      return res.json({
+        success: true,
+        agent: {
+          id: newAgent.id,
+          name: newAgent.agentName,
+          agentUrl: newAgent.agentUrl,
+          isActive: newAgent.status === 'active'
+        },
+        message: 'Agente externo creado exitosamente'
+      });
+
+    } catch (error) {
+      console.error('❌ Error creando agente externo:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Error desconocido',
+        message: 'Error al crear agente externo' 
+      });
+    }
   }
   
   // Solo interceptar login
@@ -2178,6 +2228,19 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
+  // Middleware para evitar que Vite intercepte endpoints críticos
+  app.use((req, res, next) => {
+    if (req.path === '/api/external-agents-direct' && req.method === 'POST') {
+      // Saltar completamente cualquier middleware de Vite para este endpoint
+      return next('route');
+    }
+    if (req.path === '/api/external-agents-direct' && req.method === 'GET') {
+      // Saltar completamente cualquier middleware de Vite para este endpoint
+      return next('route');
+    }
+    next();
+  });
+
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
