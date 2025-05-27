@@ -147,19 +147,24 @@ export default function ExternalAgents() {
       const extractAgentName = (url: string) => {
         if (url.includes('/g/g-')) {
           // Ejemplo: https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots
-          // Queremos extraer "smartbots"
+          // O: https://chatgpt.com/g/g-682f551bee70819196aeb603eb638762-smartflyer-ia
           const parts = url.split('/g/g-')[1];
           if (parts) {
-            // Buscar el último guión y tomar todo lo que viene después
-            const lastDashIndex = parts.lastIndexOf('-');
-            if (lastDashIndex !== -1 && lastDashIndex < parts.length - 1) {
-              const agentName = parts.substring(lastDashIndex + 1);
-              // Limpiar y capitalizar solo la primera letra
+            // Buscar el primer guión después del ID largo (típicamente 32+ caracteres)
+            // El ID es algo como "682ceb8bfa4c81918b3ff66abe6f3480"
+            const firstDashIndex = parts.indexOf('-');
+            if (firstDashIndex !== -1 && firstDashIndex >= 25) { // IDs suelen ser largos
+              const agentName = parts.substring(firstDashIndex + 1);
+              // Convertir guiones a espacios y capitalizar cada palabra
               const cleanName = agentName
+                .replace(/-/g, ' ')
                 .replace(/[^a-zA-Z0-9\s]/g, '')
-                .trim();
+                .trim()
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
               if (cleanName) {
-                return cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
+                return cleanName;
               }
             }
           }
