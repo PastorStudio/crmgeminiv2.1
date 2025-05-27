@@ -1714,7 +1714,7 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
                   
-                  {/* A.E AI BOTÓN NUEVO FUNCIONAL */}
+                  {/* A.E AI SWITCH - RESPUESTAS AUTOMÁTICAS */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -1722,20 +1722,78 @@ export function WhatsAppTwoColumn() {
                   >
                     <Button
                       size="sm"
-                      variant="outline"
-                      className="border-purple-600 text-purple-600 hover:bg-purple-50 transition-all duration-300"
-                      onClick={() => {
-                        console.log('🚀 A.E AI PRESIONADO - ABRIENDO CHATGPT');
-                        window.open('https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots', '_blank');
-                        toast({
-                          title: "🤖 A.E AI Activado",
-                          description: "Smartbots conectado - ChatGPT abierto",
-                          duration: 3000,
-                        });
+                      variant={externalAgentActive ? "default" : "outline"}
+                      className={`${
+                        externalAgentActive 
+                          ? "bg-green-600 text-white hover:bg-green-700 shadow-lg" 
+                          : "border-purple-600 text-purple-600 hover:bg-purple-50"
+                      } transition-all duration-300 relative`}
+                      onClick={async () => {
+                        console.log('🚀 A.E AI TOGGLE PRESIONADO');
+                        
+                        if (!selectedChat) {
+                          toast({
+                            title: "Error",
+                            description: "Selecciona un chat primero",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+
+                        try {
+                          setExternalAgentProcessing(true);
+                          const newState = !externalAgentActive;
+                          
+                          console.log(`📡 ${newState ? 'ACTIVANDO' : 'DESACTIVANDO'} A.E AI para ${selectedChat.id}`);
+                          
+                          // Llamar al endpoint simplificado
+                          const response = await fetch('/api/ae-ai/toggle', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                              chatId: selectedChat.id,
+                              accountId: selectedChat.accountId,
+                              active: newState
+                            })
+                          });
+                          
+                          if (response.ok) {
+                            const result = await response.json();
+                            setExternalAgentActive(newState);
+                            
+                            toast({
+                              title: `🤖 A.E AI ${newState ? 'Activado' : 'Desactivado'}`,
+                              description: newState 
+                                ? `Respuestas automáticas activadas para ${selectedChat.name}`
+                                : `Respuestas automáticas desactivadas`,
+                            });
+                            
+                            console.log(`✅ A.E AI ${newState ? 'ACTIVADO' : 'DESACTIVADO'} exitosamente`);
+                          } else {
+                            throw new Error('Error en el servidor');
+                          }
+                        } catch (error) {
+                          console.error('❌ Error A.E AI:', error);
+                          toast({
+                            title: "Error",
+                            description: "No se pudo cambiar el estado del A.E AI",
+                            variant: "destructive"
+                          });
+                        } finally {
+                          setExternalAgentProcessing(false);
+                        }
                       }}
+                      disabled={externalAgentProcessing}
                     >
-                      <Bot className="h-4 w-4 mr-2" />
+                      {externalAgentProcessing ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Bot className="h-4 w-4 mr-2" />
+                      )}
                       A.E AI
+                      {externalAgentActive && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
+                      )}
                     </Button>
                   </motion.div>
                   
