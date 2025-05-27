@@ -1826,14 +1826,40 @@ export function WhatsAppTwoColumn() {
                             
                             if (response.ok) {
                               const result = await response.json();
-                              toast({
-                                title: "🧪 Prueba A.E AI",
-                                description: result.message,
-                                duration: 5000,
-                              });
+                              console.log('📋 Resultado completo de A.E AI:', result);
+                              
+                              if (result.success && result.processed) {
+                                toast({
+                                  title: "✅ A.E AI Funcionando",
+                                  description: `Respuesta generada por ${result.config?.agentName || 'Smartbots'}. Revisa la consola del servidor para ver la respuesta completa.`,
+                                  duration: 8000,
+                                });
+                              } else if (result.needsActivation) {
+                                toast({
+                                  title: "⚠️ A.E AI Inactivo",
+                                  description: "Activa primero el A.E AI presionando el botón morado.",
+                                  variant: "destructive",
+                                  duration: 5000,
+                                });
+                              } else {
+                                toast({
+                                  title: "❌ Error A.E AI",
+                                  description: result.message || "No se pudo procesar el mensaje",
+                                  variant: "destructive",
+                                  duration: 5000,
+                                });
+                              }
+                            } else {
+                              throw new Error(`HTTP ${response.status}`);
                             }
                           } catch (error) {
                             console.error('❌ Error probando A.E AI:', error);
+                            toast({
+                              title: "❌ Error de Conexión",
+                              description: "No se pudo conectar con el servidor A.E AI",
+                              variant: "destructive",
+                              duration: 5000,
+                            });
                           }
                         }}
                       >
