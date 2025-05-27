@@ -51,9 +51,9 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { ChatAssignmentDialog } from './ChatAssignmentDialog';
+import ChatAssignmentDialog from './ChatAssignmentDialog';
 import { ChatCommentsDialog } from './ChatCommentsDialog';
-import { IndependentAgentSelector } from './IndependentAgentSelector';
+// import { IndependentAgentSelector } from './IndependentAgentSelector';
 
 // Chat Assignment Badge Component
 function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
@@ -682,34 +682,45 @@ export default function WhatsAppTwoColumn() {
         )}
 
         {/* Chat Assignment Dialog */}
-        <ChatAssignmentDialog
-          isOpen={assignmentDialogOpen}
-          onClose={() => setAssignmentDialogOpen(false)}
-          chatId={selectedChat?.id || ''}
-          accountId={selectedChat?.accountId || 0}
-          onAssignmentUpdated={() => {
-            // Recargar datos si es necesario
-          }}
-        />
+        {assignmentDialogOpen && selectedChat && (
+          <ChatAssignmentDialog
+            chatId={selectedChat.id}
+            accountId={selectedChat.accountId}
+            onClose={() => setAssignmentDialogOpen(false)}
+          />
+        )}
 
         {/* Chat Comments Dialog */}
-        <ChatCommentsDialog
-          isOpen={commentsDialogOpen}
-          onClose={() => setCommentsDialogOpen(false)}
-          chatId={selectedChat?.id || ''}
-          accountId={selectedChat?.accountId || 0}
-        />
+        {commentsDialogOpen && selectedChat && (
+          <ChatCommentsDialog
+            chatId={selectedChat.id}
+            accountId={selectedChat.accountId}
+            onClose={() => setCommentsDialogOpen(false)}
+          />
+        )}
 
         {/* Independent Agent Selector */}
-        <IndependentAgentSelector
-          isOpen={showIndependentSelector}
-          onClose={() => setShowIndependentSelector(false)}
-          selectedMessage={messages.length > 0 ? messages[messages.length - 1] : null}
-          chatId={selectedChat?.id || ''}
-        />
+        {showIndependentSelector && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Brain className="h-5 w-5 text-purple-600" />
+                Selector de Agentes IA
+              </h3>
+              <p className="text-gray-600 mb-4">
+                El selector de agentes independiente está siendo preparado. Esta funcionalidad te permitirá elegir entre 5 agentes IA preconfigurados para generar respuestas inteligentes.
+              </p>
+              <Button 
+                onClick={() => setShowIndependentSelector(false)}
+                className="w-full bg-purple-600 hover:bg-purple-700"
+              >
+                Entendido
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
-    )}
-  </div>
+    </div>
   );
 }
 
