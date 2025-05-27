@@ -392,9 +392,9 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                             >
                               <div className="flex items-center space-x-2">
                                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                <span className="font-medium">{agent.username}</span>
+                                <span className="font-medium">{agent.fullName}</span>
                                 <Badge variant="secondary" className="text-xs">
-                                  {agent.username}
+                                  {agent.role}
                                 </Badge>
                               </div>
                             </SelectItem>
