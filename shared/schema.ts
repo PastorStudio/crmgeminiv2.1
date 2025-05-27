@@ -432,10 +432,12 @@ export const internalAgentMetricsRelations = relations(internalAgentMetrics, ({ 
   })
 }));
 
-// Tabla para agentes externos A.E AI (simplificada y corregida)
+// Tabla para agentes externos A.E AI (corregida para coincidir con la base de datos real)
 export const externalAgents = pgTable('external_agents', {
   id: text('id').primaryKey(), // Cambiado a text para usar nanoid
-  name: text('name').notNull(), // Nombre del agente (ej: "Smartbots")
+  chatId: text('chat_id'), // ID del chat asociado
+  accountId: integer('account_id').default(0), // ID de la cuenta
+  agentName: text('agent_name').notNull(), // Nombre del agente (ej: "Smartbots")
   agentUrl: text('agent_url').notNull(), // URL del ChatGPT
   provider: text('provider').default('openai').notNull(),
   status: text('status').default('active').notNull(),
