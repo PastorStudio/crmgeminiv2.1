@@ -55,16 +55,10 @@ type ChatAssignment = {
 };
 
 const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAssignmentDialogProps) => {
-  // Agentes predefinidos siempre disponibles (importantes para evitar página en blanco)
-  const defaultAgents = [
-    { id: 1, username: 'juan.perez', fullName: 'Juan Pérez', role: 'agent', status: 'active' },
-    { id: 2, username: 'maria.gomez', fullName: 'María Gómez', role: 'agent', status: 'active' },
-    { id: 3, username: 'carlos.lopez', fullName: 'Carlos López', role: 'supervisor', status: 'active' },
-    { id: 4, username: 'laura.martinez', fullName: 'Laura Martínez', role: 'agent', status: 'active' }
-  ];
+  // Sistema de asignación de agentes interno - Usa agentes reales del sistema
   
-  // Estado local para usar estos agentes predefinidos
-  const [agentsList, setAgentsList] = useState<User[]>(defaultAgents);
+  // Estado local para usar agentes reales del sistema
+  const [agentsList, setAgentsList] = useState<User[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [existingAssignment, setExistingAssignment] = useState<ChatAssignment | null>(null);
@@ -115,91 +109,39 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
   
   // Ya no usamos agentes precargados, sino que mostramos un error si no se pueden cargar
 
-  // Cargar usuarios (agentes)
-  const { data: users = [], refetch: refetchUsers, isLoading: isLoadingUsers, error: usersError } = useQuery<User[]>({
-    queryKey: ['/api/users', open], // Incluir 'open' para que se recargue cuando se abre el diálogo
+  // Cargar usuarios del sistema (agentes internos activos)
+  const { data: users = [], isLoading: isLoadingUsers } = useQuery<User[]>({
+    queryKey: ['/api/users'],
     queryFn: async () => {
-      try {
-        console.log('Cargando usuarios para asignación de chat...');
-        
-        // Cargar agentes reales del sistema
-        const response = await fetch('/api/users');
-        if (!response.ok) {
-          throw new Error('Error al cargar usuarios del sistema');
-        }
-        
-        const data = await response.json();
-        if (data.success && Array.isArray(data.users) && data.users.length > 0) {
-          console.log('Usuarios reales obtenidos:', data.users.length);
-          return data.users;
-        } else {
-          throw new Error('No se encontraron usuarios en el sistema');
-        }
-        
-        // Solicitar específicamente para asignación de chat
-        try {
-          const response = await fetch('/api/users?forChatAssignment=true', {
-            headers: {
-              'Accept': 'application/json',
-              'Cache-Control': 'no-cache'
-            },
-            credentials: 'include'
-          });
-          
-          // Verificar si la respuesta es HTML en lugar de JSON
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('text/html')) {
-            console.error('Respuesta HTML detectada en lugar de JSON - usando agentes predeterminados');
-            return defaultAgents;
-          }
-          
-          // Si falla por cualquier motivo, usar la lista predeterminada
-          if (!response.ok) {
-            console.error('Error al obtener usuarios:', response.status, response.statusText);
-            return defaultAgents;
-          }
-          
-          // Parsear la respuesta JSON
-          const data = await response.json();
-          if (data.success && Array.isArray(data.users) && data.users.length > 0) {
-            console.log('Usuarios obtenidos correctamente:', data.users.length);
-            return data.users;
-          } else {
-            console.warn('Respuesta vacía o inválida al cargar usuarios, usando predeterminados');
-            return defaultAgents;
-          }
-        } catch (apiError) {
-          console.error('Error en API de usuarios:', apiError);
-          return defaultAgents;
-        }
-      } catch (error) {
-        console.error('Error general cargando usuarios:', error);
-        return [];
+      console.log('🔄 Cargando agentes internos del sistema...');
+      
+      const response = await fetch('/api/users');
+      if (!response.ok) {
+        throw new Error('Error al cargar usuarios del sistema');
       }
+      
+      const data = await response.json();
+      if (data.success && Array.isArray(data.users)) {
+        // Filtrar solo agentes activos del sistema interno
+        const activeAgents = data.users.filter((user: User) => 
+          user.status === 'active' && 
+          ['agent', 'supervisor', 'admin'].includes(user.role.toLowerCase())
+        );
+        
+        console.log('✅ Agentes internos cargados:', activeAgents.length);
+        return activeAgents;
+      }
+      
+      throw new Error('No se pudieron cargar los agentes');
     },
     enabled: open,
-    // No mantener caché para siempre asegurar datos frescos
-    staleTime: 0,
-    // Forzar revalidación en cada apertura del diálogo
-    refetchOnMount: true,
-    // Reintento con retraso exponencial
-    retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
   
-  // Cargar cuentas de WhatsApp
-  const { data: accounts = [] } = useQuery<WhatsAppAccount[]>({
-    queryKey: ['/api/whatsapp-accounts'],
-    queryFn: async () => {
-      try {
-        return await apiRequest('/api/whatsapp-accounts');
-      } catch (error) {
-        console.error('Error cargando cuentas de WhatsApp:', error);
-        return [];
-      }
-    },
-    enabled: open,
-  });
+  // Sistema interno de cuentas - No requiere WhatsApp conectado
+  const internalAccounts = [
+    { id: 1, name: 'Sistema Interno Principal', status: 'active' },
+    { id: 2, name: 'Sistema Interno Secundario', status: 'active' }
+  ];
 
   // Formulario para crear/actualizar asignación con valores seguros
   const form = useForm<z.infer<typeof assignmentSchema>>({
@@ -362,23 +304,13 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     }
   };
 
-  // Actualizar la lista de agentes cuando llegan de la API
+  // Actualizar la lista de agentes con datos reales del sistema
   useEffect(() => {
     if (users && users.length > 0) {
-      const filteredAgents = users.filter(user => 
-        user.status === 'active' && 
-        ['agent', 'supervisor'].includes(user.role)
-      );
-      
-      // Solo actualizar si hay nuevos agentes disponibles
-      if (filteredAgents.length > 0) {
-        setAgentsList(filteredAgents);
-      }
+      setAgentsList(users);
+      console.log('✅ Agentes del sistema cargados:', users.length);
     }
   }, [users]);
-  
-  // Registro para depuración
-  console.log('Agentes disponibles:', agentsList);
 
   // Determinar si hay un agente asignado actualmente
   const currentAgent = existingAssignment?.assignedTo 
@@ -389,13 +321,22 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>
-            {existingAssignment ? 'Actualizar asignación de chat' : 'Asignar chat a agente'}
+          <DialogTitle className="flex items-center space-x-2">
+            <Users className="h-5 w-5" />
+            <span>
+              {existingAssignment ? 'Actualizar Asignación Interna' : 'Asignación Interna de Chat'}
+            </span>
           </DialogTitle>
           <DialogDescription>
-            {existingAssignment 
-              ? `Este chat está asignado a ${currentAgent}`
-              : 'Elija un agente para asignar este chat'}
+            <div className="space-y-1">
+              <p className="text-sm text-blue-600 font-medium">
+                🔒 Sistema de Asignación Interno - Invisible para WhatsApp
+              </p>
+              {existingAssignment 
+                ? <p>Este chat está asignado internamente a: <strong>{currentAgent}</strong></p>
+                : <p>Selecciona un agente del sistema para la gestión interna de este chat</p>
+              }
+            </div>
           </DialogDescription>
         </DialogHeader>
 
@@ -464,18 +405,22 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {agentsList.length > 0 ? (
+                        {isLoadingUsers ? (
+                          <SelectItem value="loading" disabled>
+                            🔄 Cargando agentes del sistema...
+                          </SelectItem>
+                        ) : agentsList.length > 0 ? (
                           agentsList.map((agent) => (
                             <SelectItem
                               key={agent.id}
                               value={agent.id.toString()}
                             >
-                              {agent.fullName} ({agent.username})
+                              👤 {agent.fullName} ({agent.username}) - {agent.role.toUpperCase()}
                             </SelectItem>
                           ))
                         ) : (
                           <SelectItem value="none" disabled>
-                            No hay agentes disponibles
+                            ⚠️ No hay agentes disponibles en el sistema
                           </SelectItem>
                         )}
                       </SelectContent>
