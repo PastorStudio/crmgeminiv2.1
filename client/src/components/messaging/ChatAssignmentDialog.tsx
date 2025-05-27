@@ -119,26 +119,15 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     staleTime: 30000, // Cache por 30 segundos
   });
 
-  // Cargar leads del sistema para tickets
-  const { data: leadsResponse, isLoading: isLoadingLeads } = useQuery({
-    queryKey: ['/api/leads'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/leads');
-        if (response.ok) {
-          return await response.json();
-        }
-        return [];
-      } catch (error) {
-        console.error('Error cargando leads:', error);
-        return [];
-      }
-    },
-    enabled: open,
-    staleTime: 30000,
-  });
-
-  const leads = leadsResponse || [];
+  // Estados de leads disponibles
+  const leadStates = [
+    { id: 'nuevos', name: 'Nuevos', color: 'bg-blue-100 text-blue-800' },
+    { id: 'interesados', name: 'Interesados', color: 'bg-green-100 text-green-800' },
+    { id: 'no_leidos', name: 'No Leidos', color: 'bg-yellow-100 text-yellow-800' },
+    { id: 'pendiente_demo', name: 'Pendiente Demo', color: 'bg-purple-100 text-purple-800' },
+    { id: 'completados', name: 'Completados', color: 'bg-gray-100 text-gray-800' },
+    { id: 'no_interesados', name: 'No Interesados', color: 'bg-red-100 text-red-800' }
+  ];
   
   // Sistema interno de cuentas - No requiere WhatsApp conectado
   const internalAccounts = [
@@ -448,30 +437,18 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {isLoadingLeads ? (
-                          <SelectItem value="loading" disabled>
-                            🔄 Cargando leads...
+                        {leadStates.map((state) => (
+                          <SelectItem
+                            key={state.id}
+                            value={state.id}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <Badge className={`text-xs ${state.color}`}>
+                                {state.name}
+                              </Badge>
+                            </div>
                           </SelectItem>
-                        ) : leads.length > 0 ? (
-                          leads.map((lead: any) => (
-                            <SelectItem
-                              key={lead.id}
-                              value={lead.id.toString()}
-                            >
-                              <div className="flex items-center space-x-2">
-                                <span className="font-medium">{lead.name}</span>
-                                <span className="text-sm text-gray-600">{lead.email || lead.phone}</span>
-                                <Badge variant="outline" className="text-xs">
-                                  {lead.status}
-                                </Badge>
-                              </div>
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="none" disabled>
-                            👤 No hay leads disponibles
-                          </SelectItem>
-                        )}
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
