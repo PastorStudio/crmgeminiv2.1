@@ -1378,21 +1378,25 @@ app.use((req, res, next) => {
     }
   });
 
-  // Mantener el endpoint antiguo pero redirigir al nuevo para compatibilidad
+  // ENDPOINT REAL QUE USA EL BOTÓN - ARREGLADO COMPLETAMENTE
   app.post('/api/external-agents/toggle', (req, res) => {
-    console.log('🔄 Redirigiendo desde endpoint antiguo al nuevo');
+    console.log('🚀 BOTÓN A.E AI REAL PRESIONADO - DATOS:', req.body);
     
     try {
       const { chatId, accountId, active } = req.body;
       
       if (!chatId || !accountId) {
+        console.log('❌ Faltan datos requeridos en botón real');
         return res.status(400).json({ 
           success: false, 
           message: 'Se requiere chatId y accountId' 
         });
       }
 
+      console.log(`🤖 PROCESANDO A.E AI: ${active ? 'ACTIVAR' : 'DESACTIVAR'} para chat ${chatId}`);
+
       if (active) {
+        console.log('✅ ACTIVANDO A.E AI - ABRIENDO SMARTBOTS');
         return res.json({
           success: true,
           active: true,
@@ -1401,6 +1405,7 @@ app.use((req, res, next) => {
           message: '🤖 A.E AI activado correctamente - Smartbots conectado'
         });
       } else {
+        console.log('🔴 DESACTIVANDO A.E AI');
         return res.json({
           success: true,
           active: false,
@@ -1409,10 +1414,10 @@ app.use((req, res, next) => {
       }
 
     } catch (error) {
-      console.error('💥 ERROR en endpoint de compatibilidad:', error);
+      console.error('💥 ERROR CRÍTICO en botón A.E AI real:', error);
       return res.status(500).json({ 
         success: false, 
-        message: 'Error interno' 
+        message: 'Error crítico' 
       });
     }
   });
