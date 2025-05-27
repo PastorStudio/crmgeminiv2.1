@@ -2920,6 +2920,61 @@ app.use((req, res, next) => {
     }
   });
 
+  // Endpoint simple para asignar agente automáticamente
+  app.post("/api/simple/assign-agent", async (req: Request, res: Response) => {
+    try {
+      const { accountId, agentId } = req.body;
+      
+      if (!accountId || !agentId) {
+        return res.status(400).json({
+          success: false,
+          error: 'accountId y agentId son requeridos'
+        });
+      }
+
+      console.log(`🔧 Asignando agente ${agentId} a cuenta WhatsApp ${accountId}...`);
+      
+      // Actualizar directamente en la base de datos
+      const updateResult = await db.execute(`
+        UPDATE whatsapp_accounts 
+        SET assigned_external_agent_id = $1, auto_response_enabled = true 
+        WHERE id = $2
+        RETURNING *
+      `, [agentId, accountId]);
+      
+      if (updateResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Cuenta de WhatsApp no encontrada'
+        });
+      }
+      
+      // Obtener información del agente
+      const agentResult = await db.execute(`
+        SELECT agent_name FROM external_agents WHERE id = $1
+      `, [agentId]);
+      
+      const agentName = agentResult.rows.length > 0 ? agentResult.rows[0].agent_name : 'Agente desconocido';
+      
+      console.log(`✅ Agente ${agentName} asignado exitosamente a cuenta ${accountId}`);
+      
+      res.json({
+        success: true,
+        message: `Agente ${agentName} asignado correctamente`,
+        accountId: parseInt(accountId),
+        agentId: agentId,
+        agentName: agentName
+      });
+      
+    } catch (error) {
+      console.error('❌ Error asignando agente:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
   // Análisis automático completo de agentes
   app.get("/api/agent-analysis", async (_req: Request, res: Response) => {
     try {
