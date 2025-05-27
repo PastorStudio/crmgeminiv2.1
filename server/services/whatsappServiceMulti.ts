@@ -160,23 +160,73 @@ const whatsappServiceMulti = {
           contactName: message.contactName
         };
 
-        const agentResult = await externalAgentWhatsAppIntegrator.processIncomingMessage(whatsappMessage);
-        
-        if (agentResult.success && agentResult.response) {
-          console.log(`🤖 Respuesta generada por agente externo ${agentResult.agentName}: "${agentResult.response.substring(0, 50)}..."`);
+        // Activar respuestas automáticas con agente asignado
+        try {
+          console.log(`🔍 Verificando agente asignado para cuenta ${accountId}...`);
           
-          // Enviar respuesta automáticamente
-          try {
-            await this.sendMessage(accountId, message.chatId || message.from, {
-              message: agentResult.response,
-              isAutoResponse: true,
-              source: `Agente Externo: ${agentResult.agentName}`
-            });
-            console.log(`✅ Respuesta de agente externo enviada exitosamente`);
-            return; // No procesar más si el agente externo respondió
-          } catch (sendError) {
-            console.error('❌ Error enviando respuesta de agente externo:', sendError);
+          // Verificar agente asignado en la base de datos
+          const { db } = await import('../db');
+          const configQuery = await db.execute(`
+            SELECT assigned_external_agent_id, auto_response_enabled 
+            FROM whatsapp_accounts 
+            WHERE id = $1
+          `, [accountId]);
+          
+          if (configQuery.rows.length > 0) {
+            const config = configQuery.rows[0];
+            console.log(`🎯 Configuración encontrada:`, config);
+            
+            if (config.assigned_external_agent_id && config.auto_response_enabled) {
+              // Obtener información del agente
+              const agentQuery = await db.execute(`
+                SELECT agent_name FROM external_agents 
+                WHERE id = $1
+              `, [config.assigned_external_agent_id]);
+              
+              if (agentQuery.rows.length > 0) {
+                const agentName = agentQuery.rows[0].agent_name;
+                console.log(`🤖 Generando respuesta automática con ${agentName}...`);
+                
+                // Generar respuesta usando OpenAI
+                const OpenAI = require('openai');
+                const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+                
+                const systemPrompt = `Eres ${agentName}, un asistente virtual profesional y amigable. 
+                Responde de manera útil y conversacional en español. 
+                Mantén las respuestas concisas pero informativas.`;
+                
+                const response = await openai.chat.completions.create({
+                  model: "gpt-4o",
+                  messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: message.body }
+                  ],
+                  max_tokens: 200,
+                  temperature: 0.7,
+                });
+
+                const autoResponse = response.choices[0].message.content || 'Lo siento, no pude procesar tu mensaje.';
+                
+                console.log(`✅ RESPUESTA GENERADA POR ${agentName}: ${autoResponse.substring(0, 50)}...`);
+                
+                // Enviar respuesta automáticamente
+                await this.sendMessage(accountId, message.chatId || message.from, {
+                  message: autoResponse,
+                  isAutoResponse: true,
+                  source: `Agente: ${agentName}`
+                });
+                
+                console.log(`🚀 Respuesta automática enviada exitosamente por ${agentName}`);
+                return; // No procesar más si el agente respondió
+              }
+            } else {
+              console.log(`⏭️ Cuenta ${accountId} no tiene respuesta automática activada`);
+            }
+          } else {
+            console.log(`❌ Configuración no encontrada para cuenta ${accountId}`);
           }
+        } catch (autoResponseError) {
+          console.error('❌ Error en respuesta automática:', autoResponseError);
         }
       }
       
