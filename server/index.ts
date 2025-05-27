@@ -1346,25 +1346,93 @@ app.use((req, res, next) => {
 
   // ===== A.E AI - SISTEMA ULTRA-SIMPLIFICADO =====
   
-  // A.E AI TOGGLE - FUNCIONAL GARANTIZADO
-  app.post('/api/ae-ai/toggle', (req, res) => {
+  // A.E AI TOGGLE - CON PROCESADOR AUTOMÁTICO
+  app.post('/api/ae-ai/toggle', async (req, res) => {
     const { chatId, accountId, active } = req.body;
     
-    console.log('🎉 A.E AI ACTIVADO EXITOSAMENTE');
-    
-    if (active) {
-      res.json({
-        success: true,
-        active: true,
-        agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
-        agentName: 'Smartbots',
-        message: '🤖 A.E AI activado - Smartbots conectado'
+    try {
+      // Importar el procesador de respuestas automáticas
+      const { configureAEAI } = await import('./services/autoResponseProcessor.js');
+      
+      console.log(`🎯 A.E AI ${active ? 'ACTIVANDO' : 'DESACTIVANDO'} para chat ${chatId}`);
+      
+      // Configurar A.E AI con el procesador
+      const config = configureAEAI(
+        chatId, 
+        active, 
+        'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
+        'Smartbots'
+      );
+      
+      if (active) {
+        console.log('✅ A.E AI ACTIVADO - Sistema de respuestas automáticas funcionando');
+        res.json({
+          success: true,
+          active: true,
+          agentUrl: config.agentUrl,
+          agentName: config.agentName,
+          message: '🤖 A.E AI activado - Respuestas automáticas funcionando'
+        });
+      } else {
+        console.log('🔴 A.E AI DESACTIVADO - Respuestas automáticas detenidas');
+        res.json({
+          success: true,
+          active: false,
+          message: '🔴 A.E AI desactivado'
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ Error configurando A.E AI:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
-    } else {
+    }
+  });
+
+  // ENDPOINT PARA SIMULAR MENSAJE ENTRANTE Y PROBAR A.E AI
+  app.post('/api/ae-ai/test-message', async (req, res) => {
+    const { chatId, message, accountId = 1 } = req.body;
+    
+    try {
+      console.log(`🧪 PROBANDO A.E AI con mensaje: "${message}" en chat ${chatId}`);
+      
+      const { processIncomingMessage } = await import('./services/autoResponseProcessor.js');
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager.js');
+      
+      // Simular mensaje entrante y procesar con A.E AI
+      const processed = await processIncomingMessage(
+        chatId,
+        `test_${Date.now()}`, // ID único para el mensaje de prueba
+        message,
+        true, // Es de usuario
+        {
+          sendMessage: async (to: string, response: string) => {
+            console.log(`📤 A.E AI respuesta automática para ${to}: "${response}"`);
+            try {
+              const result = await whatsappMultiAccountManager.sendMessage(accountId, to, response);
+              console.log(`✅ Respuesta A.E AI enviada exitosamente`);
+              return result;
+            } catch (error) {
+              console.error(`❌ Error enviando respuesta A.E AI:`, error);
+              throw error;
+            }
+          }
+        }
+      );
+      
       res.json({
         success: true,
-        active: false,
-        message: '🔴 A.E AI desactivado'
+        processed,
+        message: processed ? 'Respuesta A.E AI generada y enviada' : 'A.E AI no está activo para este chat'
+      });
+      
+    } catch (error) {
+      console.error('❌ Error procesando mensaje de prueba A.E AI:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error procesando mensaje de prueba'
       });
     }
   });

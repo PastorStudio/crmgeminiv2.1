@@ -1796,6 +1796,52 @@ export function WhatsAppTwoColumn() {
                       )}
                     </Button>
                   </motion.div>
+
+                  {/* BOTÓN DE PRUEBA A.E AI */}
+                  {externalAgentActive && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3, delay: 0.2 }}
+                    >
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-green-600 text-green-600 hover:bg-green-50 transition-all duration-300"
+                        onClick={async () => {
+                          if (!selectedChat) return;
+                          
+                          try {
+                            console.log('🧪 PROBANDO A.E AI');
+                            
+                            const response = await fetch('/api/ae-ai/test-message', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                chatId: selectedChat.id,
+                                message: "Hola, necesito ayuda con información sobre productos",
+                                accountId: selectedChat.accountId
+                              })
+                            });
+                            
+                            if (response.ok) {
+                              const result = await response.json();
+                              toast({
+                                title: "🧪 Prueba A.E AI",
+                                description: result.message,
+                                duration: 5000,
+                              });
+                            }
+                          } catch (error) {
+                            console.error('❌ Error probando A.E AI:', error);
+                          }
+                        }}
+                      >
+                        <TestTube className="h-4 w-4 mr-2" />
+                        Probar
+                      </Button>
+                    </motion.div>
+                  )}
                   
 
 
