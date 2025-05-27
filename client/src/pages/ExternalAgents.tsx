@@ -331,7 +331,7 @@ export default function ExternalAgents() {
     try {
       console.log('🧪 Enviando prueba a agente:', selectedAgentForTest);
       
-      const response = await fetch(`/bypass-agent-test`, {
+      const response = await fetch(`http://localhost:5000/bypass-agent-test`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
