@@ -1334,9 +1334,9 @@ app.use((req, res, next) => {
 
   // ===== A.E AI - SISTEMA ULTRA-SIMPLIFICADO =====
   
-  // Activar/Desactivar agente externo (funciona 100% garantizado)
-  app.post('/api/external-agents/toggle', (req, res) => {
-    console.log('🚀 BOTÓN A.E AI PRESIONADO - Datos:', req.body);
+  // Activar/Desactivar agente externo (NUEVA RUTA SIN CONFLICTOS)
+  app.post('/api/ae-ai/toggle', (req, res) => {
+    console.log('🚀 BOTÓN A.E AI PRESIONADO (NUEVA RUTA) - Datos:', req.body);
     
     try {
       const { chatId, accountId, active } = req.body;
@@ -1374,6 +1374,45 @@ app.use((req, res, next) => {
       return res.status(500).json({ 
         success: false, 
         message: 'Error crítico en A.E AI' 
+      });
+    }
+  });
+
+  // Mantener el endpoint antiguo pero redirigir al nuevo para compatibilidad
+  app.post('/api/external-agents/toggle', (req, res) => {
+    console.log('🔄 Redirigiendo desde endpoint antiguo al nuevo');
+    
+    try {
+      const { chatId, accountId, active } = req.body;
+      
+      if (!chatId || !accountId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Se requiere chatId y accountId' 
+        });
+      }
+
+      if (active) {
+        return res.json({
+          success: true,
+          active: true,
+          agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
+          agentName: 'Smartbots',
+          message: '🤖 A.E AI activado correctamente - Smartbots conectado'
+        });
+      } else {
+        return res.json({
+          success: true,
+          active: false,
+          message: '🔴 A.E AI desactivado'
+        });
+      }
+
+    } catch (error) {
+      console.error('💥 ERROR en endpoint de compatibilidad:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Error interno' 
       });
     }
   });

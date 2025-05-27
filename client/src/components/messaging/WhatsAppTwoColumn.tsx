@@ -316,7 +316,7 @@ export function WhatsAppTwoColumn() {
         active: newState
       });
       
-      const response = await fetch('/api/external-agents/toggle', {
+      const response = await fetch('/api/ae-ai/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
