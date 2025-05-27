@@ -643,6 +643,7 @@ app.use((req, res, next) => {
   // Activar/Desactivar agente externo para un chat específico
   app.post('/api/external-agents/toggle', async (req, res) => {
     try {
+      res.setHeader('Content-Type', 'application/json');
       console.log('🤖 Toggle A.E AI para chat:', req.body);
       const { chatId, accountId, active } = req.body;
       
@@ -809,15 +810,65 @@ app.use((req, res, next) => {
     }
   });
 
-  // Listar todos los agentes externos
+  // Crear agente externo desde URL (CONSOLIDADO)
+  app.post('/api/external-agents/create-from-url', async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      console.log('🤖 Creando agente externo desde URL:', req.body);
+      
+      const { name, description, agentUrl } = req.body;
+      
+      if (!name || !agentUrl) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Se requieren name y agentUrl' 
+        });
+      }
+
+      const { externalAgents } = await import('@shared/schema');
+      
+      const [newAgent] = await db
+        .insert(externalAgents)
+        .values({
+          name,
+          description: description || '',
+          agentUrl,
+          isActive: true,
+          createdAt: new Date()
+        })
+        .returning();
+
+      console.log('✅ Agente externo creado exitosamente:', newAgent.id);
+
+      res.json({
+        success: true,
+        agent: newAgent,
+        message: 'Agente externo creado exitosamente'
+      });
+
+    } catch (error) {
+      console.error('❌ Error creando agente externo:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al crear agente externo' 
+      });
+    }
+  });
+
+  // Listar todos los agentes externos (CONSOLIDADO)
   app.get('/api/external-agents', async (req, res) => {
     try {
+      res.setHeader('Content-Type', 'application/json');
+      console.log('📋 Obteniendo lista de agentes externos...');
+      
       const { externalAgents } = await import('@shared/schema');
       
       const agents = await db
         .select()
         .from(externalAgents)
         .orderBy(externalAgents.createdAt);
+
+      console.log('✅ Agentes externos encontrados:', agents.length);
 
       res.json({
         success: true,
