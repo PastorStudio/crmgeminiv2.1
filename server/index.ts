@@ -353,15 +353,18 @@ app.get('/api/external-agents-direct', async (req: Request, res: Response) => {
 
 // RUTAS CRÍTICAS ANTES QUE VITE - AGENTES EXTERNOS Y ESTADO EN VIVO
 
-// Endpoint directo para agentes externos - sin interceptación de Vite
-app.get('/direct-agents-list', async (req: Request, res: Response) => {
+// Asegurar que el middleware de bypass esté configurado correctamente  
+app.use("/api/bypass/", (req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
+
+app.get('/api/bypass/agents-list', async (req: Request, res: Response) => {
   try {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    
-    console.log('🔍 Obteniendo agentes desde PostgreSQL...');
+    console.log('🔍 [BYPASS] Obteniendo agentes desde PostgreSQL...');
     
     // Usar SQL directo para obtener los agentes
     const result = await pool.query(`
@@ -373,9 +376,9 @@ app.get('/direct-agents-list', async (req: Request, res: Response) => {
     `);
     
     const agents = result.rows;
-    console.log(`✅ ${agents.length} agentes encontrados en PostgreSQL`);
+    console.log(`✅ [BYPASS] ${agents.length} agentes encontrados en PostgreSQL`);
 
-    return res.json({
+    const responseData = {
       success: true,
       agents: agents.map((agent: any) => ({
         id: agent.id,
@@ -387,11 +390,13 @@ app.get('/direct-agents-list', async (req: Request, res: Response) => {
         provider: agent.provider,
         notes: agent.notes
       }))
-    });
+    };
+
+    res.json(responseData);
 
   } catch (error) {
-    console.error('❌ Error obteniendo agentes:', error);
-    return res.json({
+    console.error('❌ [BYPASS] Error obteniendo agentes:', error);
+    res.json({
       success: false,
       agents: [],
       error: 'Database connection error'
