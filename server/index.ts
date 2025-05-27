@@ -102,7 +102,7 @@ app.post('/api/external-agents-direct', async (req: Request, res: Response) => {
       success: true,
       agent: {
         id: newAgent.id,
-        name: newAgent.agentName,
+        name: extractedName, // Usar el nombre extraído directamente
         agentUrl: newAgent.agentUrl,
         isActive: newAgent.status === 'active'
       },
