@@ -332,7 +332,7 @@ export default function ExternalAgents() {
       console.log('🧪 Conectando con agente ChatGPT:', selectedAgentForTest);
       
       // Encontrar el agente seleccionado
-      const selectedAgent = externalAgents.find(agent => agent.id === selectedAgentForTest);
+      const selectedAgent = agents.find(agent => agent.id === selectedAgentForTest);
       
       if (!selectedAgent) {
         throw new Error('Agente no encontrado');
