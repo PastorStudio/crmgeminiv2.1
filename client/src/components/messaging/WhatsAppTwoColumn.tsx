@@ -7,6 +7,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
@@ -28,6 +36,9 @@ import {
   Settings,
   Bell,
   Tag,
+  Bot,
+  CheckCircle,
+  X,
   AlertCircle,
   CheckCircle2,
   Smile,
@@ -291,6 +302,11 @@ export function WhatsAppTwoColumn() {
   const [externalAgentActive, setExternalAgentActive] = useState(false);
   const [externalAgentProcessing, setExternalAgentProcessing] = useState(false);
   const [externalAgentUrl, setExternalAgentUrl] = useState<string>('');
+  
+  // Estados para el selector de agentes independiente
+  const [selectedExternalAgentId, setSelectedExternalAgentId] = useState<string | null>(null);
+  const [externalAgentsList, setExternalAgentsList] = useState<any[]>([]);
+  const [agentSelectorOpen, setAgentSelectorOpen] = useState(false);
 
   // Cargar estado del agente externo al seleccionar chat
   useEffect(() => {
@@ -313,6 +329,80 @@ export function WhatsAppTwoColumn() {
 
     loadAgentStatus();
   }, [selectedChat]);
+
+  // Cargar lista de agentes externos disponibles
+  useEffect(() => {
+    const loadExternalAgents = async () => {
+      try {
+        const response = await fetch('/api/external-agents');
+        const data = await response.json();
+        
+        if (data.success && data.agents) {
+          setExternalAgentsList(data.agents);
+          console.log('📋 Agentes externos cargados:', data.agents.length);
+        }
+      } catch (error) {
+        console.error('Error cargando agentes externos:', error);
+      }
+    };
+
+    loadExternalAgents();
+  }, []);
+
+  // Función para generar respuesta con agente seleccionado independiente
+  const generateResponseWithSelectedAgent = async (userMessage: string, contactName: string) => {
+    if (!selectedExternalAgentId) {
+      toast({
+        title: "No hay agente seleccionado",
+        description: "Selecciona un agente externo primero",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      console.log(`🤖 Generando respuesta con agente ${selectedExternalAgentId}`);
+      
+      const response = await fetch('/api/external-agents/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agentId: selectedExternalAgentId,
+          message: userMessage,
+          context: `Conversación de WhatsApp con ${contactName}`
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.response) {
+        console.log('✅ Respuesta generada:', data.response);
+        
+        // Mostrar la respuesta en el área de texto para que el usuario pueda enviarla
+        setNewMessage(data.response);
+        
+        toast({
+          title: "🤖 Respuesta generada",
+          description: `El agente ha generado una respuesta sugerida`,
+          duration: 3000
+        });
+        
+        return data.response;
+      } else {
+        throw new Error(data.message || 'Error generando respuesta');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error generando respuesta:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo generar la respuesta",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Función para alternar A.E AI (Agentes Externos)
   const toggleExternalAgent = async () => {
@@ -1736,24 +1826,258 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
                   
-                  {/* A.E AI SWITCH - RESPUESTAS AUTOMÁTICAS */}
+                  {/* SELECTOR DE AGENTES INDEPENDIENTE */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
                   >
+                    <DropdownMenu open={agentSelectorOpen} onOpenChange={setAgentSelectorOpen}>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant={selectedExternalAgentId ? "default" : "outline"}
+                          className={`${
+                            selectedExternalAgentId 
+                              ? "bg-purple-600 text-white hover:bg-purple-700 shadow-lg" 
+                              : "border-purple-600 text-purple-600 hover:bg-purple-50"
+                          } transition-all duration-300 relative`}
+                        >
+                          <Bot className="h-4 w-4 mr-2" />
+                          {selectedExternalAgentId ? 
+                            externalAgentsList.find(a => a.id === selectedExternalAgentId)?.name?.substring(0, 10) || 'Agente'
+                            : 'Seleccionar Agente'
+                          }
+                          {selectedExternalAgentId && (
+                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-64">
+                        <DropdownMenuLabel>Agentes Externos Disponibles</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {externalAgentsList.length > 0 ? (
+                          externalAgentsList.map((agent) => (
+                            <DropdownMenuItem
+                              key={agent.id}
+                              onClick={() => {
+                                setSelectedExternalAgentId(agent.id);
+                                toast({
+                                  title: `🤖 Agente seleccionado`,
+                                  description: `${agent.name} está listo para generar respuestas`,
+                                  duration: 3000
+                                });
+                              }}
+                              className={selectedExternalAgentId === agent.id ? "bg-purple-50" : ""}
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center space-x-2">
+                                  <Bot className="h-4 w-4" />
+                                  <span className="font-medium">{agent.name}</span>
+                                </div>
+                                {selectedExternalAgentId === agent.id && (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                )}
+                              </div>
+                            </DropdownMenuItem>
+                          ))
+                        ) : (
+                          <DropdownMenuItem disabled>
+                            No hay agentes disponibles
+                          </DropdownMenuItem>
+                        )}
+                        {selectedExternalAgentId && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedExternalAgentId(null);
+                                toast({
+                                  title: "Agente deseleccionado",
+                                  description: "Ningún agente está activo",
+                                  duration: 2000
+                                });
+                              }}
+                              className="text-red-600"
+                            >
+                              <X className="h-4 w-4 mr-2" />
+                              Deseleccionar
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </motion.div>
+
+                  {/* BOTÓN GENERAR RESPUESTA */}
+                  {selectedExternalAgentId && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3, delay: 0.2 }}
+                    >
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-green-600 text-green-600 hover:bg-green-50 transition-all duration-300"
+                        onClick={async () => {
+                          if (!selectedChat) {
+                            toast({
+                              title: "Error",
+                              description: "Selecciona un chat primero",
+                              variant: "destructive"
+                            });
+                            return;
+                          }
+
+                          // Obtener el último mensaje del contacto (no nuestro)
+                          const lastUserMessage = messages
+                            .filter(msg => !msg.fromMe)
+                            .sort((a, b) => b.timestamp - a.timestamp)[0];
+
+                          if (!lastUserMessage) {
+                            toast({
+                              title: "No hay mensajes",
+                              description: "No hay mensajes del contacto para procesar",
+                              variant: "destructive"
+                            });
+                            return;
+                          }
+
+                          console.log('🤖 Generando respuesta para:', lastUserMessage.body);
+                          
+                          // Generar respuesta con el agente seleccionado
+                          await generateResponseWithSelectedAgent(
+                            lastUserMessage.body,
+                            selectedChat.name
+                          );
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Generar Respuesta
+                      </Button>
+                    </motion.div>
+                  )}
+
+                  {/* Información del agente seleccionado */}
+                  {selectedExternalAgentId && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="ml-2"
+                    >
+                      <div className="text-xs text-purple-600 font-medium">
+                        🤖 {externalAgentsList.find(a => a.id === selectedExternalAgentId)?.name}
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Chat Messages */}
+                <div className="flex-1 overflow-hidden">
+                  <ScrollArea className="h-full p-4">
+                    <div className="space-y-4">
+                      {messages.map((message) => (
+                        <motion.div
+                          key={message.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                              message.fromMe
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-200 text-gray-800'
+                            }`}
+                          >
+                            {!message.fromMe && selectedChat?.isGroup && message.author && (
+                              <div className="text-xs font-medium mb-1 opacity-75">
+                                {message.author}
+                              </div>
+                            )}
+                            <div className="text-sm whitespace-pre-wrap">
+                              {message.body}
+                            </div>
+                            <div className="text-xs mt-1 opacity-75">
+                              {formatTime(message.timestamp)}
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+
+                {/* Message Input */}
+                <div className="border-t p-4">
+                  <div className="flex space-x-2">
+                    <Textarea
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Escribe un mensaje..."
+                      className="flex-1 min-h-[60px] resize-none"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                    />
                     <Button
-                      size="sm"
-                      variant={externalAgentActive ? "default" : "outline"}
-                      className={`${
-                        externalAgentActive 
-                          ? "bg-green-600 text-white hover:bg-green-700 shadow-lg" 
-                          : "border-purple-600 text-purple-600 hover:bg-purple-50"
-                      } transition-all duration-300 relative`}
-                      onClick={async () => {
-                        console.log('🚀 A.E AI TOGGLE PRESIONADO');
-                        
-                        if (!selectedChat) {
+                      onClick={handleSendMessage}
+                      disabled={!newMessage.trim() || isSendingMessage}
+                      className="self-end"
+                    >
+                      {isSendingMessage ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <MessageSquare className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Selecciona una conversación
+                  </h3>
+                  <p className="text-gray-500">
+                    Elige un chat de la lista para ver y enviar mensajes
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Chat Assignment Dialog */}
+          <ChatAssignmentDialog
+            isOpen={assignmentDialogOpen}
+            onClose={() => setAssignmentDialogOpen(false)}
+            chatId={selectedChat?.id || ''}
+            accountId={selectedChat?.accountId || 0}
+            onAssignmentUpdated={() => {
+              // Recargar datos si es necesario
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Helper function to format time
+function formatTime(timestamp: number): string {
+  return new Date(timestamp * 1000).toLocaleTimeString('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
                           toast({
                             title: "Error",
                             description: "Selecciona un chat primero",
