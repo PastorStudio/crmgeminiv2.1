@@ -195,13 +195,21 @@ function ChatCommentsIndicator({ chatId }: { chatId: string }) {
     enabled: !!chatId
   });
 
-  if (!comments || comments.length === 0) return null;
+  if (!comments || comments.length === 0) {
+    return (
+      <div className="flex items-center">
+        <MessageSquareMore className="h-4 w-4 text-gray-400" />
+      </div>
+    );
+  }
 
   return (
-    <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200 mt-[0px] mb-[0px] ml-[90px] mr-[90px]">
-      <MessageSquareMore className="h-3 w-3 mr-1" />
-      {comments.length}
-    </Badge>
+    <div className="flex items-center relative">
+      <MessageSquareMore className="h-4 w-4 text-orange-600" />
+      <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-[10px] rounded-full h-5 w-5 flex items-center justify-center font-bold border-2 border-white">
+        {comments.length > 99 ? '99+' : comments.length}
+      </div>
+    </div>
   );
 }
 
@@ -248,7 +256,6 @@ export function WhatsAppTwoColumn() {
   const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<string>('nuevos'); // Estado para el ticket seleccionado
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserProfile, setShowUserProfile] = useState(false);
@@ -1431,22 +1438,7 @@ export function WhatsAppTwoColumn() {
           />
         </div>
 
-        {/* Ticket Selector */}
-        <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-blue-50">
-          <Select value={selectedTicket} onValueChange={setSelectedTicket}>
-            <SelectTrigger className="w-full h-8">
-              <SelectValue placeholder="Seleccionar tipo de ticket" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="nuevos">📋 Nuevos</SelectItem>
-              <SelectItem value="interesados">💡 Interesados</SelectItem>
-              <SelectItem value="no-leidos">📧 No Leidos</SelectItem>
-              <SelectItem value="pendiente-demo">🎯 Pendiente Demo</SelectItem>
-              <SelectItem value="completados">✅ Completados</SelectItem>
-              <SelectItem value="no-interesados">❌ No Interesados</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+
 
         {/* Chat List */}
         <ScrollArea className="flex-1">
@@ -1506,20 +1498,11 @@ export function WhatsAppTwoColumn() {
                         
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2 flex-1">
-                            {/* Chat Assignment Info */}
+                            {/* Chat Assignment Info - Cada chat maneja su propio agente */}
                             <ChatAssignmentBadge chatId={chat.id} accountId={chat.accountId} />
                             
-                            {/* Ticket Badge - se actualiza cuando cambia selectedTicket */}
-                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 ml-[74px] mr-[74px]">
-                              <Ticket className="h-3 w-3 mr-1" />
-                              {selectedTicket === "nuevos" ? "📋 Nuevos" :
-                               selectedTicket === "interesados" ? "💡 Interesados" :
-                               selectedTicket === "no-leidos" ? "📧 No Leidos" :
-                               selectedTicket === "pendiente-demo" ? "🎯 Pendiente Demo" :
-                               selectedTicket === "completados" ? "✅ Completados" :
-                               selectedTicket === "no-interesados" ? "❌ No Interesados" :
-                               "Sin Ticket"}
-                            </Badge>
+                            {/* Ticket Badge Individual - Cada chat maneja su propio ticket */}
+                            <ChatCategorizationBadge chatId={chat.id} accountId={chat.accountId} />
                             
                             {/* Comments Indicator */}
                             <ChatCommentsIndicator chatId={chat.id} />
