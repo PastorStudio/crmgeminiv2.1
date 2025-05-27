@@ -38,6 +38,18 @@ app.use((req, res, next) => {
   }
 });
 
+// INTERCEPTOR GLOBAL PARA DEBUGGING A.E AI
+app.use((req, res, next) => {
+  if (req.path === '/api/ae-ai/toggle' && req.method === 'POST') {
+    console.log('🚨🚨🚨 INTERCEPTOR GLOBAL - A.E AI TOGGLE DETECTADO');
+    console.log('📍 URL completa:', req.url);
+    console.log('📦 Body raw:', JSON.stringify(req.body));
+    console.log('🔍 Content-Type:', req.headers['content-type']);
+    console.log('🎯 Timestamp:', new Date().toISOString());
+  }
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
