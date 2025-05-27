@@ -1391,8 +1391,8 @@ app.use((req, res, next) => {
     }
   });
 
-  // ENDPOINT PARA SIMULAR MENSAJE ENTRANTE Y PROBAR A.E AI
-  app.post('/api/ae-ai/test-message', async (req, res) => {
+  // ENDPOINT MEJORADO PARA PROBAR A.E AI
+  app.post('/api/ae-ai/test-response', async (req, res) => {
     console.log(`🚀 ENDPOINT TEST-MESSAGE INICIADO`);
     console.log(`📦 Body recibido:`, req.body);
     
