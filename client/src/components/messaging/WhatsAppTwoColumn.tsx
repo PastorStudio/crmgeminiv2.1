@@ -1839,8 +1839,8 @@ export function WhatsAppTwoColumn() {
                     />
                   </motion.div>
 
-                  {/* BOTÓN DE PRUEBA A.E AI - OCULTO */}
-                  {false && externalAgentActive && (
+                  {/* BOTÓN DE PRUEBA A.E AI - ELIMINADO COMPLETAMENTE */}
+                  {false && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}

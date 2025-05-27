@@ -598,6 +598,7 @@ app.post('/api/create-external-agent', async (req: Request, res: Response) => {
     const [newAgent] = await db
       .insert(externalAgents)
       .values({
+        id: `agent-${Date.now()}`, // ID único para el agente
         chatId: `default-${Date.now()}`, // ID temporal hasta que se asigne a un chat
         accountId: 1, // Cuenta por defecto
         agentName: extractedName,
@@ -3000,6 +3001,95 @@ app.use((req, res, next) => {
   });
 
   // Tarjetas de leads con información completa del chat y contacto
+  // ===== ENDPOINTS PARA RESPUESTAS AUTOMÁTICAS SIMPLIFICADAS =====
+  
+  // Asignar agente externo a cuenta de WhatsApp
+  app.post("/api/simple/assign-agent", async (req: Request, res: Response) => {
+    try {
+      const { accountId, agentId } = req.body;
+      
+      if (!accountId || !agentId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Se requieren accountId y agentId'
+        });
+      }
+
+      const { SimpleAutoResponseService } = await import('./services/simpleAutoResponse');
+      const success = await SimpleAutoResponseService.assignAgentToAccount(accountId, agentId);
+      
+      if (success) {
+        res.json({
+          success: true,
+          message: 'Agente asignado y respuestas automáticas activadas'
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Error asignando agente'
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en assign-agent:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
+  // Obtener agentes disponibles
+  app.get("/api/simple/available-agents", async (req: Request, res: Response) => {
+    try {
+      const { SimpleAutoResponseService } = await import('./services/simpleAutoResponse');
+      const agents = await SimpleAutoResponseService.getAvailableAgents();
+      
+      res.json({
+        success: true,
+        agents
+      });
+      
+    } catch (error) {
+      console.error('❌ Error obteniendo agentes:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
+  // Procesar mensaje entrante (para testing de respuestas automáticas)
+  app.post("/api/simple/process-message", async (req: Request, res: Response) => {
+    try {
+      const { accountId, chatId, messageText, fromNumber } = req.body;
+      
+      const { SimpleAutoResponseService } = await import('./services/simpleAutoResponse');
+      const result = await SimpleAutoResponseService.processIncomingMessage(
+        accountId, chatId, messageText, fromNumber || 'Cliente'
+      );
+      
+      if (result) {
+        res.json({
+          success: true,
+          ...result
+        });
+      } else {
+        res.json({
+          success: false,
+          message: 'No se generó respuesta automática'
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ Error procesando mensaje:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
   app.get("/api/leads-cards", async (req: Request, res: Response) => {
     try {
       const agentId = req.query.agentId ? parseInt(req.query.agentId as string) : null;
