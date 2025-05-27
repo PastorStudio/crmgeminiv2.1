@@ -18,9 +18,14 @@ export class AgentRoleManager {
    * Roles disponibles en el sistema
    */
   private readonly ROLES = {
+    superadmin: {
+      name: 'Superadministrador',
+      description: 'Control total del sistema - Crear/eliminar agentes',
+      level: 6
+    },
     admin: {
       name: 'Administrador',
-      description: 'Acceso completo al sistema',
+      description: 'Acceso completo operativo',
       level: 5
     },
     supervisor: {
@@ -30,12 +35,12 @@ export class AgentRoleManager {
     },
     senior_agent: {
       name: 'Agente Senior',
-      description: 'Agente experimentado con acceso ampliado',
+      description: 'Agente experimentado con funciones avanzadas',
       level: 3
     },
     agent: {
       name: 'Agente',
-      description: 'Agente estándar con acceso básico',
+      description: 'Operaciones básicas y gestión de chats',
       level: 2
     },
     viewer: {
@@ -49,76 +54,178 @@ export class AgentRoleManager {
    * Páginas y módulos disponibles en el sistema
    */
   private readonly PAGES = {
-    // Dashboard y inicio
-    dashboard: { name: 'Dashboard', category: 'general', minLevel: 1 },
+    // ===== DASHBOARD Y INICIO =====
+    dashboard: { name: 'Dashboard', description: 'Tablero principal con métricas', category: 'general' },
+    dashboard_personal: { name: 'Dashboard Personal', description: 'Métricas personales del agente', category: 'general' },
+    dashboard_team: { name: 'Dashboard de Equipo', description: 'Métricas del equipo', category: 'general' },
+    dashboard_global: { name: 'Dashboard Global', description: 'Métricas globales del sistema', category: 'general' },
     
-    // WhatsApp y comunicación
-    whatsapp: { name: 'WhatsApp', category: 'communication', minLevel: 2 },
-    whatsapp_accounts: { name: 'Cuentas WhatsApp', category: 'communication', minLevel: 3 },
-    whatsapp_settings: { name: 'Configuración WhatsApp', category: 'communication', minLevel: 4 },
+    // ===== WHATSAPP Y COMUNICACIÓN =====
+    whatsapp: { name: 'WhatsApp', description: 'Gestión de chats y mensajes', category: 'communication' },
+    whatsapp_accounts: { name: 'Cuentas WhatsApp', description: 'Administración de cuentas WhatsApp', category: 'communication' },
+    whatsapp_create: { name: 'Crear Cuenta WhatsApp', description: 'Crear nuevas cuentas WhatsApp', category: 'communication' },
+    whatsapp_edit: { name: 'Editar Cuenta WhatsApp', description: 'Modificar cuentas WhatsApp', category: 'communication' },
+    whatsapp_delete: { name: 'Eliminar Cuenta WhatsApp', description: 'Eliminar cuentas WhatsApp', category: 'communication' },
+    whatsapp_settings: { name: 'Configuración WhatsApp', description: 'Configuraciones avanzadas WhatsApp', category: 'communication' },
     
-    // CRM y leads
-    leads: { name: 'Leads', category: 'crm', minLevel: 2 },
-    leads_create: { name: 'Crear Leads', category: 'crm', minLevel: 2 },
-    leads_edit: { name: 'Editar Leads', category: 'crm', minLevel: 2 },
-    leads_delete: { name: 'Eliminar Leads', category: 'crm', minLevel: 3 },
+    // ===== CRM Y LEADS =====
+    leads: { name: 'Leads', description: 'Gestión de prospectos y clientes potenciales', category: 'crm' },
+    leads_view: { name: 'Ver Leads', description: 'Visualizar leads del sistema', category: 'crm' },
+    leads_create: { name: 'Crear Leads', description: 'Crear nuevos leads', category: 'crm' },
+    leads_edit: { name: 'Editar Leads', description: 'Modificar leads existentes', category: 'crm' },
+    leads_delete: { name: 'Eliminar Leads', description: 'Eliminar leads del sistema', category: 'crm' },
+    leads_assign: { name: 'Asignar Leads', description: 'Asignar leads a agentes', category: 'crm' },
+    leads_analysis: { name: 'Análisis de Leads', description: 'Análisis avanzado de leads', category: 'crm' },
     
-    // Actividades y tareas
-    activities: { name: 'Actividades', category: 'tasks', minLevel: 2 },
-    activities_create: { name: 'Crear Actividades', category: 'tasks', minLevel: 2 },
+    // ===== ACTIVIDADES Y TAREAS =====
+    activities: { name: 'Actividades', description: 'Gestión de actividades y tareas', category: 'tasks' },
+    activities_view: { name: 'Ver Actividades', description: 'Visualizar actividades', category: 'tasks' },
+    activities_create: { name: 'Crear Actividades', description: 'Crear nuevas actividades', category: 'tasks' },
+    activities_edit: { name: 'Editar Actividades', description: 'Modificar actividades', category: 'tasks' },
+    activities_assign: { name: 'Asignar Actividades', description: 'Asignar actividades a otros', category: 'tasks' },
     
-    // Tickets y soporte
-    tickets: { name: 'Tickets', category: 'support', minLevel: 2 },
-    tickets_create: { name: 'Crear Tickets', category: 'support', minLevel: 2 },
-    tickets_manage: { name: 'Gestionar Tickets', category: 'support', minLevel: 3 },
+    // ===== TICKETS Y SOPORTE =====
+    tickets: { name: 'Tickets', description: 'Sistema de tickets de soporte', category: 'support' },
+    tickets_view: { name: 'Ver Tickets', description: 'Visualizar tickets del sistema', category: 'support' },
+    tickets_create: { name: 'Crear Tickets', description: 'Crear nuevos tickets', category: 'support' },
+    tickets_manage: { name: 'Gestionar Tickets', description: 'Administrar tickets completos', category: 'support' },
+    tickets_config: { name: 'Configurar Tickets', description: 'Configuraciones del sistema tickets', category: 'support' },
     
-    // Usuarios y agentes
-    users: { name: 'Usuarios', category: 'admin', minLevel: 4 },
-    agents: { name: 'Agentes', category: 'admin', minLevel: 4 },
-    agent_tracking: { name: 'Rastreo de Agentes', category: 'admin', minLevel: 4 },
+    // ===== USUARIOS Y AGENTES =====
+    users: { name: 'Usuarios', description: 'Administración de usuarios del sistema', category: 'admin' },
+    users_view: { name: 'Ver Usuarios', description: 'Visualizar usuarios', category: 'admin' },
+    users_create: { name: 'Crear Usuarios', description: 'Crear nuevos usuarios', category: 'admin' },
+    users_edit: { name: 'Editar Usuarios', description: 'Modificar usuarios existentes', category: 'admin' },
+    users_delete: { name: 'Eliminar Usuarios', description: 'Eliminar usuarios del sistema', category: 'admin' },
     
-    // Reportes y análisis
-    reports: { name: 'Reportes', category: 'analytics', minLevel: 3 },
-    analytics: { name: 'Análisis', category: 'analytics', minLevel: 3 },
-    gemini_ai: { name: 'Gemini AI', category: 'analytics', minLevel: 3 },
+    agents: { name: 'Agentes', description: 'Gestión de agentes internos', category: 'admin' },
+    agents_view: { name: 'Ver Agentes', description: 'Visualizar agentes', category: 'admin' },
+    agents_create: { name: 'Crear Agentes', description: 'Crear nuevos agentes', category: 'admin' },
+    agents_edit: { name: 'Editar Agentes', description: 'Modificar agentes existentes', category: 'admin' },
+    agents_delete: { name: 'Eliminar Agentes', description: 'Eliminar agentes del sistema', category: 'admin' },
+    agents_assign: { name: 'Asignar Agentes', description: 'Asignar agentes a chats', category: 'admin' },
     
-    // Configuración del sistema
-    settings: { name: 'Configuración', category: 'admin', minLevel: 4 },
-    system_reset: { name: 'Reset del Sistema', category: 'admin', minLevel: 5 },
+    // ===== ROLES Y PERMISOS =====
+    roles: { name: 'Roles y Permisos', description: 'Administración de roles y permisos', category: 'security' },
+    roles_view: { name: 'Ver Roles', description: 'Visualizar roles del sistema', category: 'security' },
+    roles_assign: { name: 'Asignar Roles', description: 'Asignar roles a usuarios', category: 'security' },
+    permissions_custom: { name: 'Permisos Personalizados', description: 'Configurar permisos específicos', category: 'security' },
     
-    // Galería y medios
-    media_gallery: { name: 'Galería de Medios', category: 'content', minLevel: 2 },
+    // ===== REPORTES Y ANÁLISIS =====
+    reports: { name: 'Reportes', description: 'Reportes y análisis de datos', category: 'analytics' },
+    reports_personal: { name: 'Reportes Personales', description: 'Reportes individuales del agente', category: 'analytics' },
+    reports_team: { name: 'Reportes de Equipo', description: 'Reportes del equipo de trabajo', category: 'analytics' },
+    reports_global: { name: 'Reportes Globales', description: 'Reportes de toda la empresa', category: 'analytics' },
+    reports_confidential: { name: 'Reportes Confidenciales', description: 'Reportes de alta confidencialidad', category: 'analytics' },
+    reports_export: { name: 'Exportar Reportes', description: 'Exportar datos y reportes', category: 'analytics' },
     
-    // Campañas de marketing
-    marketing: { name: 'Marketing', category: 'marketing', minLevel: 3 },
-    campaigns: { name: 'Campañas', category: 'marketing', minLevel: 3 }
+    analytics: { name: 'Análisis Avanzado', description: 'Herramientas de análisis avanzado', category: 'analytics' },
+    gemini_ai: { name: 'Gemini AI', description: 'Herramientas de inteligencia artificial', category: 'analytics' },
+    gemini_ai_config: { name: 'Configurar Gemini AI', description: 'Configuraciones de IA', category: 'analytics' },
+    
+    // ===== GALERÍA Y MARKETING =====
+    media_gallery: { name: 'Galería de Medios', description: 'Gestión de archivos multimedia', category: 'content' },
+    media_upload: { name: 'Subir Medios', description: 'Subir nuevos archivos', category: 'content' },
+    media_manage: { name: 'Gestionar Medios', description: 'Administrar archivos multimedia', category: 'content' },
+    
+    marketing: { name: 'Marketing', description: 'Campañas y herramientas de marketing', category: 'marketing' },
+    marketing_campaigns: { name: 'Campañas', description: 'Gestionar campañas de marketing', category: 'marketing' },
+    marketing_create: { name: 'Crear Campañas', description: 'Crear nuevas campañas', category: 'marketing' },
+    
+    // ===== CONFIGURACIÓN DEL SISTEMA =====
+    settings: { name: 'Configuración', description: 'Configuraciones del sistema', category: 'system' },
+    settings_basic: { name: 'Configuración Básica', description: 'Configuraciones básicas', category: 'system' },
+    settings_advanced: { name: 'Configuración Avanzada', description: 'Configuraciones avanzadas', category: 'system' },
+    settings_critical: { name: 'Configuración Crítica', description: 'Configuraciones críticas del sistema', category: 'system' },
+    
+    // ===== FUNCIONES ESPECIALES =====
+    system_reset: { name: 'Reset del Sistema', description: 'Funciones de reseteo total del sistema', category: 'critical' },
+    audit_logs: { name: 'Logs y Auditoría', description: 'Registros de auditoría y logs del sistema', category: 'security' },
+    agent_tracking: { name: 'Rastreo de Agentes', description: 'Monitoreo de actividad de agentes', category: 'monitoring' },
+    system_monitoring: { name: 'Monitoreo del Sistema', description: 'Monitoreo general del sistema', category: 'monitoring' }
   };
 
   /**
-   * Permisos por defecto según el rol
+   * Permisos por defecto según el rol - ESTRUCTURA COMPLETA
    */
   private readonly DEFAULT_PERMISSIONS = {
-    admin: Object.keys(this.PAGES),
+    // 🔴 SUPERADMINISTRADOR - Control total del sistema
+    superadmin: [
+      // Dashboard completo
+      'dashboard', 'dashboard_personal', 'dashboard_team', 'dashboard_global',
+      // WhatsApp completo con CRUD
+      'whatsapp', 'whatsapp_accounts', 'whatsapp_create', 'whatsapp_edit', 'whatsapp_delete', 'whatsapp_settings',
+      // Leads completo con análisis
+      'leads', 'leads_view', 'leads_create', 'leads_edit', 'leads_delete', 'leads_assign', 'leads_analysis',
+      // Actividades completas
+      'activities', 'activities_view', 'activities_create', 'activities_edit', 'activities_assign',
+      // Tickets completos
+      'tickets', 'tickets_view', 'tickets_create', 'tickets_manage', 'tickets_config',
+      // Usuarios y agentes - CRUD completo
+      'users', 'users_view', 'users_create', 'users_edit', 'users_delete',
+      'agents', 'agents_view', 'agents_create', 'agents_edit', 'agents_delete', 'agents_assign',
+      // Roles y permisos completos
+      'roles', 'roles_view', 'roles_assign', 'permissions_custom',
+      // Reportes completos incluidos confidenciales
+      'reports', 'reports_personal', 'reports_team', 'reports_global', 'reports_confidential', 'reports_export',
+      // Análisis y AI completo
+      'analytics', 'gemini_ai', 'gemini_ai_config',
+      // Marketing y medios
+      'media_gallery', 'media_upload', 'media_manage', 'marketing', 'marketing_campaigns', 'marketing_create',
+      // Configuración crítica
+      'settings', 'settings_basic', 'settings_advanced', 'settings_critical',
+      // Funciones especiales y críticas
+      'system_reset', 'audit_logs', 'agent_tracking', 'system_monitoring'
+    ],
+
+    // 🔴 ADMIN - Acceso completo operativo (sin funciones críticas)
+    admin: [
+      'dashboard', 'dashboard_personal', 'dashboard_team', 'dashboard_global',
+      'whatsapp', 'whatsapp_accounts', 'whatsapp_edit', 'whatsapp_settings',
+      'leads', 'leads_view', 'leads_create', 'leads_edit', 'leads_delete', 'leads_assign',
+      'activities', 'activities_view', 'activities_create', 'activities_edit', 'activities_assign',
+      'tickets', 'tickets_view', 'tickets_create', 'tickets_manage',
+      'users', 'users_view', 'users_edit', 'agents', 'agents_view', 'agents_assign',
+      'reports', 'reports_personal', 'reports_team', 'reports_global', 'reports_export',
+      'analytics', 'gemini_ai', 'media_gallery', 'media_upload', 'media_manage',
+      'marketing', 'marketing_campaigns', 'settings', 'settings_basic', 'agent_tracking'
+    ],
+
+    // 🟠 SUPERVISOR - Gestión de equipos
     supervisor: [
-      'dashboard', 'whatsapp', 'whatsapp_accounts', 'leads', 'leads_create', 
-      'leads_edit', 'leads_delete', 'activities', 'activities_create', 
-      'tickets', 'tickets_create', 'tickets_manage', 'users', 'agents', 
-      'agent_tracking', 'reports', 'analytics', 'gemini_ai', 'settings', 
-      'media_gallery', 'marketing', 'campaigns'
+      'dashboard', 'dashboard_personal', 'dashboard_team',
+      'whatsapp', 'whatsapp_accounts', 'leads', 'leads_view', 'leads_create', 'leads_edit', 'leads_assign',
+      'activities', 'activities_view', 'activities_create', 'activities_edit',
+      'tickets', 'tickets_view', 'tickets_create', 'tickets_manage',
+      'users', 'users_view', 'agents', 'agents_view', 'agents_assign',
+      'reports', 'reports_personal', 'reports_team', 'analytics', 'gemini_ai',
+      'media_gallery', 'media_upload', 'marketing', 'settings', 'settings_basic'
     ],
+
+    // 🟡 AGENTE SENIOR - Funciones avanzadas
     senior_agent: [
-      'dashboard', 'whatsapp', 'leads', 'leads_create', 'leads_edit', 
-      'activities', 'activities_create', 'tickets', 'tickets_create', 
-      'tickets_manage', 'reports', 'analytics', 'gemini_ai', 'media_gallery', 
-      'marketing', 'campaigns'
+      'dashboard', 'dashboard_personal',
+      'whatsapp', 'leads', 'leads_view', 'leads_create', 'leads_edit',
+      'activities', 'activities_view', 'activities_create', 'activities_edit', 'activities_assign',
+      'tickets', 'tickets_view', 'tickets_create', 'tickets_manage',
+      'reports', 'reports_personal', 'analytics', 'gemini_ai',
+      'media_gallery', 'media_upload', 'media_manage', 'marketing'
     ],
+
+    // 🟢 AGENTE - Operaciones básicas
     agent: [
-      'dashboard', 'whatsapp', 'leads', 'leads_create', 'leads_edit', 
-      'activities', 'activities_create', 'tickets', 'tickets_create', 
-      'media_gallery'
+      'dashboard', 'dashboard_personal',
+      'whatsapp', 'leads', 'leads_view', 'leads_edit',
+      'activities', 'activities_view', 'activities_create',
+      'tickets', 'tickets_view', 'tickets_create',
+      'reports', 'reports_personal', 'media_gallery', 'media_upload'
     ],
+
+    // 🔵 VISUALIZADOR - Solo lectura
     viewer: [
-      'dashboard', 'leads', 'activities', 'tickets', 'media_gallery'
+      'dashboard', 'dashboard_personal',
+      'leads', 'leads_view', 'activities', 'activities_view',
+      'tickets', 'tickets_view', 'reports', 'reports_personal', 'media_gallery'
     ]
   };
 
