@@ -73,11 +73,16 @@ export default function ExternalAgents() {
     fetchStats();
   }, []);
 
+  // Actualizar estadísticas cuando cambien los agentes
+  useEffect(() => {
+    fetchStats();
+  }, [agents]);
+
   const fetchAgents = async () => {
     try {
-      const response = await fetch('/api/external-agents-direct');
-      const data = await response.json();
-      setAgents(data.agents || []);
+      // Por ahora usar datos locales mientras resolvemos el problema de Vite
+      console.log('📋 Cargando agentes desde estado local...');
+      // Los agentes se mantienen en el estado local hasta que resolvamos la interceptación de Vite
     } catch (error) {
       console.error('Error fetching agents:', error);
       toast({
@@ -90,11 +95,27 @@ export default function ExternalAgents() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/external-agents/stats');
-      const data = await response.json();
-      setStats(data);
+      // Calcular estadísticas basadas en los agentes locales
+      const totalAgents = agents.length;
+      const activeAgents = agents.filter(agent => agent.isActive).length;
+      const agentsByUrl = agents.reduce((acc: Record<string, number>, agent) => {
+        const domain = new URL(agent.agentUrl).hostname;
+        acc[domain] = (acc[domain] || 0) + 1;
+        return acc;
+      }, {});
+
+      setStats({
+        totalAgents,
+        activeAgents,
+        agentsByUrl
+      });
     } catch (error) {
       console.error('Error fetching stats:', error);
+      setStats({
+        totalAgents: 0,
+        activeAgents: 0,
+        agentsByUrl: {}
+      });
     }
   };
 
