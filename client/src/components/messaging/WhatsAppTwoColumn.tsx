@@ -97,19 +97,25 @@ function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accoun
 }
 
 function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
-  const { data: assignment } = useQuery({
+  const { data: assignmentResponse } = useQuery({
     queryKey: ['/api/chat-assignments', chatId],
     enabled: !!chatId
   });
 
   // Cargar lista de agentes para obtener el nombre
-  const { data: users = [] } = useQuery({
+  const { data: usersResponse } = useQuery({
     queryKey: ['/api/users'],
     staleTime: 60000, // Cache por 1 minuto
   });
 
+  console.log('🔍 Debug Badge - Assignment:', assignmentResponse);
+  console.log('🔍 Debug Badge - Users:', usersResponse);
+
+  const users = usersResponse?.users || usersResponse || [];
+  const assignment = assignmentResponse?.[0] || assignmentResponse;
+
   // Si no hay asignación, mostrar solo el muñequito sin texto
-  if (!assignment) {
+  if (!assignment || !assignment.assignedToId) {
     return (
       <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
         <UserPlus className="h-3 w-3" />
@@ -118,10 +124,12 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
   }
 
   // Si hay asignación, encontrar el agente y mostrar el nombre de usuario
-  const assignedAgent = users.find(user => user.id === assignment.assignedToId);
+  const assignedAgent = users.find((user: any) => user.id === assignment.assignedToId);
   
-  // Si no hay agente asignado o no se encuentra, mostrar solo el icono
-  if (!assignedAgent || !assignment.assignedToId) {
+  console.log('🔍 Debug Badge - Assigned Agent:', assignedAgent);
+
+  // Si no se encuentra el agente, mostrar solo el icono
+  if (!assignedAgent) {
     return (
       <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
         <UserPlus className="h-3 w-3" />
@@ -138,16 +146,22 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
 }
 
 function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
-  const { data: assignment } = useQuery({
+  const { data: assignmentResponse } = useQuery({
     queryKey: ['/api/chat-assignments', chatId],
     enabled: !!chatId
   });
 
   // Cargar lista de agentes para obtener el nombre
-  const { data: users = [] } = useQuery({
+  const { data: usersResponse } = useQuery({
     queryKey: ['/api/users'],
     staleTime: 60000, // Cache por 1 minuto
   });
+
+  console.log('🔍 Debug Header - Assignment:', assignmentResponse);
+  console.log('🔍 Debug Header - Users:', usersResponse);
+
+  const users = usersResponse?.users || usersResponse || [];
+  const assignment = assignmentResponse?.[0] || assignmentResponse;
 
   // Si no hay asignación, mostrar "Desconectado"
   if (!assignment || !assignment.assignedToId) {
@@ -155,8 +169,10 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
   }
 
   // Si hay asignación, encontrar el agente y mostrar el nombre
-  const assignedAgent = users.find(user => user.id === assignment.assignedToId);
+  const assignedAgent = users.find((user: any) => user.id === assignment.assignedToId);
   
+  console.log('🔍 Debug Header - Assigned Agent:', assignedAgent);
+
   if (!assignedAgent) {
     return <span>Desconectado</span>;
   }
