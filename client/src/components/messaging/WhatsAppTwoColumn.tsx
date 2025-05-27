@@ -108,9 +108,16 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
     staleTime: 60000, // Cache por 1 minuto
   });
 
-  if (!assignment) return null;
+  // Si no hay asignación, mostrar solo el muñequito sin texto
+  if (!assignment) {
+    return (
+      <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
+        <UserPlus className="h-3 w-3" />
+      </Badge>
+    );
+  }
 
-  // Encontrar el agente asignado por su ID
+  // Si hay asignación, encontrar el agente y mostrar el nombre
   const assignedAgent = users.find(user => user.id === assignment.assignedToId);
   const agentName = assignedAgent ? assignedAgent.fullName : `Agente #${assignment.assignedToId}`;
 
