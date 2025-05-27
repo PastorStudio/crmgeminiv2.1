@@ -370,38 +370,39 @@ export default function ExternalAgents() {
         throw new Error('Agente no encontrado');
       }
 
-      console.log(`📤 Enviando: "${testMessage}" al agente: ${selectedAgent.name}`);
+      console.log(`📤 Enviando mensaje real a OpenAI: "${testMessage}"`);
+      console.log(`🎯 Agente: ${selectedAgent.name}`);
       console.log(`🔗 URL del agente: ${selectedAgent.agentUrl}`);
 
-      // Generar respuesta específica del agente
-      const generateAgentResponse = (agentName: string, message: string): string => {
-        const name = agentName.toLowerCase();
-        
-        if (name.includes('smartbots')) {
-          return `¡Hola! Soy Smartbots, tu experto en automatización. He recibido tu mensaje: "${message}". Puedo ayudarte a crear chatbots inteligentes, automatizar procesos empresariales y implementar soluciones de IA. ¿En qué área específica de automatización necesitas asistencia?`;
-        } else if (name.includes('smartflyer')) {
-          return `¡Hola! Soy Smartflyer Ia, tu especialista en viajes. Sobre tu consulta: "${message}". Puedo ayudarte a planificar viajes perfectos, encontrar las mejores ofertas de vuelos, recomendar destinos increíbles y resolver cualquier duda sobre viajes. ¿A dónde te gustaría viajar?`;
-        } else if (name.includes('smartplanner')) {
-          return `¡Hola! Soy Smartplanner Ia, tu organizador personal. He analizado tu mensaje: "${message}". Me especializo en planificación estratégica, organización de tareas, gestión del tiempo y productividad. ¿Qué proyecto o actividad necesitas organizar?`;
-        } else if (name.includes('agente') && name.includes('ventas')) {
-          return `¡Saludos! Soy el Agente De Ventas De Telca Panama. Respecto a tu consulta: "${message}". Conozco todos nuestros productos y servicios de telecomunicaciones. Puedo ofrecerte los mejores planes de internet, telefonía y cable en Panamá. ¿Qué servicio te interesa?`;
-        } else if (name.includes('asistente') && name.includes('tecnico')) {
-          return `¡Hola! Soy el Asistente Tecnico En Gestion En Campo. Sobre tu mensaje: "${message}". Me especializo en soporte técnico, mantenimiento de equipos y gestión operativa. ¿Qué problema técnico necesitas resolver?`;
-        } else {
-          return `¡Hola! Soy ${agentName}. He recibido tu mensaje: "${message}". Como asistente virtual inteligente, estoy aquí para ayudarte con cualquier consulta que tengas. ¿En qué puedo asistirte hoy?`;
-        }
-      };
-
-      const agentResponse = generateAgentResponse(selectedAgent.name, testMessage);
-      
-      // Simular tiempo de respuesta real
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setTestResponse(agentResponse);
-      toast({
-        title: "✅ Respuesta recibida",
-        description: `${selectedAgent.name} respondió con su especialidad`
+      // Enviar mensaje real al agente usando OpenAI API
+      const response = await fetch('/api/ai/chat-with-external-agent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agentUrl: selectedAgent.agentUrl,
+          agentName: selectedAgent.name,
+          message: testMessage,
+          agentId: selectedAgentForTest
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Error del servidor: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setTestResponse(data.response);
+        toast({
+          title: "✅ Respuesta real recibida",
+          description: `${selectedAgent.name} respondió desde OpenAI API`
+        });
+      } else {
+        throw new Error(data.error || 'Error conectando con el agente');
+      }
     } catch (error: any) {
       console.error('❌ Error en prueba:', error);
       setTestResponse(`Error de conexión: ${error.message}`);
