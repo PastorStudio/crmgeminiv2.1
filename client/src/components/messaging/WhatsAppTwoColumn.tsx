@@ -50,8 +50,7 @@ import {
   File,
   Loader2,
   Zap,
-  Ticket,
-  Bot
+  Ticket
 } from 'lucide-react';
 
 // Import components
@@ -2078,50 +2077,6 @@ function formatTime(timestamp: number): string {
     minute: '2-digit'
   });
 }
-                          toast({
-                            title: "Error",
-                            description: "Selecciona un chat primero",
-                            variant: "destructive"
-                          });
-                          return;
-                        }
-
-                        try {
-                          setExternalAgentProcessing(true);
-                          const newState = !externalAgentActive;
-                          
-                          console.log(`📡 ${newState ? 'ACTIVANDO' : 'DESACTIVANDO'} A.E AI para ${selectedChat.id}`);
-                          
-                          // Usar el mismo endpoint que funciona en configuración de cuentas
-                          const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/assign-external-agent`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                              externalAgentId: newState ? "2" : null, // Usar agente 2 que ya está configurado
-                              autoResponseEnabled: newState
-                            })
-                          });
-                          
-                          if (response.ok) {
-                            const result = await response.json();
-                            console.log('✅ Resultado:', result);
-                            
-                            if (result.success) {
-                              setExternalAgentActive(newState);
-                              
-                              toast({
-                                title: `🤖 A.E AI ${newState ? 'Activado' : 'Desactivado'}`,
-                                description: newState 
-                                  ? `Agente externo activado - responderá automáticamente a mensajes`
-                                  : `Agente externo desactivado`,
-                              });
-                              
-                              console.log(`✅ A.E AI ${newState ? 'ACTIVADO' : 'DESACTIVADO'} exitosamente`);
-                            } else {
-                              throw new Error(result.message || 'Error en la configuración');
-                            }
-                          } else {
-                            const errorText = await response.text();
                             throw new Error(`Error HTTP: ${response.status} - ${errorText}`);
                           }
                         } catch (error) {
