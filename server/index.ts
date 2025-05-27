@@ -1054,6 +1054,74 @@ app.use((req, res, next) => {
     }
   });
 
+  // Marcar agente como activo (heartbeat para estado en vivo)
+  app.post("/api/agents/:agentId/heartbeat", async (req: Request, res: Response) => {
+    try {
+      const { agentId } = req.params;
+      const userId = parseInt(agentId);
+      
+      // Marcar como activo en el sistema de seguimiento en vivo
+      const liveStatusTracker = (await import('./services/liveStatusTracker')).liveStatusTracker;
+      await liveStatusTracker.markAgentActive(userId);
+      
+      res.json({
+        success: true,
+        message: 'Heartbeat registrado',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error en heartbeat:', error);
+      res.status(500).json({ 
+        error: 'Error registrando heartbeat',
+        details: (error as Error).message
+      });
+    }
+  });
+
+  // Obtener estado en vivo de todos los agentes
+  app.get("/api/agents/live-status", async (req: Request, res: Response) => {
+    try {
+      const liveStatusTracker = (await import('./services/liveStatusTracker')).liveStatusTracker;
+      const activeAgents = await liveStatusTracker.getActiveAgents();
+      
+      res.json({
+        success: true,
+        activeAgents,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo estado en vivo:', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo estado en vivo',
+        details: (error as Error).message
+      });
+    }
+  });
+
+  // Verificar si un agente específico está activo
+  app.get("/api/agents/:agentId/is-active", async (req: Request, res: Response) => {
+    try {
+      const { agentId } = req.params;
+      const userId = parseInt(agentId);
+      
+      const liveStatusTracker = (await import('./services/liveStatusTracker')).liveStatusTracker;
+      const isActive = await liveStatusTracker.isAgentActive(userId);
+      
+      res.json({
+        success: true,
+        agentId: userId,
+        isActive,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error verificando estado del agente:', error);
+      res.status(500).json({ 
+        error: 'Error verificando estado del agente',
+        details: (error as Error).message
+      });
+    }
+  });
+
   // ENDPOINT ARREGLADO PARA CREAR ASIGNACIONES DE AGENTES
   app.post('/api/chat-assignments', async (req, res) => {
     try {
