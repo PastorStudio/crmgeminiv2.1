@@ -50,7 +50,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MoreHorizontal, PlusCircle, UserPlus, UserX, Edit, Trash, Activity, Eye, Clock, BarChart3 } from 'lucide-react';
+import { Loader2, MoreHorizontal, PlusCircle, UserPlus, UserX, Edit, Trash, Activity, Eye, Clock, BarChart3, User as UserIcon, MessageCircle, Users as UsersIcon, CheckCircle, LogIn, Pencil, Trash2 } from 'lucide-react';
 
 // Definir tipo para usuarios
 interface User {
@@ -1567,7 +1567,7 @@ export default function UserManagement() {
               {/* Datos Personales */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border">
                 <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
-                  <User className="h-5 w-5 mr-2" />
+                  <UserIcon className="h-5 w-5 mr-2" />
                   Datos Personales
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -1623,7 +1623,7 @@ export default function UserManagement() {
                       <p className="text-sm font-medium text-blue-600">Leads Gestionados</p>
                       <p className="text-2xl font-bold text-blue-800">{agentPreviewData.leads}</p>
                     </div>
-                    <Users className="h-8 w-8 text-blue-500" />
+                    <UsersIcon className="h-8 w-8 text-blue-500" />
                   </div>
                 </div>
                 
@@ -1744,7 +1744,7 @@ export default function UserManagement() {
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
-              <User className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <UserIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
               <p>No se pudieron cargar los datos del agente</p>
             </div>
           )}
