@@ -12,6 +12,7 @@ import * as agentAssignmentRoutes from "./routes/agentAssignments";
 import { invisibleAgentIntegrator } from "./services/invisibleAgentIntegrator";
 import { realTimeNotificationService } from "./services/realTimeNotificationService";
 import * as whatsappAPI from "./routes/whatsappAPI";
+import { internalAgentManager } from "./services/internalAgentManager";
 
 // Configurar zona horaria para Panamá (GMT-5)
 process.env.TZ = 'America/Panama';
