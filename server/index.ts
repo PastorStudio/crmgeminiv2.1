@@ -1205,6 +1205,55 @@ app.use((req, res, next) => {
     }
   });
 
+  // ENDPOINT PARA CONSULTAR ASIGNACIONES DE CHAT
+  app.get('/api/chat-assignments/:chatId', async (req, res) => {
+    try {
+      const { chatId } = req.params;
+      console.log('🔍 Consultando asignación para chat:', chatId);
+      
+      const { sql } = await import('drizzle-orm');
+      
+      // Buscar asignación con información del agente
+      const assignmentQuery = sql`
+        SELECT ca.*, u.id as user_id, u.username, u."fullName", u.role 
+        FROM chat_assignments ca
+        LEFT JOIN users u ON ca."assignedToId" = u.id
+        WHERE ca."chatId" = ${chatId}
+        LIMIT 1
+      `;
+      
+      const result = await db.execute(assignmentQuery);
+      
+      if (result.rows.length > 0) {
+        const row = result.rows[0];
+        const assignment = {
+          id: row.id,
+          chatId: row.chatId,
+          accountId: row.accountId,
+          assignedToId: row.assignedToId,
+          category: row.category,
+          status: row.status,
+          assignedAt: row.assignedAt,
+          assignedTo: row.assignedToId ? {
+            id: row.user_id,
+            username: row.username,
+            fullName: row.fullName,
+            role: row.role
+          } : null
+        };
+        
+        console.log('✅ Asignación encontrada:', assignment);
+        res.json(assignment);
+      } else {
+        console.log('❌ No hay asignación para chat:', chatId);
+        res.json(null);
+      }
+    } catch (error) {
+      console.error('❌ Error al consultar asignación:', error);
+      res.status(500).json({ error: 'Error al consultar asignación: ' + (error as Error).message });
+    }
+  });
+
   // ENDPOINT ARREGLADO PARA CONFIGURACIÓN DE RESPUESTAS AUTOMÁTICAS
   app.get('/api/auto-response/config', async (req, res) => {
     try {
