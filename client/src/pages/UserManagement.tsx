@@ -833,6 +833,38 @@ export default function UserManagement() {
                           </div>
                         ) : '-'}
                       </TableCell>
+                      
+                      {/* Columna de Ingresos al Sistema */}
+                      <TableCell className="text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-mono text-xs">
+                              {user.totalLogins || 0}
+                            </Badge>
+                            <span className="text-xs text-gray-500">veces</span>
+                          </div>
+                          {user.totalLogins && user.totalLogins > 0 && (
+                            <div className="text-xs text-gray-400">
+                              Sistema activo
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      
+                      {/* Columna de Última Actividad */}
+                      <TableCell className="text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="text-sm font-medium">
+                            {timeAgo(user.lastActivity)}
+                          </div>
+                          {user.lastActivity && (
+                            <div className="text-xs text-gray-400">
+                              {formatDate(user.lastActivity).split(' ')[0]}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -846,6 +878,11 @@ export default function UserManagement() {
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => viewAgentActivities(user)}>
+                              <BarChart3 className="mr-2 h-4 w-4" />
+                              Ver Actividades
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => {
                                 // Cambiar estado (activar/desactivar)
@@ -1281,6 +1318,148 @@ export default function UserManagement() {
                   Confirmar Eliminación
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo para mostrar actividades del agente */}
+      <Dialog open={showActivities} onOpenChange={setShowActivities}>
+        <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <BarChart3 className="h-5 w-5 mr-2 text-blue-500" />
+              Actividades de {selectedAgentForActivities?.fullName || selectedAgentForActivities?.username}
+            </DialogTitle>
+            <DialogDescription>
+              Historial completo de actividades y movimientos en el sistema
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingActivities ? (
+            <div className="flex justify-center items-center h-32">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Estadísticas resumidas */}
+              {activityStats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card className="bg-blue-50 border-blue-200">
+                    <CardContent className="pt-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {activityStats.totalSessions}
+                        </div>
+                        <div className="text-sm text-blue-500">Sesiones Totales</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="bg-green-50 border-green-200">
+                    <CardContent className="pt-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                          {activityStats.totalPageViews}
+                        </div>
+                        <div className="text-sm text-green-500">Páginas Visitadas</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="bg-purple-50 border-purple-200">
+                    <CardContent className="pt-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {Math.round(activityStats.averageSessionTime)} min
+                        </div>
+                        <div className="text-sm text-purple-500">Tiempo Promedio</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="bg-amber-50 border-amber-200">
+                    <CardContent className="pt-4">
+                      <div className="text-center">
+                        <div className="text-sm font-medium text-amber-600">Último Acceso</div>
+                        <div className="text-xs text-amber-500 mt-1">
+                          {timeAgo(activityStats.lastLogin)}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Lista de actividades */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center">
+                  <Activity className="h-5 w-5 mr-2" />
+                  Historial de Actividades
+                </h3>
+                
+                {agentActivities.length > 0 ? (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {agentActivities.map((activity, index) => (
+                      <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="flex-shrink-0">
+                          {activity.action === 'login' ? (
+                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                              </svg>
+                            </div>
+                          ) : activity.action === 'page_view' ? (
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <Eye className="w-4 h-4 text-blue-600" />
+                            </div>
+                          ) : (
+                            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                              <Activity className="w-4 h-4 text-gray-600" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-gray-900">
+                              {activity.action === 'login' ? 'Inicio de sesión' : 
+                               activity.action === 'page_view' ? `Visitó ${activity.page}` : 
+                               activity.action}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {formatDate(activity.timestamp)}
+                            </p>
+                          </div>
+                          
+                          {activity.details && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {activity.details}
+                            </p>
+                          )}
+                          
+                          {activity.ipAddress && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              IP: {activity.ipAddress}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">No hay actividades registradas para este agente</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowActivities(false)}>
+              Cerrar
             </Button>
           </DialogFooter>
         </DialogContent>
