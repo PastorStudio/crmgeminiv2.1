@@ -164,11 +164,38 @@ export default function UserManagement() {
     }
   }, [liveStatus]);
 
-  // Simular algunos agentes activos para demostración
+  // Sistema de heartbeat automático para marcar al usuario actual como activo
   useEffect(() => {
-    // Marcar algunos agentes como activos por defecto para la demostración
-    setActiveAgents([1, 3, 7]); // IDs de ejemplo
-  }, []);
+    if (currentUser?.id) {
+      // Enviar heartbeat inicial
+      const sendHeartbeat = async () => {
+        try {
+          const response = await fetch(`/api/agents/${currentUser.id}/heartbeat`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          if (response.ok) {
+            console.log(`💚 Heartbeat enviado para agente ${currentUser.id}`);
+          }
+        } catch (error) {
+          console.log('⚫ Error enviando heartbeat');
+        }
+      };
+
+      // Enviar heartbeat inicial
+      sendHeartbeat();
+
+      // Configurar heartbeat automático cada 20 segundos
+      const heartbeatInterval = setInterval(sendHeartbeat, 20000);
+
+      // Limpiar intervalo al desmontar
+      return () => {
+        clearInterval(heartbeatInterval);
+      };
+    }
+  }, [currentUser?.id]);
   
   // DJP SUPERADMINISTRADOR - ACCESO TOTAL GARANTIZADO SIN RESTRICCIONES
   const isSuperAdmin = currentUser?.username === 'DJP' || currentUser?.id === 3 || 
