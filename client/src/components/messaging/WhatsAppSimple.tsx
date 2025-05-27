@@ -2182,22 +2182,6 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
                   >
                     <Brain className="h-4 w-4" />
                   </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="bg-purple-600 hover:bg-purple-700 text-white border-purple-600"
-                    onClick={() => {
-                      toast({
-                        title: "Agente IA Activado",
-                        description: "Los 5 agentes externos están listos para generar respuestas automáticas",
-                        variant: "default"
-                      });
-                    }}
-                    disabled={whatsappMessages.length === 0}
-                  >
-                    <Bot className="h-4 w-4" />
-                  </Button>
                 </div>
               </div>
               
