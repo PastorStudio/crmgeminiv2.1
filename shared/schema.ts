@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, jsonb, doublePrecision, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, jsonb, doublePrecision, real, date, decimal } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -319,6 +319,117 @@ export const messageActivityRelations = relations(messageActivity, ({ one }) => 
   })
 }));
 
+// ===== SISTEMA DE GESTIÓN DE AGENTES INTERNOS =====
+// Sistema invisible para WhatsApp, solo para etiquetado y gestión interna del CRM
+
+// Agentes internos del sistema (separados de WhatsApp)
+export const internalAgents = pgTable('internal_agents', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email').unique().notNull(),
+  department: text('department'), // ventas, soporte, técnico, administración
+  status: text('status').default('active'), // active, inactive, busy, offline
+  specialization: text('specialization'), // sales, support, technical, consultation
+  maxChats: integer('max_chats').default(5), // Máximo de chats concurrentes
+  currentChats: integer('current_chats').default(0),
+  avatar: text('avatar'), // URL del avatar
+  workSchedule: jsonb('work_schedule'), // Horarios de trabajo
+  skills: text('skills').array(), // Habilidades del agente
+  language: text('language').default('es'), // Idioma principal
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at'),
+});
+
+// Rendimiento diario de agentes internos
+export const internalAgentPerformance = pgTable('internal_agent_performance', {
+  id: serial('id').primaryKey(),
+  agentId: integer('agent_id').references(() => internalAgents.id),
+  date: date('date').notNull(),
+  chatsAssigned: integer('chats_assigned').default(0),
+  chatsCompleted: integer('chats_completed').default(0),
+  averageResponseTime: integer('average_response_time'), // en segundos
+  customerSatisfaction: decimal('customer_satisfaction', { precision: 3, scale: 2 }), // 0.00 to 5.00
+  leadsGenerated: integer('leads_generated').default(0),
+  ticketsResolved: integer('tickets_resolved').default(0),
+  workHours: decimal('work_hours', { precision: 4, scale: 2 }).default(0), // Horas trabajadas
+  efficiency: decimal('efficiency', { precision: 5, scale: 2 }).default(0), // Porcentaje de eficiencia
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Asignaciones de chats a agentes internos (etiquetado invisible)
+export const internalChatAssignments = pgTable('internal_chat_assignments', {
+  id: serial('id').primaryKey(),
+  chatId: text('chat_id').notNull(), // ID del chat de WhatsApp
+  accountId: integer('account_id').notNull(), // Cuenta de WhatsApp
+  agentId: integer('agent_id').references(() => internalAgents.id),
+  assignedAt: timestamp('assigned_at').defaultNow(),
+  completedAt: timestamp('completed_at'),
+  status: text('status').default('active'), // active, completed, transferred, on_hold, escalated
+  priority: text('priority').default('normal'), // low, normal, high, urgent
+  category: text('category'), // sales, support, complaint, inquiry, technical
+  tags: text('tags').array(), // Etiquetas personalizadas
+  customerName: text('customer_name'), // Nombre del cliente
+  customerPhone: text('customer_phone'), // Teléfono del cliente
+  estimatedValue: decimal('estimated_value', { precision: 10, scale: 2 }), // Valor estimado del lead
+  responseTime: integer('response_time'), // Tiempo de primera respuesta
+  resolutionTime: integer('resolution_time'), // Tiempo total de resolución
+  customerSatisfaction: integer('customer_satisfaction'), // Rating 1-5
+  transferHistory: jsonb('transfer_history'), // Historial de transferencias
+  notes: text('notes'), // Notas internas del agente
+  lastActivityAt: timestamp('last_activity_at').defaultNow(),
+});
+
+// Métricas de rendimiento agregadas por agente
+export const internalAgentMetrics = pgTable('internal_agent_metrics', {
+  id: serial('id').primaryKey(),
+  agentId: integer('agent_id').references(() => internalAgents.id),
+  period: text('period').notNull(), // daily, weekly, monthly, yearly
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+  totalChats: integer('total_chats').default(0),
+  completedChats: integer('completed_chats').default(0),
+  averageHandlingTime: integer('average_handling_time'), // Tiempo promedio de manejo
+  firstResponseTime: integer('first_response_time'), // Tiempo promedio de primera respuesta
+  customerSatisfactionAvg: decimal('customer_satisfaction_avg', { precision: 3, scale: 2 }),
+  leadConversionRate: decimal('lead_conversion_rate', { precision: 5, scale: 2 }), // Porcentaje
+  revenueGenerated: decimal('revenue_generated', { precision: 12, scale: 2 }),
+  ticketsCreated: integer('tickets_created').default(0),
+  ticketsResolved: integer('tickets_resolved').default(0),
+  escalationsReceived: integer('escalations_received').default(0),
+  transfersGiven: integer('transfers_given').default(0),
+  transfersReceived: integer('transfers_received').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Relaciones para agentes internos
+export const internalAgentsRelations = relations(internalAgents, ({ many }) => ({
+  assignments: many(internalChatAssignments),
+  performance: many(internalAgentPerformance),
+  metrics: many(internalAgentMetrics)
+}));
+
+export const internalChatAssignmentsRelations = relations(internalChatAssignments, ({ one }) => ({
+  agent: one(internalAgents, {
+    fields: [internalChatAssignments.agentId],
+    references: [internalAgents.id]
+  })
+}));
+
+export const internalAgentPerformanceRelations = relations(internalAgentPerformance, ({ one }) => ({
+  agent: one(internalAgents, {
+    fields: [internalAgentPerformance.agentId],
+    references: [internalAgents.id]
+  })
+}));
+
+export const internalAgentMetricsRelations = relations(internalAgentMetrics, ({ one }) => ({
+  agent: one(internalAgents, {
+    fields: [internalAgentMetrics.agentId],
+    references: [internalAgents.id]
+  })
+}));
+
 // Tipos para las nuevas tablas
 export type Ticket = typeof tickets.$inferSelect;
 export type InsertTicket = typeof tickets.$inferInsert;
@@ -341,6 +452,12 @@ export const insertDashboardStatsSchema = createInsertSchema(dashboardStats).omi
 export const insertMessageTemplateSchema = createInsertSchema(messageTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertMarketingCampaignSchema = createInsertSchema(marketingCampaigns).omit({ id: true, createdAt: true, updatedAt: true, stats: true });
 
+// Esquemas de inserción para agentes internos
+export const insertInternalAgentSchema = createInsertSchema(internalAgents).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertInternalAgentPerformanceSchema = createInsertSchema(internalAgentPerformance).omit({ id: true, createdAt: true });
+export const insertInternalChatAssignmentSchema = createInsertSchema(internalChatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
+export const insertInternalAgentMetricsSchema = createInsertSchema(internalAgentMetrics).omit({ id: true, createdAt: true });
+
 // Types for insert and select operations
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertLead = z.infer<typeof insertLeadSchema>;
@@ -350,6 +467,16 @@ export type InsertSurvey = z.infer<typeof insertSurveySchema>;
 export type InsertDashboardStats = z.infer<typeof insertDashboardStatsSchema>;
 export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
 export type InsertMarketingCampaign = z.infer<typeof insertMarketingCampaignSchema>;
+
+// Tipos para agentes internos
+export type InternalAgent = typeof internalAgents.$inferSelect;
+export type InsertInternalAgent = z.infer<typeof insertInternalAgentSchema>;
+export type InternalAgentPerformance = typeof internalAgentPerformance.$inferSelect;
+export type InsertInternalAgentPerformance = z.infer<typeof insertInternalAgentPerformanceSchema>;
+export type InternalChatAssignment = typeof internalChatAssignments.$inferSelect;
+export type InsertInternalChatAssignment = z.infer<typeof insertInternalChatAssignmentSchema>;
+export type InternalAgentMetrics = typeof internalAgentMetrics.$inferSelect;
+export type InsertInternalAgentMetrics = z.infer<typeof insertInternalAgentMetricsSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Lead = typeof leads.$inferSelect;
