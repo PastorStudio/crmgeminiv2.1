@@ -102,12 +102,22 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
     enabled: !!chatId
   });
 
+  // Cargar lista de agentes para obtener el nombre
+  const { data: users = [] } = useQuery({
+    queryKey: ['/api/users'],
+    staleTime: 60000, // Cache por 1 minuto
+  });
+
   if (!assignment) return null;
+
+  // Encontrar el agente asignado por su ID
+  const assignedAgent = users.find(user => user.id === assignment.assignedToId);
+  const agentName = assignedAgent ? assignedAgent.fullName : `Agente #${assignment.assignedToId}`;
 
   return (
     <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
       <UserPlus className="h-3 w-3 mr-1" />
-      {assignment.agentName}
+      {agentName}
     </Badge>
   );
 }
