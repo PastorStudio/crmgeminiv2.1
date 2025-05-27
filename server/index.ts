@@ -1403,9 +1403,23 @@ app.use((req, res, next) => {
     try {
       console.log(`🧪 PROBANDO A.E AI con mensaje: "${message}" en chat ${chatId}`);
       
-      const { processIncomingMessage, isAEAIActive, getAEAIConfig } = await import('./services/autoResponseProcessor.js');
-      console.log(`✅ Módulo autoResponseProcessor cargado`);
+      // Importar el procesador de respuestas automáticas con path más específico
+      let processIncomingMessage, isAEAIActive, getAEAIConfig;
       
+      try {
+        const autoResponseModule = await import('./services/autoResponseProcessor.js');
+        processIncomingMessage = autoResponseModule.processIncomingMessage;
+        isAEAIActive = autoResponseModule.isAEAIActive;
+        getAEAIConfig = autoResponseModule.getAEAIConfig;
+        console.log(`✅ Módulo autoResponseProcessor cargado exitosamente`);
+      } catch (importError) {
+        console.error(`❌ Error importando autoResponseProcessor:`, importError);
+        return res.status(500).json({
+          success: false,
+          message: 'Error cargando el módulo de procesamiento',
+          error: 'Import failed'
+        });
+      }
       
       // Verificar si A.E AI está activo
       const isActive = isAEAIActive(chatId);
@@ -1456,11 +1470,12 @@ app.use((req, res, next) => {
       });
       
     } catch (error) {
-      console.error('❌ Error procesando mensaje de prueba A.E AI:', error);
+      console.error('❌ Error general procesando mensaje de prueba A.E AI:', error);
+      console.error('❌ Stack trace:', error.stack);
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
-        error: error.message
+        error: error.message || 'Error desconocido'
       });
     }
   });
