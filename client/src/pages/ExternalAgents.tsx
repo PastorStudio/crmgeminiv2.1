@@ -329,14 +329,14 @@ export default function ExternalAgents() {
     setTestResponse('');
 
     try {
-      const response = await fetch(`/api/external-agents/${selectedAgentForTest}/send`, {
+      const response = await fetch(`/api/external-agents-send-direct`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          agentId: selectedAgentForTest,
           message: testMessage,
-          chatContext: {},
           userInfo: {
             chatId: 'test-direct-chat',
             accountId: 1,

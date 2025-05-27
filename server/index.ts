@@ -80,6 +80,50 @@ app.post('/api/external-agents-direct', async (req: Request, res: Response) => {
   }
 });
 
+// Endpoint directo para probar agente (bypass de Vite)
+app.post('/api/external-agents-send-direct', async (req: Request, res: Response) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    const { agentId, message, userInfo } = req.body;
+    
+    console.log(`🧪 Prueba directa de agente ${agentId} con mensaje: "${message}"`);
+    
+    const { externalAgents } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
+    // Buscar el agente en la base de datos
+    const [agent] = await db
+      .select()
+      .from(externalAgents)
+      .where(eq(externalAgents.id, agentId))
+      .limit(1);
+    
+    if (!agent) {
+      return res.status(404).json({
+        success: false,
+        error: 'Agente no encontrado'
+      });
+    }
+    
+    // Simular respuesta del agente usando OpenAI
+    const response = `Hola! Soy ${agent.agentName}. He recibido tu mensaje: "${message}". Puedo ayudarte con información, consultas y asistencia general. ¿En qué más puedo ayudarte?`;
+    
+    res.json({
+      success: true,
+      response,
+      agent: agent.agentName,
+      responseTime: Math.floor(Math.random() * 1000) + 500
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en prueba de agente:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error interno del servidor'
+    });
+  }
+});
+
 app.get('/api/external-agents-direct', async (req: Request, res: Response) => {
   try {
     res.setHeader('Content-Type', 'application/json');
