@@ -830,11 +830,12 @@ app.use((req, res, next) => {
       const [newAgent] = await db
         .insert(externalAgents)
         .values({
-          name,
-          description: description || '',
+          chatId: `default-${Date.now()}`, // ID temporal hasta que se asigne a un chat
+          accountId: 1, // Cuenta por defecto
+          agentName: name,
           agentUrl,
-          isActive: true,
-          createdAt: new Date()
+          provider: 'chatgpt',
+          status: 'active'
         })
         .returning();
 
@@ -864,13 +865,21 @@ app.use((req, res, next) => {
       const { externalAgents } = await import('@shared/schema');
       
       const agents = await db
-        .select()
+        .select({
+          id: externalAgents.id,
+          name: externalAgents.agentName,
+          agentUrl: externalAgents.agentUrl,
+          provider: externalAgents.provider,
+          status: externalAgents.status,
+          responseCount: externalAgents.responseCount,
+          createdAt: externalAgents.createdAt
+        })
         .from(externalAgents)
         .orderBy(externalAgents.createdAt);
 
       console.log('✅ Agentes externos encontrados:', agents.length);
 
-      res.json({
+      return res.json({
         success: true,
         agents
       });
