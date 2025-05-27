@@ -142,6 +142,29 @@ const WhatsAppAccounts = () => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newlyCreatedAccountId, setNewlyCreatedAccountId] = useState<number | null>(null);
   const [authMethod, setAuthMethod] = useState<'qrcode' | 'phone'>('qrcode');
+  const [agentConfigDialogOpen, setAgentConfigDialogOpen] = useState(false);
+  const [selectedAccountForAgent, setSelectedAccountForAgent] = useState<WhatsAppAccount | null>(null);
+  
+  // Consulta para obtener agentes externos
+  const { data: externalAgents = [] } = useQuery({
+    queryKey: ['/api/external-agents'],
+    queryFn: async () => {
+      console.log('🔍 Obteniendo lista de agentes externos...');
+      const response = await apiRequest('/api/external-agents');
+      console.log('✅ Agentes externos encontrados:', response.agents?.length || 0);
+      return response.agents || [];
+    }
+  });
+
+  // Consulta para obtener configuración del agente para cada cuenta
+  const getAgentConfig = (accountId: number) => useQuery({
+    queryKey: [`/api/whatsapp-accounts/${accountId}/agent-config`],
+    queryFn: async () => {
+      console.log('🔍 Configuración recibida del servidor:', await apiRequest(`/api/whatsapp-accounts/${accountId}/agent-config`));
+      return await apiRequest(`/api/whatsapp-accounts/${accountId}/agent-config`);
+    },
+    enabled: !!accountId
+  });
   
   // Consulta para obtener cuentas
   const { data: accounts = [], isLoading, error, refetch } = useQuery<WhatsAppAccount[]>({
@@ -291,6 +314,36 @@ const WhatsAppAccounts = () => {
       toast({
         title: 'Error',
         description: 'No se pudo eliminar la cuenta.',
+        variant: 'destructive',
+      });
+    }
+  });
+
+  // Mutation para asignar agente externo
+  const assignExternalAgentMutation = useMutation({
+    mutationFn: async ({ accountId, externalAgentId, autoResponseEnabled }: { 
+      accountId: number; 
+      externalAgentId: string | null; 
+      autoResponseEnabled: boolean; 
+    }) => {
+      return await apiRequest(`/api/whatsapp-accounts/${accountId}/assign-external-agent`, {
+        method: 'POST',
+        body: { externalAgentId, autoResponseEnabled }
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Agente asignado',
+        description: 'El agente externo se ha asignado correctamente.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp-accounts/${selectedAccountForAgent?.id}/agent-config`] });
+      setAgentConfigDialogOpen(false);
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'No se pudo asignar el agente externo.',
         variant: 'destructive',
       });
     }
