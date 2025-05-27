@@ -1509,15 +1509,15 @@ export function WhatsAppTwoColumn() {
                             {/* Chat Assignment Info */}
                             <ChatAssignmentBadge chatId={chat.id} accountId={chat.accountId} />
                             
-                            {/* Ticket Badge */}
+                            {/* Ticket Badge - se actualiza cuando cambia selectedTicket */}
                             <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 ml-[74px] mr-[74px]">
                               <Ticket className="h-3 w-3 mr-1" />
-                              {selectedTicket === "nuevos" ? "Nuevos" :
-                               selectedTicket === "interesados" ? "Interesados" :
-                               selectedTicket === "no-leidos" ? "No Leidos" :
-                               selectedTicket === "pendiente-demo" ? "Pendiente Demo" :
-                               selectedTicket === "completados" ? "Completados" :
-                               selectedTicket === "no-interesados" ? "No Interesados" :
+                              {selectedTicket === "nuevos" ? "📋 Nuevos" :
+                               selectedTicket === "interesados" ? "💡 Interesados" :
+                               selectedTicket === "no-leidos" ? "📧 No Leidos" :
+                               selectedTicket === "pendiente-demo" ? "🎯 Pendiente Demo" :
+                               selectedTicket === "completados" ? "✅ Completados" :
+                               selectedTicket === "no-interesados" ? "❌ No Interesados" :
                                "Sin Ticket"}
                             </Badge>
                             

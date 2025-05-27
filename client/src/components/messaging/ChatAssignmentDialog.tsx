@@ -67,9 +67,18 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
   // Sistema de asignación INTERNO - No requiere conexión de WhatsApp
   // Las cuentas están disponibles como sistema interno independiente
   
-  // Sistema simplificado - No verificar asignaciones existentes
-  const assignment = null;
-  const checkingAssignment = false;
+  // Cargar asignación existente del chat
+  const { data: assignment, isLoading: checkingAssignment } = useQuery<ChatAssignment>({
+    queryKey: [`/api/chat-assignments/${chatId}`],
+    queryFn: async () => {
+      const response = await fetch(`/api/chat-assignments/${chatId}`);
+      if (!response.ok) {
+        return null;
+      }
+      return response.json();
+    },
+    enabled: open && !!chatId,
+  });
   
   // Ya no usamos agentes precargados, sino que mostramos un error si no se pueden cargar
 
@@ -139,12 +148,33 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
   const form = useForm<z.infer<typeof assignmentSchema>>({
     resolver: zodResolver(assignmentSchema),
     defaultValues: {
-      accountId: 1, // Sistema interno siempre usa ID 1
+      accountId: accountId || 1,
       chatId: chatId || '',
-      assignedToId: 0, // Sin asignación inicial
+      assignedToId: 0,
       category: '',
     },
   });
+
+  // Actualizar formulario cuando se carga la asignación existente
+  useEffect(() => {
+    if (assignment && open) {
+      console.log('🔄 Cargando asignación existente:', assignment);
+      form.reset({
+        accountId: assignment.accountId || accountId || 1,
+        chatId: chatId,
+        assignedToId: assignment.assignedToId || 0,
+        category: assignment.category || '',
+      });
+    } else if (open && !assignment) {
+      // Si no hay asignación, usar valores por defecto
+      form.reset({
+        accountId: accountId || 1,
+        chatId: chatId || '',
+        assignedToId: 0,
+        category: '',
+      });
+    }
+  }, [assignment, open, accountId, chatId, form]);
   
   // Para depuración
   console.log('Estado actual del formulario:', form.getValues());
