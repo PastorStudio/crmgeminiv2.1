@@ -1377,52 +1377,24 @@ app.use((req, res, next) => {
     }
   });
 
-  // Obtener estado del agente externo para un chat
-  app.get('/api/external-agents/status/:chatId/:accountId', async (req, res) => {
+  // Estado A.E AI (sistema simplificado)
+  app.get('/api/external-agents/status/:chatId/:accountId', (req, res) => {
     try {
-      res.setHeader('Content-Type', 'application/json');
-      const { chatId, accountId } = req.params;
-      const { externalAgentConfigs, externalAgents } = await import('@shared/schema');
-      const { eq, and } = await import('drizzle-orm');
-
-      const [config] = await db
-        .select()
-        .from(externalAgentConfigs)
-        .where(and(
-          eq(externalAgentConfigs.chatId, decodeURIComponent(chatId)),
-          eq(externalAgentConfigs.accountId, parseInt(accountId))
-        ))
-        .limit(1);
-
-      if (!config) {
-        return res.json({
-          active: false,
-          agentUrl: null
-        });
-      }
-
-      let agentUrl = null;
-      if (config.selectedAgentId) {
-        const [agent] = await db
-          .select()
-          .from(externalAgents)
-          .where(eq(externalAgents.id, config.selectedAgentId))
-          .limit(1);
-        agentUrl = agent?.agentUrl || null;
-      }
-
+      console.log('📊 Estado A.E AI simplificado');
+      
+      // Sistema simplificado - siempre listo
       res.json({
-        active: config.isActive,
-        agentUrl,
+        active: false, // Por defecto desactivado
+        agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
         config: {
-          autoResponse: config.autoResponse,
-          responseDelay: config.responseDelay,
-          maxResponsesPerHour: config.maxResponsesPerHour
+          autoResponse: false,
+          responseDelay: 3,
+          maxResponsesPerHour: 15
         }
       });
 
     } catch (error) {
-      console.error('❌ Error obteniendo estado A.E AI:', error);
+      console.error('❌ Error estado A.E AI:', error);
       res.status(500).json({ 
         active: false, 
         agentUrl: null 
