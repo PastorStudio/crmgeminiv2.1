@@ -82,7 +82,7 @@ export default function ExternalAgents() {
     try {
       console.log('📋 Cargando agentes desde la base de datos...');
       
-      const response = await fetch('/direct-agents-list');
+      const response = await fetch('/api/bypass/agents-list');
       const data = await response.json();
       
       if (data.success && Array.isArray(data.agents)) {
