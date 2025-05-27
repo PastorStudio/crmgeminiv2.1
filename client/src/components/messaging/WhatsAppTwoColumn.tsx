@@ -352,6 +352,8 @@ export function WhatsAppTwoColumn() {
         description: "No se pudo conectar con el servidor. Verifica tu conexión.",
         variant: "destructive"
       });
+      setExternalAgentActive(false);
+      setExternalAgentUrl('');
     } finally {
       setExternalAgentProcessing(false);
     }

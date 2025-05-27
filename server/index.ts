@@ -759,6 +759,7 @@ app.use((req, res, next) => {
   // Obtener estado del agente externo para un chat
   app.get('/api/external-agents/status/:chatId/:accountId', async (req, res) => {
     try {
+      res.setHeader('Content-Type', 'application/json');
       const { chatId, accountId } = req.params;
       const { externalAgentConfigs, externalAgents } = await import('@shared/schema');
       const { eq, and } = await import('drizzle-orm');
@@ -827,7 +828,8 @@ app.use((req, res, next) => {
       console.error('❌ Error obteniendo agentes externos:', error);
       res.status(500).json({ 
         success: false, 
-        agents: [] 
+        agents: [],
+        error: error.message 
       });
     }
   });
