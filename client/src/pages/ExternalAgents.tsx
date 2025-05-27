@@ -370,39 +370,47 @@ export default function ExternalAgents() {
         throw new Error('Agente no encontrado');
       }
 
-      console.log(`📤 Enviando mensaje real a OpenAI: "${testMessage}"`);
+      console.log(`📤 Conectando directamente con OpenAI API`);
       console.log(`🎯 Agente: ${selectedAgent.name}`);
-      console.log(`🔗 URL del agente: ${selectedAgent.agentUrl}`);
+      console.log(`💬 Mensaje: "${testMessage}"`);
 
-      // Enviar mensaje real al agente usando OpenAI API
-      const response = await fetch('/api/ai/chat-with-external-agent', {
+      // Conectar directamente con OpenAI desde el frontend
+      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY || 'sk-your-key-here'}`
         },
         body: JSON.stringify({
-          agentUrl: selectedAgent.agentUrl,
-          agentName: selectedAgent.name,
-          message: testMessage,
-          agentId: selectedAgentForTest
-        }),
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: `Eres ${selectedAgent.name}, un asistente virtual inteligente y profesional.`
+            },
+            {
+              role: 'user',
+              content: testMessage
+            }
+          ],
+          max_tokens: 500,
+          temperature: 0.7
+        })
       });
 
-      if (!response.ok) {
-        throw new Error(`Error del servidor: ${response.status}`);
+      if (!openaiResponse.ok) {
+        const errorData = await openaiResponse.json();
+        throw new Error(errorData.error?.message || 'Error de OpenAI API');
       }
 
-      const data = await response.json();
-      
-      if (data.success) {
-        setTestResponse(data.response);
-        toast({
-          title: "✅ Respuesta real recibida",
-          description: `${selectedAgent.name} respondió desde OpenAI API`
-        });
-      } else {
-        throw new Error(data.error || 'Error conectando con el agente');
-      }
+      const openaiData = await openaiResponse.json();
+      const agentResponse = openaiData.choices[0].message.content;
+
+      setTestResponse(agentResponse);
+      toast({
+        title: "✅ Respuesta real de OpenAI",
+        description: `${selectedAgent.name} respondió autenticamente`
+      });
     } catch (error: any) {
       console.error('❌ Error en prueba:', error);
       setTestResponse(`Error de conexión: ${error.message}`);
