@@ -137,6 +137,37 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
   );
 }
 
+function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
+  const { data: assignment } = useQuery({
+    queryKey: ['/api/chat-assignments', chatId],
+    enabled: !!chatId
+  });
+
+  // Cargar lista de agentes para obtener el nombre
+  const { data: users = [] } = useQuery({
+    queryKey: ['/api/users'],
+    staleTime: 60000, // Cache por 1 minuto
+  });
+
+  // Si no hay asignación, mostrar "Desconectado"
+  if (!assignment || !assignment.assignedToId) {
+    return <span>Desconectado</span>;
+  }
+
+  // Si hay asignación, encontrar el agente y mostrar el nombre
+  const assignedAgent = users.find(user => user.id === assignment.assignedToId);
+  
+  if (!assignedAgent) {
+    return <span>Desconectado</span>;
+  }
+
+  return (
+    <span className="text-blue-600 font-medium">
+      Agente: {assignedAgent.username}
+    </span>
+  );
+}
+
 function ChatCommentsIndicator({ chatId }: { chatId: string }) {
   const { data: comments = [] } = useQuery({
     queryKey: ['/api/chat-comments', chatId],
@@ -1503,7 +1534,7 @@ export function WhatsAppTwoColumn() {
                       ) : selectedChat.lastSeen ? (
                         <span>Última vez: {formatTime(selectedChat.lastSeen)}</span>
                       ) : (
-                        <span>Desconectado</span>
+                        <AgentAssignmentDisplay chatId={selectedChat.id} />
                       )}
                     </div>
                   </div>

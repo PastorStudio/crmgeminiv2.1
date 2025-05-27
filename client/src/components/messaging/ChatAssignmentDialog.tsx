@@ -119,18 +119,18 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     staleTime: 30000, // Cache por 30 segundos
   });
 
-  // Cargar tickets del sistema
-  const { data: ticketsResponse, isLoading: isLoadingTickets } = useQuery({
-    queryKey: ['/api/tickets'],
+  // Cargar leads del sistema para tickets
+  const { data: leadsResponse, isLoading: isLoadingLeads } = useQuery({
+    queryKey: ['/api/leads'],
     queryFn: async () => {
       try {
-        const response = await fetch('/api/tickets');
+        const response = await fetch('/api/leads');
         if (response.ok) {
           return await response.json();
         }
         return [];
       } catch (error) {
-        console.error('Error cargando tickets:', error);
+        console.error('Error cargando leads:', error);
         return [];
       }
     },
@@ -138,7 +138,7 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     staleTime: 30000,
   });
 
-  const tickets = ticketsResponse || [];
+  const leads = leadsResponse || [];
   
   // Sistema interno de cuentas - No requiere WhatsApp conectado
   const internalAccounts = [
@@ -448,28 +448,28 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {isLoadingTickets ? (
+                        {isLoadingLeads ? (
                           <SelectItem value="loading" disabled>
-                            🔄 Cargando tickets...
+                            🔄 Cargando leads...
                           </SelectItem>
-                        ) : tickets.length > 0 ? (
-                          tickets.map((ticket: any) => (
+                        ) : leads.length > 0 ? (
+                          leads.map((lead: any) => (
                             <SelectItem
-                              key={ticket.id}
-                              value={ticket.id.toString()}
+                              key={lead.id}
+                              value={lead.id.toString()}
                             >
                               <div className="flex items-center space-x-2">
-                                <span className="font-medium">#{ticket.id}</span>
-                                <span className="text-sm text-gray-600">{ticket.title}</span>
+                                <span className="font-medium">{lead.name}</span>
+                                <span className="text-sm text-gray-600">{lead.email || lead.phone}</span>
                                 <Badge variant="outline" className="text-xs">
-                                  {ticket.status}
+                                  {lead.status}
                                 </Badge>
                               </div>
                             </SelectItem>
                           ))
                         ) : (
                           <SelectItem value="none" disabled>
-                            📝 No hay tickets disponibles
+                            👤 No hay leads disponibles
                           </SelectItem>
                         )}
                       </SelectContent>
