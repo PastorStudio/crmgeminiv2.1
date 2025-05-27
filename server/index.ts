@@ -3439,6 +3439,39 @@ app.use((req, res, next) => {
     }
   });
 
+  // Endpoint para procesar último mensaje recibido (indicador rojo)
+  app.post("/api/process-last-received", async (req: Request, res: Response) => {
+    try {
+      const { accountId, chatId, lastReceivedMessage } = req.body;
+      
+      if (!accountId || !chatId || !lastReceivedMessage) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Faltan parámetros requeridos' 
+        });
+      }
+      
+      console.log(`🔴 PROCESANDO ÚLTIMO MENSAJE RECIBIDO para cuenta ${accountId}`);
+      
+      const { LastReceivedAutoResponse } = await import('./services/lastReceivedAutoResponse');
+      
+      const result = await LastReceivedAutoResponse.processLastReceivedMessage({
+        accountId,
+        chatId,
+        lastReceivedMessage
+      });
+      
+      res.json(result);
+      
+    } catch (error) {
+      console.error('Error procesando último mensaje recibido:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Error interno del servidor' 
+      });
+    }
+  });
+
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
