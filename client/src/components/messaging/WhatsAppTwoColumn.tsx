@@ -317,11 +317,21 @@ export function WhatsAppTwoColumn() {
         })
       });
       
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const result = await response.json();
       
       if (result.success) {
         setExternalAgentActive(result.active);
         setExternalAgentUrl(result.agentUrl || '');
+        
+        // Si se activó, abrir el enlace del agente externo
+        if (result.active && result.agentUrl) {
+          window.open(result.agentUrl, '_blank');
+        }
+        
         toast({
           title: `🤖 A.E AI ${result.active ? 'Activado' : 'Desactivado'}`,
           description: result.active 
@@ -338,8 +348,8 @@ export function WhatsAppTwoColumn() {
     } catch (error) {
       console.error('Error toggle A.E AI:', error);
       toast({
-        title: "Error",
-        description: "Error de conexión con el agente externo",
+        title: "Error de Conexión",
+        description: "No se pudo conectar con el servidor. Verifica tu conexión.",
         variant: "destructive"
       });
     } finally {
@@ -825,6 +835,20 @@ export function WhatsAppTwoColumn() {
   const handleChatSelect = async (chat: WhatsAppChat) => {
     setSelectedChat(chat);
     setNewMessage(''); // Clear input when switching chats
+    
+    // Cargar estado del agente externo A.E AI para el chat seleccionado
+    try {
+      const response = await fetch(`/api/external-agents/status/${encodeURIComponent(chat.id)}/${chat.accountId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setExternalAgentActive(data.active || false);
+        setExternalAgentUrl(data.agentUrl || '');
+      }
+    } catch (error) {
+      console.error('Error cargando estado A.E AI:', error);
+      setExternalAgentActive(false);
+      setExternalAgentUrl('');
+    }
     
     // Mark chat as read and reset unread count
     if (chat.unreadCount > 0) {
