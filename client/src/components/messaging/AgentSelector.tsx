@@ -66,9 +66,58 @@ export function AgentSelector({ chatId, accountId, onAgentChange }: AgentSelecto
     loadConfig();
   }, [chatId, accountId]);
 
-  // Activar/desactivar respuesta automática
-  const toggleAutoResponse = async (agentId: string | null) => {
-    if (!chatId || !accountId) return;
+  // Asignar agente automáticamente al seleccionar
+  const handleAgentSelection = async (agentId: string) => {
+    if (!accountId) return;
+    
+    setLoading(true);
+    try {
+      console.log(`🔧 Asignando agente ${agentId} automáticamente a cuenta ${accountId}...`);
+      
+      // Usar el endpoint simple de asignación directa
+      const response = await fetch('/api/simple/assign-agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountId: accountId,
+          agentId: agentId
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setIsActive(true);
+        setSelectedAgentId(agentId);
+        
+        const selectedAgent = agents.find(a => a.id === agentId);
+        
+        toast({
+          title: '🎯 Agente asignado automáticamente',
+          description: `${selectedAgent?.name} ahora responderá automáticamente a todos los mensajes de WhatsApp`,
+          duration: 5000
+        });
+        
+        onAgentChange?.(agentId);
+        console.log(`✅ Agente ${selectedAgent?.name} asignado exitosamente`);
+      } else {
+        throw new Error(result.error || 'Error al asignar agente');
+      }
+    } catch (error) {
+      console.error('Error asignando agente:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo asignar el agente automáticamente',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Desactivar respuesta automática
+  const handleDeactivateAgent = async () => {
+    if (!accountId) return;
     
     setLoading(true);
     try {
@@ -76,31 +125,27 @@ export function AgentSelector({ chatId, accountId, onAgentChange }: AgentSelecto
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          externalAgentId: agentId,
-          autoResponseEnabled: !!agentId
+          externalAgentId: null,
+          autoResponseEnabled: false
         })
       });
 
       const result = await response.json();
       
       if (result.success) {
-        setIsActive(!!agentId);
-        setSelectedAgentId(agentId);
-        
-        const selectedAgent = agents.find(a => a.id === agentId);
+        setIsActive(false);
+        setSelectedAgentId(null);
         
         toast({
-          title: agentId ? '🤖 Agente Activado' : '🔴 Agente Desactivado',
-          description: agentId 
-            ? `${selectedAgent?.name} responderá automáticamente a mensajes`
-            : 'Respuesta automática desactivada',
+          title: '🔴 Agente desactivado',
+          description: 'Respuesta automática desactivada',
         });
         
-        onAgentChange?.(agentId);
+        onAgentChange?.(null);
       } else {
         toast({
           title: 'Error',
-          description: result.message || 'No se pudo cambiar la configuración',
+          description: result.message || 'No se pudo desactivar',
           variant: 'destructive',
         });
       }
@@ -124,8 +169,11 @@ export function AgentSelector({ chatId, accountId, onAgentChange }: AgentSelecto
       <Select
         value={selectedAgentId || "none"}
         onValueChange={(value) => {
-          const agentId = value === "none" ? null : value;
-          toggleAutoResponse(agentId);
+          if (value === "none") {
+            handleDeactivateAgent();
+          } else {
+            handleAgentSelection(value);
+          }
         }}
         disabled={loading}
       >
