@@ -27,6 +27,102 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// BYPASS COMPLETO PARA AGENTES EXTERNOS - ANTES DE CUALQUIER MIDDLEWARE
+app.use('/api/external-agents-direct', express.Router()
+  .post('/', async (req: Request, res: Response) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      console.log('🤖 Creando agente externo (bypass directo):', req.body);
+      
+      const { agentUrl, triggerKeywords } = req.body;
+      
+      if (!agentUrl) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Se requiere agentUrl' 
+        });
+      }
+
+      const extractedName = agentUrl.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent';
+      const { externalAgents } = await import('@shared/schema');
+      
+      const [newAgent] = await db
+        .insert(externalAgents)
+        .values({
+          chatId: `default-${Date.now()}`,
+          accountId: 1,
+          agentName: extractedName,
+          agentUrl,
+          provider: 'chatgpt',
+          status: 'active'
+        })
+        .returning();
+
+      console.log('✅ Agente externo creado (bypass):', newAgent.id);
+
+      return res.json({
+        success: true,
+        agent: {
+          id: newAgent.id,
+          name: newAgent.agentName,
+          agentUrl: newAgent.agentUrl,
+          isActive: newAgent.status === 'active'
+        },
+        message: 'Agente externo creado exitosamente'
+      });
+
+    } catch (error) {
+      console.error('❌ Error creando agente externo (bypass):', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Error desconocido',
+        message: 'Error al crear agente externo' 
+      });
+    }
+  })
+  .get('/', async (req: Request, res: Response) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      console.log('📋 Listando agentes externos (bypass directo)...');
+      
+      const { externalAgents } = await import('@shared/schema');
+      
+      const agents = await db
+        .select({
+          id: externalAgents.id,
+          name: externalAgents.agentName,
+          agentUrl: externalAgents.agentUrl,
+          provider: externalAgents.provider,
+          status: externalAgents.status,
+          responseCount: externalAgents.responseCount,
+          createdAt: externalAgents.createdAt
+        })
+        .from(externalAgents)
+        .orderBy(externalAgents.createdAt);
+
+      console.log('✅ Agentes externos encontrados (bypass):', agents.length);
+
+      return res.json({
+        success: true,
+        agents: agents.map(agent => ({
+          id: agent.id,
+          name: agent.name,
+          agentUrl: agent.agentUrl,
+          isActive: agent.status === 'active',
+          responseCount: agent.responseCount || 0
+        }))
+      });
+
+    } catch (error) {
+      console.error('❌ Error listando agentes externos (bypass):', error);
+      return res.json({
+        success: false,
+        agents: []
+      });
+    }
+  })
+);
+
 // RUTAS CRÍTICAS ANTES QUE VITE - AGENTES EXTERNOS Y ESTADO EN VIVO
 app.post('/api/create-external-agent', async (req: Request, res: Response) => {
   try {
@@ -226,8 +322,19 @@ app.get("/api/media-gallery/list", async (_req: Request, res: Response) => {
   }
 });
 
-// INTERCEPTAR RUTAS DE AUTENTICACIÓN ANTES QUE VITE
+// INTERCEPTAR RUTAS CRÍTICAS ANTES QUE VITE
 app.use((req, res, next) => {
+  // Interceptar agentes externos antes que Vite
+  if (req.method === 'POST' && req.path === '/api/create-external-agent') {
+    // Ya manejado arriba, pero asegurar que no pase por Vite
+    return next();
+  }
+  
+  if (req.method === 'GET' && req.path === '/api/list-external-agents') {
+    // Ya manejado arriba, pero asegurar que no pase por Vite
+    return next();
+  }
+  
   // Solo interceptar login
   if (req.method === 'POST' && req.path === '/auth/login') {
     console.log('🔐 Interceptando login antes de Vite');

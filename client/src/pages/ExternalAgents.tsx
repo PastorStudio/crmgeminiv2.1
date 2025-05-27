@@ -75,7 +75,7 @@ export default function ExternalAgents() {
 
   const fetchAgents = async () => {
     try {
-      const response = await fetch('/api/list-external-agents');
+      const response = await fetch('/api/external-agents-direct');
       const data = await response.json();
       setAgents(data.agents || []);
     } catch (error) {
@@ -116,7 +116,7 @@ export default function ExternalAgents() {
         .map(k => k.trim())
         .filter(k => k);
 
-      const response = await fetch('/api/create-external-agent', {
+      const response = await fetch('/api/external-agents-direct', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
