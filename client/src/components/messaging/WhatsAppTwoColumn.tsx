@@ -48,6 +48,7 @@ import { AccountSelector } from './AccountSelector';
 import ChatAssignmentDialog from './ChatAssignmentDialog';
 import { ChatCommentsDialog } from './ChatCommentsDialog';
 import { ExternalAgentButton } from './ExternalAgentButton';
+import { AgentSelector } from './AgentSelector';
 
 import { VoiceNoteMessage } from './VoiceNoteMessage';
 
@@ -1745,11 +1746,7 @@ export function WhatsAppTwoColumn() {
                     <Button
                       size="sm"
                       variant={externalAgentActive ? "default" : "outline"}
-                      className={`${
-                        externalAgentActive 
-                          ? "bg-green-600 text-white hover:bg-green-700 shadow-lg" 
-                          : "border-purple-600 text-purple-600 hover:bg-purple-50"
-                      } transition-all duration-300 relative`}
+                      className="hidden" // Ocultar el botón A.E AI original
                       onClick={async () => {
                         console.log('🚀 A.E AI TOGGLE PRESIONADO');
                         
@@ -1825,8 +1822,25 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
 
-                  {/* BOTÓN DE PRUEBA A.E AI */}
-                  {externalAgentActive && (
+                  {/* SELECTOR DE AGENTE EXTERNO */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.1 }}
+                  >
+                    <AgentSelector 
+                      chatId={selectedChat.id}
+                      accountId={selectedChat.accountId}
+                      onAgentChange={(agentId) => {
+                        console.log('🤖 Agente seleccionado:', agentId);
+                        // Actualizar el estado local si es necesario
+                        setExternalAgentActive(!!agentId);
+                      }}
+                    />
+                  </motion.div>
+
+                  {/* BOTÓN DE PRUEBA A.E AI - OCULTO */}
+                  {false && externalAgentActive && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -1835,7 +1849,7 @@ export function WhatsAppTwoColumn() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-green-600 text-green-600 hover:bg-green-50 transition-all duration-300"
+                        className="hidden border-green-600 text-green-600 hover:bg-green-50 transition-all duration-300"
                         onClick={async () => {
                           if (!selectedChat) return;
                           
