@@ -329,6 +329,8 @@ export default function ExternalAgents() {
     setTestResponse('');
 
     try {
+      console.log('🧪 Enviando prueba a agente:', selectedAgentForTest);
+      
       const response = await fetch(`/api/external-agents-send-direct`, {
         method: 'POST',
         headers: {
@@ -345,26 +347,34 @@ export default function ExternalAgents() {
         }),
       });
 
+      console.log('📡 Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
+      console.log('📨 Response data:', data);
       
       if (data.success && data.response) {
         setTestResponse(data.response);
         toast({
-          title: "Respuesta recibida",
+          title: "✅ Respuesta recibida",
           description: `El agente ${data.agent || 'seleccionado'} respondió correctamente`
         });
       } else {
         setTestResponse(`Error: ${data.error || 'No se pudo obtener respuesta del agente'}`);
         toast({
-          title: "Error",
+          title: "❌ Error",
           description: data.error || "No se pudo obtener respuesta",
           variant: "destructive"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('❌ Error en prueba:', error);
       setTestResponse(`Error de conexión: ${error.message}`);
       toast({
-        title: "Error",
+        title: "❌ Error",
         description: "Error conectando con el agente",
         variant: "destructive"
       });
