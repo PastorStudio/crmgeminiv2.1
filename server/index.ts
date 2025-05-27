@@ -2943,6 +2943,7 @@ app.use((req, res, next) => {
       `, [agentId, accountId]);
       
       if (updateResult.rows.length === 0) {
+        console.log(`❌ Cuenta de WhatsApp ${accountId} no encontrada`);
         return res.status(404).json({
           success: false,
           error: 'Cuenta de WhatsApp no encontrada'
@@ -2957,7 +2958,9 @@ app.use((req, res, next) => {
       const agentName = agentResult.rows.length > 0 ? agentResult.rows[0].agent_name : 'Agente desconocido';
       
       console.log(`✅ Agente ${agentName} asignado exitosamente a cuenta ${accountId}`);
+      console.log(`📤 Enviando respuesta de éxito al frontend`);
       
+      res.setHeader('Content-Type', 'application/json');
       res.json({
         success: true,
         message: `Agente ${agentName} asignado correctamente`,
