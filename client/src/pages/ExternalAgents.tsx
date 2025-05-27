@@ -143,10 +143,37 @@ export default function ExternalAgents() {
         triggerKeywords: keywords
       });
 
-      // Por ahora agregar directamente al estado local
+      // Extraer el nombre real del agente desde el URL
+      const extractAgentName = (url: string) => {
+        if (url.includes('/g/g-')) {
+          // Ejemplo: https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots
+          // Queremos extraer "smartbots"
+          const parts = url.split('/g/g-')[1];
+          if (parts) {
+            // Buscar el último guión y tomar todo lo que viene después
+            const lastDashIndex = parts.lastIndexOf('-');
+            if (lastDashIndex !== -1 && lastDashIndex < parts.length - 1) {
+              const agentName = parts.substring(lastDashIndex + 1);
+              // Limpiar y capitalizar solo la primera letra
+              const cleanName = agentName
+                .replace(/[^a-zA-Z0-9\s]/g, '')
+                .trim();
+              if (cleanName) {
+                return cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
+              }
+            }
+          }
+        }
+        return url.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent';
+      };
+
+      const extractedName = extractAgentName(newAgentUrl.trim());
+      console.log(`👤 Nombre extraído del agente: ${extractedName}`);
+
+      // Agregar directamente al estado local con el nombre real
       const newAgent = {
         id: Date.now().toString(),
-        name: newAgentUrl.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent',
+        name: extractedName,
         agentUrl: newAgentUrl.trim(),
         isActive: true,
         responseCount: 0

@@ -331,6 +331,85 @@ app.get('/api/external-agents-direct', async (req: Request, res: Response) => {
 });
 
 // RUTAS CRÍTICAS ANTES QUE VITE - AGENTES EXTERNOS Y ESTADO EN VIVO
+// Endpoint bypass para evitar interceptación de Vite
+app.post('/api/bypass/create-external-agent', async (req: Request, res: Response) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    console.log('🔄 Creando agente externo (bypass)...');
+    
+    const { agentUrl, triggerKeywords } = req.body;
+
+    if (!agentUrl) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Se requiere agentUrl' 
+      });
+    }
+
+    // Extraer el nombre real del agente desde el URL
+    const extractAgentName = (url: string) => {
+      if (url.includes('/g/g-')) {
+        // Ejemplo: https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots
+        // Queremos extraer "smartbots"
+        const parts = url.split('/g/g-')[1];
+        if (parts) {
+          // Buscar el último guión y tomar todo lo que viene después
+          const lastDashIndex = parts.lastIndexOf('-');
+          if (lastDashIndex !== -1 && lastDashIndex < parts.length - 1) {
+            const agentName = parts.substring(lastDashIndex + 1);
+            // Limpiar y capitalizar solo la primera letra
+            const cleanName = agentName
+              .replace(/[^a-zA-Z0-9\s]/g, '')
+              .trim();
+            if (cleanName) {
+              return cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
+            }
+          }
+        }
+      }
+      return url.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent';
+    };
+    
+    const extractedName = extractAgentName(agentUrl);
+    console.log(`👤 Nombre extraído del agente (bypass): ${extractedName}`);
+    
+    const { externalAgents } = await import('@shared/schema');
+    
+    const [newAgent] = await db
+      .insert(externalAgents)
+      .values({
+        chatId: `default-${Date.now()}`,
+        accountId: 1,
+        agentName: extractedName,
+        agentUrl,
+        provider: 'chatgpt',
+        status: 'active'
+      })
+      .returning();
+
+    console.log('✅ Agente externo creado (bypass):', newAgent.id);
+
+    return res.json({
+      success: true,
+      agent: {
+        id: newAgent.id,
+        name: extractedName, // Usar el nombre extraído directamente
+        agentUrl: newAgent.agentUrl,
+        isActive: newAgent.status === 'active'
+      },
+      message: 'Agente externo creado exitosamente'
+    });
+
+  } catch (error) {
+    console.error('❌ Error creando agente externo (bypass):', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Error desconocido',
+      message: 'Error al crear agente externo' 
+    });
+  }
+});
+
 app.post('/api/create-external-agent', async (req: Request, res: Response) => {
   try {
     res.setHeader('Content-Type', 'application/json');
