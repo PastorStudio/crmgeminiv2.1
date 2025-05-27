@@ -292,6 +292,28 @@ export function WhatsAppTwoColumn() {
   const [externalAgentProcessing, setExternalAgentProcessing] = useState(false);
   const [externalAgentUrl, setExternalAgentUrl] = useState<string>('');
 
+  // Cargar estado del agente externo al seleccionar chat
+  useEffect(() => {
+    const loadAgentStatus = async () => {
+      if (!selectedChat) return;
+      
+      try {
+        const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/agent-config`);
+        const data = await response.json();
+        
+        if (data.success && data.config) {
+          const isActive = data.config.autoResponseEnabled && data.config.assignedExternalAgentId;
+          setExternalAgentActive(isActive);
+          console.log(`📊 Estado A.E AI cargado: ${isActive ? 'ACTIVO' : 'INACTIVO'}`);
+        }
+      } catch (error) {
+        console.error('Error cargando estado A.E AI:', error);
+      }
+    };
+
+    loadAgentStatus();
+  }, [selectedChat]);
+
   // Función para alternar A.E AI (Agentes Externos)
   const toggleExternalAgent = async () => {
     console.log('🚀 USUARIO PRESIONÓ BOTÓN A.E AI');
@@ -1746,31 +1768,37 @@ export function WhatsAppTwoColumn() {
                           
                           console.log(`📡 ${newState ? 'ACTIVANDO' : 'DESACTIVANDO'} A.E AI para ${selectedChat.id}`);
                           
-                          // Llamar al endpoint simplificado
-                          const response = await fetch('/api/ae-ai/toggle', {
+                          // Usar el mismo endpoint que funciona en configuración de cuentas
+                          const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/assign-external-agent`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ 
-                              chatId: selectedChat.id,
-                              accountId: selectedChat.accountId,
-                              active: newState
+                              externalAgentId: newState ? "2" : null, // Usar agente 2 que ya está configurado
+                              autoResponseEnabled: newState
                             })
                           });
                           
                           if (response.ok) {
                             const result = await response.json();
-                            setExternalAgentActive(newState);
+                            console.log('✅ Resultado:', result);
                             
-                            toast({
-                              title: `🤖 A.E AI ${newState ? 'Activado' : 'Desactivado'}`,
-                              description: newState 
-                                ? `Respuestas automáticas activadas para ${selectedChat.name}`
-                                : `Respuestas automáticas desactivadas`,
-                            });
-                            
-                            console.log(`✅ A.E AI ${newState ? 'ACTIVADO' : 'DESACTIVADO'} exitosamente`);
+                            if (result.success) {
+                              setExternalAgentActive(newState);
+                              
+                              toast({
+                                title: `🤖 A.E AI ${newState ? 'Activado' : 'Desactivado'}`,
+                                description: newState 
+                                  ? `Agente externo activado - responderá automáticamente a mensajes`
+                                  : `Agente externo desactivado`,
+                              });
+                              
+                              console.log(`✅ A.E AI ${newState ? 'ACTIVADO' : 'DESACTIVADO'} exitosamente`);
+                            } else {
+                              throw new Error(result.message || 'Error en la configuración');
+                            }
                           } else {
-                            throw new Error('Error en el servidor');
+                            const errorText = await response.text();
+                            throw new Error(`Error HTTP: ${response.status} - ${errorText}`);
                           }
                         } catch (error) {
                           console.error('❌ Error A.E AI:', error);
