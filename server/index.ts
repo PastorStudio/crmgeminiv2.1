@@ -1348,93 +1348,36 @@ app.use((req, res, next) => {
         });
       }
 
-      const { externalAgentConfigs, externalAgents } = await import('@shared/schema');
-      const { eq, and } = await import('drizzle-orm');
+      // Usar SOLO el sistema simplificado que ya funciona
+      const { WhatsAppAccountConfigManager } = await import('./externalAgentsSimple');
 
       if (active) {
         // Activar agente externo
-        // Primero buscar si ya existe configuración
-        const [existingConfig] = await db
-          .select()
-          .from(externalAgentConfigs)
-          .where(and(
-            eq(externalAgentConfigs.chatId, chatId),
-            eq(externalAgentConfigs.accountId, accountId)
-          ))
-          .limit(1);
-
-        let agentUrl = '';
+        const config = WhatsAppAccountConfigManager.assignAgent(
+          accountId, 
+          'smartbots-001', // ID del primer agente
+          true // autoResponseEnabled
+        );
         
-        if (existingConfig) {
-          // Actualizar configuración existente
-          await db
-            .update(externalAgentConfigs)
-            .set({ 
-              isActive: true, 
-              updatedAt: new Date() 
-            })
-            .where(eq(externalAgentConfigs.id, existingConfig.id));
-          
-          // Buscar agente asignado
-          if (existingConfig.selectedAgentId) {
-            const [agent] = await db
-              .select()
-              .from(externalAgents)
-              .where(eq(externalAgents.id, existingConfig.selectedAgentId))
-              .limit(1);
-            agentUrl = agent?.agentUrl || '';
-          }
-        } else {
-          // Crear nueva configuración y agente externo
-          const [newAgent] = await db
-            .insert(externalAgents)
-            .values({
-              chatId,
-              accountId,
-              agentName: `A.E AI - Chat ${chatId.slice(0, 10)}`,
-              agentUrl: `https://chat.openai.com/g/g-external-agent-${chatId.replace(/[^a-zA-Z0-9]/g, '')}`,
-              provider: 'chatgpt',
-              status: 'active'
-            })
-            .returning();
-
-          await db
-            .insert(externalAgentConfigs)
-            .values({
-              chatId,
-              accountId,
-              isActive: true,
-              selectedAgentId: newAgent.id,
-              autoResponse: true,
-              responseDelay: 3,
-              maxResponsesPerHour: 15
-            });
-          
-          agentUrl = newAgent.agentUrl;
-        }
-
-        console.log('✅ A.E AI activado para chat:', chatId);
+        console.log('✅ A.E AI activado para cuenta:', accountId, 'con agente: Smartbots');
+        
         res.json({
           success: true,
           active: true,
-          agentUrl,
+          agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
+          agentName: 'Smartbots',
           message: 'Agente externo A.E AI activado correctamente'
         });
 
       } else {
         // Desactivar agente externo
-        await db
-          .update(externalAgentConfigs)
-          .set({ 
-            isActive: false, 
-            updatedAt: new Date() 
-          })
-          .where(and(
-            eq(externalAgentConfigs.chatId, chatId),
-            eq(externalAgentConfigs.accountId, accountId)
-          ));
+        WhatsAppAccountConfigManager.assignAgent(
+          accountId, 
+          null, // Sin agente
+          false // autoResponseEnabled
+        );
 
-        console.log('🔴 A.E AI desactivado para chat:', chatId);
+        console.log('🔴 A.E AI desactivado para cuenta:', accountId);
         res.json({
           success: true,
           active: false,
