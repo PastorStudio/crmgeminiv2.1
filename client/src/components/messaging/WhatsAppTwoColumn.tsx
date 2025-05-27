@@ -2077,52 +2077,6 @@ function formatTime(timestamp: number): string {
     minute: '2-digit'
   });
 }
-                            throw new Error(`Error HTTP: ${response.status} - ${errorText}`);
-                          }
-                        } catch (error) {
-                          console.error('❌ Error A.E AI:', error);
-                          toast({
-                            title: "Error",
-                            description: "No se pudo cambiar el estado del A.E AI",
-                            variant: "destructive"
-                          });
-                        } finally {
-                          setExternalAgentProcessing(false);
-                        }
-                      }}
-                      disabled={externalAgentProcessing}
-                    >
-                      {externalAgentProcessing ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Bot className="h-4 w-4 mr-2" />
-                      )}
-                      A.E AI
-                      {externalAgentActive && (
-                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
-                      )}
-                    </Button>
-                  </motion.div>
-
-                  {/* BOTÓN DE PRUEBA A.E AI */}
-                  {externalAgentActive && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, delay: 0.2 }}
-                    >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-green-600 text-green-600 hover:bg-green-50 transition-all duration-300"
-                        onClick={async () => {
-                          if (!selectedChat) return;
-                          
-                          try {
-                            console.log('🧪 PROBANDO A.E AI');
-                            
-                            const response = await fetch('/api/debug-ae-ai/probe', {
-                              method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({
                                 chatId: selectedChat.id,
