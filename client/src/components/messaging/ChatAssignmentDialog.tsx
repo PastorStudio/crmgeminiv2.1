@@ -153,7 +153,7 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
       
       // Obtener el nombre del agente para el mensaje
       const assignedAgent = agentsList.find(agent => agent.id === response.assignedToId);
-      const agentName = assignedAgent ? assignedAgent.fullName : 'Agente';
+      const agentName = assignedAgent ? assignedAgent.username : 'Agente';
       
       toast({
         title: 'Chat asignado exitosamente',
@@ -199,7 +199,7 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
       
       // Obtener el nombre del agente para el mensaje
       const assignedAgent = agentsList.find(agent => agent.id === response.assignedToId);
-      const agentName = assignedAgent ? assignedAgent.fullName : 'Agente';
+      const agentName = assignedAgent ? assignedAgent.username : 'Agente';
       
       toast({
         title: 'Chat asignado exitosamente',
