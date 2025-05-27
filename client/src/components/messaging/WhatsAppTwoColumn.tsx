@@ -164,7 +164,7 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
   console.log('🔍 Debug Header - Users:', usersResponse);
 
   const users = usersResponse?.users || usersResponse || [];
-  const assignment = assignmentResponse?.[0] || assignmentResponse;
+  const assignment = assignmentResponse;
 
   // Si no hay asignación, mostrar "Desconectado"
   if (!assignment || !assignment.assignedToId) {
@@ -175,6 +175,7 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
   const assignedAgent = users.find((user: any) => user.id === assignment.assignedToId);
   
   console.log('🔍 Debug Header - Assigned Agent:', assignedAgent);
+  console.log('🔍 Debug Header - Assignment ID:', assignment.assignedToId);
 
   if (!assignedAgent) {
     return <span>Desconectado</span>;
