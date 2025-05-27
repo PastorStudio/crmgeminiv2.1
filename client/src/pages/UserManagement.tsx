@@ -50,7 +50,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MoreHorizontal, PlusCircle, UserPlus, UserX, Edit, Trash } from 'lucide-react';
+import { Loader2, MoreHorizontal, PlusCircle, UserPlus, UserX, Edit, Trash, Activity, Eye, Clock, BarChart3 } from 'lucide-react';
 
 // Definir tipo para usuarios
 interface User {
@@ -63,6 +63,29 @@ interface User {
   department?: string;
   avatar?: string;
   lastLoginAt?: string;
+  totalLogins?: number;
+  lastActivity?: string;
+}
+
+// Definir tipo para actividades de agentes
+interface AgentActivity {
+  id: number;
+  agentId: number;
+  action: string;
+  page: string;
+  details?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  sessionToken?: string;
+  timestamp: string;
+}
+
+interface ActivityStats {
+  totalSessions: number;
+  lastLogin: string;
+  totalPageViews: number;
+  mostVisitedPages: string[];
+  averageSessionTime: number;
 }
 
 // Definir esquema para validar formularios
@@ -98,6 +121,13 @@ export default function UserManagement() {
   const { user: currentUser } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  
+  // Estados para actividades de agentes
+  const [showActivities, setShowActivities] = useState(false);
+  const [selectedAgentForActivities, setSelectedAgentForActivities] = useState<User | null>(null);
+  const [agentActivities, setAgentActivities] = useState<AgentActivity[]>([]);
+  const [activityStats, setActivityStats] = useState<ActivityStats | null>(null);
+  const [loadingActivities, setLoadingActivities] = useState(false);
   
   // DJP SUPERADMINISTRADOR - ACCESO TOTAL GARANTIZADO SIN RESTRICCIONES
   const isSuperAdmin = currentUser?.username === 'DJP' || currentUser?.id === 3 || 
@@ -141,13 +171,49 @@ export default function UserManagement() {
         // La API devuelve directamente un array de usuarios, no un objeto con success
         if (Array.isArray(data)) {
           console.log('✅ Frontend: Usuarios reales cargados desde DB:', data.length);
-          return data.map((user: any) => ({
-            ...user,
-            status: 'active', // Agregar status por defecto
-            department: user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
-                       user.role === 'admin' ? 'administracion' : 
-                       user.role === 'supervisor' ? 'supervision' : 'atencion_cliente'
-          }));
+          
+          // Obtener estadísticas de actividad para cada usuario
+          const usersWithActivity = await Promise.all(
+            data.map(async (user: any) => {
+              try {
+                // Obtener actividades de cada usuario usando la API existente
+                const activityResponse = await fetch(`/api/agent-activity/${user.id}`);
+                let totalLogins = 0;
+                let lastActivity = null;
+                
+                if (activityResponse.ok) {
+                  const activityData = await activityResponse.json();
+                  if (activityData.success) {
+                    totalLogins = activityData.activities?.filter((a: any) => a.action === 'login').length || 0;
+                    lastActivity = activityData.activities?.[0]?.timestamp || null;
+                  }
+                }
+                
+                return {
+                  ...user,
+                  status: 'active',
+                  department: user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
+                             user.role === 'admin' ? 'administracion' : 
+                             user.role === 'supervisor' ? 'supervision' : 'atencion_cliente',
+                  totalLogins,
+                  lastActivity
+                };
+              } catch (error) {
+                console.warn('Error obteniendo actividades del usuario:', user.id, error);
+                return {
+                  ...user,
+                  status: 'active',
+                  department: user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
+                             user.role === 'admin' ? 'administracion' : 
+                             user.role === 'supervisor' ? 'supervision' : 'atencion_cliente',
+                  totalLogins: 0,
+                  lastActivity: null
+                };
+              }
+            })
+          );
+          
+          return usersWithActivity;
         } else if (data.success && Array.isArray(data.users)) {
           console.log('✅ Frontend: Usuarios reales cargados desde DB:', data.users.length);
           return data.users.map((user: any) => ({
@@ -303,6 +369,61 @@ export default function UserManagement() {
   const openDeleteDialog = (user: User) => {
     setSelectedUser(user);
     setIsDeleteDialogOpen(true);
+  };
+
+  // Función para ver actividades del agente
+  const viewAgentActivities = async (user: User) => {
+    setSelectedAgentForActivities(user);
+    setShowActivities(true);
+    setLoadingActivities(true);
+    
+    try {
+      const response = await fetch(`/api/agent-activity/${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setAgentActivities(data.activities || []);
+          setActivityStats(data.stats || null);
+        }
+      }
+    } catch (error) {
+      console.error('Error obteniendo actividades:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las actividades del agente",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingActivities(false);
+    }
+  };
+
+  // Función para formatear fechas
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Nunca';
+    return new Date(dateString).toLocaleString('es-ES', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Función para mostrar tiempo relativo
+  const timeAgo = (dateString: string | null) => {
+    if (!dateString) return 'Nunca';
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 60) return `Hace ${diffMins} min`;
+    if (diffHours < 24) return `Hace ${diffHours}h`;
+    if (diffDays < 30) return `Hace ${diffDays} días`;
+    return formatDate(dateString);
   };
 
   // Submit del formulario
@@ -583,6 +704,18 @@ export default function UserManagement() {
                   <TableHead>Rol</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Departamento</TableHead>
+                  <TableHead className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      Ingresos
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Activity className="h-4 w-4" />
+                      Última Actividad
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
