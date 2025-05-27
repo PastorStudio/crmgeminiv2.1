@@ -74,17 +74,21 @@ export function AgentSelector({ chatId, accountId, onAgentChange }: AgentSelecto
     try {
       console.log(`🔧 Asignando agente ${agentId} automáticamente a cuenta ${accountId}...`);
       
-      // Usar el endpoint simple de asignación directa
-      const response = await fetch('/api/simple/assign-agent', {
+      // Usar SQL directo para asegurar la asignación
+      const directResponse = await fetch('/api/whatsapp-accounts/1/assign-external-agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          accountId: accountId,
-          agentId: agentId
+          externalAgentId: agentId,
+          autoResponseEnabled: true
         })
       });
 
-      const result = await response.json();
+      if (!directResponse.ok) {
+        throw new Error(`HTTP error! status: ${directResponse.status}`);
+      }
+
+      const result = await directResponse.json();
       
       if (result.success) {
         setIsActive(true);
@@ -101,7 +105,7 @@ export function AgentSelector({ chatId, accountId, onAgentChange }: AgentSelecto
         onAgentChange?.(agentId);
         console.log(`✅ Agente ${selectedAgent?.name} asignado exitosamente`);
       } else {
-        throw new Error(result.error || 'Error al asignar agente');
+        throw new Error(result.message || 'Error al asignar agente');
       }
     } catch (error) {
       console.error('Error asignando agente:', error);
@@ -110,6 +114,8 @@ export function AgentSelector({ chatId, accountId, onAgentChange }: AgentSelecto
         description: 'No se pudo asignar el agente automáticamente',
         variant: 'destructive',
       });
+      setSelectedAgentId(null);
+      setIsActive(false);
     } finally {
       setLoading(false);
     }
