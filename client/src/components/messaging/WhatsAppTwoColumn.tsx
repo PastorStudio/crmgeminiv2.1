@@ -1814,7 +1814,7 @@ export function WhatsAppTwoColumn() {
                           try {
                             console.log('🧪 PROBANDO A.E AI');
                             
-                            const response = await fetch('/api/ae-ai/test-response', {
+                            const response = await fetch('/api/debug-ae-ai/probe', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({

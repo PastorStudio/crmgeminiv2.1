@@ -1391,10 +1391,10 @@ app.use((req, res, next) => {
     }
   });
 
-  // ENDPOINT MEJORADO PARA PROBAR A.E AI
-  app.post('/api/ae-ai/test-response', async (req, res) => {
-    console.log(`🚀 ENDPOINT TEST-MESSAGE INICIADO`);
-    console.log(`📦 Body recibido:`, req.body);
+  // ENDPOINT ÚNICO PARA PROBAR A.E AI - SIN CONFLICTOS
+  app.post('/api/debug-ae-ai/probe', async (req, res) => {
+    console.log(`🚀🚀🚀 ENDPOINT PROBE ÚNICO INICIADO`);
+    console.log(`📦📦📦 Body recibido:`, req.body);
     
     const { chatId, message, accountId = 1 } = req.body;
     
