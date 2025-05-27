@@ -1513,7 +1513,7 @@ app.use((req, res, next) => {
   // Sistema simplificado de agentes externos
   const { SimpleExternalAgentManager, WhatsAppAccountConfigManager } = await import('./externalAgentsSimple');
 
-  // Listar todos los agentes externos (SIMPLIFICADO)
+  // Listar todos los agentes externos (SIMPLIFICADO Y CORREGIDO)
   app.get('/api/external-agents', async (req, res) => {
     try {
       res.setHeader('Content-Type', 'application/json');
@@ -1522,9 +1522,19 @@ app.use((req, res, next) => {
       const agents = SimpleExternalAgentManager.getAllAgents();
       console.log('✅ Agentes externos encontrados:', agents.length);
 
+      // Formatear los agentes para la interfaz
+      const formattedAgents = agents.map(agent => ({
+        id: agent.id,
+        name: agent.name,
+        agentUrl: agent.agentUrl,
+        isActive: agent.isActive,
+        responseCount: agent.responseCount || 0,
+        createdAt: agent.createdAt
+      }));
+
       return res.json({
         success: true,
-        agents
+        agents: formattedAgents
       });
 
     } catch (error) {
