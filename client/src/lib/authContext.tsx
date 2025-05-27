@@ -44,7 +44,7 @@ const USER_KEY = 'crm_user_data';
 
 // Componente proveedor que envuelve la aplicación
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -151,6 +151,89 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
     }
   };
+
+  // Sistema global de heartbeat y seguimiento de actividades
+  useEffect(() => {
+    if (user?.id && token) {
+      // Función para enviar heartbeat
+      const sendHeartbeat = async () => {
+        try {
+          await fetch(`/api/agents/${user.id}/heartbeat`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          console.log(`💚 Heartbeat global enviado para agente ${user.id}`);
+        } catch (error) {
+          console.log('⚫ Error enviando heartbeat global');
+        }
+      };
+
+      // Función para registrar visita a página
+      const trackPageVisit = async (page: string) => {
+        try {
+          await fetch('/api/agent-activity', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              agentId: user.id,
+              activity: 'page_visit',
+              page: page,
+              details: `Visitó la página: ${page}`
+            }),
+          });
+          console.log(`📄 Página registrada: ${page} para agente ${user.id}`);
+        } catch (error) {
+          console.log('⚫ Error registrando actividad de página');
+        }
+      };
+
+      // Enviar heartbeat inicial
+      sendHeartbeat();
+      
+      // Registrar visita inicial a la página actual
+      trackPageVisit(location || '/');
+
+      // Configurar heartbeat automático cada 15 segundos
+      const heartbeatInterval = setInterval(sendHeartbeat, 15000);
+
+      // Limpiar intervalo al desmontar
+      return () => {
+        clearInterval(heartbeatInterval);
+      };
+    }
+  }, [user?.id, token]);
+
+  // Seguimiento de cambios de página
+  useEffect(() => {
+    if (user?.id && token && location) {
+      const trackPageVisit = async (page: string) => {
+        try {
+          await fetch('/api/agent-activity', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              agentId: user.id,
+              activity: 'page_visit',
+              page: page,
+              details: `Navegó a la página: ${page}`
+            }),
+          });
+          console.log(`📄 Nueva página registrada: ${page} para agente ${user.id}`);
+        } catch (error) {
+          console.log('⚫ Error registrando navegación');
+        }
+      };
+
+      // Registrar cada cambio de página
+      trackPageVisit(location);
+    }
+  }, [location, user?.id, token]);
 
   const value = {
     user,
