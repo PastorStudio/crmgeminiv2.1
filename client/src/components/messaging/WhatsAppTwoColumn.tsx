@@ -2077,17 +2077,7 @@ function formatTime(timestamp: number): string {
     minute: '2-digit'
   });
 }
-                      >
-                        <Bot className="h-4 w-4 mr-2" />
-                        Probar
-                      </Button>
-                    </motion.div>
-                  )}
-                  
 
-
-
-                  
                   {/* Comments Button */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
