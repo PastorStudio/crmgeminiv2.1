@@ -1393,12 +1393,19 @@ app.use((req, res, next) => {
 
   // ENDPOINT PARA SIMULAR MENSAJE ENTRANTE Y PROBAR A.E AI
   app.post('/api/ae-ai/test-message', async (req, res) => {
+    console.log(`🚀 ENDPOINT TEST-MESSAGE INICIADO`);
+    console.log(`📦 Body recibido:`, req.body);
+    
     const { chatId, message, accountId = 1 } = req.body;
+    
+    console.log(`📋 Parámetros extraídos:`, { chatId, message, accountId });
     
     try {
       console.log(`🧪 PROBANDO A.E AI con mensaje: "${message}" en chat ${chatId}`);
       
       const { processIncomingMessage, isAEAIActive, getAEAIConfig } = await import('./services/autoResponseProcessor.js');
+      console.log(`✅ Módulo autoResponseProcessor cargado`);
+      
       
       // Verificar si A.E AI está activo
       const isActive = isAEAIActive(chatId);
