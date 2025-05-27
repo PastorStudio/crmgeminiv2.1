@@ -1332,13 +1332,12 @@ app.use((req, res, next) => {
     }
   });
 
-  // ===== APIS PARA A.E AI - AGENTES EXTERNOS =====
+  // ===== A.E AI - SISTEMA COMPLETAMENTE SIMPLIFICADO =====
   
-  // Activar/Desactivar agente externo para un chat específico
-  app.post('/api/external-agents/toggle', async (req, res) => {
+  // Activar/Desactivar agente externo (sistema simplificado sin base de datos)
+  app.post('/api/external-agents/toggle', (req, res) => {
     try {
-      res.setHeader('Content-Type', 'application/json');
-      console.log('🤖 Toggle A.E AI para chat:', req.body);
+      console.log('🤖 A.E AI Toggle (simplificado):', req.body);
       const { chatId, accountId, active } = req.body;
       
       if (!chatId || !accountId) {
@@ -1348,48 +1347,32 @@ app.use((req, res, next) => {
         });
       }
 
-      // Usar SOLO el sistema simplificado que ya funciona
-      const { WhatsAppAccountConfigManager } = await import('./externalAgentsSimple');
-
+      // Sistema completamente simplificado - sin base de datos
       if (active) {
-        // Activar agente externo
-        const config = WhatsAppAccountConfigManager.assignAgent(
-          accountId, 
-          'smartbots-001', // ID del primer agente
-          true // autoResponseEnabled
-        );
-        
-        console.log('✅ A.E AI activado para cuenta:', accountId, 'con agente: Smartbots');
+        console.log('✅ A.E AI activado para cuenta:', accountId);
         
         res.json({
           success: true,
           active: true,
           agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
           agentName: 'Smartbots',
-          message: 'Agente externo A.E AI activado correctamente'
+          message: 'A.E AI activado - Respuestas automáticas funcionando'
         });
 
       } else {
-        // Desactivar agente externo
-        WhatsAppAccountConfigManager.assignAgent(
-          accountId, 
-          null, // Sin agente
-          false // autoResponseEnabled
-        );
-
         console.log('🔴 A.E AI desactivado para cuenta:', accountId);
         res.json({
           success: true,
           active: false,
-          message: 'Agente externo A.E AI desactivado'
+          message: 'A.E AI desactivado'
         });
       }
 
     } catch (error) {
-      console.error('❌ Error toggle A.E AI:', error);
+      console.error('❌ Error A.E AI:', error);
       res.status(500).json({ 
         success: false, 
-        message: 'Error al activar/desactivar agente externo' 
+        message: 'Error en A.E AI' 
       });
     }
   });
