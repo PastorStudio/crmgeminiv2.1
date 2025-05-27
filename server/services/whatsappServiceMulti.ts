@@ -143,7 +143,42 @@ const whatsappServiceMulti = {
    */
   async processIncomingMessage(message: any, accountId?: number): Promise<void> {
     try {
-      console.log('Procesando mensaje entrante:', message.body);
+      console.log(`📨 Procesando mensaje entrante: "${message.body?.substring(0, 50)}..."`);
+      
+      // Intentar respuesta con agente externo primero
+      if (accountId && !message.fromMe) {
+        const { externalAgentWhatsAppIntegrator } = await import('./externalAgentWhatsAppIntegrator');
+        
+        const whatsappMessage = {
+          id: message.id || `msg_${Date.now()}`,
+          chatId: message.chatId || message.from,
+          accountId: accountId,
+          from: message.from || '',
+          body: message.body || '',
+          timestamp: message.timestamp || Date.now(),
+          fromMe: message.fromMe || false,
+          contactName: message.contactName
+        };
+
+        const agentResult = await externalAgentWhatsAppIntegrator.processIncomingMessage(whatsappMessage);
+        
+        if (agentResult.success && agentResult.response) {
+          console.log(`🤖 Respuesta generada por agente externo ${agentResult.agentName}: "${agentResult.response.substring(0, 50)}..."`);
+          
+          // Enviar respuesta automáticamente
+          try {
+            await this.sendMessage(accountId, message.chatId || message.from, {
+              message: agentResult.response,
+              isAutoResponse: true,
+              source: `Agente Externo: ${agentResult.agentName}`
+            });
+            console.log(`✅ Respuesta de agente externo enviada exitosamente`);
+            return; // No procesar más si el agente externo respondió
+          } catch (sendError) {
+            console.error('❌ Error enviando respuesta de agente externo:', sendError);
+          }
+        }
+      }
       
       // Guardar mensaje en la base de datos
       await storage.createMessage({

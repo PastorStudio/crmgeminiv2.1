@@ -2376,6 +2376,37 @@ app.use((req, res, next) => {
     }
   });
 
+  // Asignar agente externo a una cuenta de WhatsApp
+  app.post("/api/whatsapp-accounts/:accountId/assign-external-agent", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { externalAgentId, autoResponseEnabled } = req.body;
+      const { storage } = await import('./storage');
+      
+      console.log(`🔄 Asignando agente externo ${externalAgentId} a cuenta ${accountId}`);
+      
+      const updatedAccount = await storage.updateWhatsappAccount(accountId, {
+        assignedExternalAgentId: externalAgentId,
+        autoResponseEnabled: autoResponseEnabled || false
+      });
+      
+      if (!updatedAccount) {
+        return res.status(404).json({ error: 'Cuenta no encontrada' });
+      }
+      
+      console.log(`✅ Agente externo asignado exitosamente a cuenta ${accountId}`);
+      
+      res.json({
+        success: true,
+        message: 'Agente externo asignado exitosamente',
+        account: updatedAccount
+      });
+    } catch (error) {
+      console.error('Error asignando agente externo:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  });
+
   // Toggle AI ON/OFF para una cuenta específica
   app.post("/api/whatsapp-accounts/:accountId/ai-toggle", async (req: Request, res: Response) => {
     try {
