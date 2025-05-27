@@ -537,8 +537,8 @@ const WhatsAppAccounts = () => {
     );
   }
 
-  // Componente para mostrar el estado del agente externo
-  const AgentStatusDisplay = ({ accountId }: { accountId: number }) => {
+  // Componente simple para mostrar solo el agente asignado
+  const SimpleAgentDisplay = ({ accountId }: { accountId: number }) => {
     const { data: agentConfig } = getAgentConfig(accountId);
     
     // Cargar agentes reales desde la base de datos
@@ -549,7 +549,7 @@ const WhatsAppAccounts = () => {
     const externalAgents = (externalAgentsData as any)?.agents || [];
     
     if (!agentConfig?.success) {
-      return <div className="text-xs text-gray-500">Cargando...</div>;
+      return <div className="text-xs text-gray-500">Cargando configuración...</div>;
     }
 
     const config = agentConfig.config;
@@ -564,12 +564,10 @@ const WhatsAppAccounts = () => {
     }
 
     return (
-      <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${config.autoResponseEnabled ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-          <span className="text-gray-700 font-medium">{assignedAgent.agentName}</span>
-        </div>
-        <span className={`px-2 py-1 rounded text-xs ${config.autoResponseEnabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+      <div className="flex items-center gap-2 text-sm">
+        <div className={`w-3 h-3 rounded-full ${config.autoResponseEnabled ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+        <span className="text-gray-700 font-medium">{assignedAgent.agentName}</span>
+        <span className={`px-2 py-1 rounded text-xs ${config.autoResponseEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
           {config.autoResponseEnabled ? 'Activo' : 'Inactivo'}
         </span>
       </div>
@@ -844,23 +842,12 @@ const WhatsAppAccounts = () => {
                   </div>
                 )}
 
-                {/* Sección de Configuración de Agentes Externos */}
+                {/* Sección de Agente Externo Asignado */}
                 <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-medium text-blue-800">Agente Externo (A.E AI)</h4>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-6 text-xs border-blue-300 text-blue-700 hover:bg-blue-100"
-                      onClick={() => {
-                        setSelectedAccountForAgent(account);
-                        setAgentConfigDialogOpen(true);
-                      }}
-                    >
-                      Configurar
-                    </Button>
                   </div>
-                  <AgentStatusDisplay accountId={account.id} />
+                  <SimpleAgentDisplay accountId={account.id} />
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between border-t p-4">
