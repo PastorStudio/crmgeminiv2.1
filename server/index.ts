@@ -349,6 +349,88 @@ app.get('/api/external-agents-direct', async (req: Request, res: Response) => {
 });
 
 // RUTAS CRÍTICAS ANTES QUE VITE - AGENTES EXTERNOS Y ESTADO EN VIVO
+
+// Endpoint especial para pruebas de agentes que evita interceptación
+app.post('/direct/agent-test', async (req: Request, res: Response) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    
+    const { agentId, message, agentUrl, agentName } = req.body;
+    
+    console.log(`🧪 Prueba directa - Agente: ${agentName}`);
+    console.log(`💬 Mensaje: "${message}"`);
+    console.log(`🔗 URL: ${agentUrl}`);
+    
+    if (!message || !agentUrl) {
+      return res.status(400).json({
+        success: false,
+        error: 'Se requieren message y agentUrl'
+      });
+    }
+
+    // Conectar con OpenAI API usando tu clave configurada
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+
+    // Crear contexto específico del agente
+    let agentContext = `Eres ${agentName}, un asistente virtual inteligente y profesional.`;
+    
+    if (agentName.toLowerCase().includes('smartbots')) {
+      agentContext = `Eres ${agentName}, un experto en automatización, bots inteligentes y tecnología. Ayudas a las empresas a automatizar procesos, crear chatbots y implementar soluciones de inteligencia artificial. Tu especialidad es simplificar la tecnología para que sea accesible a todos.`;
+    } else if (agentName.toLowerCase().includes('smartflyer')) {
+      agentContext = `Eres ${agentName}, un experto en viajes, aerolíneas y turismo. Ayudas a las personas a planificar viajes perfectos, encontrar las mejores ofertas de vuelos, recomendar destinos y resolver cualquier consulta relacionada con viajes.`;
+    } else if (agentName.toLowerCase().includes('smartplanner')) {
+      agentContext = `Eres ${agentName}, un experto en planificación, organización y productividad. Tu misión es ayudar a las personas a organizar sus tareas, proyectos y tiempo de manera eficiente para maximizar su productividad.`;
+    } else if (agentName.toLowerCase().includes('agente') && agentName.toLowerCase().includes('ventas')) {
+      agentContext = `Eres ${agentName}, un especialista en ventas de telecomunicaciones en Panamá. Conoces a fondo los productos, servicios y planes de TELCA Panamá. Tu objetivo es ayudar a los clientes a encontrar las mejores soluciones de telecomunicaciones para sus necesidades.`;
+    } else if (agentName.toLowerCase().includes('asistente') && agentName.toLowerCase().includes('tecnico')) {
+      agentContext = `Eres ${agentName}, un especialista en gestión técnica de campo. Tu experiencia incluye mantenimiento técnico, soporte operativo y gestión de equipos en campo. Ayudas a resolver problemas técnicos y optimizar operaciones.`;
+    }
+
+    console.log(`🎯 Enviando a OpenAI con contexto: ${agentContext}`);
+
+    // Enviar mensaje al agente usando OpenAI API
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: agentContext
+        },
+        {
+          role: "user",
+          content: message
+        }
+      ],
+      max_tokens: 500,
+      temperature: 0.7
+    });
+
+    const agentResponse = response.choices[0].message.content;
+    
+    console.log(`✅ Respuesta recibida de ${agentName}: ${agentResponse}`);
+
+    return res.json({
+      success: true,
+      response: agentResponse,
+      agentId: agentId,
+      agentName: agentName,
+      agentUrl: agentUrl,
+      timestamp: new Date().toISOString(),
+      source: 'OpenAI API'
+    });
+
+  } catch (error) {
+    console.error('❌ Error en prueba directa del agente:', error);
+    
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al conectar con el agente'
+    });
+  }
+});
 // Endpoint bypass para evitar interceptación de Vite
 app.post('/api/bypass/create-external-agent', async (req: Request, res: Response) => {
   try {
