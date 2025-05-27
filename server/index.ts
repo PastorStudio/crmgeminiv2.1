@@ -638,6 +638,200 @@ app.use((req, res, next) => {
     }
   });
 
+  // ===== APIS PARA A.E AI - AGENTES EXTERNOS =====
+  
+  // Activar/Desactivar agente externo para un chat específico
+  app.post('/api/external-agents/toggle', async (req, res) => {
+    try {
+      console.log('🤖 Toggle A.E AI para chat:', req.body);
+      const { chatId, accountId, active } = req.body;
+      
+      if (!chatId || !accountId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Se requiere chatId y accountId' 
+        });
+      }
+
+      const { externalAgentConfigs, externalAgents } = await import('@shared/schema');
+      const { eq, and } = await import('drizzle-orm');
+
+      if (active) {
+        // Activar agente externo
+        // Primero buscar si ya existe configuración
+        const [existingConfig] = await db
+          .select()
+          .from(externalAgentConfigs)
+          .where(and(
+            eq(externalAgentConfigs.chatId, chatId),
+            eq(externalAgentConfigs.accountId, accountId)
+          ))
+          .limit(1);
+
+        let agentUrl = '';
+        
+        if (existingConfig) {
+          // Actualizar configuración existente
+          await db
+            .update(externalAgentConfigs)
+            .set({ 
+              isActive: true, 
+              updatedAt: new Date() 
+            })
+            .where(eq(externalAgentConfigs.id, existingConfig.id));
+          
+          // Buscar agente asignado
+          if (existingConfig.selectedAgentId) {
+            const [agent] = await db
+              .select()
+              .from(externalAgents)
+              .where(eq(externalAgents.id, existingConfig.selectedAgentId))
+              .limit(1);
+            agentUrl = agent?.agentUrl || '';
+          }
+        } else {
+          // Crear nueva configuración y agente externo
+          const [newAgent] = await db
+            .insert(externalAgents)
+            .values({
+              chatId,
+              accountId,
+              agentName: `A.E AI - Chat ${chatId.slice(0, 10)}`,
+              agentUrl: `https://chat.openai.com/g/g-external-agent-${chatId.replace(/[^a-zA-Z0-9]/g, '')}`,
+              provider: 'chatgpt',
+              status: 'active'
+            })
+            .returning();
+
+          await db
+            .insert(externalAgentConfigs)
+            .values({
+              chatId,
+              accountId,
+              isActive: true,
+              selectedAgentId: newAgent.id,
+              autoResponse: true,
+              responseDelay: 3,
+              maxResponsesPerHour: 15
+            });
+          
+          agentUrl = newAgent.agentUrl;
+        }
+
+        console.log('✅ A.E AI activado para chat:', chatId);
+        res.json({
+          success: true,
+          active: true,
+          agentUrl,
+          message: 'Agente externo A.E AI activado correctamente'
+        });
+
+      } else {
+        // Desactivar agente externo
+        await db
+          .update(externalAgentConfigs)
+          .set({ 
+            isActive: false, 
+            updatedAt: new Date() 
+          })
+          .where(and(
+            eq(externalAgentConfigs.chatId, chatId),
+            eq(externalAgentConfigs.accountId, accountId)
+          ));
+
+        console.log('🔴 A.E AI desactivado para chat:', chatId);
+        res.json({
+          success: true,
+          active: false,
+          message: 'Agente externo A.E AI desactivado'
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Error toggle A.E AI:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al activar/desactivar agente externo' 
+      });
+    }
+  });
+
+  // Obtener estado del agente externo para un chat
+  app.get('/api/external-agents/status/:chatId/:accountId', async (req, res) => {
+    try {
+      const { chatId, accountId } = req.params;
+      const { externalAgentConfigs, externalAgents } = await import('@shared/schema');
+      const { eq, and } = await import('drizzle-orm');
+
+      const [config] = await db
+        .select()
+        .from(externalAgentConfigs)
+        .where(and(
+          eq(externalAgentConfigs.chatId, decodeURIComponent(chatId)),
+          eq(externalAgentConfigs.accountId, parseInt(accountId))
+        ))
+        .limit(1);
+
+      if (!config) {
+        return res.json({
+          active: false,
+          agentUrl: null
+        });
+      }
+
+      let agentUrl = null;
+      if (config.selectedAgentId) {
+        const [agent] = await db
+          .select()
+          .from(externalAgents)
+          .where(eq(externalAgents.id, config.selectedAgentId))
+          .limit(1);
+        agentUrl = agent?.agentUrl || null;
+      }
+
+      res.json({
+        active: config.isActive,
+        agentUrl,
+        config: {
+          autoResponse: config.autoResponse,
+          responseDelay: config.responseDelay,
+          maxResponsesPerHour: config.maxResponsesPerHour
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error obteniendo estado A.E AI:', error);
+      res.status(500).json({ 
+        active: false, 
+        agentUrl: null 
+      });
+    }
+  });
+
+  // Listar todos los agentes externos
+  app.get('/api/external-agents', async (req, res) => {
+    try {
+      const { externalAgents } = await import('@shared/schema');
+      
+      const agents = await db
+        .select()
+        .from(externalAgents)
+        .orderBy(externalAgents.createdAt);
+
+      res.json({
+        success: true,
+        agents
+      });
+
+    } catch (error) {
+      console.error('❌ Error obteniendo agentes externos:', error);
+      res.status(500).json({ 
+        success: false, 
+        agents: [] 
+      });
+    }
+  });
+
   // API corregida de comentarios
   app.get('/api/chat-comments/:chatId', async (req, res) => {
     try {
