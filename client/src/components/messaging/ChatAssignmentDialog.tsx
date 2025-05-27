@@ -118,6 +118,27 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     enabled: open,
     staleTime: 30000, // Cache por 30 segundos
   });
+
+  // Cargar tickets del sistema
+  const { data: ticketsResponse, isLoading: isLoadingTickets } = useQuery({
+    queryKey: ['/api/tickets'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/tickets');
+        if (response.ok) {
+          return await response.json();
+        }
+        return [];
+      } catch (error) {
+        console.error('Error cargando tickets:', error);
+        return [];
+      }
+    },
+    enabled: open,
+    staleTime: 30000,
+  });
+
+  const tickets = ticketsResponse || [];
   
   // Sistema interno de cuentas - No requiere WhatsApp conectado
   const internalAccounts = [
@@ -416,22 +437,41 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                 name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Categoría</FormLabel>
+                    <FormLabel>Ticket</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar categoría" />
+                          <SelectValue placeholder="Seleccionar ticket" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="ventas">Ventas</SelectItem>
-                        <SelectItem value="soporte">Soporte</SelectItem>
-                        <SelectItem value="consulta">Consulta</SelectItem>
-                        <SelectItem value="reclamo">Reclamo</SelectItem>
-                        <SelectItem value="otro">Otro</SelectItem>
+                        {isLoadingTickets ? (
+                          <SelectItem value="loading" disabled>
+                            🔄 Cargando tickets...
+                          </SelectItem>
+                        ) : tickets.length > 0 ? (
+                          tickets.map((ticket: any) => (
+                            <SelectItem
+                              key={ticket.id}
+                              value={ticket.id.toString()}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <span className="font-medium">#{ticket.id}</span>
+                                <span className="text-sm text-gray-600">{ticket.title}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {ticket.status}
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            📝 No hay tickets disponibles
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
