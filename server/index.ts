@@ -3387,6 +3387,58 @@ app.use((req, res, next) => {
     }
   });
 
+  // ENDPOINT DIRECTO PARA ACTIVAR RESPUESTAS AUTOMÁTICAS (BYPASSA VITE)
+  app.post("/direct/activate-auto-response/:accountId", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      console.log(`🔥 ACTIVACIÓN DIRECTA - Activando respuestas automáticas para cuenta ${accountId}...`);
+      
+      // Actualizar la cuenta para activar respuestas automáticas
+      await db.update(whatsappAccounts)
+        .set({ 
+          ready: true,
+          autoResponseEnabled: true,
+          lastStatusAt: new Date()
+        })
+        .where(eq(whatsappAccounts.id, accountId));
+      
+      // Verificar que el agente externo esté asignado
+      const accountCheck = await db.select()
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.id, accountId))
+        .limit(1);
+      
+      if (accountCheck.length > 0) {
+        const account = accountCheck[0];
+        console.log(`🔍 Estado de la cuenta:`, {
+          id: account.id,
+          name: account.name,
+          ready: account.ready,
+          autoResponseEnabled: account.autoResponseEnabled,
+          assignedExternalAgentId: account.assignedExternalAgentId
+        });
+        
+        res.json({ 
+          success: true, 
+          message: `🚀 SISTEMA COMPLETAMENTE ACTIVADO! La cuenta ${account.name} ahora responderá automáticamente.`,
+          accountStatus: {
+            id: account.id,
+            name: account.name,
+            ready: account.ready,
+            autoResponseEnabled: account.autoResponseEnabled,
+            assignedAgent: account.assignedExternalAgentId
+          }
+        });
+      } else {
+        res.status(404).json({ success: false, error: 'Cuenta no encontrada' });
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en activación directa:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
