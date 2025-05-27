@@ -171,7 +171,7 @@ export function WhatsAppTwoColumn() {
   const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
-  const [autoResponseConfigOpen, setAutoResponseConfigOpen] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [translatorEnabled, setTranslatorEnabled] = useState(false);
@@ -395,17 +395,8 @@ export function WhatsAppTwoColumn() {
           
           setTimeout(async () => {
             try {
-              const response = await generateSmartBotsAutoResponse(transcriptionData.transcription, selectedChat.name);
-              if (response) {
-                console.log('📤 Enviando respuesta automática para audio:', response);
-                await sendAutoMessage(response);
-                
-                toast({
-                  title: "🎤➡️🤖 Respuesta automática para audio",
-                  description: "SmartBots ha respondido al mensaje de audio transcrito",
-                  duration: 3000
-                });
-              }
+              // Auto response functionality removed
+              console.log('Audio transcription completed - auto response disabled');
             } catch (error) {
               console.error('❌ Error generando respuesta para audio:', error);
             }
@@ -969,7 +960,7 @@ export function WhatsAppTwoColumn() {
           setTimeout(async () => {
             try {
               console.log('🤖 Generando respuesta automática...');
-              let response = await generateSmartBotsAutoResponse(lastIncomingMessage.body, selectedChat.name);
+              // Auto response functionality removed
               
               // Si la traducción está habilitada, traducir la respuesta
               if (response && translationEnabled && selectedLanguage !== 'es') {
@@ -2112,15 +2103,7 @@ export function WhatsAppTwoColumn() {
           accountId={selectedChat.accountId}
         />
       )}
-      {selectedChat && (
-        <AutoResponseDialog
-          open={autoResponseConfigOpen}
-          onOpenChange={setAutoResponseConfigOpen}
-          config={autoResponseConfig}
-          chatId={selectedChat.id}
-          accountId={selectedChat.accountId}
-        />
-      )}
+
       {selectedChat && (
         <ChatCommentsDialog
           open={commentsDialogOpen}
