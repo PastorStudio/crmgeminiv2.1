@@ -116,7 +116,7 @@ export default function ExternalAgents() {
         .map(k => k.trim())
         .filter(k => k);
 
-      const response = await fetch('/api/external-agents/create-from-url', {
+      const response = await fetch('/api/external-agents', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
