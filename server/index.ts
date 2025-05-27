@@ -129,23 +129,27 @@ app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response)
     console.log(`🔗 URL del agente: ${agentUrl}`);
     console.log(`💬 Mensaje: "${message}"`);
     
-    // Extraer el nombre real del agente desde el URL
+    // Extraer el nombre completo real del agente desde el URL
     const extractAgentName = (url: string) => {
       if (url.includes('/g/g-')) {
         // Ejemplo: https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots
-        // Queremos extraer "smartbots"
+        // O: https://chatgpt.com/g/g-682f551bee70819196aeb603eb638762-smartflyer-ia
         const parts = url.split('/g/g-')[1];
         if (parts) {
-          // Buscar el último guión y tomar todo lo que viene después
-          const lastDashIndex = parts.lastIndexOf('-');
-          if (lastDashIndex !== -1 && lastDashIndex < parts.length - 1) {
-            const agentName = parts.substring(lastDashIndex + 1);
-            // Limpiar y capitalizar solo la primera letra
+          // Buscar el primer guión después del ID largo (típicamente 32+ caracteres)
+          const firstDashIndex = parts.indexOf('-');
+          if (firstDashIndex !== -1 && firstDashIndex >= 25) { // IDs suelen ser largos
+            const agentName = parts.substring(firstDashIndex + 1);
+            // Convertir guiones a espacios y capitalizar cada palabra
             const cleanName = agentName
+              .replace(/-/g, ' ')
               .replace(/[^a-zA-Z0-9\s]/g, '')
-              .trim();
+              .trim()
+              .split(' ')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+              .join(' ');
             if (cleanName) {
-              return cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
+              return cleanName;
             }
           }
         }
@@ -162,13 +166,27 @@ app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response)
       apiKey: process.env.OPENAI_API_KEY 
     });
     
-    // Crear un prompt que simule la personalidad del agente específico
-    const systemPrompt = `Eres ${realAgentName}, un asistente de IA especializado. Responde como este agente específico basándote en su nombre y propósito. Mantén un tono profesional pero amigable.`;
+    // Crear contexto específico según el tipo de agente
+    let agentContext = `Eres ${realAgentName}, un asistente virtual inteligente y profesional.`;
+    
+    if (realAgentName.toLowerCase().includes('smartbots')) {
+      agentContext = `Eres ${realAgentName}, un experto en automatización, bots inteligentes y tecnología. Ayudas a las empresas a automatizar procesos, crear chatbots y implementar soluciones de inteligencia artificial. Tu especialidad es simplificar la tecnología para que sea accesible a todos.`;
+    } else if (realAgentName.toLowerCase().includes('smartflyer')) {
+      agentContext = `Eres ${realAgentName}, un experto en viajes, aerolíneas y turismo. Ayudas a las personas a planificar viajes perfectos, encontrar las mejores ofertas de vuelos, recomendar destinos y resolver cualquier consulta relacionada con viajes.`;
+    } else if (realAgentName.toLowerCase().includes('smartplanner')) {
+      agentContext = `Eres ${realAgentName}, un experto en planificación, organización y productividad. Tu misión es ayudar a las personas a organizar sus tareas, proyectos y tiempo de manera eficiente para maximizar su productividad.`;
+    } else if (realAgentName.toLowerCase().includes('agente') && realAgentName.toLowerCase().includes('ventas')) {
+      agentContext = `Eres ${realAgentName}, un especialista en ventas de telecomunicaciones en Panamá. Conoces a fondo los productos, servicios y planes de TELCA Panamá. Tu objetivo es ayudar a los clientes a encontrar las mejores soluciones de telecomunicaciones para sus necesidades.`;
+    } else if (realAgentName.toLowerCase().includes('asistente') && realAgentName.toLowerCase().includes('tecnico')) {
+      agentContext = `Eres ${realAgentName}, un especialista en gestión técnica de campo. Tu experiencia incluye mantenimiento técnico, soporte operativo y gestión de equipos en campo. Ayudas a resolver problemas técnicos y optimizar operaciones.`;
+    }
+    
+    console.log(`🎯 Contexto personalizado: ${agentContext}`);
     
     const completion = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: agentContext },
         { role: "user", content: message }
       ],
       max_tokens: 500,
