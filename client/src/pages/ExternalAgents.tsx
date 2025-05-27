@@ -80,16 +80,26 @@ export default function ExternalAgents() {
 
   const fetchAgents = async () => {
     try {
-      // Por ahora usar datos locales mientras resolvemos el problema de Vite
-      console.log('📋 Cargando agentes desde estado local...');
-      // Los agentes se mantienen en el estado local hasta que resolvamos la interceptación de Vite
+      console.log('📋 Cargando agentes desde la base de datos...');
+      
+      const response = await fetch('/api/agents-list');
+      const data = await response.json();
+      
+      if (data.success && Array.isArray(data.agents)) {
+        setAgents(data.agents);
+        console.log(`✅ ${data.agents.length} agentes cargados correctamente`);
+      } else {
+        console.warn('No se pudieron cargar los agentes:', data);
+        setAgents([]);
+      }
     } catch (error) {
       console.error('Error fetching agents:', error);
       toast({
         title: "Error",
-        description: "No se pudieron cargar los agentes intermediarios",
+        description: "No se pudieron cargar los agentes externos",
         variant: "destructive"
       });
+      setAgents([]);
     }
   };
 

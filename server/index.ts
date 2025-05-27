@@ -314,33 +314,31 @@ app.post('/api/external-agents/update-names', async (req: Request, res: Response
 app.get('/api/external-agents-direct', async (req: Request, res: Response) => {
   try {
     res.setHeader('Content-Type', 'application/json');
-    console.log('📋 Listando agentes externos...');
+    console.log('📋 Listando agentes externos desde PostgreSQL...');
     
-    const { externalAgents } = await import('@shared/schema');
+    // Usar SQL directo para obtener los agentes
+    const result = await pool.query(`
+      SELECT id, agent_name, agent_url, status, 
+             response_count, created_at, provider, notes
+      FROM external_agents 
+      WHERE status = 'active'
+      ORDER BY created_at ASC
+    `);
     
-    const agents = await db
-      .select({
-        id: externalAgents.id,
-        name: externalAgents.agentName,
-        agentUrl: externalAgents.agentUrl,
-        provider: externalAgents.provider,
-        status: externalAgents.status,
-        responseCount: externalAgents.responseCount,
-        createdAt: externalAgents.createdAt
-      })
-      .from(externalAgents)
-      .orderBy(externalAgents.createdAt);
-
+    const agents = result.rows;
     console.log('✅ Agentes externos encontrados:', agents.length);
 
     return res.json({
       success: true,
-      agents: agents.map(agent => ({
+      agents: agents.map((agent: any) => ({
         id: agent.id,
-        name: agent.name,
-        agentUrl: agent.agentUrl,
+        name: agent.agent_name,
+        agentUrl: agent.agent_url,
         isActive: agent.status === 'active',
-        responseCount: agent.responseCount || 0
+        responseCount: agent.response_count || 0,
+        createdAt: agent.created_at,
+        provider: agent.provider,
+        notes: agent.notes
       }))
     });
 
@@ -354,6 +352,48 @@ app.get('/api/external-agents-direct', async (req: Request, res: Response) => {
 });
 
 // RUTAS CRÍTICAS ANTES QUE VITE - AGENTES EXTERNOS Y ESTADO EN VIVO
+
+// Endpoint funcional para obtener agentes externos desde PostgreSQL
+app.get('/api/agents-list', async (req: Request, res: Response) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    console.log('🔍 Obteniendo agentes desde PostgreSQL...');
+    
+    // Usar SQL directo para obtener los agentes
+    const result = await pool.query(`
+      SELECT id, agent_name, agent_url, status, 
+             response_count, created_at, provider, notes
+      FROM external_agents 
+      WHERE status = 'active'
+      ORDER BY created_at ASC
+    `);
+    
+    const agents = result.rows;
+    console.log(`✅ ${agents.length} agentes encontrados en PostgreSQL`);
+
+    return res.json({
+      success: true,
+      agents: agents.map((agent: any) => ({
+        id: agent.id,
+        name: agent.agent_name,
+        agentUrl: agent.agent_url,
+        isActive: agent.status === 'active',
+        responseCount: agent.response_count || 0,
+        createdAt: agent.created_at,
+        provider: agent.provider,
+        notes: agent.notes
+      }))
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo agentes:', error);
+    return res.json({
+      success: false,
+      agents: [],
+      error: 'Database connection error'
+    });
+  }
+});
 
 // Endpoint especial para pruebas de agentes que evita interceptación
 app.post('/direct/agent-test', async (req: Request, res: Response) => {
