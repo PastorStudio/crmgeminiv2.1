@@ -116,14 +116,10 @@ export class LastReceivedAutoResponse {
       console.log(`📱 Enviando respuesta automática a WhatsApp - Chat: ${chatId}`);
       
       // Importar el servicio de WhatsApp
-      const { whatsappServiceMulti } = await import('./whatsappServiceMulti');
+      const whatsappServiceMulti = await import('./whatsappServiceMulti');
       
       // Enviar mensaje usando el servicio de WhatsApp
-      await whatsappServiceMulti.sendMessage(accountId, chatId, {
-        message: message,
-        isAutoResponse: true,
-        source: `Agente: ${agentName}`
-      });
+      await whatsappServiceMulti.default.sendMessage(accountId, chatId, message);
       
       console.log(`🚀 Respuesta automática enviada exitosamente por ${agentName}`);
       

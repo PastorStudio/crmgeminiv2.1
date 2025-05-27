@@ -2095,9 +2095,56 @@ export function WhatsAppTwoColumn() {
                                 <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[2px] flex-shrink-0 flex items-center gap-1">
                                   {formatTime(message.timestamp)}
                                   {isLastIncomingMessage && (
-                                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium animate-pulse">
-                                      ÚLTIMO RECIBIDO
-                                    </span>
+                                    <>
+                                      <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium animate-pulse">
+                                        ÚLTIMO RECIBIDO
+                                      </span>
+                                      <button
+                                        onClick={async () => {
+                                          if (!selectedChat || !message.body) return;
+                                          
+                                          try {
+                                            console.log(`🔴 Procesando último mensaje recibido: "${message.body}"`);
+                                            
+                                            const response = await fetch('/api/process-last-received', {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({
+                                                accountId: selectedChat.accountId,
+                                                chatId: selectedChat.id,
+                                                lastReceivedMessage: message.body
+                                              })
+                                            });
+                                            
+                                            const result = await response.json();
+                                            
+                                            if (result.success) {
+                                              toast({
+                                                title: "🤖 Respuesta Automática Generada",
+                                                description: "El agente externo ha procesado el mensaje y enviado una respuesta",
+                                              });
+                                            } else {
+                                              toast({
+                                                title: "Error",
+                                                description: result.error || "No se pudo procesar el mensaje",
+                                                variant: "destructive"
+                                              });
+                                            }
+                                          } catch (error) {
+                                            console.error('Error procesando último mensaje:', error);
+                                            toast({
+                                              title: "Error",
+                                              description: "Error de conexión",
+                                              variant: "destructive"
+                                            });
+                                          }
+                                        }}
+                                        className="bg-blue-500 hover:bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-medium transition-colors ml-1"
+                                        title="Procesar con Agente Externo"
+                                      >
+                                        🤖 A.E
+                                      </button>
+                                    </>
                                   )}
                                 </div>
                               )}
