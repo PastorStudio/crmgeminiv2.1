@@ -432,18 +432,16 @@ export const internalAgentMetricsRelations = relations(internalAgentMetrics, ({ 
   })
 }));
 
-// Tabla para agentes externos A.E AI
+// Tabla para agentes externos A.E AI (simplificada y corregida)
 export const externalAgents = pgTable('external_agents', {
-  id: serial('id').primaryKey(),
-  chatId: text('chat_id').notNull(),
-  accountId: integer('account_id').notNull(),
-  agentName: text('agent_name').notNull(),
-  agentUrl: text('agent_url').notNull(),
-  provider: text('provider').default('chatgpt').notNull(),
+  id: text('id').primaryKey(), // Cambiado a text para usar nanoid
+  name: text('name').notNull(), // Nombre del agente (ej: "Smartbots")
+  agentUrl: text('agent_url').notNull(), // URL del ChatGPT
+  provider: text('provider').default('openai').notNull(),
   status: text('status').default('active').notNull(),
-  lastUsed: timestamp('last_used').defaultNow(),
+  lastUsed: timestamp('last_used'),
   responseCount: integer('response_count').default(0),
-  averageResponseTime: integer('average_response_time').default(0), // en segundos
+  averageResponseTime: integer('average_response_time').default(0),
   notes: text('notes'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow()

@@ -1510,27 +1510,16 @@ app.use((req, res, next) => {
     }
   });
 
-  // Listar todos los agentes externos (CONSOLIDADO)
+  // Sistema simplificado de agentes externos
+  const { SimpleExternalAgentManager, WhatsAppAccountConfigManager } = await import('./externalAgentsSimple');
+
+  // Listar todos los agentes externos (SIMPLIFICADO)
   app.get('/api/external-agents', async (req, res) => {
     try {
       res.setHeader('Content-Type', 'application/json');
       console.log('📋 Obteniendo lista de agentes externos...');
       
-      const { externalAgents } = await import('@shared/schema');
-      
-      const agents = await db
-        .select({
-          id: externalAgents.id,
-          name: externalAgents.agentName,
-          agentUrl: externalAgents.agentUrl,
-          provider: externalAgents.provider,
-          status: externalAgents.status,
-          responseCount: externalAgents.responseCount,
-          createdAt: externalAgents.createdAt
-        })
-        .from(externalAgents)
-        .orderBy(externalAgents.createdAt);
-
+      const agents = SimpleExternalAgentManager.getAllAgents();
       console.log('✅ Agentes externos encontrados:', agents.length);
 
       return res.json({
@@ -1544,6 +1533,103 @@ app.use((req, res, next) => {
         success: false, 
         agents: [],
         error: error.message 
+      });
+    }
+  });
+
+  // Crear agente externo (SIMPLIFICADO)
+  app.post('/api/external-agents', async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      const { agentUrl } = req.body;
+
+      if (!agentUrl) {
+        return res.status(400).json({
+          success: false,
+          message: 'URL del agente es requerida'
+        });
+      }
+
+      const agent = SimpleExternalAgentManager.createAgent(agentUrl);
+      
+      return res.json({
+        success: true,
+        agent: {
+          id: agent.id,
+          name: agent.name,
+          agentUrl: agent.agentUrl,
+          isActive: agent.isActive,
+          responseCount: agent.responseCount
+        },
+        message: 'Agente externo creado exitosamente'
+      });
+
+    } catch (error) {
+      console.error('❌ Error creando agente externo:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al crear agente externo'
+      });
+    }
+  });
+
+  // Asignar agente externo a cuenta WhatsApp (SIMPLIFICADO)
+  app.post('/api/whatsapp-accounts/:accountId/assign-external-agent', async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      const { accountId } = req.params;
+      const { externalAgentId, autoResponseEnabled } = req.body;
+
+      const config = WhatsAppAccountConfigManager.assignAgent(
+        parseInt(accountId),
+        externalAgentId,
+        autoResponseEnabled || false
+      );
+
+      return res.json({
+        success: true,
+        config,
+        message: 'Configuración guardada exitosamente'
+      });
+
+    } catch (error) {
+      console.error('❌ Error asignando agente:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al asignar agente'
+      });
+    }
+  });
+
+  // Obtener configuración de agente para cuenta WhatsApp (SIMPLIFICADO)
+  app.get('/api/whatsapp-accounts/:accountId/agent-config', async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      const { accountId } = req.params;
+
+      const config = WhatsAppAccountConfigManager.getAccountConfig(parseInt(accountId));
+
+      if (!config) {
+        return res.json({
+          success: true,
+          config: {
+            assignedExternalAgentId: null,
+            autoResponseEnabled: false,
+            responseDelay: 3
+          }
+        });
+      }
+
+      return res.json({
+        success: true,
+        config
+      });
+
+    } catch (error) {
+      console.error('❌ Error obteniendo configuración:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al obtener configuración'
       });
     }
   });
