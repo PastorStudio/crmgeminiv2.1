@@ -353,10 +353,14 @@ app.get('/api/external-agents-direct', async (req: Request, res: Response) => {
 
 // RUTAS CRÍTICAS ANTES QUE VITE - AGENTES EXTERNOS Y ESTADO EN VIVO
 
-// Endpoint funcional para obtener agentes externos desde PostgreSQL
-app.get('/api/agents-list', async (req: Request, res: Response) => {
+// Endpoint directo para agentes externos - sin interceptación de Vite
+app.get('/direct-agents-list', async (req: Request, res: Response) => {
   try {
     res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
     console.log('🔍 Obteniendo agentes desde PostgreSQL...');
     
     // Usar SQL directo para obtener los agentes
