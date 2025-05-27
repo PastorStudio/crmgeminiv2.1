@@ -149,9 +149,14 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     },
     onSuccess: (response) => {
       console.log('Asignación creada exitosamente:', response);
+      
+      // Obtener el nombre del agente para el mensaje
+      const assignedAgent = agentsList.find(agent => agent.id === response.assignedToId);
+      const agentName = assignedAgent ? assignedAgent.fullName : 'Agente';
+      
       toast({
-        title: 'Chat asignado',
-        description: 'El chat ha sido asignado correctamente',
+        title: 'Chat asignado exitosamente',
+        description: `El chat ha sido asignado a ${agentName}`,
       });
       
       // Invalidar todas las consultas relacionadas
@@ -190,9 +195,14 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     },
     onSuccess: (response) => {
       console.log('Asignación actualizada exitosamente:', response);
+      
+      // Obtener el nombre del agente para el mensaje
+      const assignedAgent = agentsList.find(agent => agent.id === response.assignedToId);
+      const agentName = assignedAgent ? assignedAgent.fullName : 'Agente';
+      
       toast({
-        title: 'Asignación actualizada',
-        description: 'La asignación ha sido actualizada correctamente',
+        title: 'Chat asignado exitosamente',
+        description: `El chat ha sido asignado a ${agentName}`,
       });
       
       // Invalidar todas las consultas relacionadas
@@ -246,6 +256,12 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
       });
       return;
     }
+    
+    // Encontrar el agente seleccionado para mostrar su nombre
+    const selectedAgent = agentsList.find(agent => agent.id === data.assignedToId);
+    const agentName = selectedAgent ? selectedAgent.fullName : 'Agente desconocido';
+    
+    console.log('✅ Asignando chat a:', agentName);
     
     if (existingAssignment) {
       // Actualizar asignación existente
@@ -373,7 +389,13 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                               key={agent.id}
                               value={agent.id.toString()}
                             >
-                              👤 {agent.fullName} ({agent.username}) - {agent.role.toUpperCase()}
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span className="font-medium">{agent.fullName}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {agent.role}
+                                </Badge>
+                              </div>
                             </SelectItem>
                           ))
                         ) : (
