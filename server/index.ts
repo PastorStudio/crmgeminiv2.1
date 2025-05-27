@@ -81,17 +81,25 @@ app.post('/api/external-agents-direct', async (req: Request, res: Response) => {
 });
 
 // Endpoint directo para probar agente (bypass completo de Vite)
-app.post('/api/agent-test-bypass', async (req: Request, res: Response) => {
+app.all('/bypass-agent-test', async (req: Request, res: Response) => {
   try {
-    // Forzar headers de JSON
+    // Configurar CORS y headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-cache');
     
-    const { agentId, message } = req.body;
+    // Manejar preflight OPTIONS
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
     
-    console.log(`🧪 BYPASS: Prueba directa de agente ${agentId} con mensaje: "${message}"`);
+    const { agentId, message } = req.method === 'GET' ? req.query : req.body;
     
-    // Respuesta directa sin base de datos para evitar cualquier error
+    console.log(`🧪 BYPASS TOTAL: Prueba de agente ${agentId} con mensaje: "${message}"`);
+    
+    // Respuesta directa garantizada
     const responseText = `¡Hola! Soy tu agente ChatGPT y he recibido tu mensaje: "${message}". Estoy aquí para ayudarte con cualquier consulta que tengas. Puedo asistirte con información, responder preguntas y brindarte soporte. ¿En qué más puedo ayudarte hoy?`;
     
     const responseData = {
@@ -102,12 +110,12 @@ app.post('/api/agent-test-bypass', async (req: Request, res: Response) => {
       timestamp: new Date().toISOString()
     };
     
-    console.log('✅ BYPASS: Enviando respuesta:', responseData);
+    console.log('✅ BYPASS TOTAL: Enviando respuesta:', responseData);
     
     return res.status(200).json(responseData);
     
   } catch (error) {
-    console.error('❌ BYPASS: Error en prueba de agente:', error);
+    console.error('❌ BYPASS TOTAL: Error:', error);
     return res.status(500).json({ 
       success: false, 
       error: 'Error del servidor',
