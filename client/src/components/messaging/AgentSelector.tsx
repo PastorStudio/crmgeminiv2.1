@@ -162,55 +162,7 @@ export function AgentSelector({ chatId, accountId, onAgentChange }: AgentSelecto
         </Badge>
       )}
 
-      {/* Botón de prueba (solo si está activo) */}
-      {isActive && selectedAgent && (
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 px-2 text-xs border-green-600 text-green-600 hover:bg-green-50"
-          onClick={async () => {
-            try {
-              const response = await fetch('/api/test-agent-intermediary', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  agentUrl: selectedAgent.agentUrl,
-                  testMessage: "Hola, esto es una prueba del sistema de respuesta automática."
-                })
-              });
 
-              const result = await response.json();
-              
-              if (result.success && result.response) {
-                toast({
-                  title: '🧪 Prueba exitosa',
-                  description: `${selectedAgent.name}: "${result.response.substring(0, 60)}..."`,
-                });
-              } else {
-                toast({
-                  title: 'Error en prueba',
-                  description: result.message || 'No se pudo generar respuesta',
-                  variant: 'destructive',
-                });
-              }
-            } catch (error) {
-              toast({
-                title: 'Error de conexión',
-                description: 'No se pudo probar el agente',
-                variant: 'destructive',
-              });
-            }
-          }}
-          disabled={loading}
-        >
-          {loading ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <Settings className="h-3 w-3" />
-          )}
-          Probar
-        </Button>
-      )}
     </div>
   );
 }
