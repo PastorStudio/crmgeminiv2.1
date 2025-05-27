@@ -27,7 +27,103 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// RUTAS CRÍTICAS ANTES QUE VITE - ESTADO EN VIVO DE AGENTES
+// RUTAS CRÍTICAS ANTES QUE VITE - AGENTES EXTERNOS Y ESTADO EN VIVO
+app.post('/api/agents/external', async (req: Request, res: Response) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    console.log('🤖 Creando agente externo desde URL:', req.body);
+    
+    const { agentUrl, triggerKeywords } = req.body;
+    
+    if (!agentUrl) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Se requiere agentUrl' 
+      });
+    }
+
+    // Extraer nombre del agente desde la URL
+    const extractedName = agentUrl.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent';
+
+    const { externalAgents } = await import('@shared/schema');
+    
+    const [newAgent] = await db
+      .insert(externalAgents)
+      .values({
+        chatId: `default-${Date.now()}`, // ID temporal hasta que se asigne a un chat
+        accountId: 1, // Cuenta por defecto
+        agentName: extractedName,
+        agentUrl,
+        provider: 'chatgpt',
+        status: 'active'
+      })
+      .returning();
+
+    console.log('✅ Agente externo creado exitosamente:', newAgent.id);
+
+    return res.json({
+      success: true,
+      agent: {
+        id: newAgent.id,
+        name: newAgent.agentName,
+        agentUrl: newAgent.agentUrl,
+        isActive: newAgent.status === 'active'
+      },
+      message: 'Agente externo creado exitosamente'
+    });
+
+  } catch (error) {
+    console.error('❌ Error creando agente externo:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Error desconocido',
+      message: 'Error al crear agente externo' 
+    });
+  }
+});
+
+app.get('/api/external-agents', async (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    console.log('📋 Obteniendo lista de agentes externos...');
+    
+    const { externalAgents } = await import('@shared/schema');
+    
+    const agents = await db
+      .select({
+        id: externalAgents.id,
+        name: externalAgents.agentName,
+        agentUrl: externalAgents.agentUrl,
+        provider: externalAgents.provider,
+        status: externalAgents.status,
+        responseCount: externalAgents.responseCount,
+        createdAt: externalAgents.createdAt
+      })
+      .from(externalAgents)
+      .orderBy(externalAgents.createdAt);
+
+    console.log('✅ Agentes externos encontrados:', agents.length);
+
+    return res.json({
+      success: true,
+      agents: agents.map(agent => ({
+        id: agent.id,
+        name: agent.name,
+        agentUrl: agent.agentUrl,
+        isActive: agent.status === 'active',
+        responseCount: agent.responseCount || 0
+      }))
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo agentes externos:', error);
+    return res.json({
+      success: false,
+      agents: []
+    });
+  }
+});
+
 app.post('/api/agents/:agentId/heartbeat', async (req: Request, res: Response) => {
   try {
     const agentId = parseInt(req.params.agentId);
@@ -844,16 +940,22 @@ app.use((req, res, next) => {
 
       console.log('✅ Agente externo creado exitosamente:', newAgent.id);
 
-      res.json({
+      return res.json({
         success: true,
-        agent: newAgent,
+        agent: {
+          id: newAgent.id,
+          name: newAgent.agentName,
+          agentUrl: newAgent.agentUrl,
+          isActive: newAgent.status === 'active'
+        },
         message: 'Agente externo creado exitosamente'
       });
 
     } catch (error) {
       console.error('❌ Error creando agente externo:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
+        error: error instanceof Error ? error.message : 'Error desconocido',
         message: 'Error al crear agente externo' 
       });
     }
