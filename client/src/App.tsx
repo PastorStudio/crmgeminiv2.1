@@ -42,7 +42,7 @@ import AgentAnalysis from './pages/AgentAnalysis';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
 
-import { AuthProvider, useAuth } from './lib/authContext';
+import { useAuth } from './lib/authContext';
 import { Loader2 } from 'lucide-react';
 
 // Componente PrivateRoute para protección de rutas
