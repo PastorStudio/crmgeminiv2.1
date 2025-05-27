@@ -329,9 +329,11 @@ export const internalAgents = pgTable('internal_agents', {
   email: text('email').unique().notNull(),
   department: text('department'), // ventas, soporte, técnico, administración
   status: text('status').default('active'), // active, inactive, busy, offline
+  role: text('role').default('agent'), // admin, supervisor, senior_agent, agent, viewer
   specialization: text('specialization'), // sales, support, technical, consultation
   maxChats: integer('max_chats').default(5), // Máximo de chats concurrentes
   currentChats: integer('current_chats').default(0),
+  permissions: text('permissions').array(), // páginas/módulos que puede acceder
   avatar: text('avatar'), // URL del avatar
   workSchedule: jsonb('work_schedule'), // Horarios de trabajo
   skills: text('skills').array(), // Habilidades del agente
