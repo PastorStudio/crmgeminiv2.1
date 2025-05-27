@@ -49,53 +49,7 @@ import { ChatCommentsDialog } from './ChatCommentsDialog';
 
 import { VoiceNoteMessage } from './VoiceNoteMessage';
 
-function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
-  const { data: category } = useQuery({
-    queryKey: ['/api/chat-categories', chatId],
-    enabled: !!chatId
-  });
 
-  if (!category) return null;
-
-  const getCategoryIcon = (cat: string) => {
-    switch (cat) {
-      case 'ventas': return '💰';
-      case 'soporte': return '🔧';
-      case 'informacion': return 'ℹ️';
-      case 'consulta': return '💬';
-      default: return '💬';
-    }
-  };
-
-  const getCategoryColor = (cat: string) => {
-    switch (cat) {
-      case 'ventas': return 'bg-green-100 text-green-800 border-green-200';
-      case 'soporte': return 'bg-red-100 text-red-800 border-red-200';
-      case 'informacion': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'consulta': return 'bg-gray-100 text-gray-800 border-gray-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="flex items-center space-x-1"
-    >
-      <Badge 
-        variant="outline" 
-        className={`text-xs border ${getCategoryColor(category.category)}`}
-      >
-        <span className="mr-1">{getCategoryIcon(category.category)}</span>
-        {category.category}
-        <span className="ml-1 text-xs opacity-70">
-          ({Math.round(category.confidence * 100)}%)
-        </span>
-      </Badge>
-    </motion.div>
-  );
-}
 
 function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
   const { data: assignmentResponse } = useQuery({
@@ -186,6 +140,59 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
     <span className="text-blue-600 font-medium">
       Agente: {assignedAgent.username}
     </span>
+  );
+}
+
+function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
+  const { data: category } = useQuery({
+    queryKey: ['/api/chat-categories', chatId],
+    enabled: !!chatId
+  });
+
+  if (!category) {
+    return (
+      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+        <Ticket className="h-3 w-3 mr-1" />
+        Sin ticket
+      </Badge>
+    );
+  }
+
+  const getTicketColor = (status: string) => {
+    switch (status) {
+      case 'nuevos': return 'bg-green-50 text-green-700 border-green-200';
+      case 'interesados': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+      case 'no-leidos': return 'bg-red-50 text-red-700 border-red-200';
+      case 'pendiente-demo': return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'completados': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'no-interesados': return 'bg-gray-50 text-gray-700 border-gray-200';
+      default: return 'bg-blue-50 text-blue-700 border-blue-200';
+    }
+  };
+
+  const getTicketIcon = (status: string) => {
+    switch (status) {
+      case 'nuevos': return '📋';
+      case 'interesados': return '💡';
+      case 'no-leidos': return '📧';
+      case 'pendiente-demo': return '🎯';
+      case 'completados': return '✅';
+      case 'no-interesados': return '❌';
+      default: return '📋';
+    }
+  };
+
+  return (
+    <Badge variant="outline" className={`text-xs ${getTicketColor(category.status)}`}>
+      <span className="mr-1">{getTicketIcon(category.status)}</span>
+      {category.status === 'nuevos' ? 'Nuevos' :
+       category.status === 'interesados' ? 'Interesados' :
+       category.status === 'no-leidos' ? 'No Leidos' :
+       category.status === 'pendiente-demo' ? 'Pendiente Demo' :
+       category.status === 'completados' ? 'Completados' :
+       category.status === 'no-interesados' ? 'No Interesados' :
+       'Sin ticket'}
+    </Badge>
   );
 }
 

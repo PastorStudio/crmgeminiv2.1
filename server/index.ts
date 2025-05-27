@@ -519,6 +519,89 @@ app.use((req, res, next) => {
 
 
 
+  // ===== APIs para categorías de chat (tickets) =====
+  app.get('/api/chat-categories/:chatId', async (req, res) => {
+    try {
+      const { chatId } = req.params;
+      console.log('🎫 Obteniendo categoría para chat:', chatId);
+      
+      // Buscar categoría específica para este chat
+      const { chatCategories } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      const [category] = await db
+        .select()
+        .from(chatCategories)
+        .where(eq(chatCategories.chatId, chatId))
+        .limit(1);
+      
+      if (!category) {
+        return res.json(null); // No hay categoría para este chat específico
+      }
+      
+      console.log('✅ Categoría encontrada:', category);
+      res.json(category);
+    } catch (error) {
+      console.error('❌ Error obteniendo categoría del chat:', error);
+      res.status(500).json({ error: 'Error al obtener categoría' });
+    }
+  });
+
+  app.post('/api/chat-categories', async (req, res) => {
+    try {
+      const { chatId, accountId, status, notes } = req.body;
+      console.log('🎫 Creando/actualizando categoría:', { chatId, status });
+      
+      if (!chatId || !status) {
+        return res.status(400).json({ error: 'chatId y status son requeridos' });
+      }
+      
+      const { chatCategories } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      // Verificar si ya existe categoría para este chat específico
+      const [existing] = await db
+        .select()
+        .from(chatCategories)
+        .where(eq(chatCategories.chatId, chatId))
+        .limit(1);
+      
+      if (existing) {
+        // Actualizar categoría existente
+        const [updated] = await db
+          .update(chatCategories)
+          .set({
+            status,
+            notes: notes || null,
+            updatedAt: new Date()
+          })
+          .where(eq(chatCategories.id, existing.id))
+          .returning();
+        
+        console.log('✅ Categoría actualizada:', updated);
+        res.json(updated);
+      } else {
+        // Crear nueva categoría para este chat específico
+        const [created] = await db
+          .insert(chatCategories)
+          .values({
+            chatId,
+            accountId: accountId || 1,
+            status,
+            notes: notes || null,
+            createdAt: new Date()
+          })
+          .returning();
+        
+        console.log('✅ Categoría creada:', created);
+        res.json(created);
+      }
+    } catch (error) {
+      console.error('❌ Error creando/actualizando categoría:', error);
+      res.status(500).json({ error: 'Error al procesar categoría' });
+    }
+  });
+
   // API para asignaciones de chat sin autenticación
   app.get('/api/chat-assignments/:chatId', async (req, res) => {
     try {

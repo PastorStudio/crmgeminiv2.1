@@ -200,17 +200,10 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
         description: `El chat ha sido asignado a ${agentName}`,
       });
       
-      // Invalidar todas las consultas relacionadas
-      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat'] });
-      queryClient.invalidateQueries({ queryKey: ['chat-assignment'] });
+      // Invalidar SOLO la consulta específica de este chat
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments', chatId] });
       
-      // Invalidar consultas específicas
-      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat', chatId, accountId] });
-      queryClient.invalidateQueries({ queryKey: ['chat-assignment', chatId] });
-      
-      // Forzar refresco de los datos de WhatsApp
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+      // NO invalidar consultas globales para evitar que se actualicen otros chats
       
       // Cerrar diálogo
       onOpenChange(false);
@@ -246,17 +239,8 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
         description: `El chat ha sido asignado a ${agentName}`,
       });
       
-      // Invalidar todas las consultas relacionadas
-      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat'] });
-      queryClient.invalidateQueries({ queryKey: ['chat-assignment'] });
-      
-      // Invalidar consultas específicas
-      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments/by-chat', chatId, accountId] });
-      queryClient.invalidateQueries({ queryKey: ['chat-assignment', chatId] });
-      
-      // Forzar refresco global de los datos
-      queryClient.invalidateQueries();
+      // Invalidar SOLO la consulta específica de este chat individual
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments', chatId] });
       
       // Cerrar diálogo
       onOpenChange(false);
