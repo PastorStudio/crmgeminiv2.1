@@ -1391,7 +1391,7 @@ app.use((req, res, next) => {
     }
   });
 
-  // SISTEMA A.E AI FUNCIONAL Y DIRECTO 
+  // SISTEMA A.E AI INTELIGENTE - SOLO ÚLTIMO MENSAJE
   app.post('/api/debug-ae-ai/probe', async (req, res) => {
     console.log(`🔥🔥🔥 INICIANDO PRUEBA A.E AI - ${Date.now()}`);
     
@@ -1399,61 +1399,59 @@ app.use((req, res, next) => {
     console.log(`📋 Datos: chatId=${chatId}, mensaje="${message}"`);
     
     try {
-      // Verificar si hay una clave API de OpenAI disponible
-      const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
-      if (!openaiKey) {
-        console.log(`❌ No hay clave API de OpenAI disponible`);
-        return res.json({
+      // Importar el sistema inteligente de mensajes
+      const { RealTimeMessageHandler } = await import('./services/realTimeMessageHandler.js');
+      
+      // Activar A.E AI para este chat (simulando que el botón fue presionado)
+      RealTimeMessageHandler.activateAEAI(chatId);
+      
+      // Simular mensaje entrante (como si fuera el último recibido)
+      const mockMessage = {
+        id: `test_${Date.now()}`,
+        body: message,
+        fromMe: false,
+        timestamp: Date.now(),
+        chatId: chatId,
+        type: 'chat'
+      };
+      
+      console.log(`📨 Procesando como último mensaje recibido: "${message.substring(0, 50)}..."`);
+      
+      // Procesar solo este mensaje (no todo el historial)
+      const processed = await RealTimeMessageHandler.handleIncomingMessage(
+        chatId,
+        mockMessage,
+        {
+          sendMessage: async (to: string, response: string) => {
+            console.log(`📤 SIMULANDO envío a WhatsApp ${to}:`);
+            console.log(`💬 Respuesta: "${response}"`);
+            return { success: true, messageId: `sent_${Date.now()}` };
+          }
+        }
+      );
+      
+      if (processed) {
+        res.json({
+          success: true,
+          message: '✅ A.E AI procesó el último mensaje y generó respuesta automática',
+          chatId: chatId,
+          timestamp: new Date().toISOString(),
+          agent: 'A.E AI Smartbots',
+          note: '🎯 Solo se procesó el último mensaje recibido, no todo el historial'
+        });
+      } else {
+        res.json({
           success: false,
-          message: 'No se encontró la clave API de OpenAI. Por favor configúrala en las variables de entorno.',
-          needsApiKey: true
+          message: '❌ No se pudo procesar el mensaje o A.E AI no está activo',
+          chatId: chatId
         });
       }
       
-      console.log(`✅ Clave OpenAI encontrada, generando respuesta...`);
-      
-      // Importar OpenAI y generar respuesta directamente
-      const { default: OpenAI } = await import('openai');
-      const openai = new OpenAI({ apiKey: openaiKey });
-      
-      // Contexto personalizado para el agente externo
-      const agentContext = `Eres un asistente de atención al cliente profesional y amigable. 
-      Respondes de manera clara, útil y empática. 
-      Mantienes un tono conversacional pero profesional.
-      Si el usuario pregunta sobre productos o servicios, ofreces ayuda detallada.
-      Responde en español y mantén las respuestas concisas pero informativas.`;
-      
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o", // la versión más reciente de OpenAI
-        messages: [
-          { role: "system", content: agentContext },
-          { role: "user", content: message }
-        ],
-        max_tokens: 300,
-        temperature: 0.7
-      });
-      
-      const aiResponse = completion.choices[0].message.content;
-      console.log(`🤖 Respuesta A.E AI generada: "${aiResponse}"`);
-      
-      // Simular envío de respuesta
-      console.log(`📤 SIMULANDO envío a WhatsApp chat ${chatId}`);
-      console.log(`💬 Mensaje enviado: "${aiResponse}"`);
-      
-      res.json({
-        success: true,
-        message: '✅ Respuesta A.E AI generada y enviada exitosamente',
-        response: aiResponse,
-        chatId: chatId,
-        timestamp: new Date().toISOString(),
-        agent: 'A.E AI Smartbots'
-      });
-      
     } catch (error: any) {
-      console.error('❌ Error en A.E AI:', error);
+      console.error('❌ Error en sistema A.E AI:', error);
       res.status(500).json({
         success: false,
-        message: 'Error generando respuesta A.E AI',
+        message: 'Error en el sistema A.E AI',
         error: error.message
       });
     }
