@@ -465,6 +465,32 @@ const WhatsAppAccounts = () => {
     }
   };
 
+  // Función para forzar el estado ready y activar respuestas automáticas
+  const forceReadyState = async (accountId: number) => {
+    try {
+      const response = await apiRequest(`/api/whatsapp/${accountId}/force-ready`, {
+        method: 'POST'
+      });
+      
+      if (response.success) {
+        toast({
+          title: "¡Sistema activado!",
+          description: `WhatsApp cuenta ${accountId} ahora está completamente activa para respuestas automáticas`,
+        });
+        
+        // Actualizar todos los datos
+        refetch();
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/ping-status/all'] });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Error al activar el sistema",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Formatear tiempo transcurrido
   const formatTimeAgo = (timestamp: number) => {
     if (!timestamp) return 'Nunca';
@@ -869,18 +895,29 @@ const WhatsAppAccounts = () => {
                 </div>
                 <div className="flex gap-1">
                   {account.currentStatus?.authenticated ? (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="text-red-500 border-red-500 hover:bg-red-50"
-                      onClick={() => {
-                        setSelectedAccount(account);
-                        disconnectAccountMutation.mutate(account.id);
-                      }}
-                    >
-                      <PowerOff className="h-4 w-4 mr-2" />
-                      Desconectar
-                    </Button>
+                    <>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="text-green-600 border-green-500 hover:bg-green-50"
+                        onClick={() => forceReadyState(account.id)}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Activar
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="text-red-500 border-red-500 hover:bg-red-50"
+                        onClick={() => {
+                          setSelectedAccount(account);
+                          disconnectAccountMutation.mutate(account.id);
+                        }}
+                      >
+                        <PowerOff className="h-4 w-4 mr-2" />
+                        Desconectar
+                      </Button>
+                    </>
                   ) : (
                     <Button 
                       size="sm" 

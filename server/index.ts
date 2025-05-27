@@ -1111,6 +1111,44 @@ app.post("/api/whatsapp/:accountId/stop-keepalive", async (req: Request, res: Re
   }
 });
 
+// Endpoint para forzar el estado ready y activar respuestas automáticas
+app.post("/api/whatsapp/:accountId/force-ready", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
+    
+    const instance = whatsappMultiAccountManager.getInstance(accountId);
+    if (!instance) {
+      return res.status(404).json({
+        success: false,
+        error: 'Cuenta de WhatsApp no encontrada'
+      });
+    }
+    
+    // Forzar el estado ready para activar respuestas automáticas
+    instance.status.ready = true;
+    instance.status.authenticated = true;
+    
+    console.log(`🚀 Estado ready forzado para cuenta ${accountId} - Sistema de respuestas automáticas activado`);
+    
+    res.json({
+      success: true,
+      message: `Sistema de respuestas automáticas activado para cuenta ${accountId}`,
+      status: {
+        ready: instance.status.ready,
+        authenticated: instance.status.authenticated,
+        initialized: instance.status.initialized
+      }
+    });
+  } catch (error) {
+    console.error(`❌ Error forzando estado ready para cuenta ${req.params.accountId}:`, error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al activar el sistema de respuestas automáticas'
+    });
+  }
+});
+
 // Código de configuración de respuestas automáticas removido para optimización
 
 app.use((req, res, next) => {
