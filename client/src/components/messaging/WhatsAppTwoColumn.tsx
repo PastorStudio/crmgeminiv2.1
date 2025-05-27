@@ -294,7 +294,10 @@ export function WhatsAppTwoColumn() {
 
   // Función para alternar A.E AI (Agentes Externos)
   const toggleExternalAgent = async () => {
+    console.log('🚀 USUARIO PRESIONÓ BOTÓN A.E AI');
+    
     if (!selectedChat) {
+      console.log('❌ No hay chat seleccionado');
       toast({
         title: "Error",
         description: "Selecciona un chat primero",
@@ -307,6 +310,12 @@ export function WhatsAppTwoColumn() {
       setExternalAgentProcessing(true);
       const newState = !externalAgentActive;
       
+      console.log('📤 Enviando solicitud A.E AI:', {
+        chatId: selectedChat.id,
+        accountId: selectedChat.accountId,
+        active: newState
+      });
+      
       const response = await fetch('/api/external-agents/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -317,11 +326,16 @@ export function WhatsAppTwoColumn() {
         })
       });
       
+      console.log('📥 Respuesta del servidor:', response.status, response.statusText);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.log('❌ Error HTTP:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
       
       const result = await response.json();
+      console.log('✅ Resultado procesado:', result);
       
       if (result.success) {
         setExternalAgentActive(result.active);
@@ -339,6 +353,7 @@ export function WhatsAppTwoColumn() {
             : `Agente externo desconectado`,
         });
       } else {
+        console.log('❌ Respuesta sin éxito:', result);
         toast({
           title: "Error",
           description: result.message || "No se pudo activar el agente externo",
@@ -346,7 +361,7 @@ export function WhatsAppTwoColumn() {
         });
       }
     } catch (error) {
-      console.error('Error toggle A.E AI:', error);
+      console.error('💥 ERROR CRÍTICO A.E AI:', error);
       toast({
         title: "Error de Conexión",
         description: "No se pudo conectar con el servidor. Verifica tu conexión.",
