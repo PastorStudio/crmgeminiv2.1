@@ -566,7 +566,7 @@ const WhatsAppAccounts = () => {
     return (
       <div className="flex items-center gap-2 text-sm">
         <div className={`w-3 h-3 rounded-full ${config.autoResponseEnabled ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-        <span className="text-gray-700 font-medium">{assignedAgent.agentName || assignedAgent.agent_name}</span>
+        <span className="text-gray-700 font-medium">{assignedAgent.name}</span>
         <span className={`px-2 py-1 rounded text-xs ${config.autoResponseEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
           {config.autoResponseEnabled ? 'Activo' : 'Inactivo'}
         </span>
