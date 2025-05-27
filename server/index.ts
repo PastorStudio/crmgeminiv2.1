@@ -5,7 +5,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { users, whatsappAccounts } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import * as agentAssignmentRoutes from "./routes/agentAssignments";
@@ -1562,11 +1562,10 @@ app.use((req, res, next) => {
       // Obtener agentes de la base de datos PostgreSQL usando SQL directo
       let dbAgents = [];
       try {
-        // Usar SQL directo para evitar problemas de esquema
-        const result = await db.execute(`
-          SELECT id, agent_name as name, agent_url as agentUrl, status, 
-                 response_count as responseCount, created_at as createdAt,
-                 provider, notes
+        // Usar SQL directo para obtener los agentes
+        const result = await pool.query(`
+          SELECT id, agent_name, agent_url, status, 
+                 response_count, created_at, provider, notes
           FROM external_agents 
           WHERE status = 'active'
           ORDER BY created_at ASC
@@ -1658,11 +1657,11 @@ app.use((req, res, next) => {
       // Formatear los agentes para la interfaz
       const formattedAgents = dbAgents.map(agent => ({
         id: agent.id.toString(),
-        name: agent.name,
-        agentUrl: agent.agentuRl,
+        name: agent.agent_name,
+        agentUrl: agent.agent_url,
         isActive: agent.status === 'active',
-        responseCount: agent.responsecount || 0,
-        createdAt: agent.createdat,
+        responseCount: agent.response_count || 0,
+        createdAt: agent.created_at,
         provider: agent.provider,
         notes: agent.notes
       }));
