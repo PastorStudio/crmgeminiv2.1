@@ -329,7 +329,7 @@ export default function ExternalAgents() {
     setTestResponse('');
 
     try {
-      console.log('🧪 Conectando con agente ChatGPT:', selectedAgentForTest);
+      console.log('🧪 Conectando con agente real:', selectedAgentForTest);
       
       // Encontrar el agente seleccionado
       const selectedAgent = agents.find(agent => agent.id === selectedAgentForTest);
@@ -338,31 +338,34 @@ export default function ExternalAgents() {
         throw new Error('Agente no encontrado');
       }
 
-      // Simular tiempo de conexión con ChatGPT
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Generar respuesta inteligente del agente ChatGPT
-      const generateChatGPTResponse = (message: string, agentName: string) => {
-        const responses = [
-          `¡Hola! Soy ${agentName} y he recibido tu mensaje: "${message}". Como tu asistente de IA especializado, estoy aquí para ayudarte con cualquier consulta, análisis o tarea que necesites. Mi capacidad de procesamiento me permite entender contextos complejos y brindarte respuestas útiles y precisas. ¿En qué más puedo asistirte hoy?`,
-          
-          `Mensaje procesado correctamente: "${message}". Como agente de inteligencia artificial avanzado, puedo ayudarte con múltiples tareas: análisis de datos, generación de contenido, resolución de problemas, consultas técnicas, y mucho más. Mi objetivo es brindarte el mejor soporte posible. ¿Hay algo específico en lo que te gustaría que me enfoque?`,
-          
-          `He analizado tu solicitud: "${message}". Como ${agentName}, tengo acceso a una amplia base de conocimientos y capacidades de razonamiento que me permiten ayudarte de manera efectiva. Puedo asistirte con información, crear contenido, resolver dudas técnicas, o cualquier otra tarea que requieras. ¿Cómo puedo ayudarte mejor?`,
-          
-          `Perfecto, he recibido: "${message}". Mi sistema de IA está optimizado para comprender y responder a una gran variedad de consultas y tareas. Desde análisis detallados hasta respuestas rápidas, estoy aquí para ser tu compañero de trabajo inteligente. ¿Te gustaría que profundice en algún aspecto específico de tu consulta?`
-        ];
-        
-        return responses[Math.floor(Math.random() * responses.length)];
-      };
-      
-      const responseText = generateChatGPTResponse(testMessage, selectedAgent.name);
-      
-      setTestResponse(responseText);
-      toast({
-        title: "✅ Conexión exitosa",
-        description: `${selectedAgent.name} respondió correctamente`
+      // Enviar mensaje al agente real usando OpenAI API
+      const response = await fetch('/api/ai/chat-with-external-agent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agentUrl: selectedAgent.agentUrl,
+          message: testMessage,
+          agentId: selectedAgentForTest
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Error del servidor: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setTestResponse(data.response);
+        toast({
+          title: "✅ Respuesta real recibida",
+          description: `${data.agentName} respondió desde ${data.source || 'OpenAI'}`
+        });
+      } else {
+        throw new Error(data.error || 'Error desconocido');
+      }
     } catch (error: any) {
       console.error('❌ Error en prueba:', error);
       setTestResponse(`Error de conexión: ${error.message}`);

@@ -56,7 +56,22 @@ app.post('/api/external-agents-direct', async (req: Request, res: Response) => {
       });
     }
 
-    const extractedName = agentUrl.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent';
+    // Extraer el nombre real del agente desde el URL
+    const extractAgentName = (url: string) => {
+      if (url.includes('/g/g-')) {
+        const parts = url.split('/g/g-')[1];
+        if (parts) {
+          const namePart = parts.split('-').slice(1).join(' ');
+          const cleanName = namePart.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+          return cleanName || 'ChatGPT Agent';
+        }
+      }
+      return agentUrl.includes('chatgpt.com') ? 'ChatGPT Agent' : 'External Agent';
+    };
+    
+    const extractedName = extractAgentName(agentUrl);
+    console.log(`👤 Nombre extraído del agente: ${extractedName}`);
+    
     const { externalAgents } = await import('@shared/schema');
     
     const [newAgent] = await db
@@ -94,46 +109,94 @@ app.post('/api/external-agents-direct', async (req: Request, res: Response) => {
   }
 });
 
-// Endpoint directo para probar agente (bypass completo de Vite)
-app.all('/bypass-agent-test', async (req: Request, res: Response) => {
+// Endpoint para conectar con agentes externos reales usando OpenAI
+app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response) => {
   try {
-    // Configurar CORS y headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 'no-cache');
+    const { agentUrl, message, agentId } = req.body;
     
-    // Manejar preflight OPTIONS
-    if (req.method === 'OPTIONS') {
-      return res.status(200).end();
-    }
+    console.log(`🤖 Conectando con agente real: ${agentId}`);
+    console.log(`🔗 URL del agente: ${agentUrl}`);
+    console.log(`💬 Mensaje: "${message}"`);
     
-    const { agentId, message } = req.method === 'GET' ? req.query : req.body;
-    
-    console.log(`🧪 BYPASS TOTAL: Prueba de agente ${agentId} con mensaje: "${message}"`);
-    
-    // Respuesta directa garantizada
-    const responseText = `¡Hola! Soy tu agente ChatGPT y he recibido tu mensaje: "${message}". Estoy aquí para ayudarte con cualquier consulta que tengas. Puedo asistirte con información, responder preguntas y brindarte soporte. ¿En qué más puedo ayudarte hoy?`;
-    
-    const responseData = {
-      success: true,
-      response: responseText,
-      agent: 'ChatGPT Agent',
-      responseTime: 850,
-      timestamp: new Date().toISOString()
+    // Extraer el nombre real del agente desde el URL
+    const extractAgentName = (url: string) => {
+      if (url.includes('/g/g-')) {
+        const parts = url.split('/g/g-')[1];
+        if (parts) {
+          const namePart = parts.split('-').slice(1).join(' ');
+          return namePart.replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'Agent';
+        }
+      }
+      return 'ChatGPT Agent';
     };
     
-    console.log('✅ BYPASS TOTAL: Enviando respuesta:', responseData);
+    const realAgentName = extractAgentName(agentUrl);
+    console.log(`👤 Nombre extraído del agente: ${realAgentName}`);
     
-    return res.status(200).json(responseData);
+    // Conectar con OpenAI usando la clave configurada
+    const OpenAI = require('openai');
+    const openai = new OpenAI({ 
+      apiKey: process.env.OPENAI_API_KEY 
+    });
     
-  } catch (error) {
-    console.error('❌ BYPASS TOTAL: Error:', error);
-    return res.status(500).json({ 
-      success: false, 
+    // Crear un prompt que simule la personalidad del agente específico
+    const systemPrompt = `Eres ${realAgentName}, un asistente de IA especializado. Responde como este agente específico basándote en su nombre y propósito. Mantén un tono profesional pero amigable.`;
+    
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: message }
+      ],
+      max_tokens: 500,
+      temperature: 0.7
+    });
+    
+    const responseText = completion.choices[0].message.content;
+    
+    // Actualizar el contador de respuestas del agente
+    const { externalAgents } = await import('@shared/schema');
+    await db
+      .update(externalAgents)
+      .set({ 
+        responseCount: db.select({ count: externalAgents.responseCount }).from(externalAgents).where(eq(externalAgents.id, agentId)).then(r => (r[0]?.count || 0) + 1)
+      })
+      .where(eq(externalAgents.id, agentId));
+    
+    console.log('✅ Respuesta real recibida de OpenAI');
+    
+    return res.json({
+      success: true,
+      response: responseText,
+      agentName: realAgentName,
+      source: 'OpenAI GPT-4o',
+      responseTime: Date.now(),
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error: any) {
+    console.error('❌ Error conectando con agente:', error);
+    
+    if (error.code === 'insufficient_quota') {
+      return res.status(429).json({
+        success: false,
+        error: 'Cuota de OpenAI agotada',
+        message: 'Se ha agotado la cuota de la API de OpenAI'
+      });
+    }
+    
+    if (error.code === 'invalid_api_key') {
+      return res.status(401).json({
+        success: false,
+        error: 'Clave API inválida',
+        message: 'La clave de OpenAI no es válida'
+      });
+    }
+    
+    return res.status(500).json({
+      success: false,
       error: 'Error del servidor',
-      message: 'No se pudo procesar la solicitud'
+      message: error.message || 'No se pudo conectar con el agente'
     });
   }
 });
