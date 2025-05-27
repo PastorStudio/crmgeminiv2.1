@@ -840,11 +840,21 @@ export function WhatsAppTwoColumn() {
     
     // Cargar estado del agente externo A.E AI para el chat seleccionado
     try {
-      const response = await fetch(`/api/external-agents/status/${encodeURIComponent(chat.id)}/${chat.accountId}`);
+      const response = await fetch(`/api/external-agents/status/${encodeURIComponent(chat.id)}/${chat.accountId}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
       if (response.ok) {
         const data = await response.json();
         setExternalAgentActive(data.active || false);
         setExternalAgentUrl(data.agentUrl || '');
+      } else {
+        setExternalAgentActive(false);
+        setExternalAgentUrl('');
       }
     } catch (error) {
       console.error('Error cargando estado A.E AI:', error);
