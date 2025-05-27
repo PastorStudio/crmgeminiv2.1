@@ -810,8 +810,8 @@ app.use((req, res, next) => {
     }
   });
 
-  // Crear agente externo desde URL (CONSOLIDADO)
-  app.post('/api/external-agents/create-from-url', async (req, res) => {
+  // Crear agente externo desde URL (CONSOLIDADO) - Movido antes del middleware
+  app.post('/api/external-agents', async (req, res) => {
     try {
       res.setHeader('Content-Type', 'application/json');
       console.log('🤖 Creando agente externo desde URL:', req.body);
