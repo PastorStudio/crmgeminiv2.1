@@ -15,7 +15,7 @@ import * as whatsappAPI from "./routes/whatsappAPI";
 import { internalAgentManager } from "./services/internalAgentManager";
 import { agentActivityTracker } from "./services/agentActivityTracker";
 import { agentRoleManager } from "./services/agentRoleManager";
-import { liveStatusTracker } from "./services/liveStatusTracker";
+import { simpleLiveStatus } from "./services/simpleLiveStatus";
 
 // Configurar zona horaria para Panamá (GMT-5)
 process.env.TZ = 'America/Panama';
@@ -639,7 +639,7 @@ app.use((req, res, next) => {
     try {
       const agentId = parseInt(req.params.agentId);
       console.log(`💚 Heartbeat recibido del agente ${agentId}`);
-      await liveStatusTracker.markAgentActive(agentId);
+      simpleLiveStatus.markAgentActive(agentId);
       res.json({ success: true, agentId, status: 'active' });
     } catch (error) {
       console.error('❌ Error procesando heartbeat:', error);
@@ -649,12 +649,13 @@ app.use((req, res, next) => {
 
   app.get('/api/agents/live-status', async (_req: Request, res: Response) => {
     try {
-      const activeAgents = await liveStatusTracker.getActiveAgents();
+      const activeAgents = simpleLiveStatus.getActiveAgents();
       console.log(`🟢 Estado en vivo - Agentes activos: [${activeAgents.join(', ')}]`);
       res.json({ activeAgents });
     } catch (error) {
       console.error('❌ Error obteniendo estado en vivo:', error);
-      res.json({ activeAgents: [] });
+      // Si hay error, devolver lista vacía pero exitosa
+      res.status(200).json({ activeAgents: [] });
     }
   });
 
