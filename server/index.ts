@@ -1391,81 +1391,73 @@ app.use((req, res, next) => {
     }
   });
 
-  // SISTEMA A.E AI INTELIGENTE - PRUEBA CON CONSULTA REAL
+  // SISTEMA A.E AI CON RESPUESTA AUTOMÁTICA REAL
   app.post('/api/debug-ae-ai/probe', async (req, res) => {
-    console.log(`🔥🔥🔥 INICIANDO PRUEBA A.E AI CON CONSULTA REAL - ${Date.now()}`);
+    console.log(`🔥🔥🔥 INICIANDO PRUEBA A.E AI CON RESPUESTA AUTOMÁTICA - ${Date.now()}`);
     
     const { chatId, message = "Hola, necesito ayuda con mi producto", accountId = 1 } = req.body;
     console.log(`📋 Datos: chatId=${chatId}, mensaje="${message}"`);
     
     try {
-      // Verificar clave API de OpenAI
-      const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
-      if (!openaiKey) {
-        console.log(`❌ No hay clave API de OpenAI disponible`);
-        return res.json({
+      // Importar el sistema de respuesta automática
+      const { WhatsAppAutoResponder } = await import('./services/whatsappAutoResponder.js');
+      
+      // Activar A.E AI para este chat
+      WhatsAppAutoResponder.activateForChat(chatId, "A.E AI Smartbots");
+      
+      // Simular mensaje entrante reciente
+      const mockMessage = {
+        id: `test_${Date.now()}`,
+        body: message,
+        fromMe: false,
+        timestamp: Date.now(),
+        chatId: chatId,
+        type: 'chat'
+      };
+      
+      console.log(`🤖 Procesando mensaje con sistema de respuesta automática...`);
+      
+      // Procesar mensaje con el sistema automático
+      const processed = await WhatsAppAutoResponder.processIncomingMessage(
+        mockMessage,
+        {
+          sendMessage: async (to: string, response: string) => {
+            console.log(`📤 SIMULANDO envío automático a WhatsApp ${to}:`);
+            console.log(`💬 Respuesta automática: "${response}"`);
+            return { success: true, messageId: `sent_${Date.now()}` };
+          }
+        }
+      );
+      
+      if (processed) {
+        res.json({
+          success: true,
+          message: '✅ A.E AI funcionando con respuesta automática real',
+          chatId: chatId,
+          timestamp: new Date().toISOString(),
+          agent: 'A.E AI Smartbots',
+          note: '🎯 Sistema funcional: responde automáticamente a mensajes entrantes'
+        });
+      } else {
+        res.json({
           success: false,
-          message: 'No se encontró la clave API de OpenAI. Por favor configúrala en las variables de entorno.',
-          needsApiKey: true
+          message: '❌ No se pudo procesar el mensaje automáticamente',
+          chatId: chatId
         });
       }
       
-      console.log(`🤖 Generando respuesta real con OpenAI para mensaje: "${message}"`);
-      
-      // Importar y usar OpenAI directamente
-      const { default: OpenAI } = await import('openai');
-      const openai = new OpenAI({ apiKey: openaiKey });
-      
-      // Contexto del agente A.E AI
-      const agentContext = `Eres "A.E AI Smartbots", un asistente de atención al cliente profesional y amigable.
-      
-      Características:
-      - Respondes de manera clara, útil y empática
-      - Mantienes un tono conversacional pero profesional
-      - Ofreces soluciones específicas y prácticas
-      - Si necesitas más información, haces preguntas específicas
-      - Respondes en español y mantén las respuestas concisas (máximo 3 líneas)
-      - Si no puedes resolver algo, ofreces derivar con un agente humano`;
-      
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o", // la versión más reciente de OpenAI
-        messages: [
-          { role: "system", content: agentContext },
-          { role: "user", content: message }
-        ],
-        max_tokens: 200,
-        temperature: 0.7
-      });
-      
-      const aiResponse = completion.choices[0].message.content;
-      console.log(`✅ Respuesta A.E AI generada exitosamente`);
-      console.log(`💬 Respuesta: "${aiResponse}"`);
-      
-      // Simular envío de respuesta
-      console.log(`📤 SIMULANDO envío a chat ${chatId}`);
-      
-      res.json({
-        success: true,
-        message: '✅ A.E AI generó respuesta exitosamente',
-        response: aiResponse,
-        chatId: chatId,
-        timestamp: new Date().toISOString(),
-        agent: 'A.E AI Smartbots',
-        note: '🎯 Respuesta generada usando OpenAI para el último mensaje'
-      });
-      
     } catch (error: any) {
-      console.error('❌ Error en sistema A.E AI:', error);
+      console.error('❌ Error en sistema A.E AI automático:', error);
       res.status(500).json({
         success: false,
-        message: 'Error generando respuesta A.E AI',
+        message: 'Error en el sistema de respuesta automática',
         error: error.message
       });
     }
   });
 
-  // ENDPOINT REAL QUE USA EL BOTÓN - ARREGLADO COMPLETAMENTE
-  app.post('/api/external-agents/toggle', (req, res) => {
+  // ENDPOINT REAL QUE USA EL BOTÓN - CON RESPUESTA AUTOMÁTICA
+  app.post('/api/external-agents/toggle', async (req, res) => {
     console.log('🚀 BOTÓN A.E AI REAL PRESIONADO - DATOS:', req.body);
     
     try {
@@ -1479,19 +1471,30 @@ app.use((req, res, next) => {
         });
       }
 
+      // Importar el sistema de respuesta automática
+      const { WhatsAppAutoResponder } = await import('./services/whatsappAutoResponder.js');
+
       console.log(`🤖 PROCESANDO A.E AI: ${active ? 'ACTIVAR' : 'DESACTIVAR'} para chat ${chatId}`);
 
       if (active) {
-        console.log('✅ ACTIVANDO A.E AI - ABRIENDO SMARTBOTS');
+        console.log('✅ ACTIVANDO A.E AI CON RESPUESTA AUTOMÁTICA');
+        
+        // Activar el sistema de respuesta automática
+        WhatsAppAutoResponder.activateForChat(chatId, "A.E AI Smartbots");
+        
         return res.json({
           success: true,
           active: true,
           agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
-          agentName: 'Smartbots',
-          message: '🤖 A.E AI activado correctamente - Smartbots conectado'
+          agentName: 'A.E AI Smartbots',
+          message: '🤖 A.E AI activado - responderá automáticamente a mensajes entrantes'
         });
       } else {
         console.log('🔴 DESACTIVANDO A.E AI');
+        
+        // Desactivar el sistema de respuesta automática
+        WhatsAppAutoResponder.deactivateForChat(chatId);
+        
         return res.json({
           success: true,
           active: false,
