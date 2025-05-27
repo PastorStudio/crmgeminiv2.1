@@ -3064,6 +3064,95 @@ app.use((req, res, next) => {
     try {
       const { accountId, chatId, messageText, fromNumber } = req.body;
       
+      if (!accountId || !chatId || !messageText) {
+        return res.status(400).json({
+          success: false,
+          error: 'Faltan datos requeridos'
+        });
+      }
+
+      console.log(`📨 PROCESANDO MENSAJE: "${messageText}"`);
+      console.log(`🎯 Cuenta: ${accountId}, Chat: ${chatId}`);
+      
+      // Verificar configuración del agente
+      const configQuery = await db.execute(`
+        SELECT assigned_external_agent_id, auto_response_enabled 
+        FROM whatsapp_accounts 
+        WHERE id = $1
+      `, [accountId]);
+      
+      if (configQuery.rows.length === 0) {
+        console.log('❌ Cuenta no encontrada');
+        return res.status(404).json({ success: false, error: 'Cuenta no encontrada' });
+      }
+      
+      const config = configQuery.rows[0];
+      console.log(`🔍 Config encontrada:`, config);
+      
+      if (!config.assigned_external_agent_id || !config.auto_response_enabled) {
+        console.log('⏭️ Respuesta automática no configurada');
+        return res.json({
+          success: true,
+          message: 'Respuesta automática no configurada'
+        });
+      }
+      
+      // Obtener información del agente
+      const agentQuery = await db.execute(`
+        SELECT agent_name FROM external_agents 
+        WHERE id = $1
+      `, [config.assigned_external_agent_id]);
+      
+      if (agentQuery.rows.length === 0) {
+        console.log('❌ Agente externo no encontrado');
+        return res.status(404).json({ success: false, error: 'Agente no encontrado' });
+      }
+      
+      const agentName = agentQuery.rows[0].agent_name;
+      console.log(`🤖 Generando respuesta con agente: ${agentName}`);
+      
+      // Generar respuesta usando OpenAI
+      const OpenAI = require('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      const systemPrompt = `Eres ${agentName}, un asistente virtual profesional y amigable. 
+      Responde de manera útil y conversacional en español. 
+      Mantén las respuestas concisas pero informativas.`;
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: messageText }
+        ],
+        max_tokens: 200,
+        temperature: 0.7,
+      });
+
+      const autoResponse = response.choices[0].message.content || 'Lo siento, no pude procesar tu mensaje.';
+      
+      console.log(`✅ RESPUESTA GENERADA: ${autoResponse}`);
+      
+      return res.json({
+        success: true,
+        message: 'Respuesta generada exitosamente',
+        response: autoResponse,
+        agentName: agentName
+      });
+      
+    } catch (error) {
+      console.error('❌ Error procesando mensaje:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
+  app.post("/api/simple/process-message-old", async (req: Request, res: Response) => {
+    try {
+      const { accountId, chatId, messageText, fromNumber } = req.body;
+      
       const { SimpleAutoResponseService } = await import('./services/simpleAutoResponse');
       const result = await SimpleAutoResponseService.processIncomingMessage(
         accountId, chatId, messageText, fromNumber || 'Cliente'
