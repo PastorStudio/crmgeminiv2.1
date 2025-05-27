@@ -8,6 +8,65 @@ import { nanoid } from 'nanoid';
 // Almacenamiento en memoria para agentes externos (persistente)
 let externalAgentsStore: Map<string, any> = new Map();
 
+// Inicializar con datos de ejemplo para debug
+const initializeDefaultAgents = () => {
+  if (externalAgentsStore.size === 0) {
+    console.log('🚀 Inicializando agentes externos por defecto...');
+    
+    const defaultAgents = [
+      {
+        id: 'smartbots-001',
+        name: 'Smartbots',
+        agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
+        isActive: true,
+        responseCount: 0,
+        createdAt: new Date()
+      },
+      {
+        id: 'smartplanner-001',
+        name: 'Smartplanner IA',
+        agentUrl: 'https://chatgpt.com/g/g-682e61ce2364819196df9641616414b1-smartplanner-ia',
+        isActive: true,
+        responseCount: 0,
+        createdAt: new Date()
+      },
+      {
+        id: 'smartflyer-001',
+        name: 'Smartflyer IA',
+        agentUrl: 'https://chatgpt.com/g/g-682f551bee70819196aeb603eb638762-smartflyer-ia',
+        isActive: true,
+        responseCount: 0,
+        createdAt: new Date()
+      },
+      {
+        id: 'telca-001',
+        name: 'Agente de Ventas de Telca Panama',
+        agentUrl: 'https://chatgpt.com/g/g-682f9b5208988191b08215b3d8f65333-agente-de-ventas-de-telca-panama',
+        isActive: true,
+        responseCount: 0,
+        createdAt: new Date()
+      },
+      {
+        id: 'tecnico-001',
+        name: 'Asistente Técnico en Gestión en Campo',
+        agentUrl: 'https://chatgpt.com/g/g-682bb98fedf881918e0c4ed5fcf592e4-asistente-tecnico-en-gestion-en-campo',
+        isActive: true,
+        responseCount: 0,
+        createdAt: new Date()
+      }
+    ];
+
+    defaultAgents.forEach(agent => {
+      externalAgentsStore.set(agent.id, agent);
+    });
+
+    console.log(`✅ ${defaultAgents.length} agentes externos inicializados`);
+  }
+};
+
+// Inicializar agentes por defecto al cargar el módulo
+initializeDefaultAgents();
+
 export interface SimpleExternalAgent {
   id: string;
   name: string;

@@ -1042,6 +1042,195 @@ const WhatsAppAccounts = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Diálogo de configuración de agente externo */}
+      <Dialog open={agentConfigDialogOpen} onOpenChange={setAgentConfigDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Configurar Agente Externo A.E AI
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+              Selecciona qué agente externo usar para respuestas automáticas en <strong>{selectedAccountForAgent?.name}</strong>
+            </p>
+          </DialogHeader>
+          
+          <ExternalAgentConfigForm 
+            accountId={selectedAccountForAgent?.id || 0}
+            onSuccess={() => {
+              setAgentConfigDialogOpen(false);
+              queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+// Componente para configurar agente externo
+const ExternalAgentConfigForm = ({ accountId, onSuccess }: { accountId: number; onSuccess: () => void }) => {
+  const { toast } = useToast();
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
+  const [autoResponseEnabled, setAutoResponseEnabled] = useState(false);
+  
+  // Obtener agentes externos
+  const { data: externalAgentsResponse, refetch: refetchAgents } = useQuery({
+    queryKey: ['/api/external-agents'],
+    queryFn: async () => {
+      console.log('🔍 Obteniendo lista de agentes externos...');
+      const response = await apiRequest('/api/external-agents');
+      console.log('✅ Agentes externos encontrados:', response?.agents?.length || 0);
+      return response;
+    }
+  });
+
+  const externalAgents = externalAgentsResponse?.agents || [];
+
+  // Obtener configuración actual
+  const { data: currentConfig } = useQuery({
+    queryKey: [`/api/whatsapp-accounts/${accountId}/agent-config`],
+    queryFn: async () => {
+      const response = await apiRequest(`/api/whatsapp-accounts/${accountId}/agent-config`);
+      console.log('🔍 Configuración recibida del servidor:', response);
+      return response;
+    },
+    enabled: !!accountId
+  });
+
+  // Inicializar valores
+  useEffect(() => {
+    if (currentConfig?.success) {
+      const config = currentConfig.config;
+      setSelectedAgentId(config.assignedExternalAgentId || '');
+      setAutoResponseEnabled(config.autoResponseEnabled || false);
+    }
+  }, [currentConfig]);
+
+  // Refrescar agentes al abrir
+  useEffect(() => {
+    if (accountId) {
+      refetchAgents();
+    }
+  }, [accountId, refetchAgents]);
+
+  // Mutation para asignar agente
+  const assignMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest(`/api/whatsapp-accounts/${accountId}/assign-external-agent`, {
+        method: 'POST',
+        body: { 
+          externalAgentId: selectedAgentId || null, 
+          autoResponseEnabled 
+        }
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: '✅ Configuración guardada',
+        description: 'El agente externo se ha configurado correctamente.',
+      });
+      onSuccess();
+    },
+    onError: () => {
+      toast({
+        title: '❌ Error',
+        description: 'No se pudo guardar la configuración.',
+        variant: 'destructive',
+      });
+    }
+  });
+
+  const handleSave = () => {
+    assignMutation.mutate();
+  };
+
+  const selectedAgent = externalAgents.find((agent: any) => agent.id === selectedAgentId);
+
+  return (
+    <div className="space-y-4 pt-4">
+      <div>
+        <label className="text-sm font-medium mb-2 block">Agente Externo</label>
+        <select 
+          value={selectedAgentId} 
+          onChange={(e) => setSelectedAgentId(e.target.value)}
+          className="w-full p-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Sin agente asignado</option>
+          {externalAgents.map((agent: any) => (
+            <option key={agent.id} value={agent.id}>
+              {agent.name}
+            </option>
+          ))}
+        </select>
+        
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-xs text-gray-500">
+            {externalAgents.length === 0 
+              ? 'No hay agentes externos disponibles' 
+              : `${externalAgents.length} agente(s) disponible(s)`}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => refetchAgents()}
+            className="text-xs h-6"
+          >
+            <RefreshCw className="w-3 h-3 mr-1" />
+            Actualizar
+          </Button>
+        </div>
+        
+        {externalAgents.length === 0 && (
+          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">
+            ⚠️ No hay agentes externos disponibles. Crea uno primero en la página de Agentes Externos.
+          </div>
+        )}
+      </div>
+
+      {selectedAgent && (
+        <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+          <p className="text-xs text-green-700 mb-1">✅ Agente seleccionado:</p>
+          <p className="font-medium text-sm text-green-800">{selectedAgent.name}</p>
+          <p className="text-xs text-green-600 mt-1 break-all">{selectedAgent.agentUrl}</p>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-md">
+        <div>
+          <label className="text-sm font-medium text-blue-800">Respuestas automáticas</label>
+          <p className="text-xs text-blue-600">Activar respuestas automáticas con este agente</p>
+        </div>
+        <input
+          type="checkbox"
+          checked={autoResponseEnabled}
+          onChange={(e) => setAutoResponseEnabled(e.target.checked)}
+          className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+        />
+      </div>
+
+      <div className="flex justify-end gap-2 pt-4 border-t">
+        <Button 
+          variant="outline" 
+          onClick={() => onSuccess()}
+          disabled={assignMutation.isPending}
+        >
+          Cancelar
+        </Button>
+        <Button 
+          onClick={handleSave}
+          disabled={assignMutation.isPending}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          {assignMutation.isPending ? (
+            <>
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+              Guardando...
+            </>
+          ) : 'Guardar configuración'}
+        </Button>
+      </div>
     </div>
   );
 };
