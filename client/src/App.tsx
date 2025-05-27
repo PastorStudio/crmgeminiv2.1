@@ -521,6 +521,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/auto-response-settings" component={() => <PrivateRoute component={AutoResponseSettings} path="/auto-response-settings" />} />
                 <Route path="/external-agents" component={() => <PrivateRoute component={ExternalAgents} path="/external-agents" />} />
                 <Route path="/internal-agents" component={() => <PrivateRoute component={InternalAgents} path="/internal-agents" />} />
+                <Route path="/agent-analysis" component={() => <PrivateRoute component={AgentAnalysis} path="/agent-analysis" />} />
                 <Route path="/connection" component={() => <PrivateRoute component={Connection} path="/connection" />} />
                 <Route path="/qrcode" component={() => <PrivateRoute component={QRCode} path="/qrcode" />} />
                 <Route path="/qr-viewer" component={() => <PrivateRoute component={QrViewer} path="/qr-viewer" />} />
