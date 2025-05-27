@@ -1559,8 +1559,30 @@ app.use((req, res, next) => {
       res.setHeader('Content-Type', 'application/json');
       console.log('📋 Obteniendo lista de agentes externos...');
       
-      const agents = SimpleExternalAgentManager.getAllAgents();
+      let agents = SimpleExternalAgentManager.getAllAgents();
       console.log('✅ Agentes externos encontrados:', agents.length);
+
+      // Si no hay agentes, crear los agentes por defecto ahora
+      if (agents.length === 0) {
+        console.log('🔧 Inicializando agentes por defecto en GET...');
+        
+        const defaultAgents = [
+          'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
+          'https://chatgpt.com/g/g-682e61ce2364819196df9641616414b1-smartplanner-ia',
+          'https://chatgpt.com/g/g-682f551bee70819196aeb603eb638762-smartflyer-ia',
+          'https://chatgpt.com/g/g-682f9b5208988191b08215b3d8f65333-agente-de-ventas-de-telca-panama',
+          'https://chatgpt.com/g/g-682bb98fedf881918e0c4ed5fcf592e4-asistente-tecnico-en-gestion-en-campo'
+        ];
+
+        for (const url of defaultAgents) {
+          const agent = SimpleExternalAgentManager.createAgent(url);
+          console.log(`✅ Agente creado: ${agent.name} (ID: ${agent.id})`);
+        }
+
+        // Volver a obtener la lista actualizada
+        agents = SimpleExternalAgentManager.getAllAgents();
+        console.log(`🎉 ${agents.length} agentes inicializados correctamente`);
+      }
 
       // Formatear los agentes para la interfaz
       const formattedAgents = agents.map(agent => ({
