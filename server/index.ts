@@ -160,8 +160,13 @@ app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response)
     const realAgentName = extractAgentName(agentUrl);
     console.log(`👤 Nombre extraído del agente: ${realAgentName}`);
     
+    // Verificar que tenemos la clave API
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY no está configurada');
+    }
+
     // Conectar con OpenAI usando la clave configurada
-    const OpenAI = require('openai');
+    const OpenAI = (await import('openai')).default;
     const openai = new OpenAI({ 
       apiKey: process.env.OPENAI_API_KEY 
     });
@@ -709,7 +714,7 @@ app.get("/api/media-gallery/list", async (_req: Request, res: Response) => {
 });
 
 // INTERCEPTAR RUTAS CRÍTICAS ANTES QUE VITE
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   // Interceptar agentes externos antes que Vite
   if (req.method === 'POST' && req.path === '/api/create-external-agent') {
     // Ya manejado arriba, pero asegurar que no pase por Vite
