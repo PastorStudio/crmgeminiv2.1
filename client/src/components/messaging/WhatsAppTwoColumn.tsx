@@ -1509,27 +1509,7 @@ export function WhatsAppTwoColumn() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
                   >
-                    <Button
-                      size="sm"
-                      variant={smartBotsEnabled ? "default" : "outline"}
-                      className={`shadow-sm transition-all duration-300 ${
-                        smartBotsEnabled 
-                          ? "bg-purple-600 hover:bg-purple-700 text-white" 
-                          : "border-purple-600 text-purple-600 hover:bg-purple-50"
-                      }`}
-                      onClick={() => {
-                        setSmartBotsEnabled(!smartBotsEnabled);
-                        toast({
-                          title: smartBotsEnabled ? "AI desactivado" : "AI activado",
-                          description: smartBotsEnabled 
-                            ? "Las respuestas automáticas están desactivadas" 
-                            : "Las respuestas se generarán automáticamente con IA",
-                        });
-                      }}
-                    >
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      {smartBotsEnabled ? "AI ON" : "AI OFF"}
-                    </Button>
+                    {/* Botón AI ON/OFF eliminado según solicitud del usuario */}
                   </motion.div>
                   
 
@@ -1901,32 +1881,7 @@ export function WhatsAppTwoColumn() {
                   </PopoverContent>
                 </Popover>
 
-                {/* R.A. AI Button - Nuevo Sistema Independiente */}
-                <Button
-                  variant={raAiEnabled ? "default" : "outline"}
-                  size="sm"
-                  className={`h-9 px-3 ${raAiEnabled ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'border-purple-300 text-purple-600 hover:bg-purple-50'}`}
-                  onClick={toggleRaAi}
-                  disabled={raAiProcessing}
-                  title={raAiEnabled ? "R.A. AI Activado - Click para desactivar" : "R.A. AI Desactivado - Click para activar"}
-                >
-                  {raAiProcessing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <div className="flex items-center space-x-1">
-                      <span>🤖</span>
-                      <span className="text-xs font-medium">R.A. AI</span>
-                    </div>
-                  )}
-                </Button>
-
-                {/* Indicador de estado cuando R.A. AI está activo */}
-                {raAiEnabled && (
-                  <div className="flex items-center space-x-2 px-3 py-1 bg-purple-50 border border-purple-200 rounded-md">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-purple-700 font-medium">R.A. AI Activo</span>
-                  </div>
-                )}
+                {/* Botón R.A AI eliminado según solicitud del usuario */}
 
                 {/* Voice Note Button with Sound Waves */}
                 <Button
