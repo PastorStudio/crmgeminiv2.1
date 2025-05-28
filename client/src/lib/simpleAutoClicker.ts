@@ -1,1 +1,0 @@
-// Archivo eliminado - funcionalidad de auto-click removida

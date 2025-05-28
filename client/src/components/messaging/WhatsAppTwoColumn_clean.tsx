@@ -558,171 +558,50 @@ export function WhatsAppTwoColumn() {
                   <p>No hay mensajes en este chat</p>
                 </div>
               ) : (
-                <div className="space-y-1">
-                  {messages.map((message: WhatsAppMessage, index: number) => {
-                    const showAvatar = selectedChat.isGroup && !message.fromMe;
-                    const isFirstFromAuthor = index === 0 || messages[index - 1]?.author !== message.author;
-                    const isLastIncomingMessage = !message.fromMe && 
-                      index === messages.length - 1 || 
-                      (index < messages.length - 1 && messages[index + 1]?.fromMe);
-
-                    const formatTime = (timestamp: number) => {
-                      return new Date(timestamp * 1000).toLocaleTimeString('es-ES', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      });
-                    };
-
-                    return (
-                      <motion.div
-                        key={message.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className={`flex ${message.fromMe ? 'justify-end pt-[-34px] pb-[-34px] mt-[6px] mb-[6px] ml-[-4px] mr-[-4px] pl-[-20px] pr-[-20px] text-[14px]' : 'justify-start pt-[-34px] pb-[-34px] mt-[6px] mb-[6px] ml-[-4px] mr-[-4px] pl-[-20px] pr-[-20px] text-[14px]'}`}
-                      >
-                        <div className={`flex space-x-2 max-w-[95%] ${message.fromMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                          {showAvatar && isFirstFromAuthor && (
-                            <Avatar className="h-8 w-8 mt-1">
-                              <AvatarImage src={message.authorProfilePic} />
-                              <AvatarFallback className="text-xs bg-gray-200">
-                                {message.author?.charAt(0).toUpperCase() || 'U'}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                          
-                          <div className={`${showAvatar && !isFirstFromAuthor ? 'ml-10' : ''}`}>
-                            {selectedChat.isGroup && !message.fromMe && isFirstFromAuthor && (
-                              <div className="text-xs text-gray-500 mb-1 px-3">
-                                Agente: {message.author || message.authorNumber}
-                              </div>
+                <div className="space-y-4">
+                  {messages.map((message: WhatsAppMessage, index: number) => (
+                    <motion.div
+                      key={message.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-[80%] ${message.fromMe ? 'bg-green-500 text-white' : 'bg-white text-gray-900 border border-gray-200'} rounded-lg p-3 shadow-sm`}>
+                        {message.type === 'ptt' || message.type === 'audio' ? (
+                          <VoiceNoteMessage message={message} />
+                        ) : message.hasMedia ? (
+                          <div className="flex items-center space-x-2 text-gray-600">
+                            {message.type?.includes('image') ? (
+                              <Image className="h-4 w-4" />
+                            ) : message.type?.includes('video') ? (
+                              <VideoIcon className="h-4 w-4" />
+                            ) : (
+                              <File className="h-4 w-4" />
                             )}
-                            
-                            <div className={`flex items-end gap-1 ${message.fromMe ? 'justify-end' : 'flex-row'}`}>
-                              {message.fromMe && (
-                                <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[2px] flex-shrink-0">
-                                  {formatTime(message.timestamp)}
-                                </div>
-                              )}
-                              <div
-                                className={`px-4 py-2 rounded-2xl ${
-                                  message.fromMe
-                                    ? 'bg-blue-100 text-black rounded-br-md'
-                                    : 'bg-green-100 text-black rounded-bl-md'
-                                }`}
-                              >
-                                {(message.type === 'ptt' || message.type === 'audio') ? (
-                                  <VoiceNoteMessage 
-                                    messageId={message.id} 
-                                    chatId={selectedChat.id}
-                                    accountId={selectedChat.accountId}
-                                  />
-                                ) : message.type === 'image' ? (
-                                  <div className="space-y-2">
-                                    <img 
-                                      src={message.mediaUrl} 
-                                      alt="Imagen compartida"
-                                      className="max-w-xs rounded-lg"
-                                      style={{ maxHeight: '300px', objectFit: 'cover' }}
-                                      onError={(e) => {
-                                        e.currentTarget.style.display = 'none';
-                                        e.currentTarget.nextElementSibling.style.display = 'block';
-                                      }}
-                                    />
-                                    <div style={{ display: 'none' }} className="bg-gray-100 p-4 rounded-lg text-center text-gray-500">
-                                      📸 Imagen no disponible
-                                    </div>
-                                    {message.body && (
-                                      <p className="text-sm whitespace-pre-wrap">{message.body}</p>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <p className="text-sm whitespace-pre-wrap">{message.body || '[Mensaje sin contenido]'}</p>
-                                )}
-                              </div>
-                              {!message.fromMe && (
-                                <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[2px] flex-shrink-0 flex items-center gap-1">
-                                  {formatTime(message.timestamp)}
-                                  {isLastIncomingMessage && (
-                                    <>
-                                      <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium animate-pulse">
-                                        ÚLTIMO RECIBIDO
-                                      </span>
-                                      <button
-                                        onClick={async () => {
-                                          if (!selectedChat || !message.body) return;
-                                          
-                                          try {
-                                            console.log(`🤖 Enviando texto al agente externo: "${message.body}"`);
-                                            
-                                            // Obtener la configuración del agente asignado a esta cuenta
-                                            const configResponse = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/agent-config`);
-                                            const configResult = await configResponse.json();
-                                            
-                                            if (!configResult.success || !configResult.config?.assignedExternalAgentId) {
-                                              toast({
-                                                title: "Sin Agente Asignado",
-                                                description: "No hay un agente externo asignado a esta cuenta",
-                                                variant: "destructive"
-                                              });
-                                              return;
-                                            }
-                                            
-                                            // Enviar el mensaje al agente externo y obtener respuesta
-                                            const response = await fetch('/api/ai/chat-with-external-agent', {
-                                              method: 'POST',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({
-                                                message: message.body,
-                                                agentId: configResult.config.assignedExternalAgentId
-                                              })
-                                            });
-                                            
-                                            const result = await response.json();
-                                            
-                                            if (result.success && result.response) {
-                                              // Enviar la respuesta como mensaje de WhatsApp
-                                              const sendResponse = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/send-message`, {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({
-                                                  chatId: selectedChat.id,
-                                                  message: result.response
-                                                })
-                                              });
-                                              
-                                              const sendResult = await sendResponse.json();
-                                              
-                                              if (sendResult.success) {
-                                                console.log('✅ Respuesta del agente externo enviada exitosamente');
-                                                // Actualizar mensajes
-                                                setTimeout(() => {
-                                                  queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts', selectedChat.accountId, 'messages', selectedChat.id] });
-                                                }, 1000);
-                                              } else {
-                                                console.error('❌ Error enviando respuesta:', sendResult.error);
-                                              }
-                                            } else {
-                                              console.error('❌ Error obteniendo respuesta del agente:', result.error);
-                                            }
-                                          } catch (error) {
-                                            console.error('❌ Error en proceso de agente externo:', error);
-                                          }
-                                        }}
-                                        className="bg-purple-500 hover:bg-purple-600 text-white text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors"
-                                      >
-                                        A.E
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                            <span className="text-sm">
+                              {message.type?.includes('image') ? 'Imagen' : 
+                               message.type?.includes('video') ? 'Video' : 'Archivo'}
+                            </span>
                           </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap">{message.body}</p>
+                        )}
+                        
+                        <div className={`flex items-center justify-end mt-1 space-x-1 ${message.fromMe ? 'text-green-100' : 'text-gray-500'}`}>
+                          <span className="text-xs">
+                            {new Date(message.timestamp * 1000).toLocaleTimeString('es-ES', { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}
+                          </span>
+                          {message.fromMe && (
+                            <CheckIcon className="h-3 w-3" />
+                          )}
                         </div>
-                      </motion.div>
-                    );
-                  })}
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               )}
             </ScrollArea>
