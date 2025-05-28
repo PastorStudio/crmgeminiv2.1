@@ -304,30 +304,138 @@ export function WhatsAppTwoColumn() {
   const [autoClickActive, setAutoClickActive] = useState(false);
   const [autoClickStopFunction, setAutoClickStopFunction] = useState<(() => void) | null>(null);
 
-  // Función DIRECTA: CLIC A.E → ESPERAR → CLIC ENVIAR
-  // VERSIÓN SIMPLIFICADA SIN VALIDACIONES RESTRICTIVAS
+  // Estados para validaciones de auto-click
+  const [lastTimestamp, setLastTimestamp] = useState<string>('');
+  const [lastMessage, setLastMessage] = useState<string>('');
+
+  // Función ESTRICTA: SOLO EJECUTA SI AMBAS VALIDACIONES SE CUMPLEN
   const startAutoClicks = () => {
-    console.log('🚀 INICIANDO AUTO-CLIC SIMPLIFICADO');
+    console.log('🚀 INICIANDO AUTO-CLIC CON VALIDACIONES ESTRICTAS');
     
     const timer = setInterval(() => {
-      console.log('🔄 Ejecutando auto-clic simplificado...');
-      
-      // Solo verificar que hay un chat seleccionado y SmartBots habilitado
-      console.log('🔍 DEBUG Auto-click:', {
-        selectedChat: selectedChat ? selectedChat.id : 'NULL',
-        smartBotsEnabled,
-        autoClickEnabled
-      });
+      console.log('🔄 Verificando condiciones para auto-clic...');
       
       if (!selectedChat || !smartBotsEnabled) {
-        console.log('⚠️ No hay chat seleccionado o SmartBots deshabilitado', {
-          hasSelectedChat: !!selectedChat,
-          smartBotsEnabled,
-          chatId: selectedChat?.id || 'none'
-        });
+        console.log('⚠️ Condiciones básicas no cumplidas');
         return;
       }
 
+      // Obtener mensaje más reciente con "ÚLTIMO RECIBIDO"
+      const lastReceivedElement = document.querySelector('[data-testid="msg-container"]:has(.text-orange-600)');
+      if (!lastReceivedElement) {
+        console.log('⏸️ No se encontró mensaje con "ÚLTIMO RECIBIDO"');
+        return;
+      }
+
+      // Extraer timestamp y mensaje
+      const timestampElement = lastReceivedElement.querySelector('[data-testid="msg-meta"] span[dir="auto"]');
+      const messageElement = lastReceivedElement.querySelector('[data-testid="conversation-text-content"]');
+      
+      const currentTimestamp = timestampElement?.textContent?.trim() || '';
+      const currentMessage = messageElement?.textContent?.trim() || '';
+
+      console.log('🕐 Timestamp:', currentTimestamp, '(Anterior:', lastTimestamp + ')');
+      console.log('💬 Mensaje:', `"${currentMessage}"`, '(Anterior:', `"${lastMessage}")`);
+
+      // ✅ VALIDACIÓN 1: Timestamp diferente
+      const timestampDifferent = currentTimestamp !== lastTimestamp && currentTimestamp !== '';
+      
+      // ✅ VALIDACIÓN 2: Mensaje diferente Y no vacío
+      const messageDifferent = currentMessage !== lastMessage && currentMessage !== '' && currentMessage !== '...';
+
+      console.log('✅ Validación 1 (Timestamp diferente):', timestampDifferent);
+      console.log('✅ Validación 2 (Mensaje diferente):', messageDifferent);
+
+      // SOLO EJECUTAR SI AMBAS VALIDACIONES SE CUMPLEN
+      if (timestampDifferent && messageDifferent) {
+        console.log('🎯 AMBAS VALIDACIONES CUMPLIDAS - EJECUTANDO AUTO-CLIC');
+        
+        // Actualizar valores guardados
+        setLastTimestamp(currentTimestamp);
+        setLastMessage(currentMessage);
+        
+        // EJECUTAR SECUENCIA DE AUTO-CLIC
+        executeAutoClickSequence();
+        
+      } else {
+        console.log('⏸️ CONDICIONES NO CUMPLIDAS - Esperando cambios...');
+        if (!timestampDifferent) {
+          console.log('⏸️ Razón: Mismo timestamp');
+        }
+        if (!messageDifferent) {
+          console.log('⏸️ Razón: Mismo mensaje o mensaje vacío');
+        }
+      }
+      
+    }, autoClickSettings.sendWaitTime);
+    
+    setAutoClickStopFunction(() => () => clearInterval(timer));
+  };
+
+  // Función para ejecutar la secuencia de clics
+  const executeAutoClickSequence = async () => {
+    console.log('🎯 INICIANDO SECUENCIA DE AUTO-CLIC');
+    
+    try {
+      // 1. Esperar 3 segundos antes de empezar
+      console.log('⏳ Esperando 3 segundos antes de hacer clic en A.E...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // 2. Hacer clic en el botón "🤖 A.E"
+      const aeButton = document.querySelector('button:has-text("🤖 A.E")') || 
+                      Array.from(document.querySelectorAll('button')).find(btn => 
+                        btn.textContent?.includes('🤖 A.E'));
+      
+      if (aeButton) {
+        console.log('🤖 Haciendo clic en botón "🤖 A.E"');
+        (aeButton as HTMLElement).click();
+        
+        // 3. Esperar a que se genere la respuesta
+        console.log(`⏳ Esperando ${autoClickSettings.aeWaitTime/1000}s para que se genere la respuesta...`);
+        await new Promise(resolve => setTimeout(resolve, autoClickSettings.aeWaitTime));
+        
+        // 4. Esperar 3 segundos adicionales
+        console.log('⏳ Esperando 3 segundos adicionales...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // 5. Hacer clic en el botón "Enviar"
+        const sendButton = document.querySelector('[data-testid="send"]') || 
+                          document.querySelector('button[aria-label*="Send"]') ||
+                          document.querySelector('button[aria-label*="Enviar"]') ||
+                          Array.from(document.querySelectorAll('button')).find(btn => {
+                            const icon = btn.querySelector('svg');
+                            return icon && (btn.getAttribute('aria-label')?.includes('Send') || 
+                                          btn.getAttribute('aria-label')?.includes('Enviar'));
+                          });
+        
+        if (sendButton) {
+          console.log('📤 Haciendo clic en botón "Enviar"');
+          (sendButton as HTMLElement).click();
+          console.log('✅ SECUENCIA DE AUTO-CLIC COMPLETADA');
+        } else {
+          console.log('❌ No se encontró el botón Enviar');
+        }
+        
+      } else {
+        console.log('❌ No se encontró el botón "🤖 A.E"');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en secuencia de auto-clic:', error);
+    }
+  };
+
+  // Función para detener auto-clics
+  const stopAutoClicks = () => {
+    console.log('🛑 DETENIENDO AUTO-CLIC');
+    if (autoClickStopFunction) {
+      autoClickStopFunction();
+      setAutoClickStopFunction(null);
+    }
+  };
+
+  // Continuar con la lógica anterior que no se ejecutará
+  const executeLegacyLogic = () => {
       // Verificar si hay texto "ÚLTIMO RECIBIDO" en la página
       const bodyText = document.body.innerText || '';
       const hasLastReceived = bodyText.includes('ÚLTIMO RECIBIDO') || bodyText.includes('último recibido');
