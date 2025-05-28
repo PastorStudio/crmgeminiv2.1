@@ -2104,37 +2104,53 @@ export function WhatsAppTwoColumn() {
                                           if (!selectedChat || !message.body) return;
                                           
                                           try {
-                                            console.log(`🔴 Procesando último mensaje recibido: "${message.body}"`);
+                                            console.log(`🤖 Enviando texto al agente externo: "${message.body}"`);
                                             
-                                            const response = await fetch('/api/process-last-received', {
+                                            // Obtener la configuración del agente asignado a esta cuenta
+                                            const configResponse = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/agent-config`);
+                                            const configResult = await configResponse.json();
+                                            
+                                            if (!configResult.success || !configResult.config?.assignedExternalAgentId) {
+                                              toast({
+                                                title: "Sin Agente Asignado",
+                                                description: "No hay un agente externo asignado a esta cuenta",
+                                                variant: "destructive"
+                                              });
+                                              return;
+                                            }
+                                            
+                                            // Enviar el mensaje al agente externo y obtener respuesta
+                                            const response = await fetch('/api/ai/chat-with-external-agent', {
                                               method: 'POST',
                                               headers: { 'Content-Type': 'application/json' },
                                               body: JSON.stringify({
-                                                accountId: selectedChat.accountId,
-                                                chatId: selectedChat.id,
-                                                lastReceivedMessage: message.body
+                                                agentId: configResult.config.assignedExternalAgentId,
+                                                message: message.body
                                               })
                                             });
                                             
                                             const result = await response.json();
                                             
-                                            if (result.success) {
+                                            if (result.success && result.response) {
+                                              // Colocar la respuesta en el área de escritura
+                                              setNewMessage(result.response);
+                                              
                                               toast({
-                                                title: "🤖 Respuesta Automática Generada",
-                                                description: "El agente externo ha procesado el mensaje y enviado una respuesta",
+                                                title: "🤖 Respuesta Generada",
+                                                description: "La respuesta del agente externo se colocó en el área de escritura",
                                               });
                                             } else {
                                               toast({
                                                 title: "Error",
-                                                description: result.error || "No se pudo procesar el mensaje",
+                                                description: result.error || "No se pudo obtener respuesta del agente",
                                                 variant: "destructive"
                                               });
                                             }
                                           } catch (error) {
-                                            console.error('Error procesando último mensaje:', error);
+                                            console.error('Error obteniendo respuesta del agente:', error);
                                             toast({
                                               title: "Error",
-                                              description: "Error de conexión",
+                                              description: "Error de conexión con el agente externo",
                                               variant: "destructive"
                                             });
                                           }
