@@ -3795,6 +3795,88 @@ app.use((req, res, next) => {
     }
   });
 
+  // ===== DEEPSEEK AUTO RESPONSE ENDPOINTS =====
+  app.post('/api/deepseek/activate', async (req, res) => {
+    try {
+      const { accountId, systemPrompt, companyName, responseDelay } = req.body;
+      
+      const { deepSeekAutoResponseManager } = await import('./services/deepseekAutoResponse');
+      
+      const config = {
+        enabled: true,
+        accountId: parseInt(accountId),
+        systemPrompt,
+        companyName,
+        responseDelay: responseDelay || 3
+      };
+      
+      const success = await deepSeekAutoResponseManager.activateAutoResponse(config);
+      
+      if (success) {
+        res.json({ success: true, message: 'DeepSeek respuestas automáticas activadas' });
+      } else {
+        res.status(500).json({ success: false, error: 'Error activando respuestas automáticas' });
+      }
+    } catch (error) {
+      console.error('Error activando DeepSeek:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/deepseek/deactivate', async (req, res) => {
+    try {
+      const { accountId } = req.body;
+      
+      const { deepSeekAutoResponseManager } = await import('./services/deepseekAutoResponse');
+      
+      const success = deepSeekAutoResponseManager.deactivateAutoResponse(parseInt(accountId));
+      
+      res.json({ success, message: success ? 'Respuestas automáticas desactivadas' : 'Error desactivando' });
+    } catch (error) {
+      console.error('Error desactivando DeepSeek:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/deepseek/status/:accountId', async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      
+      const { deepSeekAutoResponseManager } = await import('./services/deepseekAutoResponse');
+      
+      const isActive = deepSeekAutoResponseManager.isAutoResponseActive(accountId);
+      const config = deepSeekAutoResponseManager.getAccountConfig(accountId);
+      
+      res.json({ 
+        isActive, 
+        config: config || null,
+        stats: deepSeekAutoResponseManager.getStats()
+      });
+    } catch (error) {
+      console.error('Error obteniendo estado DeepSeek:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/deepseek/test', async (req, res) => {
+    try {
+      const { message, systemPrompt, companyName } = req.body;
+      
+      const { deepSeekService } = await import('./services/deepseekService');
+      
+      const response = await deepSeekService.generateWhatsAppResponse(
+        message || 'Hola, ¿pueden ayudarme?',
+        'Cliente de prueba',
+        companyName || 'Nuestra empresa'
+      );
+      
+      res.json(response);
+    } catch (error) {
+      console.error('Error en test DeepSeek:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
