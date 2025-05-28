@@ -291,6 +291,8 @@ export function WhatsAppTwoColumn() {
   
   // Estados para auto-clics
   const [autoClickEnabled, setAutoClickEnabled] = useState(false);
+  const [autoClickActive, setAutoClickActive] = useState(false);
+  const [autoClickStopFunction, setAutoClickStopFunction] = useState<(() => void) | null>(null);
   const [autoClickTimers, setAutoClickTimers] = useState<{ ae: NodeJS.Timeout | null, send: NodeJS.Timeout | null }>({ ae: null, send: null });
 
   // Función DIRECTA: CLIC A.E → ESPERAR → CLIC ENVIAR
@@ -2081,6 +2083,40 @@ export function WhatsAppTwoColumn() {
                           {chatComments.length}
                         </span>
                       )}
+                    </Button>
+                  </motion.div>
+                  
+                  {/* Auto-Click Button */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.3 }}
+                  >
+                    <Button
+                      size="sm"
+                      variant={autoClickActive ? "default" : "outline"}
+                      className={`${autoClickActive ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'border-purple-600 text-purple-600 hover:bg-purple-50'} shadow-sm transition-all duration-300`}
+                      onClick={async () => {
+                        if (!selectedChat) return;
+                        
+                        if (autoClickActive) {
+                          // Desactivar auto-clic
+                          if (autoClickStopFunction) {
+                            autoClickStopFunction();
+                            setAutoClickStopFunction(null);
+                          }
+                          setAutoClickActive(false);
+                        } else {
+                          // Activar auto-clic
+                          const { startAutoClickFunction } = await import('@/lib/directAutoResponse');
+                          const stopFunction = startAutoClickFunction(selectedChat.accountId);
+                          setAutoClickStopFunction(() => stopFunction);
+                          setAutoClickActive(true);
+                        }
+                      }}
+                    >
+                      <Zap className="h-4 w-4 mr-2" />
+                      {autoClickActive ? 'Auto-OFF' : 'Auto-ON'}
                     </Button>
                   </motion.div>
                   
