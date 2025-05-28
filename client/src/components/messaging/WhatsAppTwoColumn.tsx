@@ -2052,6 +2052,27 @@ export function WhatsAppTwoColumn() {
 
 
                   
+                  {/* Smart Grouping Toggle */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.15 }}
+                  >
+                    <Button
+                      size="sm"
+                      variant={showSmartGrouping ? "default" : "outline"}
+                      className={`transition-all duration-300 ${
+                        showSmartGrouping 
+                          ? 'bg-purple-600 text-white hover:bg-purple-700 border-purple-600' 
+                          : 'border-purple-600 text-purple-600 hover:bg-purple-50'
+                      } shadow-sm`}
+                      onClick={() => setShowSmartGrouping(!showSmartGrouping)}
+                    >
+                      <Hash className="h-4 w-4 mr-2" />
+                      {showSmartGrouping ? 'Normal' : 'Agrupar'}
+                    </Button>
+                  </motion.div>
+
                   {/* Comments Button */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
@@ -2101,6 +2122,16 @@ export function WhatsAppTwoColumn() {
                   <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
                   <p>No hay mensajes en este chat</p>
                 </div>
+              ) : showSmartGrouping ? (
+                <SmartMessageGrouping 
+                  messages={messages}
+                  onMessageClick={(message) => {
+                    console.log('Mensaje seleccionado:', message);
+                  }}
+                  onGroupClick={(group) => {
+                    console.log('Grupo seleccionado:', group);
+                  }}
+                />
               ) : (
                 <div className="space-y-4">
                   {messages.map((message, index) => {
