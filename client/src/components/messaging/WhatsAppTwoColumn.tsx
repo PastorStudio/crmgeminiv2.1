@@ -2114,11 +2114,8 @@ export function WhatsAppTwoColumn() {
                             : "border-purple-600 text-purple-600 hover:bg-purple-50"
                         }`}
                       onClick={() => {
-                        if (autoClickEnabled) {
-                          stopAutoClicks();
-                        } else {
-                          startAutoClicks();
-                        }
+                        // FUNCIÓN DESACTIVADA - Usar el botón Auto-ON/OFF con validaciones
+                        console.log('⚠️ Función auto-click sin validaciones desactivada. Usar botón Auto-ON/OFF con validaciones.');
                       }}
                     >
                       {autoClickEnabled ? (
@@ -2257,19 +2254,21 @@ export function WhatsAppTwoColumn() {
                     <Button
                       size="sm"
                       variant={autoClickActive ? "default" : "outline"}
-                      className={`${autoClickActive ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'border-purple-600 text-purple-600 hover:bg-purple-50'} shadow-sm transition-all duration-300`}
+                      className={`${autoClickActive ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg' : 'border-green-600 text-green-600 hover:bg-green-50'} shadow-sm transition-all duration-300 relative`}
                       onClick={async () => {
                         if (!selectedChat) return;
                         
                         if (autoClickActive) {
-                          // Desactivar auto-clic
+                          // Desactivar auto-clic CON VALIDACIONES
+                          console.log('🛑 Desactivando auto-clic con validaciones...');
                           if (autoClickStopFunction) {
                             autoClickStopFunction();
                             setAutoClickStopFunction(null);
                           }
                           setAutoClickActive(false);
                         } else {
-                          // Activar auto-clic
+                          // Activar auto-clic CON VALIDACIONES (timestamp + mensaje)
+                          console.log('🚀 Activando auto-clic con validaciones de timestamp y mensaje...');
                           const { startAutoClickFunction } = await import('@/lib/directAutoResponse');
                           const stopFunction = startAutoClickFunction(selectedChat.accountId);
                           setAutoClickStopFunction(() => stopFunction);
@@ -2277,8 +2276,15 @@ export function WhatsAppTwoColumn() {
                         }
                       }}
                     >
-                      <Zap className="h-4 w-4 mr-2" />
+                      <Zap className={`h-4 w-4 mr-2 ${autoClickActive ? 'animate-pulse' : ''}`} />
                       {autoClickActive ? 'Auto-OFF' : 'Auto-ON'}
+                      {autoClickActive && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
+                      )}
+                      {/* Tooltip indicando que usa validaciones */}
+                      {!autoClickActive && (
+                        <span className="sr-only">Auto-click con validación de timestamp y mensaje</span>
+                      )}
                     </Button>
                   </motion.div>
                   
