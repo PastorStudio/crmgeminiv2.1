@@ -3521,7 +3521,7 @@ app.use((req, res, next) => {
 
       console.log(`🚀 Activando respuestas automáticas para cuenta ${accountId}`);
 
-      const success = realAutoResponseManager.activateAutoResponse(accountId, agentName);
+      const success = await realAutoResponseManager.activateAutoResponse(accountId, agentName);
 
       if (success) {
         res.json({
@@ -3552,7 +3552,7 @@ app.use((req, res, next) => {
 
       console.log(`🛑 Desactivando respuestas automáticas para cuenta ${accountId}`);
 
-      const success = realAutoResponseManager.deactivateAutoResponse(accountId);
+      const success = await realAutoResponseManager.deactivateAutoResponse(accountId);
 
       if (success) {
         res.json({
@@ -3603,5 +3603,15 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Inicializar sistema de respuestas automáticas al arrancar
+    setTimeout(async () => {
+      try {
+        await realAutoResponseManager.initialize();
+        console.log('🚀 Sistema de respuestas automáticas inicializado correctamente');
+      } catch (error) {
+        console.error('❌ Error inicializando sistema de respuestas automáticas:', error);
+      }
+    }, 2000); // Esperar 2 segundos para que el servidor esté completamente listo
   });
 })();

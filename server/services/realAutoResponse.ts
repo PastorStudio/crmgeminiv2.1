@@ -25,13 +25,22 @@ class RealAutoResponseManager {
   private configs = new Map<number, AutoResponseConfig>();
   private isRunning = false;
   private intervalId?: NodeJS.Timeout;
+  private initialized = false;
 
   /**
    * Activa respuestas automáticas para una cuenta
    */
-  activateAutoResponse(accountId: number, agentName: string = "Smart Assistant"): boolean {
+  async activateAutoResponse(accountId: number, agentName: string = "Smart Assistant"): Promise<boolean> {
     try {
       console.log(`🤖 Activando respuestas automáticas para cuenta ${accountId} con agente: ${agentName}`);
+      
+      // Guardar en base de datos para persistencia
+      await db.update(whatsappAccounts)
+        .set({ 
+          autoResponseEnabled: true,
+          assignedExternalAgentId: agentName 
+        })
+        .where(eq(whatsappAccounts.id, accountId));
       
       this.configs.set(accountId, {
         accountId,
@@ -43,7 +52,7 @@ class RealAutoResponseManager {
         this.startMonitoring();
       }
 
-      console.log(`✅ Respuestas automáticas ACTIVADAS para cuenta ${accountId}`);
+      console.log(`✅ Respuestas automáticas ACTIVADAS para cuenta ${accountId} y guardadas en BD`);
       return true;
     } catch (error) {
       console.error(`❌ Error activando respuestas automáticas:`, error);
@@ -54,9 +63,17 @@ class RealAutoResponseManager {
   /**
    * Desactiva respuestas automáticas para una cuenta
    */
-  deactivateAutoResponse(accountId: number): boolean {
+  async deactivateAutoResponse(accountId: number): Promise<boolean> {
     try {
       console.log(`🛑 Desactivando respuestas automáticas para cuenta ${accountId}`);
+      
+      // Guardar en base de datos para persistencia
+      await db.update(whatsappAccounts)
+        .set({ 
+          autoResponseEnabled: false,
+          assignedExternalAgentId: null 
+        })
+        .where(eq(whatsappAccounts.id, accountId));
       
       this.configs.delete(accountId);
 
@@ -64,7 +81,7 @@ class RealAutoResponseManager {
         this.stopMonitoring();
       }
 
-      console.log(`✅ Respuestas automáticas DESACTIVADAS para cuenta ${accountId}`);
+      console.log(`✅ Respuestas automáticas DESACTIVADAS para cuenta ${accountId} y guardadas en BD`);
       return true;
     } catch (error) {
       console.error(`❌ Error desactivando respuestas automáticas:`, error);
@@ -210,6 +227,42 @@ class RealAutoResponseManager {
     } catch (error) {
       console.error(`❌ Error generando respuesta:`, error);
       return null;
+    }
+  }
+
+  /**
+   * Inicializa el sistema cargando configuraciones existentes de la BD
+   */
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    try {
+      console.log('🔄 Inicializando sistema de respuestas automáticas...');
+      
+      // Cargar cuentas con respuestas automáticas activadas
+      const activeAccounts = await db.select()
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.autoResponseEnabled, true));
+
+      for (const account of activeAccounts) {
+        if (account.assignedExternalAgentId) {
+          this.configs.set(account.id, {
+            accountId: account.id,
+            agentName: account.assignedExternalAgentId,
+            enabled: true
+          });
+          console.log(`✅ Respuestas automáticas cargadas para cuenta ${account.id} con agente ${account.assignedExternalAgentId}`);
+        }
+      }
+
+      if (this.configs.size > 0) {
+        this.startMonitoring();
+        console.log(`🚀 Sistema inicializado con ${this.configs.size} cuentas activas`);
+      }
+
+      this.initialized = true;
+    } catch (error) {
+      console.error('❌ Error inicializando sistema de respuestas automáticas:', error);
     }
   }
 
