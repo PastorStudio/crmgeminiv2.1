@@ -209,15 +209,20 @@ export default function ExternalAgents() {
       // Extraer el nombre real del agente desde el URL
       const extractAgentName = (url: string) => {
         if (url.includes('/g/g-')) {
-          // Ejemplo: https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots
-          // O: https://chatgpt.com/g/g-682f551bee70819196aeb603eb638762-smartflyer-ia
+          // Ejemplo: https://chatgpt.com/g/g-6830cd2e43d88191a262927c5334cf87-smartlegalbot
           const parts = url.split('/g/g-')[1];
           if (parts) {
             // Buscar el primer guión después del ID largo (típicamente 32+ caracteres)
-            // El ID es algo como "682ceb8bfa4c81918b3ff66abe6f3480"
             const firstDashIndex = parts.indexOf('-');
-            if (firstDashIndex !== -1 && firstDashIndex >= 25) { // IDs suelen ser largos
-              const agentName = parts.substring(firstDashIndex + 1);
+            if (firstDashIndex !== -1 && firstDashIndex >= 30) { // IDs de ChatGPT son largos
+              let agentName = parts.substring(firstDashIndex + 1);
+              
+              // Remover parámetros de URL si existen
+              const queryIndex = agentName.indexOf('?');
+              if (queryIndex !== -1) {
+                agentName = agentName.substring(0, queryIndex);
+              }
+              
               // Convertir guiones a espacios y capitalizar cada palabra
               const cleanName = agentName
                 .replace(/-/g, ' ')
@@ -226,6 +231,7 @@ export default function ExternalAgents() {
                 .split(' ')
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
                 .join(' ');
+              
               if (cleanName) {
                 return cleanName;
               }
