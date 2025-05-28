@@ -2214,8 +2214,18 @@ export function WhatsAppTwoColumn() {
                         if (!selectedChat) return;
                         
                         if (autoClickActive) {
-                          // Desactivar sistema de auto-respuesta inteligente
-                          console.log('🛑 Desactivando sistema de auto-respuesta inteligente...');
+                          // Desactivar TODOS los sistemas automáticos
+                          console.log('🛑 Desactivando TODOS los sistemas automáticos...');
+                          
+                          // Desactivar auto-click anterior
+                          try {
+                            const { stopAutoClickFunction } = await import('@/lib/directAutoResponse');
+                            stopAutoClickFunction();
+                          } catch (e) {
+                            console.log('Auto-click anterior ya desactivado');
+                          }
+                          
+                          // Desactivar sistema inteligente
                           if (autoClickStopFunction) {
                             autoClickStopFunction();
                             setAutoClickStopFunction(null);
@@ -2235,23 +2245,23 @@ export function WhatsAppTwoColumn() {
                             return;
                           }
 
-                          // Activar sistema de auto-respuesta inteligente
-                          console.log('🚀 Activando sistema de auto-respuesta inteligente...');
-                          const { startSmartAutoResponse } = await import('@/lib/smartAutoResponse');
+                          // Activar sistema de auto-respuesta PURO (sin validaciones complejas)
+                          console.log('🚀 Activando sistema de auto-respuesta PURO...');
+                          const { startPureAutoResponse } = await import('@/lib/pureAutoResponse');
                           
                           const config = {
                             accountId: selectedChat.accountId,
                             chatId: selectedChat.id,
-                            assignedAgentId: configResult.config.assignedExternalAgentId
+                            agentId: configResult.config.assignedExternalAgentId
                           };
                           
-                          const stopFunction = startSmartAutoResponse(config);
+                          const stopFunction = startPureAutoResponse(config);
                           setAutoClickStopFunction(() => stopFunction);
                           setAutoClickActive(true);
 
                           toast({
-                            title: "✅ Auto-Respuesta Activada",
-                            description: "El sistema generará respuestas automáticas para mensajes nuevos",
+                            title: "✅ Auto-Respuesta PURA Activada",
+                            description: "Sistema directo: detecta mensaje → genera respuesta → envía automáticamente",
                           });
                         }
                       }}
