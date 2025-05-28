@@ -32,282 +32,221 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import SuperSimpleToggle from "@/components/messaging/SuperSimpleToggle";
 
-// Template schema
-const templateSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, "El nombre es obligatorio"),
-  pattern: z.string().optional(),
-  template: z.string().min(1, "La plantilla es obligatoria"),
-  autoDetect: z.boolean().default(false),
-});
-
-// Configuration schema
+// Configuration schema simplificado para arreglar el autoguardado
 const autoResponseConfigSchema = z.object({
   enabled: z.boolean().default(false),
-  delaySeconds: z.number().min(1).max(60),
-  templates: z.array(templateSchema),
-  useProfessionLevel: z.boolean().default(true),
-  defaultTemplate: z.string(),
-  enabledForGroups: z.boolean().default(false),
-  enabledForBroadcast: z.boolean().default(false),
-  excludedContacts: z.array(z.string()),
-  aiProvider: z.enum(["gemini", "openai", "smartbots"]),
-  customPrompts: z.object({
-    enabled: z.boolean().default(false),
-    system: z.string(),
-    temperature: z.number().min(0).max(1),
-    maxTokens: z.number().min(100).max(2000),
-  }),
+  delaySeconds: z.number().min(1).max(60).default(3),
+  greetingMessage: z.string().default("Hola, gracias por contactarnos. En breve le atenderemos."),
+  outOfHoursMessage: z.string().default("Gracias por su mensaje. Nuestro horario de atención es de lunes a viernes de 9:00 a 18:00."),
+  businessHoursStart: z.string().default("09:00:00"),
+  businessHoursEnd: z.string().default("18:00:00"),
+  workingDays: z.string().default("1,2,3,4,5"),
+  aiProvider: z.string().default("gemini"),
 });
 
 type AutoResponseConfig = z.infer<typeof autoResponseConfigSchema>;
-type Template = z.infer<typeof templateSchema>;
 
 export default function AutoResponseSettings() {
   const { toast } = useToast();
-  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
-  const [testMessage, setTestMessage] = useState('');
-  const [testResponse, setTestResponse] = useState('');
-  const [testAnalysis, setTestAnalysis] = useState<any>(null);
-  const [testingSmartBots, setTestingSmartBots] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   
-  // Fetch configuration
-  const { data: config, isLoading: configLoading, isError } = useQuery({
-    queryKey: ["/api/auto-response/config"],
-    queryFn: async () => {
-      const response = await fetch("/api/auto-response/config");
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      const data = await response.json();
-      console.log('Configuración recibida:', data);
-      return data;
-    },
-    retry: 2,
-    retryDelay: 1000,
-  });
-  
-  // Setup form
+  // Referencias para el autoguardado - ARREGLADO
+  const hasLoadedRef = useRef(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Form setup con valores por defecto
   const form = useForm<AutoResponseConfig>({
     resolver: zodResolver(autoResponseConfigSchema),
     defaultValues: {
       enabled: false,
-      delaySeconds: 10,
-      templates: [],
-      useProfessionLevel: true,
-      defaultTemplate: "",
-      enabledForGroups: false,
-      enabledForBroadcast: false,
-      excludedContacts: [],
-      aiProvider: "smartbots",
-      customPrompts: {
-        enabled: false,
-        system: "",
-        temperature: 0.7,
-        maxTokens: 500,
-      },
+      delaySeconds: 3,
+      greetingMessage: "Hola, gracias por contactarnos. En breve le atenderemos.",
+      outOfHoursMessage: "Gracias por su mensaje. Nuestro horario de atención es de lunes a viernes de 9:00 a 18:00.",
+      businessHoursStart: "09:00:00",
+      businessHoursEnd: "18:00:00",
+      workingDays: "1,2,3,4,5",
+      aiProvider: "gemini",
     },
   });
-  
-  // Update form values when config is loaded or use defaults
-  useEffect(() => {
-    // Configuración por defecto funcional
-    const defaultConfig = {
-      enabled: false,
-      delaySeconds: 10,
-      templates: [
-        {
-          id: "1",
-          name: "Saludo automático",
-          content: "¡Hola! Gracias por contactarnos. Te atenderemos pronto.",
-          variables: []
-        }
-      ],
-      useProfessionLevel: true,
-      defaultTemplate: "1",
-      enabledForGroups: false,
-      enabledForBroadcast: false,
-      excludedContacts: [],
-      aiProvider: "smartbots" as const, // Usar SmartBots por defecto
-      customPrompts: {
-        enabled: true,
-        system: "Eres SmartBots, un asistente virtual especializado en atención al cliente para WhatsApp. Responde de manera amable, profesional y útil.",
-        temperature: 0.7,
-        maxTokens: 500,
-      },
-    };
 
-    let formConfig = defaultConfig;
+  // Cargar configuración existente
+  const { data: config, isLoading } = useQuery({
+    queryKey: ["/api/auto-response/config"],
+    queryFn: async () => {
+      console.log("⚙️ Cargando configuración de respuestas automáticas");
+      const response = await fetch("/api/auto-response/config");
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log("✅ Configuración del servidor cargada:", data);
+      return data;
+    },
+  });
 
-    if (config && !isError) {
-      console.log('✅ Configuración del servidor cargada:', config);
-      // Mapear la configuración del servidor al formato del formulario
-      formConfig = {
-        enabled: config.enabled || false,
-        delaySeconds: config.delaySeconds || config.delay || 10,
-        templates: config.templates || defaultConfig.templates,
-        useProfessionLevel: true,
-        defaultTemplate: config.defaultTemplate || "1",
-        enabledForGroups: config.enabledForGroups || false,
-        enabledForBroadcast: config.enabledForBroadcast || false,
-        excludedContacts: config.excludedContacts || config.excludedNumbers || [],
-        aiProvider: (config.provider === "smartbots" || config.useSmartBots) ? "smartbots" : 
-                   config.provider === "openai" ? "openai" : 
-                   config.provider || "gemini",
-        customPrompts: {
-          enabled: config.customPrompts?.enabled !== false,
-          system: config.customPrompts?.system || config.messageTemplate || defaultConfig.customPrompts.system,
-          temperature: config.customPrompts?.temperature || 0.7,
-          maxTokens: config.customPrompts?.maxTokens || 500,
-        },
-      };
-    } else {
-      console.log('⚠️ Usando configuración por defecto (SmartBots)');
-    }
-
-    form.reset(formConfig);
-  }, [config, form, isError]);
-  
-  // Auto-save mutation (sin mostrar toast para cada guardado)
-  const { mutate: autoSaveConfig, isPending: isAutoSaving } = useMutation({
+  // Mutación para guardar configuración - ARREGLADO
+  const { mutate: updateConfig } = useMutation({
     mutationFn: async (values: AutoResponseConfig) => {
-      const response = await fetch("/api/config/auto-response", {
+      console.log("💾 Guardando configuración:", values);
+      const response = await fetch("/api/auto-response/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values)
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`Error HTTP: ${response.status}`);
       }
       
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/config/auto-response"] });
-      // Solo mostrar un toast discreto ocasionalmente
-      if (Math.random() < 0.1) { // 10% de probabilidad
-        toast({
-          title: "💾 Guardado automático",
-          description: "Configuración actualizada automáticamente",
-          duration: 2000,
-        });
-      }
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auto-response/config"] });
+      console.log("✅ Configuración guardada exitosamente:", data);
+      toast({
+        title: "✅ Configuración guardada",
+        description: "Los cambios se han guardado correctamente",
+        duration: 3000,
+      });
     },
     onError: (error) => {
+      console.error("❌ Error guardando configuración:", error);
       toast({
-        title: "⚠️ Error en guardado automático",
-        description: `No se pudo guardar automáticamente: ${error.message}`,
+        title: "❌ Error al guardar",
+        description: `No se pudo guardar la configuración: ${error.message}`,
         variant: "destructive",
-        duration: 3000,
+        duration: 5000,
       });
     },
   });
 
-  // Función de autoguardado con debounce
+  // Auto-save mutation - ARREGLADO
+  const { mutate: autoSaveConfig } = useMutation({
+    mutationFn: async (values: AutoResponseConfig) => {
+      setIsAutoSaving(true);
+      console.log("🔄 Autoguardado iniciado:", values);
+      const response = await fetch("/api/auto-response/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setIsAutoSaving(false);
+      console.log("✅ Autoguardado completado:", data);
+      queryClient.invalidateQueries({ queryKey: ["/api/auto-response/config"] });
+    },
+    onError: (error) => {
+      setIsAutoSaving(false);
+      console.error("❌ Error en autoguardado:", error);
+    },
+  });
+
+  // Función de autoguardado con debounce - ARREGLADO
   const scheduleAutoSave = (values: AutoResponseConfig) => {
-    // Solo guardar si ya se ha cargado la configuración inicial
     if (!hasLoadedRef.current) return;
     
-    // Cancelar guardado previo si existe
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
     
-    // Programar nuevo guardado en 1.5 segundos
     saveTimeoutRef.current = setTimeout(() => {
-      console.log('💾 Autoguardado activado');
+      console.log('💾 Ejecutando autoguardado');
       autoSaveConfig(values);
     }, 1500);
   };
-  
-  // Form submission handler
+
+  // Form submission handler - ARREGLADO
   const onSubmit = (values: AutoResponseConfig) => {
-    // Asegurarse de que todos los campos requeridos estén presentes
-    const completeConfig: AutoResponseConfig = {
-      ...values,
-      aiProvider: values.aiProvider || "gemini",
-      customPrompts: {
-        enabled: values.customPrompts?.enabled || false,
-        system: values.customPrompts?.system || "",
-        temperature: values.customPrompts?.temperature || 0.7,
-        maxTokens: values.customPrompts?.maxTokens || 500
-      }
-    };
-    
-    console.log("Enviando configuración:", completeConfig);
-    updateConfig(completeConfig);
+    console.log("📝 Guardado manual:", values);
+    updateConfig(values);
   };
-  
-  // Check for API keys availability
-  const { data: geminiKeyStatus } = useQuery({
-    queryKey: ["gemini-key-status"],
-    queryFn: async () => {
-      const response = await fetch("/api/settings/gemini-key-status");
-      return await response.json();
-    },
-  });
-  
-  const { data: openaiKeyStatus } = useQuery({
-    queryKey: ["openai-key-status"],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/settings/openai-key-status');
-        const result = await response.json();
-        return result;
-      } catch (error) {
-        console.error("Error checking OpenAI key status:", error);
-        return { hasValidKey: false };
+
+  // Cargar datos cuando se obtengan del servidor
+  useEffect(() => {
+    if (config && !hasLoadedRef.current) {
+      console.log("🔄 Configurando formulario con datos del servidor");
+      const configWithDefaults = {
+        enabled: config.enabled || false,
+        delaySeconds: config.delaySeconds || 3,
+        greetingMessage: config.greetingMessage || "Hola, gracias por contactarnos. En breve le atenderemos.",
+        outOfHoursMessage: config.outOfHoursMessage || "Gracias por su mensaje. Nuestro horario de atención es de lunes a viernes de 9:00 a 18:00.",
+        businessHoursStart: config.businessHoursStart || "09:00:00",
+        businessHoursEnd: config.businessHoursEnd || "18:00:00",
+        workingDays: config.workingDays || "1,2,3,4,5",
+        aiProvider: config.aiProvider || "gemini",
+      };
+      
+      form.reset(configWithDefaults);
+      hasLoadedRef.current = true;
+      console.log("✅ Formulario configurado, autoguardado habilitado");
+    }
+  }, [config, form]);
+
+  // Watch para autoguardado - ARREGLADO
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      if (hasLoadedRef.current) {
+        console.log("🔍 Cambio detectado, programando autoguardado");
+        scheduleAutoSave(values as AutoResponseConfig);
       }
-    },
-  });
-  
-  if (configLoading) {
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
+  if (isLoading) {
     return (
-      <div className="p-6">
-        <h1 className="text-2xl font-semibold mb-6">Cargando configuración...</h1>
+      <div className="container mx-auto py-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="space-y-4">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          </div>
+        </div>
       </div>
     );
   }
-  
-  if (isError) {
-    console.error('Error en la carga de configuración:', isError);
-    // En lugar de mostrar error, usar configuración por defecto pero permitir que funcione la página
-  }
-  
+
   return (
     <>
       <Helmet>
-        <title>Configuración de Respuestas Automáticas | GeminiCRM</title>
-        <meta name="description" content="Configura las respuestas automáticas del sistema para WhatsApp" />
+        <title>Configuración de Respuestas Automáticas - GeminiCRM</title>
+        <meta name="description" content="Configura respuestas automáticas inteligentes para WhatsApp con IA" />
       </Helmet>
-      
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Configuración de Respuestas Automáticas</h1>
-        <p className="text-sm text-gray-500">
-          Configura cómo responde automáticamente el sistema a los mensajes de WhatsApp
-        </p>
-      </div>
-      
-      <Card>
+
+      <Card className="w-full max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle>Respuestas Automáticas</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <span className="text-2xl">🤖</span>
+            Configuración de Respuestas Automáticas
+            {isAutoSaving && (
+              <span className="text-sm text-blue-600 animate-pulse">💾 Guardando...</span>
+            )}
+          </CardTitle>
           <CardDescription>
-            Configura el comportamiento de las respuestas automáticas a mensajes de WhatsApp
+            Configura respuestas automáticas inteligentes para mejorar la atención al cliente
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Switch principal */}
               <FormField
                 control={form.control}
                 name="enabled"
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
-                      <FormLabel className="text-base">Habilitar respuestas automáticas</FormLabel>
+                      <FormLabel className="text-base">Activar respuestas automáticas</FormLabel>
                       <FormDescription>
-                        Activa o desactiva las respuestas automáticas a mensajes de WhatsApp
+                        Habilita las respuestas automáticas para todos los mensajes entrantes
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -319,7 +258,8 @@ export default function AutoResponseSettings() {
                   </FormItem>
                 )}
               />
-              
+
+              {/* Configuraciones básicas */}
               {form.watch("enabled") && (
                 <>
                   <FormField
@@ -327,198 +267,133 @@ export default function AutoResponseSettings() {
                     name="delaySeconds"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Retraso de respuesta (segundos)</FormLabel>
+                        <FormLabel>Retraso en respuesta (segundos)</FormLabel>
                         <FormControl>
                           <div className="space-y-2">
                             <Slider
-                              value={[field.value]}
                               min={1}
                               max={60}
                               step={1}
+                              value={[field.value]}
                               onValueChange={(value) => field.onChange(value[0])}
+                              className="w-full"
                             />
-                            <div className="flex justify-between">
-                              <span className="text-xs">1s</span>
-                              <span className="text-sm font-medium">{field.value}s</span>
-                              <span className="text-xs">60s</span>
+                            <div className="text-center text-sm text-gray-500">
+                              {field.value} segundo{field.value !== 1 ? 's' : ''}
                             </div>
                           </div>
                         </FormControl>
                         <FormDescription>
-                          Tiempo de espera antes de enviar una respuesta automática
+                          Tiempo de espera antes de enviar la respuesta automática
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
-                  <Separator className="my-4" />
-                  
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Proveedor de IA</h3>
+
+                  <FormField
+                    control={form.control}
+                    name="greetingMessage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mensaje de saludo</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Hola, gracias por contactarnos..."
+                            className="min-h-20"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Mensaje que se envía como respuesta automática durante horario laboral
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="outOfHoursMessage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mensaje fuera de horario</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Gracias por su mensaje. Nuestro horario..."
+                            className="min-h-20"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Mensaje que se envía fuera del horario laboral
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="aiProvider"
+                      name="businessHoursStart"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Selecciona el proveedor de IA para respuestas</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un proveedor de IA" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="smartbots">
-                                SmartBots AI (Recomendado) {openaiKeyStatus?.hasValidKey ? "✓" : "⚠️"}
-                              </SelectItem>
-                              <SelectItem value="openai">
-                                OpenAI GPT {openaiKeyStatus?.hasValidKey ? "✓" : "⚠️"}
-                              </SelectItem>
-                              <SelectItem value="gemini">
-                                Gemini AI {geminiKeyStatus?.hasValidKey ? "✓" : "⚠️"}
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>
-                            {field.value === "smartbots" && !openaiKeyStatus?.hasValidKey && (
-                              <span className="text-amber-600">⚠️ API key de OpenAI no configurada. SmartBots requiere OpenAI. Configúrala en Ajustes → AI Integration.</span>
-                            )}
-                            {field.value === "openai" && !openaiKeyStatus?.hasValidKey && (
-                              <span className="text-amber-600">⚠️ API key de OpenAI no configurada. Configúrala en Ajustes → AI Integration.</span>
-                            )}
-                            {field.value === "gemini" && !geminiKeyStatus?.hasValidKey && (
-                              <span className="text-amber-600">⚠️ API key de Gemini no configurada. Configúrala en Ajustes → AI Integration.</span>
-                            )}
-                          </FormDescription>
+                          <FormLabel>Hora de inicio</FormLabel>
+                          <FormControl>
+                            <Input type="time" {...field} />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    <Separator className="my-4" />
-                    
                     <FormField
                       control={form.control}
-                      name="customPrompts.enabled"
+                      name="businessHoursEnd"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Habilitar respuestas con IA</FormLabel>
-                            <FormDescription>
-                              Usa {
-                                form.watch("aiProvider") === "smartbots" ? "SmartBots AI" :
-                                form.watch("aiProvider") === "gemini" ? "Gemini AI" : 
-                                "OpenAI GPT"
-                              } para generar respuestas personalizadas en lugar de plantillas fijas
-                            </FormDescription>
-                          </div>
+                        <FormItem>
+                          <FormLabel>Hora de fin</FormLabel>
                           <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Input type="time" {...field} />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
-                    {form.watch("customPrompts.enabled") && (
-                      <>
-                        <FormField
-                          control={form.control}
-                          name="customPrompts.system"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Instrucciones para la IA</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Eres un asistente virtual profesional que responde consultas..."
-                                  className="min-h-32"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormDescription>
-                                Define cómo debe comportarse la IA al responder. Usa {"{{"} + "nombre" + {"}}"}  para referirte al nombre del contacto.
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="customPrompts.temperature"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Temperatura ({field.value})</FormLabel>
-                              <FormControl>
-                                <div className="space-y-2">
-                                  <Slider
-                                    value={[field.value]}
-                                    min={0}
-                                    max={1}
-                                    step={0.1}
-                                    onValueChange={(value) => field.onChange(value[0])}
-                                  />
-                                  <div className="flex justify-between">
-                                    <span className="text-xs">Preciso</span>
-                                    <span className="text-xs">Creativo</span>
-                                  </div>
-                                </div>
-                              </FormControl>
-                              <FormDescription>
-                                Valores más bajos generan respuestas más consistentes y precisas. Valores más altos permiten más creatividad.
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="customPrompts.maxTokens"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Longitud máxima ({field.value})</FormLabel>
-                              <FormControl>
-                                <div className="space-y-2">
-                                  <Slider
-                                    value={[field.value]}
-                                    min={100}
-                                    max={2000}
-                                    step={100}
-                                    onValueChange={(value) => field.onChange(value[0])}
-                                  />
-                                  <div className="flex justify-between">
-                                    <span className="text-xs">Corto</span>
-                                    <span className="text-xs">Largo</span>
-                                  </div>
-                                </div>
-                              </FormControl>
-                              <FormDescription>
-                                Limita la longitud máxima de las respuestas generadas
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </>
-                    )}
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="aiProvider"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Proveedor de IA</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona el proveedor de IA" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="gemini">Google Gemini</SelectItem>
+                            <SelectItem value="openai">OpenAI GPT-4</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Elige el motor de IA para generar respuestas automáticas
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </>
               )}
-              
+
               <div className="space-y-6">
                 <Separator />
                 
-                {/* Nuevo componente de activación directa */}
-                <SuperSimpleToggle />
-                
+                {/* Indicador de autoguardado */}
                 <div className="flex justify-center">
                   <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 text-center">
                     <div className="flex items-center justify-center space-x-2">
@@ -537,9 +412,18 @@ export default function AutoResponseSettings() {
                       )}
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
-                      Los cambios se guardan automáticamente
+                      Los cambios se guardan automáticamente cada 1.5 segundos
                     </p>
                   </div>
+                </div>
+
+                {/* Nuevo componente de activación directa */}
+                <SuperSimpleToggle />
+
+                <div className="flex justify-end">
+                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                    💾 Guardar configuración
+                  </Button>
                 </div>
               </div>
             </form>
