@@ -355,6 +355,7 @@ export function WhatsAppTwoColumn() {
     setAutoClickEnabled(true);
     
     console.log("✅ Auto-Clic configurado y activado");
+    */
   };
 
   // Función para detener auto-clics
@@ -1678,7 +1679,7 @@ export function WhatsAppTwoColumn() {
             </div>
             
             <AccountSelector
-              accounts={accounts}
+              accounts={accounts as any}
               selectedAccounts={selectedAccounts}
               onAccountsChange={handleAccountsChange}
               onAccountClick={handleAccountClick}
@@ -1705,7 +1706,7 @@ export function WhatsAppTwoColumn() {
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
               <span className="ml-2 text-gray-500">Cargando chats...</span>
             </div>
-          ) : filteredChats.length === 0 ? (
+          ) : (filteredChats as any[])?.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
               {selectedAccounts.length === 0 
                 ? "Selecciona una cuenta para ver los chats"
@@ -1715,7 +1716,7 @@ export function WhatsAppTwoColumn() {
           ) : (
             <div className="space-y-1 p-2">
               <AnimatePresence>
-                {filteredChats.map((chat, index) => (
+                {(filteredChats as any[])?.map((chat: any, index: number) => (
                   <motion.div
                     key={chat.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -1723,7 +1724,7 @@ export function WhatsAppTwoColumn() {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2, delay: index * 0.05 }}
                     className="p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 ml-[-8px] mr-[-8px] pl-[10px] pr-[10px] pt-[10px] pb-[10px] mt-[0px] mb-[0px] text-[14px] font-bold"
-                    onClick={() => handleChatSelect(chat)}
+                    onClick={() => handleChatSelect?.(chat)}
                   >
                     <div className="flex items-center space-x-3">
                       <div className="relative">
