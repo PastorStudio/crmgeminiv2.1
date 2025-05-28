@@ -149,7 +149,8 @@ class RealAutoResponseManager {
         await this.processChatMessages(accountId, chat.id, config);
       }
     } catch (error) {
-      console.error(`❌ Error obteniendo chats de cuenta ${accountId}:`, error);
+      console.error(`⚠️ Error temporal obteniendo chats de cuenta ${accountId} - manteniendo configuración activa:`, error.message);
+      // No desactivar la configuración por errores temporales de conexión
     }
   }
 
@@ -165,8 +166,8 @@ class RealAutoResponseManager {
 
       // Buscar el último mensaje recibido (no enviado por nosotros)
       const lastIncomingMessage = messages
-        .filter(msg => !msg.fromMe && msg.type === 'chat')
-        .sort((a, b) => b.timestamp - a.timestamp)[0];
+        .filter((msg: any) => !msg.fromMe && msg.type === 'chat')
+        .sort((a: any, b: any) => b.timestamp - a.timestamp)[0];
 
       if (!lastIncomingMessage) return;
 
