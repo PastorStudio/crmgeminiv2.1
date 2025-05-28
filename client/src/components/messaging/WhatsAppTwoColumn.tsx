@@ -526,14 +526,18 @@ export function WhatsAppTwoColumn() {
       
     }, 8000);
 
-    // Guardar referencia del timer para poder detenerlo
-    setAutoClickStopFunction(() => () => clearInterval(timer));
-    
     console.log("✅ Auto-Clic simplificado activado");
-    
-    /*
-    const timer = setInterval(() => {
-      console.log('⏰ Timer ejecutándose cada 4 segundos...');
+  };
+
+  // Función para detener auto-clics
+  const stopAutoClicksLegacy = () => {
+    console.log('🛑 DETENIENDO AUTO-CLIC LEGACY');
+  };
+
+  // Lógica comentada para referencia futura
+  const legacyAutoClick = () => {
+    // Código comentado temporalmente
+    console.log('⏰ Timer ejecutándose cada 4 segundos...');
       
       // Buscar todos los botones
       const allButtons = document.querySelectorAll('button');
