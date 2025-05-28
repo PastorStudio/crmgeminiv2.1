@@ -1283,10 +1283,19 @@ export function WhatsAppTwoColumn() {
               console.log('🤖 Generando respuesta automática directa con OpenAI...');
               
               // Importar las funciones directas
-              const { generateDirectAutoResponse } = await import('@/lib/directAutoResponse');
+              const { generateExternalAgentResponse } = await import('@/lib/directAutoResponse');
               
-              // Generar respuesta automática usando OpenAI directamente
-              let autoResponse = await generateDirectAutoResponse(lastIncomingMessage.body);
+              // Generar respuesta automática usando agente externo REAL
+              // Necesitamos obtener el ID del agente externo asignado
+              const configResponse = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/agent-config`);
+              const configData = await configResponse.json();
+              
+              if (configData.success && configData.config?.assignedExternalAgentId) {
+                let autoResponse = await generateExternalAgentResponse(lastIncomingMessage.body, configData.config.assignedExternalAgentId);
+              } else {
+                console.log('❌ No hay agente externo asignado para respuesta automática');
+                return;
+              }
               
               // Si la traducción está habilitada, traducir la respuesta
               if (autoResponse && translationEnabled && selectedLanguage !== 'es') {

@@ -96,11 +96,8 @@ export function AgentSelector({ chatId, accountId, onAgentChange }: AgentSelecto
         
         const selectedAgent = agents.find(a => a.id === agentId);
         
-        toast({
-          title: '🎯 Agente asignado automáticamente',
-          description: `${selectedAgent?.name} ahora responderá automáticamente a todos los mensajes de WhatsApp`,
-          duration: 5000
-        });
+        // toast desactivado para evitar conflictos
+        console.log(`🎯 Agente ${selectedAgent?.name} asignado automáticamente`);
         
         onAgentChange?.(agentId);
         console.log(`✅ Agente ${selectedAgent?.name} asignado exitosamente`);
@@ -109,11 +106,8 @@ export function AgentSelector({ chatId, accountId, onAgentChange }: AgentSelecto
       }
     } catch (error) {
       console.error('Error asignando agente:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo asignar el agente automáticamente',
-        variant: 'destructive',
-      });
+      // toast desactivado para evitar conflictos
+      console.error('❌ No se pudo asignar el agente automáticamente');
       setSelectedAgentId(null);
       setIsActive(false);
     } finally {
