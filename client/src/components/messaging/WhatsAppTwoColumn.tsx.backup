@@ -283,18 +283,71 @@ export function WhatsAppTwoColumn() {
   const [raAiEnabled, setRaAiEnabled] = useState(false);
   const [raAiProcessing, setRaAiProcessing] = useState(false);
 
+  // Estados para Auto-Click con configuración personalizada
+  const [autoClickTimers, setAutoClickTimers] = useState<{ ae: NodeJS.Timeout | null; send: NodeJS.Timeout | null }>({ ae: null, send: null });
+  const [autoClickEnabled, setAutoClickEnabled] = useState(false);
+  const [showAutoClickConfig, setShowAutoClickConfig] = useState(false);
+  const [autoClickSettings, setAutoClickSettings] = useState({
+    aeWaitTime: 4000,  // Tiempo de espera después del clic A.E (milisegundos)
+    sendWaitTime: 8000, // Tiempo entre ciclos de auto-clic (milisegundos)
+    enabled: false
+  });
+  
   // Estados para interfaces y configuración
-  const [showUserProfile, setShowUserProfile] = useState(false);
-  const [smartBotsEnabled, setSmartBotsEnabled] = useState(false);
-  const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
-  const [selectedChat, setSelectedChat] = useState<WhatsAppChat | null>(null);
-  const [newMessage, setNewMessage] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [translatorEnabled, setTranslatorEnabled] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('es');
-  const [autoSendTimer, setAutoSendTimer] = useState<NodeJS.Timeout | null>(null);
-  const [isAutoSending, setIsAutoSending] = useState(false);
-  const [lastMessageCount, setLastMessageCount] = useState(0);
+    
+    /*
+    const timer = setInterval(() => {
+      console.log('⏰ Timer ejecutándose cada 4 segundos...');
+      
+      // Buscar todos los botones
+      const allButtons = document.querySelectorAll('button');
+      console.log(`🔍 Total botones encontrados: ${allButtons.length}`);
+      
+      // 1. BUSCAR Y HACER CLIC EN A.E
+      let aeButtonFound = false;
+      allButtons.forEach((btn, index) => {
+        const buttonText = btn.textContent || '';
+        console.log(`Botón ${index}: "${buttonText}"`);
+        
+        if (buttonText.includes('A.E')) {
+          console.log('🎯 ENCONTRADO BOTÓN A.E - HACIENDO CLIC');
+          aeButtonFound = true;
+          btn.click();
+          
+          // 2. ESPERAR 2 SEGUNDOS Y BUSCAR ENVIAR
+          setTimeout(() => {
+            console.log('⏱️ Buscando botón Enviar...');
+            const sendButtons = document.querySelectorAll('button');
+            let sendButtonFound = false;
+            
+            sendButtons.forEach(sendBtn => {
+              const sendText = sendBtn.textContent || '';
+              if (sendText.includes('Enviar')) {
+                console.log('📤 ENCONTRADO BOTÓN ENVIAR - HACIENDO CLIC');
+                sendButtonFound = true;
+                sendBtn.click();
+              }
+            });
+            
+            if (!sendButtonFound) {
+              console.log('❌ No se encontró botón Enviar');
+            }
+          }, 2000);
+        }
+      });
+      
+      if (!aeButtonFound) {
+        console.log('❌ No se encontró botón A.E');
+      }
+      
+    }, autoClickSettings.sendWaitTime); // Intervalo configurable entre ciclos
+
+    setAutoClickTimers({ ae: timer, send: null });
+    setAutoClickEnabled(true);
+    
+    console.log("✅ Auto-Clic configurado y activado");
+    */
+  };
 
   // Función para detener auto-clics
   const stopAutoClicks = () => {
