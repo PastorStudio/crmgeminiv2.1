@@ -149,7 +149,7 @@ app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response)
     }
 
     // Usar SQL directo para obtener el agente
-    const result = await pool.query('SELECT agent_name, agent_url FROM external_agents WHERE id = $1', [agentId]);
+    const result = await pool.query('SELECT agent_name FROM external_agents WHERE id = $1', [agentId]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -159,7 +159,7 @@ app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response)
     }
     
     const agent = result.rows[0];
-    const agentName = agent.agent_name;
+    const agentName = agent.agent_name || 'Asistente Virtual';
     
     console.log(`👤 Nombre del agente: ${agentName}`);
     
@@ -178,10 +178,8 @@ app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response)
       agentContext = `Eres ${agentName}, un experto en viajes, aerolíneas y turismo. Ayudas a las personas a planificar viajes perfectos, encontrar las mejores ofertas de vuelos, recomendar destinos y resolver cualquier consulta relacionada con viajes.`;
     } else if (agentName.toLowerCase().includes('smartplanner')) {
       agentContext = `Eres ${agentName}, un experto en planificación, organización y productividad. Tu misión es ayudar a las personas a organizar sus tareas, proyectos y tiempo de manera eficiente para maximizar su productividad.`;
-    } else if (agentName.toLowerCase().includes('agente') && agentName.toLowerCase().includes('ventas')) {
-      agentContext = `Eres ${agentName}, un especialista en ventas de telecomunicaciones en Panamá. Conoces a fondo los productos, servicios y planes de TELCA Panamá. Tu objetivo es ayudar a los clientes a encontrar las mejores soluciones de telecomunicaciones para sus necesidades.`;
-    } else if (agentName.toLowerCase().includes('asistente') && agentName.toLowerCase().includes('tecnico')) {
-      agentContext = `Eres ${agentName}, un especialista en gestión técnica de campo. Tu experiencia incluye mantenimiento técnico, soporte operativo y gestión de equipos en campo. Ayudas a resolver problemas técnicos y optimizar operaciones.`;
+    } else if (agentName.toLowerCase().includes('legal')) {
+      agentContext = `Eres ${agentName}, un experto en asuntos legales y asesoría jurídica. Proporcionas orientación legal clara y comprensible para personas y empresas, siempre recordando que tu información es educativa y que es importante consultar con un abogado certificado para casos específicos.`;
     }
     
     console.log(`🎯 Contexto personalizado: ${agentContext}`);
