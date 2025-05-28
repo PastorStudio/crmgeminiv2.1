@@ -58,64 +58,113 @@ export function getLastReceivedMessage(messages: any[]): string | null {
 }
 
 /**
- * Función de auto-clic que simula presionar A.E y Enviar automáticamente
+ * Variables globales para control de auto-clic inteligente
+ */
+let lastProcessedTimestamp = '';
+let lastProcessedMessage = '';
+
+/**
+ * Función de auto-clic inteligente con validación de timestamp y mensaje
  */
 export function startAutoClickFunction(accountId: number): () => void {
-  console.log('🚀 AUTO-CLIC DIRECTO ACTIVADO - INICIO');
+  console.log('🚀 AUTO-CLIC INTELIGENTE ACTIVADO - Sistema de doble validación iniciado');
   
   const intervalId = setInterval(async () => {
-    console.log('⏰ Timer ejecutándose cada 4 segundos...');
-    
     try {
-      // Buscar todos los botones en la página
-      const allButtons = document.querySelectorAll('button');
-      console.log(`🔍 Total botones encontrados: ${allButtons.length}`);
+      // 1. OBTENER TIMESTAMP ACTUAL (hora:minuto:segundo)
+      const now = new Date();
+      const currentTimestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
       
-      // Filtrar botones que contengan A.E
-      const aeButtons = Array.from(allButtons).filter(btn => 
-        btn.textContent?.includes('🤖 A.E') || 
-        btn.textContent?.includes('A.E')
-      );
+      // 2. OBTENER ÚLTIMO MENSAJE RECIBIDO
+      const messagesArea = document.querySelector('.messages-container') || 
+                          document.querySelector('[data-testid="conversation-panel"]') ||
+                          document.querySelector('.message-list');
       
-      console.log(`🎯 Botones A.E encontrados: ${aeButtons.length}`);
+      let currentMessage = '';
+      if (messagesArea) {
+        const incomingMessages = messagesArea.querySelectorAll('.message-in, [data-testid="msg-container"]:not(.message-out), .incoming-message');
+        if (incomingMessages.length > 0) {
+          const lastIncoming = incomingMessages[incomingMessages.length - 1];
+          currentMessage = lastIncoming.textContent?.trim() || '';
+        }
+      }
       
-      if (aeButtons.length > 0) {
-        console.log('🔥 ¡ENCONTRADO BOTÓN A.E! - Haciendo clic...');
+      console.log(`🕐 Timestamp: ${currentTimestamp} (Anterior: ${lastProcessedTimestamp})`);
+      console.log(`💬 Mensaje: "${currentMessage.substring(0, 30)}..." (Anterior: "${lastProcessedMessage.substring(0, 30)}...")`);
+      
+      // 3. VALIDACIÓN 1: ¿Es diferente el timestamp (hora:minuto:segundo)?
+      const timestampChanged = currentTimestamp !== lastProcessedTimestamp;
+      
+      // 4. VALIDACIÓN 2: ¿Es diferente el mensaje?
+      const messageChanged = currentMessage !== lastProcessedMessage && currentMessage.length > 0;
+      
+      console.log(`✅ Validación 1 (Timestamp diferente): ${timestampChanged}`);
+      console.log(`✅ Validación 2 (Mensaje diferente): ${messageChanged}`);
+      
+      // 5. SOLO EJECUTAR SI AMBAS VALIDACIONES SON VERDADERAS
+      if (timestampChanged && messageChanged) {
+        console.log('🎯 ¡CONDICIONES CUMPLIDAS! Ejecutando auto-clic...');
         
-        // Hacer clic en el primer botón A.E encontrado
-        aeButtons[0].click();
+        // Actualizar registros antes del procesamiento
+        lastProcessedTimestamp = currentTimestamp;
+        lastProcessedMessage = currentMessage;
         
-        // Esperar un momento y buscar el botón de Enviar
-        setTimeout(() => {
-          const sendButtons = Array.from(document.querySelectorAll('button')).filter(btn => 
-            btn.textContent?.includes('Enviar') ||
-            btn.textContent?.includes('Send') ||
-            btn.getAttribute('type') === 'submit'
-          );
+        // Buscar botón A.E
+        const allButtons = document.querySelectorAll('button');
+        const aeButtons = Array.from(allButtons).filter(btn => 
+          btn.textContent?.includes('🤖 A.E') || 
+          btn.textContent?.includes('A.E')
+        );
+        
+        console.log(`🔍 Botones A.E encontrados: ${aeButtons.length}`);
+        
+        if (aeButtons.length > 0) {
+          // CLIC 1: Botón A.E
+          console.log('🔴 CLIC 1: Presionando botón A.E...');
+          aeButtons[0].click();
           
-          console.log(`📤 Botones Enviar encontrados: ${sendButtons.length}`);
+          // Esperar 3 segundos para que se genere la respuesta
+          setTimeout(() => {
+            // CLIC 2: Botón Enviar
+            console.log('⏱️ Buscando botón Enviar...');
+            const sendButtons = Array.from(document.querySelectorAll('button')).filter(btn => 
+              btn.textContent?.includes('Enviar') ||
+              btn.textContent?.includes('Send') ||
+              btn.getAttribute('type') === 'submit'
+            );
+            
+            console.log(`📤 Botones Enviar encontrados: ${sendButtons.length}`);
+            
+            if (sendButtons.length > 0) {
+              console.log('🔴 CLIC 2: Presionando botón Enviar...');
+              sendButtons[0].click();
+              console.log('✅ SECUENCIA COMPLETADA: A.E → Enviar');
+            } else {
+              console.log('❌ No se encontró botón Enviar');
+            }
+          }, 3000); // 3 segundos de espera entre clics
           
-          if (sendButtons.length > 0) {
-            console.log('🚀 ¡ENVIANDO MENSAJE! - Haciendo clic en Enviar...');
-            sendButtons[0].click();
-          } else {
-            console.log('❌ No se encontró botón Enviar');
-          }
-        }, 1000); // Esperar 1 segundo entre A.E y Enviar
-        
+        } else {
+          console.log('❌ No se encontró botón A.E');
+        }
       } else {
-        console.log('🔍 No se encontró botón A.E en esta iteración');
+        console.log(`⏸️ CONDICIONES NO CUMPLIDAS - Esperando cambios...`);
+        if (!timestampChanged) console.log('⏸️ Razón: Mismo timestamp');
+        if (!messageChanged) console.log('⏸️ Razón: Mismo mensaje o mensaje vacío');
       }
       
     } catch (error) {
-      console.error('❌ Error en auto-clic:', error);
+      console.error('❌ Error en auto-clic inteligente:', error);
     }
     
-  }, 4000); // Ejecutar cada 4 segundos
+  }, 2000); // Verificar cada 2 segundos
   
-  // Retornar función para detener el timer
+  // Retornar función para detener el auto-clic
   return () => {
-    console.log('⏹️ AUTO-CLIC DESACTIVADO');
+    console.log('🔴 AUTO-CLIC INTELIGENTE DESACTIVADO');
     clearInterval(intervalId);
+    // Limpiar variables de control
+    lastProcessedTimestamp = '';
+    lastProcessedMessage = '';
   };
 }
