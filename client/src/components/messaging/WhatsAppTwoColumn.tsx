@@ -143,7 +143,7 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
 
   return (
     <span className="text-blue-600 font-medium">
-      Agente: {assignedAgent.username}
+      {assignedAgent.fullName || assignedAgent.username}
     </span>
   );
 }
@@ -159,13 +159,9 @@ function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accoun
   // Debug para verificar qué está recibiendo
   console.log('🎫 Debug Badge Category - chatId:', chatId, 'data:', category, 'error:', error);
 
-  if (!category) {
-    return (
-      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-        <Ticket className="h-3 w-3 mr-1" />
-        Sin ticket
-      </Badge>
-    );
+  // Solo mostrar el badge si realmente hay un ticket/categoría
+  if (!category || !category.status) {
+    return null;
   }
 
   const getTicketColor = (status: string) => {
@@ -214,12 +210,9 @@ function ChatCommentsIndicator({ chatId }: { chatId: string }) {
     enabled: !!chatId
   });
 
+  // Solo mostrar el icono si realmente hay comentarios
   if (!comments || comments.length === 0) {
-    return (
-      <div className="flex items-center">
-        <MessageSquareMore className="h-4 w-4 text-gray-400" />
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -531,10 +524,10 @@ export function WhatsAppTwoColumn() {
         console.log('❌ No se encontró botón A.E');
       }
       
-    }, 8000); // Cada 8 segundos
+    }, 8000);
 
-    setAutoClickTimers({ ae: timer, send: null });
-    setAutoClickEnabled(true);
+    // Guardar referencia del timer para poder detenerlo
+    setAutoClickStopFunction(() => () => clearInterval(timer));
     
     console.log("✅ Auto-Clic simplificado activado");
     
@@ -2466,7 +2459,7 @@ export function WhatsAppTwoColumn() {
                                 </div>
                               )}
                               <div
-                                className={`px-4 py-2 rounded-2xl ${
+                                className={`px-4 py-2 rounded-2xl max-w-[80%] ${
                                   message.fromMe
                                     ? 'bg-blue-100 text-black rounded-br-md'
                                     : 'bg-green-100 text-black rounded-bl-md'
