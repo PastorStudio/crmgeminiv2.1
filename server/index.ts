@@ -140,78 +140,48 @@ app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response)
     console.log(`🤖 Conectando con agente real: ${agentId}`);
     console.log(`💬 Mensaje: "${message}"`);
     
-    // Obtener la información del agente desde la base de datos
-    const { externalAgents } = await import('@shared/schema');
-    const { eq } = await import('drizzle-orm');
+    // Verificar que tenemos la clave API
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        error: 'OPENAI_API_KEY no está configurada',
+      });
+    }
+
+    // Usar SQL directo para obtener el agente
+    const result = await pool.query('SELECT agent_name, agent_url FROM external_agents WHERE id = $1', [agentId]);
     
-    const [agent] = await db.select().from(externalAgents).where(eq(externalAgents.id, agentId));
-    
-    if (!agent) {
+    if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: `Agente ${agentId} no encontrado`,
       });
     }
     
-    const agentUrl = agent.agent_url;
-    console.log(`🔗 URL del agente: ${agentUrl}`);
-    console.log(`👤 Nombre del agente: ${agent.agent_name}`);
+    const agent = result.rows[0];
+    const agentName = agent.agent_name;
     
-    // Extraer el nombre completo real del agente desde el URL
-    const extractAgentName = (url: string) => {
-      if (url.includes('/g/g-')) {
-        // Ejemplo: https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots
-        // O: https://chatgpt.com/g/g-682f551bee70819196aeb603eb638762-smartflyer-ia
-        const parts = url.split('/g/g-')[1];
-        if (parts) {
-          // Buscar el primer guión después del ID largo (típicamente 32+ caracteres)
-          const firstDashIndex = parts.indexOf('-');
-          if (firstDashIndex !== -1 && firstDashIndex >= 25) { // IDs suelen ser largos
-            const agentName = parts.substring(firstDashIndex + 1);
-            // Convertir guiones a espacios y capitalizar cada palabra
-            const cleanName = agentName
-              .replace(/-/g, ' ')
-              .replace(/[^a-zA-Z0-9\s]/g, '')
-              .trim()
-              .split(' ')
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(' ');
-            if (cleanName) {
-              return cleanName;
-            }
-          }
-        }
-      }
-      return 'ChatGPT Agent';
-    };
+    console.log(`👤 Nombre del agente: ${agentName}`);
     
-    const realAgentName = extractAgentName(agentUrl);
-    console.log(`👤 Nombre extraído del agente: ${realAgentName}`);
-    
-    // Verificar que tenemos la clave API
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY no está configurada');
-    }
-
     // Conectar con OpenAI usando la clave configurada
     const OpenAI = (await import('openai')).default;
     const openai = new OpenAI({ 
       apiKey: process.env.OPENAI_API_KEY 
     });
     
-    // Crear contexto específico según el tipo de agente
-    let agentContext = `Eres ${realAgentName}, un asistente virtual inteligente y profesional.`;
+    // Crear contexto específico según el nombre del agente
+    let agentContext = `Eres ${agentName}, un asistente virtual inteligente y profesional.`;
     
-    if (realAgentName.toLowerCase().includes('smartbots')) {
-      agentContext = `Eres ${realAgentName}, un experto en automatización, bots inteligentes y tecnología. Ayudas a las empresas a automatizar procesos, crear chatbots y implementar soluciones de inteligencia artificial. Tu especialidad es simplificar la tecnología para que sea accesible a todos.`;
-    } else if (realAgentName.toLowerCase().includes('smartflyer')) {
-      agentContext = `Eres ${realAgentName}, un experto en viajes, aerolíneas y turismo. Ayudas a las personas a planificar viajes perfectos, encontrar las mejores ofertas de vuelos, recomendar destinos y resolver cualquier consulta relacionada con viajes.`;
-    } else if (realAgentName.toLowerCase().includes('smartplanner')) {
-      agentContext = `Eres ${realAgentName}, un experto en planificación, organización y productividad. Tu misión es ayudar a las personas a organizar sus tareas, proyectos y tiempo de manera eficiente para maximizar su productividad.`;
-    } else if (realAgentName.toLowerCase().includes('agente') && realAgentName.toLowerCase().includes('ventas')) {
-      agentContext = `Eres ${realAgentName}, un especialista en ventas de telecomunicaciones en Panamá. Conoces a fondo los productos, servicios y planes de TELCA Panamá. Tu objetivo es ayudar a los clientes a encontrar las mejores soluciones de telecomunicaciones para sus necesidades.`;
-    } else if (realAgentName.toLowerCase().includes('asistente') && realAgentName.toLowerCase().includes('tecnico')) {
-      agentContext = `Eres ${realAgentName}, un especialista en gestión técnica de campo. Tu experiencia incluye mantenimiento técnico, soporte operativo y gestión de equipos en campo. Ayudas a resolver problemas técnicos y optimizar operaciones.`;
+    if (agentName.toLowerCase().includes('smartbots')) {
+      agentContext = `Eres ${agentName}, un experto en automatización, bots inteligentes y tecnología. Ayudas a las empresas a automatizar procesos, crear chatbots y implementar soluciones de inteligencia artificial. Tu especialidad es simplificar la tecnología para que sea accesible a todos.`;
+    } else if (agentName.toLowerCase().includes('smartflyer')) {
+      agentContext = `Eres ${agentName}, un experto en viajes, aerolíneas y turismo. Ayudas a las personas a planificar viajes perfectos, encontrar las mejores ofertas de vuelos, recomendar destinos y resolver cualquier consulta relacionada con viajes.`;
+    } else if (agentName.toLowerCase().includes('smartplanner')) {
+      agentContext = `Eres ${agentName}, un experto en planificación, organización y productividad. Tu misión es ayudar a las personas a organizar sus tareas, proyectos y tiempo de manera eficiente para maximizar su productividad.`;
+    } else if (agentName.toLowerCase().includes('agente') && agentName.toLowerCase().includes('ventas')) {
+      agentContext = `Eres ${agentName}, un especialista en ventas de telecomunicaciones en Panamá. Conoces a fondo los productos, servicios y planes de TELCA Panamá. Tu objetivo es ayudar a los clientes a encontrar las mejores soluciones de telecomunicaciones para sus necesidades.`;
+    } else if (agentName.toLowerCase().includes('asistente') && agentName.toLowerCase().includes('tecnico')) {
+      agentContext = `Eres ${agentName}, un especialista en gestión técnica de campo. Tu experiencia incluye mantenimiento técnico, soporte operativo y gestión de equipos en campo. Ayudas a resolver problemas técnicos y optimizar operaciones.`;
     }
     
     console.log(`🎯 Contexto personalizado: ${agentContext}`);
@@ -228,21 +198,15 @@ app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response)
     
     const responseText = completion.choices[0].message.content;
     
-    // Actualizar el contador de respuestas del agente
-    const { externalAgents } = await import('@shared/schema');
-    await db
-      .update(externalAgents)
-      .set({ 
-        responseCount: db.select({ count: externalAgents.responseCount }).from(externalAgents).where(eq(externalAgents.id, agentId)).then(r => (r[0]?.count || 0) + 1)
-      })
-      .where(eq(externalAgents.id, agentId));
+    // Actualizar el contador de respuestas del agente usando SQL directo
+    await pool.query('UPDATE external_agents SET response_count = COALESCE(response_count, 0) + 1 WHERE id = $1', [agentId]);
     
     console.log('✅ Respuesta real recibida de OpenAI');
     
     return res.json({
       success: true,
       response: responseText,
-      agentName: realAgentName,
+      agentName: agentName,
       source: 'OpenAI GPT-4o',
       responseTime: Date.now(),
       timestamp: new Date().toISOString()
