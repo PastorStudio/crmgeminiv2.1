@@ -293,50 +293,41 @@ export function WhatsAppTwoColumn() {
   const [autoClickEnabled, setAutoClickEnabled] = useState(false);
   const [autoClickTimers, setAutoClickTimers] = useState<{ ae: NodeJS.Timeout | null, send: NodeJS.Timeout | null }>({ ae: null, send: null });
 
-  // Función para auto-clic en botón A.E cada 1 segundo
+  // Función SIMPLE para auto-clic directo en botones cada 2 segundos
   const startAutoClicks = () => {
-    console.log('🚀 INICIANDO AUTO-CLICS AUTOMÁTICOS');
+    console.log('🚀 INICIANDO AUTO-CLICS SIMPLES');
     
-    // Auto-clic en A.E cada 2 segundos
-    const aeTimer = setInterval(() => {
-      if (!selectedChat) return;
+    const timer = setInterval(() => {
+      console.log('🤖 AUTO-CLIC cada 2 segundos');
       
-      console.log('🤖 AUTO-CLIC en botón A.E');
-      
-      // Buscar el último mensaje recibido (no enviado por nosotros)
-      const currentMessages = Array.isArray(messages) ? messages : [];
-      const incomingMessages = currentMessages.filter((msg: any) => !msg.fromMe);
-      
-      if (incomingMessages.length > 0) {
-        const lastIncomingMessage = incomingMessages[incomingMessages.length - 1];
-        console.log('📥 Procesando mensaje automáticamente:', lastIncomingMessage.body);
+      // 1. Buscar y hacer clic en botón A.E
+      const aeButton = Array.from(document.querySelectorAll('button')).find(
+        btn => btn.textContent?.includes('A.E')
+      );
+      if (aeButton) {
+        console.log('✅ Haciendo CLIC en botón A.E');
+        (aeButton as HTMLElement).click();
         
-        // Generar respuesta automáticamente usando la MISMA función que el botón A.E azul
-        generateSmartBotsResponse(lastIncomingMessage.body, selectedChat.name, true)
-          .then(response => {
-            if (response) {
-              console.log('✅ Respuesta AUTO-GENERADA exitosamente:', response);
-              setNewMessage(response);
-            }
-          })
-          .catch(error => console.error('❌ Error en auto-respuesta:', error));
+        // 2. Después de 1 segundo, buscar y hacer clic en botón Enviar
+        setTimeout(() => {
+          const sendButton = Array.from(document.querySelectorAll('button')).find(
+            btn => btn.textContent?.includes('Enviar')
+          );
+          if (sendButton && newMessage.trim()) {
+            console.log('📤 Haciendo CLIC en botón Enviar');
+            (sendButton as HTMLElement).click();
+          }
+        }, 1000);
       }
+      
     }, 2000); // Cada 2 segundos
 
-    // Auto-clic en Enviar cada 2 segundos
-    const sendTimer = setInterval(() => {
-      if (newMessage.trim() && selectedChat) {
-        console.log('📤 AUTO-ENVÍO de mensaje:', newMessage);
-        handleSendMessage();
-      }
-    }, 2000); // Cada 2 segundos
-
-    setAutoClickTimers({ ae: aeTimer, send: sendTimer });
+    setAutoClickTimers({ ae: timer, send: null });
     setAutoClickEnabled(true);
     
     toast({
       title: "🤖 Auto-Clics Activados",
-      description: "Sistema funcionando automáticamente - A.E cada 1s, Enviar cada 2s",
+      description: "Haciendo clic en A.E y Enviar cada 2 segundos",
       duration: 3000
     });
   };
