@@ -434,83 +434,25 @@ export function WhatsAppTwoColumn() {
     }
   };
 
-  // Continuar con la lógica anterior que no se ejecutará
-  const executeLegacyLogic = () => {
-      // Verificar si hay texto "ÚLTIMO RECIBIDO" en la página
-      const bodyText = document.body.innerText || '';
-      const hasLastReceived = bodyText.includes('ÚLTIMO RECIBIDO') || bodyText.includes('último recibido');
-      
-      if (!hasLastReceived) {
-        console.log('⚠️ No hay indicador "ÚLTIMO RECIBIDO" visible');
-        return;
-      }
-      
-      console.log('✅ Condiciones cumplidas, ejecutando auto-click (sin validación de timestamp)...');
-      
-      // BUSCAR Y HACER CLIC EN BOTÓN A.E
-      const aeButtons = document.querySelectorAll('button');
-      let aeButtonFound = false;
-      
-      aeButtons.forEach(button => {
-        if (button.textContent?.includes('🤖 A.E') && !button.disabled) {
-          console.log('✅ Haciendo clic en botón A.E...');
-          aeButtonFound = true;
-          button.click();
-          
-          // ESPERAR Y BUSCAR BOTÓN ENVIAR CON MÚLTIPLES MÉTODOS
-          setTimeout(() => {
-            console.log('⏱️ Buscando botón Enviar con múltiples métodos...');
-            let sendButtonFound = false;
-            
-            // MÉTODO 1: Buscar por texto
-            const textButtons = Array.from(document.querySelectorAll('button')).filter(btn => 
-              (btn.textContent?.includes('Enviar') || btn.textContent?.includes('Send')) && !btn.disabled
-            );
-            
-            if (textButtons.length > 0) {
-              console.log('🔴 MÉTODO 1 - Encontrado botón por texto, haciendo clic...');
-              textButtons[0].click();
-              sendButtonFound = true;
-            }
-            
-            // MÉTODO 2: Buscar por clase CSS (botón verde)
-            if (!sendButtonFound) {
-              const greenButtons = Array.from(document.querySelectorAll('button')).filter(btn => 
-                btn.className?.includes('bg-green') && !btn.disabled
-              );
-              
-              if (greenButtons.length > 0) {
-                console.log('🔴 MÉTODO 2 - Encontrado botón verde, haciendo clic...');
-                greenButtons[0].click();
-                sendButtonFound = true;
-              }
-            }
-            
-            // MÉTODO 3: Buscar por ícono SVG (Send icon)
-            if (!sendButtonFound) {
-              const svgButtons = Array.from(document.querySelectorAll('button')).filter(btn => {
-                const svg = btn.querySelector('svg');
-                return svg && !btn.disabled;
-              });
-              
-              // Tomar el último botón con SVG (probablemente el Send)
-              if (svgButtons.length > 0) {
-                const lastSvgButton = svgButtons[svgButtons.length - 1];
-                console.log('🔴 MÉTODO 3 - Encontrado botón con ícono, haciendo clic...');
-                lastSvgButton.click();
-                sendButtonFound = true;
-              }
-            }
-            
-            // MÉTODO 4: Buscar en el área de input específicamente
-            if (!sendButtonFound) {
-              const inputArea = document.querySelector('.flex.space-x-2') || document.querySelector('[class*="input"]');
-              if (inputArea) {
-                const inputButtons = inputArea.querySelectorAll('button');
-                if (inputButtons.length > 0) {
-                  const sendButton = inputButtons[inputButtons.length - 1]; // Último botón del área de input
-                  if (!sendButton.disabled) {
-                    console.log('🔴 MÉTODO 4 - Encontrado botón en área de input, haciendo clic...');
+  // Activar/desactivar auto-clicks
+  const toggleAutoClicks = () => {
+    if (autoClickActive) {
+      stopAutoClicks();
+      setAutoClickActive(false);
+    } else {
+      startAutoClicks();
+      setAutoClickActive(true);
+    }
+  };
+
+  // Configuración para mostrar/ocultar diálogo de configuración
+  const [showAutoClickConfig, setShowAutoClickConfig] = useState(false);
+
+  // Función para guardar configuración de auto-click
+  const saveAutoClickSettings = (newSettings: typeof autoClickSettings) => {
+    setAutoClickSettings(newSettings);
+    setShowAutoClickConfig(false);
+  };
                     sendButton.click();
                     sendButtonFound = true;
                   }
