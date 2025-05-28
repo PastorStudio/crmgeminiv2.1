@@ -311,21 +311,15 @@ export function WhatsAppTwoColumn() {
         const lastIncomingMessage = incomingMessages[incomingMessages.length - 1];
         console.log('📥 Procesando mensaje automáticamente:', lastIncomingMessage.body);
         
-        // Generar respuesta automáticamente usando el mismo sistema que el botón A.E
-        if (selectedExternalAgent && externalAgentActive) {
-          // Usar el mismo endpoint que el botón A.E azul
-          handleSmartBotsAndExternalAgent(lastIncomingMessage.body);
-        } else {
-          // Fallback a SmartBots si no hay agente externo
-          generateSmartBotsResponse(lastIncomingMessage.body, selectedChat.name, true)
-            .then(response => {
-              if (response) {
-                console.log('✅ Respuesta generada automáticamente:', response);
-                setNewMessage(response);
-              }
-            })
-            .catch(error => console.error('❌ Error en auto-respuesta:', error));
-        }
+        // Generar respuesta automáticamente usando la MISMA función que el botón A.E azul
+        generateSmartBotsResponse(lastIncomingMessage.body, selectedChat.name, true)
+          .then(response => {
+            if (response) {
+              console.log('✅ Respuesta AUTO-GENERADA exitosamente:', response);
+              setNewMessage(response);
+            }
+          })
+          .catch(error => console.error('❌ Error en auto-respuesta:', error));
       }
     }, 2000); // Cada 2 segundos
 
