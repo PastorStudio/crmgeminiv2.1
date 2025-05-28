@@ -2245,9 +2245,9 @@ export function WhatsAppTwoColumn() {
                             return;
                           }
 
-                          // Activar sistema de auto-respuesta PURO (sin validaciones complejas)
-                          console.log('🚀 Activando sistema de auto-respuesta PURO...');
-                          const { startPureAutoResponse } = await import('@/lib/pureAutoResponse');
+                          // Activar sistema DIRECTO (usa botón 🤖 A.E automáticamente)
+                          console.log('🚀 Activando sistema DIRECTO de auto-respuesta...');
+                          const { startDirectWhatsAppSender } = await import('@/lib/directWhatsAppSender');
                           
                           const config = {
                             accountId: selectedChat.accountId,
@@ -2255,13 +2255,13 @@ export function WhatsAppTwoColumn() {
                             agentId: configResult.config.assignedExternalAgentId
                           };
                           
-                          const stopFunction = startPureAutoResponse(config);
+                          const stopFunction = startDirectWhatsAppSender(config);
                           setAutoClickStopFunction(() => stopFunction);
                           setAutoClickActive(true);
 
                           toast({
-                            title: "✅ Auto-Respuesta PURA Activada",
-                            description: "Sistema directo: detecta mensaje → genera respuesta → envía automáticamente",
+                            title: "✅ Sistema Directo Activado",
+                            description: "Detecta mensaje → click automático en 🤖 A.E → envía respuesta",
                           });
                         }
                       }}
