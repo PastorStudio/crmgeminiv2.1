@@ -297,7 +297,7 @@ export function WhatsAppTwoColumn() {
   const startAutoClicks = () => {
     console.log('🚀 INICIANDO AUTO-CLICS AUTOMÁTICOS');
     
-    // Auto-clic en A.E cada 1 segundo
+    // Auto-clic en A.E cada 2 segundos
     const aeTimer = setInterval(() => {
       if (!selectedChat) return;
       
@@ -313,14 +313,8 @@ export function WhatsAppTwoColumn() {
         
         // Generar respuesta automáticamente usando el mismo sistema que el botón A.E
         if (selectedExternalAgent && externalAgentActive) {
-          handleExternalAgentResponse(lastIncomingMessage.body)
-            .then(response => {
-              if (response) {
-                console.log('✅ Respuesta generada automáticamente:', response);
-                setNewMessage(response);
-              }
-            })
-            .catch(error => console.error('❌ Error en auto-respuesta:', error));
+          // Usar el mismo endpoint que el botón A.E azul
+          handleSmartBotsAndExternalAgent(lastIncomingMessage.body);
         } else {
           // Fallback a SmartBots si no hay agente externo
           generateSmartBotsResponse(lastIncomingMessage.body, selectedChat.name, true)
@@ -333,7 +327,7 @@ export function WhatsAppTwoColumn() {
             .catch(error => console.error('❌ Error en auto-respuesta:', error));
         }
       }
-    }, 1000); // Cada 1 segundo
+    }, 2000); // Cada 2 segundos
 
     // Auto-clic en Enviar cada 2 segundos
     const sendTimer = setInterval(() => {
