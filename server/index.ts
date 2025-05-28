@@ -3637,57 +3637,91 @@ app.use((req, res, next) => {
     }
   });
 
-  // Endpoint para guardar configuración de respuestas automáticas
+  // Endpoint para guardar configuración de respuestas automáticas - ARREGLADO
   app.post("/api/auto-response/config", async (req: Request, res: Response) => {
     try {
       console.log("💾 Guardando configuración de respuestas automáticas:", req.body);
       
-      const configData = {
-        enabled: req.body.enabled || false,
-        greetingMessage: req.body.greetingMessage || "Hola, gracias por contactarnos. En breve le atenderemos.",
-        outOfHoursMessage: req.body.outOfHoursMessage || "Gracias por su mensaje. Nuestro horario de atención es de lunes a viernes de 9:00 a 18:00.",
-        businessHoursStart: req.body.businessHoursStart || "09:00:00",
-        businessHoursEnd: req.body.businessHoursEnd || "18:00:00", 
-        workingDays: req.body.workingDays || "1,2,3,4,5",
-        settings: req.body.settings || {},
-        geminiApiKey: req.body.geminiApiKey || null,
-        updatedAt: new Date()
-      };
+      // Usar SQL directo para evitar problemas de esquema
+      const insertQuery = `
+        INSERT INTO auto_response_configs (
+          enabled, greeting_message, out_of_hours_message, 
+          business_hours_start, business_hours_end, working_days, 
+          settings, gemini_api_key, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          enabled = EXCLUDED.enabled,
+          greeting_message = EXCLUDED.greeting_message,
+          out_of_hours_message = EXCLUDED.out_of_hours_message,
+          business_hours_start = EXCLUDED.business_hours_start,
+          business_hours_end = EXCLUDED.business_hours_end,
+          working_days = EXCLUDED.working_days,
+          settings = EXCLUDED.settings,
+          gemini_api_key = EXCLUDED.gemini_api_key,
+          updated_at = NOW()
+        RETURNING *;
+      `;
 
-      // Buscar si existe una configuración
-      const [existingConfig] = await db
-        .select()
-        .from(autoResponseConfigs)
-        .limit(1);
+      const updateQuery = `
+        UPDATE auto_response_configs SET
+          enabled = $1,
+          greeting_message = $2,
+          out_of_hours_message = $3,
+          business_hours_start = $4,
+          business_hours_end = $5,
+          working_days = $6,
+          settings = $7,
+          gemini_api_key = $8,
+          updated_at = NOW()
+        WHERE id = (SELECT id FROM auto_response_configs LIMIT 1)
+        RETURNING *;
+      `;
 
-      let savedConfig;
-      if (existingConfig) {
-        // Actualizar configuración existente
-        [savedConfig] = await db
-          .update(autoResponseConfigs)
-          .set(configData)
-          .where(eq(autoResponseConfigs.id, existingConfig.id))
-          .returning();
+      const checkQuery = `SELECT id FROM auto_response_configs LIMIT 1;`;
+      
+      const values = [
+        req.body.enabled || false,
+        req.body.greetingMessage || "Hola, gracias por contactarnos. En breve le atenderemos.",
+        req.body.outOfHoursMessage || "Gracias por su mensaje. Nuestro horario de atención es de lunes a viernes de 9:00 a 18:00.",
+        req.body.businessHoursStart || "09:00:00",
+        req.body.businessHoursEnd || "18:00:00",
+        req.body.workingDays || "1,2,3,4,5",
+        JSON.stringify(req.body.settings || {}),
+        req.body.geminiApiKey || null
+      ];
+
+      // Verificar si existe configuración
+      const existingResult = await pool.query(checkQuery);
+      
+      let result;
+      if (existingResult.rows.length > 0) {
+        // Actualizar existente
+        result = await pool.query(updateQuery, values);
       } else {
-        // Crear nueva configuración
-        [savedConfig] = await db
-          .insert(autoResponseConfigs)
-          .values(configData)
-          .returning();
+        // Crear nueva (quitar el primer parámetro ON CONFLICT)
+        const insertOnlyQuery = `
+          INSERT INTO auto_response_configs (
+            enabled, greeting_message, out_of_hours_message, 
+            business_hours_start, business_hours_end, working_days, 
+            settings, gemini_api_key, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+          RETURNING *;
+        `;
+        result = await pool.query(insertOnlyQuery, values);
       }
 
-      console.log("✅ Configuración guardada exitosamente:", savedConfig);
+      console.log("✅ Configuración guardada exitosamente:", result.rows[0]);
       
       res.json({
         success: true,
         message: "Configuración guardada exitosamente",
-        config: savedConfig
+        config: result.rows[0]
       });
     } catch (error) {
       console.error("❌ Error guardando configuración:", error);
       res.status(500).json({
         success: false,
-        error: "Error interno del servidor"
+        error: `Error al guardar configuración: ${error.message}`
       });
     }
   });
