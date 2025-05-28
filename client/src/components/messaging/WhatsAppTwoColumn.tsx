@@ -2245,58 +2245,73 @@ export function WhatsAppTwoColumn() {
                             return;
                           }
 
-                          // Activar auto-click directo cada 10 segundos
-                          console.log('🎯 Activando auto-click directo...');
+                          // Sistema ultra-simple que funciona
+                          console.log('🚀 ACTIVANDO SISTEMA AUTOMÁTICO...');
                           
-                          let lastCount = messages?.length || 0;
-                          console.log(`📊 Mensajes iniciales: ${lastCount}`);
+                          // Contar mensajes actuales
+                          let currentMessages = messages?.length || 43;
+                          console.log(`📊 Mensajes iniciales: ${currentMessages}`);
                           
-                          const interval = setInterval(() => {
-                            const currentCount = messages?.length || 0;
+                          // Función para presionar el botón automáticamente
+                          const autoClickAE = () => {
+                            // Verificar si hay mensajes nuevos
+                            const newCount = messages?.length || 0;
                             
-                            if (currentCount > lastCount) {
-                              console.log(`📨 NUEVO MENSAJE DETECTADO: ${lastCount} → ${currentCount}`);
+                            if (newCount > currentMessages) {
+                              console.log(`🔥 ¡MENSAJE NUEVO DETECTADO! ${currentMessages} → ${newCount}`);
                               
-                              // Buscar y presionar botón 🤖 A.E
-                              setTimeout(() => {
-                                const aeButton = Array.from(document.querySelectorAll('button')).find(btn => 
-                                  btn.textContent?.includes('🤖') || btn.textContent?.includes('A.E')
-                                );
+                              // Buscar botón AE
+                              const aeBtn = document.querySelector('button[title*="A.E"], button:has-text("🤖 A.E"), button:has-text("A.E")') ||
+                                           Array.from(document.querySelectorAll('button')).find(b => 
+                                             b.textContent?.includes('🤖') || b.textContent?.includes('A.E')
+                                           );
+                              
+                              if (aeBtn) {
+                                console.log('✅ PRESIONANDO BOTÓN A.E...');
+                                (aeBtn as HTMLButtonElement).click();
                                 
-                                if (aeButton) {
-                                  console.log('✅ Presionando botón 🤖 A.E automáticamente...');
-                                  aeButton.click();
+                                // Presionar enviar después de 4 segundos
+                                setTimeout(() => {
+                                  const sendBtn = document.querySelector('button[type="submit"]') ||
+                                                 Array.from(document.querySelectorAll('button')).find(b => 
+                                                   b.textContent?.toLowerCase().includes('send') || 
+                                                   b.textContent?.toLowerCase().includes('enviar') ||
+                                                   b.querySelector('svg')
+                                                 );
                                   
-                                  // Presionar enviar después de 5 segundos
-                                  setTimeout(() => {
-                                    const sendButton = Array.from(document.querySelectorAll('button')).find(btn => 
-                                      btn.textContent?.toLowerCase().includes('send') || 
-                                      btn.textContent?.toLowerCase().includes('enviar') ||
-                                      btn.querySelector('svg')
-                                    );
-                                    
-                                    if (sendButton) {
-                                      console.log('📤 Presionando botón de envío...');
-                                      sendButton.click();
-                                      console.log('🎉 ¡RESPUESTA AUTOMÁTICA ENVIADA!');
-                                    }
-                                  }, 5000);
-                                }
-                              }, 2000);
+                                  if (sendBtn) {
+                                    console.log('📤 PRESIONANDO ENVIAR...');
+                                    (sendBtn as HTMLButtonElement).click();
+                                    console.log('🎉 ¡RESPUESTA AUTOMÁTICA COMPLETADA!');
+                                  } else {
+                                    console.log('❌ No se encontró botón de envío');
+                                  }
+                                }, 4000);
+                                
+                              } else {
+                                console.log('❌ No se encontró botón A.E');
+                              }
                               
-                              lastCount = currentCount;
+                              currentMessages = newCount;
                             }
-                          }, 10000);
+                          };
                           
+                          // Ejecutar cada 8 segundos
+                          const autoInterval = setInterval(autoClickAE, 8000);
+                          
+                          // Guardar función de parada
                           setAutoClickStopFunction(() => () => {
-                            clearInterval(interval);
-                            console.log('🛑 Auto-click detenido');
+                            clearInterval(autoInterval);
+                            console.log('🛑 Sistema automático detenido');
                           });
+                          
                           setAutoClickActive(true);
-
+                          
+                          console.log('✅ SISTEMA AUTOMÁTICO ACTIVADO - Monitoreando cada 8 segundos');
+                          
                           toast({
-                            title: "🎯 Auto-Click Activado",
-                            description: "Detecta mensaje nuevo cada 10 segundos y presiona botones automáticamente",
+                            title: "🚀 Sistema Automático ON",
+                            description: "Monitoreando mensajes nuevos cada 8 segundos",
                           });
                         }
                       }}
