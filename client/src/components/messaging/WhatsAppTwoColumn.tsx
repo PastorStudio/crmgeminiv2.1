@@ -143,7 +143,7 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
 
   return (
     <span className="text-blue-600 font-medium">
-      Agente: {assignedAgent.username}
+      {assignedAgent.username}
     </span>
   );
 }
