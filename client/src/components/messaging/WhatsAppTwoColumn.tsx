@@ -1200,17 +1200,17 @@ export function WhatsAppTwoColumn() {
               const { generateDirectAutoResponse } = await import('@/lib/directAutoResponse');
               
               // Generar respuesta automática usando OpenAI directamente
-              let response = await generateDirectAutoResponse(lastIncomingMessage.body);
+              let autoResponse = await generateDirectAutoResponse(lastIncomingMessage.body);
               
               // Si la traducción está habilitada, traducir la respuesta
-              if (response && translationEnabled && selectedLanguage !== 'es') {
+              if (autoResponse && translationEnabled && selectedLanguage !== 'es') {
                 console.log(`🌐 Traduciendo respuesta automática al ${selectedLanguage}...`);
-                response = await translateMessage(response, selectedLanguage);
+                autoResponse = await translateMessage(autoResponse, selectedLanguage);
               }
               
-              if (response) {
-                console.log('📤 Enviando respuesta automática:', response);
-                await sendAutoMessage(response);
+              if (autoResponse) {
+                console.log('📤 Enviando respuesta automática:', autoResponse);
+                await sendAutoMessage(autoResponse);
                 
                 // Notificación indicando si fue traducida
                 toast({
