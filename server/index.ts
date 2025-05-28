@@ -135,11 +135,27 @@ app.post('/api/external-agents-direct', async (req: Request, res: Response) => {
 // Endpoint para conectar con agentes externos reales usando OpenAI
 app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response) => {
   try {
-    const { agentUrl, message, agentId } = req.body;
+    const { message, agentId } = req.body;
     
     console.log(`🤖 Conectando con agente real: ${agentId}`);
-    console.log(`🔗 URL del agente: ${agentUrl}`);
     console.log(`💬 Mensaje: "${message}"`);
+    
+    // Obtener la información del agente desde la base de datos
+    const { externalAgents } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
+    const [agent] = await db.select().from(externalAgents).where(eq(externalAgents.id, agentId));
+    
+    if (!agent) {
+      return res.status(404).json({
+        success: false,
+        error: `Agente ${agentId} no encontrado`,
+      });
+    }
+    
+    const agentUrl = agent.agent_url;
+    console.log(`🔗 URL del agente: ${agentUrl}`);
+    console.log(`👤 Nombre del agente: ${agent.agent_name}`);
     
     // Extraer el nombre completo real del agente desde el URL
     const extractAgentName = (url: string) => {
