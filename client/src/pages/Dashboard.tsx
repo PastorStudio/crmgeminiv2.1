@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/authContext";
 import { Loader2, Sun, Moon, Coffee, Star } from "lucide-react";
+import { getRealNow, formatNYTime } from "@/lib/timeSync";
 
 export default function Dashboard() {
   // Estados para el proceso de importación
@@ -26,18 +27,19 @@ export default function Dashboard() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Update time every second
+  // Update time every second usando fecha sincronizada
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(new Date());
+      setCurrentTime(getRealNow());
     }, 1000);
 
     return () => clearInterval(timer);
   }, []);
 
-  // Format time and date for display
+  // Format time and date for display usando zona horaria Nueva York
   const formatDateTime = () => {
-    const options: Intl.DateTimeFormatOptions = {
+    return getRealNow().toLocaleDateString('es-ES', {
+      timeZone: 'America/New_York',
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -46,8 +48,7 @@ export default function Dashboard() {
       minute: '2-digit',
       second: '2-digit',
       hour12: true
-    };
-    return currentTime.toLocaleDateString('es-ES', options);
+    });
   };
 
   // Función para obtener el saludo según la hora
