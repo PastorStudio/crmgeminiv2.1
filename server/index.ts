@@ -1896,11 +1896,11 @@ app.use((req, res, next) => {
       // Formatear los agentes para la interfaz
       const formattedAgents = dbAgents.map(agent => ({
         id: agent.id.toString(),
-        name: agent.agentName, // Usar el nombre correcto de la columna
-        agentUrl: agent.agentUrl, // Usar el nombre correcto de la columna
+        name: (agent as any).agent_name || agent.agentName, // Manejar ambos formatos de columna
+        agentUrl: (agent as any).agent_url || agent.agentUrl, // Manejar ambos formatos de columna
         isActive: agent.status === 'active',
-        responseCount: agent.responseCount || 0,
-        createdAt: agent.createdAt,
+        responseCount: (agent as any).response_count || agent.responseCount || 0,
+        createdAt: (agent as any).created_at || agent.createdAt,
         provider: agent.provider,
         notes: agent.notes
       }));
