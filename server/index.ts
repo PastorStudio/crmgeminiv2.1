@@ -20,8 +20,8 @@ import { simpleLiveStatus } from "./services/simpleLiveStatus";
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
 
-// Configurar fecha real: 28 de enero 2025 (en lugar de mayo 2025)
-const REAL_DATE_OFFSET = new Date('2025-01-28T22:18:00.000-05:00').getTime() - Date.now();
+// Configurar fecha real: 27 de mayo 2025, 11:18 PM Nueva York
+const REAL_DATE_OFFSET = new Date('2025-05-27T23:18:00.000-04:00').getTime() - Date.now();
 
 // Override global de Date.now para toda la aplicación
 const originalNow = Date.now;
