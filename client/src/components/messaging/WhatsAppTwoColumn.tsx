@@ -2245,17 +2245,58 @@ export function WhatsAppTwoColumn() {
                             return;
                           }
 
-                          // Activar sistema ULTRA-SIMPLE (sin APIs, solo clicks)
-                          console.log('🚀 Activando AUTO-CLICKER ULTRA-SIMPLE...');
-                          const { startSimpleAutoClicker } = await import('@/lib/simpleAutoClicker');
+                          // Activar auto-click directo cada 10 segundos
+                          console.log('🎯 Activando auto-click directo...');
                           
-                          const stopFunction = startSimpleAutoClicker();
-                          setAutoClickStopFunction(() => stopFunction);
+                          let lastCount = messages?.length || 0;
+                          console.log(`📊 Mensajes iniciales: ${lastCount}`);
+                          
+                          const interval = setInterval(() => {
+                            const currentCount = messages?.length || 0;
+                            
+                            if (currentCount > lastCount) {
+                              console.log(`📨 NUEVO MENSAJE DETECTADO: ${lastCount} → ${currentCount}`);
+                              
+                              // Buscar y presionar botón 🤖 A.E
+                              setTimeout(() => {
+                                const aeButton = Array.from(document.querySelectorAll('button')).find(btn => 
+                                  btn.textContent?.includes('🤖') || btn.textContent?.includes('A.E')
+                                );
+                                
+                                if (aeButton) {
+                                  console.log('✅ Presionando botón 🤖 A.E automáticamente...');
+                                  aeButton.click();
+                                  
+                                  // Presionar enviar después de 5 segundos
+                                  setTimeout(() => {
+                                    const sendButton = Array.from(document.querySelectorAll('button')).find(btn => 
+                                      btn.textContent?.toLowerCase().includes('send') || 
+                                      btn.textContent?.toLowerCase().includes('enviar') ||
+                                      btn.querySelector('svg')
+                                    );
+                                    
+                                    if (sendButton) {
+                                      console.log('📤 Presionando botón de envío...');
+                                      sendButton.click();
+                                      console.log('🎉 ¡RESPUESTA AUTOMÁTICA ENVIADA!');
+                                    }
+                                  }, 5000);
+                                }
+                              }, 2000);
+                              
+                              lastCount = currentCount;
+                            }
+                          }, 10000);
+                          
+                          setAutoClickStopFunction(() => () => {
+                            clearInterval(interval);
+                            console.log('🛑 Auto-click detenido');
+                          });
                           setAutoClickActive(true);
 
                           toast({
-                            title: "🎯 Auto-Clicker Activado",
-                            description: "Sistema simple: detecta mensaje → click A.E → click enviar",
+                            title: "🎯 Auto-Click Activado",
+                            description: "Detecta mensaje nuevo cada 10 segundos y presiona botones automáticamente",
                           });
                         }
                       }}
