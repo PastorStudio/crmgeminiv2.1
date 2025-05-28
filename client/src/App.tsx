@@ -538,6 +538,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/agent-monitoring" component={() => <PrivateRoute component={AgentMonitoring} path="/agent-monitoring" />} />
                 <Route path="/chat-assignments" component={() => <PrivateRoute component={ChatAssignments} path="/chat-assignments" />} />
                 <Route path="/profile" component={() => <PrivateRoute component={Profile} path="/profile" />} />
+                <Route path="/ui-showcase" component={() => <PrivateRoute component={UIShowcase} path="/ui-showcase" />} />
                 <Route component={() => <PrivateRoute component={NotFound} path="*" />} />
                 </Switch>
               </ErrorBoundary>
