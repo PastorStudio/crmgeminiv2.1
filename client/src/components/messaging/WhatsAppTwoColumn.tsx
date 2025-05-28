@@ -2245,23 +2245,17 @@ export function WhatsAppTwoColumn() {
                             return;
                           }
 
-                          // Activar sistema DIRECTO (usa botón 🤖 A.E automáticamente)
-                          console.log('🚀 Activando sistema DIRECTO de auto-respuesta...');
-                          const { startDirectWhatsAppSender } = await import('@/lib/directWhatsAppSender');
+                          // Activar sistema ULTRA-SIMPLE (sin APIs, solo clicks)
+                          console.log('🚀 Activando AUTO-CLICKER ULTRA-SIMPLE...');
+                          const { startSimpleAutoClicker } = await import('@/lib/simpleAutoClicker');
                           
-                          const config = {
-                            accountId: selectedChat.accountId,
-                            chatId: selectedChat.id,
-                            agentId: configResult.config.assignedExternalAgentId
-                          };
-                          
-                          const stopFunction = startDirectWhatsAppSender(config);
+                          const stopFunction = startSimpleAutoClicker();
                           setAutoClickStopFunction(() => stopFunction);
                           setAutoClickActive(true);
 
                           toast({
-                            title: "✅ Sistema Directo Activado",
-                            description: "Detecta mensaje → click automático en 🤖 A.E → envía respuesta",
+                            title: "🎯 Auto-Clicker Activado",
+                            description: "Sistema simple: detecta mensaje → click A.E → click enviar",
                           });
                         }
                       }}
