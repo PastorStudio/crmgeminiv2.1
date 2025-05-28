@@ -2748,45 +2748,7 @@ app.use((req, res, next) => {
     }
   });
 
-  app.post('/api/auto-response/config', async (req, res) => {
-    try {
-      console.log('⚙️ Guardando configuración de respuestas automáticas:', req.body);
-      
-      const { enabled, provider, welcomeMessage, maxResponsesPerDay, responseDelay, businessHours } = req.body;
-      
-      const { sql } = await import('drizzle-orm');
-      
-      // Verificar si existe configuración
-      const existingQuery = sql`SELECT id FROM auto_response_config LIMIT 1`;
-      const existingResult = await db.execute(existingQuery);
-      
-      if (existingResult.rows.length > 0) {
-        // Actualizar configuración existente
-        const updateQuery = sql`
-          UPDATE auto_response_config 
-          SET enabled = ${enabled}, "greetingMessage" = ${welcomeMessage}, "updatedAt" = NOW()
-          WHERE id = ${existingResult.rows[0].id}
-          RETURNING *
-        `;
-        const updateResult = await db.execute(updateQuery);
-        console.log('✅ Configuración actualizada:', updateResult.rows[0]);
-        res.json(updateResult.rows[0]);
-      } else {
-        // Crear nueva configuración
-        const insertQuery = sql`
-          INSERT INTO auto_response_config (enabled, "greetingMessage")
-          VALUES (${enabled}, ${welcomeMessage})
-          RETURNING *
-        `;
-        const insertResult = await db.execute(insertQuery);
-        console.log('✅ Nueva configuración creada:', insertResult.rows[0]);
-        res.json(insertResult.rows[0]);
-      }
-    } catch (error) {
-      console.error('❌ Error al guardar configuración:', error);
-      res.status(500).json({ error: 'Error al guardar configuración: ' + (error as Error).message });
-    }
-  });
+  // ENDPOINT ELIMINADO - YA EXISTE UNO MEJOR MÁS ABAJO
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
