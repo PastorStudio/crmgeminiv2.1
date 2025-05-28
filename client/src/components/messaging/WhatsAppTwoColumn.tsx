@@ -296,9 +296,15 @@ export function WhatsAppTwoColumn() {
   const [autoClickTimers, setAutoClickTimers] = useState<{ ae: NodeJS.Timeout | null, send: NodeJS.Timeout | null }>({ ae: null, send: null });
 
   // Función DIRECTA: CLIC A.E → ESPERAR → CLIC ENVIAR
+  // TEMPORALMENTE DESHABILITADA PARA EVITAR BUCLE INFINITO CON ASIGNACIÓN DE AGENTES
   const startAutoClicks = () => {
-    console.log('🚀 AUTO-CLIC DIRECTO ACTIVADO - INICIO');
+    console.log('🚀 AUTO-CLIC DESHABILITADO TEMPORALMENTE - EVITA CONFLICTOS');
+    console.log('⚠️ El auto-click está causando bucle infinito con la asignación de agentes');
     
+    // Sistema deshabilitado temporalmente
+    setAutoClickEnabled(false);
+    
+    /*
     const timer = setInterval(() => {
       console.log('⏰ Timer ejecutándose cada 4 segundos...');
       

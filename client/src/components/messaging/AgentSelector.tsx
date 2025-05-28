@@ -115,12 +115,13 @@ export function AgentSelector({ chatId, accountId, onAgentChange }: AgentSelecto
     }
   };
 
-  // Desactivar respuesta automática
+  // Desasignar agente completamente (solo cuando usuario selecciona "Sin agente")
   const handleDeactivateAgent = async () => {
     if (!accountId) return;
     
     setLoading(true);
     try {
+      // Desasignar completamente el agente
       const response = await fetch(`/api/whatsapp-accounts/${accountId}/assign-external-agent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,26 +137,13 @@ export function AgentSelector({ chatId, accountId, onAgentChange }: AgentSelecto
         setIsActive(false);
         setSelectedAgentId(null);
         
-        toast({
-          title: '🔴 Agente desactivado',
-          description: 'Respuesta automática desactivada',
-        });
-        
+        console.log('🔴 Agente completamente desasignado');
         onAgentChange?.(null);
       } else {
-        toast({
-          title: 'Error',
-          description: result.message || 'No se pudo desactivar',
-          variant: 'destructive',
-        });
+        console.error('Error al desasignar agente:', result.message);
       }
     } catch (error) {
       console.error('Error:', error);
-      toast({
-        title: 'Error de conexión',
-        description: 'No se pudo conectar con el servidor',
-        variant: 'destructive',
-      });
     } finally {
       setLoading(false);
     }
@@ -170,6 +158,7 @@ export function AgentSelector({ chatId, accountId, onAgentChange }: AgentSelecto
         value={selectedAgentId || "none"}
         onValueChange={(value) => {
           if (value === "none") {
+            // Solo desasignar cuando el usuario explícitamente selecciona "Sin agente"
             handleDeactivateAgent();
           } else {
             handleAgentSelection(value);
