@@ -288,6 +288,16 @@ export function WhatsAppTwoColumn() {
   // Estados para R.A. AI
   const [raAiEnabled, setRaAiEnabled] = useState(false);
   const [raAiProcessing, setRaAiProcessing] = useState(false);
+
+  // Estados para Auto-Click con configuración personalizada
+  const [autoClickTimers, setAutoClickTimers] = useState<{ ae: NodeJS.Timeout | null; send: NodeJS.Timeout | null }>({ ae: null, send: null });
+  const [autoClickEnabled, setAutoClickEnabled] = useState(false);
+  const [showAutoClickConfig, setShowAutoClickConfig] = useState(false);
+  const [autoClickSettings, setAutoClickSettings] = useState({
+    aeWaitTime: 4000,  // Tiempo de espera después del clic A.E (milisegundos)
+    sendWaitTime: 8000, // Tiempo entre ciclos de auto-clic (milisegundos)
+    enabled: false
+  });
   
   // Estados para auto-clics
   const [autoClickEnabled, setAutoClickEnabled] = useState(false);
@@ -340,23 +350,73 @@ export function WhatsAppTwoColumn() {
           aeButtonFound = true;
           button.click();
           
-          // ESPERAR Y BUSCAR BOTÓN ENVIAR
+          // ESPERAR Y BUSCAR BOTÓN ENVIAR CON MÚLTIPLES MÉTODOS
           setTimeout(() => {
-            const sendButtons = document.querySelectorAll('button');
+            console.log('⏱️ Buscando botón Enviar con múltiples métodos...');
             let sendButtonFound = false;
             
-            sendButtons.forEach(sendBtn => {
-              if ((sendBtn.textContent?.includes('Enviar') || sendBtn.textContent?.includes('Send')) && !sendBtn.disabled) {
-                console.log('✅ Haciendo clic en botón Enviar...');
-                sendButtonFound = true;
-                sendBtn.click();
-              }
-            });
+            // MÉTODO 1: Buscar por texto
+            const textButtons = Array.from(document.querySelectorAll('button')).filter(btn => 
+              (btn.textContent?.includes('Enviar') || btn.textContent?.includes('Send')) && !btn.disabled
+            );
             
-            if (!sendButtonFound) {
-              console.log('❌ No se encontró botón Enviar');
+            if (textButtons.length > 0) {
+              console.log('🔴 MÉTODO 1 - Encontrado botón por texto, haciendo clic...');
+              textButtons[0].click();
+              sendButtonFound = true;
             }
-          }, 2000); // Tiempo reducido
+            
+            // MÉTODO 2: Buscar por clase CSS (botón verde)
+            if (!sendButtonFound) {
+              const greenButtons = Array.from(document.querySelectorAll('button')).filter(btn => 
+                btn.className?.includes('bg-green') && !btn.disabled
+              );
+              
+              if (greenButtons.length > 0) {
+                console.log('🔴 MÉTODO 2 - Encontrado botón verde, haciendo clic...');
+                greenButtons[0].click();
+                sendButtonFound = true;
+              }
+            }
+            
+            // MÉTODO 3: Buscar por ícono SVG (Send icon)
+            if (!sendButtonFound) {
+              const svgButtons = Array.from(document.querySelectorAll('button')).filter(btn => {
+                const svg = btn.querySelector('svg');
+                return svg && !btn.disabled;
+              });
+              
+              // Tomar el último botón con SVG (probablemente el Send)
+              if (svgButtons.length > 0) {
+                const lastSvgButton = svgButtons[svgButtons.length - 1];
+                console.log('🔴 MÉTODO 3 - Encontrado botón con ícono, haciendo clic...');
+                lastSvgButton.click();
+                sendButtonFound = true;
+              }
+            }
+            
+            // MÉTODO 4: Buscar en el área de input específicamente
+            if (!sendButtonFound) {
+              const inputArea = document.querySelector('.flex.space-x-2') || document.querySelector('[class*="input"]');
+              if (inputArea) {
+                const inputButtons = inputArea.querySelectorAll('button');
+                if (inputButtons.length > 0) {
+                  const sendButton = inputButtons[inputButtons.length - 1]; // Último botón del área de input
+                  if (!sendButton.disabled) {
+                    console.log('🔴 MÉTODO 4 - Encontrado botón en área de input, haciendo clic...');
+                    sendButton.click();
+                    sendButtonFound = true;
+                  }
+                }
+              }
+            }
+            
+            if (sendButtonFound) {
+              console.log('✅ SECUENCIA COMPLETADA: A.E → Enviar');
+            } else {
+              console.log('❌ No se encontró botón Enviar con ningún método');
+            }
+          }, 4000); // 4 segundos para que se genere la respuesta
         }
       });
       
