@@ -526,7 +526,7 @@ export function WhatsAppTwoColumn() {
       
     }, 8000);
     
-    console.log("✅ Auto-click configurado");
+    return () => clearInterval(timer);
   };
 
   // Función para detener auto-clics
@@ -580,31 +580,14 @@ export function WhatsAppTwoColumn() {
         console.log('❌ No se encontró botón A.E');
       }
       
-    }, autoClickSettings.sendWaitTime); // Intervalo configurable entre ciclos
-
-    setAutoClickTimers({ ae: timer, send: null });
-    setAutoClickEnabled(true);
+    }, 8000); // Intervalo configurable entre ciclos
     
     console.log("✅ Auto-Clic configurado y activado");
-    */
   };
 
   // Función para detener auto-clics
   const stopAutoClicks = () => {
     console.log('🛑 DETENIENDO AUTO-CLICS');
-    
-    if (autoClickTimers.ae) {
-      clearInterval(autoClickTimers.ae);
-    }
-    if (autoClickTimers.send) {
-      clearInterval(autoClickTimers.send);
-    }
-    
-    setAutoClickTimers({ ae: null, send: null });
-    setAutoClickEnabled(false);
-    
-    // toast desactivado para evitar errores
-    console.log("🛑 Auto-Clics Desactivados - Sistema manual reactivado");
   };
 
   // Función para configurar auto-click
