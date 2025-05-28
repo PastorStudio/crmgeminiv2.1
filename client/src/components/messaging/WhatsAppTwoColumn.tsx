@@ -293,41 +293,36 @@ export function WhatsAppTwoColumn() {
   const [autoClickEnabled, setAutoClickEnabled] = useState(false);
   const [autoClickTimers, setAutoClickTimers] = useState<{ ae: NodeJS.Timeout | null, send: NodeJS.Timeout | null }>({ ae: null, send: null });
 
-  // Función SIMPLE para auto-clic directo en botones cada 2 segundos
+  // Función DIRECTA: CLIC A.E → ESPERAR → CLIC ENVIAR
   const startAutoClicks = () => {
-    console.log('🚀 INICIANDO AUTO-CLICS SIMPLES');
+    console.log('🚀 AUTO-CLIC DIRECTO ACTIVADO');
     
     const timer = setInterval(() => {
-      console.log('🤖 AUTO-CLIC cada 2 segundos');
-      
-      // 1. Buscar y hacer clic en botón A.E
-      const aeButton = Array.from(document.querySelectorAll('button')).find(
-        btn => btn.textContent?.includes('A.E')
-      );
-      if (aeButton) {
-        console.log('✅ Haciendo CLIC en botón A.E');
-        (aeButton as HTMLElement).click();
-        
-        // 2. Después de 1 segundo, buscar y hacer clic en botón Enviar
-        setTimeout(() => {
-          const sendButton = Array.from(document.querySelectorAll('button')).find(
-            btn => btn.textContent?.includes('Enviar')
-          );
-          if (sendButton && newMessage.trim()) {
-            console.log('📤 Haciendo CLIC en botón Enviar');
-            (sendButton as HTMLElement).click();
-          }
-        }, 1000);
-      }
-      
-    }, 2000); // Cada 2 segundos
+      // 1. CLIC EN A.E
+      document.querySelectorAll('button').forEach(btn => {
+        if (btn.textContent?.includes('A.E')) {
+          console.log('🎯 CLIC EN A.E');
+          btn.click();
+          
+          // 2. ESPERAR 2 SEGUNDOS Y CLIC EN ENVIAR
+          setTimeout(() => {
+            document.querySelectorAll('button').forEach(sendBtn => {
+              if (sendBtn.textContent?.includes('Enviar')) {
+                console.log('📤 CLIC EN ENVIAR');
+                sendBtn.click();
+              }
+            });
+          }, 2000);
+        }
+      });
+    }, 4000); // Cada 4 segundos para dar tiempo
 
     setAutoClickTimers({ ae: timer, send: null });
     setAutoClickEnabled(true);
     
     toast({
-      title: "🤖 Auto-Clics Activados",
-      description: "Haciendo clic en A.E y Enviar cada 2 segundos",
+      title: "🎯 Auto-Clic Directo",
+      description: "CLIC A.E → ESPERAR → CLIC ENVIAR",
       duration: 3000
     });
   };
