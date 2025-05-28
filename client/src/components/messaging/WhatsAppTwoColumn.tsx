@@ -318,7 +318,7 @@ export function WhatsAppTwoColumn() {
         return;
       }
       
-      console.log('✅ Condiciones cumplidas, ejecutando auto-click...');
+      console.log('✅ Condiciones cumplidas, ejecutando auto-click (sin validación de timestamp)...');
       
       // BUSCAR Y HACER CLIC EN BOTÓN A.E
       const aeButtons = document.querySelectorAll('button');
