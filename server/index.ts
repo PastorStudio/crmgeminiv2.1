@@ -1822,76 +1822,7 @@ app.use((req, res, next) => {
         });
       }
 
-      // Si no hay agentes, crear los agentes por defecto en la base de datos
-      if (dbAgents.length === 0) {
-        console.log('🔧 Creando agentes por defecto en base de datos...');
-        
-        const defaultAgents = [
-          {
-            id: 'smartbots-001',
-            name: 'Smartbots',
-            agentUrl: 'https://chatgpt.com/g/g-682ceb8bfa4c81918b3ff66abe6f3480-smartbots',
-            status: 'active',
-            provider: 'openai',
-            responseCount: 0,
-            averageResponseTime: 0,
-            notes: 'Bot inteligente para automatización'
-          },
-          {
-            id: 'smartplanner-001', 
-            name: 'Smartplanner IA',
-            agentUrl: 'https://chatgpt.com/g/g-682e61ce2364819196df9641616414b1-smartplanner-ia',
-            status: 'active',
-            provider: 'openai',
-            responseCount: 0,
-            averageResponseTime: 0,
-            notes: 'Asistente de planificación inteligente'
-          },
-          {
-            id: 'smartflyer-001',
-            name: 'Smartflyer IA',
-            agentUrl: 'https://chatgpt.com/g/g-682f551bee70819196aeb603eb638762-smartflyer-ia',
-            status: 'active',
-            provider: 'openai',
-            responseCount: 0,
-            averageResponseTime: 0,
-            notes: 'Agente especializado en viajes'
-          },
-          {
-            id: 'telca-001',
-            name: 'Agente de Ventas de Telca Panama',
-            agentUrl: 'https://chatgpt.com/g/g-682f9b5208988191b08215b3d8f65333-agente-de-ventas-de-telca-panama',
-            status: 'active',
-            provider: 'openai',
-            responseCount: 0,
-            averageResponseTime: 0,
-            notes: 'Especialista en ventas para Telca Panama'
-          },
-          {
-            id: 'tecnico-001',
-            name: 'Asistente Técnico en Gestión en Campo',
-            agentUrl: 'https://chatgpt.com/g/g-682bb98fedf881918e0c4ed5fcf592e4-asistente-tecnico-en-gestion-en-campo',
-            status: 'active',
-            provider: 'openai',
-            responseCount: 0,
-            averageResponseTime: 0,
-            notes: 'Asistente técnico para gestión de campo'
-          }
-        ];
-
-        try {
-          for (const agent of defaultAgents) {
-            await db.insert(externalAgents).values(agent);
-            console.log(`✅ Agente creado en DB: ${agent.name}`);
-          }
-          
-          // Obtener la lista actualizada
-          dbAgents = await db.select().from(externalAgents);
-          console.log(`🎉 ${dbAgents.length} agentes creados en base de datos`);
-        } catch (insertError) {
-          console.error('❌ Error insertando agentes por defecto:', insertError);
-        }
-      }
+      // Ya no creamos agentes por defecto aquí - se mantienen los existentes
 
       // Formatear los agentes para la interfaz
       const formattedAgents = dbAgents.map(agent => ({
