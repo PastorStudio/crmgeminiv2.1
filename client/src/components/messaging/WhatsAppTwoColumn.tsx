@@ -299,11 +299,9 @@ export function WhatsAppTwoColumn() {
     enabled: false
   });
   
-  // Estados para auto-clics
-  const [autoClickEnabled, setAutoClickEnabled] = useState(false);
+  // Estados para auto-clics (ya definidos arriba con configuración)
   const [autoClickActive, setAutoClickActive] = useState(false);
   const [autoClickStopFunction, setAutoClickStopFunction] = useState<(() => void) | null>(null);
-  const [autoClickTimers, setAutoClickTimers] = useState<{ ae: NodeJS.Timeout | null, send: NodeJS.Timeout | null }>({ ae: null, send: null });
 
   // Función DIRECTA: CLIC A.E → ESPERAR → CLIC ENVIAR
   // VERSIÓN SIMPLIFICADA SIN VALIDACIONES RESTRICTIVAS
@@ -416,7 +414,7 @@ export function WhatsAppTwoColumn() {
             } else {
               console.log('❌ No se encontró botón Enviar con ningún método');
             }
-          }, 4000); // 4 segundos para que se genere la respuesta
+          }, autoClickSettings.aeWaitTime); // Tiempo configurable para que se genere la respuesta
         }
       });
       
@@ -476,7 +474,7 @@ export function WhatsAppTwoColumn() {
         console.log('❌ No se encontró botón A.E');
       }
       
-    }, 4000); // Cada 4 segundos
+    }, autoClickSettings.sendWaitTime); // Intervalo configurable entre ciclos
 
     setAutoClickTimers({ ae: timer, send: null });
     setAutoClickEnabled(true);
@@ -501,6 +499,29 @@ export function WhatsAppTwoColumn() {
     
     // toast desactivado para evitar errores
     console.log("🛑 Auto-Clics Desactivados - Sistema manual reactivado");
+  };
+
+  // Función para configurar auto-click
+  const configureAutoClick = () => {
+    if (autoClickEnabled) {
+      console.log('⏹️ Deteniendo auto-clic...');
+      stopAutoClicks();
+    } else {
+      console.log('▶️ Iniciando auto-clic...');
+      startAutoClicks();
+    }
+  };
+
+  // Función para guardar configuración de auto-click
+  const saveAutoClickSettings = (newSettings: typeof autoClickSettings) => {
+    setAutoClickSettings(newSettings);
+    setShowAutoClickConfig(false);
+    
+    // Si auto-click está activo, reiniciarlo con nueva configuración
+    if (autoClickEnabled) {
+      stopAutoClicks();
+      setTimeout(() => startAutoClicks(), 500);
+    }
   };
 
   // Estados para A.E AI (Agentes Externos)
@@ -2089,14 +2110,15 @@ export function WhatsAppTwoColumn() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3, delay: 0.2 }}
                   >
-                    <Button
-                      size="sm"
-                      variant={autoClickEnabled ? "default" : "outline"}
-                      className={`relative transition-all duration-300 ${
-                        autoClickEnabled 
-                          ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg" 
-                          : "border-purple-600 text-purple-600 hover:bg-purple-50"
-                      }`}
+                    <div className="flex items-center space-x-1">
+                      <Button
+                        size="sm"
+                        variant={autoClickEnabled ? "default" : "outline"}
+                        className={`relative transition-all duration-300 ${
+                          autoClickEnabled 
+                            ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg" 
+                            : "border-purple-600 text-purple-600 hover:bg-purple-50"
+                        }`}
                       onClick={() => {
                         if (autoClickEnabled) {
                           stopAutoClicks();
@@ -2118,6 +2140,18 @@ export function WhatsAppTwoColumn() {
                         </div>
                       )}
                     </Button>
+                    
+                    {/* Botón de Configuración de Auto-Click */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-gray-400 text-gray-600 hover:bg-gray-50 p-2"
+                      onClick={() => setShowAutoClickConfig(true)}
+                      title="Configurar tiempos de auto-click"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                    </div>
                   </motion.div>
 
 
