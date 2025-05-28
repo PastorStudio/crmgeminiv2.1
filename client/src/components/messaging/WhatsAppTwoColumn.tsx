@@ -1158,6 +1158,13 @@ export function WhatsAppTwoColumn() {
 
   // Detectar mensajes nuevos y activar SmartBots automáticamente
   useEffect(() => {
+    console.log('🔍 Estado SmartBots:', {
+      messages: !!messages,
+      smartBotsEnabled,
+      selectedChat: !!selectedChat,
+      messagesLength: Array.isArray(messages) ? messages.length : 0
+    });
+    
     if (!messages || !smartBotsEnabled || !selectedChat) return;
 
     const currentMessages = Array.isArray(messages) ? messages : [];
