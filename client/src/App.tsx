@@ -38,7 +38,6 @@ import ExternalAgents from './pages/ExternalAgents';
 import InternalAgents from './pages/InternalAgents';
 import GeminiAI from './pages/GeminiAI';
 import AgentAnalysis from './pages/AgentAnalysis';
-import UIShowcase from './pages/UIShowcase';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
@@ -538,7 +537,6 @@ const AppRoutes: React.FC = () => {
                 <Route path="/agent-monitoring" component={() => <PrivateRoute component={AgentMonitoring} path="/agent-monitoring" />} />
                 <Route path="/chat-assignments" component={() => <PrivateRoute component={ChatAssignments} path="/chat-assignments" />} />
                 <Route path="/profile" component={() => <PrivateRoute component={Profile} path="/profile" />} />
-                <Route path="/ui-showcase" component={() => <PrivateRoute component={UIShowcase} path="/ui-showcase" />} />
                 <Route component={() => <PrivateRoute component={NotFound} path="*" />} />
                 </Switch>
               </ErrorBoundary>

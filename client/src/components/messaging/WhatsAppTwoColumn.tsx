@@ -143,7 +143,7 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
 
   return (
     <span className="text-blue-600 font-medium">
-      {assignedAgent.fullName || assignedAgent.username}
+      Agente: {assignedAgent.username}
     </span>
   );
 }
@@ -159,9 +159,13 @@ function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accoun
   // Debug para verificar qué está recibiendo
   console.log('🎫 Debug Badge Category - chatId:', chatId, 'data:', category, 'error:', error);
 
-  // Solo mostrar el badge si realmente hay un ticket/categoría
-  if (!category || !category.status) {
-    return null;
+  if (!category) {
+    return (
+      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+        <Ticket className="h-3 w-3 mr-1" />
+        Sin ticket
+      </Badge>
+    );
   }
 
   const getTicketColor = (status: string) => {
@@ -210,9 +214,12 @@ function ChatCommentsIndicator({ chatId }: { chatId: string }) {
     enabled: !!chatId
   });
 
-  // Solo mostrar el icono si realmente hay comentarios
   if (!comments || comments.length === 0) {
-    return null;
+    return (
+      <div className="flex items-center">
+        <MessageSquareMore className="h-4 w-4 text-gray-400" />
+      </div>
+    );
   }
 
   return (
@@ -516,7 +523,7 @@ export function WhatsAppTwoColumn() {
             } else {
               console.log('❌ No se encontró botón Enviar con ningún método');
             }
-          }, 3000); // Tiempo configurable para que se genere la respuesta
+          }, autoClickSettings.aeWaitTime); // Tiempo configurable para que se genere la respuesta
         }
       });
       
@@ -524,18 +531,16 @@ export function WhatsAppTwoColumn() {
         console.log('❌ No se encontró botón A.E');
       }
       
-    }, 8000);
-  };
+    }, 8000); // Cada 8 segundos
 
-  // Función para detener auto-clics
-  const stopAutoClicksLegacy = () => {
-    console.log('🛑 DETENIENDO AUTO-CLIC LEGACY');
-  };
-
-  // Lógica comentada para referencia futura
-  const legacyAutoClick = () => {
-    // Código comentado temporalmente
-    console.log('⏰ Timer ejecutándose cada 4 segundos...');
+    setAutoClickTimers({ ae: timer, send: null });
+    setAutoClickEnabled(true);
+    
+    console.log("✅ Auto-Clic simplificado activado");
+    
+    /*
+    const timer = setInterval(() => {
+      console.log('⏰ Timer ejecutándose cada 4 segundos...');
       
       // Buscar todos los botones
       const allButtons = document.querySelectorAll('button');
@@ -578,19 +583,42 @@ export function WhatsAppTwoColumn() {
         console.log('❌ No se encontró botón A.E');
       }
       
-    }, 8000);
+    }, autoClickSettings.sendWaitTime); // Intervalo configurable entre ciclos
+
+    setAutoClickTimers({ ae: timer, send: null });
+    setAutoClickEnabled(true);
     
     console.log("✅ Auto-Clic configurado y activado");
+    */
   };
 
   // Función para detener auto-clics
   const stopAutoClicks = () => {
     console.log('🛑 DETENIENDO AUTO-CLICS');
+    
+    if (autoClickTimers.ae) {
+      clearInterval(autoClickTimers.ae);
+    }
+    if (autoClickTimers.send) {
+      clearInterval(autoClickTimers.send);
+    }
+    
+    setAutoClickTimers({ ae: null, send: null });
+    setAutoClickEnabled(false);
+    
+    // toast desactivado para evitar errores
+    console.log("🛑 Auto-Clics Desactivados - Sistema manual reactivado");
   };
 
   // Función para configurar auto-click
   const configureAutoClick = () => {
-    console.log('🔧 Configurando auto-click...');
+    if (autoClickEnabled) {
+      console.log('⏹️ Deteniendo auto-clic...');
+      stopAutoClicks();
+    } else {
+      console.log('▶️ Iniciando auto-clic...');
+      startAutoClicks();
+    }
   };
 
   // Función para guardar configuración de auto-click
@@ -2438,7 +2466,7 @@ export function WhatsAppTwoColumn() {
                                 </div>
                               )}
                               <div
-                                className={`px-4 py-2 rounded-2xl max-w-[80%] ${
+                                className={`px-4 py-2 rounded-2xl ${
                                   message.fromMe
                                     ? 'bg-blue-100 text-black rounded-br-md'
                                     : 'bg-green-100 text-black rounded-bl-md'
