@@ -449,6 +449,21 @@ export const externalAgents = pgTable('external_agents', {
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
+// Configuraciones de respuestas automáticas
+export const autoResponseConfigs = pgTable("auto_response_configs", {
+  id: serial("id").primaryKey(),
+  enabled: boolean("enabled").default(false),
+  greetingMessage: text("greeting_message").default("Hola, gracias por contactarnos. En breve le atenderemos."),
+  outOfHoursMessage: text("out_of_hours_message").default("Gracias por su mensaje. Nuestro horario de atención es de lunes a viernes de 9:00 a 18:00."),
+  businessHoursStart: text("business_hours_start").default("09:00:00"),
+  businessHoursEnd: text("business_hours_end").default("18:00:00"),
+  workingDays: text("working_days").default("1,2,3,4,5"),
+  settings: jsonb("settings"),
+  geminiApiKey: text("gemini_api_key"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 // Tabla para configuración de agentes externos
 export const externalAgentConfigs = pgTable('external_agent_configs', {
   id: serial('id').primaryKey(),
