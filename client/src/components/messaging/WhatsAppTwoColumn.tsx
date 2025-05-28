@@ -2098,52 +2098,7 @@ export function WhatsAppTwoColumn() {
                     />
                   </motion.div>
 
-                  {/* BOTÓN AUTO-CLICS AUTOMÁTICOS */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3, delay: 0.2 }}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <Button
-                        size="sm"
-                        variant={autoClickEnabled ? "default" : "outline"}
-                        className={`relative transition-all duration-300 ${
-                          autoClickEnabled 
-                            ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg" 
-                            : "border-purple-600 text-purple-600 hover:bg-purple-50"
-                        }`}
-                      onClick={() => {
-                        // FUNCIÓN DESACTIVADA - Usar el botón Auto-ON/OFF con validaciones
-                        console.log('⚠️ Función auto-click sin validaciones desactivada. Usar botón Auto-ON/OFF con validaciones.');
-                      }}
-                    >
-                      {autoClickEnabled ? (
-                        <div className="flex items-center">
-                          <Zap className="h-4 w-4 mr-2 animate-pulse" />
-                          Auto-ON
-                          <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center">
-                          <Play className="h-4 w-4 mr-2" />
-                          Auto-OFF
-                        </div>
-                      )}
-                    </Button>
-                    
-                    {/* Botón de Configuración de Auto-Click */}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-gray-400 text-gray-600 hover:bg-gray-50 p-2"
-                      onClick={() => setShowAutoClickConfig(true)}
-                      title="Configurar tiempos de auto-click"
-                    >
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                    </div>
-                  </motion.div>
+
 
 
 
