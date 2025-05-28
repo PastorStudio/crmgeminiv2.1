@@ -98,20 +98,42 @@ async function processNewMessage(messageText: string, config: PureAutoConfig) {
  */
 async function sendResponseToChat(responseText: string, config: PureAutoConfig) {
   try {
-    console.log('📤 Enviando respuesta al chat...');
+    console.log('📤 Enviando respuesta al chat usando endpoint real...');
 
-    const response = await fetch(`/api/whatsapp-accounts/${config.accountId}/chats/${config.chatId}/send`, {
+    // Usar el endpoint correcto que realmente envía mensajes a WhatsApp
+    const response = await fetch('/api/whatsapp/send-message', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: responseText
+        chatId: config.chatId,
+        accountId: config.accountId,
+        message: responseText,
+        automated: true
       })
     });
 
     if (response.ok) {
-      console.log('✅ Respuesta enviada exitosamente al chat');
+      console.log('✅ Respuesta enviada exitosamente al chat real');
     } else {
-      console.log('❌ Error enviando respuesta al chat');
+      const errorText = await response.text();
+      console.log('❌ Error enviando respuesta al chat:', errorText);
+      
+      // Intentar endpoint alternativo si el primero falla
+      console.log('🔄 Intentando endpoint alternativo...');
+      const altResponse = await fetch(`/api/whatsapp-accounts/${config.accountId}/send-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: config.chatId,
+          message: responseText
+        })
+      });
+      
+      if (altResponse.ok) {
+        console.log('✅ Respuesta enviada con endpoint alternativo');
+      } else {
+        console.log('❌ Error en ambos endpoints:', await altResponse.text());
+      }
     }
 
   } catch (error) {
