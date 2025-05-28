@@ -304,8 +304,18 @@ export function WhatsAppTwoColumn() {
       console.log('🔄 Ejecutando auto-clic simplificado...');
       
       // Solo verificar que hay un chat seleccionado y SmartBots habilitado
+      console.log('🔍 DEBUG Auto-click:', {
+        selectedChat: selectedChat ? selectedChat.id : 'NULL',
+        smartBotsEnabled,
+        autoClickEnabled
+      });
+      
       if (!selectedChat || !smartBotsEnabled) {
-        console.log('⚠️ No hay chat seleccionado o SmartBots deshabilitado');
+        console.log('⚠️ No hay chat seleccionado o SmartBots deshabilitado', {
+          hasSelectedChat: !!selectedChat,
+          smartBotsEnabled,
+          chatId: selectedChat?.id || 'none'
+        });
         return;
       }
 
