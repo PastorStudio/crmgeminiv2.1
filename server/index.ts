@@ -1181,6 +1181,26 @@ app.use((req, res, next) => {
 
   // Sistema limpio sin respuestas automáticas
   console.log("✅ Sistema inicializado correctamente sin respuestas automáticas");
+
+  // Inicializar servicio automático de agentes externos
+  try {
+    console.log("🤖 Iniciando sistema automático de agentes externos...");
+    const { AutoExternalAgentService } = await import('./services/autoExternalAgentService');
+    const autoAgentService = AutoExternalAgentService.getInstance();
+
+    // Iniciar monitoreo automático para cuentas activas
+    const accountsResult = await pool.query('SELECT id FROM whatsapp_accounts WHERE auto_response_enabled = true');
+    for (const account of accountsResult.rows) {
+      autoAgentService.startAutoMonitoring(account.id);
+      console.log(`🤖 Monitoreo automático iniciado para cuenta ${account.id}`);
+    }
+
+    // Limpiar cache de mensajes procesados
+    autoAgentService.cleanupProcessedMessages();
+    console.log("✅ Sistema automático de agentes externos iniciado exitosamente");
+  } catch (error) {
+    console.error("❌ Error al iniciar sistema automático de agentes externos:", error);
+  }
   
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
   app.get('/api/system/users', async (req, res) => {
@@ -3191,6 +3211,34 @@ app.use((req, res, next) => {
         success: false,
         error: 'Error interno del servidor'
       });
+    }
+  });
+
+  // Endpoint para obtener respuestas automáticas generadas
+  app.get("/api/auto-responses/:accountId/:chatId", async (req: Request, res: Response) => {
+    try {
+      const { accountId, chatId } = req.params;
+      
+      const result = await pool.query(`
+        SELECT response, created_at 
+        FROM auto_responses 
+        WHERE account_id = $1 AND chat_id = $2 
+        ORDER BY created_at DESC 
+        LIMIT 1
+      `, [accountId, chatId]);
+
+      if (result.rows.length === 0) {
+        return res.json({ success: false, response: null });
+      }
+
+      res.json({ 
+        success: true, 
+        response: result.rows[0].response,
+        createdAt: result.rows[0].created_at
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo respuesta automática:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
     }
   });
 
