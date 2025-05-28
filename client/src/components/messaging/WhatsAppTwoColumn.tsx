@@ -296,46 +296,29 @@ export function WhatsAppTwoColumn() {
   const [autoClickTimers, setAutoClickTimers] = useState<{ ae: NodeJS.Timeout | null, send: NodeJS.Timeout | null }>({ ae: null, send: null });
 
   // Función DIRECTA: CLIC A.E → ESPERAR → CLIC ENVIAR
-  // REACTIVADO CON VALIDACIONES MEJORADAS
+  // VERSIÓN SIMPLIFICADA SIN VALIDACIONES RESTRICTIVAS
   const startAutoClicks = () => {
-    console.log('🚀 INICIANDO AUTO-CLIC CON VALIDACIONES MEJORADAS');
+    console.log('🚀 INICIANDO AUTO-CLIC SIMPLIFICADO');
     
     const timer = setInterval(() => {
-      console.log('🔄 Ejecutando ciclo de auto-clic con validaciones...');
+      console.log('🔄 Ejecutando auto-clic simplificado...');
       
-      // VALIDACIÓN 1: Verificar que hay un chat seleccionado
-      if (!selectedChat) {
-        console.log('⚠️ No hay chat seleccionado, saltando ciclo');
+      // Solo verificar que hay un chat seleccionado y SmartBots habilitado
+      if (!selectedChat || !smartBotsEnabled) {
+        console.log('⚠️ No hay chat seleccionado o SmartBots deshabilitado');
         return;
       }
 
-      // VALIDACIÓN 2: Verificar que SmartBots esté habilitado
-      if (!smartBotsEnabled) {
-        console.log('⚠️ SmartBots deshabilitado, saltando ciclo');
+      // Verificar si hay texto "ÚLTIMO RECIBIDO" en la página
+      const bodyText = document.body.innerText || '';
+      const hasLastReceived = bodyText.includes('ÚLTIMO RECIBIDO') || bodyText.includes('último recibido');
+      
+      if (!hasLastReceived) {
+        console.log('⚠️ No hay indicador "ÚLTIMO RECIBIDO" visible');
         return;
       }
-
-      // VALIDACIÓN 3: Verificar que hay mensajes y el último no es nuestro
-      const lastMessage = (messages as any[])?.slice(-1)[0];
-      if (!lastMessage || lastMessage.fromMe) {
-        console.log('⚠️ No hay mensajes nuevos o el último es nuestro, saltando ciclo');
-        return;
-      }
-
-      // VALIDACIÓN 4: Verificar timestamp para evitar procesar mensajes antiguos
-      const now = Date.now();
-      const messageTime = lastMessage.timestamp * 1000;
-      if (now - messageTime > 300000) { // Más de 5 minutos
-        console.log('⚠️ Mensaje muy antiguo, saltando ciclo');
-        return;
-      }
-
-      // VALIDACIÓN 5: Buscar indicador de "ÚLTIMO RECIBIDO"
-      const lastReceivedIndicators = document.querySelectorAll('[data-testid="last-received"], .último-recibido');
-      if (lastReceivedIndicators.length === 0) {
-        console.log('⚠️ No se encontró indicador de ÚLTIMO RECIBIDO, saltando ciclo');
-        return;
-      }
+      
+      console.log('✅ Condiciones cumplidas, ejecutando auto-click...');
       
       // BUSCAR Y HACER CLIC EN BOTÓN A.E
       const aeButtons = document.querySelectorAll('button');
@@ -343,40 +326,40 @@ export function WhatsAppTwoColumn() {
       
       aeButtons.forEach(button => {
         if (button.textContent?.includes('🤖 A.E') && !button.disabled) {
-          console.log('✅ Botón A.E encontrado y habilitado, haciendo clic...');
+          console.log('✅ Haciendo clic en botón A.E...');
           aeButtonFound = true;
           button.click();
           
-          // ESPERAR RESPUESTA Y BUSCAR BOTÓN ENVIAR
+          // ESPERAR Y BUSCAR BOTÓN ENVIAR
           setTimeout(() => {
             const sendButtons = document.querySelectorAll('button');
             let sendButtonFound = false;
             
             sendButtons.forEach(sendBtn => {
               if ((sendBtn.textContent?.includes('Enviar') || sendBtn.textContent?.includes('Send')) && !sendBtn.disabled) {
-                console.log('✅ Botón Enviar encontrado y habilitado, haciendo clic...');
+                console.log('✅ Haciendo clic en botón Enviar...');
                 sendButtonFound = true;
                 sendBtn.click();
               }
             });
             
             if (!sendButtonFound) {
-              console.log('❌ No se encontró botón Enviar habilitado');
+              console.log('❌ No se encontró botón Enviar');
             }
-          }, 3000); // Tiempo de espera aumentado
+          }, 2000); // Tiempo reducido
         }
       });
       
       if (!aeButtonFound) {
-        console.log('❌ No se encontró botón A.E habilitado');
+        console.log('❌ No se encontró botón A.E');
       }
       
-    }, 10000); // Intervalo aumentado a 10 segundos para ser menos agresivo
+    }, 8000); // Cada 8 segundos
 
     setAutoClickTimers({ ae: timer, send: null });
     setAutoClickEnabled(true);
     
-    console.log("✅ Auto-Clic mejorado activado con validaciones robustas");
+    console.log("✅ Auto-Clic simplificado activado");
     
     /*
     const timer = setInterval(() => {
