@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -2880,6 +2881,150 @@ export function WhatsAppTwoColumn() {
           chatName={selectedChat.name}
         />
       )}
+
+      {/* Diálogo de Configuración de Auto-Click */}
+      <AutoClickConfigDialog
+        open={showAutoClickConfig}
+        onOpenChange={setShowAutoClickConfig}
+        settings={autoClickSettings}
+        onSave={saveAutoClickSettings}
+      />
     </div>
+  );
+}
+
+// Componente del Diálogo de Configuración de Auto-Click
+function AutoClickConfigDialog({ 
+  open, 
+  onOpenChange, 
+  settings, 
+  onSave 
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  settings: {
+    aeWaitTime: number;
+    sendWaitTime: number;
+    enabled: boolean;
+  };
+  onSave: (newSettings: typeof settings) => void;
+}) {
+  const [tempSettings, setTempSettings] = useState(settings);
+
+  useEffect(() => {
+    setTempSettings(settings);
+  }, [settings]);
+
+  const handleSave = () => {
+    onSave(tempSettings);
+  };
+
+  const presets = [
+    { name: "Rápido", ae: 2000, send: 4000 },
+    { name: "Normal", ae: 4000, send: 8000 },
+    { name: "Lento", ae: 6000, send: 12000 },
+    { name: "Muy Lento", ae: 10000, send: 20000 }
+  ];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center space-x-2">
+            <Settings className="h-5 w-5" />
+            <span>Configuración de Auto-Click</span>
+          </DialogTitle>
+          <DialogDescription>
+            Personaliza los tiempos de espera para el sistema de auto-click automático
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          {/* Presets Rápidos */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">Presets Rápidos</label>
+            <div className="grid grid-cols-2 gap-2">
+              {presets.map((preset) => (
+                <Button
+                  key={preset.name}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTempSettings({
+                    ...tempSettings,
+                    aeWaitTime: preset.ae,
+                    sendWaitTime: preset.send
+                  })}
+                  className="text-xs"
+                >
+                  {preset.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tiempo de espera después del clic A.E */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">
+              Tiempo después del clic "🤖 A.E" (milisegundos)
+            </label>
+            <Input
+              type="number"
+              min="1000"
+              max="30000"
+              step="500"
+              value={tempSettings.aeWaitTime}
+              onChange={(e) => setTempSettings({
+                ...tempSettings,
+                aeWaitTime: parseInt(e.target.value) || 4000
+              })}
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Tiempo que espera para que se genere la respuesta del agente (1-30 segundos)
+            </p>
+          </div>
+
+          {/* Intervalo entre ciclos */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">
+              Intervalo entre ciclos automáticos (milisegundos)
+            </label>
+            <Input
+              type="number"
+              min="2000"
+              max="60000"
+              step="1000"
+              value={tempSettings.sendWaitTime}
+              onChange={(e) => setTempSettings({
+                ...tempSettings,
+                sendWaitTime: parseInt(e.target.value) || 8000
+              })}
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Tiempo entre cada ejecución del auto-click (2-60 segundos)
+            </p>
+          </div>
+
+          {/* Vista previa de tiempos */}
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <h4 className="text-sm font-medium text-blue-900 mb-2">Vista Previa:</h4>
+            <div className="text-xs text-blue-700 space-y-1">
+              <div>• Clic en "🤖 A.E" → Esperar {tempSettings.aeWaitTime / 1000}s → Clic en "Enviar"</div>
+              <div>• Repetir cada {tempSettings.sendWaitTime / 1000} segundos</div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSave} className="bg-purple-600 hover:bg-purple-700">
+            Guardar Configuración
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
