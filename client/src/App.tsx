@@ -17,7 +17,7 @@ import MessageTemplates from './pages/MessageTemplates';
 import MassSender from './pages/MassSender';
 import NotFound from './pages/not-found';
 import Integrations from './pages/Integrations';
-
+import AutoResponseSettings from './pages/AutoResponseSettings';
 import Connection from './pages/Connection';
 import QRCode from './pages/QRCode';
 import QrViewer from './pages/QrViewer';
@@ -199,7 +199,15 @@ const AppRoutes: React.FC = () => {
                 Envío Masivo
               </a>
               
-
+              <a href="/auto-response-settings" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/auto-response-settings' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="8" width="18" height="8" rx="4" fill="#06B6D4"/>
+                  <circle cx="8" cy="12" r="2" fill="white"/>
+                  <circle cx="16" cy="12" r="2" fill="white"/>
+                  <path d="M10 10l4 4M14 10l-4 4" stroke="#06B6D4" strokeWidth="1.5"/>
+                </svg>
+                Respuestas Auto
+              </a>
 
               <a href="/external-agents" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/external-agents' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -510,7 +518,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/message-templates" component={() => <PrivateRoute component={MessageTemplates} path="/message-templates" />} />
                 <Route path="/mass-sender" component={() => <PrivateRoute component={MassSender} path="/mass-sender" />} />
                 <Route path="/integrations" component={() => <PrivateRoute component={Integrations} path="/integrations" />} />
-
+                <Route path="/auto-response-settings" component={() => <PrivateRoute component={AutoResponseSettings} path="/auto-response-settings" />} />
                 <Route path="/external-agents" component={() => <PrivateRoute component={ExternalAgents} path="/external-agents" />} />
                 <Route path="/internal-agents" component={() => <PrivateRoute component={InternalAgents} path="/internal-agents" />} />
                 <Route path="/agent-analysis" component={() => <PrivateRoute component={AgentAnalysis} path="/agent-analysis" />} />
