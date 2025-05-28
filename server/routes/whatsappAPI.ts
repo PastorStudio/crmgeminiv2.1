@@ -288,17 +288,78 @@ export async function getAutoResponseConfig(req: Request, res: Response) {
   }
 }
 
-// Update auto-response configuration
+// Update auto-response configuration - AHORA CON GUARDADO REAL
 export async function updateAutoResponseConfig(req: Request, res: Response) {
   try {
-    const config = req.body;
-    console.log('⚙️ Actualizando configuración de respuestas automáticas');
+    console.log('💾 [WHATSAPP_API] Guardando configuración:', req.body);
     
-    // Here you would normally update the database
-    // For now, just return success
-    res.json({ success: true, message: 'Configuration updated successfully' });
+    const { pool } = await import('../db');
+    
+    // Verificar si existe configuración
+    const checkResult = await pool.query("SELECT id FROM auto_response_configs LIMIT 1");
+    
+    const values = [
+      req.body.enabled || false,
+      req.body.greetingMessage || "Hola, gracias por contactarnos. En breve le atenderemos.",
+      req.body.outOfHoursMessage || "Gracias por su mensaje. Nuestro horario de atención es de lunes a viernes de 9:00 a 18:00.",
+      req.body.businessHoursStart || "09:00:00",
+      req.body.businessHoursEnd || "18:00:00",
+      req.body.workingDays || "1,2,3,4,5",
+      JSON.stringify(req.body.settings || {}),
+      req.body.geminiApiKey || null
+    ];
+
+    let result;
+    if (checkResult.rows.length > 0) {
+      // Actualizar
+      result = await pool.query(`
+        UPDATE auto_response_configs SET
+          enabled = $1,
+          greeting_message = $2,
+          out_of_hours_message = $3,
+          business_hours_start = $4,
+          business_hours_end = $5,
+          working_days = $6,
+          settings = $7,
+          gemini_api_key = $8,
+          updated_at = NOW()
+        WHERE id = $9
+        RETURNING *
+      `, [...values, checkResult.rows[0].id]);
+    } else {
+      // Crear
+      result = await pool.query(`
+        INSERT INTO auto_response_configs (
+          enabled,
+          greeting_message,
+          out_of_hours_message,
+          business_hours_start,
+          business_hours_end,
+          working_days,
+          settings,
+          gemini_api_key,
+          created_at,
+          updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        RETURNING *
+      `, values);
+    }
+
+    console.log('✅ [WHATSAPP_API] Configuración guardada exitosamente:', result.rows[0]);
+    
+    res.setHeader('Content-Type', 'application/json');
+    res.status(200).json({
+      success: true,
+      message: 'Configuration updated successfully',
+      config: result.rows[0]
+    });
+    
   } catch (error) {
-    console.error('Error updating auto-response config:', error);
-    res.status(500).json({ error: 'Failed to update auto-response config' });
+    console.error('❌ [WHATSAPP_API] Error updating auto-response config:', error);
+    res.setHeader('Content-Type', 'application/json');
+    res.status(500).json({ 
+      success: false,
+      error: `Failed to update auto-response config: ${error.message}` 
+    });
   }
 }
