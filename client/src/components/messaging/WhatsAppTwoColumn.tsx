@@ -1828,6 +1828,14 @@ export function WhatsAppTwoColumn() {
               onAccountsChange={handleAccountsChange}
               onAccountClick={handleAccountClick}
             />
+            
+            {/* Respuestas Automáticas Toggle */}
+            {selectedAccounts.length === 1 && (
+              <AutoResponseToggle 
+                accountId={selectedAccounts[0]} 
+                agentName="Smart Assistant"
+              />
+            )}
           </div>
         </div>
 
