@@ -16,6 +16,7 @@ import { internalAgentManager } from "./services/internalAgentManager";
 import { agentActivityTracker } from "./services/agentActivityTracker";
 import { agentRoleManager } from "./services/agentRoleManager";
 import { simpleLiveStatus } from "./services/simpleLiveStatus";
+import { WhatsAppSyncManager } from "./utils/whatsappSync";
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -1413,6 +1414,29 @@ app.use((req, res, next) => {
     } catch (error) {
       console.error('Error al asignar agente:', error);
       res.status(500).json({ error: 'Error al asignar agente' });
+    }
+  });
+
+  // ===== ENDPOINTS DE SINCRONIZACIÓN DE WHATSAPP =====
+  
+  // Limpiar caché y obtener datos frescos
+  app.post('/api/whatsapp/refresh-data', async (req: Request, res: Response) => {
+    try {
+      console.log('🔄 Limpiando caché y sincronizando datos frescos de WhatsApp...');
+      
+      // Limpiar todo el caché
+      WhatsAppSyncManager.clearAllCache();
+      
+      res.json({
+        success: true,
+        message: 'Caché limpiado - Los próximos datos serán frescos'
+      });
+    } catch (error) {
+      console.error('❌ Error refrescando datos:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Error refrescando datos de WhatsApp' 
+      });
     }
   });
 

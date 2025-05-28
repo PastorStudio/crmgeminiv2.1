@@ -42,7 +42,8 @@ import {
   Zap,
   Ticket,
   Bot,
-  Play
+  Play,
+  RefreshCw
 } from 'lucide-react';
 
 // Import components
@@ -2202,6 +2203,36 @@ export function WhatsAppTwoColumn() {
                   
 
                   
+                  {/* Refresh WhatsApp Data Button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        console.log('🔄 Actualizando datos de WhatsApp...');
+                        
+                        const response = await fetch('/api/whatsapp/refresh-data', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' }
+                        });
+                        
+                        if (response.ok) {
+                          console.log('✅ Datos de WhatsApp actualizados');
+                          // Recargar la página para obtener datos frescos
+                          window.location.reload();
+                        } else {
+                          console.error('❌ Error actualizando datos');
+                        }
+                      } catch (error) {
+                        console.error('❌ Error:', error);
+                      }
+                    }}
+                    className="text-blue-500 hover:text-blue-700"
+                    title="Actualizar datos de WhatsApp"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+
                   {/* Profile Button */}
                   <Button
                     variant="ghost"
