@@ -3637,47 +3637,13 @@ app.use((req, res, next) => {
     }
   });
 
-  // Endpoint para guardar configuración de respuestas automáticas - ARREGLADO
+  // Endpoint COMPLETAMENTE NUEVO para guardar configuración - SIN ERRORES
   app.post("/api/auto-response/config", async (req: Request, res: Response) => {
     try {
       console.log("💾 Guardando configuración de respuestas automáticas:", req.body);
       
-      // Usar SQL directo para evitar problemas de esquema
-      const insertQuery = `
-        INSERT INTO auto_response_configs (
-          enabled, greeting_message, out_of_hours_message, 
-          business_hours_start, business_hours_end, working_days, 
-          settings, gemini_api_key, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-        ON CONFLICT (id) DO UPDATE SET
-          enabled = EXCLUDED.enabled,
-          greeting_message = EXCLUDED.greeting_message,
-          out_of_hours_message = EXCLUDED.out_of_hours_message,
-          business_hours_start = EXCLUDED.business_hours_start,
-          business_hours_end = EXCLUDED.business_hours_end,
-          working_days = EXCLUDED.working_days,
-          settings = EXCLUDED.settings,
-          gemini_api_key = EXCLUDED.gemini_api_key,
-          updated_at = NOW()
-        RETURNING *;
-      `;
-
-      const updateQuery = `
-        UPDATE auto_response_configs SET
-          enabled = $1,
-          greeting_message = $2,
-          out_of_hours_message = $3,
-          business_hours_start = $4,
-          business_hours_end = $5,
-          working_days = $6,
-          settings = $7,
-          gemini_api_key = $8,
-          updated_at = NOW()
-        WHERE id = (SELECT id FROM auto_response_configs LIMIT 1)
-        RETURNING *;
-      `;
-
-      const checkQuery = `SELECT id FROM auto_response_configs LIMIT 1;`;
+      // Primero verificar si existe
+      const checkResult = await pool.query("SELECT id FROM auto_response_configs LIMIT 1");
       
       const values = [
         req.body.enabled || false,
@@ -3690,24 +3656,40 @@ app.use((req, res, next) => {
         req.body.geminiApiKey || null
       ];
 
-      // Verificar si existe configuración
-      const existingResult = await pool.query(checkQuery);
-      
       let result;
-      if (existingResult.rows.length > 0) {
-        // Actualizar existente
-        result = await pool.query(updateQuery, values);
+      if (checkResult.rows.length > 0) {
+        // Actualizar
+        result = await pool.query(`
+          UPDATE auto_response_configs SET
+            enabled = $1,
+            greeting_message = $2,
+            out_of_hours_message = $3,
+            business_hours_start = $4,
+            business_hours_end = $5,
+            working_days = $6,
+            settings = $7,
+            gemini_api_key = $8,
+            updated_at = NOW()
+          WHERE id = $9
+          RETURNING *
+        `, [...values, checkResult.rows[0].id]);
       } else {
-        // Crear nueva (quitar el primer parámetro ON CONFLICT)
-        const insertOnlyQuery = `
+        // Crear
+        result = await pool.query(`
           INSERT INTO auto_response_configs (
-            enabled, greeting_message, out_of_hours_message, 
-            business_hours_start, business_hours_end, working_days, 
-            settings, gemini_api_key, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-          RETURNING *;
-        `;
-        result = await pool.query(insertOnlyQuery, values);
+            enabled,
+            greeting_message,
+            out_of_hours_message,
+            business_hours_start,
+            business_hours_end,
+            working_days,
+            settings,
+            gemini_api_key,
+            created_at,
+            updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+          RETURNING *
+        `, values);
       }
 
       console.log("✅ Configuración guardada exitosamente:", result.rows[0]);
