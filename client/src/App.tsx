@@ -18,6 +18,7 @@ import MassSender from './pages/MassSender';
 import NotFound from './pages/not-found';
 import Integrations from './pages/Integrations';
 import AutoResponseSettings from './pages/AutoResponseSettings';
+import AutoResponseSettingsFixed from './pages/AutoResponseSettingsFixed';
 import Connection from './pages/Connection';
 import QRCode from './pages/QRCode';
 import QrViewer from './pages/QrViewer';

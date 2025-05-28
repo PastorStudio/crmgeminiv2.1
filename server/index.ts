@@ -3593,6 +3593,105 @@ app.use((req, res, next) => {
     }
   });
 
+  // Endpoint para obtener configuración de respuestas automáticas
+  app.get("/api/auto-response/config", async (req: Request, res: Response) => {
+    try {
+      console.log("⚙️ Obteniendo configuración de respuestas automáticas");
+      
+      // Buscar configuración existente en la base de datos
+      const [existingConfig] = await db
+        .select()
+        .from(autoResponseConfigs)
+        .limit(1);
+
+      if (existingConfig) {
+        console.log("✅ Configuración encontrada:", existingConfig);
+        res.json(existingConfig);
+      } else {
+        // Crear configuración por defecto
+        const defaultConfig = {
+          enabled: false,
+          greetingMessage: "Hola, gracias por contactarnos. En breve le atenderemos.",
+          outOfHoursMessage: "Gracias por su mensaje. Nuestro horario de atención es de lunes a viernes de 9:00 a 18:00. Le responderemos en cuanto estemos disponibles.",
+          businessHoursStart: "09:00:00",
+          businessHoursEnd: "18:00:00",
+          workingDays: "1,2,3,4,5",
+          settings: {},
+          geminiApiKey: null
+        };
+
+        const [newConfig] = await db
+          .insert(autoResponseConfigs)
+          .values(defaultConfig)
+          .returning();
+
+        console.log("✅ Configuración por defecto creada:", newConfig);
+        res.json(newConfig);
+      }
+    } catch (error) {
+      console.error("❌ Error obteniendo configuración:", error);
+      res.status(500).json({
+        success: false,
+        error: "Error interno del servidor"
+      });
+    }
+  });
+
+  // Endpoint para guardar configuración de respuestas automáticas
+  app.post("/api/auto-response/config", async (req: Request, res: Response) => {
+    try {
+      console.log("💾 Guardando configuración de respuestas automáticas:", req.body);
+      
+      const configData = {
+        enabled: req.body.enabled || false,
+        greetingMessage: req.body.greetingMessage || "Hola, gracias por contactarnos. En breve le atenderemos.",
+        outOfHoursMessage: req.body.outOfHoursMessage || "Gracias por su mensaje. Nuestro horario de atención es de lunes a viernes de 9:00 a 18:00.",
+        businessHoursStart: req.body.businessHoursStart || "09:00:00",
+        businessHoursEnd: req.body.businessHoursEnd || "18:00:00", 
+        workingDays: req.body.workingDays || "1,2,3,4,5",
+        settings: req.body.settings || {},
+        geminiApiKey: req.body.geminiApiKey || null,
+        updatedAt: new Date()
+      };
+
+      // Buscar si existe una configuración
+      const [existingConfig] = await db
+        .select()
+        .from(autoResponseConfigs)
+        .limit(1);
+
+      let savedConfig;
+      if (existingConfig) {
+        // Actualizar configuración existente
+        [savedConfig] = await db
+          .update(autoResponseConfigs)
+          .set(configData)
+          .where(eq(autoResponseConfigs.id, existingConfig.id))
+          .returning();
+      } else {
+        // Crear nueva configuración
+        [savedConfig] = await db
+          .insert(autoResponseConfigs)
+          .values(configData)
+          .returning();
+      }
+
+      console.log("✅ Configuración guardada exitosamente:", savedConfig);
+      
+      res.json({
+        success: true,
+        message: "Configuración guardada exitosamente",
+        config: savedConfig
+      });
+    } catch (error) {
+      console.error("❌ Error guardando configuración:", error);
+      res.status(500).json({
+        success: false,
+        error: "Error interno del servidor"
+      });
+    }
+  });
+
   // 🤖 NUEVAS RUTAS PARA RESPUESTAS AUTOMÁTICAS REALES
   
   // Activar respuestas automáticas para una cuenta
