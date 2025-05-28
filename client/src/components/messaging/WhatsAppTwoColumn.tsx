@@ -516,7 +516,7 @@ export function WhatsAppTwoColumn() {
             } else {
               console.log('❌ No se encontró botón Enviar con ningún método');
             }
-          }, autoClickSettings.aeWaitTime); // Tiempo configurable para que se genere la respuesta
+          }, 3000); // Tiempo configurable para que se genere la respuesta
         }
       });
       
@@ -525,8 +525,6 @@ export function WhatsAppTwoColumn() {
       }
       
     }, 8000);
-    
-    return () => clearInterval(timer);
   };
 
   // Función para detener auto-clics
@@ -580,7 +578,7 @@ export function WhatsAppTwoColumn() {
         console.log('❌ No se encontró botón A.E');
       }
       
-    }, 8000); // Intervalo configurable entre ciclos
+    }, 8000);
     
     console.log("✅ Auto-Clic configurado y activado");
   };
@@ -592,13 +590,7 @@ export function WhatsAppTwoColumn() {
 
   // Función para configurar auto-click
   const configureAutoClick = () => {
-    if (autoClickEnabled) {
-      console.log('⏹️ Deteniendo auto-clic...');
-      stopAutoClicks();
-    } else {
-      console.log('▶️ Iniciando auto-clic...');
-      startAutoClicks();
-    }
+    console.log('🔧 Configurando auto-click...');
   };
 
   // Función para guardar configuración de auto-click
