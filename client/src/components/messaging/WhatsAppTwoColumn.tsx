@@ -159,13 +159,9 @@ function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accoun
   // Debug para verificar qué está recibiendo
   console.log('🎫 Debug Badge Category - chatId:', chatId, 'data:', category, 'error:', error);
 
+  // Solo mostrar si hay un ticket real (no mostrar "Sin ticket")
   if (!category) {
-    return (
-      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-        <Ticket className="h-3 w-3 mr-1" />
-        Sin ticket
-      </Badge>
-    );
+    return null;
   }
 
   const getTicketColor = (status: string) => {
@@ -214,12 +210,9 @@ function ChatCommentsIndicator({ chatId }: { chatId: string }) {
     enabled: !!chatId
   });
 
+  // Solo mostrar si hay comentarios
   if (!comments || comments.length === 0) {
-    return (
-      <div className="flex items-center">
-        <MessageSquareMore className="h-4 w-4 text-gray-400" />
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -2334,7 +2327,7 @@ export function WhatsAppTwoColumn() {
                         transition={{ duration: 0.3 }}
                         className={`flex ${message.fromMe ? 'justify-end pt-[-34px] pb-[-34px] mt-[6px] mb-[6px] ml-[-4px] mr-[-4px] pl-[-20px] pr-[-20px] text-[14px]' : 'justify-start pt-[-34px] pb-[-34px] mt-[6px] mb-[6px] ml-[-4px] mr-[-4px] pl-[-20px] pr-[-20px] text-[14px]'}`}
                       >
-                        <div className={`flex space-x-2 max-w-[70%] ${message.fromMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                        <div className={`flex space-x-2 max-w-[80%] ${message.fromMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
                           {showAvatar && isFirstFromAuthor && (
                             <Avatar className="h-8 w-8 mt-1">
                               <AvatarImage src={message.authorProfilePic} />
