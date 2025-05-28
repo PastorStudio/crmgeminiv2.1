@@ -3593,6 +3593,32 @@ app.use((req, res, next) => {
     }
   });
 
+  // Obtener información específica de una cuenta de WhatsApp
+  app.get("/api/whatsapp-accounts/:accountId", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      
+      const [account] = await db.select()
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.id, accountId));
+
+      if (!account) {
+        return res.status(404).json({
+          success: false,
+          error: "Cuenta no encontrada"
+        });
+      }
+
+      res.json(account);
+    } catch (error) {
+      console.error("❌ Error obteniendo cuenta:", error);
+      res.status(500).json({
+        success: false,
+        error: "Error interno del servidor"
+      });
+    }
+  });
+
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
