@@ -1845,8 +1845,16 @@ export function WhatsAppTwoColumn() {
                       accountId={selectedChat.accountId}
                       onAgentChange={(agentId) => {
                         console.log('🤖 Agente seleccionado:', agentId);
-                        // Actualizar el estado local si es necesario
+                        // Actualizar ambos estados para activar respuestas automáticas
                         setExternalAgentActive(!!agentId);
+                        setSmartBotsEnabled(!!agentId); // ✅ CRUCIAL: Activar SmartBots cuando hay agente
+                        setSelectedExternalAgent(agentId || '');
+                        
+                        console.log('✅ Estados actualizados:', {
+                          agentId,
+                          smartBotsEnabled: !!agentId,
+                          externalAgentActive: !!agentId
+                        });
                       }}
                     />
                   </motion.div>
