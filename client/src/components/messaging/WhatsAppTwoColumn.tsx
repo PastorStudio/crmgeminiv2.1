@@ -421,7 +421,15 @@ export function WhatsAppTwoColumn() {
             <AccountSelector
               accounts={accounts}
               selectedAccounts={selectedAccounts}
-              onSelectionChange={setSelectedAccounts}
+              onAccountsChange={setSelectedAccounts}
+              onAccountClick={(accountId) => {
+                // Toggle account selection
+                if (selectedAccounts.includes(accountId)) {
+                  setSelectedAccounts(selectedAccounts.filter(id => id !== accountId));
+                } else {
+                  setSelectedAccounts([...selectedAccounts, accountId]);
+                }
+              }}
             />
             
             {/* Search */}
