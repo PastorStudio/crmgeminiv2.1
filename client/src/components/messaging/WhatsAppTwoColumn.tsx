@@ -525,8 +525,8 @@ export function WhatsAppTwoColumn() {
       }
       
     }, 8000);
-
-    console.log("✅ Auto-Clic simplificado activado");
+    
+    console.log("✅ Auto-click configurado");
   };
 
   // Función para detener auto-clics
