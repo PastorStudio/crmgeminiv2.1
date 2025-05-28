@@ -3599,13 +3599,16 @@ app.use((req, res, next) => {
     }
   });
 
-  // Endpoint COMPLETAMENTE NUEVO para guardar configuración - SIN ERRORES
+  // Endpoint COMPLETAMENTE NUEVO para guardar configuración - CON LOGGING DETALLADO
   app.post("/api/auto-response/config", async (req: Request, res: Response) => {
     try {
-      console.log("💾 Guardando configuración de respuestas automáticas:", req.body);
+      console.log("💾 [INICIO] Guardando configuración:", req.body);
+      console.log("💾 [HEADERS] Content-Type:", req.headers['content-type']);
       
-      // Primero verificar si existe
+      // Verificar que tenemos una conexión válida
+      console.log("💾 [DB] Verificando conexión a base de datos...");
       const checkResult = await pool.query("SELECT id FROM auto_response_configs LIMIT 1");
+      console.log("💾 [DB] Registros existentes:", checkResult.rows.length);
       
       const values = [
         req.body.enabled || false,
@@ -3617,10 +3620,12 @@ app.use((req, res, next) => {
         JSON.stringify(req.body.settings || {}),
         req.body.geminiApiKey || null
       ];
+      
+      console.log("💾 [VALORES] Datos preparados:", values);
 
       let result;
       if (checkResult.rows.length > 0) {
-        // Actualizar
+        console.log("💾 [UPDATE] Actualizando configuración existente...");
         result = await pool.query(`
           UPDATE auto_response_configs SET
             enabled = $1,
@@ -3636,7 +3641,7 @@ app.use((req, res, next) => {
           RETURNING *
         `, [...values, checkResult.rows[0].id]);
       } else {
-        // Crear
+        console.log("💾 [INSERT] Creando nueva configuración...");
         result = await pool.query(`
           INSERT INTO auto_response_configs (
             enabled,
@@ -3654,19 +3659,31 @@ app.use((req, res, next) => {
         `, values);
       }
 
-      console.log("✅ Configuración guardada exitosamente:", result.rows[0]);
+      console.log("💾 [RESULTADO] Query ejecutada, filas afectadas:", result.rows.length);
+      console.log("💾 [DATOS] Configuración guardada:", result.rows[0]);
       
-      res.json({
+      const response = {
         success: true,
         message: "Configuración guardada exitosamente",
         config: result.rows[0]
-      });
+      };
+      
+      console.log("💾 [RESPONSE] Enviando respuesta JSON:", response);
+      res.setHeader('Content-Type', 'application/json');
+      res.status(200).json(response);
+      
     } catch (error) {
-      console.error("❌ Error guardando configuración:", error);
-      res.status(500).json({
+      console.error("❌ [ERROR] Error completo:", error);
+      console.error("❌ [ERROR] Stack trace:", error.stack);
+      
+      const errorResponse = {
         success: false,
         error: `Error al guardar configuración: ${error.message}`
-      });
+      };
+      
+      console.log("❌ [ERROR_RESPONSE] Enviando error JSON:", errorResponse);
+      res.setHeader('Content-Type', 'application/json');
+      res.status(500).json(errorResponse);
     }
   });
 
