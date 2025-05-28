@@ -49,6 +49,7 @@ import {
 // Import components
 import { AccountSelector } from './AccountSelector';
 import ChatAssignmentDialog from './ChatAssignmentDialog';
+import { AutoResponseToggle } from './AutoResponseToggle';
 import { ChatCommentsDialog } from './ChatCommentsDialog';
 import { ExternalAgentButton } from './ExternalAgentButton';
 import { AgentSelector } from './AgentSelector';

@@ -17,6 +17,7 @@ import { agentActivityTracker } from "./services/agentActivityTracker";
 import { agentRoleManager } from "./services/agentRoleManager";
 import { simpleLiveStatus } from "./services/simpleLiveStatus";
 import { WhatsAppSyncManager } from "./utils/whatsappSync";
+import { realAutoResponseManager } from "./services/realAutoResponse";
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -3509,6 +3510,88 @@ app.use((req, res, next) => {
   } else {
     serveStatic(app);
   }
+
+  // 🤖 NUEVAS RUTAS PARA RESPUESTAS AUTOMÁTICAS REALES
+  
+  // Activar respuestas automáticas para una cuenta
+  app.post("/api/auto-response/activate/:accountId", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { agentName = "Smart Assistant" } = req.body;
+
+      console.log(`🚀 Activando respuestas automáticas para cuenta ${accountId}`);
+
+      const success = realAutoResponseManager.activateAutoResponse(accountId, agentName);
+
+      if (success) {
+        res.json({
+          success: true,
+          message: `Respuestas automáticas activadas para cuenta ${accountId}`,
+          accountId,
+          agentName
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: "No se pudo activar las respuestas automáticas"
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error activando respuestas automáticas:", error);
+      res.status(500).json({
+        success: false,
+        error: "Error interno del servidor"
+      });
+    }
+  });
+
+  // Desactivar respuestas automáticas para una cuenta
+  app.post("/api/auto-response/deactivate/:accountId", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+
+      console.log(`🛑 Desactivando respuestas automáticas para cuenta ${accountId}`);
+
+      const success = realAutoResponseManager.deactivateAutoResponse(accountId);
+
+      if (success) {
+        res.json({
+          success: true,
+          message: `Respuestas automáticas desactivadas para cuenta ${accountId}`,
+          accountId
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: "No se pudo desactivar las respuestas automáticas"
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error desactivando respuestas automáticas:", error);
+      res.status(500).json({
+        success: false,
+        error: "Error interno del servidor"
+      });
+    }
+  });
+
+  // Obtener estado de respuestas automáticas
+  app.get("/api/auto-response/status", async (req: Request, res: Response) => {
+    try {
+      const status = realAutoResponseManager.getStatus();
+
+      res.json({
+        success: true,
+        ...status
+      });
+    } catch (error) {
+      console.error("❌ Error obteniendo estado:", error);
+      res.status(500).json({
+        success: false,
+        error: "Error interno del servidor"
+      });
+    }
+  });
 
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client.
