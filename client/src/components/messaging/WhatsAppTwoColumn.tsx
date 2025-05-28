@@ -2200,7 +2200,7 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
                   
-                  {/* Auto-Click Button */}
+                  {/* Smart Auto-Response Button */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -2214,20 +2214,45 @@ export function WhatsAppTwoColumn() {
                         if (!selectedChat) return;
                         
                         if (autoClickActive) {
-                          // Desactivar auto-clic CON VALIDACIONES
-                          console.log('🛑 Desactivando auto-clic con validaciones...');
+                          // Desactivar sistema de auto-respuesta inteligente
+                          console.log('🛑 Desactivando sistema de auto-respuesta inteligente...');
                           if (autoClickStopFunction) {
                             autoClickStopFunction();
                             setAutoClickStopFunction(null);
                           }
                           setAutoClickActive(false);
                         } else {
-                          // Activar auto-clic CON VALIDACIONES (timestamp + mensaje)
-                          console.log('🚀 Activando auto-clic con validaciones de timestamp y mensaje...');
-                          const { startAutoClickFunction } = await import('@/lib/directAutoResponse');
-                          const stopFunction = startAutoClickFunction(selectedChat.accountId);
+                          // Verificar que hay un agente asignado
+                          const configResponse = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/agent-config`);
+                          const configResult = await configResponse.json();
+                          
+                          if (!configResult.success || !configResult.config?.assignedExternalAgentId) {
+                            toast({
+                              title: "⚠️ Sin Agente Asignado",
+                              description: "Primero asigna un agente externo en el selector arriba",
+                              variant: "destructive"
+                            });
+                            return;
+                          }
+
+                          // Activar sistema de auto-respuesta inteligente
+                          console.log('🚀 Activando sistema de auto-respuesta inteligente...');
+                          const { startSmartAutoResponse } = await import('@/lib/smartAutoResponse');
+                          
+                          const config = {
+                            accountId: selectedChat.accountId,
+                            chatId: selectedChat.id,
+                            assignedAgentId: configResult.config.assignedExternalAgentId
+                          };
+                          
+                          const stopFunction = startSmartAutoResponse(config);
                           setAutoClickStopFunction(() => stopFunction);
                           setAutoClickActive(true);
+
+                          toast({
+                            title: "✅ Auto-Respuesta Activada",
+                            description: "El sistema generará respuestas automáticas para mensajes nuevos",
+                          });
                         }
                       }}
                     >
@@ -2235,10 +2260,6 @@ export function WhatsAppTwoColumn() {
                       {autoClickActive ? 'Auto-OFF' : 'Auto-ON'}
                       {autoClickActive && (
                         <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
-                      )}
-                      {/* Tooltip indicando que usa validaciones */}
-                      {!autoClickActive && (
-                        <span className="sr-only">Auto-click con validación de timestamp y mensaje</span>
                       )}
                     </Button>
                   </motion.div>
