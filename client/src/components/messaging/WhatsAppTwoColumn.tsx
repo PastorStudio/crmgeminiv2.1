@@ -40,7 +40,8 @@ import {
   Loader2,
   Zap,
   Ticket,
-  Bot
+  Bot,
+  Play
 } from 'lucide-react';
 
 // Import components
@@ -287,6 +288,79 @@ export function WhatsAppTwoColumn() {
   // Estados para R.A. AI
   const [raAiEnabled, setRaAiEnabled] = useState(false);
   const [raAiProcessing, setRaAiProcessing] = useState(false);
+  
+  // Estados para auto-clics
+  const [autoClickEnabled, setAutoClickEnabled] = useState(false);
+  const [autoClickTimers, setAutoClickTimers] = useState<{ ae: NodeJS.Timeout | null, send: NodeJS.Timeout | null }>({ ae: null, send: null });
+
+  // Función para auto-clic en botón A.E cada 1 segundo
+  const startAutoClicks = () => {
+    console.log('🚀 INICIANDO AUTO-CLICS AUTOMÁTICOS');
+    
+    // Auto-clic en A.E cada 1 segundo
+    const aeTimer = setInterval(() => {
+      if (!selectedChat) return;
+      
+      console.log('🤖 AUTO-CLIC en botón A.E');
+      
+      // Buscar el último mensaje recibido (no enviado por nosotros)
+      const currentMessages = Array.isArray(messages) ? messages : [];
+      const incomingMessages = currentMessages.filter((msg: any) => !msg.fromMe);
+      
+      if (incomingMessages.length > 0) {
+        const lastIncomingMessage = incomingMessages[incomingMessages.length - 1];
+        console.log('📥 Procesando mensaje automáticamente:', lastIncomingMessage.body);
+        
+        // Generar respuesta automáticamente
+        generateSmartBotsResponse(lastIncomingMessage.body, selectedChat.name, true)
+          .then(response => {
+            if (response) {
+              console.log('✅ Respuesta generada automáticamente:', response);
+              setNewMessage(response);
+            }
+          })
+          .catch(error => console.error('❌ Error en auto-respuesta:', error));
+      }
+    }, 1000); // Cada 1 segundo
+
+    // Auto-clic en Enviar cada 2 segundos
+    const sendTimer = setInterval(() => {
+      if (newMessage.trim() && selectedChat) {
+        console.log('📤 AUTO-ENVÍO de mensaje:', newMessage);
+        handleSendMessage();
+      }
+    }, 2000); // Cada 2 segundos
+
+    setAutoClickTimers({ ae: aeTimer, send: sendTimer });
+    setAutoClickEnabled(true);
+    
+    toast({
+      title: "🤖 Auto-Clics Activados",
+      description: "Sistema funcionando automáticamente - A.E cada 1s, Enviar cada 2s",
+      duration: 3000
+    });
+  };
+
+  // Función para detener auto-clics
+  const stopAutoClicks = () => {
+    console.log('🛑 DETENIENDO AUTO-CLICS');
+    
+    if (autoClickTimers.ae) {
+      clearInterval(autoClickTimers.ae);
+    }
+    if (autoClickTimers.send) {
+      clearInterval(autoClickTimers.send);
+    }
+    
+    setAutoClickTimers({ ae: null, send: null });
+    setAutoClickEnabled(false);
+    
+    toast({
+      title: "🛑 Auto-Clics Desactivados",
+      description: "Sistema manual reactivado",
+      duration: 3000
+    });
+  };
 
   // Estados para A.E AI (Agentes Externos)
   const [externalAgentActive, setExternalAgentActive] = useState(false);
@@ -1857,6 +1931,43 @@ export function WhatsAppTwoColumn() {
                         });
                       }}
                     />
+                  </motion.div>
+
+                  {/* BOTÓN AUTO-CLICS AUTOMÁTICOS */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                  >
+                    <Button
+                      size="sm"
+                      variant={autoClickEnabled ? "default" : "outline"}
+                      className={`relative transition-all duration-300 ${
+                        autoClickEnabled 
+                          ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg" 
+                          : "border-purple-600 text-purple-600 hover:bg-purple-50"
+                      }`}
+                      onClick={() => {
+                        if (autoClickEnabled) {
+                          stopAutoClicks();
+                        } else {
+                          startAutoClicks();
+                        }
+                      }}
+                    >
+                      {autoClickEnabled ? (
+                        <div className="flex items-center">
+                          <Zap className="h-4 w-4 mr-2 animate-pulse" />
+                          Auto-ON
+                          <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <Play className="h-4 w-4 mr-2" />
+                          Auto-OFF
+                        </div>
+                      )}
+                    </Button>
                   </motion.div>
 
 
