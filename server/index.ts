@@ -17,7 +17,7 @@ import { agentActivityTracker } from "./services/agentActivityTracker";
 import { agentRoleManager } from "./services/agentRoleManager";
 import { simpleLiveStatus } from "./services/simpleLiveStatus";
 import { WhatsAppSyncManager } from "./utils/whatsappSync";
-import { realAutoResponseManager } from "./services/realAutoResponse";
+import { stableAutoResponseManager } from "./services/stableAutoResponse";
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -3521,7 +3521,7 @@ app.use((req, res, next) => {
 
       console.log(`🚀 Activando respuestas automáticas para cuenta ${accountId}`);
 
-      const success = await realAutoResponseManager.activateAutoResponse(accountId, agentName);
+      const success = await stableAutoResponseManager.activateAutoResponse(accountId, agentName);
 
       if (success) {
         res.json({
@@ -3552,7 +3552,7 @@ app.use((req, res, next) => {
 
       console.log(`🛑 Desactivando respuestas automáticas para cuenta ${accountId}`);
 
-      const success = await realAutoResponseManager.deactivateAutoResponse(accountId);
+      const success = await stableAutoResponseManager.deactivateAutoResponse(accountId);
 
       if (success) {
         res.json({
@@ -3578,7 +3578,7 @@ app.use((req, res, next) => {
   // Obtener estado de respuestas automáticas
   app.get("/api/auto-response/status", async (req: Request, res: Response) => {
     try {
-      const status = realAutoResponseManager.getStatus();
+      const status = stableAutoResponseManager.getStatus();
 
       res.json({
         success: true,
@@ -3633,7 +3633,7 @@ app.use((req, res, next) => {
     // Inicializar sistema de respuestas automáticas al arrancar
     setTimeout(async () => {
       try {
-        await realAutoResponseManager.initialize();
+        await stableAutoResponseManager.initialize();
         console.log('🚀 Sistema de respuestas automáticas inicializado correctamente');
       } catch (error) {
         console.error('❌ Error inicializando sistema de respuestas automáticas:', error);
