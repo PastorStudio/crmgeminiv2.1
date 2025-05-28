@@ -295,36 +295,58 @@ export function WhatsAppTwoColumn() {
 
   // Función DIRECTA: CLIC A.E → ESPERAR → CLIC ENVIAR
   const startAutoClicks = () => {
-    console.log('🚀 AUTO-CLIC DIRECTO ACTIVADO');
+    console.log('🚀 AUTO-CLIC DIRECTO ACTIVADO - INICIO');
     
     const timer = setInterval(() => {
-      // 1. CLIC EN A.E
-      document.querySelectorAll('button').forEach(btn => {
-        if (btn.textContent?.includes('A.E')) {
-          console.log('🎯 CLIC EN A.E');
+      console.log('⏰ Timer ejecutándose cada 4 segundos...');
+      
+      // Buscar todos los botones
+      const allButtons = document.querySelectorAll('button');
+      console.log(`🔍 Total botones encontrados: ${allButtons.length}`);
+      
+      // 1. BUSCAR Y HACER CLIC EN A.E
+      let aeButtonFound = false;
+      allButtons.forEach((btn, index) => {
+        const buttonText = btn.textContent || '';
+        console.log(`Botón ${index}: "${buttonText}"`);
+        
+        if (buttonText.includes('A.E')) {
+          console.log('🎯 ENCONTRADO BOTÓN A.E - HACIENDO CLIC');
+          aeButtonFound = true;
           btn.click();
           
-          // 2. ESPERAR 2 SEGUNDOS Y CLIC EN ENVIAR
+          // 2. ESPERAR 2 SEGUNDOS Y BUSCAR ENVIAR
           setTimeout(() => {
-            document.querySelectorAll('button').forEach(sendBtn => {
-              if (sendBtn.textContent?.includes('Enviar')) {
-                console.log('📤 CLIC EN ENVIAR');
+            console.log('⏱️ Buscando botón Enviar...');
+            const sendButtons = document.querySelectorAll('button');
+            let sendButtonFound = false;
+            
+            sendButtons.forEach(sendBtn => {
+              const sendText = sendBtn.textContent || '';
+              if (sendText.includes('Enviar')) {
+                console.log('📤 ENCONTRADO BOTÓN ENVIAR - HACIENDO CLIC');
+                sendButtonFound = true;
                 sendBtn.click();
               }
             });
+            
+            if (!sendButtonFound) {
+              console.log('❌ No se encontró botón Enviar');
+            }
           }, 2000);
         }
       });
-    }, 4000); // Cada 4 segundos para dar tiempo
+      
+      if (!aeButtonFound) {
+        console.log('❌ No se encontró botón A.E');
+      }
+      
+    }, 4000); // Cada 4 segundos
 
     setAutoClickTimers({ ae: timer, send: null });
     setAutoClickEnabled(true);
     
-    toast({
-      title: "🎯 Auto-Clic Directo",
-      description: "CLIC A.E → ESPERAR → CLIC ENVIAR",
-      duration: 3000
-    });
+    console.log("✅ Auto-Clic configurado y activado");
   };
 
   // Función para detener auto-clics
@@ -341,11 +363,8 @@ export function WhatsAppTwoColumn() {
     setAutoClickTimers({ ae: null, send: null });
     setAutoClickEnabled(false);
     
-    toast({
-      title: "🛑 Auto-Clics Desactivados",
-      description: "Sistema manual reactivado",
-      duration: 3000
-    });
+    // toast desactivado para evitar errores
+    console.log("🛑 Auto-Clics Desactivados - Sistema manual reactivado");
   };
 
   // Estados para A.E AI (Agentes Externos)
