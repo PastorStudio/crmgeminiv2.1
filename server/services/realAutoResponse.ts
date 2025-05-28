@@ -5,6 +5,9 @@
 
 import OpenAI from 'openai';
 import { whatsappMultiAccountManager } from './whatsappMultiAccountManager';
+import { db } from '../db';
+import { whatsappAccounts } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 // Configurar OpenAI con la clave del sistema
 const openai = new OpenAI({
