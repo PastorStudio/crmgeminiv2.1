@@ -1,58 +1,42 @@
 /**
- * Utilidad para generar respuestas automáticas usando OpenAI directamente
- * Evita las interferencias de Vite con las llamadas al servidor
+ * Utilidad para comunicarse con agentes externos reales
+ * Conecta directamente con los agentes configurados en el sistema
  */
 
-export async function generateDirectAutoResponse(messageText: string): Promise<string | null> {
+export async function generateExternalAgentResponse(messageText: string, agentId: string): Promise<string | null> {
   try {
-    console.log('🤖 Generando respuesta automática con SmartBots...');
+    console.log(`🤖 Conectando con agente externo REAL ID: ${agentId}`);
+    console.log(`💬 Mensaje a enviar: "${messageText}"`);
     
-    const openaiApiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    
-    if (!openaiApiKey) {
-      console.error('❌ No se encontró la clave API de OpenAI');
-      return null;
-    }
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Llamar al endpoint que conecta con el agente externo real
+    const response = await fetch('/api/ai/chat-with-external-agent', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiApiKey}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: "Eres SmartBots, un asistente inteligente especializado en brindar respuestas útiles y profesionales. Responde de manera concisa, amigable y directa en español. Mantén un tono conversacional y cercano."
-          },
-          {
-            role: "user",
-            content: messageText
-          }
-        ],
-        max_tokens: 500,
-        temperature: 0.7
+        message: messageText,
+        agentId: agentId
       })
     });
 
     if (!response.ok) {
-      console.error('❌ Error en respuesta de OpenAI:', response.status, response.statusText);
+      console.error('❌ Error en respuesta del agente externo:', response.status, response.statusText);
       return null;
     }
 
     const data = await response.json();
-    const autoResponse = data.choices[0]?.message?.content;
     
-    if (autoResponse) {
-      console.log('✅ Respuesta de SmartBots generada:', autoResponse);
-      return autoResponse.trim();
+    if (data.success && data.response) {
+      console.log('✅ Respuesta REAL del agente externo:', data.response);
+      return data.response.trim();
+    } else {
+      console.error('❌ El agente externo no devolvió una respuesta válida:', data);
+      return null;
     }
     
-    return null;
   } catch (error) {
-    console.error('❌ Error generando respuesta automática:', error);
+    console.error('❌ Error conectando con agente externo:', error);
     return null;
   }
 }
@@ -71,4 +55,67 @@ export function getLastReceivedMessage(messages: any[]): string | null {
     .sort((a: any, b: any) => b.timestamp - a.timestamp)[0];
 
   return lastReceived?.body || null;
+}
+
+/**
+ * Función de auto-clic que simula presionar A.E y Enviar automáticamente
+ */
+export function startAutoClickFunction(accountId: number): () => void {
+  console.log('🚀 AUTO-CLIC DIRECTO ACTIVADO - INICIO');
+  
+  const intervalId = setInterval(async () => {
+    console.log('⏰ Timer ejecutándose cada 4 segundos...');
+    
+    try {
+      // Buscar todos los botones en la página
+      const allButtons = document.querySelectorAll('button');
+      console.log(`🔍 Total botones encontrados: ${allButtons.length}`);
+      
+      // Filtrar botones que contengan A.E
+      const aeButtons = Array.from(allButtons).filter(btn => 
+        btn.textContent?.includes('🤖 A.E') || 
+        btn.textContent?.includes('A.E')
+      );
+      
+      console.log(`🎯 Botones A.E encontrados: ${aeButtons.length}`);
+      
+      if (aeButtons.length > 0) {
+        console.log('🔥 ¡ENCONTRADO BOTÓN A.E! - Haciendo clic...');
+        
+        // Hacer clic en el primer botón A.E encontrado
+        aeButtons[0].click();
+        
+        // Esperar un momento y buscar el botón de Enviar
+        setTimeout(() => {
+          const sendButtons = Array.from(document.querySelectorAll('button')).filter(btn => 
+            btn.textContent?.includes('Enviar') ||
+            btn.textContent?.includes('Send') ||
+            btn.getAttribute('type') === 'submit'
+          );
+          
+          console.log(`📤 Botones Enviar encontrados: ${sendButtons.length}`);
+          
+          if (sendButtons.length > 0) {
+            console.log('🚀 ¡ENVIANDO MENSAJE! - Haciendo clic en Enviar...');
+            sendButtons[0].click();
+          } else {
+            console.log('❌ No se encontró botón Enviar');
+          }
+        }, 1000); // Esperar 1 segundo entre A.E y Enviar
+        
+      } else {
+        console.log('🔍 No se encontró botón A.E en esta iteración');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en auto-clic:', error);
+    }
+    
+  }, 4000); // Ejecutar cada 4 segundos
+  
+  // Retornar función para detener el timer
+  return () => {
+    console.log('⏹️ AUTO-CLIC DESACTIVADO');
+    clearInterval(intervalId);
+  };
 }
