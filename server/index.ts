@@ -3511,6 +3511,88 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
+  // 🤖 RUTAS DIRECTAS PARA RESPUESTAS AUTOMÁTICAS (SIN VITE)
+  
+  // Activar respuestas automáticas - Ruta directa que bypassa Vite
+  app.post("/api/direct/auto-response/activate/:accountId", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { agentName = "Smart Assistant" } = req.body;
+
+      console.log(`🚀 [DIRECTO] Activando respuestas automáticas ESTABLES para cuenta ${accountId}`);
+
+      const success = await stableAutoResponseManager.activateAutoResponse(accountId, agentName);
+
+      if (success) {
+        res.json({
+          success: true,
+          message: `Respuestas automáticas ESTABLES activadas para cuenta ${accountId}`,
+          accountId,
+          agentName
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: "No se pudo activar las respuestas automáticas estables"
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error activando respuestas automáticas estables:", error);
+      res.status(500).json({
+        success: false,
+        error: "Error interno del servidor"
+      });
+    }
+  });
+
+  // Desactivar respuestas automáticas - Ruta directa que bypassa Vite
+  app.post("/api/direct/auto-response/deactivate/:accountId", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+
+      console.log(`🛑 [DIRECTO] Desactivando respuestas automáticas ESTABLES para cuenta ${accountId}`);
+
+      const success = await stableAutoResponseManager.deactivateAutoResponse(accountId);
+
+      if (success) {
+        res.json({
+          success: true,
+          message: `Respuestas automáticas ESTABLES desactivadas para cuenta ${accountId}`,
+          accountId
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: "No se pudo desactivar las respuestas automáticas estables"
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error desactivando respuestas automáticas estables:", error);
+      res.status(500).json({
+        success: false,
+        error: "Error interno del servidor"
+      });
+    }
+  });
+
+  // Estado de respuestas automáticas - Ruta directa que bypassa Vite
+  app.get("/api/direct/auto-response/status", async (req: Request, res: Response) => {
+    try {
+      const status = stableAutoResponseManager.getStatus();
+
+      res.json({
+        success: true,
+        ...status
+      });
+    } catch (error) {
+      console.error("❌ Error obteniendo estado estable:", error);
+      res.status(500).json({
+        success: false,
+        error: "Error interno del servidor"
+      });
+    }
+  });
+
   // 🤖 NUEVAS RUTAS PARA RESPUESTAS AUTOMÁTICAS REALES
   
   // Activar respuestas automáticas para una cuenta

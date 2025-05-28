@@ -30,6 +30,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import SuperSimpleToggle from "@/components/messaging/SuperSimpleToggle";
 
 // Template schema
 const templateSchema = z.object({
@@ -512,26 +513,33 @@ export default function AutoResponseSettings() {
                 </>
               )}
               
-              <div className="flex justify-center">
-                <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 text-center">
-                  <div className="flex items-center justify-center space-x-2">
-                    {isAutoSaving ? (
-                      <>
-                        <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                        <span className="text-blue-700 font-medium">Guardando automáticamente...</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="h-4 w-4 bg-green-600 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xs">✓</span>
-                        </div>
-                        <span className="text-green-700 font-medium">✅ Autoguardado activo</span>
-                      </>
-                    )}
+              <div className="space-y-6">
+                <Separator />
+                
+                {/* Nuevo componente de activación directa */}
+                <SuperSimpleToggle />
+                
+                <div className="flex justify-center">
+                  <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 text-center">
+                    <div className="flex items-center justify-center space-x-2">
+                      {isAutoSaving ? (
+                        <>
+                          <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                          <span className="text-blue-700 font-medium">Guardando automáticamente...</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-4 w-4 bg-green-600 rounded-full flex items-center justify-center">
+                            <span className="text-white text-xs">✓</span>
+                          </div>
+                          <span className="text-green-700 font-medium">✅ Autoguardado activo</span>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Los cambios se guardan automáticamente
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Los cambios se guardan automáticamente
-                  </p>
                 </div>
               </div>
             </form>
