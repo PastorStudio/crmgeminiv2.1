@@ -17,8 +17,43 @@ import { agentActivityTracker } from "./services/agentActivityTracker";
 import { agentRoleManager } from "./services/agentRoleManager";
 import { simpleLiveStatus } from "./services/simpleLiveStatus";
 
-// Configurar zona horaria para Panamá (GMT-5)
-process.env.TZ = 'America/Panama';
+// ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
+process.env.TZ = 'America/New_York';
+
+// Configurar fecha real: 28 de enero 2025 (en lugar de mayo 2025)
+const REAL_DATE_OFFSET = new Date('2025-01-28T22:18:00.000-05:00').getTime() - Date.now();
+
+// Override global de Date.now para toda la aplicación
+const originalNow = Date.now;
+Date.now = function(): number {
+  return originalNow() + REAL_DATE_OFFSET;
+};
+
+// Override constructor Date sin parámetros
+const originalDate = global.Date;
+global.Date = class extends originalDate {
+  constructor(...args: any[]) {
+    if (args.length === 0) {
+      super(originalDate.now() + REAL_DATE_OFFSET);
+    } else {
+      super(...args);
+    }
+  }
+  
+  static now(): number {
+    return originalDate.now() + REAL_DATE_OFFSET;
+  }
+} as any;
+
+console.log('🕐 SISTEMA SINCRONIZADO - NUEVA YORK:', new Date().toLocaleString('en-US', {
+  timeZone: 'America/New_York',
+  year: 'numeric',
+  month: '2-digit', 
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit'
+}));
 
 console.log('✅ Sistema CRM WhatsApp iniciado correctamente');
 console.log(`Modo de ejecución: ${process.env.NODE_ENV || 'development'}`)
