@@ -38,6 +38,7 @@ import ExternalAgents from './pages/ExternalAgents';
 import InternalAgents from './pages/InternalAgents';
 import GeminiAI from './pages/GeminiAI';
 import AgentAnalysis from './pages/AgentAnalysis';
+import UIShowcase from './pages/UIShowcase';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
