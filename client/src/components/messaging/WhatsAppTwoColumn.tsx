@@ -1839,6 +1839,78 @@ export function WhatsAppTwoColumn() {
                     />
                   </motion.div>
 
+                  {/* BOTÓN DIRECTO PARA GENERAR RESPUESTA */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                  >
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="bg-purple-600 hover:bg-purple-700 text-white border-purple-600 hover:border-purple-700"
+                      onClick={async () => {
+                        try {
+                          setExternalAgentProcessing(true);
+                          
+                          // Importar las funciones directas
+                          const { generateDirectAutoResponse, getLastReceivedMessage } = await import('@/lib/directAutoResponse');
+                          
+                          // Obtener el último mensaje recibido
+                          const lastMessage = getLastReceivedMessage(messages);
+                          
+                          if (!lastMessage) {
+                            toast({
+                              title: "Sin mensajes",
+                              description: "No hay mensajes recientes para procesar",
+                              variant: "destructive"
+                            });
+                            return;
+                          }
+
+                          console.log('🤖 Procesando mensaje:', lastMessage);
+                          
+                          // Generar respuesta automática usando OpenAI directamente
+                          const autoResponse = await generateDirectAutoResponse(lastMessage);
+                          
+                          if (autoResponse) {
+                            // Colocar la respuesta en el área de texto
+                            setNewMessage(autoResponse);
+                            
+                            toast({
+                              title: "🤖 Respuesta generada",
+                              description: "SmartBots ha generado una respuesta automática",
+                              duration: 3000
+                            });
+                          } else {
+                            toast({
+                              title: "Error",
+                              description: "No se pudo generar respuesta automática",
+                              variant: "destructive"
+                            });
+                          }
+                        } catch (error) {
+                          console.error('❌ Error generando respuesta:', error);
+                          toast({
+                            title: "Error",
+                            description: "No se pudo generar respuesta automática",
+                            variant: "destructive"
+                          });
+                        } finally {
+                          setExternalAgentProcessing(false);
+                        }
+                      }}
+                      disabled={externalAgentProcessing}
+                    >
+                      {externalAgentProcessing ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4 mr-2" />
+                      )}
+                      🤖 Generar Respuesta
+                    </Button>
+                  </motion.div>
+
                   {/* BOTÓN DE PRUEBA A.E AI - ELIMINADO COMPLETAMENTE */}
                   {false && (
                     <motion.div
