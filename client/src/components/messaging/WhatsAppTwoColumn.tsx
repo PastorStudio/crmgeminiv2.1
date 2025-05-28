@@ -53,11 +53,8 @@ import ChatAssignmentDialog from './ChatAssignmentDialog';
 import { ChatCommentsDialog } from './ChatCommentsDialog';
 import { ExternalAgentButton } from './ExternalAgentButton';
 import { AgentSelector } from './AgentSelector';
-
 import { VoiceNoteMessage } from './VoiceNoteMessage';
 import { SmartMessageGrouping } from './SmartMessageGrouping';
-
-
 
 function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
   const { data: assignmentResponse } = useQuery({
@@ -156,7 +153,6 @@ function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accoun
   }
 
   const ticketCount = tickets.length;
-  const latestTicket = tickets[0]; // Asumiendo que están ordenados por fecha
 
   return (
     <Badge 
@@ -231,19 +227,10 @@ export function WhatsAppTwoColumn() {
   const [selectedChat, setSelectedChat] = useState<WhatsAppChat | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
-  const [externalAgentActive, setExternalAgentActive] = useState(false);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
-
   const [searchQuery, setSearchQuery] = useState('');
-  const [showUserProfile, setShowUserProfile] = useState(false);
-  const [translatorEnabled, setTranslatorEnabled] = useState(false);
-  const [smartBotsEnabled, setSmartBotsEnabled] = useState(false);
-  const [selectedExternalAgent, setSelectedExternalAgent] = useState<string>('');
   const [showSmartGrouping, setShowSmartGrouping] = useState(false);
-
-  const [autoSendTimer, setAutoSendTimer] = useState<NodeJS.Timeout | null>(null);
-  const [isAutoSending, setIsAutoSending] = useState(false);
 
   const handleChatSelect = async (chat: WhatsAppChat) => {
     setSelectedChat(chat);
@@ -366,100 +353,6 @@ export function WhatsAppTwoColumn() {
     });
   }, [selectedChat, newMessage, sendMessageMutation]);
 
-  // Auto-envío con delay de 5 segundos
-  useEffect(() => {
-    if (newMessage.trim() && selectedChat) {
-      // Limpiar timer anterior si existe
-      if (autoSendTimer) {
-        clearTimeout(autoSendTimer);
-        setAutoSendTimer(null);
-        setIsAutoSending(false);
-      }
-
-      // Configurar nuevo timer
-      setIsAutoSending(true);
-      const timer = setTimeout(() => {
-        handleSendMessage();
-        setIsAutoSending(false);
-        setAutoSendTimer(null);
-      }, 5000);
-
-      setAutoSendTimer(timer);
-    } else {
-      // Limpiar timer si no hay mensaje
-      if (autoSendTimer) {
-        clearTimeout(autoSendTimer);
-        setAutoSendTimer(null);
-        setIsAutoSending(false);
-      }
-    }
-
-    // Cleanup al desmontar
-    return () => {
-      if (autoSendTimer) {
-        clearTimeout(autoSendTimer);
-      }
-    };
-  }, [newMessage, selectedChat, handleSendMessage]);
-
-  // Procesar respuesta automática cuando hay un agente externo seleccionado
-  const processAutoResponse = useCallback(async () => {
-    if (!selectedChat || !smartBotsEnabled || !selectedExternalAgent) {
-      console.log('❌ No se puede procesar respuesta automática:', {
-        selectedChat: !!selectedChat,
-        smartBotsEnabled,
-        selectedExternalAgent
-      });
-      return;
-    }
-
-    try {
-      console.log('🤖 Procesando respuesta automática...');
-      const response = await fetch('/api/simple/process-message', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chatId: selectedChat.id,
-          accountId: selectedChat.accountId,
-          externalAgentId: selectedExternalAgent,
-        }),
-      });
-
-      const data = await response.json();
-      console.log('🤖 Respuesta del agente:', data);
-
-      if (data.success && data.response) {
-        // Simular escribir la respuesta del agente
-        setNewMessage(data.response);
-        console.log('✅ Respuesta del agente establecida:', data.response);
-      }
-    } catch (error) {
-      console.error('❌ Error procesando respuesta automática:', error);
-    }
-  }, [selectedChat, smartBotsEnabled, selectedExternalAgent]);
-
-  // Función para obtener el ID del último mensaje entrante (no enviado por nosotros)
-  const getLastIncomingMessageId = (messages: WhatsAppMessage[]) => {
-    // Filtrar mensajes que no son de nosotros y obtener el más reciente
-    const incomingMessages = messages.filter(msg => !msg.fromMe);
-    return incomingMessages.length > 0 ? incomingMessages[incomingMessages.length - 1].id : null;
-  };
-
-  // Auto-procesar último mensaje recibido cuando hay agente asignado
-  useEffect(() => {
-    if (messagesData?.messages && smartBotsEnabled && selectedExternalAgent && selectedChat) {
-      const messages = messagesData.messages;
-      const lastIncomingMessageId = getLastIncomingMessageId(messages);
-      
-      if (lastIncomingMessageId) {
-        console.log('🔄 Nuevo mensaje detectado, procesando respuesta automática...');
-        processAutoResponse();
-      }
-    }
-  }, [messagesData?.messages, smartBotsEnabled, selectedExternalAgent, selectedChat, processAutoResponse]);
-
   const accounts = accountsData?.accounts || [];
   const chats = chatsData?.chats || [];
   const messages = messagesData?.messages || [];
@@ -482,14 +375,6 @@ export function WhatsAppTwoColumn() {
       }
     }
   }, [accounts, selectedAccounts]);
-
-  // Auto-seleccionar primer chat cuando cambian las cuentas
-  useEffect(() => {
-    if (sortedChats.length > 0 && !selectedChat) {
-      // No auto-seleccionar chat para mantener la interfaz limpia
-      // setSelectedChat(sortedChats[0]);
-    }
-  }, [sortedChats, selectedChat]);
 
   // Invalidar queries cada 30 segundos para mantener datos actualizados
   useEffect(() => {
@@ -717,16 +602,6 @@ export function WhatsAppTwoColumn() {
                       accountId={selectedChat.accountId}
                       onAgentChange={(agentId) => {
                         console.log('🤖 Agente seleccionado:', agentId);
-                        // Actualizar ambos estados para activar respuestas automáticas
-                        setExternalAgentActive(!!agentId);
-                        setSmartBotsEnabled(!!agentId);
-                        setSelectedExternalAgent(agentId || '');
-                        
-                        console.log('✅ Estados actualizados:', {
-                          agentId,
-                          smartBotsEnabled: !!agentId,
-                          externalAgentActive: !!agentId
-                        });
                       }}
                     />
                   </motion.div>
@@ -807,17 +682,13 @@ export function WhatsAppTwoColumn() {
                       messages[index - 1].author !== message.author || 
                       messages[index - 1].fromMe !== message.fromMe;
                     
-                    // Identificar si este es el último mensaje recibido (no enviado por nosotros)
-                    const lastIncomingMessageId = getLastIncomingMessageId(messages);
-                    const isLastIncomingMessage = !message.fromMe && message.id === lastIncomingMessageId;
-                    
                     return (
                       <motion.div
                         key={message.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
-                        className={`flex ${message.fromMe ? 'justify-end pt-[-34px] pb-[-34px] mt-[6px] mb-[6px] ml-[-4px] mr-[-4px] pl-[-20px] pr-[-20px] text-[14px]' : 'justify-start pt-[-34px] pb-[-34px] mt-[6px] mb-[6px] ml-[-4px] mr-[-4px] pl-[-20px] pr-[-20px] text-[14px]'}`}
+                        className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}
                       >
                         <div className={`flex space-x-2 max-w-[80%] ${message.fromMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
                           {showAvatar && isFirstFromAuthor && (
@@ -901,13 +772,6 @@ export function WhatsAppTwoColumn() {
                   )}
                 </Button>
               </div>
-              
-              {isAutoSending && (
-                <div className="mt-2 text-xs text-blue-600 flex items-center">
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                  Enviando automáticamente en 5 segundos...
-                </div>
-              )}
             </div>
           </>
         ) : (
@@ -920,6 +784,7 @@ export function WhatsAppTwoColumn() {
           </div>
         )}
       </div>
+
       {/* Dialogs */}
       {selectedChat && (
         <ChatAssignmentDialog
@@ -938,7 +803,6 @@ export function WhatsAppTwoColumn() {
           chatName={selectedChat.name}
         />
       )}
-
     </div>
   );
 }
