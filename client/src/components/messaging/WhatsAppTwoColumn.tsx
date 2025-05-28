@@ -2217,12 +2217,12 @@ export function WhatsAppTwoColumn() {
                           // Desactivar TODOS los sistemas automáticos
                           console.log('🛑 Desactivando TODOS los sistemas automáticos...');
                           
-                          // Desactivar auto-click anterior
+                          // Desactivar TODOS los sistemas anteriores
                           try {
-                            const { stopAutoClickFunction } = await import('@/lib/directAutoResponse');
-                            stopAutoClickFunction();
+                            const { stopAllOldSystems } = await import('@/lib/directAutoResponse');
+                            stopAllOldSystems();
                           } catch (e) {
-                            console.log('Auto-click anterior ya desactivado');
+                            console.log('Sistemas anteriores ya desactivados');
                           }
                           
                           // Desactivar sistema inteligente

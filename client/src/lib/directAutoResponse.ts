@@ -3,6 +3,26 @@
  * Conecta directamente con los agentes configurados en el sistema
  */
 
+// Variables globales para control del sistema anterior
+let oldSystemInterval: NodeJS.Timeout | null = null;
+let isOldSystemActive = false;
+
+/**
+ * Función para detener completamente el sistema anterior
+ */
+export function stopAllOldSystems() {
+  console.log('🛑 Deteniendo TODOS los sistemas anteriores...');
+  
+  isOldSystemActive = false;
+  
+  if (oldSystemInterval) {
+    clearInterval(oldSystemInterval);
+    oldSystemInterval = null;
+  }
+  
+  console.log('✅ Sistemas anteriores detenidos completamente');
+}
+
 export async function generateExternalAgentResponse(messageText: string, agentId: string): Promise<string | null> {
   try {
     console.log(`🤖 Conectando con agente externo REAL ID: ${agentId}`);
