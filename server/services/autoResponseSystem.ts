@@ -60,17 +60,18 @@ class AutoResponseSystem {
       await db.execute(sql`
         CREATE TABLE IF NOT EXISTS auto_response_configs (
           id TEXT PRIMARY KEY,
-          account_id INTEGER NOT NULL,
+          account_id INTEGER UNIQUE NOT NULL,
           is_enabled BOOLEAN DEFAULT false,
           prompt TEXT DEFAULT 'Eres un asistente virtual profesional. Responde de manera útil y cortés.',
-          temperature REAL DEFAULT 0.7,
+          temperature DECIMAL(3,2) DEFAULT 0.7,
           response_style TEXT DEFAULT 'professional',
           response_delay INTEGER DEFAULT 3,
           max_tokens INTEGER DEFAULT 150,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
         )
       `);
+      console.log('✅ Tabla auto_response_configs verificada/creada');
     } catch (error) {
       console.error('Error creating auto_response_configs table:', error);
     }
@@ -120,11 +121,21 @@ class AutoResponseSystem {
     };
 
     try {
+      // Use PostgreSQL UPSERT syntax
       await db.execute(sql`
-        INSERT OR REPLACE INTO auto_response_configs 
+        INSERT INTO auto_response_configs 
         (id, account_id, is_enabled, prompt, temperature, response_style, response_delay, max_tokens, created_at, updated_at)
         VALUES (${configId}, ${accountId}, ${newConfig.isEnabled}, ${newConfig.prompt}, ${newConfig.temperature}, 
                 ${newConfig.responseStyle}, ${newConfig.responseDelay}, ${newConfig.maxTokens}, ${now}, ${now})
+        ON CONFLICT (account_id) 
+        DO UPDATE SET 
+          is_enabled = EXCLUDED.is_enabled,
+          prompt = EXCLUDED.prompt,
+          temperature = EXCLUDED.temperature,
+          response_style = EXCLUDED.response_style,
+          response_delay = EXCLUDED.response_delay,
+          max_tokens = EXCLUDED.max_tokens,
+          updated_at = EXCLUDED.updated_at
       `);
 
       this.configs.set(accountId, newConfig);
