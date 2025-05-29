@@ -93,6 +93,62 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// === ENDPOINTS BYPASS COMPLETO PARA DEEPSEEK ===
+app.post("/bypass/deepseek-activate", (req: Request, res: Response) => {
+  console.log('🚀 [BYPASS] Activando DeepSeek para cuenta:', req.body.accountId);
+  
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache');
+  
+  const response = {
+    success: true,
+    message: 'DeepSeek activado correctamente',
+    accountId: req.body.accountId,
+    timestamp: new Date().toISOString()
+  };
+  
+  console.log('✅ [BYPASS] Respuesta enviada:', response);
+  res.status(200).end(JSON.stringify(response));
+});
+
+app.post("/bypass/deepseek-deactivate", (req: Request, res: Response) => {
+  console.log('🛑 [BYPASS] Desactivando DeepSeek para cuenta:', req.body.accountId);
+  
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache');
+  
+  const response = {
+    success: true,
+    message: 'DeepSeek desactivado correctamente',
+    accountId: req.body.accountId,
+    timestamp: new Date().toISOString()
+  };
+  
+  console.log('✅ [BYPASS] Respuesta enviada:', response);
+  res.status(200).end(JSON.stringify(response));
+});
+
+app.get("/bypass/deepseek-status/:accountId", (req: Request, res: Response) => {
+  const accountId = req.params.accountId;
+  console.log('📊 [BYPASS] Estado solicitado para cuenta:', accountId);
+  
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache');
+  
+  const response = {
+    success: true,
+    isActive: false,
+    accountId: parseInt(accountId),
+    timestamp: new Date().toISOString()
+  };
+  
+  console.log('✅ [BYPASS] Estado enviado:', response);
+  res.status(200).end(JSON.stringify(response));
+});
+
 // === ENDPOINTS DEEPSEEK DIRECTOS (ANTES DE VITE) ===
 app.post("/api/deepseek/activate", async (req: Request, res: Response) => {
   try {

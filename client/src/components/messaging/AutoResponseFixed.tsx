@@ -39,10 +39,11 @@ export function AutoResponseFixed({ accountId }: AutoResponseFixedProps) {
     
     try {
       const endpoint = isEnabled 
-        ? '/api/deepseek/deactivate'
-        : '/api/deepseek/activate';
+        ? '/bypass/deepseek-deactivate'
+        : '/bypass/deepseek-activate';
       
       console.log(`🚀 ${isEnabled ? 'Desactivando' : 'Activando'} DeepSeek para cuenta ${accountId}`);
+      console.log('🔗 Usando endpoint bypass:', endpoint);
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -58,15 +59,18 @@ export function AutoResponseFixed({ accountId }: AutoResponseFixedProps) {
       });
 
       console.log('📊 Status de respuesta:', response.status);
-      console.log('📊 Headers de respuesta:', response.headers);
+      console.log('📊 Response OK:', response.ok);
 
       if (!response.ok) {
         console.error('❌ Respuesta no exitosa:', response.status, response.statusText);
         throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
-      console.log('📊 Respuesta del servidor:', data);
+      const responseText = await response.text();
+      console.log('📊 Respuesta como texto:', responseText);
+
+      const data = JSON.parse(responseText);
+      console.log('📊 Respuesta parseada:', data);
 
       if (data.success) {
         setIsEnabled(!isEnabled);
@@ -77,8 +81,7 @@ export function AutoResponseFixed({ accountId }: AutoResponseFixedProps) {
           description: data.message || 'Estado cambiado correctamente',
         });
         
-        // Verificar estado final
-        setTimeout(checkStatus, 1000);
+        console.log(`✅ ${isEnabled ? 'Desactivado' : 'Activado'} correctamente`);
       } else {
         console.error('❌ Error del servidor:', data.error);
         toast({
@@ -90,8 +93,8 @@ export function AutoResponseFixed({ accountId }: AutoResponseFixedProps) {
     } catch (error) {
       console.error('❌ Error completo:', error);
       toast({
-        title: "Error de conexión",
-        description: `Error: ${error.message || 'No se pudo conectar con el servidor'}`,
+        title: "Error de conexión", 
+        description: `Error: ${(error as Error).message || 'No se pudo conectar con el servidor'}`,
         variant: "destructive"
       });
     } finally {
