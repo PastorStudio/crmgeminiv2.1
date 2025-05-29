@@ -58,7 +58,7 @@ class AutoResponseSystem {
   private async createConfigTable(): Promise<void> {
     try {
       await db.execute(sql`
-        CREATE TABLE IF NOT EXISTS auto_response_configs (
+        CREATE TABLE IF NOT EXISTS openai_auto_response_configs (
           id TEXT PRIMARY KEY,
           account_id INTEGER UNIQUE NOT NULL,
           is_enabled BOOLEAN DEFAULT false,
@@ -71,15 +71,15 @@ class AutoResponseSystem {
           updated_at TIMESTAMP DEFAULT NOW()
         )
       `);
-      console.log('✅ Tabla auto_response_configs verificada/creada');
+      console.log('✅ Tabla openai_auto_response_configs verificada/creada');
     } catch (error) {
-      console.error('Error creating auto_response_configs table:', error);
+      console.error('Error creating openai_auto_response_configs table:', error);
     }
   }
 
   private async loadConfigurations(): Promise<void> {
     try {
-      const result = await db.execute(sql`SELECT * FROM auto_response_configs`);
+      const result = await db.execute(sql`SELECT * FROM openai_auto_response_configs`);
       const configs = result.rows as any[];
       
       configs.forEach(config => {
@@ -123,7 +123,7 @@ class AutoResponseSystem {
     try {
       // Use PostgreSQL UPSERT syntax
       await db.execute(sql`
-        INSERT INTO auto_response_configs 
+        INSERT INTO openai_auto_response_configs 
         (id, account_id, is_enabled, prompt, temperature, response_style, response_delay, max_tokens, created_at, updated_at)
         VALUES (${configId}, ${accountId}, ${newConfig.isEnabled}, ${newConfig.prompt}, ${newConfig.temperature}, 
                 ${newConfig.responseStyle}, ${newConfig.responseDelay}, ${newConfig.maxTokens}, ${now}, ${now})
