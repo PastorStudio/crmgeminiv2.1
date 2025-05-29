@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,16 +58,47 @@ export const WhatsAppCategorized: React.FC<WhatsAppCategorizedProps> = ({
     queryKey: ['/api/whatsapp-accounts']
   });
 
-  // Fetch chats
+  // Auto-select all available accounts when they load
+  useEffect(() => {
+    if (Array.isArray(whatsappAccounts) && whatsappAccounts.length > 0 && selectedAccounts.length === 0) {
+      const accountIds = whatsappAccounts.map((account: any) => account.id.toString());
+      setSelectedAccounts(accountIds);
+    }
+  }, [whatsappAccounts, selectedAccounts.length]);
+
+  // Fetch chats from selected accounts
   const { data: chats = [], isLoading: loadingChats } = useQuery({
     queryKey: ['/api/whatsapp/chats', selectedAccounts],
+    queryFn: async () => {
+      if (selectedAccounts.length === 0) return [];
+      
+      let allChats: Chat[] = [];
+      for (const accountId of selectedAccounts) {
+        try {
+          const response = await fetch(`/api/whatsapp-accounts/${accountId}/chats`);
+          if (response.ok) {
+            const accountChats = await response.json();
+            const chatsWithAccount = accountChats.map((chat: any) => ({
+              ...chat,
+              accountId: parseInt(accountId)
+            }));
+            allChats = [...allChats, ...chatsWithAccount];
+          }
+        } catch (error) {
+          console.warn(`Error loading chats for account ${accountId}:`, error);
+        }
+      }
+      return allChats;
+    },
     enabled: selectedAccounts.length > 0
   });
 
   // Fetch categories
-  const { data: categories = [], isLoading: loadingCategories } = useQuery({
+  const { data: categoriesData = [], isLoading: loadingCategories } = useQuery({
     queryKey: ['/api/chat-categories']
   });
+  
+  const categories = Array.isArray(categoriesData) ? categoriesData as Category[] : [];
 
   // Create category mutation
   const createCategoryMutation = useMutation({
