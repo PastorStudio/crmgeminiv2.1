@@ -18,6 +18,8 @@ import { agentRoleManager } from "./services/agentRoleManager";
 import { simpleLiveStatus } from "./services/simpleLiveStatus";
 import { WhatsAppSyncManager } from "./utils/whatsappSync";
 import { stableAutoResponseManager } from "./services/stableAutoResponse";
+import { deepSeekService } from "./services/deepseekService";
+import { deepSeekAutoResponse } from "./services/deepseekAutoResponse";
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -3898,4 +3900,5 @@ app.use((req, res, next) => {
       }
     }, 2000); // Esperar 2 segundos para que el servidor esté completamente listo
   });
+
 })();
