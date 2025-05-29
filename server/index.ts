@@ -4231,10 +4231,10 @@ app.use((req, res, next) => {
   app.get("/api/chat-categories", async (req: Request, res: Response) => {
     try {
       const categories = await ChatCategoryService.getAllCategories();
-      res.json({ success: true, categories });
+      res.json(categories || []); // Return categories array directly
     } catch (error) {
       console.error('Error obteniendo categorías:', error);
-      res.status(500).json({ success: false, message: 'Error obteniendo categorías' });
+      res.json([]); // Return empty array on error to prevent frontend crashes
     }
   });
 

@@ -79,7 +79,8 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
   console.log('🔍 Debug Badge - Assignment:', assignmentResponse);
   console.log('🔍 Debug Badge - Users:', usersResponse);
 
-  const users = usersResponse?.users || usersResponse || [];
+  const users = Array.isArray(usersResponse?.users) ? usersResponse.users : 
+                Array.isArray(usersResponse) ? usersResponse : [];
   const assignment = assignmentResponse;
 
   // Si no hay asignación, mostrar solo el muñequito sin texto
@@ -130,7 +131,8 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
   console.log('🔍 Debug Header - Assignment:', assignmentResponse);
   console.log('🔍 Debug Header - Users:', usersResponse);
 
-  const users = usersResponse?.users || usersResponse || [];
+  const users = Array.isArray(usersResponse?.users) ? usersResponse.users : 
+                Array.isArray(usersResponse) ? usersResponse : [];
   const assignment = assignmentResponse;
 
   // Si no hay asignación, mostrar "Desconectado"
@@ -1812,7 +1814,7 @@ export function WhatsAppTwoColumn() {
   };
 
   const getSelectedAccount = () => {
-    return accounts.find(acc => acc.id === selectedChat?.accountId);
+    return Array.isArray(accounts) ? accounts.find(acc => acc.id === selectedChat?.accountId) : null;
   };
 
   // Sort chats by activity: unread messages first, then by most recent timestamp
@@ -1959,7 +1961,7 @@ export function WhatsAppTwoColumn() {
             </Button>
 
             {/* Categorías personalizadas */}
-            {categories.map((category: any) => (
+            {Array.isArray(categories) && categories.map((category: any) => (
               <Button
                 key={category.id}
                 size="sm"
@@ -1997,7 +1999,7 @@ export function WhatsAppTwoColumn() {
                 chat={chat} 
                 isSelected={selectedChat?.id === chat.id}
                 onClick={() => setSelectedChat(chat)}
-                categories={categories}
+                categories={Array.isArray(categories) ? categories : []}
                 onCategoryChange={(categoryId) => {
                   setCategoryLoadingChat(chat.id);
                   assignCategoryMutation.mutate({
