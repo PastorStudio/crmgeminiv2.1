@@ -2065,30 +2065,7 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
 
-                  {/* SELECTOR DE AGENTE EXTERNO */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
-                  >
-                    <AgentSelector 
-                      chatId={selectedChat.id}
-                      accountId={selectedChat.accountId}
-                      onAgentChange={(agentId) => {
-                        console.log('🤖 Agente seleccionado:', agentId);
-                        // Actualizar ambos estados para activar respuestas automáticas
-                        setExternalAgentActive(!!agentId);
-                        setSmartBotsEnabled(!!agentId); // ✅ CRUCIAL: Activar SmartBots cuando hay agente
-                        setSelectedExternalAgent(agentId || '');
-                        
-                        console.log('✅ Estados actualizados:', {
-                          agentId,
-                          smartBotsEnabled: !!agentId,
-                          externalAgentActive: !!agentId
-                        });
-                      }}
-                    />
-                  </motion.div>
+
 
 
 
