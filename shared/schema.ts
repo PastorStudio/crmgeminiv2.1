@@ -319,6 +319,70 @@ export const messageActivityRelations = relations(messageActivity, ({ one }) => 
   })
 }));
 
+// ===== SISTEMA DE CATEGORÍAS DE CHATS =====
+// Categorías de chats
+export const chatCategories = pgTable('chat_categories', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  color: text('color').default('#3B82F6'), // Color hexadecimal para la categoría
+  icon: text('icon').default('MessageCircle'), // Nombre del icono de Lucide
+  isDefault: boolean('is_default').default(false), // Para categorías predeterminadas
+  isSystem: boolean('is_system').default(false), // Para categorías del sistema (Individual, Grupo)
+  order: integer('order').default(0), // Orden de visualización
+  accountId: integer('account_id').references(() => whatsappAccounts.id), // null para categorías globales
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at'),
+  createdBy: integer('created_by').references(() => users.id),
+});
+
+// Asignación de chats a categorías
+export const chatCategoryAssignments = pgTable('chat_category_assignments', {
+  id: serial('id').primaryKey(),
+  chatId: text('chat_id').notNull(), // ID del chat de WhatsApp
+  accountId: integer('account_id').notNull().references(() => whatsappAccounts.id),
+  categoryId: integer('category_id').notNull().references(() => chatCategories.id),
+  assignedAt: timestamp('assigned_at').defaultNow(),
+  assignedBy: integer('assigned_by').references(() => users.id),
+  previousCategoryId: integer('previous_category_id').references(() => chatCategories.id), // Para historial
+  notes: text('notes'), // Notas opcionales sobre la categorización
+});
+
+// Relaciones para categorías de chats
+export const chatCategoriesRelations = relations(chatCategories, ({ one, many }) => ({
+  account: one(whatsappAccounts, {
+    fields: [chatCategories.accountId],
+    references: [whatsappAccounts.id]
+  }),
+  createdBy: one(users, {
+    fields: [chatCategories.createdBy],
+    references: [users.id]
+  }),
+  assignments: many(chatCategoryAssignments)
+}));
+
+// Relaciones para asignaciones de categorías
+export const chatCategoryAssignmentsRelations = relations(chatCategoryAssignments, ({ one }) => ({
+  category: one(chatCategories, {
+    fields: [chatCategoryAssignments.categoryId],
+    references: [chatCategories.id]
+  }),
+  account: one(whatsappAccounts, {
+    fields: [chatCategoryAssignments.accountId],
+    references: [whatsappAccounts.id]
+  }),
+  assignedBy: one(users, {
+    fields: [chatCategoryAssignments.assignedBy],
+    references: [users.id]
+  }),
+  previousCategory: one(chatCategories, {
+    fields: [chatCategoryAssignments.previousCategoryId],
+    references: [chatCategories.id]
+  })
+}));
+
+
+
 // ===== SISTEMA DE GESTIÓN DE AGENTES INTERNOS =====
 // Sistema invisible para WhatsApp, solo para etiquetado y gestión interna del CRM
 
