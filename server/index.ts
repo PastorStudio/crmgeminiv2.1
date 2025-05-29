@@ -3796,6 +3796,62 @@ app.use((req, res, next) => {
     }
   });
 
+  // Real-time WhatsApp message sending endpoint
+  app.post("/api/whatsapp-accounts/:accountId/send-message", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { chatId, message } = req.body;
+      
+      if (!chatId || !message) {
+        return res.status(400).json({
+          success: false,
+          error: "chatId and message are required"
+        });
+      }
+
+      console.log(`📤 Sending real-time message to chat ${chatId} from account ${accountId}: "${message}"`);
+      
+      // Import the WhatsApp multi-account manager
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      
+      // Get the WhatsApp instance for the specific account
+      const instance = whatsappMultiAccountManager.getInstance(accountId);
+      
+      if (!instance || !instance.client) {
+        return res.status(400).json({
+          success: false,
+          error: `WhatsApp account ${accountId} is not initialized or connected`
+        });
+      }
+
+      if (!instance.status.authenticated) {
+        return res.status(400).json({
+          success: false,
+          error: `WhatsApp account ${accountId} is not authenticated. Please scan QR code first.`
+        });
+      }
+
+      // Send the message through WhatsApp
+      const result = await instance.client.sendMessage(chatId, message);
+      
+      console.log(`✅ Message sent successfully to ${chatId}`);
+      
+      res.json({
+        success: true,
+        message: "Message sent successfully",
+        messageId: result.id || `msg_${Date.now()}`,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('❌ Error sending WhatsApp message:', error);
+      res.status(500).json({
+        success: false,
+        error: `Failed to send message: ${error.message}`
+      });
+    }
+  });
+
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
