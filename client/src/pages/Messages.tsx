@@ -1,6 +1,6 @@
 import React from "react";
 import { Helmet } from "react-helmet";
-import { WhatsAppCategorized } from "@/components/messaging/WhatsAppCategorized";
+import { WhatsAppCategorized } from "@/components/messaging/WhatsAppCategorizedFixed";
 
 export default function Messages() {
   return (
