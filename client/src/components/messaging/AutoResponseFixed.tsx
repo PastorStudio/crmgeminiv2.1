@@ -38,12 +38,14 @@ export function AutoResponseFixed({ accountId }: AutoResponseFixedProps) {
     setIsLoading(true);
     
     try {
+      // Usar puerto directo del servidor Express (puerto 3000) para evitar Vite completamente
+      const baseUrl = window.location.protocol + '//' + window.location.hostname + ':3000';
       const endpoint = isEnabled 
-        ? '/bypass/deepseek-deactivate'
-        : '/bypass/deepseek-activate';
+        ? `${baseUrl}/bypass/deepseek-deactivate`
+        : `${baseUrl}/bypass/deepseek-activate`;
       
       console.log(`🚀 ${isEnabled ? 'Desactivando' : 'Activando'} DeepSeek para cuenta ${accountId}`);
-      console.log('🔗 Usando endpoint bypass:', endpoint);
+      console.log('🔗 Usando endpoint directo servidor:', endpoint);
       
       const response = await fetch(endpoint, {
         method: 'POST',
