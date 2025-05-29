@@ -4305,13 +4305,22 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
     
-    // Inicializar sistema de respuestas automáticas al arrancar
+    // Inicializar sistemas de respuestas automáticas al arrancar
     setTimeout(async () => {
       try {
+        // Inicializar sistema OpenAI
+        await autoResponseSystem.initialize();
+        console.log('🤖 Sistema de respuestas automáticas OpenAI inicializado correctamente');
+        
+        // Inicializar sistema DeepSeek
+        await deepseekRecommendationSystem.initialize();
+        console.log('🧠 Sistema de recomendaciones DeepSeek inicializado correctamente');
+        
+        // Inicializar sistema anterior (compatibilidad)
         await stableAutoResponseManager.initialize();
         console.log('🚀 Sistema de respuestas automáticas inicializado correctamente');
       } catch (error) {
-        console.error('❌ Error inicializando sistema de respuestas automáticas:', error);
+        console.error('❌ Error inicializando sistemas de respuestas automáticas:', error);
       }
     }, 2000); // Esperar 2 segundos para que el servidor esté completamente listo
   });
