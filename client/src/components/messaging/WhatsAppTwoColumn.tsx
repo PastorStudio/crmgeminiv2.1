@@ -248,9 +248,10 @@ export function WhatsAppTwoColumn() {
             <h2 className="text-xl font-semibold text-gray-800">WhatsApp CRM</h2>
             <div className="flex items-center gap-2">
               <AccountSelector
-                accounts={accounts}
-                selectedAccount={selectedAccount}
-                onAccountChange={setSelectedAccount}
+                accounts={accounts || []}
+                selectedAccounts={selectedAccount ? [selectedAccount] : []}
+                onAccountsChange={(ids) => setSelectedAccount(ids[0] || null)}
+                onAccountClick={(id) => setSelectedAccount(id)}
               />
             </div>
           </div>
