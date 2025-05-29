@@ -129,15 +129,44 @@ export const WhatsAppCategorized: React.FC<WhatsAppCategorizedProps> = ({
       {/* Left Panel - Chat List with Categories */}
       <div className="w-80 border-r border-gray-200 flex flex-col">
         {/* Account Selection Header */}
-        <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-gray-900">Cuentas WhatsApp</h2>
-            <Badge variant="secondary" className="text-xs">
+        <div className="p-3 border-b border-gray-200" style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #2d1b1b 50%, #1a1a1a 100%)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-white">Cuentas WhatsApp</h2>
+            <Badge className="text-xs bg-red-600 text-white border-red-500">
               {selectedAccounts.length} activas
             </Badge>
           </div>
-          <div className="text-sm text-gray-600">
-            Cuentas seleccionadas: {selectedAccounts.join(', ')}
+          
+          {/* Account Selector */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-300">Seleccionar Cuentas:</label>
+            <div className="flex flex-wrap gap-2">
+              {whatsappAccounts.map((account) => (
+                <button
+                  key={account.id}
+                  onClick={() => {
+                    if (selectedAccounts.includes(account.id.toString())) {
+                      setSelectedAccounts(prev => prev.filter(id => id !== account.id.toString()));
+                    } else {
+                      setSelectedAccounts(prev => [...prev, account.id.toString()]);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                    selectedAccounts.includes(account.id.toString())
+                      ? 'bg-red-600 text-white border border-red-500 shadow-md'
+                      : 'bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:border-red-500'
+                  }`}
+                >
+                  {account.name}
+                </button>
+              ))}
+            </div>
+            
+            {selectedAccounts.length > 0 && (
+              <div className="text-xs text-gray-400 mt-2">
+                Cuentas activas: {selectedAccounts.join(', ')}
+              </div>
+            )}
           </div>
         </div>
 
