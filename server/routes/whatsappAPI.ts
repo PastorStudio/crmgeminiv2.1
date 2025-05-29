@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db';
-import { whatsappAccounts, chatCategories } from '../../shared/schema';
+import { whatsappAccounts } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 
 // Get WhatsApp accounts
