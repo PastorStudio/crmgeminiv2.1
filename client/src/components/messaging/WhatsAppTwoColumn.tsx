@@ -49,7 +49,7 @@ import {
 // Import components
 import { AccountSelector } from './AccountSelector';
 import ChatAssignmentDialog from './ChatAssignmentDialog';
-import { AutoResponseToggle } from './AutoResponseToggle';
+import { AutoResponseFixed } from './AutoResponseFixed';
 import { ChatCommentsDialog } from './ChatCommentsDialog';
 import { ExternalAgentButton } from './ExternalAgentButton';
 import { AgentSelector } from './AgentSelector';
@@ -1831,9 +1831,8 @@ export function WhatsAppTwoColumn() {
             
             {/* Respuestas Automáticas Toggle */}
             {selectedAccounts.length === 1 && (
-              <AutoResponseToggle 
+              <AutoResponseFixed 
                 accountId={selectedAccounts[0]} 
-                agentName="Smart Assistant"
               />
             )}
           </div>
