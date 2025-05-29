@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { User, Users, MessageCircle, Tag, Plus, Send, Search, Loader2 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
@@ -165,57 +166,77 @@ export const WhatsAppCategorized: React.FC<WhatsAppCategorizedProps> = ({
             />
           </div>
 
-          {/* Chat Type Filters - Smaller */}
-          <div className="flex gap-1 mb-2">
-            <Button
-              size="sm"
-              variant={chatTypeFilter === 'all' ? "default" : "outline"}
-              onClick={() => setChatTypeFilter('all')}
-              className="h-6 px-2 text-xs flex items-center space-x-1"
-            >
-              <MessageCircle className="h-2.5 w-2.5" />
-              <span>Todos</span>
-              <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1">
-                {filteredChats.length}
-              </Badge>
-            </Button>
-            
-            <Button
-              size="sm"
-              variant={chatTypeFilter === 'individual' ? "default" : "outline"}
-              onClick={() => setChatTypeFilter('individual')}
-              className="h-6 px-2 text-xs flex items-center space-x-1"
-              style={{
-                backgroundColor: chatTypeFilter === 'individual' ? '#10B981' : 'transparent',
-                borderColor: '#10B981',
-                color: chatTypeFilter === 'individual' ? 'white' : '#10B981'
-              }}
-            >
-              <User className="h-2.5 w-2.5" />
-              <span>Individual</span>
-              <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1">
-                {filteredChats.filter(chat => !chat.isGroup).length}
-              </Badge>
-            </Button>
+          {/* Chat Type Filters - Icon Only */}
+          <TooltipProvider>
+            <div className="flex gap-1 mb-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant={chatTypeFilter === 'all' ? "default" : "outline"}
+                    onClick={() => setChatTypeFilter('all')}
+                    className="h-7 w-7 p-0 relative"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    <Badge variant="secondary" className="absolute -top-1 -right-1 text-[8px] h-3 w-3 p-0 flex items-center justify-center rounded-full">
+                      {filteredChats.length}
+                    </Badge>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Todos ({filteredChats.length})</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant={chatTypeFilter === 'individual' ? "default" : "outline"}
+                    onClick={() => setChatTypeFilter('individual')}
+                    className="h-7 w-7 p-0 relative"
+                    style={{
+                      backgroundColor: chatTypeFilter === 'individual' ? '#10B981' : 'transparent',
+                      borderColor: '#10B981',
+                      color: chatTypeFilter === 'individual' ? 'white' : '#10B981'
+                    }}
+                  >
+                    <User className="h-3.5 w-3.5" />
+                    <Badge variant="secondary" className="absolute -top-1 -right-1 text-[8px] h-3 w-3 p-0 flex items-center justify-center rounded-full">
+                      {filteredChats.filter(chat => !chat.isGroup).length}
+                    </Badge>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Individual ({filteredChats.filter(chat => !chat.isGroup).length})</p>
+                </TooltipContent>
+              </Tooltip>
 
-            <Button
-              size="sm"
-              variant={chatTypeFilter === 'groups' ? "default" : "outline"}
-              onClick={() => setChatTypeFilter('groups')}
-              className="h-6 px-2 text-xs flex items-center space-x-1"
-              style={{
-                backgroundColor: chatTypeFilter === 'groups' ? '#8B5CF6' : 'transparent',
-                borderColor: '#8B5CF6',
-                color: chatTypeFilter === 'groups' ? 'white' : '#8B5CF6'
-              }}
-            >
-              <Users className="h-2.5 w-2.5" />
-              <span>Grupos</span>
-              <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1">
-                {filteredChats.filter(chat => chat.isGroup).length}
-              </Badge>
-            </Button>
-          </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant={chatTypeFilter === 'groups' ? "default" : "outline"}
+                    onClick={() => setChatTypeFilter('groups')}
+                    className="h-7 w-7 p-0 relative"
+                    style={{
+                      backgroundColor: chatTypeFilter === 'groups' ? '#8B5CF6' : 'transparent',
+                      borderColor: '#8B5CF6',
+                      color: chatTypeFilter === 'groups' ? 'white' : '#8B5CF6'
+                    }}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    <Badge variant="secondary" className="absolute -top-1 -right-1 text-[8px] h-3 w-3 p-0 flex items-center justify-center rounded-full">
+                      {filteredChats.filter(chat => chat.isGroup).length}
+                    </Badge>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Grupos ({filteredChats.filter(chat => chat.isGroup).length})</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
 
           {/* Category Filters - Below search */}
           {categories.length > 0 && (
