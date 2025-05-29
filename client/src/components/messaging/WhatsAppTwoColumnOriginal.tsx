@@ -604,7 +604,7 @@ export function WhatsAppTwoColumn() {
                         </div>
                       </div>
                       
-                      <p className="text-sm text-gray-600 truncate mb-2">{chat.lastMessage}</p>
+
                       
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-1">
