@@ -17,10 +17,7 @@ import { agentActivityTracker } from "./services/agentActivityTracker";
 import { agentRoleManager } from "./services/agentRoleManager";
 import { simpleLiveStatus } from "./services/simpleLiveStatus";
 import { WhatsAppSyncManager } from "./utils/whatsappSync";
-import { stableAutoResponseManager } from "./services/stableAutoResponse";
-import { deepSeekService } from "./services/deepseekService";
-import deepSeekAutoResponse from "./services/deepseekAutoResponse";
-import { directDeepSeekResponse } from "./services/directDeepSeekResponse";
+// Imports de respuestas automáticas removidos - sistema limpio
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
