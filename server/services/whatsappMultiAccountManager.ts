@@ -676,7 +676,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             
             const { autoMessageProcessor } = await import('./autoMessageProcessor');
             
-            await autoMessageProcessor.processIncomingMessage({
+            await autoMessageProcessor.processMessage({
               id: message.id._serialized,
               body: messageBody,
               fromMe: message.fromMe,
