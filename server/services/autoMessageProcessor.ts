@@ -1,6 +1,6 @@
 import { db } from '../db';
-import { whatsappAccounts } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { whatsappAccounts, externalAgents } from '@shared/schema';
+import { eq, sql } from 'drizzle-orm';
 
 export interface AutoMessageResponse {
   success: boolean;
@@ -50,22 +50,20 @@ export class AutoMessageProcessor {
       console.log(`🔍 Debug inicial - assignedExternalAgentId: ${account.assignedExternalAgentId}, autoResponseEnabled: ${account.autoResponseEnabled}`);
       
       try {
-        const directQuery = await db.execute(`
-          SELECT assigned_external_agent_id, auto_response_enabled 
-          FROM whatsapp_accounts 
-          WHERE id = $1
-        `, [message.accountId]);
+        const directQuery = await db.select({
+          assignedExternalAgentId: whatsappAccounts.assignedExternalAgentId,
+          autoResponseEnabled: whatsappAccounts.autoResponseEnabled
+        }).from(whatsappAccounts).where(eq(whatsappAccounts.id, message.accountId));
           
-        if (directQuery.rows.length > 0) {
-          const directConfig = directQuery.rows[0];
+        if (directQuery.length > 0) {
+          const directConfig = directQuery[0];
           console.log(`🔧 Configuración directa encontrada:`, directConfig);
           
-          if (directConfig.assigned_external_agent_id && directConfig.auto_response_enabled) {
+          if (directConfig.assignedExternalAgentId && directConfig.autoResponseEnabled) {
             // Obtener información del agente
-            const agentQuery = await db.execute(`
-              SELECT agent_name FROM external_agents 
-              WHERE id = $1
-            `, [directConfig.assigned_external_agent_id]);
+            const agentQuery = await db.select({
+              agentName: externalAgents.agentName
+            }).from(externalAgents).where(eq(externalAgents.id, directConfig.assignedExternalAgentId));
             
             if (agentQuery.rows.length > 0) {
               const agentName = agentQuery.rows[0].agent_name;
