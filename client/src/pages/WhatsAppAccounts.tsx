@@ -717,7 +717,7 @@ const WhatsAppAccounts = () => {
           {/* Generar 10 posiciones fijas */}
           {Array.from({ length: 10 }, (_, index) => {
             const position = index + 1;
-            const existingAccount = accounts.find(acc => acc.id === position);
+            const existingAccount = (Array.isArray(accounts) ? accounts : []).find(acc => acc.id === position);
             const isOccupied = !!existingAccount;
             
             return (
