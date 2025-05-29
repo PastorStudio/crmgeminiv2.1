@@ -272,6 +272,15 @@ export function WhatsAppTwoColumn() {
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [customCategories, setCustomCategories] = useState<any[]>([]);
+  const [showCreateCategoryDialog, setShowCreateCategoryDialog] = useState(false);
+  const [newCategoryData, setNewCategoryData] = useState({
+    name: '',
+    description: '',
+    color: '#3B82F6',
+    icon: 'MessageCircle'
+  });
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [translatorEnabled, setTranslatorEnabled] = useState(false);
   const [smartBotsEnabled, setSmartBotsEnabled] = useState(false);
@@ -1818,6 +1827,98 @@ export function WhatsAppTwoColumn() {
             <div className="flex items-center justify-center">
               <h2 className="text-lg font-semibold text-white">WhatsApp Business</h2>
             </div>
+          </div>
+        </div>
+
+        {/* Category Filter */}
+        <div className="border-b border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-gray-700">Categorías</h3>
+            
+            {/* Botón para crear nueva categoría */}
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="text-blue-600 border-blue-600 hover:bg-blue-50"
+              onClick={() => setShowCreateCategoryDialog(true)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Nueva
+            </Button>
+          </div>
+
+          {/* Lista de categorías */}
+          <div className="flex flex-wrap gap-2">
+            {/* Opción "Todos" */}
+            <Button
+              size="sm"
+              variant={selectedCategory === null ? "default" : "outline"}
+              onClick={() => setSelectedCategory(null)}
+              className="flex items-center space-x-1"
+            >
+              <Filter className="h-3 w-3" />
+              <span>Todos</span>
+              <Badge variant="secondary" className="ml-1">
+                {(chats as any[])?.length || 0}
+              </Badge>
+            </Button>
+
+            {/* Individual */}
+            <Button
+              size="sm"
+              variant={selectedCategory === 'individual' ? "default" : "outline"}
+              onClick={() => setSelectedCategory('individual')}
+              className="flex items-center space-x-1"
+              style={{
+                backgroundColor: selectedCategory === 'individual' ? '#10B981' : 'transparent',
+                borderColor: '#10B981',
+                color: selectedCategory === 'individual' ? 'white' : '#10B981'
+              }}
+            >
+              <User className="h-3 w-3" />
+              <span>Individual</span>
+              <Badge variant="secondary" className="ml-1">
+                {(chats as any[])?.filter(chat => !chat.isGroup).length || 0}
+              </Badge>
+            </Button>
+
+            {/* Grupos */}
+            <Button
+              size="sm"
+              variant={selectedCategory === 'groups' ? "default" : "outline"}
+              onClick={() => setSelectedCategory('groups')}
+              className="flex items-center space-x-1"
+              style={{
+                backgroundColor: selectedCategory === 'groups' ? '#8B5CF6' : 'transparent',
+                borderColor: '#8B5CF6',
+                color: selectedCategory === 'groups' ? 'white' : '#8B5CF6'
+              }}
+            >
+              <Users className="h-3 w-3" />
+              <span>Grupos</span>
+              <Badge variant="secondary" className="ml-1">
+                {(chats as any[])?.filter(chat => chat.isGroup).length || 0}
+              </Badge>
+            </Button>
+
+            {/* Categorías personalizadas */}
+            {customCategories.map((category) => (
+              <Button
+                key={category.id}
+                size="sm"
+                variant={selectedCategory === category.id?.toString() ? "default" : "outline"}
+                onClick={() => setSelectedCategory(category.id?.toString())}
+                className="flex items-center space-x-1"
+                style={{
+                  backgroundColor: selectedCategory === category.id?.toString() ? category.color : 'transparent',
+                  borderColor: category.color,
+                  color: selectedCategory === category.id?.toString() ? 'white' : category.color
+                }}
+              >
+                <MessageCircle className="h-3 w-3" />
+                <span>{category.name}</span>
+              </Button>
+            ))}
           </div>
         </div>
 
