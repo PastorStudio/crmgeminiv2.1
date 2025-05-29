@@ -888,7 +888,7 @@ export const insertMediaGallerySchema = createInsertSchema(mediaGallery).omit({ 
 export const insertWhatsappAccountSchema = createInsertSchema(whatsappAccounts).omit({ id: true, createdAt: true, lastActiveAt: true });
 export const insertUserWhatsappAccountSchema = createInsertSchema(userWhatsappAccounts).omit({ id: true, assignedAt: true });
 export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
-export const insertChatCategorySchema = createInsertSchema(chatCategories).omit({ id: true, createdAt: true });
+// Chat category schema removed - using service-based approach
 export const insertAiConfigSchema = createInsertSchema(aiConfig).omit({ id: true, updatedAt: true });
 export const insertTimeZoneConfigSchema = createInsertSchema(timeZoneConfig).omit({ id: true, updatedAt: true });
 export const insertWhatsappMessageSchema = createInsertSchema(whatsappMessages).omit({ id: true, createdAt: true });
@@ -897,7 +897,7 @@ export type InsertMediaGallery = z.infer<typeof insertMediaGallerySchema>;
 export type InsertWhatsappAccount = z.infer<typeof insertWhatsappAccountSchema>;
 export type InsertUserWhatsappAccount = z.infer<typeof insertUserWhatsappAccountSchema>;
 export type InsertChatAssignment = z.infer<typeof insertChatAssignmentSchema>;
-export type InsertChatCategory = z.infer<typeof insertChatCategorySchema>;
+// Chat category insert type removed - using service-based approach
 export type InsertAiConfig = z.infer<typeof insertAiConfigSchema>;
 export type InsertTimeZoneConfig = z.infer<typeof insertTimeZoneConfigSchema>;
 export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
@@ -921,7 +921,7 @@ export type VoiceNoteTranscription = typeof voiceNoteTranscriptions.$inferSelect
 export type WhatsappAccount = typeof whatsappAccounts.$inferSelect;
 export type UserWhatsappAccount = typeof userWhatsappAccounts.$inferSelect;
 export type ChatAssignment = typeof chatAssignments.$inferSelect;
-export type ChatCategory = typeof chatCategories.$inferSelect;
+// Chat category type removed - using service-based approach
 export type AiConfig = typeof aiConfig.$inferSelect;
 export type TimeZoneConfig = typeof timeZoneConfig.$inferSelect;
 export type WhatsappMessage = typeof whatsappMessages.$inferSelect;
