@@ -22,6 +22,8 @@ import { deepSeekService } from "./services/deepseekService";
 import deepSeekAutoResponse from "./services/deepseekAutoResponse";
 import { directDeepSeekResponse } from "./services/directDeepSeekResponse";
 import { ChatCategoryService } from "./services/chatCategoryService";
+import { autoResponseSystem } from "./services/autoResponseSystem";
+import { deepseekRecommendationSystem } from "./services/deepseekRecommendationSystem";
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -208,6 +210,185 @@ app.get("/api/deepseek/status/:accountId", async (req: Request, res: Response) =
   } catch (error) {
     console.error('❌ [DEEPSEEK] Error obteniendo estado:', error);
     res.status(500).json({ success: false, error: 'Error obteniendo estado' });
+  }
+});
+
+// === NUEVOS SISTEMAS DE RESPUESTAS AUTOMÁTICAS ===
+
+// OpenAI Auto-Response System Endpoints
+app.post("/api/auto-response-openai/activate/:accountId", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    const { prompt, temperature, responseStyle, responseDelay, maxTokens } = req.body;
+    
+    console.log('🤖 [OPENAI] Activando respuestas automáticas para cuenta:', accountId);
+    
+    await autoResponseSystem.createOrUpdateConfig(accountId, {
+      prompt: prompt || 'Eres un asistente virtual profesional. Responde de manera útil y cortés.',
+      temperature: temperature || 0.7,
+      responseStyle: responseStyle || 'professional',
+      responseDelay: responseDelay || 3,
+      maxTokens: maxTokens || 150,
+      isEnabled: true
+    });
+
+    const success = await autoResponseSystem.activateAutoResponse(accountId);
+    
+    res.json({ 
+      success, 
+      message: success ? 'Respuestas automáticas OpenAI activadas' : 'Error activando respuestas automáticas',
+      accountId 
+    });
+  } catch (error) {
+    console.error('❌ [OPENAI] Error:', error);
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
+  }
+});
+
+app.post("/api/auto-response-openai/deactivate/:accountId", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    
+    console.log('🛑 [OPENAI] Desactivando respuestas automáticas para cuenta:', accountId);
+    
+    const success = await autoResponseSystem.deactivateAutoResponse(accountId);
+    
+    res.json({ 
+      success, 
+      message: 'Respuestas automáticas OpenAI desactivadas',
+      accountId 
+    });
+  } catch (error) {
+    console.error('❌ [OPENAI] Error:', error);
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
+  }
+});
+
+app.get("/api/auto-response-openai/status/:accountId", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    
+    const config = autoResponseSystem.getConfig(accountId);
+    const isEnabled = autoResponseSystem.isEnabled(accountId);
+    
+    res.json({
+      success: true,
+      isEnabled,
+      config: config || null
+    });
+  } catch (error) {
+    console.error('❌ [OPENAI] Error obteniendo estado:', error);
+    res.status(500).json({ success: false, error: 'Error obteniendo estado' });
+  }
+});
+
+app.post("/api/auto-response-openai/config/:accountId", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    const configData = req.body;
+    
+    console.log('⚙️ [OPENAI] Actualizando configuración para cuenta:', accountId);
+    
+    const config = await autoResponseSystem.createOrUpdateConfig(accountId, configData);
+    
+    res.json({ 
+      success: true, 
+      message: 'Configuración actualizada',
+      config 
+    });
+  } catch (error) {
+    console.error('❌ [OPENAI] Error actualizando configuración:', error);
+    res.status(500).json({ success: false, error: 'Error actualizando configuración' });
+  }
+});
+
+// DeepSeek Recommendation System Endpoints
+app.post("/api/deepseek-recommendations/activate/:accountId", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    const { chatUrl, temperature, responseStyle, maxRecommendations } = req.body;
+    
+    console.log('🧠 [DEEPSEEK] Activando recomendaciones para cuenta:', accountId);
+    
+    if (!chatUrl) {
+      return res.status(400).json({ success: false, error: 'URL del chat de DeepSeek es requerida' });
+    }
+
+    await deepseekRecommendationSystem.createOrUpdateConfig(accountId, {
+      chatUrl,
+      temperature: temperature || 0.7,
+      responseStyle: responseStyle || 'balanced',
+      maxRecommendations: maxRecommendations || 3,
+      isEnabled: true
+    });
+
+    const success = await deepseekRecommendationSystem.activateRecommendations(accountId, chatUrl);
+    
+    res.json({ 
+      success, 
+      message: success ? 'Recomendaciones DeepSeek activadas' : 'Error activando recomendaciones',
+      accountId 
+    });
+  } catch (error) {
+    console.error('❌ [DEEPSEEK] Error:', error);
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
+  }
+});
+
+app.post("/api/deepseek-recommendations/deactivate/:accountId", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    
+    console.log('🛑 [DEEPSEEK] Desactivando recomendaciones para cuenta:', accountId);
+    
+    const success = await deepseekRecommendationSystem.deactivateRecommendations(accountId);
+    
+    res.json({ 
+      success, 
+      message: 'Recomendaciones DeepSeek desactivadas',
+      accountId 
+    });
+  } catch (error) {
+    console.error('❌ [DEEPSEEK] Error:', error);
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
+  }
+});
+
+app.get("/api/deepseek-recommendations/status/:accountId", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    
+    const config = deepseekRecommendationSystem.getConfig(accountId);
+    const isEnabled = deepseekRecommendationSystem.isEnabled(accountId);
+    
+    res.json({
+      success: true,
+      isEnabled,
+      config: config || null
+    });
+  } catch (error) {
+    console.error('❌ [DEEPSEEK] Error obteniendo estado:', error);
+    res.status(500).json({ success: false, error: 'Error obteniendo estado' });
+  }
+});
+
+app.post("/api/deepseek-recommendations/config/:accountId", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    const configData = req.body;
+    
+    console.log('⚙️ [DEEPSEEK] Actualizando configuración para cuenta:', accountId);
+    
+    const config = await deepseekRecommendationSystem.createOrUpdateConfig(accountId, configData);
+    
+    res.json({ 
+      success: true, 
+      message: 'Configuración actualizada',
+      config 
+    });
+  } catch (error) {
+    console.error('❌ [DEEPSEEK] Error actualizando configuración:', error);
+    res.status(500).json({ success: false, error: 'Error actualizando configuración' });
   }
 });
 
