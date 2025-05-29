@@ -66,16 +66,17 @@ class DeepSeekRecommendationSystem {
       await db.execute(sql`
         CREATE TABLE IF NOT EXISTS deepseek_configs (
           id TEXT PRIMARY KEY,
-          account_id INTEGER NOT NULL,
+          account_id INTEGER UNIQUE NOT NULL,
           is_enabled BOOLEAN DEFAULT false,
           chat_url TEXT DEFAULT '',
-          temperature REAL DEFAULT 0.7,
+          temperature DECIMAL(3,2) DEFAULT 0.7,
           response_style TEXT DEFAULT 'balanced',
           max_recommendations INTEGER DEFAULT 3,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
         )
       `);
+      console.log('✅ Tabla deepseek_configs verificada/creada');
     } catch (error) {
       console.error('Error creating deepseek_configs table:', error);
     }
@@ -143,11 +144,20 @@ class DeepSeekRecommendationSystem {
     };
 
     try {
+      // Use PostgreSQL UPSERT syntax instead of SQLite INSERT OR REPLACE
       await db.execute(sql`
-        INSERT OR REPLACE INTO deepseek_configs 
+        INSERT INTO deepseek_configs 
         (id, account_id, is_enabled, chat_url, temperature, response_style, max_recommendations, created_at, updated_at)
         VALUES (${configId}, ${accountId}, ${newConfig.isEnabled}, ${newConfig.chatUrl}, ${newConfig.temperature}, 
                 ${newConfig.responseStyle}, ${newConfig.maxRecommendations}, ${now}, ${now})
+        ON CONFLICT (account_id) 
+        DO UPDATE SET 
+          is_enabled = EXCLUDED.is_enabled,
+          chat_url = EXCLUDED.chat_url,
+          temperature = EXCLUDED.temperature,
+          response_style = EXCLUDED.response_style,
+          max_recommendations = EXCLUDED.max_recommendations,
+          updated_at = EXCLUDED.updated_at
       `);
 
       this.configs.set(accountId, newConfig);
