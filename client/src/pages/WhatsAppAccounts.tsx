@@ -868,13 +868,7 @@ const WhatsAppAccounts = () => {
                   </div>
                 )}
 
-                {/* Sección de Agente Externo Asignado */}
-                <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium text-blue-800">Agente Externo (A.E AI)</h4>
-                  </div>
-                  <SimpleAgentDisplay accountId={account.id} />
-                </div>
+
               </CardContent>
               <CardFooter className="flex justify-between border-t p-4">
                 <div className="flex gap-1">
