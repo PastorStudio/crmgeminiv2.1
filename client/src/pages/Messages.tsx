@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Helmet } from "react-helmet";
-import { WhatsAppTwoColumn } from "@/components/messaging/WhatsAppTwoColumn";
+import { WhatsAppCategorized } from "@/components/messaging/WhatsAppCategorized";
 
 export default function Messages() {
+  const [selectedAccounts] = useState<number[]>([1, 2]); // Default accounts
+
   return (
     <>
       <Helmet>
@@ -10,9 +12,9 @@ export default function Messages() {
         <meta name="description" content="Comunícate con tus clientes a través de WhatsApp directamente desde tu CRM" />
       </Helmet>
 
-      {/* Interfaz de WhatsApp con diseño de 2 columnas */}
+      {/* Interfaz de WhatsApp con sistema de categorización */}
       <div className="w-full h-screen overflow-hidden">
-        <WhatsAppTwoColumn />
+        <WhatsAppCategorized selectedAccounts={selectedAccounts} />
       </div>
     </>
   );
