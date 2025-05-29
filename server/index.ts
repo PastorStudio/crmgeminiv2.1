@@ -19,7 +19,8 @@ import { simpleLiveStatus } from "./services/simpleLiveStatus";
 import { WhatsAppSyncManager } from "./utils/whatsappSync";
 import { stableAutoResponseManager } from "./services/stableAutoResponse";
 import { deepSeekService } from "./services/deepseekService";
-import { deepSeekAutoResponse } from "./services/deepseekAutoResponse";
+import deepSeekAutoResponse from "./services/deepseekAutoResponse";
+import { directDeepSeekResponse } from "./services/directDeepSeekResponse";
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
