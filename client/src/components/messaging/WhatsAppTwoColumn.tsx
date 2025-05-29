@@ -1007,6 +1007,41 @@ export function WhatsAppTwoColumn() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
+  // Fetch custom categories
+  const { data: categories = [] } = useQuery({
+    queryKey: ['/api/chat-categories'],
+    enabled: true
+  });
+
+  // Create category mutation
+  const createCategoryMutation = useMutation({
+    mutationFn: (categoryData: any) => 
+      fetch('/api/chat-categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(categoryData)
+      }).then(res => res.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-categories'] });
+      setShowCreateCategoryDialog(false);
+      setNewCategoryData({ name: '', description: '', color: '#3B82F6', icon: 'MessageCircle' });
+    }
+  });
+
+  // Assign category mutation
+  const assignCategoryMutation = useMutation({
+    mutationFn: ({ chatId, accountId, categoryId }: { chatId: string; accountId: number; categoryId: number }) =>
+      fetch('/api/chat-categories/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId, accountId, categoryId })
+      }).then(res => res.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-categories'] });
+      setCategoryLoadingChat(null);
+    }
+  });
+
   // Fetch WhatsApp accounts
   const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
     queryKey: ['/api/whatsapp/accounts'],
@@ -1810,10 +1845,33 @@ export function WhatsAppTwoColumn() {
     }
   }, [queryClient, selectedAccounts]);
 
-  const filteredChats = sortedChats.filter(chat => 
-    chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Enhanced filtering logic for your category system
+  const filteredChats = useMemo(() => {
+    let filtered = sortedChats;
+    
+    // Filter by search query
+    if (searchQuery) {
+      filtered = filtered.filter(chat => 
+        chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    // Filter by chat type (Individual/Groups)
+    if (chatTypeFilter === 'individual') {
+      filtered = filtered.filter(chat => !chat.isGroup);
+    } else if (chatTypeFilter === 'groups') {
+      filtered = filtered.filter(chat => chat.isGroup);
+    }
+    
+    // Filter by selected category
+    if (selectedCategory) {
+      // This would need to be implemented based on your category assignment data
+      // For now, return all chats
+    }
+    
+    return filtered;
+  }, [sortedChats, searchQuery, chatTypeFilter, selectedCategory]);
 
   if (loadingAccounts) {
     return (
@@ -1837,10 +1895,10 @@ export function WhatsAppTwoColumn() {
           </div>
         </div>
 
-        {/* Category Filter */}
+        {/* Category and Type Filter */}
         <div className="border-b border-gray-200 p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-gray-700">Categorías</h3>
+            <h3 className="text-sm font-medium text-gray-700">Filtros</h3>
             
             {/* Botón para crear nueva categoría */}
             <Button 
@@ -1850,13 +1908,46 @@ export function WhatsAppTwoColumn() {
               onClick={() => setShowCreateCategoryDialog(true)}
             >
               <Plus className="h-4 w-4 mr-1" />
-              Nueva
+              Nueva Categoría
             </Button>
           </div>
 
-          {/* Lista de categorías */}
+          {/* Filtro por tipo de chat */}
+          <div className="mb-3">
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={chatTypeFilter === 'all' ? "default" : "outline"}
+                onClick={() => setChatTypeFilter('all')}
+                className="flex items-center space-x-1"
+              >
+                <MessageCircle className="h-3 w-3" />
+                <span>Todos</span>
+              </Button>
+              <Button
+                size="sm"
+                variant={chatTypeFilter === 'individual' ? "default" : "outline"}
+                onClick={() => setChatTypeFilter('individual')}
+                className="flex items-center space-x-1"
+              >
+                <User className="h-3 w-3" />
+                <span>Individual</span>
+              </Button>
+              <Button
+                size="sm"
+                variant={chatTypeFilter === 'groups' ? "default" : "outline"}
+                onClick={() => setChatTypeFilter('groups')}
+                className="flex items-center space-x-1"
+              >
+                <Users className="h-3 w-3" />
+                <span>Grupos</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Lista de categorías personalizadas */}
           <div className="flex flex-wrap gap-2">
-            {/* Opción "Todos" */}
+            {/* Opción "Todas las categorías" */}
             <Button
               size="sm"
               variant={selectedCategory === null ? "default" : "outline"}
@@ -1864,65 +1955,23 @@ export function WhatsAppTwoColumn() {
               className="flex items-center space-x-1"
             >
               <Filter className="h-3 w-3" />
-              <span>Todos</span>
-              <Badge variant="secondary" className="ml-1">
-                {(chats as any[])?.length || 0}
-              </Badge>
-            </Button>
-
-            {/* Individual */}
-            <Button
-              size="sm"
-              variant={selectedCategory === 'individual' ? "default" : "outline"}
-              onClick={() => setSelectedCategory('individual')}
-              className="flex items-center space-x-1"
-              style={{
-                backgroundColor: selectedCategory === 'individual' ? '#10B981' : 'transparent',
-                borderColor: '#10B981',
-                color: selectedCategory === 'individual' ? 'white' : '#10B981'
-              }}
-            >
-              <User className="h-3 w-3" />
-              <span>Individual</span>
-              <Badge variant="secondary" className="ml-1">
-                {(chats as any[])?.filter(chat => !chat.isGroup).length || 0}
-              </Badge>
-            </Button>
-
-            {/* Grupos */}
-            <Button
-              size="sm"
-              variant={selectedCategory === 'groups' ? "default" : "outline"}
-              onClick={() => setSelectedCategory('groups')}
-              className="flex items-center space-x-1"
-              style={{
-                backgroundColor: selectedCategory === 'groups' ? '#8B5CF6' : 'transparent',
-                borderColor: '#8B5CF6',
-                color: selectedCategory === 'groups' ? 'white' : '#8B5CF6'
-              }}
-            >
-              <Users className="h-3 w-3" />
-              <span>Grupos</span>
-              <Badge variant="secondary" className="ml-1">
-                {(chats as any[])?.filter(chat => chat.isGroup).length || 0}
-              </Badge>
+              <span>Todas</span>
             </Button>
 
             {/* Categorías personalizadas */}
-            {customCategories.map((category) => (
+            {categories.map((category: any) => (
               <Button
                 key={category.id}
                 size="sm"
-                variant={selectedCategory === category.id?.toString() ? "default" : "outline"}
-                onClick={() => setSelectedCategory(category.id?.toString())}
+                variant={selectedCategory === category.id ? "default" : "outline"}
+                onClick={() => setSelectedCategory(category.id)}
                 className="flex items-center space-x-1"
-                style={{
-                  backgroundColor: selectedCategory === category.id?.toString() ? category.color : 'transparent',
-                  borderColor: category.color,
-                  color: selectedCategory === category.id?.toString() ? 'white' : category.color
+                style={{ 
+                  backgroundColor: selectedCategory === category.id ? category.color : 'transparent',
+                  borderColor: category.color 
                 }}
               >
-                <MessageCircle className="h-3 w-3" />
+                <Tag className="h-3 w-3" />
                 <span>{category.name}</span>
               </Button>
             ))}
@@ -1930,9 +1979,269 @@ export function WhatsAppTwoColumn() {
         </div>
 
         {/* Search */}
-        <div className="p-4 border-b border-gray-200 mt-[-1px] mb-[-1px] pl-[20px] pr-[20px] pt-[2px] pb-[2px] ml-[2px] mr-[2px]">
+        <div className="p-4 border-b border-gray-200">
           <Input
-            placeholder="Buscar conversaciones..."
+            placeholder="Buscar chats..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full"
+          />
+        </div>
+
+        {/* Chat List */}
+        <ScrollArea className="flex-1">
+          <div className="space-y-1">
+            {filteredChats.map((chat) => (
+              <ChatListItem 
+                key={chat.id} 
+                chat={chat} 
+                isSelected={selectedChat?.id === chat.id}
+                onClick={() => setSelectedChat(chat)}
+                categories={categories}
+                onCategoryChange={(categoryId) => {
+                  setCategoryLoadingChat(chat.id);
+                  assignCategoryMutation.mutate({
+                    chatId: chat.id,
+                    accountId: chat.accountId,
+                    categoryId
+                  });
+                }}
+                categoryLoading={categoryLoadingChat === chat.id}
+              />
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+
+      {/* Right Panel - Chat Interface */}
+      <div className="flex-1 flex flex-col">
+        {selectedChat ? (
+          <ChatInterface chat={selectedChat} />
+        ) : (
+          <div className="flex-1 flex items-center justify-center bg-gray-50">
+            <div className="text-center">
+              <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Selecciona un chat</h3>
+              <p className="text-gray-500">Elige una conversación para comenzar</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Create Category Dialog */}
+      <Dialog open={showCreateCategoryDialog} onOpenChange={setShowCreateCategoryDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear Nueva Categoría</DialogTitle>
+            <DialogDescription>
+              Crea una categoría personalizada para organizar tus chats
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Nombre</label>
+              <Input
+                value={newCategoryData.name}
+                onChange={(e) => setNewCategoryData({ ...newCategoryData, name: e.target.value })}
+                placeholder="Nombre de la categoría"
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium">Descripción</label>
+              <Input
+                value={newCategoryData.description}
+                onChange={(e) => setNewCategoryData({ ...newCategoryData, description: e.target.value })}
+                placeholder="Descripción opcional"
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium">Color</label>
+              <div className="flex gap-2 mt-2">
+                {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'].map((color) => (
+                  <button
+                    key={color}
+                    className={`w-8 h-8 rounded-full border-2 ${
+                      newCategoryData.color === color ? 'border-gray-800' : 'border-gray-300'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    onClick={() => setNewCategoryData({ ...newCategoryData, color })}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateCategoryDialog(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={() => createCategoryMutation.mutate(newCategoryData)}
+              disabled={!newCategoryData.name || createCategoryMutation.isPending}
+            >
+              {createCategoryMutation.isPending ? 'Creando...' : 'Crear Categoría'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ChatListItem component with category management
+function ChatListItem({ 
+  chat, 
+  isSelected, 
+  onClick, 
+  categories, 
+  onCategoryChange, 
+  categoryLoading 
+}: {
+  chat: any;
+  isSelected: boolean;
+  onClick: () => void;
+  categories: any[];
+  onCategoryChange: (categoryId: number) => void;
+  categoryLoading: boolean;
+}) {
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+
+  return (
+    <div 
+      className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 relative ${
+        isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+      }`}
+      onClick={onClick}
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center mb-1">
+            <div className="flex items-center space-x-2">
+              {chat.isGroup ? <Users className="h-4 w-4 text-gray-500" /> : <User className="h-4 w-4 text-gray-500" />}
+              <span className="font-medium text-gray-900 truncate">{chat.name}</span>
+            </div>
+          </div>
+          
+          <p className="text-sm text-gray-600 truncate">{chat.lastMessage}</p>
+          
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-xs text-gray-500">
+              {new Date(chat.timestamp).toLocaleTimeString('es-ES', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}
+            </span>
+            
+            {chat.unreadCount > 0 && (
+              <Badge variant="default" className="bg-green-500">
+                {chat.unreadCount}
+              </Badge>
+            )}
+          </div>
+        </div>
+        
+        {/* Category Management Button */}
+        <Popover open={showCategoryMenu} onOpenChange={setShowCategoryMenu}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 ml-2"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowCategoryMenu(true);
+              }}
+            >
+              {categoryLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Tag className="h-3 w-3" />
+              )}
+            </Button>
+          </PopoverTrigger>
+          
+          <PopoverContent className="w-48 p-2" align="end">
+            <div className="space-y-1">
+              <div className="text-xs font-medium text-gray-500 px-2 py-1">
+                Asignar categoría
+              </div>
+              
+              {categories.map((category: any) => (
+                <Button
+                  key={category.id}
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start h-auto p-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCategoryChange(category.id);
+                    setShowCategoryMenu(false);
+                  }}
+                >
+                  <div 
+                    className="w-3 h-3 rounded-full mr-2" 
+                    style={{ backgroundColor: category.color }}
+                  />
+                  <span className="text-sm">{category.name}</span>
+                </Button>
+              ))}
+              
+              {categories.length === 0 && (
+                <div className="text-xs text-gray-500 px-2 py-1">
+                  No hay categorías disponibles
+                </div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+    </div>
+  );
+}
+
+// Simple Chat Interface component
+function ChatInterface({ chat }: { chat: any }) {
+  return (
+    <div className="flex-1 flex flex-col">
+      {/* Chat Header */}
+      <div className="p-4 border-b border-gray-200 bg-white">
+        <div className="flex items-center space-x-3">
+          {chat.isGroup ? <Users className="h-5 w-5 text-gray-500" /> : <User className="h-5 w-5 text-gray-500" />}
+          <div>
+            <h2 className="font-medium text-gray-900">{chat.name}</h2>
+            <p className="text-sm text-gray-500">
+              {chat.isGroup ? 'Grupo' : 'Chat individual'}
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Messages Area */}
+      <div className="flex-1 bg-gray-50 p-4">
+        <div className="text-center text-gray-500">
+          <MessageCircle className="h-8 w-8 mx-auto mb-2" />
+          <p>Conversación con {chat.name}</p>
+        </div>
+      </div>
+      
+      {/* Input Area */}
+      <div className="p-4 bg-white border-t border-gray-200">
+        <div className="flex items-center space-x-2">
+          <Input 
+            placeholder="Escribe un mensaje..." 
+            className="flex-1"
+          />
+          <Button size="sm">
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-[100px] pr-[100px] pt-[4px] pb-[4px] mt-[10px] mb-[10px] ml-[-5px] mr-[-5px]"
