@@ -72,11 +72,10 @@ export function AccountSelector({
   };
 
   const handleSelectAll = () => {
-    const accountsArray = Array.isArray(accounts) ? accounts : [];
-    if (selectedAccounts.length === accountsArray.length) {
+    if (selectedAccounts.length === accounts.length) {
       onAccountsChange([]);
     } else {
-      onAccountsChange(accountsArray.map(acc => acc.id));
+      onAccountsChange(accounts.map(acc => acc.id));
     }
   };
 
@@ -89,7 +88,7 @@ export function AccountSelector({
   };
 
   const connectedCount = selectedAccounts.length;
-  const selectedAccountsData = (Array.isArray(accounts) ? accounts : []).filter(acc => selectedAccounts.includes(acc.id));
+  const selectedAccountsData = accounts.filter(acc => selectedAccounts.includes(acc.id));
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -129,7 +128,7 @@ export function AccountSelector({
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="select-all"
-                checked={selectedAccounts.length === (Array.isArray(accounts) ? accounts.length : 0)}
+                checked={selectedAccounts.length === accounts.length}
                 onCheckedChange={handleSelectAll}
                 className="border-green-500 data-[state=checked]:bg-green-600"
               />
@@ -144,7 +143,7 @@ export function AccountSelector({
 
           <div className="max-h-60 overflow-y-auto">
             <AnimatePresence>
-              {(Array.isArray(accounts) ? accounts : []).map((account, index) => (
+              {accounts.map((account, index) => (
                 <motion.div
                   key={account.id}
                   initial={{ opacity: 0, y: 20 }}
