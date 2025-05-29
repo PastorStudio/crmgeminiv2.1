@@ -103,10 +103,9 @@ export class AutoMessageProcessor {
               }
             }
           }
-        } catch (directError) {
-          console.error('❌ Error en consulta directa:', directError);
         }
-        
+      } catch (directError) {
+        console.error('❌ Error en consulta directa:', directError);
         return { success: false };
       }
 
