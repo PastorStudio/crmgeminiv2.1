@@ -232,8 +232,8 @@ export function WhatsAppTwoColumn() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Filtrar chats
-  const filteredChats = chats.filter((chat: Chat) =>
+  // Filtrar chats - asegurar que chats sea un array
+  const filteredChats = (Array.isArray(chats) ? chats : []).filter((chat: Chat) =>
     chat.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     chat.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase())
   );
