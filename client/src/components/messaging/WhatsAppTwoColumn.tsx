@@ -43,12 +43,7 @@ import {
   Ticket,
   Bot,
   Play,
-  RefreshCw,
-  Plus,
-  Filter,
-  Palette,
-  X,
-  Check
+  RefreshCw
 } from 'lucide-react';
 
 // Import components
@@ -277,17 +272,6 @@ export function WhatsAppTwoColumn() {
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [customCategories, setCustomCategories] = useState<any[]>([]);
-  const [showCreateCategoryDialog, setShowCreateCategoryDialog] = useState(false);
-  const [newCategoryData, setNewCategoryData] = useState({
-    name: '',
-    description: '',
-    color: '#3B82F6',
-    icon: 'MessageCircle'
-  });
-  const [chatTypeFilter, setChatTypeFilter] = useState<'all' | 'individual' | 'groups'>('all');
-  const [categoryLoadingChat, setCategoryLoadingChat] = useState<string | null>(null);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [translatorEnabled, setTranslatorEnabled] = useState(false);
   const [smartBotsEnabled, setSmartBotsEnabled] = useState(false);
@@ -1006,41 +990,6 @@ export function WhatsAppTwoColumn() {
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
-
-  // Fetch custom categories
-  const { data: categories = [] } = useQuery({
-    queryKey: ['/api/chat-categories'],
-    enabled: true
-  });
-
-  // Create category mutation
-  const createCategoryMutation = useMutation({
-    mutationFn: (categoryData: any) => 
-      fetch('/api/chat-categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(categoryData)
-      }).then(res => res.json()),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/chat-categories'] });
-      setShowCreateCategoryDialog(false);
-      setNewCategoryData({ name: '', description: '', color: '#3B82F6', icon: 'MessageCircle' });
-    }
-  });
-
-  // Assign category mutation
-  const assignCategoryMutation = useMutation({
-    mutationFn: ({ chatId, accountId, categoryId }: { chatId: string; accountId: number; categoryId: number }) =>
-      fetch('/api/chat-categories/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatId, accountId, categoryId })
-      }).then(res => res.json()),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/chat-categories'] });
-      setCategoryLoadingChat(null);
-    }
-  });
 
   // Fetch WhatsApp accounts
   const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
@@ -1845,33 +1794,10 @@ export function WhatsAppTwoColumn() {
     }
   }, [queryClient, selectedAccounts]);
 
-  // Enhanced filtering logic for your category system
-  const filteredChats = useMemo(() => {
-    let filtered = sortedChats;
-    
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(chat => 
-        chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    
-    // Filter by chat type (Individual/Groups)
-    if (chatTypeFilter === 'individual') {
-      filtered = filtered.filter(chat => !chat.isGroup);
-    } else if (chatTypeFilter === 'groups') {
-      filtered = filtered.filter(chat => chat.isGroup);
-    }
-    
-    // Filter by selected category
-    if (selectedCategory) {
-      // This would need to be implemented based on your category assignment data
-      // For now, return all chats
-    }
-    
-    return filtered;
-  }, [sortedChats, searchQuery, chatTypeFilter, selectedCategory]);
+  const filteredChats = sortedChats.filter(chat => 
+    chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loadingAccounts) {
     return (
@@ -1895,353 +1821,122 @@ export function WhatsAppTwoColumn() {
           </div>
         </div>
 
-        {/* Category and Type Filter */}
-        <div className="border-b border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-gray-700">Filtros</h3>
-            
-            {/* Botón para crear nueva categoría */}
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className="text-blue-600 border-blue-600 hover:bg-blue-50"
-              onClick={() => setShowCreateCategoryDialog(true)}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Nueva Categoría
-            </Button>
-          </div>
-
-          {/* Filtro por tipo de chat */}
-          <div className="mb-3">
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={chatTypeFilter === 'all' ? "default" : "outline"}
-                onClick={() => setChatTypeFilter('all')}
-                className="flex items-center space-x-1"
-              >
-                <MessageCircle className="h-3 w-3" />
-                <span>Todos</span>
-              </Button>
-              <Button
-                size="sm"
-                variant={chatTypeFilter === 'individual' ? "default" : "outline"}
-                onClick={() => setChatTypeFilter('individual')}
-                className="flex items-center space-x-1"
-              >
-                <User className="h-3 w-3" />
-                <span>Individual</span>
-              </Button>
-              <Button
-                size="sm"
-                variant={chatTypeFilter === 'groups' ? "default" : "outline"}
-                onClick={() => setChatTypeFilter('groups')}
-                className="flex items-center space-x-1"
-              >
-                <Users className="h-3 w-3" />
-                <span>Grupos</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Lista de categorías personalizadas */}
-          <div className="flex flex-wrap gap-2">
-            {/* Opción "Todas las categorías" */}
-            <Button
-              size="sm"
-              variant={selectedCategory === null ? "default" : "outline"}
-              onClick={() => setSelectedCategory(null)}
-              className="flex items-center space-x-1"
-            >
-              <Filter className="h-3 w-3" />
-              <span>Todas</span>
-            </Button>
-
-            {/* Categorías personalizadas */}
-            {categories.map((category: any) => (
-              <Button
-                key={category.id}
-                size="sm"
-                variant={selectedCategory === category.id ? "default" : "outline"}
-                onClick={() => setSelectedCategory(category.id)}
-                className="flex items-center space-x-1"
-                style={{ 
-                  backgroundColor: selectedCategory === category.id ? category.color : 'transparent',
-                  borderColor: category.color 
-                }}
-              >
-                <Tag className="h-3 w-3" />
-                <span>{category.name}</span>
-              </Button>
-            ))}
-          </div>
-        </div>
-
         {/* Search */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 mt-[-1px] mb-[-1px] pl-[20px] pr-[20px] pt-[2px] pb-[2px] ml-[2px] mr-[2px]">
           <Input
-            placeholder="Buscar chats..."
+            placeholder="Buscar conversaciones..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full"
+            className="w-full pl-[100px] pr-[100px] pt-[4px] pb-[4px] mt-[10px] mb-[10px] ml-[-5px] mr-[-5px]"
           />
         </div>
+
+
 
         {/* Chat List */}
         <ScrollArea className="flex-1">
-          <div className="space-y-1">
-            {filteredChats.map((chat) => (
-              <ChatListItem 
-                key={chat.id} 
-                chat={chat} 
-                isSelected={selectedChat?.id === chat.id}
-                onClick={() => setSelectedChat(chat)}
-                categories={categories}
-                onCategoryChange={(categoryId) => {
-                  setCategoryLoadingChat(chat.id);
-                  assignCategoryMutation.mutate({
-                    chatId: chat.id,
-                    accountId: chat.accountId,
-                    categoryId
-                  });
-                }}
-                categoryLoading={categoryLoadingChat === chat.id}
-              />
-            ))}
-          </div>
+          {loadingChats ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <span className="ml-2 text-gray-500">Cargando chats...</span>
+            </div>
+          ) : (filteredChats as any[])?.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">
+              {selectedAccounts.length === 0 
+                ? "Selecciona una cuenta para ver los chats"
+                : "No hay chats disponibles"
+              }
+            </div>
+          ) : (
+            <div className="space-y-1 p-2">
+              <AnimatePresence>
+                {(filteredChats as any[])?.map((chat: any, index: number) => (
+                  <motion.div
+                    key={chat.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.2, delay: index * 0.05 }}
+                    className="p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 ml-[-8px] mr-[-8px] pl-[10px] pr-[10px] pt-[10px] pb-[10px] mt-[0px] mb-[0px] text-[14px] font-bold"
+                    onClick={() => handleChatSelect?.(chat)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={chat.profilePicUrl} />
+                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                            {chat.isGroup ? <Users className="h-6 w-6" /> : chat.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        {isContactOnline(chat) && (
+                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium text-gray-900 truncate">{chat.name}</span>
+                            {chat.isGroup && <Users className="h-4 w-4 text-gray-400" />}
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                              #{chat.accountId}
+                            </Badge>
+                            <span className="text-xs text-gray-500">
+                              {formatTime(chat.timestamp)}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2 flex-1">
+                            {/* Chat Assignment Info - Cada chat maneja su propio agente */}
+                            <ChatAssignmentBadge chatId={chat.id} accountId={chat.accountId} />
+                            
+                            {/* Ticket Badge Individual - Cada chat maneja su propio ticket */}
+                            <ChatCategorizationBadge chatId={chat.id} accountId={chat.accountId} />
+                            
+                            {/* Comments Indicator */}
+                            <ChatCommentsIndicator chatId={chat.id} />
+                          </div>
+                          
+                          {chat.unreadCount > 0 && (
+                            <Badge className="bg-green-500 text-white ml-2">
+                              {chat.unreadCount}
+                            </Badge>
+                          )}
+                        </div>
+
+
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
         </ScrollArea>
       </div>
-
-      {/* Right Panel - Chat Interface */}
-      <div className="flex-1 flex flex-col">
+      {/* Right Panel - Chat Messages */}
+      <div className="flex-1 flex flex-col ml-[2px] mr-[2px] mt-[-1px] mb-[-1px]">
         {selectedChat ? (
-          <ChatInterface chat={selectedChat} />
-        ) : (
-          <div className="flex-1 flex items-center justify-center bg-gray-50">
-            <div className="text-center">
-              <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Selecciona un chat</h3>
-              <p className="text-gray-500">Elige una conversación para comenzar</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Create Category Dialog */}
-      <Dialog open={showCreateCategoryDialog} onOpenChange={setShowCreateCategoryDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Crear Nueva Categoría</DialogTitle>
-            <DialogDescription>
-              Crea una categoría personalizada para organizar tus chats
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Nombre</label>
-              <Input
-                value={newCategoryData.name}
-                onChange={(e) => setNewCategoryData({ ...newCategoryData, name: e.target.value })}
-                placeholder="Nombre de la categoría"
-              />
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium">Descripción</label>
-              <Input
-                value={newCategoryData.description}
-                onChange={(e) => setNewCategoryData({ ...newCategoryData, description: e.target.value })}
-                placeholder="Descripción opcional"
-              />
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium">Color</label>
-              <div className="flex gap-2 mt-2">
-                {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'].map((color) => (
-                  <button
-                    key={color}
-                    className={`w-8 h-8 rounded-full border-2 ${
-                      newCategoryData.color === color ? 'border-gray-800' : 'border-gray-300'
-                    }`}
-                    style={{ backgroundColor: color }}
-                    onClick={() => setNewCategoryData({ ...newCategoryData, color })}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateCategoryDialog(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={() => createCategoryMutation.mutate(newCategoryData)}
-              disabled={!newCategoryData.name || createCategoryMutation.isPending}
-            >
-              {createCategoryMutation.isPending ? 'Creando...' : 'Crear Categoría'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-// ChatListItem component with category management
-function ChatListItem({ 
-  chat, 
-  isSelected, 
-  onClick, 
-  categories, 
-  onCategoryChange, 
-  categoryLoading 
-}: {
-  chat: any;
-  isSelected: boolean;
-  onClick: () => void;
-  categories: any[];
-  onCategoryChange: (categoryId: number) => void;
-  categoryLoading: boolean;
-}) {
-  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
-
-  return (
-    <div 
-      className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 relative ${
-        isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-      }`}
-      onClick={onClick}
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center mb-1">
-            <div className="flex items-center space-x-2">
-              {chat.isGroup ? <Users className="h-4 w-4 text-gray-500" /> : <User className="h-4 w-4 text-gray-500" />}
-              <span className="font-medium text-gray-900 truncate">{chat.name}</span>
-            </div>
-          </div>
-          
-          <p className="text-sm text-gray-600 truncate">{chat.lastMessage}</p>
-          
-          <div className="flex items-center justify-between mt-2">
-            <span className="text-xs text-gray-500">
-              {new Date(chat.timestamp).toLocaleTimeString('es-ES', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}
-            </span>
-            
-            {chat.unreadCount > 0 && (
-              <Badge variant="default" className="bg-green-500">
-                {chat.unreadCount}
-              </Badge>
-            )}
-          </div>
-        </div>
-        
-        {/* Category Management Button */}
-        <Popover open={showCategoryMenu} onOpenChange={setShowCategoryMenu}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 ml-2"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowCategoryMenu(true);
-              }}
-            >
-              {categoryLoading ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Tag className="h-3 w-3" />
-              )}
-            </Button>
-          </PopoverTrigger>
-          
-          <PopoverContent className="w-48 p-2" align="end">
-            <div className="space-y-1">
-              <div className="text-xs font-medium text-gray-500 px-2 py-1">
-                Asignar categoría
-              </div>
-              
-              {categories.map((category: any) => (
-                <Button
-                  key={category.id}
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start h-auto p-2"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCategoryChange(category.id);
-                    setShowCategoryMenu(false);
-                  }}
-                >
-                  <div 
-                    className="w-3 h-3 rounded-full mr-2" 
-                    style={{ backgroundColor: category.color }}
-                  />
-                  <span className="text-sm">{category.name}</span>
-                </Button>
-              ))}
-              
-              {categories.length === 0 && (
-                <div className="text-xs text-gray-500 px-2 py-1">
-                  No hay categorías disponibles
-                </div>
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
-    </div>
-  );
-}
-
-// Simple Chat Interface component
-function ChatInterface({ chat }: { chat: any }) {
-  return (
-    <div className="flex-1 flex flex-col">
-      {/* Chat Header */}
-      <div className="p-4 border-b border-gray-200 bg-white">
-        <div className="flex items-center space-x-3">
-          {chat.isGroup ? <Users className="h-5 w-5 text-gray-500" /> : <User className="h-5 w-5 text-gray-500" />}
-          <div>
-            <h2 className="font-medium text-gray-900">{chat.name}</h2>
-            <p className="text-sm text-gray-500">
-              {chat.isGroup ? 'Grupo' : 'Chat individual'}
-            </p>
-          </div>
-        </div>
-      </div>
-      
-      {/* Messages Area */}
-      <div className="flex-1 bg-gray-50 p-4">
-        <div className="text-center text-gray-500">
-          <MessageCircle className="h-8 w-8 mx-auto mb-2" />
-          <p>Conversación con {chat.name}</p>
-        </div>
-      </div>
-      
-      {/* Input Area */}
-      <div className="p-4 bg-white border-t border-gray-200">
-        <div className="flex items-center space-x-2">
-          <Input 
-            placeholder="Escribe un mensaje..." 
-            className="flex-1"
-          />
-          <Button size="sm">
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
+          <>
+            {/* Chat Header */}
+            <div className="p-4 border-b border-gray-200 bg-white pl-[10px] pr-[10px] mt-[8px] mb-[8px] ml-[1px] mr-[1px] text-[18px]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={selectedChat.profilePicUrl} />
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                        {selectedChat.isGroup ? <Users className="h-5 w-5" /> : selectedChat.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    {isContactOnline(selectedChat) && (
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                    )}
+                  </div>
                   
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
@@ -2608,7 +2303,7 @@ function ChatInterface({ chat }: { chat: any }) {
                                   </div>
                                 ) : message.type === 'image' ? (
                                   /* Mensajes de imagen */
-                                  (<div className="space-y-2">
+                                  <div className="space-y-2">
                                     {message.mediaUrl || message._data?.mediaUrl ? (
                                       <img 
                                         src={message.mediaUrl || message._data?.mediaUrl} 
@@ -2626,10 +2321,10 @@ function ChatInterface({ chat }: { chat: any }) {
                                     {message.body && (
                                       <p className="text-sm whitespace-pre-wrap">{message.body}</p>
                                     )}
-                                  </div>)
+                                  </div>
                                 ) : (
                                   /* Mensajes de texto normales */
-                                  (<p className="text-sm whitespace-pre-wrap">{message.body || '[Mensaje sin contenido]'}</p>)
+                                  <p className="text-sm whitespace-pre-wrap">{message.body || '[Mensaje sin contenido]'}</p>
                                 )}
                               </div>
                               {!message.fromMe && (
@@ -3061,6 +2756,7 @@ function ChatInterface({ chat }: { chat: any }) {
           accountId={selectedChat.accountId}
         />
       )}
+
       {selectedChat && (
         <ChatCommentsDialog
           open={commentsDialogOpen}
@@ -3069,6 +2765,7 @@ function ChatInterface({ chat }: { chat: any }) {
           chatName={selectedChat.name}
         />
       )}
+
       {/* Diálogo de Configuración de Auto-Click */}
       <AutoClickConfigDialog
         open={showAutoClickConfig}
