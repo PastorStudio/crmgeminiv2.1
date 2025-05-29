@@ -319,11 +319,6 @@ export const messageActivityRelations = relations(messageActivity, ({ one }) => 
   })
 }));
 
-// ===== SISTEMA DE CATEGORÍAS DE CHATS =====
-// Las tablas de categorías ya están creadas en la base de datos
-
-
-
 // ===== SISTEMA DE GESTIÓN DE AGENTES INTERNOS =====
 // Sistema invisible para WhatsApp, solo para etiquetado y gestión interna del CRM
 
@@ -764,7 +759,17 @@ export const chatComments = pgTable("chat_comments", {
   isInternal: boolean("isInternal").default(true),
 });
 
-// Nota: La tabla chatCategories se declara anteriormente en el archivo
+// Categorización automática de chats
+export const chatCategories = pgTable("chat_categories", {
+  id: serial("id").primaryKey(),
+  chatId: text("chatId").notNull(),
+  accountId: integer("accountId").notNull().references(() => whatsappAccounts.id),
+  category: text("category").notNull(), // sales, support, information, consultation
+  confidence: doublePrecision("confidence").default(0),
+  aiModel: text("aiModel").default("gemini"),
+  lastAnalyzedAt: timestamp("lastAnalyzedAt").defaultNow(),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
 
 // Tabla de notificaciones en tiempo real
 export const realTimeNotifications = pgTable("real_time_notifications", {
@@ -888,7 +893,7 @@ export const insertMediaGallerySchema = createInsertSchema(mediaGallery).omit({ 
 export const insertWhatsappAccountSchema = createInsertSchema(whatsappAccounts).omit({ id: true, createdAt: true, lastActiveAt: true });
 export const insertUserWhatsappAccountSchema = createInsertSchema(userWhatsappAccounts).omit({ id: true, assignedAt: true });
 export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
-// Chat category schema removed - using service-based approach
+export const insertChatCategorySchema = createInsertSchema(chatCategories).omit({ id: true, createdAt: true });
 export const insertAiConfigSchema = createInsertSchema(aiConfig).omit({ id: true, updatedAt: true });
 export const insertTimeZoneConfigSchema = createInsertSchema(timeZoneConfig).omit({ id: true, updatedAt: true });
 export const insertWhatsappMessageSchema = createInsertSchema(whatsappMessages).omit({ id: true, createdAt: true });
@@ -897,7 +902,7 @@ export type InsertMediaGallery = z.infer<typeof insertMediaGallerySchema>;
 export type InsertWhatsappAccount = z.infer<typeof insertWhatsappAccountSchema>;
 export type InsertUserWhatsappAccount = z.infer<typeof insertUserWhatsappAccountSchema>;
 export type InsertChatAssignment = z.infer<typeof insertChatAssignmentSchema>;
-// Chat category insert type removed - using service-based approach
+export type InsertChatCategory = z.infer<typeof insertChatCategorySchema>;
 export type InsertAiConfig = z.infer<typeof insertAiConfigSchema>;
 export type InsertTimeZoneConfig = z.infer<typeof insertTimeZoneConfigSchema>;
 export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
@@ -921,7 +926,7 @@ export type VoiceNoteTranscription = typeof voiceNoteTranscriptions.$inferSelect
 export type WhatsappAccount = typeof whatsappAccounts.$inferSelect;
 export type UserWhatsappAccount = typeof userWhatsappAccounts.$inferSelect;
 export type ChatAssignment = typeof chatAssignments.$inferSelect;
-// Chat category type removed - using service-based approach
+export type ChatCategory = typeof chatCategories.$inferSelect;
 export type AiConfig = typeof aiConfig.$inferSelect;
 export type TimeZoneConfig = typeof timeZoneConfig.$inferSelect;
 export type WhatsappMessage = typeof whatsappMessages.$inferSelect;
