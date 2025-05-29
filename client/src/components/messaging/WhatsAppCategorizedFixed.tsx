@@ -560,14 +560,8 @@ function ChatListItem({
   );
 }
 
-// Chat Interface component with real message loading
+// Simple Chat Interface component
 function ChatInterface({ chat }: { chat: Chat }) {
-  // Load messages for the selected chat
-  const { data: messages = [], isLoading: loadingMessages } = useQuery({
-    queryKey: [`/api/whatsapp-accounts/${chat.accountId}/messages/${chat.id}`],
-    enabled: !!chat.id
-  });
-
   return (
     <div className="flex flex-col h-full">
       {/* Chat Header */}
@@ -606,42 +600,11 @@ function ChatInterface({ chat }: { chat: Chat }) {
       </div>
 
       {/* Chat Messages Area */}
-      <div className="flex-1 bg-gray-50 p-4 overflow-y-auto">
-        {loadingMessages ? (
-          <div className="text-center py-8">
-            <Loader2 className="h-8 w-8 mx-auto mb-4 text-gray-400 animate-spin" />
-            <p className="text-gray-500">Cargando mensajes...</p>
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p>No hay mensajes en este chat</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {messages.map((message: any, index: number) => (
-              <div 
-                key={index}
-                className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}
-              >
-                <div 
-                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                    message.fromMe 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-white text-gray-900 border border-gray-200'
-                  }`}
-                >
-                  <p className="text-sm">{message.body}</p>
-                  <p className={`text-xs mt-1 ${
-                    message.fromMe ? 'text-blue-100' : 'text-gray-500'
-                  }`}>
-                    {new Date(message.timestamp * 1000).toLocaleTimeString()}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="flex-1 bg-gray-50 p-4">
+        <div className="text-center py-8 text-gray-500">
+          <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+          <p>Mensajes del chat aparecerán aquí</p>
+        </div>
       </div>
     </div>
   );

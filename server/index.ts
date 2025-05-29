@@ -22,8 +22,6 @@ import { deepSeekService } from "./services/deepseekService";
 import deepSeekAutoResponse from "./services/deepseekAutoResponse";
 import { directDeepSeekResponse } from "./services/directDeepSeekResponse";
 import { ChatCategoryService } from "./services/chatCategoryService";
-import { autoResponseSystem } from "./services/autoResponseSystem";
-import { deepseekRecommendationSystem } from "./services/deepseekRecommendationSystem";
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -210,185 +208,6 @@ app.get("/api/deepseek/status/:accountId", async (req: Request, res: Response) =
   } catch (error) {
     console.error('❌ [DEEPSEEK] Error obteniendo estado:', error);
     res.status(500).json({ success: false, error: 'Error obteniendo estado' });
-  }
-});
-
-// === NUEVOS SISTEMAS DE RESPUESTAS AUTOMÁTICAS ===
-
-// OpenAI Auto-Response System Endpoints
-app.post("/api/auto-response-openai/activate/:accountId", async (req: Request, res: Response) => {
-  try {
-    const accountId = parseInt(req.params.accountId);
-    const { prompt, temperature, responseStyle, responseDelay, maxTokens } = req.body;
-    
-    console.log('🤖 [OPENAI] Activando respuestas automáticas para cuenta:', accountId);
-    
-    await autoResponseSystem.createOrUpdateConfig(accountId, {
-      prompt: prompt || 'Eres un asistente virtual profesional. Responde de manera útil y cortés.',
-      temperature: temperature || 0.7,
-      responseStyle: responseStyle || 'professional',
-      responseDelay: responseDelay || 3,
-      maxTokens: maxTokens || 150,
-      isEnabled: true
-    });
-
-    const success = await autoResponseSystem.activateAutoResponse(accountId);
-    
-    res.json({ 
-      success, 
-      message: success ? 'Respuestas automáticas OpenAI activadas' : 'Error activando respuestas automáticas',
-      accountId 
-    });
-  } catch (error) {
-    console.error('❌ [OPENAI] Error:', error);
-    res.status(500).json({ success: false, error: 'Error interno del servidor' });
-  }
-});
-
-app.post("/api/auto-response-openai/deactivate/:accountId", async (req: Request, res: Response) => {
-  try {
-    const accountId = parseInt(req.params.accountId);
-    
-    console.log('🛑 [OPENAI] Desactivando respuestas automáticas para cuenta:', accountId);
-    
-    const success = await autoResponseSystem.deactivateAutoResponse(accountId);
-    
-    res.json({ 
-      success, 
-      message: 'Respuestas automáticas OpenAI desactivadas',
-      accountId 
-    });
-  } catch (error) {
-    console.error('❌ [OPENAI] Error:', error);
-    res.status(500).json({ success: false, error: 'Error interno del servidor' });
-  }
-});
-
-app.get("/api/auto-response-openai/status/:accountId", async (req: Request, res: Response) => {
-  try {
-    const accountId = parseInt(req.params.accountId);
-    
-    const config = autoResponseSystem.getConfig(accountId);
-    const isEnabled = autoResponseSystem.isEnabled(accountId);
-    
-    res.json({
-      success: true,
-      isEnabled,
-      config: config || null
-    });
-  } catch (error) {
-    console.error('❌ [OPENAI] Error obteniendo estado:', error);
-    res.status(500).json({ success: false, error: 'Error obteniendo estado' });
-  }
-});
-
-app.post("/api/auto-response-openai/config/:accountId", async (req: Request, res: Response) => {
-  try {
-    const accountId = parseInt(req.params.accountId);
-    const configData = req.body;
-    
-    console.log('⚙️ [OPENAI] Actualizando configuración para cuenta:', accountId);
-    
-    const config = await autoResponseSystem.createOrUpdateConfig(accountId, configData);
-    
-    res.json({ 
-      success: true, 
-      message: 'Configuración actualizada',
-      config 
-    });
-  } catch (error) {
-    console.error('❌ [OPENAI] Error actualizando configuración:', error);
-    res.status(500).json({ success: false, error: 'Error actualizando configuración' });
-  }
-});
-
-// DeepSeek Recommendation System Endpoints
-app.post("/api/deepseek-recommendations/activate/:accountId", async (req: Request, res: Response) => {
-  try {
-    const accountId = parseInt(req.params.accountId);
-    const { chatUrl, temperature, responseStyle, maxRecommendations } = req.body;
-    
-    console.log('🧠 [DEEPSEEK] Activando recomendaciones para cuenta:', accountId);
-    
-    if (!chatUrl) {
-      return res.status(400).json({ success: false, error: 'URL del chat de DeepSeek es requerida' });
-    }
-
-    await deepseekRecommendationSystem.createOrUpdateConfig(accountId, {
-      chatUrl,
-      temperature: temperature || 0.7,
-      responseStyle: responseStyle || 'balanced',
-      maxRecommendations: maxRecommendations || 3,
-      isEnabled: true
-    });
-
-    const success = await deepseekRecommendationSystem.activateRecommendations(accountId, chatUrl);
-    
-    res.json({ 
-      success, 
-      message: success ? 'Recomendaciones DeepSeek activadas' : 'Error activando recomendaciones',
-      accountId 
-    });
-  } catch (error) {
-    console.error('❌ [DEEPSEEK] Error:', error);
-    res.status(500).json({ success: false, error: 'Error interno del servidor' });
-  }
-});
-
-app.post("/api/deepseek-recommendations/deactivate/:accountId", async (req: Request, res: Response) => {
-  try {
-    const accountId = parseInt(req.params.accountId);
-    
-    console.log('🛑 [DEEPSEEK] Desactivando recomendaciones para cuenta:', accountId);
-    
-    const success = await deepseekRecommendationSystem.deactivateRecommendations(accountId);
-    
-    res.json({ 
-      success, 
-      message: 'Recomendaciones DeepSeek desactivadas',
-      accountId 
-    });
-  } catch (error) {
-    console.error('❌ [DEEPSEEK] Error:', error);
-    res.status(500).json({ success: false, error: 'Error interno del servidor' });
-  }
-});
-
-app.get("/api/deepseek-recommendations/status/:accountId", async (req: Request, res: Response) => {
-  try {
-    const accountId = parseInt(req.params.accountId);
-    
-    const config = deepseekRecommendationSystem.getConfig(accountId);
-    const isEnabled = deepseekRecommendationSystem.isEnabled(accountId);
-    
-    res.json({
-      success: true,
-      isEnabled,
-      config: config || null
-    });
-  } catch (error) {
-    console.error('❌ [DEEPSEEK] Error obteniendo estado:', error);
-    res.status(500).json({ success: false, error: 'Error obteniendo estado' });
-  }
-});
-
-app.post("/api/deepseek-recommendations/config/:accountId", async (req: Request, res: Response) => {
-  try {
-    const accountId = parseInt(req.params.accountId);
-    const configData = req.body;
-    
-    console.log('⚙️ [DEEPSEEK] Actualizando configuración para cuenta:', accountId);
-    
-    const config = await deepseekRecommendationSystem.createOrUpdateConfig(accountId, configData);
-    
-    res.json({ 
-      success: true, 
-      message: 'Configuración actualizada',
-      config 
-    });
-  } catch (error) {
-    console.error('❌ [DEEPSEEK] Error actualizando configuración:', error);
-    res.status(500).json({ success: false, error: 'Error actualizando configuración' });
   }
 });
 
@@ -3796,62 +3615,6 @@ app.use((req, res, next) => {
     }
   });
 
-  // Real-time WhatsApp message sending endpoint
-  app.post("/api/whatsapp-accounts/:accountId/send-message", async (req: Request, res: Response) => {
-    try {
-      const accountId = parseInt(req.params.accountId);
-      const { chatId, message } = req.body;
-      
-      if (!chatId || !message) {
-        return res.status(400).json({
-          success: false,
-          error: "chatId and message are required"
-        });
-      }
-
-      console.log(`📤 Sending real-time message to chat ${chatId} from account ${accountId}: "${message}"`);
-      
-      // Import the WhatsApp multi-account manager
-      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
-      
-      // Get the WhatsApp instance for the specific account
-      const instance = whatsappMultiAccountManager.getInstance(accountId);
-      
-      if (!instance || !instance.client) {
-        return res.status(400).json({
-          success: false,
-          error: `WhatsApp account ${accountId} is not initialized or connected`
-        });
-      }
-
-      if (!instance.status.authenticated) {
-        return res.status(400).json({
-          success: false,
-          error: `WhatsApp account ${accountId} is not authenticated. Please scan QR code first.`
-        });
-      }
-
-      // Send the message through WhatsApp
-      const result = await instance.client.sendMessage(chatId, message);
-      
-      console.log(`✅ Message sent successfully to ${chatId}`);
-      
-      res.json({
-        success: true,
-        message: "Message sent successfully",
-        messageId: result.id || `msg_${Date.now()}`,
-        timestamp: new Date().toISOString()
-      });
-      
-    } catch (error) {
-      console.error('❌ Error sending WhatsApp message:', error);
-      res.status(500).json({
-        success: false,
-        error: `Failed to send message: ${error.message}`
-      });
-    }
-  });
-
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
@@ -4287,10 +4050,10 @@ app.use((req, res, next) => {
   app.get("/api/chat-categories", async (req: Request, res: Response) => {
     try {
       const categories = await ChatCategoryService.getAllCategories();
-      res.json(categories || []); // Return categories array directly
+      res.json({ success: true, categories });
     } catch (error) {
       console.error('Error obteniendo categorías:', error);
-      res.json([]); // Return empty array on error to prevent frontend crashes
+      res.status(500).json({ success: false, message: 'Error obteniendo categorías' });
     }
   });
 
@@ -4361,22 +4124,13 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
     
-    // Inicializar sistemas de respuestas automáticas al arrancar
+    // Inicializar sistema de respuestas automáticas al arrancar
     setTimeout(async () => {
       try {
-        // Inicializar sistema OpenAI
-        await autoResponseSystem.initialize();
-        console.log('🤖 Sistema de respuestas automáticas OpenAI inicializado correctamente');
-        
-        // Inicializar sistema DeepSeek
-        await deepseekRecommendationSystem.initialize();
-        console.log('🧠 Sistema de recomendaciones DeepSeek inicializado correctamente');
-        
-        // Inicializar sistema anterior (compatibilidad)
         await stableAutoResponseManager.initialize();
         console.log('🚀 Sistema de respuestas automáticas inicializado correctamente');
       } catch (error) {
-        console.error('❌ Error inicializando sistemas de respuestas automáticas:', error);
+        console.error('❌ Error inicializando sistema de respuestas automáticas:', error);
       }
     }, 2000); // Esperar 2 segundos para que el servidor esté completamente listo
   });
