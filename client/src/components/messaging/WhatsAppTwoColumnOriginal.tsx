@@ -759,7 +759,7 @@ export function WhatsAppTwoColumn() {
                         transition={{ duration: 0.3 }}
                         className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}
                       >
-                        <div className={`flex space-x-2 max-w-[75%] ${message.fromMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                        <div className={`flex space-x-2 max-w-[70%] ${message.fromMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
                           {showAvatar && isFirstFromAuthor && (
                             <Avatar className="h-8 w-8 mt-1">
                               <AvatarImage src={message.authorProfilePic} />
@@ -783,11 +783,12 @@ export function WhatsAppTwoColumn() {
                                 </div>
                               )}
                               <div
-                                className={`px-4 py-2 rounded-2xl ${
+                                className={`px-3 py-2 rounded-2xl break-words overflow-hidden ${
                                   message.fromMe
                                     ? 'bg-blue-500 text-white rounded-br-md'
                                     : 'bg-gray-100 text-gray-900 rounded-bl-md'
                                 }`}
+                                style={{ maxWidth: '100%', wordWrap: 'break-word' }}
                               >
                                 {(message.type === 'ptt' || message.type === 'audio') ? (
                                   <VoiceNoteMessage 
@@ -801,7 +802,9 @@ export function WhatsAppTwoColumn() {
                                     <span>Imagen</span>
                                   </div>
                                 ) : (
-                                  <p className="text-sm whitespace-pre-wrap">{message.body}</p>
+                                  <p className="text-sm break-words whitespace-pre-wrap overflow-hidden" style={{ wordBreak: 'break-word' }}>
+                                    {message.body}
+                                  </p>
                                 )}
                               </div>
                               {!message.fromMe && (
