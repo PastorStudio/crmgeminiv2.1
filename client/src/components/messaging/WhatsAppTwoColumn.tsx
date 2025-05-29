@@ -43,7 +43,12 @@ import {
   Ticket,
   Bot,
   Play,
-  RefreshCw
+  RefreshCw,
+  Plus,
+  Filter,
+  Palette,
+  X,
+  Check
 } from 'lucide-react';
 
 // Import components
@@ -281,6 +286,8 @@ export function WhatsAppTwoColumn() {
     color: '#3B82F6',
     icon: 'MessageCircle'
   });
+  const [chatTypeFilter, setChatTypeFilter] = useState<'all' | 'individual' | 'groups'>('all');
+  const [categoryLoadingChat, setCategoryLoadingChat] = useState<string | null>(null);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [translatorEnabled, setTranslatorEnabled] = useState(false);
   const [smartBotsEnabled, setSmartBotsEnabled] = useState(false);
