@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import { db, pool } from "./db";
 import { users, whatsappAccounts, autoResponseConfigs } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import * as agentAssignmentRoutes from "./routes/agentAssignments";
 import { invisibleAgentIntegrator } from "./services/invisibleAgentIntegrator";
 import { realTimeNotificationService } from "./services/realTimeNotificationService";
@@ -21,6 +21,7 @@ import { stableAutoResponseManager } from "./services/stableAutoResponse";
 import { deepSeekService } from "./services/deepseekService";
 import deepSeekAutoResponse from "./services/deepseekAutoResponse";
 import { directDeepSeekResponse } from "./services/directDeepSeekResponse";
+import { ChatCategoryService } from "./services/chatCategoryService";
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -4040,18 +4041,16 @@ app.use((req, res, next) => {
     }
   });
 
+  // Initialize category tables on startup
+  ChatCategoryService.initializeDatabase();
+
   // ===== ENDPOINTS DE CATEGORÍAS DE CHATS =====
 
   // Obtener todas las categorías
   app.get("/api/chat-categories", async (req: Request, res: Response) => {
     try {
-      const { sql } = await import('drizzle-orm');
-      const result = await db.execute(sql`
-        SELECT * FROM chat_categories 
-        ORDER BY "order" ASC, name ASC
-      `);
-      
-      res.json({ success: true, categories: result.rows });
+      const categories = await ChatCategoryService.getAllCategories();
+      res.json({ success: true, categories });
     } catch (error) {
       console.error('Error obteniendo categorías:', error);
       res.status(500).json({ success: false, message: 'Error obteniendo categorías' });
@@ -4063,13 +4062,19 @@ app.use((req, res, next) => {
     try {
       const { name, description, color, icon, accountId } = req.body;
       
-      const result = await db.execute(sql`
-        INSERT INTO chat_categories (name, description, color, icon, account_id)
-        VALUES (${name}, ${description || null}, ${color || '#3B82F6'}, ${icon || 'MessageCircle'}, ${accountId || null})
-        RETURNING *
-      `);
+      const category = await ChatCategoryService.createCategory({
+        name,
+        description,
+        color: color || '#3B82F6',
+        icon: icon || 'Tag',
+        accountId
+      });
       
-      res.json({ success: true, category: result.rows[0] });
+      if (category) {
+        res.json({ success: true, category });
+      } else {
+        res.status(500).json({ success: false, message: 'Error creando categoría' });
+      }
     } catch (error) {
       console.error('Error creando categoría:', error);
       res.status(500).json({ success: false, message: 'Error creando categoría' });
@@ -4081,35 +4086,16 @@ app.use((req, res, next) => {
     try {
       const { chatId, accountId, categoryId } = req.body;
       
-      // Verificar si ya existe una asignación
-      const existing = await db.execute(sql`
-        SELECT * FROM chat_category_assignments 
-        WHERE chat_id = ${chatId} AND account_id = ${accountId}
-      `);
+      const success = await ChatCategoryService.assignChatToCategory(chatId, accountId, categoryId);
       
-      if (existing.rows.length > 0) {
-        // Actualizar asignación existente
-        const result = await db.execute(sql`
-          UPDATE chat_category_assignments 
-          SET category_id = ${categoryId}, assigned_at = NOW()
-          WHERE chat_id = ${chatId} AND account_id = ${accountId}
-          RETURNING *
-        `);
-        
-        res.json({ success: true, assignment: result.rows[0] });
+      if (success) {
+        res.json({ success: true, message: 'Chat asignado a categoría exitosamente' });
       } else {
-        // Crear nueva asignación
-        const result = await db.execute(sql`
-          INSERT INTO chat_category_assignments (chat_id, account_id, category_id, assigned_at)
-          VALUES (${chatId}, ${accountId}, ${categoryId}, NOW())
-          RETURNING *
-        `);
-        
-        res.json({ success: true, assignment: result.rows[0] });
+        res.status(500).json({ success: false, message: 'Error asignando categoría' });
       }
     } catch (error) {
-      console.error('Error asignando chat a categoría:', error);
-      res.status(500).json({ success: false, message: 'Error asignando chat a categoría' });
+      console.error('Error asignando categoría:', error);
+      res.status(500).json({ success: false, message: 'Error asignando categoría' });
     }
   });
 
@@ -4118,18 +4104,9 @@ app.use((req, res, next) => {
     try {
       const { chatId, accountId } = req.params;
       
-      const result = await db.execute(sql`
-        SELECT cc.*, cca.assigned_at
-        FROM chat_categories cc
-        JOIN chat_category_assignments cca ON cc.id = cca.category_id
-        WHERE cca.chat_id = ${chatId} AND cca.account_id = ${parseInt(accountId)}
-      `);
+      const category = await ChatCategoryService.getChatCategory(chatId, parseInt(accountId));
       
-      if (result.rows.length > 0) {
-        res.json({ success: true, category: result.rows[0] });
-      } else {
-        res.json({ success: true, category: null });
-      }
+      res.json({ success: true, category });
     } catch (error) {
       console.error('Error obteniendo categoría del chat:', error);
       res.status(500).json({ success: false, message: 'Error obteniendo categoría del chat' });
