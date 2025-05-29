@@ -40,6 +40,7 @@ import InternalAgents from './pages/InternalAgents';
 import GeminiAI from './pages/GeminiAI';
 import AgentAnalysis from './pages/AgentAnalysis';
 import DeepSeekSettings from './pages/DeepSeekSettings';
+import AIConfiguration from './pages/AIConfiguration';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
@@ -244,6 +245,19 @@ const AppRoutes: React.FC = () => {
                   <path d="M16 6h4m-2-2v4" stroke="white" strokeWidth="1"/>
                 </svg>
                 Análisis Completo
+              </a>
+
+              <a href="/ai-configuration" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/ai-configuration' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="18" height="18" rx="3" fill="#059669"/>
+                  <circle cx="8" cy="8" r="2" fill="white"/>
+                  <circle cx="16" cy="8" r="2" fill="white"/>
+                  <rect x="6" y="13" width="4" height="2" rx="1" fill="white"/>
+                  <rect x="14" y="13" width="4" height="2" rx="1" fill="white"/>
+                  <rect x="8" y="16" width="8" height="2" rx="1" fill="white"/>
+                  <path d="M12 6v12M6 12h12" stroke="#34D399" strokeWidth="1"/>
+                </svg>
+                IA Avanzada
               </a>
               
               {/* Planificación */}
@@ -524,6 +538,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/external-agents" component={() => <PrivateRoute component={ExternalAgents} path="/external-agents" />} />
                 <Route path="/internal-agents" component={() => <PrivateRoute component={InternalAgents} path="/internal-agents" />} />
                 <Route path="/agent-analysis" component={() => <PrivateRoute component={AgentAnalysis} path="/agent-analysis" />} />
+                <Route path="/ai-configuration" component={() => <PrivateRoute component={AIConfiguration} path="/ai-configuration" />} />
                 <Route path="/connection" component={() => <PrivateRoute component={Connection} path="/connection" />} />
                 <Route path="/qrcode" component={() => <PrivateRoute component={QRCode} path="/qrcode" />} />
                 <Route path="/qr-viewer" component={() => <PrivateRoute component={QrViewer} path="/qr-viewer" />} />
