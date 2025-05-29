@@ -237,7 +237,6 @@ export function WhatsAppTwoColumn() {
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
-  const [loadingMessages, setLoadingMessages] = useState(false);
   const [externalAgentActive, setExternalAgentActive] = useState(false);
   const [externalAgentProcessing, setExternalAgentProcessing] = useState(false);
   const [categoryLoadingChat, setCategoryLoadingChat] = useState<string | null>(null);
@@ -313,30 +312,8 @@ export function WhatsAppTwoColumn() {
   const { data: messages = [], isLoading: messagesLoading } = useQuery({
     queryKey: [`/api/whatsapp-accounts/${selectedChat?.accountId}/messages/${selectedChat?.id}`],
     enabled: !!selectedChat,
-    refetchInterval: 5000,
-    queryFn: async () => {
-      if (!selectedChat) return [];
-      
-      console.log('🔄 Obteniendo mensajes reales para chat:', selectedChat.id);
-      setLoadingMessages(true);
-      
-      try {
-        const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/messages/${selectedChat.id}`);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log(`✅ ${data.length} mensajes REALES obtenidos para chat ${selectedChat.id}`);
-        
-        return Array.isArray(data) ? data : [];
-      } catch (error) {
-        console.error('Error obteniendo mensajes:', error);
-        return [];
-      } finally {
-        setLoadingMessages(false);
-      }
-    }
+    refetchInterval: 10000, // Reduced frequency
+    staleTime: 5000, // Add stale time to prevent unnecessary requests
   });
 
   // Fetch categories
@@ -411,7 +388,6 @@ export function WhatsAppTwoColumn() {
   // Handle chat selection
   const handleChatSelect = async (chat: WhatsAppChat) => {
     setSelectedChat(chat);
-    setLoadingMessages(true);
     
     // Load chat comments
     try {
@@ -754,7 +730,7 @@ export function WhatsAppTwoColumn() {
 
             {/* Messages Area */}
             <ScrollArea className="flex-1 p-4">
-              {loadingMessages ? (
+              {messagesLoading ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                   <span className="ml-2 text-gray-500">Cargando mensajes...</span>
@@ -783,7 +759,7 @@ export function WhatsAppTwoColumn() {
                         transition={{ duration: 0.3 }}
                         className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}
                       >
-                        <div className={`flex space-x-2 max-w-[80%] ${message.fromMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                        <div className={`flex space-x-2 max-w-[75%] ${message.fromMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
                           {showAvatar && isFirstFromAuthor && (
                             <Avatar className="h-8 w-8 mt-1">
                               <AvatarImage src={message.authorProfilePic} />
