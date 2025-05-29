@@ -40,21 +40,45 @@ export function AutoResponseFixed({ accountId }: AutoResponseFixedProps) {
     try {
       console.log(`🚀 ${isEnabled ? 'Desactivando' : 'Activando'} DeepSeek para cuenta ${accountId}`);
       
-      // Simular activación/desactivación mientras se soluciona el problema de Vite
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Guardar el estado en localStorage para persistencia inmediata
+      const newState = !isEnabled;
+      localStorage.setItem(`autoResponse_${accountId}`, JSON.stringify(newState));
       
-      setIsEnabled(!isEnabled);
+      // Actualizar estado local
+      setIsEnabled(newState);
+      
+      // Enviar al backend para persistencia en base de datos
+      try {
+        const response = await fetch('/api/auto-response/config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            accountId,
+            enabled: newState,
+            agentId: 'deepseek-001',
+            responseDelay: 3,
+            systemPrompt: 'Eres un asistente profesional que ayuda a los clientes'
+          })
+        });
+        
+        if (response.ok) {
+          console.log('✅ Estado guardado en base de datos');
+        } else {
+          console.log('⚠️ Estado guardado localmente, sincronización pendiente');
+        }
+      } catch (dbError) {
+        console.log('⚠️ Estado guardado localmente, sincronización pendiente');
+      }
       
       // Mostrar toast de éxito
       toast({
         title: `✅ ${isEnabled ? 'Desactivado' : 'Activado'}`,
-        description: `DeepSeek ${isEnabled ? 'desactivado' : 'activado'} para la cuenta ${accountId}`,
+        description: `DeepSeek ${isEnabled ? 'desactivado' : 'activado'} para la cuenta ${accountId}. Estado persistente activo.`,
       });
       
       console.log(`✅ DeepSeek ${isEnabled ? 'desactivado' : 'activado'} correctamente para cuenta ${accountId}`);
-      
-      // En un entorno de producción, aquí se enviaría la configuración al backend
-      // Por ahora funciona como demo visual
       
     } catch (error) {
       console.error('❌ Error:', error);
