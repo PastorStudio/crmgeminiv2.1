@@ -72,7 +72,7 @@ import {
 
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { timeSync } from '@/lib/timeSync';
+import { getRealNow, formatNYTime } from '@/lib/timeSync';
 
 // Import components
 import { AccountSelector } from './AccountSelector';
@@ -148,7 +148,7 @@ export function WhatsAppTwoColumn() {
 
   // Configurar fecha sincronizada
   useEffect(() => {
-    timeSync.initializeTimeSync();
+    // Time sync initialized automatically by import
   }, []);
 
   // Queries principales
