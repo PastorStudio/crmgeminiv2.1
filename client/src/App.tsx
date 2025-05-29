@@ -17,7 +17,8 @@ import MessageTemplates from './pages/MessageTemplates';
 import MassSender from './pages/MassSender';
 import NotFound from './pages/not-found';
 import Integrations from './pages/Integrations';
-// AutoResponse pages removed - sistema limpio
+import AutoResponseSettings from './pages/AutoResponseSettings';
+import AutoResponseSettingsFixed from './pages/AutoResponseSettingsFixed';
 import Connection from './pages/Connection';
 import QRCode from './pages/QRCode';
 import QrViewer from './pages/QrViewer';
@@ -34,11 +35,11 @@ import UltraSimpleChat from './pages/UltraSimpleChat';
 import WhatsAppConnection from './pages/WhatsAppConnection';
 import AgentMonitoring from './pages/AgentMonitoring';
 import TicketsSimple from './pages/TicketsSimple';
-// ExternalAgents removed - sistema limpio
+import ExternalAgents from './pages/ExternalAgents';
 import InternalAgents from './pages/InternalAgents';
 import GeminiAI from './pages/GeminiAI';
 import AgentAnalysis from './pages/AgentAnalysis';
-// DeepSeekSettings removed - sistema limpio
+import DeepSeekSettings from './pages/DeepSeekSettings';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
@@ -519,7 +520,8 @@ const AppRoutes: React.FC = () => {
                 <Route path="/message-templates" component={() => <PrivateRoute component={MessageTemplates} path="/message-templates" />} />
                 <Route path="/mass-sender" component={() => <PrivateRoute component={MassSender} path="/mass-sender" />} />
                 <Route path="/integrations" component={() => <PrivateRoute component={Integrations} path="/integrations" />} />
-                {/* Auto-response routes removed - sistema limpio */}
+                <Route path="/auto-response-settings" component={() => <PrivateRoute component={AutoResponseSettings} path="/auto-response-settings" />} />
+                <Route path="/external-agents" component={() => <PrivateRoute component={ExternalAgents} path="/external-agents" />} />
                 <Route path="/internal-agents" component={() => <PrivateRoute component={InternalAgents} path="/internal-agents" />} />
                 <Route path="/agent-analysis" component={() => <PrivateRoute component={AgentAnalysis} path="/agent-analysis" />} />
                 <Route path="/connection" component={() => <PrivateRoute component={Connection} path="/connection" />} />
