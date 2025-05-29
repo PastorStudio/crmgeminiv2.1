@@ -1829,12 +1829,7 @@ export function WhatsAppTwoColumn() {
               onAccountClick={handleAccountClick}
             />
             
-            {/* Respuestas Automáticas Toggle */}
-            {selectedAccounts.length === 1 && (
-              <AutoResponseFixed 
-                accountId={selectedAccounts[0]} 
-              />
-            )}
+
           </div>
         </div>
 
