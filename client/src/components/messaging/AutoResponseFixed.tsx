@@ -57,14 +57,25 @@ export function AutoResponseFixed({ accountId }: AutoResponseFixedProps) {
         })
       });
 
+      console.log('📊 Status de respuesta:', response.status);
+      console.log('📊 Headers de respuesta:', response.headers);
+
+      if (!response.ok) {
+        console.error('❌ Respuesta no exitosa:', response.status, response.statusText);
+        throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+      }
+
       const data = await response.json();
       console.log('📊 Respuesta del servidor:', data);
 
       if (data.success) {
         setIsEnabled(!isEnabled);
         
-        // NO mostrar toast para evitar spam
-        console.log(`✅ ${isEnabled ? 'Desactivado' : 'Activado'} correctamente`);
+        // Mostrar toast de éxito
+        toast({
+          title: `✅ ${isEnabled ? 'Desactivado' : 'Activado'}`,
+          description: data.message || 'Estado cambiado correctamente',
+        });
         
         // Verificar estado final
         setTimeout(checkStatus, 1000);
@@ -77,10 +88,10 @@ export function AutoResponseFixed({ accountId }: AutoResponseFixedProps) {
         });
       }
     } catch (error) {
-      console.error('❌ Error de red:', error);
+      console.error('❌ Error completo:', error);
       toast({
         title: "Error de conexión",
-        description: "No se pudo conectar con el servidor",
+        description: `Error: ${error.message || 'No se pudo conectar con el servidor'}`,
         variant: "destructive"
       });
     } finally {

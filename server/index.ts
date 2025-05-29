@@ -99,6 +99,7 @@ app.post("/api/deepseek/activate", async (req: Request, res: Response) => {
     const { accountId, companyName, responseDelay, systemPrompt } = req.body;
     
     console.log('🚀 [DEEPSEEK] Activando para cuenta:', accountId);
+    console.log('🚀 [DEEPSEEK] Datos recibidos:', req.body);
     
     const result = directDeepSeekResponse.activateForAccount(accountId, {
       companyName: companyName || 'Mi Empresa',
@@ -106,15 +107,18 @@ app.post("/api/deepseek/activate", async (req: Request, res: Response) => {
       systemPrompt: systemPrompt || 'Eres un asistente profesional'
     });
     
+    console.log('🚀 [DEEPSEEK] Resultado:', result);
+    
     if (result.success) {
       console.log('✅ [DEEPSEEK] Activado correctamente');
-      res.json({ success: true, message: 'DeepSeek activado' });
+      res.status(200).json({ success: true, message: 'DeepSeek activado correctamente' });
     } else {
-      res.json({ success: false, error: result.error });
+      console.log('❌ [DEEPSEEK] Error:', result.error);
+      res.status(400).json({ success: false, error: result.error });
     }
   } catch (error) {
     console.error('❌ [DEEPSEEK] Error activando:', error);
-    res.status(500).json({ success: false, error: 'Error activando' });
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
   }
 });
 
