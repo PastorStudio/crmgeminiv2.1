@@ -691,44 +691,6 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           } catch (error) {
             console.error(`❌ Error procesando mensaje con autoMessageProcessor:`, error);
           }
-
-          // Procesar mensaje con nuevo sistema de respuestas automáticas OpenAI
-          try {
-            const { autoResponseSystem } = await import('./autoResponseSystem');
-            autoResponseSystem.addIncomingMessage(message.from, id, messageBody);
-            console.log(`✅ Mensaje agregado al sistema de respuestas automáticas OpenAI`);
-          } catch (error) {
-            console.error(`❌ Error procesando mensaje con sistema OpenAI:`, error);
-          }
-
-          // Procesar mensaje con sistema de recomendaciones DeepSeek
-          try {
-            const { deepseekRecommendationSystem } = await import('./deepseekRecommendationSystem');
-            
-            // Obtener contexto de mensajes anteriores para mejorar las recomendaciones
-            let messageContext = '';
-            try {
-              const chat = await client.getChatById(message.from);
-              const previousMessages = await chat.fetchMessages({ limit: 5 });
-              messageContext = previousMessages
-                .filter(msg => !msg.fromMe)
-                .map(msg => msg.body)
-                .slice(0, 3)
-                .join('\n');
-            } catch (contextError) {
-              console.warn('No se pudo obtener contexto para DeepSeek:', contextError);
-            }
-
-            deepseekRecommendationSystem.addRecommendationRequest(
-              message.from, 
-              id, 
-              messageContext || 'Sin contexto anterior disponible',
-              messageBody
-            );
-            console.log(`✅ Solicitud de recomendación agregada al sistema DeepSeek`);
-          } catch (error) {
-            console.error(`❌ Error procesando mensaje con sistema DeepSeek:`, error);
-          }
         }
       } catch (error) {
         console.error(`❌ Error procesando mensaje para tickets automáticos:`, error);

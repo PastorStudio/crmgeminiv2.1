@@ -174,21 +174,6 @@ const WhatsAppAccounts = () => {
     }
   });
 
-  // Efecto para cerrar automáticamente el diálogo QR cuando la cuenta se conecta
-  useEffect(() => {
-    if (qrDialogOpen && selectedAccount) {
-      const currentAccount = accounts.find(acc => acc.id === selectedAccount.id);
-      if (currentAccount?.currentStatus?.authenticated) {
-        console.log('✅ Cuenta autenticada, cerrando diálogo QR automáticamente');
-        setQrDialogOpen(false);
-        toast({
-          title: "Conexión exitosa",
-          description: `La cuenta ${selectedAccount.name} se ha conectado correctamente`,
-        });
-      }
-    }
-  }, [accounts, qrDialogOpen, selectedAccount, toast]);
-
   // Consulta para obtener estado de ping de todas las cuentas
   const { data: pingStatusData } = useQuery({
     queryKey: ['/api/whatsapp/ping-status/all'],
