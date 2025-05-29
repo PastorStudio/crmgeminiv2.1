@@ -1,10 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 import { Helmet } from "react-helmet";
 import { WhatsAppCategorized } from "@/components/messaging/WhatsAppCategorized";
 
 export default function Messages() {
-  const [selectedAccounts] = useState<number[]>([1, 2]); // Default accounts
-
   return (
     <>
       <Helmet>
@@ -14,7 +12,7 @@ export default function Messages() {
 
       {/* Interfaz de WhatsApp con sistema de categorización */}
       <div className="w-full h-screen overflow-hidden">
-        <WhatsAppCategorized selectedAccounts={selectedAccounts} />
+        <WhatsAppCategorized />
       </div>
     </>
   );

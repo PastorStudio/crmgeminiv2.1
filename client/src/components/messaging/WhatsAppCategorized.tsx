@@ -31,12 +31,10 @@ interface Category {
 }
 
 interface WhatsAppCategorizedProps {
-  selectedAccounts: number[];
   onChatSelect?: (chat: Chat) => void;
 }
 
 export const WhatsAppCategorized: React.FC<WhatsAppCategorizedProps> = ({
-  selectedAccounts,
   onChatSelect
 }) => {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
@@ -45,6 +43,7 @@ export const WhatsAppCategorized: React.FC<WhatsAppCategorizedProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showCreateCategoryDialog, setShowCreateCategoryDialog] = useState(false);
   const [categoryLoadingChat, setCategoryLoadingChat] = useState<string | null>(null);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [newCategoryData, setNewCategoryData] = useState({
     name: '',
     description: '',
@@ -138,38 +137,48 @@ export const WhatsAppCategorized: React.FC<WhatsAppCategorizedProps> = ({
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-white">Cuentas WhatsApp</h2>
             <Badge className="text-xs bg-red-600 text-white border-red-500">
-              {selectedAccounts.length} activas
+              {whatsappAccounts.length} creadas
             </Badge>
           </div>
           
           {/* Account Selector */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-300">Seleccionar Cuentas:</label>
-            <div className="flex flex-wrap gap-2">
-              {whatsappAccounts.map((account) => (
-                <button
-                  key={account.id}
-                  onClick={() => {
-                    if (selectedAccounts.includes(account.id.toString())) {
-                      setSelectedAccounts(prev => prev.filter(id => id !== account.id.toString()));
-                    } else {
-                      setSelectedAccounts(prev => [...prev, account.id.toString()]);
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
-                    selectedAccounts.includes(account.id.toString())
-                      ? 'bg-red-600 text-white border border-red-500 shadow-md'
-                      : 'bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:border-red-500'
-                  }`}
-                >
-                  {account.name}
-                </button>
-              ))}
-            </div>
-            
-            {selectedAccounts.length > 0 && (
-              <div className="text-xs text-gray-400 mt-2">
-                Cuentas activas: {selectedAccounts.join(', ')}
+            {whatsappAccounts.length > 0 ? (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {whatsappAccounts.map((account: any) => (
+                    <button
+                      key={account.id}
+                      onClick={() => {
+                        if (selectedAccounts.includes(account.id.toString())) {
+                          setSelectedAccounts(prev => prev.filter(id => id !== account.id.toString()));
+                        } else {
+                          setSelectedAccounts(prev => [...prev, account.id.toString()]);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                        selectedAccounts.includes(account.id.toString())
+                          ? 'bg-red-600 text-white border border-red-500 shadow-md'
+                          : 'bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:border-red-500'
+                      }`}
+                    >
+                      {account.name}
+                    </button>
+                  ))}
+                </div>
+                
+                {selectedAccounts.length > 0 && (
+                  <div className="text-xs text-gray-400 mt-2">
+                    Cuentas activas: {selectedAccounts.join(', ')}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-xs text-gray-400 bg-gray-800 p-3 rounded-md border border-gray-600">
+                No hay cuentas de WhatsApp creadas. 
+                <br />
+                Ve a la página de <span className="text-red-400 font-medium">Cuentas WhatsApp</span> para crear una nueva cuenta.
               </div>
             )}
           </div>
