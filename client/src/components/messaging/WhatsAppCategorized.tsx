@@ -54,17 +54,20 @@ export const WhatsAppCategorized: React.FC<WhatsAppCategorizedProps> = ({
   const queryClient = useQueryClient();
 
   // Fetch WhatsApp accounts
-  const { data: whatsappAccounts = [] } = useQuery({
+  const { data: whatsappAccountsData = [] } = useQuery({
     queryKey: ['/api/whatsapp-accounts']
   });
+  
+  const whatsappAccounts = Array.isArray(whatsappAccountsData) ? whatsappAccountsData as any[] : [];
 
   // Auto-select all available accounts when they load
   useEffect(() => {
-    if (Array.isArray(whatsappAccounts) && whatsappAccounts.length > 0 && selectedAccounts.length === 0) {
+    if (whatsappAccounts.length > 0 && selectedAccounts.length === 0) {
       const accountIds = whatsappAccounts.map((account: any) => account.id.toString());
       setSelectedAccounts(accountIds);
+      console.log('Auto-selecting accounts:', accountIds);
     }
-  }, [whatsappAccounts, selectedAccounts.length]);
+  }, [whatsappAccounts.length, selectedAccounts.length]);
 
   // Fetch chats from selected accounts
   const { data: chats = [], isLoading: loadingChats } = useQuery({
