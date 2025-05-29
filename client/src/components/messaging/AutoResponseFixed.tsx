@@ -38,59 +38,66 @@ export function AutoResponseFixed({ accountId }: AutoResponseFixedProps) {
     setIsLoading(true);
     
     try {
-      // Usar puerto directo del servidor Express (puerto 3000) para evitar Vite completamente
-      const baseUrl = window.location.protocol + '//' + window.location.hostname + ':3000';
-      const endpoint = isEnabled 
-        ? `${baseUrl}/bypass/deepseek-deactivate`
-        : `${baseUrl}/bypass/deepseek-activate`;
-      
       console.log(`🚀 ${isEnabled ? 'Desactivando' : 'Activando'} DeepSeek para cuenta ${accountId}`);
-      console.log('🔗 Usando endpoint directo servidor:', endpoint);
       
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Usar XMLHttpRequest para evitar problemas de CORS y interceptación
+      const success = await new Promise<boolean>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const endpoint = isEnabled ? '/bypass/deepseek-deactivate' : '/bypass/deepseek-activate';
+        
+        console.log('🔗 Usando XHR para endpoint:', endpoint);
+        
+        xhr.open('POST', endpoint, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === 4) {
+            console.log('📊 XHR Status:', xhr.status);
+            console.log('📊 XHR Response:', xhr.responseText);
+            
+            if (xhr.status === 200) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                console.log('📊 Data parseada:', data);
+                if (data.success) {
+                  resolve(true);
+                } else {
+                  reject(new Error(data.error || 'Error del servidor'));
+                }
+              } catch (e) {
+                console.error('❌ Error parseando JSON:', e);
+                reject(new Error('Respuesta inválida del servidor'));
+              }
+            } else {
+              reject(new Error(`Error HTTP: ${xhr.status}`));
+            }
+          }
+        };
+        
+        xhr.onerror = function() {
+          reject(new Error('Error de red'));
+        };
+        
+        const requestData = {
           accountId,
           companyName: 'Mi Empresa',
           responseDelay: 3,
           systemPrompt: 'Eres un asistente profesional que ayuda a los clientes'
-        })
+        };
+        
+        xhr.send(JSON.stringify(requestData));
       });
 
-      console.log('📊 Status de respuesta:', response.status);
-      console.log('📊 Response OK:', response.ok);
-
-      if (!response.ok) {
-        console.error('❌ Respuesta no exitosa:', response.status, response.statusText);
-        throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
-      }
-
-      const responseText = await response.text();
-      console.log('📊 Respuesta como texto:', responseText);
-
-      const data = JSON.parse(responseText);
-      console.log('📊 Respuesta parseada:', data);
-
-      if (data.success) {
+      if (success) {
         setIsEnabled(!isEnabled);
         
         // Mostrar toast de éxito
         toast({
           title: `✅ ${isEnabled ? 'Desactivado' : 'Activado'}`,
-          description: data.message || 'Estado cambiado correctamente',
+          description: 'Estado cambiado correctamente',
         });
         
         console.log(`✅ ${isEnabled ? 'Desactivado' : 'Activado'} correctamente`);
-      } else {
-        console.error('❌ Error del servidor:', data.error);
-        toast({
-          title: "Error",
-          description: data.error || "No se pudo cambiar el estado",
-          variant: "destructive"
-        });
       }
     } catch (error) {
       console.error('❌ Error completo:', error);
