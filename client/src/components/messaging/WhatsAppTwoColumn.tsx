@@ -2242,41 +2242,6 @@ function ChatInterface({ chat }: { chat: any }) {
     </div>
   );
 }
-                  
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <h3 className="font-semibold text-gray-900">{selectedChat.name}</h3>
-                      {selectedChat.isGroup && <Users className="h-4 w-4 text-gray-400" />}
-                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                        Cuenta #{selectedChat.accountId}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center space-x-2 text-sm text-gray-500">
-                      {isContactOnline(selectedChat) ? (
-                        <span className="flex items-center space-x-1 text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span>En línea</span>
-                        </span>
-                      ) : selectedChat.lastSeen ? (
-                        <span>Última vez: {formatTime(selectedChat.lastSeen)}</span>
-                      ) : (
-                        <AgentAssignmentDisplay chatId={selectedChat.id} />
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center space-x-2">
-                  {/* Assignment Button */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <Button
-                      size="sm"
-                      variant="outline"
                       className="border-blue-600 text-blue-600 hover:bg-blue-50 shadow-sm transition-all duration-300"
                       onClick={() => setAssignmentDialogOpen(true)}
                     >
