@@ -93,6 +93,106 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// === ENDPOINTS DEEPSEEK DIRECTOS (ANTES DE VITE) ===
+app.post("/api/deepseek/activate", async (req: Request, res: Response) => {
+  try {
+    const { accountId, companyName, responseDelay, systemPrompt } = req.body;
+    
+    console.log('🚀 [DEEPSEEK] Activando para cuenta:', accountId);
+    
+    const result = directDeepSeekResponse.activateForAccount(accountId, {
+      companyName: companyName || 'Mi Empresa',
+      responseDelay: responseDelay || 3,
+      systemPrompt: systemPrompt || 'Eres un asistente profesional'
+    });
+    
+    if (result.success) {
+      console.log('✅ [DEEPSEEK] Activado correctamente');
+      res.json({ success: true, message: 'DeepSeek activado' });
+    } else {
+      res.json({ success: false, error: result.error });
+    }
+  } catch (error) {
+    console.error('❌ [DEEPSEEK] Error activando:', error);
+    res.status(500).json({ success: false, error: 'Error activando' });
+  }
+});
+
+app.post("/api/deepseek/deactivate", async (req: Request, res: Response) => {
+  try {
+    const { accountId } = req.body;
+    
+    const result = directDeepSeekResponse.deactivateForAccount(accountId);
+    
+    console.log('🛑 [DEEPSEEK] Desactivado para cuenta:', accountId);
+    res.json({ success: true, message: 'DeepSeek desactivado' });
+  } catch (error) {
+    console.error('❌ [DEEPSEEK] Error desactivando:', error);
+    res.status(500).json({ success: false, error: 'Error desactivando' });
+  }
+});
+
+app.get("/api/deepseek/status/:accountId", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    
+    const isActive = directDeepSeekResponse.isActiveForAccount(accountId);
+    const config = directDeepSeekResponse.getConfigForAccount(accountId);
+    
+    res.json({
+      success: true,
+      isActive,
+      config
+    });
+  } catch (error) {
+    console.error('❌ [DEEPSEEK] Error obteniendo estado:', error);
+    res.status(500).json({ success: false, error: 'Error obteniendo estado' });
+  }
+});
+
+// ENDPOINT SIMPLIFICADO PARA ACTIVAR RESPUESTAS AUTOMÁTICAS
+app.post("/api/auto-response/activate/:accountId", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    
+    console.log('🔥 [AUTO-RESPONSE] Activando respuestas automáticas para cuenta:', accountId);
+    
+    const result = directDeepSeekResponse.activateForAccount(accountId, {
+      companyName: 'Mi Empresa',
+      responseDelay: 3,
+      systemPrompt: 'Eres un asistente profesional que ayuda a los clientes'
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'Respuestas automáticas activadas',
+      accountId 
+    });
+  } catch (error) {
+    console.error('❌ [AUTO-RESPONSE] Error:', error);
+    res.status(500).json({ success: false, error: 'Error interno' });
+  }
+});
+
+app.post("/api/auto-response/deactivate/:accountId", async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    
+    console.log('🛑 [AUTO-RESPONSE] Desactivando respuestas automáticas para cuenta:', accountId);
+    
+    directDeepSeekResponse.deactivateForAccount(accountId);
+    
+    res.json({ 
+      success: true, 
+      message: 'Respuestas automáticas desactivadas',
+      accountId 
+    });
+  } catch (error) {
+    console.error('❌ [AUTO-RESPONSE] Error:', error);
+    res.status(500).json({ success: false, error: 'Error interno' });
+  }
+});
+
 // ENDPOINT DIRECTO PARA AGENTES EXTERNOS - SIMPLE Y FUNCIONAL
 app.post('/api/external-agents-direct', async (req: Request, res: Response) => {
   try {
