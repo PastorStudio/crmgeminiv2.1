@@ -54,6 +54,11 @@ export const WhatsAppCategorized: React.FC<WhatsAppCategorizedProps> = ({
 
   const queryClient = useQueryClient();
 
+  // Fetch WhatsApp accounts
+  const { data: whatsappAccounts = [] } = useQuery({
+    queryKey: ['/api/whatsapp-accounts']
+  });
+
   // Fetch chats
   const { data: chats = [], isLoading: loadingChats } = useQuery({
     queryKey: ['/api/whatsapp/chats', selectedAccounts],
