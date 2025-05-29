@@ -127,31 +127,55 @@ export const WhatsAppCategorized: React.FC<WhatsAppCategorizedProps> = ({
     <div className="flex h-full bg-white">
       {/* Left Panel - Chat List with Categories */}
       <div className="w-80 border-r border-gray-200 flex flex-col">
-        {/* Header with Category Filters */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Conversaciones</h2>
+        {/* Account Selection Header */}
+        <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-semibold text-gray-900">Cuentas WhatsApp</h2>
+            <Badge variant="secondary" className="text-xs">
+              {selectedAccounts.length} activas
+            </Badge>
+          </div>
+          <div className="text-sm text-gray-600">
+            Cuentas seleccionadas: {selectedAccounts.join(', ')}
+          </div>
+        </div>
+
+        {/* Chat Header and Search */}
+        <div className="p-3 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-md font-medium text-gray-900">Conversaciones</h3>
             <Button
               size="sm"
               onClick={() => setShowCreateCategoryDialog(true)}
-              className="h-8"
+              className="h-6 px-2 text-xs"
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="h-3 w-3 mr-1" />
               Categoría
             </Button>
           </div>
           
-          {/* Chat Type Filters */}
-          <div className="flex gap-2 mb-3">
+          {/* Search Bar */}
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Buscar chats..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-8"
+            />
+          </div>
+
+          {/* Chat Type Filters - Smaller */}
+          <div className="flex gap-1 mb-2">
             <Button
               size="sm"
               variant={chatTypeFilter === 'all' ? "default" : "outline"}
               onClick={() => setChatTypeFilter('all')}
-              className="flex items-center space-x-1"
+              className="h-6 px-2 text-xs flex items-center space-x-1"
             >
-              <MessageCircle className="h-3 w-3" />
+              <MessageCircle className="h-2.5 w-2.5" />
               <span>Todos</span>
-              <Badge variant="secondary" className="ml-1">
+              <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1">
                 {filteredChats.length}
               </Badge>
             </Button>
@@ -160,16 +184,16 @@ export const WhatsAppCategorized: React.FC<WhatsAppCategorizedProps> = ({
               size="sm"
               variant={chatTypeFilter === 'individual' ? "default" : "outline"}
               onClick={() => setChatTypeFilter('individual')}
-              className="flex items-center space-x-1"
+              className="h-6 px-2 text-xs flex items-center space-x-1"
               style={{
                 backgroundColor: chatTypeFilter === 'individual' ? '#10B981' : 'transparent',
                 borderColor: '#10B981',
                 color: chatTypeFilter === 'individual' ? 'white' : '#10B981'
               }}
             >
-              <User className="h-3 w-3" />
+              <User className="h-2.5 w-2.5" />
               <span>Individual</span>
-              <Badge variant="secondary" className="ml-1">
+              <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1">
                 {filteredChats.filter(chat => !chat.isGroup).length}
               </Badge>
             </Button>
@@ -178,31 +202,52 @@ export const WhatsAppCategorized: React.FC<WhatsAppCategorizedProps> = ({
               size="sm"
               variant={chatTypeFilter === 'groups' ? "default" : "outline"}
               onClick={() => setChatTypeFilter('groups')}
-              className="flex items-center space-x-1"
+              className="h-6 px-2 text-xs flex items-center space-x-1"
               style={{
                 backgroundColor: chatTypeFilter === 'groups' ? '#8B5CF6' : 'transparent',
                 borderColor: '#8B5CF6',
                 color: chatTypeFilter === 'groups' ? 'white' : '#8B5CF6'
               }}
             >
-              <Users className="h-3 w-3" />
+              <Users className="h-2.5 w-2.5" />
               <span>Grupos</span>
-              <Badge variant="secondary" className="ml-1">
+              <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1">
                 {filteredChats.filter(chat => chat.isGroup).length}
               </Badge>
             </Button>
           </div>
 
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Buscar chats..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          {/* Category Filters - Below search */}
+          {categories.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              <Button
+                size="sm"
+                variant={selectedCategory === null ? "default" : "outline"}
+                onClick={() => setSelectedCategory(null)}
+                className="h-5 px-2 text-[10px]"
+              >
+                Sin categoría
+              </Button>
+              {categories.map((category: any) => (
+                <Button
+                  key={category.id}
+                  size="sm"
+                  variant={selectedCategory === category.id.toString() ? "default" : "outline"}
+                  onClick={() => setSelectedCategory(
+                    selectedCategory === category.id.toString() ? null : category.id.toString()
+                  )}
+                  className="h-5 px-2 text-[10px]"
+                  style={{
+                    backgroundColor: selectedCategory === category.id.toString() ? category.color : 'transparent',
+                    borderColor: category.color,
+                    color: selectedCategory === category.id.toString() ? 'white' : category.color
+                  }}
+                >
+                  {category.name}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Chat List */}
