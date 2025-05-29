@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import { db, pool } from "./db";
 import { users, whatsappAccounts, autoResponseConfigs } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import * as agentAssignmentRoutes from "./routes/agentAssignments";
 import { invisibleAgentIntegrator } from "./services/invisibleAgentIntegrator";
 import { realTimeNotificationService } from "./services/realTimeNotificationService";
@@ -21,7 +21,6 @@ import { stableAutoResponseManager } from "./services/stableAutoResponse";
 import { deepSeekService } from "./services/deepseekService";
 import deepSeekAutoResponse from "./services/deepseekAutoResponse";
 import { directDeepSeekResponse } from "./services/directDeepSeekResponse";
-import { ChatCategoryService } from "./services/chatCategoryService";
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -4038,78 +4037,6 @@ app.use((req, res, next) => {
     } catch (error) {
       console.error('Error en test DeepSeek:', error);
       res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  // Initialize category tables on startup
-  ChatCategoryService.initializeDatabase();
-
-  // ===== ENDPOINTS DE CATEGORÍAS DE CHATS =====
-
-  // Obtener todas las categorías
-  app.get("/api/chat-categories", async (req: Request, res: Response) => {
-    try {
-      const categories = await ChatCategoryService.getAllCategories();
-      res.json({ success: true, categories });
-    } catch (error) {
-      console.error('Error obteniendo categorías:', error);
-      res.status(500).json({ success: false, message: 'Error obteniendo categorías' });
-    }
-  });
-
-  // Crear nueva categoría
-  app.post("/api/chat-categories", async (req: Request, res: Response) => {
-    try {
-      const { name, description, color, icon, accountId } = req.body;
-      
-      const category = await ChatCategoryService.createCategory({
-        name,
-        description,
-        color: color || '#3B82F6',
-        icon: icon || 'Tag',
-        accountId
-      });
-      
-      if (category) {
-        res.json({ success: true, category });
-      } else {
-        res.status(500).json({ success: false, message: 'Error creando categoría' });
-      }
-    } catch (error) {
-      console.error('Error creando categoría:', error);
-      res.status(500).json({ success: false, message: 'Error creando categoría' });
-    }
-  });
-
-  // Asignar chat a categoría
-  app.post("/api/chat-categories/assign", async (req: Request, res: Response) => {
-    try {
-      const { chatId, accountId, categoryId } = req.body;
-      
-      const success = await ChatCategoryService.assignChatToCategory(chatId, accountId, categoryId);
-      
-      if (success) {
-        res.json({ success: true, message: 'Chat asignado a categoría exitosamente' });
-      } else {
-        res.status(500).json({ success: false, message: 'Error asignando categoría' });
-      }
-    } catch (error) {
-      console.error('Error asignando categoría:', error);
-      res.status(500).json({ success: false, message: 'Error asignando categoría' });
-    }
-  });
-
-  // Obtener categoría de un chat específico
-  app.get("/api/chat-categories/chat/:chatId/:accountId", async (req: Request, res: Response) => {
-    try {
-      const { chatId, accountId } = req.params;
-      
-      const category = await ChatCategoryService.getChatCategory(chatId, parseInt(accountId));
-      
-      res.json({ success: true, category });
-    } catch (error) {
-      console.error('Error obteniendo categoría del chat:', error);
-      res.status(500).json({ success: false, message: 'Error obteniendo categoría del chat' });
     }
   });
 
