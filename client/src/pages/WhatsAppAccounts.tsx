@@ -521,7 +521,7 @@ const WhatsAppAccounts = () => {
   };
   
   // Combinar datos de cuentas con información de ping
-  const accountsWithPing = accounts.map(account => {
+  const accountsWithPing = (Array.isArray(accounts) ? accounts : []).map(account => {
     if (pingStatusData?.success && pingStatusData.accounts) {
       const pingInfo = pingStatusData.accounts.find((acc: any) => acc.accountId === account.id);
       return {
