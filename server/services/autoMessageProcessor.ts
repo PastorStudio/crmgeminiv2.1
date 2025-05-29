@@ -65,8 +65,8 @@ export class AutoMessageProcessor {
               agentName: externalAgents.agentName
             }).from(externalAgents).where(eq(externalAgents.id, directConfig.assignedExternalAgentId));
             
-            if (agentQuery.rows.length > 0) {
-              const agentName = agentQuery.rows[0].agent_name;
+            if (agentQuery.length > 0) {
+              const agentName = agentQuery[0].agentName;
               console.log(`🤖 Generando respuesta automática con ${agentName}...`);
               
               // Generar respuesta usando OpenAI
