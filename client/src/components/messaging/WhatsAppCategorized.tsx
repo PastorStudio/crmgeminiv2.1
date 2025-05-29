@@ -482,22 +482,46 @@ function ChatListItem({
   categoryLoading: boolean;
 }) {
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+  const [showProfileImage, setShowProfileImage] = useState(false);
+
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowProfileImage(true);
+  };
 
   return (
-    <div 
-      className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 relative ${
-        isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-      }`}
-      onClick={onClick}
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center mb-1">
-            <div className="flex items-center space-x-2">
-              {chat.isGroup ? <Users className="h-4 w-4 text-gray-500" /> : <User className="h-4 w-4 text-gray-500" />}
-              <span className="font-medium text-gray-900 truncate">{chat.name}</span>
-            </div>
+    <>
+      <div 
+        className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 relative ${
+          isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+        }`}
+        onClick={onClick}
+      >
+        <div className="flex items-start space-x-3">
+          {/* Profile Picture */}
+          <div className="flex-shrink-0">
+            <Avatar 
+              className="h-12 w-12 cursor-pointer ring-2 ring-gray-200 hover:ring-blue-400 transition-all"
+              onClick={handleProfileClick}
+            >
+              <AvatarImage 
+                src={chat.profilePicUrl || `/api/whatsapp-accounts/${chat.accountId}/contact/${chat.id}/profile-pic`}
+                alt={chat.name}
+                className="object-cover"
+              />
+              <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white font-semibold">
+                {chat.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
           </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center mb-1">
+              <div className="flex items-center space-x-2">
+                {chat.isGroup ? <Users className="h-4 w-4 text-gray-500" /> : <User className="h-4 w-4 text-gray-500" />}
+                <span className="font-medium text-gray-900 truncate">{chat.name}</span>
+              </div>
+            </div>
           
           <p className="text-sm text-gray-600 truncate">{chat.lastMessage}</p>
           
@@ -515,9 +539,8 @@ function ChatListItem({
               </Badge>
             )}
           </div>
-        </div>
-        
-        {/* Category Management Button */}
+          
+          {/* Category Management Button */}
         <Popover open={showCategoryMenu} onOpenChange={setShowCategoryMenu}>
           <PopoverTrigger asChild>
             <Button
@@ -572,7 +595,39 @@ function ChatListItem({
           </PopoverContent>
         </Popover>
       </div>
-    </div>
+
+      {/* Profile Image Dialog */}
+      <Dialog open={showProfileImage} onOpenChange={setShowProfileImage}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage 
+                  src={chat.profilePicUrl || `/api/whatsapp-accounts/${chat.accountId}/contact/${chat.id}/profile-pic`}
+                  alt={chat.name}
+                />
+                <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white">
+                  {chat.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span>{chat.name}</span>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex items-center justify-center p-4">
+            <img 
+              src={chat.profilePicUrl || `/api/whatsapp-accounts/${chat.accountId}/contact/${chat.id}/profile-pic`}
+              alt={chat.name}
+              className="max-w-full max-h-96 rounded-lg shadow-lg object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
