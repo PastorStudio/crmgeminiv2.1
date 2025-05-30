@@ -2065,7 +2065,30 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
 
-
+                  {/* SELECTOR DE AGENTE EXTERNO */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.1 }}
+                  >
+                    <AgentSelector 
+                      chatId={selectedChat.id}
+                      accountId={selectedChat.accountId}
+                      onAgentChange={(agentId) => {
+                        console.log('🤖 Agente seleccionado:', agentId);
+                        // Actualizar ambos estados para activar respuestas automáticas
+                        setExternalAgentActive(!!agentId);
+                        setSmartBotsEnabled(!!agentId); // ✅ CRUCIAL: Activar SmartBots cuando hay agente
+                        setSelectedExternalAgent(agentId || '');
+                        
+                        console.log('✅ Estados actualizados:', {
+                          agentId,
+                          smartBotsEnabled: !!agentId,
+                          externalAgentActive: !!agentId
+                        });
+                      }}
+                    />
+                  </motion.div>
 
 
 
@@ -2171,7 +2194,35 @@ export function WhatsAppTwoColumn() {
                   
 
                   
-
+                  {/* Refresh WhatsApp Data Button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        console.log('🔄 Actualizando datos de WhatsApp...');
+                        
+                        const response = await fetch('/api/whatsapp/refresh-data', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' }
+                        });
+                        
+                        if (response.ok) {
+                          console.log('✅ Datos de WhatsApp actualizados');
+                          // Recargar la página para obtener datos frescos
+                          window.location.reload();
+                        } else {
+                          console.error('❌ Error actualizando datos');
+                        }
+                      } catch (error) {
+                        console.error('❌ Error:', error);
+                      }
+                    }}
+                    className="text-blue-500 hover:text-blue-700"
+                    title="Actualizar datos de WhatsApp"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
 
                   {/* Profile Button */}
                   <Button
