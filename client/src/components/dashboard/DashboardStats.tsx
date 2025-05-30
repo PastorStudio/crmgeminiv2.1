@@ -30,68 +30,78 @@ export default function DashboardStats() {
     return stats?.pendingActivities || 0;
   };
 
-  // Traducir texto usando Google Translate directo
-  const translateText = async (text: string, targetLang: string): Promise<string> => {
-    if (!text || text.trim() === '' || targetLang === 'es') return text;
-    
-    try {
-      const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=es&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-      
-      const response = await fetch(googleUrl, {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data[0] && data[0][0] && data[0][0][0]) {
-          return data[0][0][0];
-        }
-      }
-    } catch (error) {
-      console.warn('Error translating:', error);
+  // Traducciones estáticas para los títulos de widgets
+  const staticTranslations = {
+    'Total Leads': {
+      en: 'Total Leads',
+      es: 'Total Leads',
+      pt: 'Total de Leads',
+      fr: 'Total des Prospects',
+      de: 'Gesamte Leads',
+      it: 'Totale Lead',
+      zh: '总线索',
+      ja: '総リード数',
+      ko: '총 리드',
+      ru: 'Всего лидов',
+      ar: 'إجمالي العملاء المحتملين'
+    },
+    'Conversion Rate': {
+      en: 'Conversion Rate',
+      es: 'Tasa de Conversión',
+      pt: 'Taxa de Conversão',
+      fr: 'Taux de Conversion',
+      de: 'Konversionsrate',
+      it: 'Tasso di Conversione',
+      zh: '转化率',
+      ja: 'コンバージョン率',
+      ko: '전환율',
+      ru: 'Коэффициент конверсии',
+      ar: 'معدل التحويل'
+    },
+    'Active Conversations': {
+      en: 'Active Conversations',
+      es: 'Conversaciones Activas',
+      pt: 'Conversas Ativas',
+      fr: 'Conversations Actives',
+      de: 'Aktive Gespräche',
+      it: 'Conversazioni Attive',
+      zh: '活跃对话',
+      ja: 'アクティブな会話',
+      ko: '활성 대화',
+      ru: 'Активные разговоры',
+      ar: 'المحادثات النشطة'
+    },
+    "Today's Meetings": {
+      en: "Today's Meetings",
+      es: 'Reuniones de Hoy',
+      pt: 'Reuniões de Hoje',
+      fr: "Réunions d'Aujourd'hui",
+      de: 'Heutige Besprechungen',
+      it: "Riunioni di Oggi",
+      zh: '今日会议',
+      ja: '今日の会議',
+      ko: '오늘의 회의',
+      ru: 'Сегодняшние встречи',
+      ar: 'اجتماعات اليوم'
     }
-    
-    return text;
   };
 
   // Get translated widget titles
-  const getTranslatedTitles = async () => {
-    if (currentLanguage === 'es') {
-      return {
-        totalLeads: 'Total Leads',
-        conversionRate: 'Conversion Rate',
-        activeConversations: 'Active Conversations',
-        todayMeetings: "Today's Meetings"
-      };
-    }
-    
+  const getTranslatedTitles = () => {
     return {
-      totalLeads: await translateText('Total Leads', currentLanguage),
-      conversionRate: await translateText('Conversion Rate', currentLanguage),
-      activeConversations: await translateText('Active Conversations', currentLanguage),
-      todayMeetings: await translateText("Today's Meetings", currentLanguage)
+      totalLeads: staticTranslations['Total Leads'][currentLanguage] || 'Total Leads',
+      conversionRate: staticTranslations['Conversion Rate'][currentLanguage] || 'Conversion Rate',
+      activeConversations: staticTranslations['Active Conversations'][currentLanguage] || 'Active Conversations',
+      todayMeetings: staticTranslations["Today's Meetings"][currentLanguage] || "Today's Meetings"
     };
   };
 
   // State for translated titles
-  const [translatedTitles, setTranslatedTitles] = useState({
-    totalLeads: 'Total Leads',
-    conversionRate: 'Conversion Rate',
-    activeConversations: 'Active Conversations',
-    todayMeetings: "Today's Meetings"
-  });
+  const [translatedTitles, setTranslatedTitles] = useState(getTranslatedTitles());
 
   // Update translated titles when language changes
   useEffect(() => {
-    const updateTitles = async () => {
-      const titles = await getTranslatedTitles();
-      setTranslatedTitles(titles);
-    };
-    
-    updateTitles();
+    setTranslatedTitles(getTranslatedTitles());
   }, [currentLanguage]);
 
   return (
