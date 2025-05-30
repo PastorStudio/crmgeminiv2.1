@@ -1549,7 +1549,18 @@ app.use((req, res, next) => {
   app.get('/api/chat-assignments/:chatId', async (req, res) => {
     try {
       const { chatId } = req.params;
-      const assignment = await storage.getChatAssignmentByChatId(decodeURIComponent(chatId));
+      const { accountId } = req.query;
+      
+      console.log('🔍 Consultando asignación para chat:', chatId, 'cuenta:', accountId);
+      
+      // Usar el servicio de asignaciones
+      const { agentAssignmentService } = await import('./services/agentAssignmentService');
+      const assignment = await agentAssignmentService.getChatAssignment(
+        decodeURIComponent(chatId), 
+        parseInt(accountId as string) || 1
+      );
+      
+      console.log('✅ Asignación encontrada:', assignment);
       res.json(assignment);
     } catch (error) {
       console.error('Error al obtener asignación:', error);
@@ -1559,25 +1570,54 @@ app.use((req, res, next) => {
 
   app.post('/api/chat-assignments', async (req, res) => {
     try {
-      console.log('📝 Asignación de chat (directo):', req.body);
-      const { chatId, agentId } = req.body;
-      if (!chatId) {
-        return res.status(400).json({ error: 'Se requiere chatId' });
+      console.log('📝 Asignación de chat MANUAL (tiene prioridad sobre automática):', req.body);
+      const { chatId, accountId, assignedToId, category, notes } = req.body;
+      
+      if (!chatId || !accountId) {
+        return res.status(400).json({ error: 'Se requieren chatId y accountId' });
       }
 
-      // Crear una asignación simple en memoria por ahora
-      const assignment = {
-        id: Date.now(),
-        chatId,
-        agentId,
-        assignedAt: new Date(),
-        agent: agentId ? { id: agentId, name: `Agente ${agentId}` } : null
-      };
+      // Usar el servicio de asignaciones para crear/actualizar la asignación
+      const { agentAssignmentService } = await import('./services/agentAssignmentService');
       
-      res.json(assignment);
+      if (assignedToId) {
+        // Asignación manual - FORZAR que tenga prioridad
+        const assignment = await agentAssignmentService.assignChatToAgent(
+          chatId,
+          accountId,
+          assignedToId,
+          undefined, // assignedById - manual assignment
+          {
+            category,
+            notes: notes || 'Asignación manual del usuario',
+            forceReassign: true // Forzar reasignación para sobrescribir automática
+          }
+        );
+
+        if (!assignment) {
+          return res.status(500).json({ error: 'Error al crear asignación' });
+        }
+
+        console.log('✅ Asignación MANUAL creada/actualizada:', assignment);
+        res.json(assignment);
+      } else {
+        // Desasignar - marcar como no asignado
+        const assignment = await agentAssignmentService.getChatAssignment(chatId, accountId);
+        if (assignment) {
+          // Marcar como cerrada la asignación existente
+          const { sql } = await import('drizzle-orm');
+          await db.execute(sql`
+            UPDATE chat_assignments 
+            SET status = 'unassigned', "lastActivityAt" = NOW()
+            WHERE "chatId" = ${chatId} AND "accountId" = ${accountId} AND status = 'active'
+          `);
+        }
+        
+        res.json({ id: null, chatId, accountId, assignedToId: null, status: 'unassigned' });
+      }
     } catch (error) {
       console.error('Error al asignar agente:', error);
-      res.status(500).json({ error: 'Error al asignar agente' });
+      res.status(500).json({ error: 'Error al asignar agente: ' + (error as Error).message });
     }
   });
 
