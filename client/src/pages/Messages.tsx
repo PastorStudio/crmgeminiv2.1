@@ -1,6 +1,6 @@
 import React from "react";
 import { Helmet } from "react-helmet";
-import WhatsAppInterface from "@/components/messaging/WhatsAppInterface";
+import { WhatsAppTwoColumn } from "@/components/messaging/WhatsAppTwoColumn";
 
 export default function Messages() {
   return (
@@ -10,9 +10,9 @@ export default function Messages() {
         <meta name="description" content="Comunícate con tus clientes a través de WhatsApp directamente desde tu CRM" />
       </Helmet>
 
-      {/* Interfaz de WhatsApp con diseño idéntico a WhatsApp Web */}
-      <div className="w-full h-screen">
-        <WhatsAppInterface />
+      {/* Interfaz de WhatsApp con diseño de 2 columnas */}
+      <div className="w-full h-screen overflow-hidden">
+        <WhatsAppTwoColumn />
       </div>
     </>
   );
