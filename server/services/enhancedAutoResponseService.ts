@@ -245,13 +245,17 @@ export class EnhancedAutoResponseService {
         return this.getFallbackResponse(message);
       }
 
+      // Enriquecer respuesta con información de web scraping
+      const chatId = message.from;
+      const webData = await this.enrichResponseWithWebData(chatId, message.body);
+
       // Preparar contexto de conversación
       const context = conversationHistory
         .slice(-10) // Últimos 10 mensajes
         .map(msg => `${msg.fromMe ? 'Empresa' : 'Cliente'}: ${msg.body}`)
         .join('\n');
 
-      const prompt = `
+      let prompt = `
 Eres un asistente de atención al cliente profesional y amigable. 
 Responde de manera útil y cortés al siguiente mensaje, considerando el contexto de la conversación.
 
@@ -266,7 +270,20 @@ Instrucciones:
 - Si el cliente pregunta por precios o productos, indica que un agente especializado lo contactará pronto
 - Si es un saludo, responde cordialmente y pregunta cómo puedes ayudar
 - Mantén la respuesta concisa (máximo 2 líneas)
-- No inventes información específica sobre productos o precios
+- No inventes información específica sobre productos o precios`;
+
+      // Agregar información de web scraping si está disponible
+      if (webData) {
+        prompt += `
+
+Información adicional de la empresa (extraída automáticamente):
+${webData}
+
+- Utiliza esta información para brindar respuestas más precisas y útiles
+- Si la información es relevante para la consulta del cliente, inclúyela de forma natural`;
+      }
+
+      prompt += `
 
 Respuesta:`;
 
