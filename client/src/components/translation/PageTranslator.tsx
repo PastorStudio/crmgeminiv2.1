@@ -69,10 +69,90 @@ const translationCache = new Map<string, string>();
 
 // Proveedor del contexto de traducción
 export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentLanguage, setCurrentLanguage] = useState('es'); // Idioma por defecto: español
+  // Recuperar idioma guardado del localStorage
+  const [currentLanguage, setCurrentLanguage] = useState(() => {
+    try {
+      return localStorage.getItem('selectedLanguage') || 'es';
+    } catch {
+      return 'es';
+    }
+  });
   const [isTranslating, setIsTranslating] = useState(false);
   const [originalTexts, setOriginalTexts] = useState<Map<Element, string>>(new Map());
   const { toast } = useToast();
+
+  // Guardar idioma seleccionado en localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('selectedLanguage', currentLanguage);
+    } catch (error) {
+      console.warn('No se pudo guardar el idioma seleccionado:', error);
+    }
+  }, [currentLanguage]);
+
+  // Auto-traducir página cuando cambia de ruta si no es español
+  useEffect(() => {
+    if (currentLanguage !== 'es') {
+      const timer = setTimeout(() => {
+        translatePage(currentLanguage);
+      }, 500); // Esperar un poco para que la página se cargue
+      
+      return () => clearTimeout(timer);
+    }
+  }, [currentLanguage]);
+
+  // Observador de mutaciones para traducir contenido dinámico
+  useEffect(() => {
+    if (currentLanguage === 'es') return;
+
+    const observer = new MutationObserver((mutations) => {
+      let shouldRetranslate = false;
+      
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+          // Verificar si se agregaron nodos con texto
+          const hasTextNodes = Array.from(mutation.addedNodes).some(node => {
+            if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+              return true;
+            }
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as Element;
+              return element.textContent?.trim() || 
+                     element.getAttribute('placeholder') ||
+                     element.getAttribute('title') ||
+                     element.getAttribute('aria-label');
+            }
+            return false;
+          });
+          
+          if (hasTextNodes) {
+            shouldRetranslate = true;
+          }
+        }
+      });
+      
+      if (shouldRetranslate) {
+        // Debounce las retraducciones
+        clearTimeout(window.retranslateTimer);
+        window.retranslateTimer = setTimeout(() => {
+          console.log('🔄 Detectados nuevos elementos, retraduciendo...');
+          translatePage(currentLanguage);
+        }, 1000);
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: false,
+      characterData: true
+    });
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(window.retranslateTimer);
+    };
+  }, [currentLanguage]);
 
   // Función para traducir texto individual usando Google Translate directo
   const translateText = async (text: string, targetLang: string = currentLanguage): Promise<string> => {
@@ -113,9 +193,64 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     return text; // Retornar texto original si falla la traducción
   };
 
-  // Función para obtener elementos que contienen texto
+  // Función para obtener elementos que contienen texto (mejorada para widgets y reportes)
   const getTextElements = (): Element[] => {
     const elements: Element[] = [];
+    
+    // Selectores específicos para capturar widgets, reportes y elementos dinámicos
+    const selectors = [
+      // Elementos de texto básicos
+      'h1, h2, h3, h4, h5, h6',
+      'p, span, div, li, td, th',
+      'button, a, label',
+      
+      // Widgets y cards específicos
+      '[class*="card"]', '[class*="widget"]', '[class*="dashboard"]',
+      '[class*="report"]', '[class*="chart"]', '[class*="stat"]',
+      
+      // Componentes de UI específicos
+      '[class*="text-"]', '[class*="title"]', '[class*="subtitle"]',
+      '[class*="heading"]', '[class*="label"]', '[class*="description"]',
+      
+      // Elementos de navegación y menús
+      '[role="menuitem"]', '[role="tab"]', '[role="button"]',
+      '.nav-link', '.menu-item', '.sidebar-item',
+      
+      // Elementos de formularios
+      'input[placeholder]', 'textarea[placeholder]'
+    ];
+
+    selectors.forEach(selector => {
+      try {
+        const foundElements = document.querySelectorAll(selector);
+        foundElements.forEach(element => {
+          // Evitar elementos de scripts, estilos, etc.
+          if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'META', 'LINK'].includes(element.tagName)) {
+            return;
+          }
+          
+          // Verificar si tiene texto directo o placeholder
+          const hasDirectText = Array.from(element.childNodes).some(
+            child => child.nodeType === Node.TEXT_NODE && child.textContent?.trim()
+          );
+          
+          const hasPlaceholder = element.getAttribute('placeholder')?.trim();
+          const hasTitle = element.getAttribute('title')?.trim();
+          const hasAriaLabel = element.getAttribute('aria-label')?.trim();
+          
+          if (hasDirectText || hasPlaceholder || hasTitle || hasAriaLabel) {
+            // Evitar duplicados
+            if (!elements.includes(element)) {
+              elements.push(element);
+            }
+          }
+        });
+      } catch (error) {
+        console.warn('Error selecting elements with selector:', selector, error);
+      }
+    });
+    
+    // Usar TreeWalker como fallback para elementos que puedan haberse perdido
     const walker = document.createTreeWalker(
       document.body,
       NodeFilter.SHOW_ELEMENT,
@@ -123,12 +258,10 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
         acceptNode: (node) => {
           const element = node as Element;
           
-          // Evitar elementos de scripts, estilos, etc.
           if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'META', 'LINK'].includes(element.tagName)) {
             return NodeFilter.FILTER_REJECT;
           }
           
-          // Solo elementos que contienen texto directo
           const hasDirectText = Array.from(element.childNodes).some(
             child => child.nodeType === Node.TEXT_NODE && child.textContent?.trim()
           );
@@ -140,9 +273,13 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
 
     let node;
     while (node = walker.nextNode()) {
-      elements.push(node as Element);
+      const element = node as Element;
+      if (!elements.includes(element)) {
+        elements.push(element);
+      }
     }
     
+    console.log(`📄 Elementos encontrados para traducir: ${elements.length}`);
     return elements;
   };
 
@@ -186,7 +323,8 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
         
         await Promise.all(batch.map(async (element) => {
           try {
-            const originalText = currentLanguage === 'es' 
+            // Obtener texto del contenido del elemento
+            const textContent = currentLanguage === 'es' 
               ? Array.from(element.childNodes)
                   .filter(node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
                   .map(node => node.textContent)
@@ -194,24 +332,38 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
                   .trim()
               : originalTexts.get(element) || '';
             
-            if (!originalText) return;
-            
-            const translatedText = await translateText(originalText, targetLanguage);
-            
-            if (translatedText && translatedText !== originalText) {
-              // Reemplazar solo los nodos de texto
-              const textNodes = Array.from(element.childNodes).filter(
-                node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
-              );
+            // Traducir contenido de texto si existe
+            if (textContent) {
+              const translatedText = await translateText(textContent, targetLanguage);
               
-              if (textNodes.length > 0) {
-                textNodes.forEach(node => {
-                  if (node.textContent?.trim()) {
-                    node.textContent = translatedText;
-                  }
-                });
+              if (translatedText && translatedText !== textContent) {
+                const textNodes = Array.from(element.childNodes).filter(
+                  node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+                );
+                
+                if (textNodes.length > 0) {
+                  textNodes.forEach(node => {
+                    if (node.textContent?.trim()) {
+                      node.textContent = translatedText;
+                    }
+                  });
+                }
               }
             }
+            
+            // Traducir atributos como placeholder, title, aria-label
+            const attributesToTranslate = ['placeholder', 'title', 'aria-label', 'alt'];
+            
+            for (const attr of attributesToTranslate) {
+              const originalAttrValue = element.getAttribute(attr);
+              if (originalAttrValue?.trim()) {
+                const translatedAttr = await translateText(originalAttrValue, targetLanguage);
+                if (translatedAttr && translatedAttr !== originalAttrValue) {
+                  element.setAttribute(attr, translatedAttr);
+                }
+              }
+            }
+            
           } catch (error) {
             console.warn('Error translating element:', element, error);
           }
