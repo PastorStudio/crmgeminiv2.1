@@ -440,6 +440,30 @@ function ChatCommentsIndicator({ chatId }: { chatId: string }) {
   );
 }
 
+function WhatsAppAccountBadge({ accountId }: { accountId: number }) {
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['/api/whatsapp/accounts'],
+    staleTime: 30000, // Cache por 30 segundos
+  });
+
+  const account = accounts.find((acc: any) => acc.id === accountId);
+  
+  if (!account) {
+    return (
+      <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600">
+        #{accountId}
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+      <Smartphone className="h-3 w-3 mr-1" />
+      {account.name || `#${accountId}`}
+    </Badge>
+  );
+}
+
 interface WhatsAppChat {
   id: string;
   name: string;
@@ -2120,9 +2144,7 @@ export function WhatsAppTwoColumn() {
                             {chat.isGroup && <Users className="h-4 w-4 text-gray-400" />}
                           </div>
                           <div className="flex items-center space-x-1">
-                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                              #{chat.accountId}
-                            </Badge>
+                            <WhatsAppAccountBadge accountId={chat.accountId} />
                             <span className="text-xs text-gray-500">
                               {formatTime(chat.timestamp)}
                             </span>
@@ -2182,9 +2204,7 @@ export function WhatsAppTwoColumn() {
                     <div className="flex items-center space-x-2">
                       <h3 className="font-semibold text-gray-900">{selectedChat.name}</h3>
                       {selectedChat.isGroup && <Users className="h-4 w-4 text-gray-400" />}
-                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                        Cuenta #{selectedChat.accountId}
-                      </Badge>
+                      <WhatsAppAccountBadge accountId={selectedChat.accountId} />
                       <TicketStatusBadge chatId={selectedChat.id} />
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-500">
