@@ -4080,7 +4080,7 @@ app.use((req, res, next) => {
     }
   });
 
-// Endpoint para traducción automática de mensajes
+// Endpoint para traducción automática de mensajes usando web scraping
 app.post('/api/translate-message', async (req, res) => {
   try {
     const { text, messageId } = req.body;
@@ -4092,38 +4092,50 @@ app.post('/api/translate-message', async (req, res) => {
       });
     }
 
-    // Detectar idioma y traducir usando Google Translate API
-    const detectedLanguage = await detectLanguage(text);
+    // Importar el servicio de web scraping
+    const { googleTranslateScraper } = await import('./services/translateScraping');
     
-    // Solo traducir si no es español
-    if (detectedLanguage === 'es' || detectedLanguage === 'spa') {
+    // Intentar traducción simple primero (más rápida)
+    let result = await googleTranslateScraper.translateSimple(text, 'es');
+    
+    // Si falla, intentar con web scraping completo
+    if (!result.success) {
+      console.log('🔄 Traducción simple falló, intentando web scraping...');
+      result = await googleTranslateScraper.translateText(text, 'es');
+    }
+    
+    if (!result.success) {
       return res.json({
-        success: true,
-        detectedLanguage,
-        isSpanish: true
+        success: false,
+        error: result.error || 'Error al traducir'
       });
     }
 
-    // Traducir al español
-    const translatedText = await translateText(text, detectedLanguage, 'es');
+    // Solo responder con traducción si el idioma detectado NO es español
+    if (result.detectedLanguage === 'es' || result.detectedLanguage === 'spa') {
+      return res.json({
+        success: true,
+        detectedLanguage: result.detectedLanguage,
+        isSpanish: true
+      });
+    }
     
-    console.log(`🌐 Traducción: ${detectedLanguage} → es`);
-    console.log(`📝 Original: ${text.substring(0, 50)}...`);
-    console.log(`📝 Traducido: ${translatedText.substring(0, 50)}...`);
-
+    console.log(`🌐 Traducción exitosa: "${text.substring(0, 50)}..." → "${result.translatedText?.substring(0, 50)}..." (${result.detectedLanguage} → es)`);
+    
     res.json({
       success: true,
-      detectedLanguage,
-      translatedText,
+      translatedText: result.translatedText,
+      detectedLanguage: result.detectedLanguage,
+      targetLanguage: 'es',
       originalText: text,
       messageId
     });
 
   } catch (error) {
     console.error('❌ Error en traducción:', error);
-    res.json({
+    res.status(500).json({
       success: false,
-      error: 'Error en el servicio de traducción'
+      error: 'Error al traducir mensaje'
     });
   }
 });
