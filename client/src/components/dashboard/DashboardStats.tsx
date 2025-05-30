@@ -95,7 +95,7 @@ export default function DashboardStats() {
   }, [currentLanguage]);
 
   return (
-    <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="dashboard-stats mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
       {/* Total Leads */}
       <Card>
         <CardContent className="p-0">
