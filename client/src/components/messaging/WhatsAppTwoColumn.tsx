@@ -1921,7 +1921,8 @@ export function WhatsAppTwoColumn() {
     sendMessageMutation.mutate({
       chatId: selectedChat.id,
       accountId: selectedChat.accountId,
-      message: finalMessage
+      message: finalMessage,
+      originalMessage: wasTranslated ? originalMessage : undefined // Incluir mensaje original si fue traducido
     });
     
     // Si SmartBots está activado, generar respuesta automática sugerida
@@ -2572,6 +2573,17 @@ export function WhatsAppTwoColumn() {
                                         translationEnabled={translationEnabled}
                                         messages={messages}
                                       />
+                                    )}
+                                    {/* Mostrar texto original debajo del traducido para mensajes enviados */}
+                                    {message.fromMe && message.originalMessage && translationEnabled && (
+                                      <div className="mt-2 p-2 bg-gray-50 rounded-md border-l-4 border-gray-300">
+                                        <div className="flex items-start gap-2">
+                                          <span className="text-gray-600 text-xs font-medium">📝 Original:</span>
+                                          <p className="text-gray-700 text-xs leading-relaxed flex-1">
+                                            {message.originalMessage}
+                                          </p>
+                                        </div>
+                                      </div>
                                     )}
                                   </div>
                                 )}
