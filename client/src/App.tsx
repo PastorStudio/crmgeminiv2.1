@@ -46,6 +46,7 @@ import { ModelNotificationProvider } from './lib/modelNotification';
 
 import { AuthProvider, useAuth } from './lib/authContext';
 import { Loader2 } from 'lucide-react';
+import { PageTranslationProvider } from './components/translation/PageTranslator';
 
 // Componente PrivateRoute para protección de rutas
 const PrivateRoute: React.FC<{ component: React.ComponentType<any>, path: string }> = ({ component: Component, path }) => {
@@ -558,7 +559,9 @@ const AppRoutes: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <PageTranslationProvider>
+        <AppRoutes />
+      </PageTranslationProvider>
     </AuthProvider>
   );
 };
