@@ -31,13 +31,14 @@ export class InvisibleAgentIntegrator {
     this.isRunning = true;
     console.log('🚀 Iniciando integrador invisible de asignaciones de agentes');
 
-    // Procesar chats existentes inmediatamente
-    await this.processExistingChats();
+    // DESACTIVADO: Sistema automático deshabilitado para permitir asignaciones manuales
+    console.log('⚠️ Sistema de asignación automática DESACTIVADO para pruebas manuales');
+    // await this.processExistingChats();
 
-    // Configurar intervalo para procesar nuevos chats cada 30 segundos
-    this.intervalId = setInterval(async () => {
-      await this.processNewChats();
-    }, 30000);
+    // DESACTIVADO: No configurar intervalo automático
+    // this.intervalId = setInterval(async () => {
+    //   await this.processNewChats();
+    // }, 30000);
 
     console.log('✅ Integrador invisible de agentes iniciado exitosamente');
   }
