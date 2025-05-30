@@ -68,7 +68,7 @@ function DashboardContent() {
       'bg': 'bg-BG'
     };
     
-    const locale = localeMap[currentLanguage] || 'es-ES';
+    const locale = 'es-ES';
     
     return getRealNow().toLocaleDateString(locale, {
       timeZone: 'America/New_York',
@@ -254,5 +254,14 @@ function DashboardContent() {
         </div>
       </PageContainer>
     </>
+  );
+}
+
+// Componente principal envuelto con el proveedor de traducción
+export default function Dashboard() {
+  return (
+    <DatabaseTranslationProvider>
+      <DashboardContent />
+    </DatabaseTranslationProvider>
   );
 }
