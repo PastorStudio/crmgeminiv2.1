@@ -210,8 +210,8 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
       'a:not([class*="dropdown"])',
       'label',
       
-      // Solo elementos de texto específicos, no contenedores
-      'dt', // Solo títulos de widgets, no los contenedores dd
+      // Solo elementos de texto específicos, no contenedores (excluir dashboard)
+      'dt:not(.dashboard-stats dt)',
       
       // Elementos de navegación y menús - más específicos
       '[role="menuitem"]',
@@ -231,6 +231,11 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
         foundElements.forEach(element => {
           // Evitar elementos de scripts, estilos, etc.
           if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'META', 'LINK'].includes(element.tagName)) {
+            return;
+          }
+          
+          // Evitar completamente elementos dentro del dashboard
+          if (element.closest('.dashboard-stats')) {
             return;
           }
           
