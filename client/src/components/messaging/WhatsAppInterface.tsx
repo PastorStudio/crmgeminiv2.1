@@ -13,11 +13,13 @@ export default function WhatsAppInterface() {
   const [searchTerm, setSearchTerm] = useState("");
 
   // Obtener chats reales de WhatsApp
-  const { data: whatsappChats = [] } = useQuery({
+  const { data: whatsappChatsData = [] } = useQuery({
     queryKey: ['/api/whatsapp/chats'],
     queryFn: async () => {
       try {
-        return await apiRequest('/api/whatsapp/chats');
+        const result = await apiRequest('/api/whatsapp/chats');
+        // Asegurar que siempre devolvemos un array
+        return Array.isArray(result) ? result : [];
       } catch (error) {
         console.error('Error obteniendo chats:', error);
         return [];
@@ -26,12 +28,14 @@ export default function WhatsAppInterface() {
   });
 
   // Obtener mensajes del chat seleccionado
-  const { data: chatMessages = [] } = useQuery({
+  const { data: chatMessagesData = [] } = useQuery({
     queryKey: ['/api/whatsapp/messages', selectedChat?.id],
     queryFn: async () => {
       if (!selectedChat) return [];
       try {
-        return await apiRequest(`/api/whatsapp/messages/${selectedChat.id}`);
+        const result = await apiRequest(`/api/whatsapp/messages/${selectedChat.id}`);
+        // Asegurar que siempre devolvemos un array
+        return Array.isArray(result) ? result : [];
       } catch (error) {
         console.error('Error obteniendo mensajes:', error);
         return [];
@@ -39,6 +43,10 @@ export default function WhatsAppInterface() {
     },
     enabled: !!selectedChat
   });
+
+  // Asegurar que whatsappChats siempre sea un array
+  const whatsappChats = Array.isArray(whatsappChatsData) ? whatsappChatsData : [];
+  const chatMessages = Array.isArray(chatMessagesData) ? chatMessagesData : [];
 
   const filteredChats = whatsappChats.filter((chat: any) =>
     chat.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
