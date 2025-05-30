@@ -56,26 +56,8 @@ import { AgentSelector } from './AgentSelector';
 
 import { VoiceNoteMessage } from './VoiceNoteMessage';
 
-// Componente de traducción automática optimizada
-// Cache global para evitar traducciones duplicadas
-const translationCache = new Map<string, any>();
-const translationQueue = new Map<string, Promise<any>>();
-
-// Función para verificar si un mensaje debe ser traducido
-const shouldTranslateMessage = (messageId: string, messages: any[]): boolean => {
-  if (!messages || messages.length === 0) return false;
-  
-  // Buscar el último mensaje recibido (no enviado por nosotros)
-  const incomingMessages = messages.filter(msg => !msg.fromMe);
-  if (incomingMessages.length === 0) return false;
-  
-  const lastIncomingMessage = incomingMessages[incomingMessages.length - 1];
-  const secondLastIncomingMessage = incomingMessages[incomingMessages.length - 2];
-  
-  // Solo traducir el último mensaje recibido y el anterior
-  return messageId === lastIncomingMessage.id || 
-         (secondLastIncomingMessage && messageId === secondLastIncomingMessage.id);
-};
+// Sistema de traducción simple usando Google Translate API (igual que mensajes enviados)
+const translationCache = new Map<string, string>();
 
 function MessageTranslation({ text, messageId, translationEnabled, messages }: { 
   text: string; 
@@ -83,166 +65,86 @@ function MessageTranslation({ text, messageId, translationEnabled, messages }: {
   translationEnabled: boolean;
   messages?: any[];
 }) {
-  const [translation, setTranslation] = useState<{
-    translated: string;
-    detectedLanguage: string;
-    targetLanguage: string;
-  } | null>(null);
+  const [translation, setTranslation] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!text || text.trim().length === 0 || !translationEnabled) {
+    if (!translationEnabled || !text || text.trim().length === 0) {
       setTranslation(null);
-      setError(null);
       return;
     }
 
-    // Solo traducir si es uno de los últimos 2 mensajes recibidos
-    if (!shouldTranslateMessage(messageId, messages || [])) {
-      console.log(`🚫 Mensaje ${messageId} saltado - no es uno de los últimos 2 recibidos`);
+    // Solo traducir los últimos 2 mensajes recibidos
+    if (!messages || messages.length === 0) return;
+    
+    const incomingMessages = messages.filter(msg => !msg.fromMe);
+    if (incomingMessages.length === 0) return;
+    
+    const lastIncomingMessage = incomingMessages[incomingMessages.length - 1];
+    const secondLastIncomingMessage = incomingMessages[incomingMessages.length - 2];
+    
+    const shouldTranslate = messageId === lastIncomingMessage.id || 
+                           (secondLastIncomingMessage && messageId === secondLastIncomingMessage.id);
+    
+    if (!shouldTranslate) {
       setTranslation(null);
-      setError(null);
       return;
     }
-
-    console.log(`✅ Mensaje ${messageId} será traducido - es uno de los últimos 2 recibidos`);
 
     const trimmedText = text.trim();
-    const cacheKey = `${trimmedText}_es`;
 
     // Verificar cache
-    if (translationCache.has(cacheKey)) {
-      const cached = translationCache.get(cacheKey);
-      if (cached.success && cached.detectedLanguage !== 'es' && cached.detectedLanguage !== 'spa' && !cached.isSpanish) {
-        setTranslation({
-          translated: cached.translatedText,
-          detectedLanguage: cached.detectedLanguage,
-          targetLanguage: 'es'
-        });
-      }
+    if (translationCache.has(trimmedText)) {
+      setTranslation(translationCache.get(trimmedText) || null);
       return;
     }
 
-    // Detectar español básico localmente primero (más rápido)
+    // Detectar español básico localmente
     const spanishPattern = /[áéíóúñ¿¡]|hola|gracias|buenos|días|noches|como|estas|que|tal|por|favor|bien|mal|muy|pero|con|una|para|esta|todo|desde|hasta/i;
     if (spanishPattern.test(trimmedText) || trimmedText.length < 4) {
-      const spanishResult = { success: true, detectedLanguage: 'es', isSpanish: true };
-      translationCache.set(cacheKey, spanishResult);
-      return;
+      return; // No traducir texto en español
     }
 
-    // Si ya hay una petición en cola para este texto, usar esa promesa
-    if (translationQueue.has(cacheKey)) {
-      const existingPromise = translationQueue.get(cacheKey);
-      existingPromise?.then((result) => {
-        translationCache.set(cacheKey, result);
-        if (result.success && result.detectedLanguage !== 'es' && result.detectedLanguage !== 'spa' && !result.isSpanish) {
-          setTranslation({
-            translated: result.translatedText,
-            detectedLanguage: result.detectedLanguage,
-            targetLanguage: 'es'
-          });
-        }
-      }).catch(() => {
-        setError('Error de conexión');
-      });
-      return;
-    }
-
-    const detectAndTranslate = async () => {
+    const translateMessage = async () => {
       setIsLoading(true);
-      setError(null);
-      
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-        const response = await fetch('/api/translate-message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            text: trimmedText,
-            messageId 
-          }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`Error ${response.status}`);
-        }
-
-        const result = await response.json();
+        // Usar Google Translate API directamente (mismo método que mensajes enviados)
+        const googleTranslateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=es&dt=t&q=${encodeURIComponent(trimmedText)}`;
         
-        // Guardar en cache
-        translationCache.set(cacheKey, result);
+        const response = await fetch(googleTranslateUrl);
+        const data = await response.json();
         
-        if (result.success && result.detectedLanguage !== 'es' && result.detectedLanguage !== 'spa' && !result.isSpanish) {
-          setTranslation({
-            translated: result.translatedText,
-            detectedLanguage: result.detectedLanguage,
-            targetLanguage: 'es'
-          });
-        }
-        
-        return result;
-      } catch (err) {
-        if (err instanceof Error) {
-          if (err.name === 'AbortError') {
-            setError('Tiempo agotado');
-          } else {
-            setError('Error de conexión');
+        if (data && data[0] && data[0][0] && data[0][0][0]) {
+          const translatedText = data[0][0][0];
+          
+          // Solo mostrar si realmente se tradujo
+          if (translatedText !== trimmedText && translatedText.toLowerCase() !== trimmedText.toLowerCase()) {
+            translationCache.set(trimmedText, translatedText);
+            setTranslation(translatedText);
           }
-        } else {
-          setError('Error desconocido');
         }
-        throw err;
+      } catch (error) {
+        console.log('Error en traducción:', error);
       } finally {
         setIsLoading(false);
-        translationQueue.delete(cacheKey);
       }
     };
 
-    // Crear promesa y agregar a la cola
-    const translationPromise = detectAndTranslate();
-    translationQueue.set(cacheKey, translationPromise);
-
-    // Delay antes de ejecutar
-    const timeoutId = setTimeout(() => {
-      // Si la promesa ya se procesó, no hacer nada
-      if (!translationQueue.has(cacheKey)) return;
-    }, 1000);
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
+    // Delay para evitar spam
+    const timeout = setTimeout(translateMessage, 500);
+    return () => clearTimeout(timeout);
   }, [text, messageId, translationEnabled, messages]);
 
   if (!translationEnabled) return null;
   if (isLoading) return <div className="text-xs text-gray-500 mt-1">Traduciendo...</div>;
-  if (error) return <div className="text-xs text-red-500 mt-1">Error: {error}</div>;
   if (!translation) return null;
-
-  const getLanguageFlag = (langCode: string) => {
-    const flags: Record<string, string> = {
-      'en': '🇺🇸', 'pt': '🇧🇷', 'fr': '🇫🇷', 'it': '🇮🇹', 
-      'de': '🇩🇪', 'zh': '🇨🇳', 'ja': '🇯🇵', 'ko': '🇰🇷',
-      'ar': '🇸🇦', 'ru': '🇷🇺', 'hi': '🇮🇳', 'th': '🇹🇭',
-      'vi': '🇻🇳', 'nl': '🇳🇱', 'sv': '🇸🇪', 'da': '🇩🇰'
-    };
-    return flags[langCode] || '🌐';
-  };
 
   return (
     <div className="mt-2 p-2 bg-blue-50 rounded-md border-l-4 border-blue-300">
       <div className="flex items-start gap-2">
-        <span className="text-blue-600 text-xs font-medium flex items-center gap-1">
-          {getLanguageFlag(translation.detectedLanguage)} → 🇪🇸
-        </span>
+        <span className="text-blue-600 text-xs font-medium">🌐 → 🇪🇸</span>
         <p className="text-blue-700 text-xs leading-relaxed flex-1">
-          {translation.translated}
+          {translation}
         </p>
       </div>
     </div>
