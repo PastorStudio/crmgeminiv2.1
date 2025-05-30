@@ -213,10 +213,11 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
         description: `El chat ha sido asignado a ${agentName}`,
       });
       
-      // Invalidar las consultas específicas para este chat
-      queryClient.invalidateQueries({ queryKey: [`/api/chat-assignments/${chatId}`] });
-      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments', chatId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/chat-categories', chatId] });
+      // Forzar invalidación y actualización inmediata de todas las consultas relacionadas
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+      queryClient.refetchQueries({ queryKey: ['/api/chat-assignments', chatId] });
       
       // También invalidar las consultas generales para refrescar la lista de chats
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
