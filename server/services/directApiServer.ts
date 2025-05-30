@@ -9,33 +9,6 @@ import { storage } from '../storage';
 
 export function registerDirectAPIRoutes(app: Express): void {
   
-  // Ruta completamente directa para crear cuentas de WhatsApp que evita Vite
-  app.post("/direct-api/create-whatsapp-account", async (req: Request, res: Response) => {
-    try {
-      console.log("🔄 Direct API: Creando cuenta de WhatsApp...");
-      const { name, description } = req.body;
-      
-      if (!name) {
-        return res.status(400).json({ error: "El nombre es requerido" });
-      }
-      
-      // Crear cuenta en la base de datos
-      const newAccount = await storage.createWhatsappAccount({
-        name,
-        description: description || null,
-        status: 'disconnected'
-      });
-      
-      console.log(`✅ Direct API: Cuenta creada con ID ${newAccount.id}`);
-      
-      res.setHeader('Content-Type', 'application/json');
-      res.status(201).json(newAccount);
-    } catch (error) {
-      console.error("❌ Direct API: Error creando cuenta:", error);
-      res.status(500).json({ error: "Error interno del servidor" });
-    }
-  });
-
   // Ruta para usuarios que bypasa completamente Vite
   app.get("/api/direct/users", async (req: Request, res: Response) => {
     try {
