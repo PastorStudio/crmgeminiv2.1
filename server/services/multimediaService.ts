@@ -55,6 +55,28 @@ export class MultimediaService {
     try {
       console.log(`🖼️ Procesando multimedia: mensaje ${messageId} en chat ${chatId}`);
       
+      // Verificar si ya existe en la base de datos
+      const existingFiles = await db.select()
+        .from(multimediaFiles)
+        .where(and(
+          eq(multimediaFiles.messageId, messageId),
+          eq(multimediaFiles.chatId, chatId),
+          eq(multimediaFiles.accountId, accountId)
+        ));
+
+      if (existingFiles.length > 0) {
+        console.log(`✅ Archivo multimedia ya procesado: ${messageId}`);
+        return {
+          id: messageId,
+          type: existingFiles[0].fileType,
+          mimetype: existingFiles[0].mimeType,
+          filename: existingFiles[0].fileName,
+          data: existingFiles[0].fileData,
+          size: existingFiles[0].fileSize,
+          timestamp: new Date(existingFiles[0].originalDate || new Date())
+        };
+      }
+      
       const instance = whatsappMultiAccountManager.getInstance(accountId);
       
       if (!instance || !instance.client) {
@@ -78,18 +100,45 @@ export class MultimediaService {
         return null;
       }
 
-      // Convertir a formato base64 para el frontend
+      // Identificar el tipo correcto de archivo
+      const fileType = this.identifyFileType(multimediaMessage.type, media.mimetype, media.filename || undefined);
+      const filename = media.filename || `${messageId}.${this.getExtensionFromMimeType(media.mimetype)}`;
+      
+      console.log(`🔍 Tipo identificado: ${fileType} para mensaje tipo ${multimediaMessage.type}`);
+
+      // Guardar en la base de datos
+      const multimediaRecord = {
+        messageId,
+        chatId,
+        accountId,
+        fileName: filename,
+        mimeType: media.mimetype,
+        fileSize: media.data.length,
+        fileType,
+        fileData: media.data,
+        metadata: JSON.stringify({
+          whatsappType: multimediaMessage.type,
+          originalFilename: media.filename,
+          timestamp: multimediaMessage.timestamp
+        }),
+        originalDate: new Date(multimediaMessage.timestamp * 1000),
+        processingStatus: 'completed'
+      };
+
+      await db.insert(multimediaFiles).values(multimediaRecord);
+
+      // Convertir a formato para el frontend
       const mediaData = {
         id: messageId,
-        type: multimediaMessage.type,
+        type: fileType,
         mimetype: media.mimetype,
-        filename: media.filename || `${messageId}.${this.getExtensionFromMimeType(media.mimetype)}`,
-        data: media.data, // Ya está en base64
+        filename: filename,
+        data: media.data,
         size: media.data.length,
         timestamp: multimediaMessage.timestamp
       };
 
-      console.log(`✅ Multimedia procesado: ${mediaData.type} - ${mediaData.filename}`);
+      console.log(`✅ Multimedia procesado y guardado: ${fileType} - ${filename}`);
       return mediaData;
       
     } catch (error) {
