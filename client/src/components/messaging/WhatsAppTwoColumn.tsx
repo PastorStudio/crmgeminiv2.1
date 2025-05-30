@@ -55,7 +55,6 @@ import { ExternalAgentButton } from './ExternalAgentButton';
 import { AgentSelector } from './AgentSelector';
 
 import { VoiceNoteMessage } from './VoiceNoteMessage';
-import { PageTranslationSelector } from '../translation/PageTranslator';
 
 // Sistema de traducción simple usando Google Translate API (igual que mensajes enviados)
 const translationCache = new Map<string, string>();
@@ -2259,8 +2258,6 @@ export function WhatsAppTwoColumn() {
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
-                  {/* Page Translation Button */}
-                  <PageTranslationSelector />
                   {/* Assignment Button */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
