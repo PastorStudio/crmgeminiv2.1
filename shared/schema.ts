@@ -154,7 +154,31 @@ export const marketingCampaigns = pgTable("marketing_campaigns", {
   createdBy: integer("createdBy").references(() => users.id),
 });
 
-
+// Tabla para archivos multimedia - evita cargar memoria del sistema
+export const multimediaFiles = pgTable("multimedia_files", {
+  id: serial("id").primaryKey(),
+  messageId: text("messageId").notNull(),
+  chatId: text("chatId").notNull(),
+  accountId: integer("accountId").notNull().references(() => whatsappAccounts.id),
+  fileName: text("fileName"),
+  mimeType: text("mimeType").notNull(),
+  fileSize: integer("fileSize"), // en bytes
+  fileType: text("fileType").notNull(), // "image", "video", "audio", "document", "voice"
+  // Datos en base64 para archivos pequeños (< 5MB)
+  fileData: text("fileData"),
+  // URL o path para archivos grandes
+  filePath: text("filePath"),
+  // Metadata adicional (dimensiones para imágenes, duración para videos/audio)
+  metadata: jsonb("metadata"),
+  // Transcripción para archivos de audio/voz
+  transcription: text("transcription"),
+  // Estado del procesamiento
+  processingStatus: text("processingStatus").default("pending"), // "pending", "processing", "completed", "failed"
+  // Fecha de creación del archivo original
+  originalDate: timestamp("originalDate"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
+});
 
 // Insert schemas for each model
 
@@ -505,6 +529,7 @@ export const insertSurveySchema = createInsertSchema(surveys).omit({ id: true, s
 export const insertDashboardStatsSchema = createInsertSchema(dashboardStats).omit({ id: true, updatedAt: true });
 export const insertMessageTemplateSchema = createInsertSchema(messageTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertMarketingCampaignSchema = createInsertSchema(marketingCampaigns).omit({ id: true, createdAt: true, updatedAt: true, stats: true });
+export const insertMultimediaFileSchema = createInsertSchema(multimediaFiles).omit({ id: true, createdAt: true, updatedAt: true });
 
 // ===== SISTEMA DE RASTREO DE AGENTES =====
 

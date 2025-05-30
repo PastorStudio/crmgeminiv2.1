@@ -4,10 +4,49 @@
  */
 
 import { whatsappMultiAccountManager } from './whatsappMultiAccountManager';
+import { db } from '../db';
+import { multimediaFiles } from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
 import * as fs from 'fs';
 import * as path from 'path';
 
 export class MultimediaService {
+  
+  /**
+   * Identifica el tipo correcto de archivo basado en el tipo de mensaje y MIME type
+   */
+  static identifyFileType(messageType: string, mimeType?: string, filename?: string): string {
+    console.log(`🔍 Identificando tipo de archivo: messageType=${messageType}, mimeType=${mimeType}, filename=${filename}`);
+    
+    // Mapeo específico por tipo de mensaje de WhatsApp
+    switch (messageType) {
+      case 'image':
+        return 'image';
+      case 'video':
+        return 'video';
+      case 'audio':
+      case 'ptt': // Push-to-talk (notas de voz)
+        return messageType === 'ptt' ? 'voice' : 'audio';
+      case 'document':
+        if (mimeType) {
+          if (mimeType.startsWith('image/')) return 'image';
+          if (mimeType.startsWith('video/')) return 'video';
+          if (mimeType.startsWith('audio/')) return 'audio';
+          if (mimeType.includes('pdf')) return 'document';
+          if (mimeType.includes('word') || mimeType.includes('text')) return 'document';
+          if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'document';
+        }
+        if (filename) {
+          const ext = filename.split('.').pop()?.toLowerCase();
+          if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return 'image';
+          if (['mp4', 'avi', 'mov', 'webm'].includes(ext || '')) return 'video';
+          if (['mp3', 'wav', 'ogg', 'aac'].includes(ext || '')) return 'audio';
+        }
+        return 'document';
+      default:
+        return 'document';
+    }
+  }
   
   /**
    * Procesa mensajes multimedia y los convierte a formato base64 para mostrar en frontend
