@@ -112,6 +112,72 @@ app.post("/bypass/deepseek-activate", (req: Request, res: Response) => {
   res.status(200).end(JSON.stringify(response));
 });
 
+// === BYPASS COMPLETO PARA ASIGNACIONES DE CHAT ===
+app.post("/bypass/chat-assignment", async (req: Request, res: Response) => {
+  console.log('🔧 [BYPASS] Asignación directa de chat:', req.body);
+  
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache');
+  
+  try {
+    const { chatId, accountId, assignedToId, category } = req.body;
+    
+    if (!chatId || !accountId) {
+      return res.status(400).json({ error: 'Se requiere chatId y accountId' });
+    }
+
+    if (assignedToId === null || assignedToId === undefined) {
+      // Desasignar agente
+      const { db } = await import('./db');
+      const { chatAssignments } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      await db.delete(chatAssignments).where(eq(chatAssignments.chatId, chatId));
+      console.log('✅ [BYPASS] Agente desasignado exitosamente');
+      return res.json(null);
+    }
+
+    // ASIGNACIÓN DIRECTA
+    const { db } = await import('./db');
+    const { chatAssignments, users } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
+    // 1. Borrar asignación existente
+    await db.delete(chatAssignments).where(eq(chatAssignments.chatId, chatId));
+    
+    // 2. Insertar nueva asignación
+    const insertData = {
+      chatId: String(chatId),
+      accountId: Number(accountId),
+      assignedToId: Number(assignedToId),
+      category: category || 'general',
+      status: 'active',
+      assignedAt: new Date(),
+      lastActivityAt: new Date()
+    };
+    
+    const [newAssignment] = await db.insert(chatAssignments)
+      .values(insertData)
+      .returning();
+    
+    // 3. Obtener información del agente
+    const [agent] = await db.select().from(users).where(eq(users.id, assignedToId));
+    
+    const response = {
+      ...newAssignment,
+      assignedTo: agent
+    };
+    
+    console.log('✅ [BYPASS] Asignación creada exitosamente:', response);
+    res.json(response);
+    
+  } catch (error) {
+    console.error('❌ [BYPASS] Error en asignación:', error);
+    res.status(500).json({ error: 'Error al crear asignación: ' + (error as any).message });
+  }
+});
+
 app.post("/bypass/deepseek-deactivate", (req: Request, res: Response) => {
   console.log('🛑 [BYPASS] Desactivando DeepSeek para cuenta:', req.body.accountId);
   
