@@ -100,10 +100,13 @@ function MessageTranslation({ text, messageId, translationEnabled, messages }: {
 
     // Solo traducir si es uno de los últimos 2 mensajes recibidos
     if (!shouldTranslateMessage(messageId, messages || [])) {
+      console.log(`🚫 Mensaje ${messageId} saltado - no es uno de los últimos 2 recibidos`);
       setTranslation(null);
       setError(null);
       return;
     }
+
+    console.log(`✅ Mensaje ${messageId} será traducido - es uno de los últimos 2 recibidos`);
 
     const trimmedText = text.trim();
     const cacheKey = `${trimmedText}_es`;
