@@ -56,13 +56,33 @@ import { AgentSelector } from './AgentSelector';
 
 import { VoiceNoteMessage } from './VoiceNoteMessage';
 
-// Componente de traducción automática
+// Componente de traducción automática optimizada
 // Cache global para evitar traducciones duplicadas
 const translationCache = new Map<string, any>();
-const pendingTranslations = new Set<string>();
 const translationQueue = new Map<string, Promise<any>>();
 
-function MessageTranslation({ text, messageId, translationEnabled }: { text: string; messageId: string; translationEnabled: boolean }) {
+// Función para verificar si un mensaje debe ser traducido
+const shouldTranslateMessage = (messageId: string, messages: any[]): boolean => {
+  if (!messages || messages.length === 0) return false;
+  
+  // Buscar el último mensaje recibido (no enviado por nosotros)
+  const incomingMessages = messages.filter(msg => !msg.fromMe);
+  if (incomingMessages.length === 0) return false;
+  
+  const lastIncomingMessage = incomingMessages[incomingMessages.length - 1];
+  const secondLastIncomingMessage = incomingMessages[incomingMessages.length - 2];
+  
+  // Solo traducir el último mensaje recibido y el anterior
+  return messageId === lastIncomingMessage.id || 
+         (secondLastIncomingMessage && messageId === secondLastIncomingMessage.id);
+};
+
+function MessageTranslation({ text, messageId, translationEnabled, messages }: { 
+  text: string; 
+  messageId: string; 
+  translationEnabled: boolean;
+  messages?: any[];
+}) {
   const [translation, setTranslation] = useState<{
     translated: string;
     detectedLanguage: string;
@@ -73,6 +93,13 @@ function MessageTranslation({ text, messageId, translationEnabled }: { text: str
 
   useEffect(() => {
     if (!text || text.trim().length === 0 || !translationEnabled) {
+      setTranslation(null);
+      setError(null);
+      return;
+    }
+
+    // Solo traducir si es uno de los últimos 2 mensajes recibidos
+    if (!shouldTranslateMessage(messageId, messages || [])) {
       setTranslation(null);
       setError(null);
       return;
@@ -188,7 +215,7 @@ function MessageTranslation({ text, messageId, translationEnabled }: { text: str
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [text, messageId, translationEnabled]);
+  }, [text, messageId, translationEnabled, messages]);
 
   if (!translationEnabled) return null;
   if (isLoading) return <div className="text-xs text-gray-500 mt-1">Traduciendo...</div>;
@@ -2600,7 +2627,17 @@ export function WhatsAppTwoColumn() {
                                       📸 Imagen no disponible
                                     </div>
                                     {message.body && (
-                                      <p className="text-sm whitespace-pre-wrap">{message.body}</p>
+                                      <div>
+                                        <p className="text-sm whitespace-pre-wrap">{message.body}</p>
+                                        {!message.fromMe && (
+                                          <MessageTranslation 
+                                            text={message.body} 
+                                            messageId={message.id}
+                                            translationEnabled={translationEnabled}
+                                            messages={messages}
+                                          />
+                                        )}
+                                      </div>
                                     )}
                                   </div>
                                 ) : (
@@ -2612,6 +2649,7 @@ export function WhatsAppTwoColumn() {
                                         text={message.body} 
                                         messageId={message.id}
                                         translationEnabled={translationEnabled}
+                                        messages={messages}
                                       />
                                     )}
                                   </div>
