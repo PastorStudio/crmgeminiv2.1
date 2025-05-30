@@ -128,8 +128,13 @@ export default function WhatsAppInterface() {
 
   return (
     <div className="flex flex-col h-screen bg-[#f0f2f5]">
-      {/* Franja superior - Demo Banner */}
-      <div className="bg-[#075e54] text-white px-4 py-2 text-center text-sm font-medium">
+      {/* Franja superior azul - Información del demo */}
+      <div className="bg-[#4285f4] text-white px-4 py-[6px] text-center text-[13px] font-normal">
+        Esta es una vista previa de WhatsApp Web en un navegador. Los mensajes que envíes y recibas se sincronizarán entre tu teléfono y tu computadora.
+      </div>
+      
+      {/* Franja verde - Demo Banner */}
+      <div className="bg-[#25d366] text-white px-4 py-[8px] text-center text-[14px] font-medium">
         WhatsApp Demo - Simulación Completa
       </div>
       
