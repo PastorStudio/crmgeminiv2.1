@@ -354,10 +354,10 @@ export function WhatsAppTwoColumn() {
 
   // Data fetching
   const { data: accounts } = useQuery({ queryKey: ['/api/whatsapp-accounts'] });
-  const { data: chats } = useQuery({ queryKey: ['/api/whatsapp-chats'] });
+  const { data: chats } = useQuery({ queryKey: ['/api/whatsapp/chats'] });
   
   const { data: messages } = useQuery({
-    queryKey: ['/api/whatsapp-messages', selectedChat?.id],
+    queryKey: ['/api/whatsapp/messages', selectedChat?.id],
     enabled: !!selectedChat
   });
 
@@ -450,9 +450,9 @@ export function WhatsAppTwoColumn() {
 
   // Message filtering and display logic
   const filteredChats = useMemo(() => {
-    if (!chats || typeof chats !== 'object') return [];
+    if (!chats || !Array.isArray(chats)) return [];
     
-    let filtered = (chats as WhatsAppChat[]);
+    let filtered = chats as WhatsAppChat[];
     
     if (selectedAccounts.length > 0) {
       filtered = filtered.filter(chat => selectedAccounts.includes(chat.accountId));
