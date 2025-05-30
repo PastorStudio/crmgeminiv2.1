@@ -1697,51 +1697,6 @@ export function WhatsAppTwoColumn() {
           
           // Reordenar chats para mostrar este chat al principio
           handleNewMessageReceived(selectedChat.id);
-          
-          // Generar y enviar respuesta automática para el mensaje entrante
-          setTimeout(async () => {
-            try {
-              console.log('🤖 Generando respuesta automática directa con OpenAI...');
-              
-              // Importar las funciones directas
-              const { generateExternalAgentResponse } = await import('@/lib/directAutoResponse');
-              
-              // Generar respuesta automática usando agente externo REAL
-              // Necesitamos obtener el ID del agente externo asignado
-              const configResponse = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/agent-config`);
-              const configData = await configResponse.json();
-              
-              if (configData.success && configData.config?.assignedExternalAgentId) {
-                let autoResponse = await generateExternalAgentResponse(lastIncomingMessage.body, configData.config.assignedExternalAgentId);
-              } else {
-                console.log('❌ No hay agente externo asignado para respuesta automática');
-                return;
-              }
-              
-              // Si la traducción está habilitada, traducir la respuesta
-              if (autoResponse && translationEnabled && selectedLanguage !== 'es') {
-                console.log(`🌐 Traduciendo respuesta automática al ${selectedLanguage}...`);
-                autoResponse = await translateMessage(autoResponse, selectedLanguage);
-              }
-              
-              if (autoResponse) {
-                console.log('📤 Enviando respuesta automática:', autoResponse);
-                await sendAutoMessage(autoResponse);
-                
-                // Notificación indicando si fue traducida
-                toast({
-                  title: "🤖 Respuesta automática enviada",
-                  description: translationEnabled ? `Traducida al ${selectedLanguage.toUpperCase()}` : "SmartBots respondió automáticamente al último mensaje recibido",
-                  duration: 3000
-                });
-              } else {
-                console.log('❌ No se pudo generar respuesta automática');
-              }
-            } catch (error) {
-              console.error('❌ Error en respuesta automática:', error);
-            }
-          }, 2000);
-          
           setLastProcessedMessageId(lastIncomingMessage.id);
         } else {
           console.log('⏭️ Mensaje ya procesado anteriormente');
@@ -1749,12 +1704,8 @@ export function WhatsAppTwoColumn() {
       } else {
         console.log('📤 Solo mensajes salientes detectados');
       }
-    } else if (currentCount === lastMessageCount) {
-      console.log('📊 Sin cambios en cantidad de mensajes');
     }
-
-    setLastMessageCount(currentCount);
-  }, [messages, smartBotsEnabled, selectedChat, lastMessageCount, lastProcessedMessageId]);
+  }, [messages, selectedChat, lastProcessedMessageId]);
 
   // Detectar y traducir mensajes en inglés automáticamente
   useEffect(() => {
@@ -2275,90 +2226,7 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
                   
-                  {/* A.E AI SWITCH - RESPUESTAS AUTOMÁTICAS */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
-                  >
-                    <Button
-                      size="sm"
-                      variant={externalAgentActive ? "default" : "outline"}
-                      className="hidden"
-                      onClick={async () => {
-                        console.log('🚀 A.E AI TOGGLE PRESIONADO');
-                        
-                        if (!selectedChat) {
-                          toast({
-                            title: "Error",
-                            description: "Selecciona un chat primero",
-                            variant: "destructive"
-                          });
-                          return;
-                        }
 
-                        try {
-                          setExternalAgentProcessing(true);
-                          const newState = !externalAgentActive;
-                          
-                          console.log(`📡 ${newState ? 'ACTIVANDO' : 'DESACTIVANDO'} A.E AI para ${selectedChat.id}`);
-                          
-                          // Usar el mismo endpoint que funciona en configuración de cuentas
-                          const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/assign-external-agent`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                              externalAgentId: newState ? "2" : null, // Usar agente 2 que ya está configurado
-                              autoResponseEnabled: newState
-                            })
-                          });
-                          
-                          if (response.ok) {
-                            const result = await response.json();
-                            console.log('✅ Resultado:', result);
-                            
-                            if (result.success) {
-                              setExternalAgentActive(newState);
-                              
-                              toast({
-                                title: `🤖 A.E AI ${newState ? 'Activado' : 'Desactivado'}`,
-                                description: newState 
-                                  ? `Agente externo activado - responderá automáticamente a mensajes`
-                                  : `Agente externo desactivado`,
-                              });
-                              
-                              console.log(`✅ A.E AI ${newState ? 'ACTIVADO' : 'DESACTIVADO'} exitosamente`);
-                            } else {
-                              throw new Error(result.message || 'Error en la configuración');
-                            }
-                          } else {
-                            const errorText = await response.text();
-                            throw new Error(`Error HTTP: ${response.status} - ${errorText}`);
-                          }
-                        } catch (error) {
-                          console.error('❌ Error A.E AI:', error);
-                          toast({
-                            title: "Error",
-                            description: "No se pudo cambiar el estado del A.E AI",
-                            variant: "destructive"
-                          });
-                        } finally {
-                          setExternalAgentProcessing(false);
-                        }
-                      }}
-                      disabled={externalAgentProcessing}
-                    >
-                      {externalAgentProcessing ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Bot className="h-4 w-4 mr-2" />
-                      )}
-                      A.E AI
-                      {externalAgentActive && (
-                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
-                      )}
-                    </Button>
-                  </motion.div>
 
                   {/* SELECTOR DE AGENTE EXTERNO REMOVIDO */}
 
