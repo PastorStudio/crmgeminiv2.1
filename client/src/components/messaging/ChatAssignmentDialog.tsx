@@ -213,9 +213,13 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
         description: `El chat ha sido asignado a ${agentName}`,
       });
       
-      // Invalidar SOLO las consultas específicas de ESTE chat individual
+      // Invalidar las consultas específicas para este chat
+      queryClient.invalidateQueries({ queryKey: [`/api/chat-assignments/${chatId}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments', chatId] });
       queryClient.invalidateQueries({ queryKey: ['/api/chat-categories', chatId] });
+      
+      // También invalidar las consultas generales para refrescar la lista de chats
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
       
       // Cerrar diálogo
       onOpenChange(false);
@@ -273,9 +277,13 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
         description: `El chat ha sido asignado a ${agentName}`,
       });
       
-      // Invalidar SOLO las consultas específicas de ESTE chat individual
+      // Invalidar las consultas específicas para este chat
+      queryClient.invalidateQueries({ queryKey: [`/api/chat-assignments/${chatId}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments', chatId] });
       queryClient.invalidateQueries({ queryKey: ['/api/chat-categories', chatId] });
+      
+      // También invalidar las consultas generales para refrescar la lista de chats
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
       
       // Cerrar diálogo
       onOpenChange(false);
@@ -290,18 +298,28 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     },
   });
 
-  // Sistema simplificado - Inicializar formulario siempre limpio
+  // Cargar y actualizar formulario con asignación existente
   useEffect(() => {
-    if (open) {
+    if (open && assignment) {
+      console.log('🔄 Cargando asignación existente en formulario:', assignment);
+      setExistingAssignment(assignment);
+      form.reset({
+        accountId: assignment.accountId || 1,
+        chatId: chatId || '',
+        assignedToId: assignment.assignedToId || 0,
+        category: assignment.category || '',
+      });
+    } else if (open && !assignment) {
+      console.log('🆕 Inicializando formulario para nueva asignación');
       setExistingAssignment(null);
       form.reset({
-        accountId: 1, // Sistema interno
+        accountId: 1,
         chatId: chatId || '',
         assignedToId: 0,
         category: '',
       });
     }
-  }, [open, form, chatId]);
+  }, [open, assignment, form, chatId]);
 
   // Manejar envío del formulario
   const onSubmit = (data: z.infer<typeof assignmentSchema>) => {
@@ -431,7 +449,7 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                           console.error('Error al convertir ID de agente:', value);
                         }
                       }}
-                      value={field.value ? field.value.toString() : undefined}
+                      value={field.value && field.value > 0 ? field.value.toString() : ""}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -478,7 +496,7 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
                     <FormLabel>Ticket</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value || ""}
                     >
                       <FormControl>
                         <SelectTrigger>
