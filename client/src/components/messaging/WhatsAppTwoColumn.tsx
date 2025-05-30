@@ -1384,6 +1384,22 @@ export function WhatsAppTwoColumn() {
     return null;
   };
 
+  // Event listener para abrir el diálogo de asignación desde los badges
+  useEffect(() => {
+    const handleOpenAssignmentDialog = (event: CustomEvent) => {
+      const { chatId, accountId } = event.detail;
+      setAssignmentChatId(chatId);
+      setAssignmentAccountId(accountId);
+      setAssignmentDialogOpen(true);
+    };
+
+    window.addEventListener('openAssignmentDialog', handleOpenAssignmentDialog as EventListener);
+
+    return () => {
+      window.removeEventListener('openAssignmentDialog', handleOpenAssignmentDialog as EventListener);
+    };
+  }, []);
+
   const handleChatSelect = async (chat: WhatsAppChat) => {
     setSelectedChat(chat);
     setNewMessage(''); // Clear input when switching chats
@@ -3084,8 +3100,8 @@ export function WhatsAppTwoColumn() {
         <ChatAssignmentDialog
           open={assignmentDialogOpen}
           onOpenChange={setAssignmentDialogOpen}
-          chatId={selectedChat.id}
-          accountId={selectedChat.accountId}
+          chatId={assignmentChatId || selectedChat.id}
+          accountId={assignmentAccountId || selectedChat.accountId}
         />
       )}
 
