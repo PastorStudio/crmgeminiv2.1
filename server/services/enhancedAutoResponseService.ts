@@ -6,8 +6,9 @@
 import { whatsappMultiAccountManager } from './whatsappMultiAccountManager';
 import { AutomaticLeadGenerator } from './automaticLeadGenerator';
 import { MultimediaService } from './multimediaService';
+import { WebScrapingService } from './webScrapingService';
 import { db } from '../db';
-import { whatsappAccounts, chatAssignments } from '@shared/schema';
+import { whatsappAccounts, chatAssignments, externalAgents } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
 export class EnhancedAutoResponseService {
@@ -180,7 +181,61 @@ export class EnhancedAutoResponseService {
   }
 
   /**
-   * Genera respuesta usando IA (Gemini)
+   * Utiliza web scraping para obtener información relevante para respuestas
+   */
+  private static async enrichResponseWithWebData(chatId: string, message: string): Promise<string> {
+    try {
+      // Verificar si hay un agente externo asignado
+      const assignments = await db.select()
+        .from(chatAssignments)
+        .where(eq(chatAssignments.chatId, chatId))
+        .limit(1);
+
+      if (assignments.length === 0) {
+        return '';
+      }
+
+      const assignment = assignments[0];
+      if (!assignment.assignedExternalAgentId) {
+        return '';
+      }
+
+      // Obtener información del agente externo
+      const agents = await db.select()
+        .from(externalAgents)
+        .where(eq(externalAgents.id, assignment.assignedExternalAgentId))
+        .limit(1);
+
+      if (agents.length === 0 || !agents[0].agentUrl) {
+        return '';
+      }
+
+      const agent = agents[0];
+      console.log(`🕸️ Utilizando web scraping para agente: ${agent.agentName}`);
+
+      // Realizar web scraping de la URL del agente
+      const scrapingResult = await WebScrapingService.smartScrape(agent.agentUrl, {
+        maxLength: 1000,
+        includeImages: false,
+        includeLinks: false
+      });
+
+      if (scrapingResult.success && scrapingResult.content) {
+        console.log(`✅ Información extraída exitosamente: ${scrapingResult.content.length} caracteres`);
+        return scrapingResult.content;
+      }
+
+      console.log(`⚠️ No se pudo extraer información de: ${agent.agentUrl}`);
+      return '';
+
+    } catch (error) {
+      console.error('❌ Error en web scraping para respuesta:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Genera respuesta usando IA (Gemini) con información de web scraping
    */
   private static async generateAIResponse(message: any, conversationHistory: any[]): Promise<string | null> {
     try {
