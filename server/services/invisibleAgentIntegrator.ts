@@ -108,41 +108,12 @@ export class InvisibleAgentIntegrator {
   }
 
   /**
-   * Procesar un chat individual para asignación
+   * Procesar un chat individual para asignación - COMPLETAMENTE DESACTIVADO
    */
   private async processChat(chat: ChatData, accountId: number): Promise<void> {
-    try {
-      const chatKey = `${accountId}_${chat.id}`;
-      
-      // Marcar como procesado para evitar reprocesamiento
-      this.processedChats.add(chatKey);
-
-      // Verificar si ya tiene asignación activa
-      const existingAssignment = await agentAssignmentService.getChatAssignment(chat.id, accountId);
-      
-      if (existingAssignment) {
-        console.log(`👤 Chat ${chat.name || chat.id} ya asignado a ${existingAssignment.agentName}`);
-        return;
-      }
-
-      // Determinar categoría basada en el contenido del chat
-      const category = this.determineCategory(chat);
-
-      // SISTEMA DE ASIGNACIÓN AUTOMÁTICA DESACTIVADO
-      console.log(`🚫 Asignación automática desactivada para chat ${chat.name || chat.id}`);
-      const assignment = null;
-
-      if (assignment) {
-        console.log(`✨ Chat ${chat.name || chat.id} asignado invisiblemente a ${assignment.agentName}`);
-        
-        // Registrar actividad del chat
-        await agentAssignmentService.updateChatActivity(chat.id, accountId);
-      } else {
-        console.log(`⚠️ No se pudo asignar chat ${chat.name || chat.id} - sin agentes disponibles`);
-      }
-    } catch (error) {
-      console.error(`❌ Error procesando chat ${chat.id}:`, error);
-    }
+    // SISTEMA COMPLETAMENTE DESACTIVADO - NO HACER NADA
+    console.log(`🚫 Procesamiento automático desactivado para chat ${chat.name || chat.id}`);
+    return;
   }
 
   /**
