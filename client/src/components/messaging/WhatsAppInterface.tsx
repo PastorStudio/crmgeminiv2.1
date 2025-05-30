@@ -25,12 +25,18 @@ export default function WhatsAppInterface() {
   const [comments, setComments] = useState<any[]>([]);
   const [translatedMessages, setTranslatedMessages] = useState<{[key: string]: string}>({});
   const [translationMode, setTranslationMode] = useState<'sent' | 'received' | null>(null);
+  const [messageInput, setMessageInput] = useState("");
+  const [translatedInput, setTranslatedInput] = useState("");
+  const [inputTargetLanguage, setInputTargetLanguage] = useState("en");
+  const [showInputTranslation, setShowInputTranslation] = useState(false);
 
-  // Obtener agentes reales del sistema
-  const { data: agents } = useQuery({
-    queryKey: ['/api/internal-agents'],
-    queryFn: () => apiRequest('/api/internal-agents')
-  });
+  // Obtener agentes reales del sistema - usando datos directos temporalmente
+  const agents = [
+    { id: 1, name: "Carlos Martinez", status: "online" },
+    { id: 2, name: "Maria Rodriguez", status: "online" },
+    { id: 3, name: "Juan Perez", status: "busy" },
+    { id: 4, name: "Ana Garcia", status: "offline" }
+  ];
 
   // Datos de ejemplo basados en la imagen de WhatsApp Web
   const whatsappChats = [
@@ -200,6 +206,41 @@ export default function WhatsAppInterface() {
         console.error('Error translating text:', error);
         setTranslatedText("Error en la traducción. Verifica la configuración del servicio.");
       }
+    }
+  };
+
+  // Función para traducir texto en tiempo real mientras se escribe
+  const handleInputTranslation = async (text: string) => {
+    if (text.trim().length > 2) {
+      try {
+        const response = await fetch('/api/detect-and-translate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: text,
+            targetLanguage: inputTargetLanguage
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          setTranslatedInput(result.translatedText);
+        }
+      } catch (error) {
+        console.error('Error en traducción automática:', error);
+      }
+    } else {
+      setTranslatedInput("");
+    }
+  };
+
+  // Función para manejar cambios en el input de mensaje
+  const handleMessageInputChange = (value: string) => {
+    setMessageInput(value);
+    if (showInputTranslation) {
+      handleInputTranslation(value);
     }
   };
 
@@ -614,18 +655,61 @@ export default function WhatsAppInterface() {
               )}
             </div>
 
-            {/* Input para escribir mensaje */}
+            {/* Input para escribir mensaje con traducción automática */}
             <div className="bg-[#f0f2f5] border-t border-[#e9edef] px-4 py-[10px]">
-              <div className="flex items-center gap-2">
+              {/* Controles de traducción */}
+              <div className="flex items-center gap-2 pb-2 border-b border-[#e9edef] mb-2">
+                <Button
+                  variant={showInputTranslation ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowInputTranslation(!showInputTranslation)}
+                  className="h-8"
+                >
+                  <Languages className="h-4 w-4 mr-1" />
+                  {showInputTranslation ? "Traducción ON" : "Traducción OFF"}
+                </Button>
+                
+                {showInputTranslation && (
+                  <Select value={inputTargetLanguage} onValueChange={setInputTargetLanguage}>
+                    <SelectTrigger className="w-32 h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">Inglés</SelectItem>
+                      <SelectItem value="es">Español</SelectItem>
+                      <SelectItem value="fr">Francés</SelectItem>
+                      <SelectItem value="de">Alemán</SelectItem>
+                      <SelectItem value="pt">Portugués</SelectItem>
+                      <SelectItem value="it">Italiano</SelectItem>
+                      <SelectItem value="zh">Chino</SelectItem>
+                      <SelectItem value="ja">Japonés</SelectItem>
+                      <SelectItem value="ko">Coreano</SelectItem>
+                      <SelectItem value="ar">Árabe</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* Área de escritura principal */}
+              <div className="flex items-end gap-2">
                 <Button variant="ghost" size="sm" className="text-[#54656f] hover:bg-[#f5f6f6] h-10 w-10 p-0">
                   <Paperclip className="h-5 w-5" />
                 </Button>
+                
                 <div className="flex-1 relative">
+                  {/* Input original */}
                   <Input
                     placeholder="Escribe un mensaje..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                    value={messageInput}
+                    onChange={(e) => handleMessageInputChange(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        const textToSend = showInputTranslation && translatedInput ? translatedInput : messageInput;
+                        console.log('Enviando mensaje:', textToSend);
+                        setMessageInput("");
+                        setTranslatedInput("");
+                      }
+                    }}
                     className="bg-white border-[#e9edef] text-[#111b21] placeholder:text-[#8696a0] rounded-lg pr-10 h-10"
                   />
                   <Button 
@@ -635,9 +719,26 @@ export default function WhatsAppInterface() {
                   >
                     <Smile className="h-4 w-4" />
                   </Button>
+                  
+                  {/* Mostrar traducción en tiempo real */}
+                  {showInputTranslation && translatedInput && (
+                    <div className="absolute top-full left-0 right-0 mt-1 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm z-10">
+                      <div className="flex items-center gap-1 mb-1">
+                        <Languages className="h-3 w-3 text-blue-600" />
+                        <span className="text-xs font-medium text-blue-600">Se enviará:</span>
+                      </div>
+                      <p className="text-blue-800">{translatedInput}</p>
+                    </div>
+                  )}
                 </div>
+                
                 <Button 
-                  onClick={handleSendMessage}
+                  onClick={() => {
+                    const textToSend = showInputTranslation && translatedInput ? translatedInput : messageInput;
+                    console.log('Enviando mensaje:', textToSend);
+                    setMessageInput("");
+                    setTranslatedInput("");
+                  }}
                   className="bg-[#00a884] hover:bg-[#00926c] text-white h-10 w-10 p-0"
                   size="sm"
                 >
