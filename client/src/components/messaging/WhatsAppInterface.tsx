@@ -3,13 +3,26 @@ import { useQuery } from '@tanstack/react-query';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Phone, MoreVertical, Send, Paperclip, Smile } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Search, Phone, MoreVertical, Send, Paperclip, Smile, Users, Languages, MessageSquare } from "lucide-react";
 import { apiRequest } from '@/lib/queryClient';
 
 export default function WhatsAppInterface() {
   const [selectedChat, setSelectedChat] = useState<any>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [showAgentDialog, setShowAgentDialog] = useState(false);
+  const [showTranslationDialog, setShowTranslationDialog] = useState(false);
+  const [showCommentsDialog, setShowCommentsDialog] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState("");
+  const [translationText, setTranslationText] = useState("");
+  const [targetLanguage, setTargetLanguage] = useState("es");
+  const [translatedText, setTranslatedText] = useState("");
+  const [commentText, setCommentText] = useState("");
+  const [comments, setComments] = useState<any[]>([]);
 
   // Datos de ejemplo basados en la imagen de WhatsApp Web
   const whatsappChats = [
@@ -119,6 +132,45 @@ export default function WhatsAppInterface() {
     }
   };
 
+  // Función para asignar agente
+  const handleAssignAgent = () => {
+    if (selectedAgent && selectedChat) {
+      console.log(`Agente ${selectedAgent} asignado al chat ${selectedChat.name}`);
+      setShowAgentDialog(false);
+      setSelectedAgent("");
+    }
+  };
+
+  // Función para traducir texto
+  const handleTranslateText = async () => {
+    if (translationText.trim()) {
+      // Simulación de traducción
+      const translations: any = {
+        "en": "Hello, how can I help you today?",
+        "es": "Hola, ¿cómo puedo ayudarte hoy?",
+        "fr": "Bonjour, comment puis-je vous aider aujourd'hui?",
+        "de": "Hallo, wie kann ich Ihnen heute helfen?",
+        "pt": "Olá, como posso ajudá-lo hoje?"
+      };
+      setTranslatedText(translations[targetLanguage] || "Traducción no disponible");
+    }
+  };
+
+  // Función para agregar comentario
+  const handleAddComment = () => {
+    if (commentText.trim() && selectedChat) {
+      const newComment = {
+        id: Date.now(),
+        text: commentText,
+        author: "Agente Actual",
+        timestamp: new Date().toLocaleTimeString(),
+        chatId: selectedChat.id
+      };
+      setComments([...comments, newComment]);
+      setCommentText("");
+    }
+  };
+
   // Seleccionar el primer chat por defecto
   React.useEffect(() => {
     if (!selectedChat && whatsappChats.length > 0) {
@@ -135,27 +187,180 @@ export default function WhatsAppInterface() {
       
       {/* Segunda franja negra con botones */}
       <div className="bg-black text-white px-4 py-2 flex justify-center items-center gap-6">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="bg-transparent border-white text-white hover:bg-white hover:text-black text-xs"
-        >
-          Agregar Agente
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="bg-transparent border-white text-white hover:bg-white hover:text-black text-xs"
-        >
-          Traducción de Mensaje
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="bg-transparent border-white text-white hover:bg-white hover:text-black text-xs"
-        >
-          Comentarios
-        </Button>
+        {/* Botón Agregar Agente */}
+        <Dialog open={showAgentDialog} onOpenChange={setShowAgentDialog}>
+          <DialogTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="bg-transparent border-white text-white hover:bg-white hover:text-black text-xs flex items-center gap-1"
+            >
+              <Users className="h-3 w-3" />
+              Agregar Agente
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Asignar Agente al Chat</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Chat seleccionado:</label>
+                <p className="text-sm text-gray-600">{selectedChat?.name || "Ningún chat seleccionado"}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Seleccionar Agente:</label>
+                <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un agente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="agent1">Ana García - Ventas</SelectItem>
+                    <SelectItem value="agent2">Carlos López - Soporte</SelectItem>
+                    <SelectItem value="agent3">María Rodríguez - Marketing</SelectItem>
+                    <SelectItem value="agent4">Juan Martínez - Técnico</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowAgentDialog(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleAssignAgent} disabled={!selectedAgent}>
+                  Asignar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Botón Traducción */}
+        <Dialog open={showTranslationDialog} onOpenChange={setShowTranslationDialog}>
+          <DialogTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="bg-transparent border-white text-white hover:bg-white hover:text-black text-xs flex items-center gap-1"
+            >
+              <Languages className="h-3 w-3" />
+              Traducción de Mensaje
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Traducir Mensaje</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Texto a traducir:</label>
+                <Textarea
+                  placeholder="Escribe o pega el texto que deseas traducir..."
+                  value={translationText}
+                  onChange={(e) => setTranslationText(e.target.value)}
+                  rows={3}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Idioma destino:</label>
+                <Select value={targetLanguage} onValueChange={setTargetLanguage}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="es">Español</SelectItem>
+                    <SelectItem value="en">Inglés</SelectItem>
+                    <SelectItem value="fr">Francés</SelectItem>
+                    <SelectItem value="de">Alemán</SelectItem>
+                    <SelectItem value="pt">Portugués</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {translatedText && (
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <label className="text-sm font-medium mb-1 block">Traducción:</label>
+                  <p className="text-sm">{translatedText}</p>
+                </div>
+              )}
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => {
+                  setShowTranslationDialog(false);
+                  setTranslationText("");
+                  setTranslatedText("");
+                }}>
+                  Cerrar
+                </Button>
+                <Button onClick={handleTranslateText} disabled={!translationText.trim()}>
+                  Traducir
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Botón Comentarios */}
+        <Dialog open={showCommentsDialog} onOpenChange={setShowCommentsDialog}>
+          <DialogTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="bg-transparent border-white text-white hover:bg-white hover:text-black text-xs flex items-center gap-1"
+            >
+              <MessageSquare className="h-3 w-3" />
+              Comentarios
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Comentarios del Chat</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Chat:</label>
+                <p className="text-sm text-gray-600">{selectedChat?.name || "Ningún chat seleccionado"}</p>
+              </div>
+              
+              {/* Lista de comentarios */}
+              <div className="max-h-40 overflow-y-auto space-y-2">
+                {comments.filter(c => c.chatId === selectedChat?.id).length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No hay comentarios aún</p>
+                ) : (
+                  comments.filter(c => c.chatId === selectedChat?.id).map(comment => (
+                    <div key={comment.id} className="bg-gray-50 p-2 rounded">
+                      <div className="flex justify-between items-start mb-1">
+                        <Badge variant="secondary" className="text-xs">{comment.author}</Badge>
+                        <span className="text-xs text-gray-500">{comment.timestamp}</span>
+                      </div>
+                      <p className="text-sm">{comment.text}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Agregar nuevo comentario */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Agregar comentario:</label>
+                <Textarea
+                  placeholder="Escribe tu comentario..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  rows={2}
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => {
+                  setShowCommentsDialog(false);
+                  setCommentText("");
+                }}>
+                  Cerrar
+                </Button>
+                <Button onClick={handleAddComment} disabled={!commentText.trim()}>
+                  Agregar Comentario
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
       
       {/* Contenedor principal */}
