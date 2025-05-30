@@ -2512,9 +2512,9 @@ export function WhatsAppTwoColumn() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
-                        className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'} mb-2 px-1`}
+                        className={`flex ${message.fromMe ? 'justify-end pr-4' : 'justify-start'} mb-2 px-1`}
                       >
-                        <div className={`flex space-x-2 max-w-[85%] ${message.fromMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                        <div className={`flex space-x-2 ${message.fromMe ? 'max-w-[75%] flex-row-reverse space-x-reverse' : 'max-w-[85%]'}`}>
                           {showAvatar && isFirstFromAuthor && (
                             <Avatar className="h-8 w-8 mt-1">
                               <AvatarImage src={message.authorProfilePic} />
