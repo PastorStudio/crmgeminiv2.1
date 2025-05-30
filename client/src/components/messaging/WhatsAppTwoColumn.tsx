@@ -45,7 +45,7 @@ import {
 
 // Import components
 import { AccountSelector } from './AccountSelector';
-import { ChatAssignmentDialog } from './ChatAssignmentDialog';
+import ChatAssignmentDialog from './ChatAssignmentDialog';
 
 // Translation functionality
 function MessageTranslation({ text, messageId, translationEnabled, messages }: { 
@@ -127,14 +127,14 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
     enabled: !!chatId
   });
 
-  if (!assignment?.data?.users || assignment.data.users.length === 0) {
+  if (!assignment?.users || assignment.users.length === 0) {
     return null;
   }
 
   return (
     <Badge variant="secondary" className="text-xs">
       <User className="h-3 w-3 mr-1" />
-      {assignment.data.users.length} assigned
+      {assignment.users.length} assigned
     </Badge>
   );
 }
@@ -483,6 +483,7 @@ export function WhatsAppTwoColumn() {
               accounts={accounts as WhatsAppAccount[] || []}
               selectedAccounts={selectedAccounts}
               onAccountsChange={setSelectedAccounts}
+              onAccountClick={(accountId) => console.log('Account clicked:', accountId)}
             />
           </div>
           
