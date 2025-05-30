@@ -199,7 +199,7 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
   console.log('🔍 Debug Badge - Assignment:', assignmentResponse);
   console.log('🔍 Debug Badge - Users:', usersResponse);
 
-  const users = usersResponse?.users || usersResponse || [];
+  const users = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.users || []);
   const assignment = assignmentResponse;
 
   const handleClick = (e: React.MouseEvent) => {
@@ -223,35 +223,21 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
     );
   }
 
-  // Si hay asignación, encontrar el agente y mostrar el nombre de usuario
-  const assignedAgent = users.find((user: any) => user.id === assignment.assignedToId);
+  // Usar el nombre del agente que viene en la respuesta de asignación
+  const agentName = assignment.agentName || 'Agente';
   
-  console.log('🔍 Debug Badge - Assigned Agent:', assignedAgent);
+  console.log('🔍 Debug Badge - Assigned Agent Name:', agentName);
   console.log('🔍 Debug Badge - Assignment ID:', assignment.assignedToId);
-
-  // Si no se encuentra el agente, mostrar solo el icono
-  if (!assignedAgent) {
-    return (
-      <Badge 
-        variant="secondary" 
-        className="bg-purple-100 text-purple-800 text-xs cursor-pointer hover:bg-purple-200 transition-colors"
-        onClick={handleClick}
-        title="Haz clic para modificar agente"
-      >
-        <UserPlus className="h-3 w-3" />
-      </Badge>
-    );
-  }
 
   return (
     <Badge 
       variant="secondary" 
       className="bg-purple-100 text-purple-800 text-xs cursor-pointer hover:bg-purple-200 transition-colors"
       onClick={handleClick}
-      title="Haz clic para modificar agente"
+      title={`Asignado a: ${agentName}. Haz clic para modificar`}
     >
       <UserPlus className="h-3 w-3 mr-1" />
-      {assignedAgent.username}
+      {agentName}
     </Badge>
   );
 }
@@ -274,7 +260,7 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
   console.log('🔍 Debug Header - Assignment:', assignmentResponse);
   console.log('🔍 Debug Header - Users:', usersResponse);
 
-  const users = usersResponse?.users || usersResponse || [];
+  const users = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.users || []);
   const assignment = assignmentResponse;
 
   // Si no hay asignación, mostrar badge "Sin asignar"
@@ -287,31 +273,17 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
     );
   }
 
-  // Si hay asignación, encontrar el agente y mostrar el nombre
-  const assignedAgent = users.find((user: any) => user.id === assignment.assignedToId);
+  // Usar el nombre del agente que viene en la respuesta de asignación
+  const agentName = assignment.agentName || 'Agente';
+  const agentStatus = assignment.status === 'active' ? 'Asignado' : 'Inactivo';
   
-  console.log('🔍 Debug Header - Assigned Agent:', assignedAgent);
+  console.log('🔍 Debug Header - Assigned Agent:', agentName);
   console.log('🔍 Debug Header - Assignment ID:', assignment.assignedToId);
 
-  if (!assignedAgent) {
-    return (
-      <Badge variant="outline" className="text-xs bg-red-50 text-red-600 border-red-200">
-        <span className="mr-1">🔴</span>
-        Agente no encontrado
-      </Badge>
-    );
-  }
-
-  // Verificar si el agente está activo basado en su estado
-  const isAgentActive = assignedAgent.status === 'active';
-  const agentStatus = assignment.status === 'active' ? 'Asignado' : 'Inactivo';
-
   return (
-    <Badge variant="outline" className={`text-xs ${isAgentActive 
-      ? 'bg-green-50 text-green-700 border-green-200' 
-      : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
-      <span className="mr-1">{isAgentActive ? '🟢' : '🟡'}</span>
-      {assignedAgent.username} ({agentStatus})
+    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200">
+      <span className="mr-1">👤</span>
+      {agentName}
     </Badge>
   );
 }
