@@ -128,9 +128,14 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
   const users = usersResponse?.users || usersResponse || [];
   const assignment = assignmentResponse;
 
-  // Si no hay asignación, mostrar "Desconectado"
+  // Si no hay asignación, mostrar badge "Sin asignar"
   if (!assignment || !assignment.assignedToId) {
-    return <span>Desconectado</span>;
+    return (
+      <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600 border-gray-200">
+        <span className="mr-1">⭕</span>
+        Sin asignar
+      </Badge>
+    );
   }
 
   // Si hay asignación, encontrar el agente y mostrar el nombre
@@ -140,13 +145,25 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
   console.log('🔍 Debug Header - Assignment ID:', assignment.assignedToId);
 
   if (!assignedAgent) {
-    return <span>Desconectado</span>;
+    return (
+      <Badge variant="outline" className="text-xs bg-red-50 text-red-600 border-red-200">
+        <span className="mr-1">🔴</span>
+        Agente no encontrado
+      </Badge>
+    );
   }
 
+  // Verificar si el agente está activo basado en su estado
+  const isAgentActive = assignedAgent.status === 'active';
+  const agentStatus = assignment.status === 'active' ? 'Asignado' : 'Inactivo';
+
   return (
-    <span className="text-blue-600 font-medium">
-      {assignedAgent.username}
-    </span>
+    <Badge variant="outline" className={`text-xs ${isAgentActive 
+      ? 'bg-green-50 text-green-700 border-green-200' 
+      : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
+      <span className="mr-1">{isAgentActive ? '🟢' : '🟡'}</span>
+      {assignedAgent.username} ({agentStatus})
+    </Badge>
   );
 }
 
