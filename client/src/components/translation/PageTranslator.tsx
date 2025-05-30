@@ -263,26 +263,48 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
             return;
           }
           
-          // Verificar si tiene texto directo o placeholder
-          const hasDirectText = Array.from(element.childNodes).some(
+          // Excluir elementos que contengan iconos, SVGs o imágenes
+          const containsIcons = element.querySelector('svg, img, .icon, [class*="icon"], [role="img"]');
+          if (containsIcons) {
+            return;
+          }
+          
+          // Excluir elementos con clases que indican iconos
+          const iconClasses = ['icon', 'material-icons', 'lucide', 'fa-', 'svg'];
+          const hasIconClass = iconClasses.some(iconClass => 
+            element.className && element.className.includes(iconClass)
+          );
+          if (hasIconClass) {
+            return;
+          }
+          
+          // Verificar si tiene texto directo (no en elementos hijos)
+          const directTextNodes = Array.from(element.childNodes).filter(
             child => child.nodeType === Node.TEXT_NODE && child.textContent?.trim()
           );
           
+          const hasDirectText = directTextNodes.length > 0;
           const hasPlaceholder = element.getAttribute('placeholder')?.trim();
-          const hasTitle = element.getAttribute('title')?.trim();
-          const hasAriaLabel = element.getAttribute('aria-label')?.trim();
           
-          // Evitar elementos que contengan demasiados hijos (contenedores grandes)
-          const hasMaxTwoTextNodes = Array.from(element.childNodes).filter(
-            child => child.nodeType === Node.TEXT_NODE && child.textContent?.trim()
-          ).length <= 2;
+          // Solo procesar elementos con texto directo y sin muchos hijos
+          const hasMaxTwoTextNodes = directTextNodes.length <= 2;
           
           // Evitar elementos que contengan muchos elementos hijos
           const hasFewChildren = element.children.length <= 3;
           
-          if ((hasDirectText || hasPlaceholder || hasTitle || hasAriaLabel) && hasMaxTwoTextNodes && hasFewChildren) {
-            // Evitar duplicados
-            if (!elements.includes(element)) {
+          // Solo procesar elementos que tengan texto directo o placeholder válido
+          if ((hasDirectText || hasPlaceholder) && hasMaxTwoTextNodes) {
+            // Verificar que el texto no sea solo símbolos o iconos de fuente
+            const textContent = element.textContent?.trim() || '';
+            const placeholderContent = hasPlaceholder || '';
+            const contentToCheck = textContent || placeholderContent;
+            
+            // Excluir contenido que parece ser iconos o símbolos
+            const isValidText = contentToCheck.length > 2 && 
+                               !/^[\d\s\-\+\*\/\=\.\,\:\;\!\?\@\#\$\%\^\&\*\(\)\_\+\[\]\{\}\|\\▼▲→←↑↓]+$/.test(contentToCheck) &&
+                               !/^[^\w\s]*$/.test(contentToCheck); // No solo símbolos especiales
+            
+            if (isValidText && !elements.includes(element)) {
               elements.push(element);
             }
           }
