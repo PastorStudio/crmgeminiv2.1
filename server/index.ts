@@ -114,6 +114,77 @@ async function main() {
   // Sistema limpio sin respuestas automáticas
   console.log("✅ Sistema inicializado correctamente sin respuestas automáticas");
 
+  // Endpoint para detectar idioma y traducir mensajes usando Gemini AI
+  app.post("/api/detect-and-translate", async (req: Request, res: Response) => {
+    try {
+      const { text, targetLanguage } = req.body;
+      
+      if (!text || !targetLanguage) {
+        return res.status(400).json({ error: "Texto y idioma destino son requeridos" });
+      }
+
+      const geminiApiKey = process.env.GOOGLE_API_KEY;
+      if (!geminiApiKey) {
+        return res.status(500).json({ error: "Clave API de Gemini no configurada" });
+      }
+
+      const languageNames: any = {
+        'es': 'español',
+        'en': 'inglés',
+        'fr': 'francés',
+        'de': 'alemán',
+        'pt': 'portugués',
+        'it': 'italiano',
+        'zh': 'chino',
+        'ja': 'japonés',
+        'ko': 'coreano',
+        'ar': 'árabe'
+      };
+
+      const targetLanguageName = languageNames[targetLanguage] || targetLanguage;
+      
+      // Detectar idioma y traducir en una sola llamada
+      const prompt = `Detecta el idioma del siguiente texto y luego tradúcelo a ${targetLanguageName}. 
+      
+Si el texto ya está en ${targetLanguageName}, devuélvelo tal como está.
+
+Texto a analizar: "${text}"
+
+Responde SOLO con la traducción, sin explicaciones adicionales.`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
+        const translatedText = result.candidates[0].content.parts[0].text.trim();
+        
+        res.json({ 
+          translatedText,
+          originalText: text,
+          targetLanguage
+        });
+      } else {
+        res.status(500).json({ error: "Error en la respuesta del servicio de traducción" });
+      }
+    } catch (error) {
+      console.error("Error en detección y traducción:", error);
+      res.status(500).json({ error: "Error en el servicio de traducción" });
+    }
+  });
+
   // Endpoint para traducir mensajes usando Gemini AI
   app.post("/api/translate-message", async (req: Request, res: Response) => {
     try {
