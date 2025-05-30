@@ -2481,20 +2481,21 @@ export function WhatsAppTwoColumn() {
               </div>
             </div>
 
-            {/* Messages Area */}
-            <ScrollArea className="flex-1 p-4">
-              {loadingMessages ? (
-                <div className="flex items-center justify-center h-32">
-                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                  <span className="ml-2 text-gray-500">Cargando mensajes...</span>
-                </div>
-              ) : (!messages || !Array.isArray(messages) || messages.length === 0) ? (
-                <div className="flex flex-col items-center justify-center h-32 text-gray-500">
-                  <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
-                  <p>No hay mensajes en este chat</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
+            {/* Messages Area - Centered and Optimized */}
+            <ScrollArea className="flex-1 px-2 py-4">
+              <div className="max-w-4xl mx-auto">
+                {loadingMessages ? (
+                  <div className="flex items-center justify-center h-32">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                    <span className="ml-2 text-gray-500">Cargando mensajes...</span>
+                  </div>
+                ) : (!messages || !Array.isArray(messages) || messages.length === 0) ? (
+                  <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+                    <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
+                    <p>No hay mensajes en este chat</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 px-2">
                   {messages.map((message, index) => {
                     const showAvatar = selectedChat.isGroup && !message.fromMe;
                     const isFirstFromAuthor = index === 0 || 
@@ -2750,8 +2751,9 @@ export function WhatsAppTwoColumn() {
                     );
                   })}
                   <div ref={messagesEndRef} />
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </ScrollArea>
 
             {/* Enhanced Message Input with Tools */}
