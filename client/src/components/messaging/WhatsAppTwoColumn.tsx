@@ -1886,11 +1886,14 @@ export function WhatsAppTwoColumn() {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedChat) return;
+    if (!newMessage.trim() || !selectedChat || sendMessageMutation.isPending) return;
     
     const originalMessage = newMessage.trim();
     let finalMessage = originalMessage;
     let wasTranslated = false;
+    
+    // Limpiar el campo de mensaje inmediatamente para evitar envíos duplicados
+    setNewMessage('');
     
     // Si el traductor está activado, traducir el mensaje antes de enviarlo
     if (translationEnabled) {
@@ -1922,7 +1925,7 @@ export function WhatsAppTwoColumn() {
             
             toast({
               title: "Mensaje traducido",
-              description: `De ${sourceLanguage === 'es' ? 'Español' : 'Inglés'} a ${targetLanguage === 'es' ? 'Español' : 'Inglés'}`,
+              description: `Traducido a ${targetLanguage === 'es' ? 'Español' : 'Inglés'}`,
             });
           } else {
             throw new Error('No se pudo obtener traducción');
@@ -1937,7 +1940,7 @@ export function WhatsAppTwoColumn() {
         // Traducción básica de respaldo
         const isSpanish = /[áéíóúñ¿¡]|hola|como|que|para|con|una|este|todo|pero|muy|cuando|hasta|donde|gracias|por favor/i.test(finalMessage);
         
-        if (isSpanish) {
+        if (isSpanish && selectedLanguage === 'en') {
           finalMessage = finalMessage
             .replace(/hola/gi, 'hello')
             .replace(/como estas/gi, 'how are you')
@@ -1951,7 +1954,8 @@ export function WhatsAppTwoColumn() {
             .replace(/buenos días/gi, 'good morning')
             .replace(/buenas tardes/gi, 'good afternoon')
             .replace(/buenas noches/gi, 'good night');
-        } else {
+          wasTranslated = true;
+        } else if (!isSpanish && selectedLanguage === 'es') {
           finalMessage = finalMessage
             .replace(/hello/gi, 'hola')
             .replace(/how are you/gi, 'como estas')
@@ -1964,24 +1968,27 @@ export function WhatsAppTwoColumn() {
             .replace(/good morning/gi, 'buenos días')
             .replace(/good afternoon/gi, 'buenas tardes')
             .replace(/good night/gi, 'buenas noches');
+          wasTranslated = true;
         }
         
-        toast({
-          title: "Traducción básica aplicada",
-          description: "Se usó traducción simplificada",
-        });
+        if (wasTranslated) {
+          toast({
+            title: "Traducción básica aplicada",
+            description: "Se usó traducción simplificada",
+          });
+        }
       }
     }
     
     // Si el mensaje fue traducido, almacenar el texto original para mostrarlo después
     if (wasTranslated && originalMessage !== finalMessage) {
-      // Usar el contenido del mensaje traducido como clave para almacenar el original
       setSentMessageOrigins(prev => ({
         ...prev,
         [finalMessage]: originalMessage
       }));
     }
 
+    // Enviar el mensaje una sola vez
     sendMessageMutation.mutate({
       chatId: selectedChat.id,
       accountId: selectedChat.accountId,
@@ -1994,7 +2001,6 @@ export function WhatsAppTwoColumn() {
         try {
           const aiResponse = await generateSmartBotsResponse(finalMessage, selectedChat.name);
           if (aiResponse) {
-            // Mostrar la respuesta sugerida en el campo de texto
             setNewMessage(aiResponse);
             
             toast({
@@ -2005,7 +2011,7 @@ export function WhatsAppTwoColumn() {
         } catch (error) {
           console.error('Error generando respuesta SmartBots:', error);
         }
-      }, 1000); // Esperar 1 segundo después de enviar el mensaje
+      }, 1000);
     }
   };
 
