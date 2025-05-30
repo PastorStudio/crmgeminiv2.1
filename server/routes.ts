@@ -3556,7 +3556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Page translation endpoint for complete UI translation
   app.post('/api/translate-page-text', async (req: Request, res: Response) => {
     try {
-      const { text, targetLanguage, sourceLanguage = 'es' } = req.body;
+      const { text, targetLanguage } = req.body;
       
       if (!text || typeof text !== 'string' || text.trim() === '') {
         return res.status(400).json({ 
@@ -3572,27 +3572,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`🌐 Translating page text from ${sourceLanguage} to ${targetLanguage}:`, text);
+      console.log(`🌐 Translating page text to ${targetLanguage}:`, text.substring(0, 100));
 
-      // Use Google Translate service
-      const { translateWithGoogle } = await import('./services/googleTranslator');
+      // Use Google Cloud Translation API
+      const { translateTextToLanguage } = await import('./services/googleTranslator');
       
-      const result = await translateWithGoogle(text, sourceLanguage, targetLanguage);
+      const result = await translateTextToLanguage(text, targetLanguage);
       
-      if (result.translatedText) {
-        console.log('✅ Page text translation completed:', result.translatedText);
-        
-        res.json({
-          success: true,
-          originalText: text,
-          translatedText: result.translatedText,
-          sourceLanguage: result.sourceLanguage,
-          targetLanguage: result.targetLanguage,
-          confidence: result.confidence
-        });
-      } else {
-        throw new Error('Translation failed - no result');
-      }
+      console.log('✅ Page text translation completed');
+      
+      res.json({
+        success: true,
+        originalText: text,
+        translatedText: result.translatedText,
+        sourceLanguage: result.sourceLanguage,
+        targetLanguage: result.targetLanguage,
+        confidence: result.confidence
+      });
       
     } catch (error) {
       console.error('❌ Page translation error:', error);

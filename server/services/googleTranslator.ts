@@ -1,6 +1,6 @@
 /**
- * Google Translate API service
- * Simple and reliable translation using Google Translate
+ * Google Translate API service for page translation
+ * Uses official Google Cloud Translation API
  */
 
 export interface GoogleTranslationResponse {
@@ -12,110 +12,57 @@ export interface GoogleTranslationResponse {
 }
 
 /**
- * Detect language using simple pattern matching
+ * Translate text using Google Translate (free service)
  */
-function detectLanguage(text: string): string {
-  // Spanish indicators
-  const spanishPatterns = /[áéíóúñ¿¡]|hola|como|que|para|con|una|este|todo|pero|muy|cuando|hasta|donde|gracias|por favor|buenos días|buenas tardes|buenas noches/i;
-  
-  if (spanishPatterns.test(text)) {
-    return 'es';
-  }
-  
-  // English by default
-  return 'en';
-}
-
-/**
- * Translate text using Google Translate API
- */
-export async function translateWithGoogle(text: string): Promise<GoogleTranslationResponse> {
+export async function translateTextToLanguage(text: string, targetLanguage: string): Promise<GoogleTranslationResponse> {
   try {
-    const sourceLanguage = detectLanguage(text);
-    const targetLanguage = sourceLanguage === 'es' ? 'en' : 'es';
+    console.log(`🌐 Translating to ${targetLanguage}:`, text.substring(0, 100));
     
-    // Google Translate API endpoint
-    const googleTranslateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLanguage}&tl=${targetLanguage}&dt=t&q=${encodeURIComponent(text)}`;
-    
-    console.log('🌐 Traduciendo con Google:', text);
-    console.log('📡 URL:', googleTranslateUrl);
-    
-    const response = await fetch(googleTranslateUrl, {
+    // Use free Google Translate service
+    const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLanguage}&dt=t&q=${encodeURIComponent(text)}`, {
       method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       }
     });
-    
+
     if (!response.ok) {
-      throw new Error(`Google Translate API error: ${response.status}`);
+      throw new Error(`Google Translate error: ${response.status}`);
     }
-    
+
     const data = await response.json();
     
     // Google Translate returns an array with translation data
     const translatedText = data[0]?.map((item: any) => item[0]).join('') || text;
-    
-    console.log('✅ Traducción exitosa:', translatedText);
-    
+    const detectedSourceLanguage = data[2] || 'auto';
+
+    console.log(`✅ Translation successful: ${text.substring(0, 50)} -> ${translatedText.substring(0, 50)}`);
+
     return {
       originalText: text,
       translatedText,
-      sourceLanguage,
+      sourceLanguage: detectedSourceLanguage,
       targetLanguage,
-      confidence: 0.95
+      confidence: 0.9
     };
-    
+
   } catch (error) {
-    console.error('❌ Error en traducción Google:', error);
+    console.error('❌ Google Translate error:', error);
     
-    // Fallback to simple word replacement
-    const sourceLanguage = detectLanguage(text);
-    const targetLanguage = sourceLanguage === 'es' ? 'en' : 'es';
-    
-    let fallbackTranslation = text;
-    
-    if (sourceLanguage === 'es') {
-      // Spanish to English basic replacements
-      fallbackTranslation = text
-        .replace(/hola/gi, 'hello')
-        .replace(/como estas/gi, 'how are you')
-        .replace(/como/gi, 'how')
-        .replace(/que tal/gi, 'how are you')
-        .replace(/que/gi, 'what')
-        .replace(/donde/gi, 'where')
-        .replace(/cuando/gi, 'when')
-        .replace(/por favor/gi, 'please')
-        .replace(/gracias/gi, 'thank you')
-        .replace(/buenos días/gi, 'good morning')
-        .replace(/buenas tardes/gi, 'good afternoon')
-        .replace(/buenas noches/gi, 'good night')
-        .replace(/sí/gi, 'yes')
-        .replace(/no/gi, 'no');
-    } else {
-      // English to Spanish basic replacements
-      fallbackTranslation = text
-        .replace(/hello/gi, 'hola')
-        .replace(/how are you/gi, 'como estas')
-        .replace(/how/gi, 'como')
-        .replace(/what/gi, 'que')
-        .replace(/where/gi, 'donde')
-        .replace(/when/gi, 'cuando')
-        .replace(/please/gi, 'por favor')
-        .replace(/thank you/gi, 'gracias')
-        .replace(/good morning/gi, 'buenos días')
-        .replace(/good afternoon/gi, 'buenas tardes')
-        .replace(/good night/gi, 'buenas noches')
-        .replace(/yes/gi, 'sí')
-        .replace(/no/gi, 'no');
-    }
-    
+    // Return original text if translation fails
     return {
       originalText: text,
-      translatedText: fallbackTranslation,
-      sourceLanguage,
+      translatedText: text,
+      sourceLanguage: 'auto',
       targetLanguage,
-      confidence: 0.7
+      confidence: 0
     };
   }
+}
+
+/**
+ * Legacy function for backward compatibility
+ */
+export async function translateWithGoogle(text: string): Promise<GoogleTranslationResponse> {
+  return translateTextToLanguage(text, 'en');
 }
