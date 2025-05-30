@@ -175,8 +175,8 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
     mutationFn: async (data: z.infer<typeof assignmentSchema>) => {
       console.log('Enviando datos para crear asignación:', data);
       
-      // Primero crear la asignación de agente
-      const assignmentResponse = await apiRequest('/api/chat-assignments', {
+      // Primero crear la asignación de agente usando endpoint directo
+      const assignmentResponse = await apiRequest('/api/chat-assignments/direct', {
         method: 'POST',
         body: JSON.stringify(data),
       });
