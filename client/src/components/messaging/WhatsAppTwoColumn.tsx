@@ -1815,9 +1815,21 @@ export function WhatsAppTwoColumn() {
         {/* Header with Account Selector */}
         <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-red-600 via-black to-red-600 pt-[0px] pb-[0px] text-[14px] mt-[6px] mb-[6px] ml-[0px] mr-[0px] pl-[6px] pr-[6px]">
           <div className="space-y-3">
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">WhatsApp Business</h2>
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                {selectedAccounts.length}/{(accounts as any[])?.length || 0} seleccionadas
+              </Badge>
             </div>
+            
+            <AccountSelector
+              accounts={accounts as any}
+              selectedAccounts={selectedAccounts}
+              onAccountsChange={handleAccountsChange}
+              onAccountClick={handleAccountClick}
+            />
+            
+
           </div>
         </div>
 
