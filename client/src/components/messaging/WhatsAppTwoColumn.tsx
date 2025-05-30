@@ -108,23 +108,53 @@ function MessageTranslation({ text, messageId, translationEnabled, messages }: {
     const translateMessage = async () => {
       setIsLoading(true);
       try {
-        // Usar Google Translate API directamente (mismo método que mensajes enviados)
-        const googleTranslateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=es&dt=t&q=${encodeURIComponent(trimmedText)}`;
+        console.log('🌐 Iniciando traducción para:', trimmedText);
         
-        const response = await fetch(googleTranslateUrl);
-        const data = await response.json();
-        
-        if (data && data[0] && data[0][0] && data[0][0][0]) {
-          const translatedText = data[0][0][0];
+        // Primero intentar con Google Translate API directa
+        try {
+          const googleTranslateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=es&dt=t&q=${encodeURIComponent(trimmedText)}`;
           
-          // Solo mostrar si realmente se tradujo
-          if (translatedText !== trimmedText && translatedText.toLowerCase() !== trimmedText.toLowerCase()) {
-            translationCache.set(trimmedText, translatedText);
-            setTranslation(translatedText);
+          const response = await fetch(googleTranslateUrl);
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data && data[0] && data[0][0] && data[0][0][0]) {
+              const translatedText = data[0][0][0];
+              console.log('✅ Traducción exitosa:', translatedText);
+              
+              // Solo mostrar si realmente se tradujo
+              if (translatedText !== trimmedText && translatedText.toLowerCase() !== trimmedText.toLowerCase()) {
+                translationCache.set(trimmedText, translatedText);
+                setTranslation(translatedText);
+                return;
+              }
+            }
+          }
+        } catch (corsError) {
+          console.log('❌ Error CORS con Google Translate API directa');
+        }
+
+        // Si falla Google Translate directo, usar nuestra API como respaldo
+        console.log('🔄 Usando API de respaldo para traducción');
+        const fallbackResponse = await fetch('/api/translate-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: trimmedText, messageId })
+        });
+
+        if (fallbackResponse.ok) {
+          const result = await fallbackResponse.json();
+          console.log('✅ Traducción de respaldo exitosa:', result);
+          
+          if (result.success && result.translatedText && result.detectedLanguage !== 'es') {
+            translationCache.set(trimmedText, result.translatedText);
+            setTranslation(result.translatedText);
           }
         }
+        
       } catch (error) {
-        console.log('Error en traducción:', error);
+        console.log('❌ Error en traducción:', error);
       } finally {
         setIsLoading(false);
       }
