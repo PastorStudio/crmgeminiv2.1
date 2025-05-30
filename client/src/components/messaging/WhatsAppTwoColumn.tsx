@@ -211,6 +211,68 @@ function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accoun
   );
 }
 
+function TicketStatusBadge({ chatId }: { chatId: string }) {
+  const { data: assignment } = useQuery({
+    queryKey: ['/api/chat-assignments', chatId],
+    enabled: !!chatId
+  });
+
+  console.log('🎫 Debug Ticket Badge - chatId:', chatId, 'assignment:', assignment);
+
+  const getTicketColor = (category: string) => {
+    switch (category) {
+      case 'nuevos': return 'bg-green-50 text-green-700 border-green-200';
+      case 'interesados': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'no-leidos': return 'bg-red-50 text-red-700 border-red-200';
+      case 'pendiente-demo': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+      case 'completados': return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'no-interesados': return 'bg-gray-50 text-gray-700 border-gray-200';
+      case 'general': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      default: return 'bg-gray-50 text-gray-500 border-gray-200';
+    }
+  };
+
+  const getTicketIcon = (category: string) => {
+    switch (category) {
+      case 'nuevos': return '🆕';
+      case 'interesados': return '👍';
+      case 'no-leidos': return '📬';
+      case 'pendiente-demo': return '⏳';
+      case 'completados': return '✅';
+      case 'no-interesados': return '❌';
+      case 'general': return '🎫';
+      default: return '📋';
+    }
+  };
+
+  const getTicketLabel = (category: string) => {
+    switch (category) {
+      case 'nuevos': return 'Nuevos';
+      case 'interesados': return 'Interesados';
+      case 'no-leidos': return 'No Leídos';
+      case 'pendiente-demo': return 'Pendiente Demo';
+      case 'completados': return 'Completados';
+      case 'no-interesados': return 'No Interesados';
+      case 'general': return 'General';
+      default: return 'Ticket';
+    }
+  };
+
+  // Solo mostrar si hay un ticket asignado activo
+  if (!assignment || assignment.status !== 'active') {
+    return null;
+  }
+
+  const ticketCategory = assignment.category || 'general';
+
+  return (
+    <Badge variant="outline" className={`text-xs ${getTicketColor(ticketCategory)}`}>
+      <span className="mr-1">{getTicketIcon(ticketCategory)}</span>
+      {getTicketLabel(ticketCategory)}
+    </Badge>
+  );
+}
+
 function ChatCommentsIndicator({ chatId }: { chatId: string }) {
   const { data: comments = [] } = useQuery({
     queryKey: ['/api/chat-comments', chatId],
@@ -1962,6 +2024,7 @@ export function WhatsAppTwoColumn() {
                       <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
                         Cuenta #{selectedChat.accountId}
                       </Badge>
+                      <TicketStatusBadge chatId={selectedChat.id} />
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-500">
                       {isContactOnline(selectedChat) ? (
