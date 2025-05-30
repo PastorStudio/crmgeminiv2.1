@@ -222,8 +222,13 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
       // También invalidar las consultas generales para refrescar la lista de chats
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
       
-      // Cerrar diálogo
+      // Cerrar diálogo y forzar actualización completa
       onOpenChange(false);
+      
+      // Forzar actualización completa de la interfaz para mostrar cambios inmediatamente
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     },
     onError: (error) => {
       console.error('Error al crear asignación:', error);
