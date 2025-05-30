@@ -13,6 +13,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/authContext";
 import { Loader2, Sun, Moon, Coffee, Star } from "lucide-react";
 import { getRealNow, formatNYTime } from "@/lib/timeSync";
+import { PageTranslationSelector } from "@/components/translation/PageTranslator";
 
 export default function Dashboard() {
   // Estados para el proceso de importación
@@ -167,10 +168,18 @@ export default function Dashboard() {
                 </p>
               </div>
               
-              {/* Reloj del sistema */}
-              <div className="flex items-center space-x-2 bg-white/10 px-3 py-2 rounded-lg border border-white/20">
-                <span className="text-yellow-400 text-lg">🕐</span>
-                <div className="text-sm font-semibold">{formatDateTime()}</div>
+              {/* Controles del sistema */}
+              <div className="flex items-center space-x-3">
+                {/* Selector de traducción global */}
+                <div className="bg-white/10 px-3 py-2 rounded-lg border border-white/20">
+                  <PageTranslationSelector />
+                </div>
+                
+                {/* Reloj del sistema */}
+                <div className="flex items-center space-x-2 bg-white/10 px-3 py-2 rounded-lg border border-white/20">
+                  <span className="text-yellow-400 text-lg">🕐</span>
+                  <div className="text-sm font-semibold">{formatDateTime()}</div>
+                </div>
               </div>
             </div>
           </div>
