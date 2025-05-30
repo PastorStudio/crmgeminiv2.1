@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardStats as IDashboardStats } from "@shared/schema";
+import { usePageTranslation } from "@/components/translation/PageTranslator";
+import { useEffect } from "react";
 
 export default function DashboardStats() {
   // Fetch dashboard stats
@@ -9,11 +11,26 @@ export default function DashboardStats() {
     queryKey: ["/api/dashboard-stats"]
   });
 
+  // Obtener el contexto de traducción
+  const { currentLanguage, translatePage } = usePageTranslation();
+
   // Format conversion rate from stored integer (2450) to percentage (24.5%)
   const formatConversionRate = (rate?: number) => {
     if (!rate) return "0%";
     return (rate / 100).toFixed(1) + "%";
   };
+
+  // Trigger translation after content loads and when language changes
+  useEffect(() => {
+    if (!isLoading && stats && currentLanguage !== 'es') {
+      // Pequeño delay para asegurar que el DOM se haya actualizado
+      const timer = setTimeout(() => {
+        translatePage(currentLanguage);
+      }, 200);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, stats, currentLanguage, translatePage]);
 
   return (
     <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
