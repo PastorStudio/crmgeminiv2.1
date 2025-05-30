@@ -13,7 +13,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/authContext";
 import { Loader2, Sun, Moon, Coffee, Star } from "lucide-react";
 import { getRealNow, formatNYTime } from "@/lib/timeSync";
-import { PageTranslationSelector } from "@/components/translation/PageTranslator";
+import { PageTranslationSelector, usePageTranslation } from "@/components/translation/PageTranslator";
 
 export default function Dashboard() {
   // Estados para el proceso de importación
@@ -27,6 +27,9 @@ export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const { toast } = useToast();
   const { user } = useAuth();
+  
+  // Obtener el idioma actual del sistema de traducción
+  const { currentLanguage } = usePageTranslation();
 
   // Update time every second usando fecha sincronizada
   useEffect(() => {
@@ -39,7 +42,35 @@ export default function Dashboard() {
 
   // Format time and date for display usando zona horaria Nueva York
   const formatDateTime = () => {
-    return getRealNow().toLocaleDateString('es-ES', {
+    // Mapear códigos de idioma a locales apropiados
+    const localeMap: { [key: string]: string } = {
+      'es': 'es-ES',
+      'en': 'en-US',
+      'fr': 'fr-FR',
+      'de': 'de-DE',
+      'it': 'it-IT',
+      'pt': 'pt-PT',
+      'ru': 'ru-RU',
+      'zh': 'zh-CN',
+      'ja': 'ja-JP',
+      'ko': 'ko-KR',
+      'ar': 'ar-SA',
+      'hi': 'hi-IN',
+      'nl': 'nl-NL',
+      'sv': 'sv-SE',
+      'no': 'no-NO',
+      'da': 'da-DK',
+      'fi': 'fi-FI',
+      'pl': 'pl-PL',
+      'cs': 'cs-CZ',
+      'hu': 'hu-HU',
+      'ro': 'ro-RO',
+      'bg': 'bg-BG'
+    };
+    
+    const locale = localeMap[currentLanguage] || 'es-ES';
+    
+    return getRealNow().toLocaleDateString(locale, {
       timeZone: 'America/New_York',
       weekday: 'long',
       year: 'numeric',
