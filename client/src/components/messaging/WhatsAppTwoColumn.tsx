@@ -547,56 +547,7 @@ export function WhatsAppTwoColumn() {
     enabled: false
   });
   
-  // Estados para auto-clics (ya definidos arriba con configuración)
-  const [autoClickActive, setAutoClickActive] = useState(false);
-  const [autoClickStopFunction, setAutoClickStopFunction] = useState<(() => void) | null>(null);
-
-  // Función DIRECTA: CLIC A.E → ESPERAR → CLIC ENVIAR
-  // VERSIÓN SIMPLIFICADA SIN VALIDACIONES RESTRICTIVAS
-  const startAutoClicks = () => {
-    console.log('🚀 INICIANDO AUTO-CLIC SIMPLIFICADO');
-    
-    const timer = setInterval(() => {
-      console.log('🔄 Ejecutando auto-clic simplificado...');
-      
-      // Solo verificar que hay un chat seleccionado y SmartBots habilitado
-      console.log('🔍 DEBUG Auto-click:', {
-        selectedChat: selectedChat ? selectedChat.id : 'NULL',
-        smartBotsEnabled,
-        autoClickEnabled
-      });
-      
-      if (!selectedChat || !smartBotsEnabled) {
-        console.log('⚠️ No hay chat seleccionado o SmartBots deshabilitado', {
-          hasSelectedChat: !!selectedChat,
-          smartBotsEnabled,
-          chatId: selectedChat?.id || 'none'
-        });
-        return;
-      }
-
-      // Verificar si hay texto "ÚLTIMO RECIBIDO" en la página
-      const bodyText = document.body.innerText || '';
-      const hasLastReceived = bodyText.includes('ÚLTIMO RECIBIDO') || bodyText.includes('último recibido');
-      
-      if (!hasLastReceived) {
-        console.log('⚠️ No hay indicador "ÚLTIMO RECIBIDO" visible');
-        return;
-      }
-      
-      console.log('✅ Condiciones cumplidas, ejecutando auto-click (sin validación de timestamp)...');
-      
-      // BUSCAR Y HACER CLIC EN BOTÓN A.E
-      const aeButtons = document.querySelectorAll('button');
-      let aeButtonFound = false;
-      
-      aeButtons.forEach(button => {
-        if (button.textContent?.includes('🤖 A.E') && !button.disabled) {
-          console.log('✅ Haciendo clic en botón A.E...');
-          aeButtonFound = true;
-          button.click();
-          
-          // ESPERAR Y BUSCAR BOTÓN ENVIAR CON MÚLTIPLES MÉTODOS
+  // Clean messaging functionality without broken auto-response systems
           setTimeout(() => {
             console.log('⏱️ Buscando botón Enviar con múltiples métodos...');
             let sendButtonFound = false;
