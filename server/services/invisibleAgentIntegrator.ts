@@ -128,12 +128,9 @@ export class InvisibleAgentIntegrator {
       // Determinar categoría basada en el contenido del chat
       const category = this.determineCategory(chat);
 
-      // Asignar automáticamente basándose en carga de trabajo
-      const assignment = await agentAssignmentService.autoAssignChat(
-        chat.id,
-        accountId,
-        category
-      );
+      // SISTEMA DE ASIGNACIÓN AUTOMÁTICA DESACTIVADO
+      console.log(`🚫 Asignación automática desactivada para chat ${chat.name || chat.id}`);
+      const assignment = null;
 
       if (assignment) {
         console.log(`✨ Chat ${chat.name || chat.id} asignado invisiblemente a ${assignment.agentName}`);
