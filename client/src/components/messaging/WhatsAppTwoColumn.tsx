@@ -60,6 +60,7 @@ import { VoiceNoteMessage } from './VoiceNoteMessage';
 // Cache global para evitar traducciones duplicadas
 const translationCache = new Map<string, any>();
 const pendingTranslations = new Set<string>();
+const translationQueue = new Map<string, Promise<any>>();
 
 function MessageTranslation({ text, messageId, translationEnabled }: { text: string; messageId: string; translationEnabled: boolean }) {
   const [translation, setTranslation] = useState<{
@@ -93,27 +94,39 @@ function MessageTranslation({ text, messageId, translationEnabled }: { text: str
       return;
     }
 
-    // Verificar si ya hay una petición pendiente
-    if (pendingTranslations.has(cacheKey)) {
-      return;
-    }
-
-    // Detectar español básico localmente
-    const spanishPattern = /[áéíóúñ¿¡]|hola|gracias|buenos|días|noches|como|estas|que|tal|por|favor|bien|mal/i;
-    if (spanishPattern.test(trimmedText)) {
+    // Detectar español básico localmente primero (más rápido)
+    const spanishPattern = /[áéíóúñ¿¡]|hola|gracias|buenos|días|noches|como|estas|que|tal|por|favor|bien|mal|muy|pero|con|una|para|esta|todo|desde|hasta/i;
+    if (spanishPattern.test(trimmedText) || trimmedText.length < 4) {
       const spanishResult = { success: true, detectedLanguage: 'es', isSpanish: true };
       translationCache.set(cacheKey, spanishResult);
       return;
     }
 
+    // Si ya hay una petición en cola para este texto, usar esa promesa
+    if (translationQueue.has(cacheKey)) {
+      const existingPromise = translationQueue.get(cacheKey);
+      existingPromise?.then((result) => {
+        translationCache.set(cacheKey, result);
+        if (result.success && result.detectedLanguage !== 'es' && result.detectedLanguage !== 'spa' && !result.isSpanish) {
+          setTranslation({
+            translated: result.translatedText,
+            detectedLanguage: result.detectedLanguage,
+            targetLanguage: 'es'
+          });
+        }
+      }).catch(() => {
+        setError('Error de conexión');
+      });
+      return;
+    }
+
     const detectAndTranslate = async () => {
-      pendingTranslations.add(cacheKey);
       setIsLoading(true);
       setError(null);
       
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
 
         const response = await fetch('/api/translate-message', {
           method: 'POST',
@@ -143,6 +156,8 @@ function MessageTranslation({ text, messageId, translationEnabled }: { text: str
             targetLanguage: 'es'
           });
         }
+        
+        return result;
       } catch (err) {
         if (err instanceof Error) {
           if (err.name === 'AbortError') {
@@ -153,17 +168,25 @@ function MessageTranslation({ text, messageId, translationEnabled }: { text: str
         } else {
           setError('Error desconocido');
         }
+        throw err;
       } finally {
         setIsLoading(false);
-        pendingTranslations.delete(cacheKey);
+        translationQueue.delete(cacheKey);
       }
     };
 
-    // Delay para evitar spam de peticiones
-    const timeoutId = setTimeout(detectAndTranslate, 800);
+    // Crear promesa y agregar a la cola
+    const translationPromise = detectAndTranslate();
+    translationQueue.set(cacheKey, translationPromise);
+
+    // Delay antes de ejecutar
+    const timeoutId = setTimeout(() => {
+      // Si la promesa ya se procesó, no hacer nada
+      if (!translationQueue.has(cacheKey)) return;
+    }, 1000);
+
     return () => {
       clearTimeout(timeoutId);
-      pendingTranslations.delete(cacheKey);
     };
   }, [text, messageId, translationEnabled]);
 
