@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardStats as IDashboardStats } from "@shared/schema";
 import { usePageTranslation } from "@/components/translation/PageTranslator";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function DashboardStats() {
   // Fetch dashboard stats
@@ -30,17 +30,69 @@ export default function DashboardStats() {
     return stats?.pendingActivities || 0;
   };
 
-  // Trigger translation after content loads and when language changes
-  useEffect(() => {
-    if (!isLoading && stats && currentLanguage !== 'es') {
-      // Pequeño delay para asegurar que el DOM se haya actualizado
-      const timer = setTimeout(() => {
-        translatePage(currentLanguage);
-      }, 200);
+  // Traducir texto usando Google Translate directo
+  const translateText = async (text: string, targetLang: string): Promise<string> => {
+    if (!text || text.trim() === '' || targetLang === 'es') return text;
+    
+    try {
+      const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=es&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
       
-      return () => clearTimeout(timer);
+      const response = await fetch(googleUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data[0] && data[0][0] && data[0][0][0]) {
+          return data[0][0][0];
+        }
+      }
+    } catch (error) {
+      console.warn('Error translating:', error);
     }
-  }, [isLoading, stats, currentLanguage, translatePage]);
+    
+    return text;
+  };
+
+  // Get translated widget titles
+  const getTranslatedTitles = async () => {
+    if (currentLanguage === 'es') {
+      return {
+        totalLeads: 'Total Leads',
+        conversionRate: 'Conversion Rate',
+        activeConversations: 'Active Conversations',
+        todayMeetings: "Today's Meetings"
+      };
+    }
+    
+    return {
+      totalLeads: await translateText('Total Leads', currentLanguage),
+      conversionRate: await translateText('Conversion Rate', currentLanguage),
+      activeConversations: await translateText('Active Conversations', currentLanguage),
+      todayMeetings: await translateText("Today's Meetings", currentLanguage)
+    };
+  };
+
+  // State for translated titles
+  const [translatedTitles, setTranslatedTitles] = useState({
+    totalLeads: 'Total Leads',
+    conversionRate: 'Conversion Rate',
+    activeConversations: 'Active Conversations',
+    todayMeetings: "Today's Meetings"
+  });
+
+  // Update translated titles when language changes
+  useEffect(() => {
+    const updateTitles = async () => {
+      const titles = await getTranslatedTitles();
+      setTranslatedTitles(titles);
+    };
+    
+    updateTitles();
+  }, [currentLanguage]);
 
   return (
     <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -54,7 +106,7 @@ export default function DashboardStats() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dt className="text-sm font-medium text-gray-500 truncate">
-                  Total Leads
+                  {translatedTitles.totalLeads}
                 </dt>
                 <dd className="flex items-baseline">
                   {isLoading ? (
@@ -86,7 +138,7 @@ export default function DashboardStats() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dt className="text-sm font-medium text-gray-500 truncate">
-                  Conversion Rate
+                  {translatedTitles.conversionRate}
                 </dt>
                 <dd className="flex items-baseline">
                   {isLoading ? (
@@ -118,7 +170,7 @@ export default function DashboardStats() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dt className="text-sm font-medium text-gray-500 truncate">
-                  Active Conversations
+                  {translatedTitles.activeConversations}
                 </dt>
                 <dd className="flex items-baseline">
                   {isLoading ? (
@@ -150,7 +202,7 @@ export default function DashboardStats() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dt className="text-sm font-medium text-gray-500 truncate">
-                  Today's Meetings
+                  {translatedTitles.todayMeetings}
                 </dt>
                 <dd className="flex items-baseline">
                   {isLoading ? (
