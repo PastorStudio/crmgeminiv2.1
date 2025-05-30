@@ -198,27 +198,31 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
   const getTextElements = (): Element[] => {
     const elements: Element[] = [];
     
-    // Selectores específicos para capturar widgets, reportes y elementos dinámicos
+    // Selectores específicos para capturar solo elementos de texto finales
     const selectors = [
       // Elementos de texto básicos
       'h1, h2, h3, h4, h5, h6',
-      'p, span, div, li, td, th',
-      'button, a, label',
+      'p',
+      'span:not([class*="material"]):not([class*="icon"])',
+      'li',
+      'td, th',
+      'button:not([aria-expanded]):not([class*="dropdown"])',
+      'a:not([class*="dropdown"])',
+      'label',
       
-      // Widgets y cards específicos
-      '[class*="card"]', '[class*="widget"]', '[class*="dashboard"]',
-      '[class*="report"]', '[class*="chart"]', '[class*="stat"]',
+      // Solo elementos de texto específicos, no contenedores
+      'dt', // Solo títulos de widgets, no los contenedores dd
       
-      // Componentes de UI específicos
-      '[class*="text-"]', '[class*="title"]', '[class*="subtitle"]',
-      '[class*="heading"]', '[class*="label"]', '[class*="description"]',
-      
-      // Elementos de navegación y menús
-      '[role="menuitem"]', '[role="tab"]', '[role="button"]',
-      '.nav-link', '.menu-item', '.sidebar-item',
+      // Elementos de navegación y menús - más específicos
+      '[role="menuitem"]',
+      '[role="tab"]',
+      '.nav-link',
+      '.menu-item',
+      '.sidebar-item',
       
       // Elementos de formularios
-      'input[placeholder]', 'textarea[placeholder]'
+      'input[placeholder]',
+      'textarea[placeholder]'
     ];
 
     selectors.forEach(selector => {
@@ -239,7 +243,15 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
           const hasTitle = element.getAttribute('title')?.trim();
           const hasAriaLabel = element.getAttribute('aria-label')?.trim();
           
-          if (hasDirectText || hasPlaceholder || hasTitle || hasAriaLabel) {
+          // Evitar elementos que contengan demasiados hijos (contenedores grandes)
+          const hasMaxTwoTextNodes = Array.from(element.childNodes).filter(
+            child => child.nodeType === Node.TEXT_NODE && child.textContent?.trim()
+          ).length <= 2;
+          
+          // Evitar elementos que contengan muchos elementos hijos
+          const hasFewChildren = element.children.length <= 3;
+          
+          if ((hasDirectText || hasPlaceholder || hasTitle || hasAriaLabel) && hasMaxTwoTextNodes && hasFewChildren) {
             // Evitar duplicados
             if (!elements.includes(element)) {
               elements.push(element);
