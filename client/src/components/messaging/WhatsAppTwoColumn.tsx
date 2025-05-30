@@ -190,7 +190,12 @@ function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accoun
     }
   };
 
-  const status = category?.status || 'sin-ticket';
+  const status = category?.status;
+
+  // Solo mostrar el badge si hay un ticket asignado (status existe y no es 'sin-ticket')
+  if (!status || status === 'sin-ticket') {
+    return null;
+  }
 
   return (
     <Badge variant="outline" className={`text-xs ${getTicketColor(status)}`}>
