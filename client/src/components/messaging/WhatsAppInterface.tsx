@@ -23,6 +23,8 @@ export default function WhatsAppInterface() {
   const [translatedText, setTranslatedText] = useState("");
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<any[]>([]);
+  const [translatedMessages, setTranslatedMessages] = useState<{[key: string]: string}>({});
+  const [translationMode, setTranslationMode] = useState<'sent' | 'received' | null>(null);
 
   // Obtener agentes reales del sistema
   const { data: agents } = useQuery({
@@ -147,31 +149,57 @@ export default function WhatsAppInterface() {
     }
   };
 
-  // Función para traducir burbujas de mensajes
-  const handleTranslateMessage = async (messageText: string, messageType: 'sent' | 'received') => {
-    try {
-      const response = await apiRequest('/api/translate-message', {
-        method: 'POST',
-        body: {
-          text: messageText,
-          targetLanguage: targetLanguage,
-          messageType: messageType
+  // Función para traducir todos los mensajes de un tipo
+  const handleTranslateAllMessages = async (messageType: 'sent' | 'received') => {
+    if (!selectedChat?.messages) return;
+    
+    const messagesToTranslate = selectedChat.messages.filter((msg: any) => 
+      messageType === 'sent' ? msg.sender === 'business' : msg.sender === 'contact'
+    );
+
+    for (const message of messagesToTranslate) {
+      try {
+        const response = await apiRequest('/api/translate-message', {
+          method: 'POST',
+          body: {
+            text: message.text,
+            targetLanguage: targetLanguage,
+            messageType: messageType
+          }
+        });
+        
+        if (response.translatedText) {
+          setTranslatedMessages(prev => ({
+            ...prev,
+            [`${message.id}_${messageType}`]: response.translatedText
+          }));
         }
-      });
-      
-      if (response.translatedText) {
-        setTranslatedText(response.translatedText);
+      } catch (error) {
+        console.error('Error translating message:', error);
       }
-    } catch (error) {
-      console.error('Error translating message:', error);
-      setTranslatedText("Error en la traducción. Verifica la configuración del servicio.");
     }
   };
 
   // Función para traducir texto manual
   const handleTranslateText = async () => {
     if (translationText.trim()) {
-      await handleTranslateMessage(translationText, 'sent');
+      try {
+        const response = await apiRequest('/api/translate-message', {
+          method: 'POST',
+          body: {
+            text: translationText,
+            targetLanguage: targetLanguage,
+            messageType: 'manual'
+          }
+        });
+        
+        if (response.translatedText) {
+          setTranslatedText(response.translatedText);
+        }
+      } catch (error) {
+        console.error('Error translating text:', error);
+        setTranslatedText("Error en la traducción. Verifica la configuración del servicio.");
+      }
     }
   };
 
@@ -276,21 +304,37 @@ export default function WhatsAppInterface() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="bg-blue-50 p-3 rounded-lg">
-                <h4 className="font-medium text-sm mb-2">Opciones de Traducción:</h4>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <p>• <span className="font-medium">Burbujas Azules</span>: Mensajes enviados por tu empresa</p>
-                  <p>• <span className="font-medium">Burbujas Verdes</span>: Mensajes recibidos de clientes</p>
-                  <p>• Haz clic en el ícono de traducción en cualquier burbuja para traducir directamente</p>
+                <h4 className="font-medium text-sm mb-3">Opciones de Traducción Automática:</h4>
+                <div className="space-y-2">
+                  <Button 
+                    onClick={() => handleTranslateAllMessages('received')}
+                    className="w-full justify-start bg-white text-gray-700 border hover:bg-gray-50"
+                    variant="outline"
+                  >
+                    <Languages className="h-4 w-4 mr-2" />
+                    Traducir Mensajes Recibidos (Burbujas Blancas - Izquierda)
+                  </Button>
+                  <Button 
+                    onClick={() => handleTranslateAllMessages('sent')}
+                    className="w-full justify-start bg-[#005c4b] text-white hover:bg-[#004a3d]"
+                  >
+                    <Languages className="h-4 w-4 mr-2" />
+                    Traducir Mensajes Enviados (Burbujas Azules - Derecha)
+                  </Button>
                 </div>
               </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Texto a traducir:</label>
-                <Textarea
-                  placeholder="Escribe o pega el texto que deseas traducir..."
-                  value={translationText}
-                  onChange={(e) => setTranslationText(e.target.value)}
-                  rows={3}
-                />
+              
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-sm mb-2">Traducción Manual:</h4>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Texto a traducir:</label>
+                  <Textarea
+                    placeholder="Escribe o pega el texto que deseas traducir..."
+                    value={translationText}
+                    onChange={(e) => setTranslationText(e.target.value)}
+                    rows={3}
+                  />
+                </div>
               </div>
               <div>
                 <label className="text-sm font-medium mb-2 block">Idioma destino:</label>
@@ -516,42 +560,50 @@ export default function WhatsAppInterface() {
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {selectedChat.messages && selectedChat.messages.length > 0 ? (
                 selectedChat.messages.map((message: any) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.sender === 'business' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className="group relative">
-                      <div
-                        className={`max-w-[65%] px-3 py-2 rounded-lg ${
-                          message.sender === 'business'
-                            ? 'bg-[#005c4b] text-white rounded-br-none shadow-sm'
-                            : 'bg-white text-[#111b21] rounded-bl-none shadow-sm'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-[14px] leading-[1.4] break-words flex-1">{message.text}</p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 ${
-                              message.sender === 'business' ? 'text-white hover:bg-white/20' : 'text-gray-600 hover:bg-gray-100'
-                            }`}
-                            onClick={() => {
-                              setTranslationText(message.text);
-                              setShowTranslationDialog(true);
-                              handleTranslateMessage(message.text, message.sender === 'business' ? 'sent' : 'received');
-                            }}
-                          >
-                            <Languages className="h-3 w-3" />
-                          </Button>
+                  <div key={message.id} className="space-y-1">
+                    <div
+                      className={`flex ${message.sender === 'business' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className="group relative max-w-[65%]">
+                        <div
+                          className={`px-3 py-2 rounded-lg ${
+                            message.sender === 'business'
+                              ? 'bg-[#005c4b] text-white rounded-br-none shadow-sm'
+                              : 'bg-white text-[#111b21] rounded-bl-none shadow-sm'
+                          }`}
+                        >
+                          <p className="text-[14px] leading-[1.4] break-words">{message.text}</p>
+                          <p className={`text-[11px] mt-1 text-right ${
+                            message.sender === 'business' ? 'text-white/70' : 'text-[#667781]'
+                          }`}>
+                            {message.timestamp}
+                          </p>
                         </div>
-                        <p className={`text-[11px] mt-1 text-right ${
-                          message.sender === 'business' ? 'text-white/70' : 'text-[#667781]'
-                        }`}>
-                          {message.timestamp}
-                        </p>
                       </div>
                     </div>
+                    
+                    {/* Mostrar traducción si existe */}
+                    {translatedMessages[`${message.id}_${message.sender === 'business' ? 'sent' : 'received'}`] && (
+                      <div className={`flex ${message.sender === 'business' ? 'justify-end' : 'justify-start'}`}>
+                        <div className="max-w-[65%]">
+                          <div
+                            className={`px-3 py-2 rounded-lg border-2 border-dashed ${
+                              message.sender === 'business'
+                                ? 'bg-blue-50 border-blue-300 text-blue-800'
+                                : 'bg-green-50 border-green-300 text-green-800'
+                            }`}
+                          >
+                            <div className="flex items-center gap-1 mb-1">
+                              <Languages className="h-3 w-3" />
+                              <span className="text-xs font-medium">Traducción:</span>
+                            </div>
+                            <p className="text-[13px] leading-[1.3] break-words">
+                              {translatedMessages[`${message.id}_${message.sender === 'business' ? 'sent' : 'received'}`]}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))
               ) : (
