@@ -366,12 +366,21 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
                 );
                 
                 if (textNodes.length > 0) {
-                  // Reemplazar todo el contenido de texto
-                  textNodes.forEach(node => {
-                    node.textContent = '';
-                  });
-                  if (textNodes[0]) {
+                  // Encontrar el nodo de texto que coincide exactamente
+                  const matchingNode = textNodes.find(node => 
+                    node.textContent && node.textContent.trim() === data.text.trim()
+                  );
+                  
+                  if (matchingNode) {
+                    matchingNode.textContent = translatedText;
+                  } else if (textNodes.length === 1) {
+                    // Si solo hay un nodo de texto, reemplazarlo
                     textNodes[0].textContent = translatedText;
+                  }
+                } else {
+                  // Si no hay nodos de texto directos, intentar con textContent del elemento
+                  if (element.textContent && element.textContent.trim() === data.text.trim()) {
+                    element.textContent = translatedText;
                   }
                 }
               }
