@@ -2284,7 +2284,7 @@ export function WhatsAppTwoColumn() {
                     <Button
                       size="sm"
                       variant={externalAgentActive ? "default" : "outline"}
-                      className="hidden" // Ocultar el botón A.E AI original
+                      className="hidden"
                       onClick={async () => {
                         console.log('🚀 A.E AI TOGGLE PRESIONADO');
                         
