@@ -2272,7 +2272,7 @@ export function WhatsAppTwoColumn() {
                             
                             <div className={`flex items-end gap-1 ${message.fromMe ? 'justify-end' : 'flex-row'}`}>
                               {message.fromMe && (
-                                <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[2px] flex-shrink-0">
+                                <div className="text-xs text-gray-500 flex-shrink-0">
                                   {formatTime(message.timestamp)}
                                 </div>
                               )}
@@ -2363,7 +2363,7 @@ export function WhatsAppTwoColumn() {
                                 )}
                               </div>
                               {!message.fromMe && (
-                                <div className="text-xs text-black pt-[10px] pb-[10px] ml-[2px] mr-[2px] flex-shrink-0 flex items-center gap-1">
+                                <div className="text-xs text-gray-500 flex-shrink-0 flex items-center gap-1">
                                   {formatTime(message.timestamp)}
                                   {isLastIncomingMessage && (
                                     <>
