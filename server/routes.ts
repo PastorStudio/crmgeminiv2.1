@@ -3553,6 +3553,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Page translation endpoint for complete UI translation
+  app.post('/api/translate-page-text', async (req: Request, res: Response) => {
+    try {
+      const { text, targetLanguage, sourceLanguage = 'es' } = req.body;
+      
+      if (!text || typeof text !== 'string' || text.trim() === '') {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Text is required for translation' 
+        });
+      }
+
+      if (!targetLanguage) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Target language is required' 
+        });
+      }
+
+      console.log(`🌐 Translating page text from ${sourceLanguage} to ${targetLanguage}:`, text);
+
+      // Use Google Translate service
+      const { translateWithGoogle } = await import('./services/googleTranslator');
+      
+      const result = await translateWithGoogle(text, sourceLanguage, targetLanguage);
+      
+      if (result.translatedText) {
+        console.log('✅ Page text translation completed:', result.translatedText);
+        
+        res.json({
+          success: true,
+          originalText: text,
+          translatedText: result.translatedText,
+          sourceLanguage: result.sourceLanguage,
+          targetLanguage: result.targetLanguage,
+          confidence: result.confidence
+        });
+      } else {
+        throw new Error('Translation failed - no result');
+      }
+      
+    } catch (error) {
+      console.error('❌ Page translation error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Page translation service error',
+        originalText: req.body.text,
+        translatedText: req.body.text // Return original text as fallback
+      });
+    }
+  });
+
   // Detect language endpoint
   app.post('/api/detect-language', async (req: Request, res: Response) => {
     try {
