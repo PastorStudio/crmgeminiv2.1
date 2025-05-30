@@ -74,7 +74,7 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
   const [originalTexts, setOriginalTexts] = useState<Map<Element, string>>(new Map());
   const { toast } = useToast();
 
-  // Función para traducir texto individual
+  // Función para traducir texto individual usando Google Translate directo
   const translateText = async (text: string, targetLang: string = currentLanguage): Promise<string> => {
     if (!text || text.trim() === '') return text;
     if (targetLang === 'es') return text; // Si es español, no traducir
@@ -85,37 +85,25 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     }
 
     try {
-      // Usar Google Translate API a través de nuestro backend
-      const response = await fetch('/api/translate-page-text', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: text,
-          targetLanguage: targetLang,
-          sourceLanguage: 'es'
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.translatedText) {
-          translationCache.set(cacheKey, result.translatedText);
-          return result.translatedText;
-        }
-      }
-
-      // Fallback: intentar con Google Translate público
+      // Usar Google Translate directamente
       const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=es&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-      const googleResponse = await fetch(googleUrl);
       
-      if (googleResponse.ok) {
-        const data = await googleResponse.json();
-        if (data && data[0] && data[0][0] && data[0][0][0]) {
-          const translatedText = data[0][0][0];
-          translationCache.set(cacheKey, translatedText);
-          return translatedText;
+      const response = await fetch(googleUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data[0] && data[0].length > 0) {
+          // Combinar todas las traducciones del array
+          const translatedText = data[0].map((item: any) => item[0]).join('');
+          if (translatedText && translatedText !== text) {
+            translationCache.set(cacheKey, translatedText);
+            return translatedText;
+          }
         }
       }
     } catch (error) {
