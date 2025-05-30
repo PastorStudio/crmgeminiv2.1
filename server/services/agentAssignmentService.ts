@@ -48,6 +48,13 @@ export class AgentAssignmentService {
       forceReassign?: boolean;
     }
   ): Promise<AgentAssignment | null> {
+    
+    // SISTEMA DE ASIGNACIÓN AUTOMÁTICA DESACTIVADO
+    console.log('⚠️ Sistema de asignación automática desactivado - ignorando asignación automática');
+    if (!assignedById) {
+      console.log('❌ Asignación automática bloqueada - solo se permiten asignaciones manuales');
+      return null;
+    }
     try {
       // Verificar si ya existe una asignación activa
       const existingAssignment = await db

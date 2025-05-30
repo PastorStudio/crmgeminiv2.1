@@ -497,6 +497,9 @@ export function WhatsAppTwoColumn() {
   // Estados para R.A. AI
   const [raAiEnabled, setRaAiEnabled] = useState(false);
   const [raAiProcessing, setRaAiProcessing] = useState(false);
+  
+  // Estado para almacenar mensajes originales de envíos traducidos
+  const [sentMessageOrigins, setSentMessageOrigins] = useState<Record<string, string>>({});
 
   // Estados para Auto-Click con configuración personalizada
   const [autoClickTimers, setAutoClickTimers] = useState<{ ae: NodeJS.Timeout | null; send: NodeJS.Timeout | null }>({ ae: null, send: null });
