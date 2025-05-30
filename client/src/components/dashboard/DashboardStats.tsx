@@ -14,10 +14,20 @@ export default function DashboardStats() {
   // Obtener el contexto de traducción
   const { currentLanguage, translatePage } = usePageTranslation();
 
-  // Format conversion rate from stored integer (2450) to percentage (24.5%)
-  const formatConversionRate = (rate?: number) => {
-    if (!rate) return "0%";
-    return (rate / 100).toFixed(1) + "%";
+  // Format conversion rate from performance metrics
+  const formatConversionRate = (performanceMetrics?: any) => {
+    if (!performanceMetrics?.conversionRate) return "0%";
+    return performanceMetrics.conversionRate + "%";
+  };
+
+  // Get active conversations from active leads
+  const getActiveConversations = () => {
+    return stats?.activeLeads || 0;
+  };
+
+  // Get today's meetings from pending activities
+  const getTodayMeetings = () => {
+    return stats?.pendingActivities || 0;
   };
 
   // Trigger translation after content loads and when language changes
@@ -83,7 +93,7 @@ export default function DashboardStats() {
                     <Skeleton className="h-8 w-20" />
                   ) : (
                     <div className="text-2xl font-semibold text-gray-900">
-                      {formatConversionRate(stats?.conversionRate)}
+                      {formatConversionRate(stats?.performanceMetrics)}
                     </div>
                   )}
                   <div className="ml-2 flex items-baseline text-sm font-semibold text-green-600">
@@ -115,7 +125,7 @@ export default function DashboardStats() {
                     <Skeleton className="h-8 w-20" />
                   ) : (
                     <div className="text-2xl font-semibold text-gray-900">
-                      {stats?.activeConversations || "0"}
+                      {getActiveConversations()}
                     </div>
                   )}
                   <div className="ml-2 flex items-baseline text-sm font-semibold text-yellow-600">
@@ -147,7 +157,7 @@ export default function DashboardStats() {
                     <Skeleton className="h-8 w-20" />
                   ) : (
                     <div className="text-2xl font-semibold text-gray-900">
-                      {stats?.todayMeetings || "0"}
+                      {getTodayMeetings()}
                     </div>
                   )}
                   <div className="ml-2 flex items-baseline text-sm font-semibold text-red-600">
