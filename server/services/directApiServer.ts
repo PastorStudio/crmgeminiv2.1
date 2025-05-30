@@ -29,6 +29,68 @@ export function registerDirectAPIRoutes(app: Express): void {
       res.status(500).json({ error: "Error interno del servidor" });
     }
   });
+
+  // Ruta para asignación de chat que bypasa completamente Vite
+  app.post("/api/direct/chat-assignment", async (req: Request, res: Response) => {
+    try {
+      console.log("🔧 Direct API: Asignación de chat:", req.body);
+      
+      const { chatId, accountId, assignedToId, category } = req.body;
+      
+      if (!chatId || !accountId) {
+        return res.status(400).json({ error: 'Se requiere chatId y accountId' });
+      }
+
+      const { db } = await import('../db');
+      const { chatAssignments, users } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+
+      if (assignedToId === null || assignedToId === undefined) {
+        // Desasignar agente
+        await db.delete(chatAssignments).where(eq(chatAssignments.chatId, chatId));
+        console.log('✅ Direct API: Agente desasignado exitosamente');
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        return res.json(null);
+      }
+
+      // 1. Borrar asignación existente
+      await db.delete(chatAssignments).where(eq(chatAssignments.chatId, chatId));
+      
+      // 2. Insertar nueva asignación
+      const insertData = {
+        chatId: String(chatId),
+        accountId: Number(accountId),
+        assignedToId: Number(assignedToId),
+        category: category || 'general',
+        status: 'active',
+        assignedAt: new Date(),
+        lastActivityAt: new Date()
+      };
+      
+      const [newAssignment] = await db.insert(chatAssignments)
+        .values(insertData)
+        .returning();
+      
+      // 3. Obtener información del agente
+      const [agent] = await db.select().from(users).where(eq(users.id, assignedToId));
+      
+      const response = {
+        ...newAssignment,
+        assignedTo: agent
+      };
+      
+      console.log('✅ Direct API: Asignación creada exitosamente:', response);
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.status(200).json(response);
+      
+    } catch (error) {
+      console.error('❌ Direct API: Error en asignación:', error);
+      res.status(500).json({ error: 'Error al crear asignación: ' + (error as any).message });
+    }
+  });
   
   // Rutas directas para obtener el estado de WhatsApp (incluido el código QR)
   app.get('/api/direct/whatsapp/status', async (req, res) => {
