@@ -57,6 +57,10 @@ import { AgentSelector } from './AgentSelector';
 import { VoiceNoteMessage } from './VoiceNoteMessage';
 
 // Componente de traducción automática
+// Cache global para evitar traducciones duplicadas
+const translationCache = new Map<string, any>();
+const pendingTranslations = new Set<string>();
+
 function MessageTranslation({ text, messageId, translationEnabled }: { text: string; messageId: string; translationEnabled: boolean }) {
   const [translation, setTranslation] = useState<{
     translated: string;
@@ -67,67 +71,106 @@ function MessageTranslation({ text, messageId, translationEnabled }: { text: str
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!text || text.trim().length === 0 || !translationEnabled) return;
+    if (!text || text.trim().length === 0 || !translationEnabled) {
+      setTranslation(null);
+      setError(null);
+      return;
+    }
+
+    const trimmedText = text.trim();
+    const cacheKey = `${trimmedText}_es`;
+
+    // Verificar cache
+    if (translationCache.has(cacheKey)) {
+      const cached = translationCache.get(cacheKey);
+      if (cached.success && cached.detectedLanguage !== 'es' && cached.detectedLanguage !== 'spa' && !cached.isSpanish) {
+        setTranslation({
+          translated: cached.translatedText,
+          detectedLanguage: cached.detectedLanguage,
+          targetLanguage: 'es'
+        });
+      }
+      return;
+    }
+
+    // Verificar si ya hay una petición pendiente
+    if (pendingTranslations.has(cacheKey)) {
+      return;
+    }
+
+    // Detectar español básico localmente
+    const spanishPattern = /[áéíóúñ¿¡]|hola|gracias|buenos|días|noches|como|estas|que|tal|por|favor|bien|mal/i;
+    if (spanishPattern.test(trimmedText)) {
+      const spanishResult = { success: true, detectedLanguage: 'es', isSpanish: true };
+      translationCache.set(cacheKey, spanishResult);
+      return;
+    }
 
     const detectAndTranslate = async () => {
+      pendingTranslations.add(cacheKey);
       setIsLoading(true);
       setError(null);
       
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
         const response = await fetch('/api/translate-message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            text: text.trim(),
+            text: trimmedText,
             messageId 
-          })
+          }),
+          signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}`);
+        }
 
         const result = await response.json();
         
-        if (result.success) {
-          // Solo mostrar traducción si el idioma detectado no es español
-          if (result.detectedLanguage !== 'es' && result.detectedLanguage !== 'spa') {
-            setTranslation({
-              translated: result.translatedText,
-              detectedLanguage: result.detectedLanguage,
-              targetLanguage: 'es'
-            });
-          }
-        } else {
-          setError(result.error || 'Error al traducir');
+        // Guardar en cache
+        translationCache.set(cacheKey, result);
+        
+        if (result.success && result.detectedLanguage !== 'es' && result.detectedLanguage !== 'spa' && !result.isSpanish) {
+          setTranslation({
+            translated: result.translatedText,
+            detectedLanguage: result.detectedLanguage,
+            targetLanguage: 'es'
+          });
         }
       } catch (err) {
-        setError('Error de conexión');
+        if (err instanceof Error) {
+          if (err.name === 'AbortError') {
+            setError('Tiempo agotado');
+          } else {
+            setError('Error de conexión');
+          }
+        } else {
+          setError('Error desconocido');
+        }
       } finally {
         setIsLoading(false);
+        pendingTranslations.delete(cacheKey);
       }
     };
 
-    const debounceTimeout = setTimeout(detectAndTranslate, 500);
-    return () => clearTimeout(debounceTimeout);
+    // Delay para evitar spam de peticiones
+    const timeoutId = setTimeout(detectAndTranslate, 800);
+    return () => {
+      clearTimeout(timeoutId);
+      pendingTranslations.delete(cacheKey);
+    };
   }, [text, messageId, translationEnabled]);
 
-  if (isLoading) {
-    return (
-      <div className="mt-1 text-xs text-blue-500 opacity-75 flex items-center gap-1">
-        <span className="animate-spin">⏳</span>
-        Detectando idioma...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="mt-1 text-xs text-red-400 opacity-75">
-        🔄 Error: {error}
-      </div>
-    );
-  }
-
-  if (!translation) {
-    return null;
-  }
+  if (!translationEnabled) return null;
+  if (isLoading) return <div className="text-xs text-gray-500 mt-1">Traduciendo...</div>;
+  if (error) return <div className="text-xs text-red-500 mt-1">Error: {error}</div>;
+  if (!translation) return null;
 
   const getLanguageFlag = (langCode: string) => {
     const flags: Record<string, string> = {

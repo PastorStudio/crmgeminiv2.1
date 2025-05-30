@@ -106,13 +106,27 @@ export class GoogleTranslateScraper {
   // Método alternativo más simple usando la API no oficial de Google Translate
   async translateSimple(text: string, targetLang: string = 'es'): Promise<TranslationResult> {
     try {
+      // Detectar si el texto ya está en español
+      const spanishWords = ['hola', 'gracias', 'por', 'favor', 'como', 'estas', 'que', 'tal', 'buenos', 'dias', 'noches'];
+      const lowerText = text.toLowerCase();
+      const isSpanish = spanishWords.some(word => lowerText.includes(word)) || /[áéíóúñ¿¡]/i.test(text);
+      
+      if (isSpanish) {
+        return {
+          success: true,
+          translatedText: text,
+          detectedLanguage: 'es'
+        };
+      }
+
       // Usar la URL de la API no oficial de Google Translate
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
       
       const response = await fetch(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
+        },
+        timeout: 5000 // 5 segundos de timeout
       });
       
       if (!response.ok) {
@@ -127,7 +141,16 @@ export class GoogleTranslateScraper {
       // Extraer idioma detectado
       const detectedLanguage = data[2] || 'auto';
       
-      console.log(`✅ Traducción simple exitosa: "${text}" → "${translatedText}" (${detectedLanguage} → ${targetLang})`);
+      // Si el idioma detectado es español, no traducir
+      if (detectedLanguage === 'es' || detectedLanguage === 'spa') {
+        return {
+          success: true,
+          translatedText: text,
+          detectedLanguage: 'es'
+        };
+      }
+      
+      console.log(`✅ Traducción simple exitosa: "${text.substring(0, 30)}..." → "${translatedText.substring(0, 30)}..." (${detectedLanguage} → ${targetLang})`);
       
       return {
         success: true,
