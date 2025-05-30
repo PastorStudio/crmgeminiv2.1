@@ -185,7 +185,9 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
   const { data: assignmentResponse } = useQuery({
     queryKey: ['/api/chat-assignments', chatId],
     queryFn: () => fetch(`/api/chat-assignments/${encodeURIComponent(chatId)}`).then(res => res.json()),
-    enabled: !!chatId
+    enabled: !!chatId,
+    refetchInterval: 3000, // Refrescar cada 3 segundos
+    refetchOnWindowFocus: true
   });
 
   // Cargar lista de agentes para obtener el nombre
@@ -236,7 +238,9 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
   const { data: assignmentResponse } = useQuery({
     queryKey: ['/api/chat-assignments', chatId],
     queryFn: () => fetch(`/api/chat-assignments/${encodeURIComponent(chatId)}`).then(res => res.json()),
-    enabled: !!chatId
+    enabled: !!chatId,
+    refetchInterval: 3000, // Refrescar cada 3 segundos
+    refetchOnWindowFocus: true
   });
 
   // Cargar lista de agentes para obtener el nombre
@@ -354,7 +358,9 @@ function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accoun
 function TicketStatusBadge({ chatId }: { chatId: string }) {
   const { data: assignment } = useQuery({
     queryKey: ['/api/chat-assignments', chatId],
-    enabled: !!chatId
+    enabled: !!chatId,
+    refetchInterval: 3000, // Refrescar cada 3 segundos
+    refetchOnWindowFocus: true
   });
 
   console.log('🎫 Debug Ticket Badge - chatId:', chatId, 'assignment:', assignment);
@@ -2288,30 +2294,7 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
 
-                  {/* SELECTOR DE AGENTE EXTERNO */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
-                  >
-                    <AgentSelector 
-                      chatId={selectedChat.id}
-                      accountId={selectedChat.accountId}
-                      onAgentChange={(agentId) => {
-                        console.log('🤖 Agente seleccionado:', agentId);
-                        // Actualizar ambos estados para activar respuestas automáticas
-                        setExternalAgentActive(!!agentId);
-                        setSmartBotsEnabled(!!agentId); // ✅ CRUCIAL: Activar SmartBots cuando hay agente
-                        setSelectedExternalAgent(agentId || '');
-                        
-                        console.log('✅ Estados actualizados:', {
-                          agentId,
-                          smartBotsEnabled: !!agentId,
-                          externalAgentActive: !!agentId
-                        });
-                      }}
-                    />
-                  </motion.div>
+                  {/* SELECTOR DE AGENTE EXTERNO REMOVIDO */}
 
 
 
