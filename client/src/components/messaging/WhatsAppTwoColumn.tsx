@@ -1921,11 +1921,19 @@ export function WhatsAppTwoColumn() {
       }
     }
     
+    // Si el mensaje fue traducido, almacenar el texto original para mostrarlo después
+    if (wasTranslated && originalMessage !== finalMessage) {
+      // Usar el contenido del mensaje traducido como clave para almacenar el original
+      setSentMessageOrigins(prev => ({
+        ...prev,
+        [finalMessage]: originalMessage
+      }));
+    }
+
     sendMessageMutation.mutate({
       chatId: selectedChat.id,
       accountId: selectedChat.accountId,
-      message: finalMessage,
-      originalMessage: wasTranslated ? originalMessage : undefined // Incluir mensaje original si fue traducido
+      message: finalMessage
     });
     
     // Si SmartBots está activado, generar respuesta automática sugerida
@@ -2578,12 +2586,12 @@ export function WhatsAppTwoColumn() {
                                       />
                                     )}
                                     {/* Mostrar texto original debajo del traducido para mensajes enviados */}
-                                    {message.fromMe && message.originalMessage && translationEnabled && (
+                                    {message.fromMe && translationEnabled && (sentMessageOrigins[message.id] || sentMessageOrigins[message.body]) && (
                                       <div className="mt-2 p-2 bg-gray-50 rounded-md border-l-4 border-gray-300">
                                         <div className="flex items-start gap-2">
                                           <span className="text-gray-600 text-xs font-medium">📝 Original:</span>
                                           <p className="text-gray-700 text-xs leading-relaxed flex-1">
-                                            {message.originalMessage}
+                                            {sentMessageOrigins[message.id] || sentMessageOrigins[message.body]}
                                           </p>
                                         </div>
                                       </div>
