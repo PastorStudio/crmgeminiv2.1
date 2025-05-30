@@ -30,13 +30,11 @@ export default function WhatsAppInterface() {
   const [inputTargetLanguage, setInputTargetLanguage] = useState("en");
   const [showInputTranslation, setShowInputTranslation] = useState(false);
 
-  // Obtener agentes reales del sistema - usando datos directos temporalmente
-  const agents = [
-    { id: 1, name: "Carlos Martinez", status: "online" },
-    { id: 2, name: "Maria Rodriguez", status: "online" },
-    { id: 3, name: "Juan Perez", status: "busy" },
-    { id: 4, name: "Ana Garcia", status: "offline" }
-  ];
+  // Obtener agentes reales del sistema
+  const { data: agents } = useQuery({
+    queryKey: ['/api/agents-list'],
+    queryFn: () => apiRequest('/api/agents-list')
+  });
 
   // Datos de ejemplo basados en la imagen de WhatsApp Web
   const whatsappChats = [
@@ -213,19 +211,15 @@ export default function WhatsAppInterface() {
   const handleInputTranslation = async (text: string) => {
     if (text.trim().length > 2) {
       try {
-        const response = await fetch('/api/detect-and-translate', {
+        const result = await apiRequest('/api/detect-and-translate', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+          body: {
             text: text,
             targetLanguage: inputTargetLanguage
-          })
+          }
         });
         
-        if (response.ok) {
-          const result = await response.json();
+        if (result.translatedText) {
           setTranslatedInput(result.translatedText);
         }
       } catch (error) {
