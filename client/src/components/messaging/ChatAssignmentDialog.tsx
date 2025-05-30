@@ -176,7 +176,7 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
       console.log('Enviando datos para crear asignación:', data);
       
       // Primero crear la asignación de agente usando endpoint directo
-      const assignmentResponse = await apiRequest('/api/direct/chat-assignment', {
+      const assignmentResponse = await apiRequest('/api/chat-assignments/direct', {
         method: 'POST',
         body: JSON.stringify(data),
       });
