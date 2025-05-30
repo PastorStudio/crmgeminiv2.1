@@ -2482,8 +2482,8 @@ export function WhatsAppTwoColumn() {
             </div>
 
             {/* Messages Area - Centered and Optimized */}
-            <ScrollArea className="flex-1 px-2 py-4">
-              <div className="max-w-4xl mx-auto">
+            <ScrollArea className="flex-1 py-4">
+              <div className="max-w-4xl mx-auto px-3">
                 {loadingMessages ? (
                   <div className="flex items-center justify-center h-32">
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -2495,7 +2495,7 @@ export function WhatsAppTwoColumn() {
                     <p>No hay mensajes en este chat</p>
                   </div>
                 ) : (
-                  <div className="space-y-4 px-2">
+                  <div className="space-y-4">
                   {messages.map((message, index) => {
                     const showAvatar = selectedChat.isGroup && !message.fromMe;
                     const isFirstFromAuthor = index === 0 || 
@@ -2512,9 +2512,9 @@ export function WhatsAppTwoColumn() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
-                        className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'} mb-2`}
+                        className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'} mb-2 px-1`}
                       >
-                        <div className={`flex space-x-2 max-w-[80%] ${message.fromMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                        <div className={`flex space-x-2 max-w-[85%] ${message.fromMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
                           {showAvatar && isFirstFromAuthor && (
                             <Avatar className="h-8 w-8 mt-1">
                               <AvatarImage src={message.authorProfilePic} />
