@@ -173,13 +173,15 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
   // Mutation para crear asignación Y ticket al mismo tiempo
   const createAssignmentMutation = useMutation({
     mutationFn: async (data: z.infer<typeof assignmentSchema>) => {
-      console.log('Enviando datos para crear asignación:', data);
+      console.log('🔧 Enviando datos para crear asignación:', data);
       
       // Primero crear la asignación de agente usando endpoint directo
       const assignmentResponse = await apiRequest('/api/chat-assignments/direct', {
         method: 'POST',
         body: JSON.stringify(data),
       });
+      
+      console.log('✅ Respuesta de asignación:', assignmentResponse);
       
       // Si hay categoría (ticket), crear también la categoría
       if (data.category && data.category !== '') {
@@ -222,13 +224,8 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
       // También invalidar las consultas generales para refrescar la lista de chats
       queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
       
-      // Cerrar diálogo y forzar actualización completa
+      // Cerrar diálogo
       onOpenChange(false);
-      
-      // Forzar actualización completa de la interfaz para mostrar cambios inmediatamente
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
     },
     onError: (error) => {
       console.error('Error al crear asignación:', error);
