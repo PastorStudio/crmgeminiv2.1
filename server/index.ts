@@ -4311,4 +4311,146 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
     }, 2000); // Esperar 2 segundos para que el servidor esté completamente listo
   });
 
+  // ========== NUEVOS ENDPOINTS PARA SISTEMAS MEJORADOS ==========
+
+  // Endpoint para procesar multimedia
+  app.post('/api/multimedia/process/:accountId/:chatId/:messageId', async (req: Request, res: Response) => {
+    try {
+      const { accountId, chatId, messageId } = req.params;
+      
+      const result = await MultimediaService.processMultimediaMessage(
+        parseInt(accountId), 
+        chatId, 
+        messageId
+      );
+      
+      if (result) {
+        res.json({ success: true, media: result });
+      } else {
+        res.status(404).json({ success: false, error: 'Multimedia no encontrado' });
+      }
+    } catch (error) {
+      console.error('Error procesando multimedia:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  // Endpoint para transcribir notas de voz
+  app.post('/api/multimedia/transcribe/:accountId/:chatId/:messageId', async (req: Request, res: Response) => {
+    try {
+      const { accountId, chatId, messageId } = req.params;
+      
+      const result = await MultimediaService.processVoiceNote(
+        parseInt(accountId), 
+        chatId, 
+        messageId
+      );
+      
+      if (result) {
+        res.json({ success: true, voice: result });
+      } else {
+        res.status(404).json({ success: false, error: 'Nota de voz no encontrada' });
+      }
+    } catch (error) {
+      console.error('Error procesando nota de voz:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  // Endpoints para respuestas automáticas mejoradas
+  app.post('/api/enhanced-auto-response/activate/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const success = await EnhancedAutoResponseService.activateAutoResponse(accountId);
+      
+      if (success) {
+        res.json({ success: true, message: 'Respuestas automáticas activadas' });
+      } else {
+        res.status(500).json({ success: false, error: 'Error activando respuestas automáticas' });
+      }
+    } catch (error) {
+      console.error('Error activando respuestas automáticas:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  app.post('/api/enhanced-auto-response/deactivate/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const success = await EnhancedAutoResponseService.deactivateAutoResponse(accountId);
+      
+      if (success) {
+        res.json({ success: true, message: 'Respuestas automáticas desactivadas' });
+      } else {
+        res.status(500).json({ success: false, error: 'Error desactivando respuestas automáticas' });
+      }
+    } catch (error) {
+      console.error('Error desactivando respuestas automáticas:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  app.get('/api/enhanced-auto-response/status', async (req: Request, res: Response) => {
+    try {
+      const status = EnhancedAutoResponseService.getAutoResponseStatus();
+      res.json({ success: true, status });
+    } catch (error) {
+      console.error('Error obteniendo estado de respuestas automáticas:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  // Endpoint para generar leads automáticamente
+  app.post('/api/automatic-leads/generate/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { chats } = req.body;
+      
+      if (!chats || !Array.isArray(chats)) {
+        return res.status(400).json({ success: false, error: 'Se requiere un array de chats' });
+      }
+      
+      const leads = await AutomaticLeadGenerator.processBatchLeadGeneration(accountId, chats);
+      
+      res.json({ 
+        success: true, 
+        leadsGenerated: leads.length,
+        leads: leads
+      });
+    } catch (error) {
+      console.error('Error generando leads automáticamente:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  // Endpoint para analizar chat individual y generar lead
+  app.post('/api/automatic-leads/analyze/:accountId/:chatId', async (req: Request, res: Response) => {
+    try {
+      const { accountId, chatId } = req.params;
+      const { messages } = req.body;
+      
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ success: false, error: 'Se requiere un array de mensajes' });
+      }
+      
+      const lead = await AutomaticLeadGenerator.analyzeAndCreateLead(
+        parseInt(accountId), 
+        chatId, 
+        messages
+      );
+      
+      if (lead) {
+        res.json({ success: true, lead });
+      } else {
+        res.json({ success: true, message: 'Chat no cumple criterios para generar lead' });
+      }
+    } catch (error) {
+      console.error('Error analizando chat para lead:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  // Inicializar el sistema de respuestas automáticas mejoradas
+  EnhancedAutoResponseService.initialize().catch(console.error);
+
 })();
