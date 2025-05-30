@@ -3389,42 +3389,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Importar el servicio de múltiples cuentas
       const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
       
-      // Obtener la instancia de WhatsApp para la cuenta específica
-      const instance = whatsappMultiAccountManager.getInstance(accountId);
+      // Usar el método sendMessage del manager que maneja mejor los errores
+      const result = await whatsappMultiAccountManager.sendMessage(accountId, chatId, message);
       
-      if (!instance || !instance.client) {
-        return res.status(400).json({ 
-          success: false, 
-          error: `Cuenta WhatsApp ${accountId} no encontrada o no conectada` 
+      if (result.success) {
+        console.log(`✅ Mensaje enviado exitosamente a chat ${chatId}`);
+        
+        res.json({
+          success: true,
+          messageId: result.messageId,
+          timestamp: result.timestamp,
+          message: "Mensaje enviado exitosamente"
+        });
+      } else {
+        console.log(`❌ Error enviando mensaje: ${result.error}`);
+        
+        res.status(500).json({
+          success: false,
+          error: result.error || 'Error enviando mensaje'
         });
       }
-
-      const state = await instance.client.getState();
-      if (state !== 'CONNECTED') {
-        return res.status(400).json({ 
-          success: false, 
-          error: `WhatsApp cuenta ${accountId} no está conectada (estado: ${state})` 
-        });
-      }
-
-      // Enviar el mensaje
-      const sentMessage = await instance.client.sendMessage(chatId, message);
       
-      console.log(`✅ Mensaje enviado exitosamente:`, sentMessage.id);
-      
-      // Respuesta exitosa
-      res.json({
-        success: true,
-        messageId: sentMessage.id?.id || sentMessage.id?._serialized,
-        timestamp: sentMessage.timestamp,
-        message: "Mensaje enviado exitosamente"
-      });
-
     } catch (error) {
-      console.error('❌ Error enviando mensaje:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: `Error enviando mensaje: ${(error as Error).message}` 
+      console.error('❌ Error en endpoint de envío:', error);
+      
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor al enviar mensaje'
       });
     }
   });
