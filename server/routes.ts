@@ -5429,3 +5429,60 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
 
   return httpServer;
 }
+
+  // Translation Cache endpoints
+  app.post("/api/translate", async (req: Request, res: Response) => {
+    try {
+      const { text, targetLanguage, context = "general" } = req.body;
+      
+      if (!text || !targetLanguage) {
+        return res.status(400).json({ message: "Text and target language are required" });
+      }
+
+      const translatedText = await TranslationCacheService.translateAndCache(text, targetLanguage, context);
+      res.json({ translatedText });
+    } catch (error) {
+      console.error("Translation error:", error);
+      res.status(500).json({ message: "Translation failed", translatedText: text });
+    }
+  });
+
+  app.post("/api/translate/batch", async (req: Request, res: Response) => {
+    try {
+      const { texts, targetLanguage } = req.body;
+      
+      if (!texts || !Array.isArray(texts) || !targetLanguage) {
+        return res.status(400).json({ message: "Texts array and target language are required" });
+      }
+
+      const translations = await TranslationCacheService.getMultipleTranslations(texts, targetLanguage);
+      const result: Record<string, string> = {};
+      
+      for (const [original, translated] of translations.entries()) {
+        result[original] = translated;
+      }
+
+      res.json({ translations: result });
+    } catch (error) {
+      console.error("Batch translation error:", error);
+      res.status(500).json({ message: "Batch translation failed" });
+    }
+  });
+
+  app.post("/api/translate/preload/:language", async (req: Request, res: Response) => {
+    try {
+      const { language } = req.params;
+      
+      await TranslationCacheService.preloadCommonTranslations(language);
+      res.json({ success: true, message: `Common translations preloaded for ${language}` });
+    } catch (error) {
+      console.error("Preload translation error:", error);
+      res.status(500).json({ message: "Failed to preload translations" });
+    }
+  });
+
+  // Analytics endpoints
+  registerAnalyticsRoutes(app);
+
+  return httpServer;
+}
