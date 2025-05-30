@@ -202,10 +202,22 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
   const users = usersResponse?.users || usersResponse || [];
   const assignment = assignmentResponse;
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Disparar evento para abrir el diálogo de asignación
+    window.dispatchEvent(new CustomEvent('openAssignmentDialog', { detail: { chatId, accountId } }));
+  };
+
   // Si no hay asignación, mostrar solo el muñequito sin texto
   if (!assignment || !assignment.assignedToId) {
     return (
-      <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
+      <Badge 
+        variant="secondary" 
+        className="bg-purple-100 text-purple-800 text-xs cursor-pointer hover:bg-purple-200 transition-colors"
+        onClick={handleClick}
+        title="Haz clic para asignar agente"
+      >
         <UserPlus className="h-3 w-3" />
       </Badge>
     );
@@ -220,14 +232,24 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
   // Si no se encuentra el agente, mostrar solo el icono
   if (!assignedAgent) {
     return (
-      <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
+      <Badge 
+        variant="secondary" 
+        className="bg-purple-100 text-purple-800 text-xs cursor-pointer hover:bg-purple-200 transition-colors"
+        onClick={handleClick}
+        title="Haz clic para modificar agente"
+      >
         <UserPlus className="h-3 w-3" />
       </Badge>
     );
   }
 
   return (
-    <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
+    <Badge 
+      variant="secondary" 
+      className="bg-purple-100 text-purple-800 text-xs cursor-pointer hover:bg-purple-200 transition-colors"
+      onClick={handleClick}
+      title="Haz clic para modificar agente"
+    >
       <UserPlus className="h-3 w-3 mr-1" />
       {assignedAgent.username}
     </Badge>
@@ -411,8 +433,24 @@ function TicketStatusBadge({ chatId }: { chatId: string }) {
 
   const ticketCategory = assignment.category || 'general';
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Abrir el diálogo de asignación para este chat
+    const assignmentDialog = document.querySelector('[data-assignment-dialog-trigger]') as HTMLButtonElement;
+    if (assignmentDialog) {
+      // Establecer el chat actual
+      window.dispatchEvent(new CustomEvent('openAssignmentDialog', { detail: { chatId } }));
+    }
+  };
+
   return (
-    <Badge variant="outline" className={`text-xs ${getTicketColor(ticketCategory)}`}>
+    <Badge 
+      variant="outline" 
+      className={`text-xs cursor-pointer transition-colors hover:shadow-md ${getTicketColor(ticketCategory)}`}
+      onClick={handleClick}
+      title="Haz clic para modificar el ticket"
+    >
       <span className="mr-1">{getTicketIcon(ticketCategory)}</span>
       {getTicketLabel(ticketCategory)}
     </Badge>
@@ -507,6 +545,8 @@ export function WhatsAppTwoColumn() {
   const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
+  const [assignmentChatId, setAssignmentChatId] = useState<string>('');
+  const [assignmentAccountId, setAssignmentAccountId] = useState<number>(1);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserProfile, setShowUserProfile] = useState(false);
