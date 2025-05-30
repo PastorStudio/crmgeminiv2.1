@@ -13,9 +13,9 @@ import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/authContext";
 import { Loader2, Sun, Moon, Coffee, Star } from "lucide-react";
 import { getRealNow, formatNYTime } from "@/lib/timeSync";
-import { PageTranslationSelector, usePageTranslation } from "@/components/translation/PageTranslator";
+import { DatabaseTranslationProvider, DatabaseLanguageSelector } from "@/components/translation/DatabaseTranslator";
 
-export default function Dashboard() {
+function DashboardContent() {
   // Estados para el proceso de importación
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<null | {
@@ -28,8 +28,8 @@ export default function Dashboard() {
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // Obtener el idioma actual del sistema de traducción
-  const { currentLanguage } = usePageTranslation();
+  // Hook para el sistema de traducción con base de datos
+  // const { currentLanguage } = useDatabaseTranslation();
 
   // Update time every second usando fecha sincronizada
   useEffect(() => {
@@ -203,7 +203,7 @@ export default function Dashboard() {
               <div className="flex items-center space-x-3">
                 {/* Selector de traducción global */}
                 <div className="bg-white/10 px-3 py-2 rounded-lg border border-white/20">
-                  <PageTranslationSelector />
+                  <DatabaseLanguageSelector />
                 </div>
                 
                 {/* Reloj del sistema */}
