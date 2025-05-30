@@ -114,6 +114,28 @@ async function main() {
   // Sistema limpio sin respuestas automáticas
   console.log("✅ Sistema inicializado correctamente sin respuestas automáticas");
 
+  // Endpoint para obtener agentes internos reales de la tabla users
+  app.get("/api/agents-list", async (req: Request, res: Response) => {
+    try {
+      const { users } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      const result = await db.select({
+        id: users.id,
+        name: users.fullName,
+        email: users.email,
+        department: users.department,
+        status: users.status,
+        role: users.role
+      }).from(users).where(eq(users.role, 'agent')).limit(20);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error obteniendo agentes:", error);
+      res.status(500).json({ error: "Error obteniendo agentes" });
+    }
+  });
+
   // Endpoint para detectar idioma y traducir mensajes usando Gemini AI
   app.post("/api/detect-and-translate", async (req: Request, res: Response) => {
     try {
