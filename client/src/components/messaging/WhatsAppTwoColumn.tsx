@@ -1827,7 +1827,9 @@ export function WhatsAppTwoColumn() {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedChat) return;
     
-    let finalMessage = newMessage.trim();
+    const originalMessage = newMessage.trim();
+    let finalMessage = originalMessage;
+    let wasTranslated = false;
     
     // Si el traductor está activado, traducir el mensaje antes de enviarlo
     if (translationEnabled) {
@@ -1854,6 +1856,7 @@ export function WhatsAppTwoColumn() {
           
           if (translatedText && translatedText !== finalMessage) {
             finalMessage = translatedText;
+            wasTranslated = true;
             console.log('✅ Mensaje traducido:', finalMessage);
             
             toast({
