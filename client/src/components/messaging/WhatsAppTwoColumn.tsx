@@ -39,312 +39,153 @@ import {
   Video,
   File,
   Loader2,
-  Zap,
   Ticket,
-  Bot,
-  Play,
-  RefreshCw
+  Bot
 } from 'lucide-react';
 
 // Import components
 import { AccountSelector } from './AccountSelector';
-import ChatAssignmentDialog from './ChatAssignmentDialog';
-import { AutoResponseFixed } from './AutoResponseFixed';
-import { ChatCommentsDialog } from './ChatCommentsDialog';
-import { ExternalAgentButton } from './ExternalAgentButton';
-import { AgentSelector } from './AgentSelector';
+import { ChatAssignmentDialog } from './ChatAssignmentDialog';
 
-import { VoiceNoteMessage } from './VoiceNoteMessage';
-
-// Sistema de traducción simple usando Google Translate API (igual que mensajes enviados)
-const translationCache = new Map<string, string>();
-
+// Translation functionality
 function MessageTranslation({ text, messageId, translationEnabled, messages }: { 
   text: string; 
   messageId: string; 
   translationEnabled: boolean;
-  messages?: any[];
+  messages: WhatsAppMessage[];
 }) {
-  const [translation, setTranslation] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [translatedText, setTranslatedText] = useState<string>('');
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
 
-  useEffect(() => {
-    if (!translationEnabled || !text || text.trim().length === 0) {
-      setTranslation(null);
+  const handleTranslate = async () => {
+    if (!translationEnabled) {
+      toast({
+        title: "Translation disabled",
+        description: "Enable translation in settings to use this feature.",
+        variant: "default"
+      });
       return;
     }
 
-    // Solo traducir los últimos 2 mensajes recibidos
-    if (!messages || messages.length === 0) return;
-    
-    const incomingMessages = messages.filter(msg => !msg.fromMe);
-    if (incomingMessages.length === 0) return;
-    
-    const lastIncomingMessage = incomingMessages[incomingMessages.length - 1];
-    const secondLastIncomingMessage = incomingMessages[incomingMessages.length - 2];
-    
-    const shouldTranslate = messageId === lastIncomingMessage.id || 
-                           (secondLastIncomingMessage && messageId === secondLastIncomingMessage.id);
-    
-    if (!shouldTranslate) {
-      setTranslation(null);
-      return;
-    }
-
-    const trimmedText = text.trim();
-
-    // Verificar cache
-    if (translationCache.has(trimmedText)) {
-      setTranslation(translationCache.get(trimmedText) || null);
-      return;
-    }
-
-    // Detectar español básico localmente
-    const spanishPattern = /[áéíóúñ¿¡]|hola|gracias|buenos|días|noches|como|estas|que|tal|por|favor|bien|mal|muy|pero|con|una|para|esta|todo|desde|hasta/i;
-    if (spanishPattern.test(trimmedText) || trimmedText.length < 4) {
-      return; // No traducir texto en español
-    }
-
-    const translateMessage = async () => {
-      setIsLoading(true);
-      try {
-        console.log('🌐 Iniciando traducción para:', trimmedText);
-        
-        // Primero intentar con Google Translate API directa
-        try {
-          const googleTranslateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=es&dt=t&q=${encodeURIComponent(trimmedText)}`;
-          
-          const response = await fetch(googleTranslateUrl);
-          
-          if (response.ok) {
-            const data = await response.json();
-            
-            if (data && data[0] && data[0][0] && data[0][0][0]) {
-              const translatedText = data[0][0][0];
-              console.log('✅ Traducción exitosa:', translatedText);
-              
-              // Solo mostrar si realmente se tradujo
-              if (translatedText !== trimmedText && translatedText.toLowerCase() !== trimmedText.toLowerCase()) {
-                translationCache.set(trimmedText, translatedText);
-                setTranslation(translatedText);
-                return;
-              }
-            }
-          }
-        } catch (corsError) {
-          console.log('❌ Error CORS con Google Translate API directa');
-        }
-
-        // Si falla Google Translate directo, usar nuestra API como respaldo
-        console.log('🔄 Usando API de respaldo para traducción');
-        const fallbackResponse = await fetch('/api/translate-message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: trimmedText, messageId })
-        });
-
-        if (fallbackResponse.ok) {
-          const result = await fallbackResponse.json();
-          console.log('✅ Traducción de respaldo exitosa:', result);
-          
-          if (result.success && result.translatedText && result.detectedLanguage !== 'es') {
-            translationCache.set(trimmedText, result.translatedText);
-            setTranslation(result.translatedText);
-          }
-        }
-        
-      } catch (error) {
-        console.log('❌ Error en traducción:', error);
-      } finally {
-        setIsLoading(false);
+    setIsTranslating(true);
+    try {
+      const response = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, target: 'es' })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setTranslatedText(data.translatedText);
+        setShowTranslation(true);
       }
-    };
-
-    // Delay para evitar spam
-    const timeout = setTimeout(translateMessage, 500);
-    return () => clearTimeout(timeout);
-  }, [text, messageId, translationEnabled, messages]);
+    } catch (error) {
+      console.error('Translation error:', error);
+      toast({
+        title: "Translation failed",
+        description: "Could not translate message.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   if (!translationEnabled) return null;
-  if (isLoading) return <div className="text-xs text-gray-500 mt-1">Traduciendo...</div>;
-  if (!translation) return null;
 
   return (
-    <div className="mt-2 p-2 bg-blue-50 rounded-md border-l-4 border-blue-300">
-      <div className="flex items-start gap-2">
-        <span className="text-blue-600 text-xs font-medium">🌐 → 🇪🇸</span>
-        <p className="text-blue-700 text-xs leading-relaxed flex-1">
-          {translation}
-        </p>
-      </div>
+    <div className="mt-1">
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={handleTranslate}
+        disabled={isTranslating}
+        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+      >
+        {isTranslating ? (
+          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+        ) : (
+          <Languages className="h-3 w-3 mr-1" />
+        )}
+        Translate
+      </Button>
+      
+      {showTranslation && (
+        <div className="mt-1 p-2 bg-muted rounded text-sm text-muted-foreground">
+          {translatedText}
+        </div>
+      )}
     </div>
   );
 }
 
 function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
-  const { data: assignmentResponse } = useQuery({
+  const { data: assignment } = useQuery({
     queryKey: ['/api/chat-assignments', chatId],
-    queryFn: () => fetch(`/api/chat-assignments/${encodeURIComponent(chatId)}`).then(res => res.json()),
-    enabled: !!chatId,
-    refetchInterval: 3000, // Refrescar cada 3 segundos
-    refetchOnWindowFocus: true
+    enabled: !!chatId
   });
 
-  // Cargar lista de agentes para obtener el nombre
-  const { data: usersResponse } = useQuery({
-    queryKey: ['/api/users'],
-    staleTime: 60000, // Cache por 1 minuto
-  });
-
-  console.log('🔍 Debug Badge - Assignment:', assignmentResponse);
-  console.log('🔍 Debug Badge - Users:', usersResponse);
-
-  const users = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.users || []);
-  const assignment = assignmentResponse;
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Disparar evento para abrir el diálogo de asignación
-    window.dispatchEvent(new CustomEvent('openAssignmentDialog', { detail: { chatId, accountId } }));
-  };
-
-  // Si no hay asignación, mostrar solo el muñequito sin texto
-  if (!assignment || !assignment.assignedToId) {
-    return (
-      <Badge 
-        variant="secondary" 
-        className="bg-purple-100 text-purple-800 text-xs cursor-pointer hover:bg-purple-200 transition-colors"
-        onClick={handleClick}
-        title="Haz clic para asignar agente"
-      >
-        <UserPlus className="h-3 w-3" />
-      </Badge>
-    );
+  if (!assignment?.data?.users || assignment.data.users.length === 0) {
+    return null;
   }
 
-  // Usar el nombre del agente que viene en la respuesta de asignación
-  const agentName = assignment.agentName || 'Agente';
-  
-  console.log('🔍 Debug Badge - Assigned Agent Name:', agentName);
-  console.log('🔍 Debug Badge - Assignment ID:', assignment.assignedToId);
-
   return (
-    <Badge 
-      variant="secondary" 
-      className="bg-purple-100 text-purple-800 text-xs cursor-pointer hover:bg-purple-200 transition-colors"
-      onClick={handleClick}
-      title={`Asignado a: ${agentName}. Haz clic para modificar`}
-    >
-      <UserPlus className="h-3 w-3 mr-1" />
-      {agentName}
+    <Badge variant="secondary" className="text-xs">
+      <User className="h-3 w-3 mr-1" />
+      {assignment.data.users.length} assigned
     </Badge>
   );
 }
 
 function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
-  const { data: assignmentResponse } = useQuery({
+  const { data: assignment } = useQuery({
     queryKey: ['/api/chat-assignments', chatId],
-    queryFn: () => fetch(`/api/chat-assignments/${encodeURIComponent(chatId)}`).then(res => res.json()),
-    enabled: !!chatId,
-    refetchInterval: 3000, // Refrescar cada 3 segundos
-    refetchOnWindowFocus: true
+    enabled: !!chatId
   });
 
-  // Cargar lista de agentes para obtener el nombre
-  const { data: usersResponse } = useQuery({
-    queryKey: ['/api/users'],
-    staleTime: 60000, // Cache por 1 minuto
-  });
-
-  console.log('🔍 Debug Header - Assignment:', assignmentResponse);
-  console.log('🔍 Debug Header - Users:', usersResponse);
-
-  const users = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.users || []);
-  const assignment = assignmentResponse;
-
-  // Si no hay asignación, mostrar badge "Sin asignar"
-  if (!assignment || !assignment.assignedToId) {
+  if (!assignment?.data?.users || assignment.data.users.length === 0) {
     return (
-      <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600 border-gray-200">
-        <span className="mr-1">⭕</span>
-        Sin asignar
+      <Badge variant="outline" className="text-xs">
+        <UserPlus className="h-3 w-3 mr-1" />
+        Unassigned
       </Badge>
     );
   }
 
-  // Usar el nombre del agente que viene en la respuesta de asignación
-  const agentName = assignment.agentName || 'Agente';
-  const agentStatus = assignment.status === 'active' ? 'Asignado' : 'Inactivo';
-  
-  console.log('🔍 Debug Header - Assigned Agent:', agentName);
-  console.log('🔍 Debug Header - Assignment ID:', assignment.assignedToId);
-
   return (
-    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200">
-      <span className="mr-1">👤</span>
-      {agentName}
+    <Badge variant="default" className="text-xs">
+      <User className="h-3 w-3 mr-1" />
+      {assignment.data.users.length} agent{assignment.data.users.length !== 1 ? 's' : ''}
     </Badge>
   );
 }
 
 function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
-  const { data: category, error } = useQuery({
-    queryKey: ['/api/chat-categories', chatId],
-    enabled: !!chatId,
-    retry: 1,
-    refetchOnWindowFocus: false
+  const { data: assignment } = useQuery({
+    queryKey: ['/api/chat-assignments', chatId],
+    enabled: !!chatId
   });
 
-  // Debug para verificar qué está recibiendo
-  console.log('🎫 Debug Badge Category - chatId:', chatId, 'data:', category, 'error:', error);
-
-  // Solo mostrar si hay un ticket real (no mostrar "Sin ticket")
-  if (!category) {
+  if (!assignment?.data?.status) {
     return null;
   }
 
-  const getTicketColor = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'nuevos': return 'bg-green-50 text-green-700 border-green-200';
-      case 'interesados': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-      case 'no-leidos': return 'bg-red-50 text-red-700 border-red-200';
-      case 'pendiente-demo': return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'completados': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'no-interesados': return 'bg-gray-50 text-gray-700 border-gray-200';
-      default: return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'new': return 'bg-blue-500';
+      case 'in_progress': return 'bg-yellow-500';
+      case 'resolved': return 'bg-green-500';
+      case 'closed': return 'bg-gray-500';
+      default: return 'bg-gray-400';
     }
   };
-
-  const getTicketIcon = (status: string) => {
-    switch (status) {
-      case 'nuevos': return '📋';
-      case 'interesados': return '💡';
-      case 'no-leidos': return '📧';
-      case 'pendiente-demo': return '🎯';
-      case 'completados': return '✅';
-      case 'no-interesados': return '❌';
-      default: return '📋';
-    }
-  };
-
-  const status = category?.status;
-
-  // Solo mostrar el badge si hay un ticket asignado (status existe y no es 'sin-ticket')
-  if (!status || status === 'sin-ticket') {
-    return null;
-  }
 
   return (
-    <Badge variant="outline" className={`text-xs ${getTicketColor(status)}`}>
-      <span className="mr-1">{getTicketIcon(status)}</span>
-      {status === 'nuevos' ? 'Nuevos' :
-       status === 'interesados' ? 'Interesados' :
-       status === 'no-leidos' ? 'No Leidos' :
-       status === 'pendiente-demo' ? 'Pendiente Demo' :
-       status === 'completados' ? 'Completados' :
-       status === 'no-interesados' ? 'No Interesados' :
-       'Sin ticket'}
+    <Badge variant="secondary" className="text-xs">
+      <div className={`w-2 h-2 rounded-full mr-1 ${getStatusColor(assignment.data.status)}`} />
+      {assignment.data.status.replace('_', ' ')}
     </Badge>
   );
 }
@@ -352,124 +193,53 @@ function ChatCategorizationBadge({ chatId, accountId }: { chatId: string; accoun
 function TicketStatusBadge({ chatId }: { chatId: string }) {
   const { data: assignment } = useQuery({
     queryKey: ['/api/chat-assignments', chatId],
-    enabled: !!chatId,
-    refetchInterval: 3000, // Refrescar cada 3 segundos
-    refetchOnWindowFocus: true
+    enabled: !!chatId
   });
 
-  console.log('🎫 Debug Ticket Badge - chatId:', chatId, 'assignment:', assignment);
-
-  const getTicketColor = (category: string) => {
-    switch (category) {
-      case 'nuevos': return 'bg-green-50 text-green-700 border-green-200';
-      case 'interesados': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'no-leidos': return 'bg-red-50 text-red-700 border-red-200';
-      case 'pendiente-demo': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-      case 'completados': return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'no-interesados': return 'bg-gray-50 text-gray-700 border-gray-200';
-      case 'general': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      default: return 'bg-gray-50 text-gray-500 border-gray-200';
-    }
-  };
-
-  const getTicketIcon = (category: string) => {
-    switch (category) {
-      case 'nuevos': return '🆕';
-      case 'interesados': return '👍';
-      case 'no-leidos': return '📬';
-      case 'pendiente-demo': return '⏳';
-      case 'completados': return '✅';
-      case 'no-interesados': return '❌';
-      case 'general': return '🎫';
-      default: return '📋';
-    }
-  };
-
-  const getTicketLabel = (category: string) => {
-    switch (category) {
-      case 'nuevos': return 'Nuevos';
-      case 'interesados': return 'Interesados';
-      case 'no-leidos': return 'No Leídos';
-      case 'pendiente-demo': return 'Pendiente Demo';
-      case 'completados': return 'Completados';
-      case 'no-interesados': return 'No Interesados';
-      case 'general': return 'General';
-      default: return 'Ticket';
-    }
-  };
-
-  // Solo mostrar si hay un ticket asignado activo
-  if (!assignment || assignment.status !== 'active') {
+  if (!assignment?.data?.category) {
     return null;
   }
 
-  const ticketCategory = assignment.category || 'general';
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Abrir el diálogo de asignación para este chat
-    const assignmentDialog = document.querySelector('[data-assignment-dialog-trigger]') as HTMLButtonElement;
-    if (assignmentDialog) {
-      // Establecer el chat actual
-      window.dispatchEvent(new CustomEvent('openAssignmentDialog', { detail: { chatId } }));
-    }
-  };
-
   return (
-    <Badge 
-      variant="outline" 
-      className={`text-xs cursor-pointer transition-colors hover:shadow-md ${getTicketColor(ticketCategory)}`}
-      onClick={handleClick}
-      title="Haz clic para modificar el ticket"
-    >
-      <span className="mr-1">{getTicketIcon(ticketCategory)}</span>
-      {getTicketLabel(ticketCategory)}
+    <Badge variant="outline" className="text-xs">
+      <Tag className="h-3 w-3 mr-1" />
+      {assignment.data.category}
     </Badge>
   );
 }
 
 function ChatCommentsIndicator({ chatId }: { chatId: string }) {
-  const { data: comments = [] } = useQuery({
+  const { data: comments } = useQuery({
     queryKey: ['/api/chat-comments', chatId],
     enabled: !!chatId
   });
 
-  // Solo mostrar si hay comentarios
-  if (!comments || comments.length === 0) {
+  if (!comments?.data?.length || comments.data.length === 0) {
     return null;
   }
 
   return (
-    <div className="flex items-center relative">
-      <MessageSquareMore className="h-4 w-4 text-orange-600" />
-      <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-[10px] rounded-full h-5 w-5 flex items-center justify-center font-bold border-2 border-white">
-        {comments.length > 99 ? '99+' : comments.length}
-      </div>
-    </div>
+    <Badge variant="secondary" className="text-xs">
+      <MessageSquareMore className="h-3 w-3 mr-1" />
+      {comments.data.length} comment{comments.data.length !== 1 ? 's' : ''}
+    </Badge>
   );
 }
 
 function WhatsAppAccountBadge({ accountId }: { accountId: number }) {
-  const { data: accounts = [] } = useQuery({
-    queryKey: ['/api/whatsapp/accounts'],
-    staleTime: 30000, // Cache por 30 segundos
-  });
+  const { data: accounts } = useQuery({ queryKey: ['/api/whatsapp-accounts'] });
 
-  const account = accounts.find((acc: any) => acc.id === accountId);
-  
-  if (!account) {
-    return (
-      <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600">
-        #{accountId}
-      </Badge>
-    );
+  if (!accounts || typeof accounts !== 'object') {
+    return null;
   }
 
+  const account = (accounts as any[]).find((acc: any) => acc.id === accountId);
+  if (!account) return null;
+
   return (
-    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+    <Badge variant="outline" className="text-xs">
       <Smartphone className="h-3 w-3 mr-1" />
-      {account.name || `#${accountId}`}
+      {account.name}
     </Badge>
   );
 }
@@ -512,802 +282,62 @@ interface WhatsAppAccount {
 }
 
 export function WhatsAppTwoColumn() {
+  // Core component states
+  const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
   const [selectedChat, setSelectedChat] = useState<WhatsAppChat | null>(null);
   const [newMessage, setNewMessage] = useState('');
-  const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
-  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
-  const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
-  const [assignmentChatId, setAssignmentChatId] = useState<string>('');
-  const [assignmentAccountId, setAssignmentAccountId] = useState<number>(1);
-
   const [searchQuery, setSearchQuery] = useState('');
-  const [showUserProfile, setShowUserProfile] = useState(false);
   const [translatorEnabled, setTranslatorEnabled] = useState(false);
-  const [smartBotsEnabled, setSmartBotsEnabled] = useState(false);
-  const [selectedExternalAgent, setSelectedExternalAgent] = useState<string>('');
   
-  // Estados para auto-envío con delay de 5 segundos
-  const [autoSendTimer, setAutoSendTimer] = useState<NodeJS.Timeout | null>(null);
-  const [isAutoSending, setIsAutoSending] = useState(false);
-  
-  // Estados para R.A. AI
-  const [raAiEnabled, setRaAiEnabled] = useState(false);
-  const [raAiProcessing, setRaAiProcessing] = useState(false);
+  // Assignment dialog states
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const [assignmentChatId, setAssignmentChatId] = useState<string>('');
+  const [assignmentAccountId, setAssignmentAccountId] = useState<number>(0);
   
   // Estado para almacenar mensajes originales de envíos traducidos
   const [sentMessageOrigins, setSentMessageOrigins] = useState<Record<string, string>>({});
 
-  // Estados para Auto-Click con configuración personalizada
-  const [autoClickTimers, setAutoClickTimers] = useState<{ ae: NodeJS.Timeout | null; send: NodeJS.Timeout | null }>({ ae: null, send: null });
-  const [autoClickEnabled, setAutoClickEnabled] = useState(false);
-  const [showAutoClickConfig, setShowAutoClickConfig] = useState(false);
-  const [autoClickSettings, setAutoClickSettings] = useState({
-    aeWaitTime: 4000,  // Tiempo de espera después del clic A.E (milisegundos)
-    sendWaitTime: 8000, // Tiempo entre ciclos de auto-clic (milisegundos)
-    enabled: false
-  });
-  
-  // Clean messaging functionality without broken auto-response systems
-          setTimeout(() => {
-            console.log('⏱️ Buscando botón Enviar con múltiples métodos...');
-            let sendButtonFound = false;
-            
-            // MÉTODO 1: Buscar por texto
-            const textButtons = Array.from(document.querySelectorAll('button')).filter(btn => 
-              (btn.textContent?.includes('Enviar') || btn.textContent?.includes('Send')) && !btn.disabled
-            );
-            
-            if (textButtons.length > 0) {
-              console.log('🔴 MÉTODO 1 - Encontrado botón por texto, haciendo clic...');
-              textButtons[0].click();
-              sendButtonFound = true;
-            }
-            
-            // MÉTODO 2: Buscar por clase CSS (botón verde)
-            if (!sendButtonFound) {
-              const greenButtons = Array.from(document.querySelectorAll('button')).filter(btn => 
-                btn.className?.includes('bg-green') && !btn.disabled
-              );
-              
-              if (greenButtons.length > 0) {
-                console.log('🔴 MÉTODO 2 - Encontrado botón verde, haciendo clic...');
-                greenButtons[0].click();
-                sendButtonFound = true;
-              }
-            }
-            
-            // MÉTODO 3: Buscar por ícono SVG (Send icon)
-            if (!sendButtonFound) {
-              const svgButtons = Array.from(document.querySelectorAll('button')).filter(btn => {
-                const svg = btn.querySelector('svg');
-                return svg && !btn.disabled;
-              });
-              
-              // Tomar el último botón con SVG (probablemente el Send)
-              if (svgButtons.length > 0) {
-                const lastSvgButton = svgButtons[svgButtons.length - 1];
-                console.log('🔴 MÉTODO 3 - Encontrado botón con ícono, haciendo clic...');
-                lastSvgButton.click();
-                sendButtonFound = true;
-              }
-            }
-            
-            // MÉTODO 4: Buscar en el área de input específicamente
-            if (!sendButtonFound) {
-              const inputArea = document.querySelector('.flex.space-x-2') || document.querySelector('[class*="input"]');
-              if (inputArea) {
-                const inputButtons = inputArea.querySelectorAll('button');
-                if (inputButtons.length > 0) {
-                  const sendButton = inputButtons[inputButtons.length - 1]; // Último botón del área de input
-                  if (!sendButton.disabled) {
-                    console.log('🔴 MÉTODO 4 - Encontrado botón en área de input, haciendo clic...');
-                    sendButton.click();
-                    sendButtonFound = true;
-                  }
-                }
-              }
-            }
-            
-            if (sendButtonFound) {
-              console.log('✅ SECUENCIA COMPLETADA: A.E → Enviar');
-            } else {
-              console.log('❌ No se encontró botón Enviar con ningún método');
-            }
-          }, autoClickSettings.aeWaitTime); // Tiempo configurable para que se genere la respuesta
-        }
-      });
-      
-      if (!aeButtonFound) {
-        console.log('❌ No se encontró botón A.E');
-      }
-      
-    }, 8000); // Cada 8 segundos
+  // Setup query client and WebSocket
+  const queryClient = useQueryClient();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    setAutoClickTimers({ ae: timer, send: null });
-    setAutoClickEnabled(true);
-    
-    console.log("✅ Auto-Clic simplificado activado");
-    
-    /*
-    const timer = setInterval(() => {
-      console.log('⏰ Timer ejecutándose cada 4 segundos...');
-      
-      // Buscar todos los botones
-      const allButtons = document.querySelectorAll('button');
-      console.log(`🔍 Total botones encontrados: ${allButtons.length}`);
-      
-      // 1. BUSCAR Y HACER CLIC EN A.E
-      let aeButtonFound = false;
-      allButtons.forEach((btn, index) => {
-        const buttonText = btn.textContent || '';
-        console.log(`Botón ${index}: "${buttonText}"`);
-        
-        if (buttonText.includes('A.E')) {
-          console.log('🎯 ENCONTRADO BOTÓN A.E - HACIENDO CLIC');
-          aeButtonFound = true;
-          btn.click();
-          
-          // 2. ESPERAR 2 SEGUNDOS Y BUSCAR ENVIAR
-          setTimeout(() => {
-            console.log('⏱️ Buscando botón Enviar...');
-            const sendButtons = document.querySelectorAll('button');
-            let sendButtonFound = false;
-            
-            sendButtons.forEach(sendBtn => {
-              const sendText = sendBtn.textContent || '';
-              if (sendText.includes('Enviar')) {
-                console.log('📤 ENCONTRADO BOTÓN ENVIAR - HACIENDO CLIC');
-                sendButtonFound = true;
-                sendBtn.click();
-              }
-            });
-            
-            if (!sendButtonFound) {
-              console.log('❌ No se encontró botón Enviar');
-            }
-          }, 2000);
-        }
-      });
-      
-      if (!aeButtonFound) {
-        console.log('❌ No se encontró botón A.E');
-      }
-      
-    }, autoClickSettings.sendWaitTime); // Intervalo configurable entre ciclos
-
-    setAutoClickTimers({ ae: timer, send: null });
-    setAutoClickEnabled(true);
-    
-    console.log("✅ Auto-Clic configurado y activado");
-    */
-  };
-
-  // Función para detener auto-clics
-  const stopAutoClicks = () => {
-    console.log('🛑 DETENIENDO AUTO-CLICS');
-    
-    if (autoClickTimers.ae) {
-      clearInterval(autoClickTimers.ae);
-    }
-    if (autoClickTimers.send) {
-      clearInterval(autoClickTimers.send);
-    }
-    
-    setAutoClickTimers({ ae: null, send: null });
-    setAutoClickEnabled(false);
-    
-    // toast desactivado para evitar errores
-    console.log("🛑 Auto-Clics Desactivados - Sistema manual reactivado");
-  };
-
-  // Función para configurar auto-click
-  const configureAutoClick = () => {
-    if (autoClickEnabled) {
-      console.log('⏹️ Deteniendo auto-clic...');
-      stopAutoClicks();
-    } else {
-      console.log('▶️ Iniciando auto-clic...');
-      startAutoClicks();
-    }
-  };
-
-  // Función para guardar configuración de auto-click
-  const saveAutoClickSettings = (newSettings: typeof autoClickSettings) => {
-    setAutoClickSettings(newSettings);
-    setShowAutoClickConfig(false);
-    
-    // Si auto-click está activo, reiniciarlo con nueva configuración
-    if (autoClickEnabled) {
-      stopAutoClicks();
-      setTimeout(() => startAutoClicks(), 500);
-    }
-  };
-
-  // Estados para A.E AI (Agentes Externos)
-  const [externalAgentActive, setExternalAgentActive] = useState(false);
-  const [externalAgentProcessing, setExternalAgentProcessing] = useState(false);
-  const [externalAgentUrl, setExternalAgentUrl] = useState<string>('');
-
-  // Cargar estado del agente externo al seleccionar chat
+  // Setup WebSocket connection
   useEffect(() => {
-    const loadAgentStatus = async () => {
-      if (!selectedChat) return;
-      
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+      console.log('WebSocket connected');
+    };
+
+    socket.onmessage = (event) => {
       try {
-        const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/agent-config`);
-        const data = await response.json();
+        const data = JSON.parse(event.data);
         
-        if (data.success && data.config) {
-          const isActive = data.config.autoResponseEnabled && data.config.assignedExternalAgentId;
-          setExternalAgentActive(isActive);
-          console.log(`📊 Estado A.E AI cargado: ${isActive ? 'ACTIVO' : 'INACTIVO'}`);
+        if (data.type === 'new_message') {
+          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-chats'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-messages'] });
+        }
+        
+        if (data.type === 'chat_assignment') {
+          queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
         }
       } catch (error) {
-        console.error('Error cargando estado A.E AI:', error);
+        console.error('Error parsing WebSocket message:', error);
       }
     };
 
-    loadAgentStatus();
-  }, [selectedChat]);
+    socket.onclose = () => {
+      console.log('WebSocket disconnected');
+    };
 
-  // Función para alternar A.E AI (Agentes Externos)
-  const toggleExternalAgent = async () => {
-    console.log('🚀 USUARIO PRESIONÓ BOTÓN A.E AI');
-    
-    if (!selectedChat) {
-      console.log('❌ No hay chat seleccionado');
-      toast({
-        title: "Error",
-        description: "Selecciona un chat primero",
-        variant: "destructive"
-      });
-      return;
-    }
+    return () => {
+      socket.close();
+    };
+  }, [queryClient]);
 
-    try {
-      setExternalAgentProcessing(true);
-      const newState = !externalAgentActive;
-      
-      console.log('📤 Enviando solicitud A.E AI:', {
-        chatId: selectedChat.id,
-        accountId: selectedChat.accountId,
-        active: newState
-      });
-      
-      const response = await fetch('/api/ae-ai/toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          chatId: selectedChat.id,
-          accountId: selectedChat.accountId,
-          active: newState
-        })
-      });
-      
-      console.log('📥 Respuesta del servidor:', response.status, response.statusText);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.log('❌ Error HTTP:', errorText);
-        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-      }
-      
-      const result = await response.json();
-      console.log('✅ Resultado procesado:', result);
-      
-      if (result.success) {
-        setExternalAgentActive(result.active);
-        setExternalAgentUrl(result.agentUrl || '');
-        
-        // Si se activó, abrir el enlace del agente externo
-        if (result.active && result.agentUrl) {
-          window.open(result.agentUrl, '_blank');
-        }
-        
-        toast({
-          title: `🤖 A.E AI ${result.active ? 'Activado' : 'Desactivado'}`,
-          description: result.active 
-            ? `Agente externo conectado para ${selectedChat.name}`
-            : `Agente externo desconectado`,
-        });
-      } else {
-        console.log('❌ Respuesta sin éxito:', result);
-        toast({
-          title: "Error",
-          description: result.message || "No se pudo activar el agente externo",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('💥 ERROR CRÍTICO A.E AI:', error);
-      toast({
-        title: "Error de Conexión",
-        description: "No se pudo conectar con el servidor. Verifica tu conexión.",
-        variant: "destructive"
-      });
-      setExternalAgentActive(false);
-      setExternalAgentUrl('');
-    } finally {
-      setExternalAgentProcessing(false);
-    }
-  };
-
-  // Función para alternar R.A. AI
-  const toggleRaAi = async () => {
-    try {
-      setRaAiProcessing(true);
-      const newState = !raAiEnabled;
-      
-      const response = await fetch('/api/ra-ai/toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active: newState })
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setRaAiEnabled(result.active);
-        toast({
-          title: `🤖 R.A. AI ${result.active ? 'Activado' : 'Desactivado'}`,
-          description: result.message,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "No se pudo cambiar el estado de R.A. AI",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Error toggle R.A. AI:', error);
-      toast({
-        title: "Error",
-        description: "Error de conexión con R.A. AI",
-        variant: "destructive"
-      });
-    } finally {
-      setRaAiProcessing(false);
-    }
-  };
-
-  // Función para procesar mensaje con R.A. AI
-  const processWithRaAi = async () => {
-    if (!selectedChat) {
-      toast({
-        title: "Error",
-        description: "Selecciona un chat primero",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      setRaAiProcessing(true);
-      
-      const response = await fetch('/api/ra-ai/process-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          chatId: selectedChat.id, 
-          accountId: selectedChat.accountId 
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (result.success && result.response) {
-        if (result.sent) {
-          toast({
-            title: "🤖 R.A. AI Respondió",
-            description: "Respuesta enviada automáticamente",
-          });
-        } else {
-          // Mostrar la respuesta en el campo de texto para que el usuario pueda editarla
-          setNewMessage(result.response);
-          toast({
-            title: "🤖 R.A. AI Generó Respuesta",
-            description: "Puedes editarla antes de enviar",
-          });
-        }
-      } else {
-        toast({
-          title: "R.A. AI",
-          description: result.error || "No se pudo generar respuesta",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Error procesando con R.A. AI:', error);
-      toast({
-        title: "Error",
-        description: "Error al procesar con R.A. AI",
-        variant: "destructive"
-      });
-    } finally {
-      setRaAiProcessing(false);
-    }
-  };
-  
-  // Estados para respuestas automáticas a mensajes recibidos
-  const [lastProcessedMessageId, setLastProcessedMessageId] = useState<string | null>(null);
-  const [lastMessageCount, setLastMessageCount] = useState(0);
-
-
-
-  // Función para enviar mensaje automático
-  const sendAutoMessage = async (message: string) => {
-    if (!selectedChat) return;
-    
-    try {
-      console.log('📤 Enviando respuesta automática:', message);
-      
-      const response = await fetch('/api/whatsapp/send-message', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chatId: selectedChat.id,
-          accountId: selectedChat.accountId,
-          message: message
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Respuesta automática enviada exitosamente:', result);
-        
-        toast({
-          title: "🤖 Respuesta automática enviada",
-          description: "SmartBots ha respondido al mensaje recibido",
-          duration: 3000
-        });
-        
-        // Actualizar los mensajes del chat para mostrar el mensaje enviado
-        queryClient.invalidateQueries({
-          queryKey: ['/api/whatsapp-accounts', selectedChat.accountId, 'chats', selectedChat.id, 'messages']
-        });
-        
-        // También actualizar la lista de chats
-        queryClient.invalidateQueries({
-          queryKey: ['/api/whatsapp-accounts', selectedChat.accountId, 'chats']
-        });
-        
-      } else {
-        const errorData = await response.json();
-        console.error('❌ Error enviando respuesta automática:', errorData);
-        
-        toast({
-          title: "❌ Error enviando respuesta",
-          description: errorData.error || "No se pudo enviar la respuesta automática",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error en envío de respuesta automática:', error);
-      
-      toast({
-        title: "❌ Error de conexión",
-        description: "No se pudo conectar para enviar la respuesta",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Función para manejar mensajes de audio con traducción
-  const handleAudioMessageWithTranslation = async (audioMessage: any) => {
-    if (!selectedChat) return;
-    
-    try {
-      console.log('🎤 Procesando mensaje de audio...');
-      
-      // Verificar si el mensaje tiene URL de audio
-      if (!audioMessage.mediaUrl && !audioMessage._data?.mediaUrl) {
-        console.log('⚠️ Mensaje de audio sin URL disponible');
-        return;
-      }
-      
-      const audioUrl = audioMessage.mediaUrl || audioMessage._data?.mediaUrl;
-      
-      // Transcribir el audio usando OpenAI Whisper
-      const transcriptionResponse = await fetch('/api/audio/transcribe-whatsapp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          audioUrl: audioUrl,
-          chatId: selectedChat.id,
-          accountId: selectedChat.accountId,
-          messageId: audioMessage.id
-        })
-      });
-
-      if (transcriptionResponse.ok) {
-        const transcriptionData = await transcriptionResponse.json();
-        console.log('✅ Audio transcrito exitosamente:', transcriptionData.transcription);
-        
-        // Mostrar la transcripción al usuario
-        toast({
-          title: "🎤 Audio transcrito",
-          description: `Transcripción: "${transcriptionData.transcription}"`,
-          duration: 5000
-        });
-        
-        // Si SmartBots está habilitado, generar respuesta automática basada en la transcripción
-        if (smartBotsEnabled) {
-          console.log('🤖 Generando respuesta automática para audio transcrito...');
-          
-          setTimeout(async () => {
-            try {
-              // Auto response functionality removed
-              console.log('Audio transcription completed - auto response disabled');
-            } catch (error) {
-              console.error('❌ Error generando respuesta para audio:', error);
-            }
-          }, 2000);
-        }
-        
-      } else {
-        const errorData = await transcriptionResponse.json();
-        console.error('❌ Error transcribiendo audio:', errorData);
-        
-        toast({
-          title: "❌ Error transcribiendo audio",
-          description: errorData.error || "No se pudo transcribir el mensaje de audio",
-          variant: "destructive"
-        });
-      }
-      
-    } catch (error) {
-      console.error('❌ Error procesando mensaje de audio:', error);
-      
-      toast({
-        title: "❌ Error procesando audio",
-        description: "No se pudo procesar el mensaje de audio",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Función para generar respuesta manual con SmartBots
-  const generateSmartBotsResponse = async (userMessage: string, contactName: string, isIncomingMessage = false) => {
-    try {
-      console.log('🤖 Generando respuesta SmartBots para:', userMessage);
-      console.log('🔍 Agente seleccionado:', selectedExternalAgent);
-      
-      // Usar agente específico si está seleccionado, o endpoint genérico si no
-      const endpoint = selectedExternalAgent && selectedExternalAgent !== 'none'
-        ? '/api/external-agents/chat'
-        : '/api/smartbots/generate-response';
-      
-      const requestBody = selectedExternalAgent && selectedExternalAgent !== 'none' 
-        ? {
-            agentId: selectedExternalAgent,
-            message: userMessage,
-            context: `Conversación de WhatsApp con ${contactName}`
-          }
-        : {
-            message: userMessage,
-            contactName: contactName,
-            context: `Conversación de WhatsApp con ${contactName}`
-          };
-
-      console.log('🔗 Usando endpoint:', endpoint);
-      console.log('📦 Datos enviados:', requestBody);
-      
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      const data = await response.json();
-      
-      if (data.success && data.response) {
-        console.log('✅ Respuesta SmartBots:', data.response);
-        
-        if (isIncomingMessage) {
-          // Para mensajes entrantes (burbujas verdes), enviar respuesta automática
-          console.log('🟢 Mensaje recibido (burbuja verde) - enviando respuesta automática');
-          
-          // Enviar la respuesta automáticamente al servidor
-          setTimeout(async () => {
-            try {
-              const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/send-message`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                },
-                body: JSON.stringify({
-                  chatId: selectedChat.id,
-                  message: data.response,
-                  isAutoResponse: true
-                })
-              });
-
-              if (response.ok) {
-                console.log('✅ Respuesta automática enviada exitosamente');
-                toast({
-                  title: "Respuesta automática enviada",
-                  description: "SmartBots ha respondido automáticamente al mensaje recibido",
-                  duration: 3000
-                });
-                
-                // Actualizar los mensajes del chat
-                queryClient.invalidateQueries({
-                  queryKey: ['/api/whatsapp-accounts', selectedChat.accountId, 'chats', selectedChat.id, 'messages']
-                });
-              } else {
-                console.error('❌ Error enviando respuesta automática');
-              }
-            } catch (error) {
-              console.error('❌ Error en respuesta automática:', error);
-            }
-          }, 2000); // Delay de 2 segundos para parecer más natural
-          setNewMessage(data.response);
-          
-          toast({
-            title: "🤖 Respuesta AI preparada",
-            description: `SmartBots sugiere responder: "${data.response.substring(0, 50)}..."`,
-          });
-        } else {
-          // Mostrar notificación de que se generó una respuesta
-          toast({
-            title: "🤖 Respuesta AI generada",
-            description: `SmartBots sugiere: "${data.response.substring(0, 50)}..."`,
-          });
-        }
-        
-        return data.response;
-      } else {
-        console.error('❌ Error en SmartBots:', data.error);
-        return null;
-      }
-    } catch (error) {
-      console.error('❌ Error conectando con SmartBots:', error);
-      return null;
-    }
-  };
-
-  // Función para limpiar timer de auto-envío
-  const clearAutoSendTimer = () => {
-    if (autoSendTimer) {
-      clearTimeout(autoSendTimer);
-      setAutoSendTimer(null);
-      setIsAutoSending(false);
-    }
-  };
-
-  // Función para limpiar input después de auto-envío
-  const clearInputAfterAutoSend = () => {
-    setNewMessage('');
-    clearAutoSendTimer();
-  };
-
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const [fileMenuOpen, setFileMenuOpen] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const queryClient = useQueryClient();
-
-  // Fetch WhatsApp accounts
-  const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
-    queryKey: ['/api/whatsapp/accounts'],
-    refetchInterval: 5000 // Refresh every 5 seconds to check status
-  });
-
-  // Fetch external agents for AI selection
-  const { data: externalAgentsResponse } = useQuery({
-    queryKey: ['/api/external-agents'],
-    enabled: smartBotsEnabled,
-    retry: false,
-    staleTime: 60000
-  });
-
-  const externalAgents = (externalAgentsResponse as any)?.agents || [];
-
-  // Debug logs for AI selector
-  console.log('🔍 Debug AI Selector:', {
-    smartBotsEnabled,
-    externalAgentsResponse,
-    externalAgents,
-    agentsCount: externalAgents.length
-  });
-
-  // Fetch chats based on selected accounts
-  const { data: chats = [], isLoading: loadingChats } = useQuery({
-    queryKey: ['/api/whatsapp/chats', selectedAccounts],
-    enabled: selectedAccounts.length > 0,
-    queryFn: async () => {
-      if (selectedAccounts.length === 0) return [];
-      
-      const allChats = [];
-      for (const accountId of selectedAccounts) {
-        try {
-          const response = await fetch(`/api/whatsapp-accounts/${accountId}/chats`);
-          if (response.ok) {
-            const accountChats = await response.json();
-            allChats.push(...accountChats);
-          }
-        } catch (error) {
-          console.error(`Error fetching chats for account ${accountId}:`, error);
-        }
-      }
-      return allChats;
-    }
-  });
-
-  // Fetch messages for selected chat
-  const { data: messages = [], isLoading: loadingMessages } = useQuery({
-    queryKey: ['/api/whatsapp/messages', selectedChat?.id],
-    enabled: !!selectedChat?.id,
-    queryFn: async () => {
-      if (!selectedChat?.id) return [];
-      
-      console.log('🔄 Obteniendo mensajes reales para chat:', selectedChat.id);
-      
-      try {
-        // Usar el endpoint que devuelve mensajes REALES de WhatsApp
-        const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/messages/${selectedChat.id}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (Array.isArray(data) && data.length > 0) {
-            console.log(`✅ ${data.length} mensajes REALES obtenidos para chat ${selectedChat.id}`);
-            return data;
-          }
-        }
-        
-        // Fallback: intentar con API directa de WhatsApp
-        const directResponse = await fetch(`/api/direct/whatsapp/messages/${selectedChat.id}`);
-        if (directResponse.ok) {
-          const directData = await directResponse.json();
-          if (Array.isArray(directData) && directData.length > 0) {
-            console.log(`✅ ${directData.length} mensajes DIRECTOS obtenidos para chat ${selectedChat.id}`);
-            return directData;
-          }
-        }
-        
-        console.log('⚠️ No se encontraron mensajes reales para este chat');
-        return [];
-      } catch (error) {
-        console.error('❌ Error obteniendo mensajes reales:', error);
-        return [];
-      }
-    },
-    refetchInterval: 5000 // Refresh messages every 5 seconds
-  });
-
-  // Fetch auto response config
-  const { data: autoResponseConfig } = useQuery({
-    queryKey: ['/api/auto-response/config', selectedChat?.id],
-    enabled: !!selectedChat?.id
-  });
-
-  // Fetch chat comments
-  const { data: chatComments = [] } = useQuery({
-    queryKey: ['/api/chat-comments', selectedChat?.id],
-    enabled: !!selectedChat?.id
-  });
-
-  // Handle chat selection and mark messages as read
-  // Función para identificar el último mensaje recibido (no enviado por nosotros)
-  const getLastIncomingMessageId = (messages: WhatsAppMessage[]): string | null => {
-    if (!messages || messages.length === 0) return null;
-    
-    // Buscar el último mensaje que NO fue enviado por nosotros (fromMe: false)
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (!messages[i].fromMe) {
-        return messages[i].id;
-      }
-    }
-    return null;
-  };
-
-  // Event listener para abrir el diálogo de asignación desde los badges
+  // Event listeners for dialog management
   useEffect(() => {
     const handleOpenAssignmentDialog = (event: CustomEvent) => {
       const { chatId, accountId } = event.detail;
@@ -1317,628 +347,92 @@ export function WhatsAppTwoColumn() {
     };
 
     window.addEventListener('openAssignmentDialog', handleOpenAssignmentDialog as EventListener);
-
     return () => {
       window.removeEventListener('openAssignmentDialog', handleOpenAssignmentDialog as EventListener);
     };
   }, []);
 
+  // Data fetching
+  const { data: accounts } = useQuery({ queryKey: ['/api/whatsapp-accounts'] });
+  const { data: chats } = useQuery({ queryKey: ['/api/whatsapp-chats'] });
+  
+  const { data: messages } = useQuery({
+    queryKey: ['/api/whatsapp-messages', selectedChat?.id],
+    enabled: !!selectedChat
+  });
+
+  // Chat selection handler
   const handleChatSelect = async (chat: WhatsAppChat) => {
     setSelectedChat(chat);
-    setNewMessage(''); // Clear input when switching chats
-    
-    // Cargar estado del agente externo A.E AI para el chat seleccionado
-    try {
-      const response = await fetch(`/api/external-agents/status/${encodeURIComponent(chat.id)}/${chat.accountId}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setExternalAgentActive(data.active || false);
-        setExternalAgentUrl(data.agentUrl || '');
-      } else {
-        setExternalAgentActive(false);
-        setExternalAgentUrl('');
-      }
-    } catch (error) {
-      console.error('Error cargando estado A.E AI:', error);
-      setExternalAgentActive(false);
-      setExternalAgentUrl('');
-    }
-    
-    // Mark chat as read and reset unread count
-    if (chat.unreadCount > 0) {
-      try {
-        console.log(`📖 Marcando chat ${chat.id} como leído (${chat.unreadCount} mensajes no leídos)`);
-        
-        // Call API to mark messages as read
-        await fetch(`/api/whatsapp-accounts/${chat.accountId}/chats/${chat.id}/mark-read`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-        
-        // Update chat list to show zero unread count immediately
-        queryClient.setQueryData(
-          [`/api/whatsapp-accounts/${chat.accountId}/chats`],
-          (oldChats: any) => {
-            if (Array.isArray(oldChats)) {
-              return oldChats.map((c: any) => 
-                c.id === chat.id 
-                  ? { ...c, unreadCount: 0, messageRead: true }
-                  : c
-              );
-            }
-            return oldChats;
-          }
-        );
-        
-        console.log(`✅ Chat ${chat.id} marcado como leído exitosamente`);
-        
-      } catch (error) {
-        console.error('❌ Error marcando chat como leído:', error);
-      }
-    }
+    setNewMessage('');
   };
 
-  // Send message mutation
+  // Message sending mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async (data: { chatId: string; accountId: number; message: string }) => {
-      const response = await fetch('/api/whatsapp/send-message', {
+    mutationFn: async (messageData: { chatId: string; body: string; accountId: number }) => {
+      const response = await fetch('/api/whatsapp-messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify(messageData)
       });
-      if (!response.ok) throw new Error('Failed to send message');
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-chats'] });
+      
+      // Store original message before translation
+      setSentMessageOrigins(prev => ({
+        ...prev,
+        [Date.now().toString()]: newMessage
+      }));
+
       setNewMessage('');
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/messages', selectedChat?.id] });
-      toast({
-        title: "Mensaje enviado",
-        description: "Tu mensaje ha sido enviado exitosamente"
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "No se pudo enviar el mensaje",
-        variant: "destructive"
-      });
+      
+      if (selectedChat) {
+        // Update chat timestamp and last message
+        queryClient.setQueryData(['/api/whatsapp-chats'], (oldData: any) => {
+          if (!oldData) return oldData;
+          return oldData.map((chat: WhatsAppChat) => 
+            chat.id === selectedChat.id 
+              ? { ...chat, timestamp: Date.now(), lastMessage: newMessage }
+              : chat
+          );
+        });
+      }
     }
   });
 
-  // WebSocket connection for real-time notifications
-  useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws/notifications`;
-    const socket = new WebSocket(wsUrl);
+  // Handle message sending
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !selectedChat) return;
 
-    socket.onopen = () => {
-      console.log('🔔 Conectado a notificaciones en tiempo real');
-      socket.send(JSON.stringify({ type: 'subscribe' }));
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const notification = JSON.parse(event.data);
-        
-        // Show toast notification
-        toast({
-          title: notification.title,
-          description: notification.message,
-          duration: 5000
-        });
-
-        // Refresh relevant queries based on notification type
-        if (notification.type === 'new_message' && notification.chatId) {
-          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/messages', notification.chatId] });
-          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-        } else if (notification.type === 'new_assignment') {
-          queryClient.invalidateQueries({ queryKey: ['/api/chat-assignments'] });
-        } else if (notification.type === 'chat_categorized') {
-          queryClient.invalidateQueries({ queryKey: ['/api/chat-categories'] });
-        } else if (notification.type === 'account_status') {
-          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/accounts'] });
-        }
-      } catch (error) {
-        console.error('Error processing notification:', error);
-      }
-    };
-
-    socket.onclose = () => {
-      console.log('🔌 Desconectado de notificaciones');
-    };
-
-    return () => {
-      socket.close();
-    };
-  }, [queryClient]);
-
-  // Estados para traducción mejorada
-  const [translationEnabled, setTranslationEnabled] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('en');
-  const [languageSelectorOpen, setLanguageSelectorOpen] = useState(false);
-  
-  // Estados para grabación de notas de voz
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-
-  // Idiomas disponibles para traducción
-  const availableLanguages = [
-    { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'es', name: 'Español', flag: '🇪🇸' },
-    { code: 'fr', name: 'Français', flag: '🇫🇷' },
-    { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-    { code: 'it', name: 'Italiano', flag: '🇮🇹' },
-    { code: 'pt', name: 'Português', flag: '🇵🇹' },
-    { code: 'ru', name: 'Русский', flag: '🇷🇺' },
-    { code: 'zh', name: '中文', flag: '🇨🇳' },
-    { code: 'ja', name: '日本語', flag: '🇯🇵' },
-    { code: 'ko', name: '한국어', flag: '🇰🇷' }
-  ];
-
-  // Función para traducir texto usando OpenAI
-  const translateMessage = async (text: string, targetLanguage: string) => {
-    try {
-      const response = await fetch('/api/translate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: text,
-          targetLanguage: targetLanguage,
-          sourceLanguage: 'auto'
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        return result.translatedText;
-      }
-      throw new Error('Translation failed');
-    } catch (error) {
-      console.warn('Traducción fallida, usando texto original:', error);
-      return text;
-    }
-  };
-
-  // Funciones para grabación de voz
-  const startVoiceRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          setAudioChunks(prev => [...prev, event.data]);
-        }
-      };
-      
-      recorder.onstop = () => {
-        stream.getTracks().forEach(track => track.stop());
-      };
-      
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-      setAudioChunks([]);
-      recorder.start();
-      
-      toast({
-        title: "🎤 Grabando nota de voz",
-        description: "Haz clic en el botón otra vez para detener la grabación",
-      });
-    } catch (error) {
-      console.error('Error al acceder al micrófono:', error);
-      toast({
-        title: "Error al acceder al micrófono",
-        description: "Verifica que hayas dado permisos para usar el micrófono",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const stopVoiceRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-        
-        // Crear FormData para enviar el archivo de audio
-        const formData = new FormData();
-        formData.append('audio', audioBlob, 'voice_note.wav');
-        formData.append('chatId', selectedChat?.id || '');
-        formData.append('accountId', selectedChat?.accountId.toString() || '');
-        
-        try {
-          const response = await fetch('/api/whatsapp/send-voice-note', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            },
-            body: formData
-          });
-          
-          if (response.ok) {
-            toast({
-              title: "✅ Nota de voz enviada",
-              description: "Tu nota de voz se ha enviado correctamente",
-            });
-            
-            // Actualizar mensajes del chat
-            queryClient.invalidateQueries({
-              queryKey: ['/api/whatsapp-accounts', selectedChat?.accountId, 'chats', selectedChat?.id, 'messages']
-            });
-          } else {
-            throw new Error('Error al enviar nota de voz');
-          }
-        } catch (error) {
-          console.error('Error enviando nota de voz:', error);
-          toast({
-            title: "Error al enviar nota de voz",
-            description: "No se pudo enviar la nota de voz. Inténtalo de nuevo.",
-            variant: "destructive"
-          });
-        }
-        
-        setAudioChunks([]);
-      };
-      
-      mediaRecorder.stop();
-      setIsRecording(false);
-      setMediaRecorder(null);
-    }
-  };
-
-
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
-
-  // Detectar mensajes nuevos y activar SmartBots automáticamente
-  useEffect(() => {
-    console.log('🔍 Estado SmartBots:', {
-      messages: !!messages,
-      smartBotsEnabled,
-      selectedChat: !!selectedChat,
-      messagesLength: Array.isArray(messages) ? messages.length : 0
-    });
-    
-    if (!messages || !smartBotsEnabled || !selectedChat) return;
-
-    const currentMessages = Array.isArray(messages) ? messages : [];
-    const currentCount = currentMessages.length;
-
-    // Si hay mensajes nuevos
-    if (currentCount > lastMessageCount && lastMessageCount > 0) {
-      console.log(`🔍 Detectando mensajes: ${currentCount} actual vs ${lastMessageCount} anterior`);
-      
-      const newMessages = currentMessages.slice(lastMessageCount);
-      console.log('📥 Mensajes nuevos encontrados:', newMessages.length);
-      
-      // Buscar mensajes entrantes (no enviados por nosotros)
-      const incomingMessages = newMessages.filter((msg: any) => !msg.fromMe);
-      
-      if (incomingMessages.length > 0) {
-        const lastIncomingMessage = incomingMessages[incomingMessages.length - 1];
-        
-        // Verificar si es un mensaje de audio
-        if (lastIncomingMessage.type === 'ptt' || lastIncomingMessage.type === 'audio') {
-          console.log('🎤 Mensaje de audio detectado:', lastIncomingMessage);
-          handleAudioMessage(lastIncomingMessage);
-        } else {
-          console.log('🤖 Mensaje entrante detectado:', lastIncomingMessage.body);
-        }
-        
-        // Solo procesar si no hemos procesado este mensaje antes
-        if (lastIncomingMessage.id !== lastProcessedMessageId) {
-          console.log('🔄 Procesando nuevo mensaje ID:', lastIncomingMessage.id);
-          
-          // Reordenar chats para mostrar este chat al principio
-          handleNewMessageReceived(selectedChat.id);
-          setLastProcessedMessageId(lastIncomingMessage.id);
-        } else {
-          console.log('⏭️ Mensaje ya procesado anteriormente');
-        }
-      } else {
-        console.log('📤 Solo mensajes salientes detectados');
-      }
-    }
-  }, [messages, selectedChat, lastProcessedMessageId]);
-
-  // Detectar y traducir mensajes en inglés automáticamente
-  useEffect(() => {
-    if (!messages || !translatorEnabled) return;
-
-    const currentMessages = Array.isArray(messages) ? messages : [];
-    const currentCount = currentMessages.length;
-    
-    // Solo verificar los mensajes más recientes para evitar procesar repetidamente
-    if (currentCount > lastMessageCount && lastMessageCount > 0) {
-      const newMessages = currentMessages.slice(lastMessageCount);
-      
-      // Buscar mensajes en inglés que no son nuestros
-      const englishMessages = newMessages.filter((msg: any) => 
-        !msg.fromMe && 
-        /\b(hello|hi|how|are|you|what|where|when|why|please|thank|thanks|good|morning|afternoon|evening|night|yes|no|ok|okay|can|can't|do|it|system)\b/i.test(msg.body)
-      );
-
-      if (englishMessages.length > 0) {
-        const lastEnglishMessage = englishMessages[englishMessages.length - 1];
-        
-        // Mostrar traducción automática para mensajes nuevos
-        if (lastEnglishMessage.body.length > 3) {
-          console.log('🌐 Mensaje en inglés detectado:', lastEnglishMessage.body);
-          
-          // Traducción básica automática mejorada
-          let spanishTranslation = lastEnglishMessage.body
-            .replace(/hello|hi/gi, 'hola')
-            .replace(/how are you/gi, 'cómo estás')
-            .replace(/good morning/gi, 'buenos días')
-            .replace(/good afternoon/gi, 'buenas tardes')
-            .replace(/good evening|good night/gi, 'buenas noches')
-            .replace(/thank you|thanks/gi, 'gracias')
-            .replace(/please/gi, 'por favor')
-            .replace(/what/gi, 'qué')
-            .replace(/where/gi, 'dónde')
-            .replace(/when/gi, 'cuándo')
-            .replace(/why/gi, 'por qué')
-            .replace(/how/gi, 'cómo')
-            .replace(/yes/gi, 'sí')
-            .replace(/\bno\b/gi, 'no')
-            .replace(/ok|okay/gi, 'está bien')
-            .replace(/can't/gi, 'no puedes')
-            .replace(/can/gi, 'puedes')
-            .replace(/\bdo\b/gi, 'hacer')
-            .replace(/\bit\b/gi, 'eso')
-            .replace(/system/gi, 'sistema')
-            .replace(/\bor\b/gi, 'o');
-
-          if (spanishTranslation !== lastEnglishMessage.body) {
-            console.log('🌐 Traducción:', `"${lastEnglishMessage.body}" → "${spanishTranslation}"`);
-            
-            // Crear un mensaje de traducción interno (solo para nuestro sistema)
-            const translationMessage = {
-              id: `translation_${lastEnglishMessage.id}_${Date.now()}`,
-              body: `🌐 Traducción: "${spanishTranslation}"`,
-              fromMe: false,
-              timestamp: new Date().toISOString(),
-              isTranslation: true, // Marcador especial para mensajes de traducción
-              originalMessageId: lastEnglishMessage.id
-            };
-            
-            // Agregar el mensaje de traducción a la lista de mensajes localmente
-            // (esto no se envía a WhatsApp, solo aparece en nuestra interfaz)
-            if (Array.isArray(messages) && selectedChat) {
-              const updatedMessages = [...messages, translationMessage];
-              // Esto actualizará la vista local pero no enviará nada a WhatsApp
-              queryClient.setQueryData(
-                [`/api/whatsapp-accounts/${selectedChat.accountId}/messages/${selectedChat.id}`],
-                updatedMessages
-              );
-            }
-          }
-        }
-      }
-    }
-  }, [messages, translatorEnabled, lastMessageCount]);
-
-  // Initialize with all accounts selected by default
-  useEffect(() => {
-    if ((accounts as any[])?.length > 0 && selectedAccounts.length === 0) {
-      // Select all accounts by default
-      const allAccountIds = (accounts as any[]).map((acc: any) => acc.id);
-      setSelectedAccounts(allAccountIds);
-    }
-  }, [accounts, selectedAccounts]);
-
-
-
-
-
-  // Función para manejar mensajes de audio (transcripción)
-  const handleAudioMessage = async (message: any) => {
-    try {
-      toast({
-        title: "🎧 Procesando audio...",
-        description: "Transcribiendo mensaje de voz...",
-      });
-
-      const response = await fetch('/api/audio/transcribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messageId: message.id,
-          audioUrl: message.mediaUrl || message._data?.mediaUrl
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        toast({
-          title: "✅ Audio transcrito",
-          description: `Transcripción: "${result.text}"`,
-          duration: 5000
-        });
-      } else {
-        throw new Error('Error en la transcripción');
-      }
-    } catch (error) {
-      console.error('Error transcribiendo audio:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo transcribir el audio",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedChat || sendMessageMutation.isPending) return;
-    
-    const originalMessage = newMessage.trim();
-    let finalMessage = originalMessage;
-    let wasTranslated = false;
-    
-    // Limpiar el campo de mensaje inmediatamente para evitar envíos duplicados
-    setNewMessage('');
-    
-    // Si el traductor está activado, traducir el mensaje antes de enviarlo
-    if (translationEnabled) {
-      try {
-        console.log('🌐 Traduciendo mensaje al:', selectedLanguage);
-        
-        // Usar el idioma seleccionado del dropdown
-        const sourceLanguage = 'auto'; // Detección automática
-        const targetLanguage = selectedLanguage;
-        
-        // Usar Google Translate API directamente
-        const googleTranslateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLanguage}&tl=${targetLanguage}&dt=t&q=${encodeURIComponent(finalMessage)}`;
-        
-        const response = await fetch(googleTranslateUrl, {
-          method: 'GET',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          const translatedText = data[0]?.map((item: any) => item[0]).join('') || finalMessage;
-          
-          if (translatedText && translatedText !== finalMessage) {
-            finalMessage = translatedText;
-            wasTranslated = true;
-            console.log('✅ Mensaje traducido:', finalMessage);
-            
-            toast({
-              title: "Mensaje traducido",
-              description: `Traducido a ${targetLanguage === 'es' ? 'Español' : 'Inglés'}`,
-            });
-          } else {
-            throw new Error('No se pudo obtener traducción');
-          }
-        } else {
-          throw new Error('Error en Google Translate API');
-        }
-        
-      } catch (translateError) {
-        console.warn('Google Translate falló, usando traducción básica:', translateError);
-        
-        // Traducción básica de respaldo
-        const isSpanish = /[áéíóúñ¿¡]|hola|como|que|para|con|una|este|todo|pero|muy|cuando|hasta|donde|gracias|por favor/i.test(finalMessage);
-        
-        if (isSpanish && selectedLanguage === 'en') {
-          finalMessage = finalMessage
-            .replace(/hola/gi, 'hello')
-            .replace(/como estas/gi, 'how are you')
-            .replace(/como/gi, 'how')
-            .replace(/que tal/gi, 'how are you')
-            .replace(/que/gi, 'what')
-            .replace(/donde/gi, 'where')
-            .replace(/cuando/gi, 'when')
-            .replace(/por favor/gi, 'please')
-            .replace(/gracias/gi, 'thank you')
-            .replace(/buenos días/gi, 'good morning')
-            .replace(/buenas tardes/gi, 'good afternoon')
-            .replace(/buenas noches/gi, 'good night');
-          wasTranslated = true;
-        } else if (!isSpanish && selectedLanguage === 'es') {
-          finalMessage = finalMessage
-            .replace(/hello/gi, 'hola')
-            .replace(/how are you/gi, 'como estas')
-            .replace(/how/gi, 'como')
-            .replace(/what/gi, 'que')
-            .replace(/where/gi, 'donde')
-            .replace(/when/gi, 'cuando')
-            .replace(/please/gi, 'por favor')
-            .replace(/thank you/gi, 'gracias')
-            .replace(/good morning/gi, 'buenos días')
-            .replace(/good afternoon/gi, 'buenas tardes')
-            .replace(/good night/gi, 'buenas noches');
-          wasTranslated = true;
-        }
-        
-        if (wasTranslated) {
-          toast({
-            title: "Traducción básica aplicada",
-            description: "Se usó traducción simplificada",
-          });
-        }
-      }
-    }
-    
-    // Si el mensaje fue traducido, almacenar el texto original para mostrarlo después
-    if (wasTranslated && originalMessage !== finalMessage) {
-      setSentMessageOrigins(prev => ({
-        ...prev,
-        [finalMessage]: originalMessage
-      }));
-    }
-
-    // Enviar el mensaje una sola vez
     sendMessageMutation.mutate({
       chatId: selectedChat.id,
-      accountId: selectedChat.accountId,
-      message: finalMessage
+      body: newMessage,
+      accountId: selectedChat.accountId
     });
+  };
+
+  // Auto-scroll messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Message formatting
+  const formatTimestamp = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
     
-    // Si SmartBots está activado, generar respuesta automática sugerida
-    if (smartBotsEnabled && selectedChat) {
-      setTimeout(async () => {
-        try {
-          const aiResponse = await generateSmartBotsResponse(finalMessage, selectedChat.name);
-          if (aiResponse) {
-            setNewMessage(aiResponse);
-            
-            toast({
-              title: "🤖 Respuesta AI lista",
-              description: "SmartBots ha generado una respuesta sugerida. Puedes editarla antes de enviar.",
-            });
-          }
-        } catch (error) {
-          console.error('Error generando respuesta SmartBots:', error);
-        }
-      }, 1000);
+    if (isToday) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else {
+      return date.toLocaleDateString();
     }
   };
 
-  const handleAccountsChange = (accountIds: number[]) => {
-    setSelectedAccounts(accountIds);
-    setSelectedChat(null); // Clear selected chat when accounts change
-  };
-
-  const handleAccountClick = (accountId: number) => {
-    // Focus on specific account
-    setSelectedAccounts([accountId]);
-    setSelectedChat(null);
-  };
-
-  const formatTime = (timestamp: number) => {
-    // WhatsApp envía timestamps en segundos Unix, convertir a milisegundos para JavaScript
-    return new Date(timestamp * 1000).toLocaleTimeString('es-ES', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
-
-
+  // Contact online status
   const isContactOnline = (chat: WhatsAppChat) => {
     if (chat.isOnline) return true;
     if (chat.lastSeen) {
@@ -1948,932 +442,231 @@ export function WhatsAppTwoColumn() {
     return false;
   };
 
+  // Account filtering
   const getSelectedAccount = () => {
-    return accounts.find(acc => acc.id === selectedChat?.accountId);
+    if (!accounts || typeof accounts !== 'object') return null;
+    return (accounts as any[]).find((acc: any) => selectedAccounts.includes(acc.id));
   };
 
-  // Sort chats by activity: unread messages first, then by most recent timestamp
-  const sortedChats = useMemo(() => {
-    if (!Array.isArray(chats)) return [];
+  // Message filtering and display logic
+  const filteredChats = useMemo(() => {
+    if (!chats || typeof chats !== 'object') return [];
     
-    return [...chats].sort((a, b) => {
-      // Priority 1: Chats with unread messages first
-      if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
-      if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
-      
-      // Priority 2: Currently selected chat should stay visible but not necessarily at top
-      // Priority 3: Most recent activity (highest timestamp first)
-      const timestampA = a.timestamp || 0;
-      const timestampB = b.timestamp || 0;
-      return timestampB - timestampA;
-    });
-  }, [chats]);
-
-  // Function to reorder chats when new message arrives
-  const handleNewMessageReceived = useCallback((chatId: string) => {
-    // Force chat list refresh to reorder by latest activity
-    queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+    let filtered = (chats as WhatsAppChat[]);
     
-    // Also refresh the chat list for specific accounts to ensure real-time updates
     if (selectedAccounts.length > 0) {
-      selectedAccounts.forEach(accountId => {
-        queryClient.invalidateQueries({ queryKey: [`/api/whatsapp-accounts/${accountId}/chats`] });
-      });
+      filtered = filtered.filter(chat => selectedAccounts.includes(chat.accountId));
     }
-  }, [queryClient, selectedAccounts]);
-
-  const filteredChats = sortedChats.filter(chat => 
-    chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  if (loadingAccounts) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-        <span className="ml-2 text-gray-500">Cargando cuentas WhatsApp...</span>
-      </div>
-    );
-  }
+    
+    if (searchQuery) {
+      filtered = filtered.filter(chat => 
+        chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    return filtered.sort((a, b) => b.timestamp - a.timestamp);
+  }, [chats, selectedAccounts, searchQuery]);
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Left Panel - Chat List */}
-      <div className="w-80 min-w-80 max-w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
-        {/* Header with Account Selector */}
-        <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-red-600 via-black to-red-600 flex-shrink-0">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">WhatsApp Business</h2>
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
-                {selectedAccounts.length}/{(accounts as any[])?.length || 0} seleccionadas
-              </Badge>
-            </div>
-            
-            <AccountSelector
-              accounts={accounts as any}
+    <div className="flex h-full bg-gray-50">
+      {/* Left Column - Chat List */}
+      <div className="w-1/3 border-r bg-white flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b bg-green-600 text-white">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold flex items-center">
+              <MessageCircle className="h-5 w-5 mr-2" />
+              WhatsApp Chats
+            </h2>
+            <AccountSelector 
+              accounts={accounts as WhatsAppAccount[] || []}
               selectedAccounts={selectedAccounts}
-              onAccountsChange={handleAccountsChange}
-              onAccountClick={handleAccountClick}
+              onAccountsChange={setSelectedAccounts}
             />
-            
-
           </div>
-        </div>
-
-        {/* Search */}
-        <div className="p-3 border-b border-gray-200 flex-shrink-0">
+          
+          {/* Search */}
           <Input
-            placeholder="Buscar conversaciones..."
+            placeholder="Search chats..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full"
+            className="bg-white text-black"
           />
         </div>
 
-
-
         {/* Chat List */}
         <ScrollArea className="flex-1">
-          {loadingChats ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-              <span className="ml-2 text-gray-500">Cargando chats...</span>
-            </div>
-          ) : (filteredChats as any[])?.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
-              {selectedAccounts.length === 0 
-                ? "Selecciona una cuenta para ver los chats"
-                : "No hay chats disponibles"
-              }
-            </div>
-          ) : (
-            <div className="space-y-1 p-2">
-              <AnimatePresence>
-                {(filteredChats as any[])?.map((chat: any, index: number) => (
-                  <motion.div
-                    key={chat.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.2, delay: index * 0.05 }}
-                    className="p-2 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 text-sm"
-                    onClick={() => handleChatSelect?.(chat)}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="relative">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={chat.profilePicUrl} />
-                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                            {chat.isGroup ? <Users className="h-6 w-6" /> : chat.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        {isContactOnline(chat) && (
-                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                        )}
+          <div className="p-2">
+            {filteredChats.map((chat) => (
+              <Card
+                key={chat.id}
+                className={`mb-2 cursor-pointer transition-colors hover:bg-gray-50 ${
+                  selectedChat?.id === chat.id ? 'ring-2 ring-green-500 bg-green-50' : ''
+                }`}
+                onClick={() => handleChatSelect(chat)}
+              >
+                <CardContent className="p-3">
+                  <div className="flex items-start space-x-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={chat.profilePicUrl} />
+                      <AvatarFallback>
+                        {chat.isGroup ? <Users className="h-4 w-4" /> : chat.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="font-medium text-sm truncate">
+                          {chat.name}
+                        </h4>
+                        <div className="flex items-center space-x-1">
+                          {isContactOnline(chat) ? (
+                            <Wifi className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <WifiOff className="h-3 w-3 text-gray-400" />
+                          )}
+                          <span className="text-xs text-gray-500">
+                            {formatTimestamp(chat.timestamp)}
+                          </span>
+                        </div>
                       </div>
                       
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium text-gray-900 truncate">{chat.name}</span>
-                            {chat.isGroup && <Users className="h-4 w-4 text-gray-400" />}
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <WhatsAppAccountBadge accountId={chat.accountId} />
-                            <span className="text-xs text-gray-500">
-                              {formatTime(chat.timestamp)}
-                            </span>
-                          </div>
+                      <p className="text-xs text-gray-600 truncate mb-2">
+                        {chat.lastMessage}
+                      </p>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-1">
+                          <WhatsAppAccountBadge accountId={chat.accountId} />
+                          <ChatAssignmentBadge chatId={chat.id} accountId={chat.accountId} />
+                          <ChatCategorizationBadge chatId={chat.id} accountId={chat.accountId} />
+                          <TicketStatusBadge chatId={chat.id} />
+                          <ChatCommentsIndicator chatId={chat.id} />
                         </div>
                         
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2 flex-1">
-                            {/* Chat Assignment Info - Cada chat maneja su propio agente */}
-                            <ChatAssignmentBadge chatId={chat.id} accountId={chat.accountId} />
-                            
-                            {/* Ticket Badge Individual - Cada chat maneja su propio ticket */}
-                            <ChatCategorizationBadge chatId={chat.id} accountId={chat.accountId} />
-                            
-                            {/* Comments Indicator */}
-                            <ChatCommentsIndicator chatId={chat.id} />
-                          </div>
-                          
-                          {chat.unreadCount > 0 && (
-                            <Badge className="bg-green-500 text-white ml-2">
-                              {chat.unreadCount}
-                            </Badge>
-                          )}
-                        </div>
-
-
+                        {chat.unreadCount > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            {chat.unreadCount}
+                          </Badge>
+                        )}
                       </div>
                     </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </ScrollArea>
       </div>
-      {/* Right Panel - Chat Messages */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+
+      {/* Right Column - Messages */}
+      <div className="flex-1 flex flex-col">
         {selectedChat ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={selectedChat.profilePicUrl} />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                        {selectedChat.isGroup ? <Users className="h-5 w-5" /> : selectedChat.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    {isContactOnline(selectedChat) && (
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+            <div className="p-4 border-b bg-white flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={selectedChat.profilePicUrl} />
+                  <AvatarFallback>
+                    {selectedChat.isGroup ? <Users className="h-4 w-4" /> : selectedChat.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                
+                <div>
+                  <h3 className="font-semibold">{selectedChat.name}</h3>
+                  <div className="flex items-center space-x-2 text-sm text-gray-500">
+                    {isContactOnline(selectedChat) ? (
+                      <span className="flex items-center">
+                        <Wifi className="h-3 w-3 mr-1 text-green-500" />
+                        Online
+                      </span>
+                    ) : (
+                      <span className="flex items-center">
+                        <WifiOff className="h-3 w-3 mr-1 text-gray-400" />
+                        {selectedChat.lastSeen ? `Last seen ${formatTimestamp(selectedChat.lastSeen)}` : 'Offline'}
+                      </span>
                     )}
                   </div>
-                  
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <h3 className="font-semibold text-gray-900">{selectedChat.name}</h3>
-                      {selectedChat.isGroup && <Users className="h-4 w-4 text-gray-400" />}
-                      <WhatsAppAccountBadge accountId={selectedChat.accountId} />
-                      <TicketStatusBadge chatId={selectedChat.id} />
-                    </div>
-                    <div className="flex items-center space-x-2 text-sm text-gray-500">
-                      {isContactOnline(selectedChat) ? (
-                        <span className="flex items-center space-x-1 text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span>En línea</span>
-                        </span>
-                      ) : selectedChat.lastSeen ? (
-                        <span>Última vez: {formatTime(selectedChat.lastSeen)}</span>
-                      ) : (
-                        <AgentAssignmentDisplay chatId={selectedChat.id} />
-                      )}
-                    </div>
-                  </div>
                 </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center space-x-2">
-                  {/* Assignment Button */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-blue-600 text-blue-600 hover:bg-blue-50 shadow-sm transition-all duration-300"
-                      onClick={() => setAssignmentDialogOpen(true)}
-                    >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Asignar
-                    </Button>
-                  </motion.div>
-                  
-
-
-                  {/* SELECTOR DE AGENTE EXTERNO REMOVIDO */}
-
-
-
-
-
-                  {/* BOTÓN DE PRUEBA A.E AI - ELIMINADO COMPLETAMENTE */}
-                  {false && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, delay: 0.2 }}
-                    >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="hidden border-green-600 text-green-600 hover:bg-green-50 transition-all duration-300"
-                        onClick={async () => {
-                          if (!selectedChat) return;
-                          
-                          try {
-                            console.log('🧪 PROBANDO A.E AI');
-                            
-                            const response = await fetch('/api/debug-ae-ai/probe', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                chatId: selectedChat.id,
-                                message: "Hola, necesito ayuda con información sobre productos",
-                                accountId: selectedChat.accountId
-                              })
-                            });
-                            
-                            if (response.ok) {
-                              const result = await response.json();
-                              console.log('📋 Resultado completo de A.E AI:', result);
-                              
-                              if (result.success && result.processed) {
-                                toast({
-                                  title: "✅ A.E AI Funcionando",
-                                  description: `Respuesta generada por ${result.config?.agentName || 'Smartbots'}. Revisa la consola del servidor para ver la respuesta completa.`,
-                                  duration: 8000,
-                                });
-                              } else if (result.needsActivation) {
-                                toast({
-                                  title: "⚠️ A.E AI Inactivo",
-                                  description: "Activa primero el A.E AI presionando el botón morado.",
-                                  variant: "destructive",
-                                  duration: 5000,
-                                });
-                              } else {
-                                toast({
-                                  title: "❌ Error A.E AI",
-                                  description: result.message || "No se pudo procesar el mensaje",
-                                  variant: "destructive",
-                                  duration: 5000,
-                                });
-                              }
-                            } else {
-                              throw new Error(`HTTP ${response.status}`);
-                            }
-                          } catch (error) {
-                            console.error('❌ Error probando A.E AI:', error);
-                            toast({
-                              title: "❌ Error de Conexión",
-                              description: "No se pudo conectar con el servidor A.E AI",
-                              variant: "destructive",
-                              duration: 5000,
-                            });
-                          }
-                        }}
-                      >
-                        <Bot className="h-4 w-4 mr-2" />
-                        Probar
-                      </Button>
-                    </motion.div>
-                  )}
-                  
-
-
-
-                  
-                  {/* Comments Button */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3, delay: 0.2 }}
-                  >
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-orange-600 text-orange-600 hover:bg-orange-50 shadow-sm transition-all duration-300 relative"
-                      onClick={() => setCommentsDialogOpen(true)}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Comentarios
-                      {chatComments.length > 0 && (
-                        <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                          {chatComments.length}
-                        </span>
-                      )}
-                    </Button>
-                  </motion.div>
-                  
-
-                  
-
-
-                  {/* Profile Button */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowUserProfile(true)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <User className="h-4 w-4" />
-                  </Button>
-                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <AgentAssignmentDisplay chatId={selectedChat.id} />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setAssignmentChatId(selectedChat.id);
+                    setAssignmentAccountId(selectedChat.accountId);
+                    setAssignmentDialogOpen(true);
+                  }}
+                >
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  Assign
+                </Button>
               </div>
             </div>
 
-            {/* Messages Area - Aligned with Header */}
-            <ScrollArea className="flex-1 py-4">
-              <div className="px-4">
-                {loadingMessages ? (
-                  <div className="flex items-center justify-center h-32">
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                    <span className="ml-2 text-gray-500">Cargando mensajes...</span>
-                  </div>
-                ) : (!messages || !Array.isArray(messages) || messages.length === 0) ? (
-                  <div className="flex flex-col items-center justify-center h-32 text-gray-500">
-                    <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
-                    <p>No hay mensajes en este chat</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                  {messages.map((message, index) => {
-                    const showAvatar = selectedChat.isGroup && !message.fromMe;
-                    const isFirstFromAuthor = index === 0 || 
-                      messages[index - 1].author !== message.author || 
-                      messages[index - 1].fromMe !== message.fromMe;
-                    
-                    // Identificar si este es el último mensaje recibido (no enviado por nosotros)
-                    const lastIncomingMessageId = getLastIncomingMessageId(messages);
-                    const isLastIncomingMessage = !message.fromMe && message.id === lastIncomingMessageId;
-                    
-                    return (
-                      <motion.div
-                        key={message.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className={`flex ${message.fromMe ? 'justify-end pr-4' : 'justify-start'} mb-2 px-1`}
-                      >
-                        <div className={`flex space-x-2 ${message.fromMe ? 'max-w-[45%] flex-row-reverse space-x-reverse' : 'max-w-[85%]'}`}>
-                          {showAvatar && isFirstFromAuthor && (
-                            <Avatar className="h-8 w-8 mt-1">
-                              <AvatarImage src={message.authorProfilePic} />
-                              <AvatarFallback className="text-xs bg-gray-200">
-                                {message.author?.charAt(0).toUpperCase() || 'U'}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                          
-                          <div className={`${showAvatar && !isFirstFromAuthor ? 'ml-10' : ''}`}>
-                            {selectedChat.isGroup && !message.fromMe && isFirstFromAuthor && (
-                              <div className="text-xs text-gray-500 mb-1 px-3">
-                                {message.author || message.authorNumber}
-                              </div>
-                            )}
-                            
-                            <div className={`flex items-end gap-1 ${message.fromMe ? 'justify-end' : 'flex-row'}`}>
-                              {message.fromMe && (
-                                <div className="text-xs text-gray-500 flex-shrink-0">
-                                  {formatTime(message.timestamp)}
-                                </div>
-                              )}
-                              <div
-                                className={`px-4 py-2 rounded-2xl ${
-                                  message.fromMe
-                                    ? 'bg-blue-100 text-black rounded-br-md'
-                                    : 'bg-green-100 text-black rounded-bl-md'
-                                }`}
-                              >
-                                {/* Mensajes de audio/nota de voz con transcripción */}
-                                {(message.type === 'ptt' || message.type === 'audio') ? (
-                                  <VoiceNoteMessage 
-                                    messageId={message.id} 
-                                    chatId={selectedChat.id}
-                                    accountId={selectedChat.accountId}
-                                  />
-                                ) : message.type === 'image' ? (
-                                  <div className="flex items-center space-x-3">
-                                    <div className="flex items-center space-x-2">
-                                      <div className="bg-gray-600 rounded-full p-2">
-                                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
-                                        </svg>
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span className="text-xs text-gray-600">Nota de voz</span>
-                                        <div className="flex items-center space-x-2">
-                                          <audio 
-                                            controls 
-                                            className="max-w-[200px] h-8"
-                                            src={`/api/whatsapp-accounts/${selectedChat.accountId}/messages/${selectedChat.id}/audio/${message.id}`}
-                                            onLoadStart={() => console.log('🎵 Cargando audio...')}
-                                            onCanPlay={() => console.log('✅ Audio listo para reproducir')}
-                                            onError={(e) => {
-                                              console.log('❌ Error cargando audio:', e);
-                                              // Mostrar mensaje de error al usuario
-                                              const audioElement = e.currentTarget;
-                                              audioElement.style.display = 'none';
-                                              if (audioElement.nextElementSibling) {
-                                                (audioElement.nextElementSibling as HTMLElement).style.display = 'block';
-                                              }
-                                            }}
-                                            >
-                                              Tu navegador no soporta audio.
-                                            </audio>
-                                          <div style={{ display: 'none' }} className="text-xs text-red-500">
-                                            ⚠️ Audio no disponible
-                                          </div>
-                                        </div>
-                                        {(message.mediaUrl || message._data?.mediaUrl) && (
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-6 px-2 text-xs"
-                                            onClick={() => handleAudioMessage(message)}
-                                          >
-                                            📝 Transcribir
-                                          </Button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : message.type === 'image' ? (
-                                  /* Mensajes de imagen */
-                                  <div className="space-y-2">
-                                    {message.mediaUrl || message._data?.mediaUrl ? (
-                                      <img 
-                                        src={message.mediaUrl || message._data?.mediaUrl} 
-                                        alt="Imagen enviada"
-                                        className="max-w-[250px] max-h-[250px] rounded-lg object-cover"
-                                        onError={(e) => {
-                                          e.currentTarget.style.display = 'none';
-                                          e.currentTarget.nextElementSibling.style.display = 'block';
-                                        }}
-                                      />
-                                    ) : null}
-                                    <div style={{ display: 'none' }} className="bg-gray-100 p-4 rounded-lg text-center text-gray-500">
-                                      📸 Imagen no disponible
-                                    </div>
-                                    {message.body && (
-                                      <div>
-                                        <p className="text-sm whitespace-pre-wrap">{message.body}</p>
-                                        {!message.fromMe && (
-                                          <MessageTranslation 
-                                            text={message.body} 
-                                            messageId={message.id}
-                                            translationEnabled={translationEnabled}
-                                            messages={messages}
-                                          />
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  /* Mensajes de texto normales */
-                                  <div>
-                                    <p className="text-sm whitespace-pre-wrap">{message.body || '[Mensaje sin contenido]'}</p>
-                                    {!message.fromMe && message.body && (
-                                      <MessageTranslation 
-                                        text={message.body} 
-                                        messageId={message.id}
-                                        translationEnabled={translationEnabled}
-                                        messages={messages}
-                                      />
-                                    )}
-                                    {/* Mostrar texto original debajo del traducido para mensajes enviados */}
-                                    {message.fromMe && translationEnabled && (sentMessageOrigins[message.id] || sentMessageOrigins[message.body]) && (
-                                      <div className="mt-2 p-2 bg-gray-50 rounded-md border-l-4 border-gray-300">
-                                        <div className="flex items-start gap-2">
-                                          <span className="text-gray-600 text-xs font-medium">📝</span>
-                                          <p className="text-gray-700 text-xs leading-relaxed flex-1">
-                                            {sentMessageOrigins[message.id] || sentMessageOrigins[message.body]}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                              {!message.fromMe && (
-                                <div className="text-xs text-gray-500 flex-shrink-0 flex items-center gap-1">
-                                  {formatTime(message.timestamp)}
-                                  {isLastIncomingMessage && (
-                                    <>
-                                      <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium animate-pulse">
-                                        ÚLTIMO RECIBIDO
-                                      </span>
-                                      <button
-                                        onClick={async () => {
-                                          if (!selectedChat || !message.body) return;
-                                          
-                                          try {
-                                            console.log(`🤖 Enviando texto al agente externo: "${message.body}"`);
-                                            
-                                            // Obtener la configuración del agente asignado a esta cuenta
-                                            const configResponse = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/agent-config`);
-                                            const configResult = await configResponse.json();
-                                            
-                                            if (!configResult.success || !configResult.config?.assignedExternalAgentId) {
-                                              toast({
-                                                title: "Sin Agente Asignado",
-                                                description: "No hay un agente externo asignado a esta cuenta",
-                                                variant: "destructive"
-                                              });
-                                              return;
-                                            }
-                                            
-                                            // Enviar el mensaje al agente externo y obtener respuesta
-                                            const response = await fetch('/api/ai/chat-with-external-agent', {
-                                              method: 'POST',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({
-                                                agentId: configResult.config.assignedExternalAgentId,
-                                                message: message.body
-                                              })
-                                            });
-                                            
-                                            const result = await response.json();
-                                            
-                                            if (result.success && result.response) {
-                                              // Colocar la respuesta en el área de escritura
-                                              setNewMessage(result.response);
-                                              
-                                              toast({
-                                                title: "🤖 Respuesta Generada",
-                                                description: "La respuesta del agente externo se colocó en el área de escritura",
-                                              });
-                                            } else {
-                                              toast({
-                                                title: "Error",
-                                                description: result.error || "No se pudo obtener respuesta del agente",
-                                                variant: "destructive"
-                                              });
-                                            }
-                                          } catch (error) {
-                                            console.error('Error obteniendo respuesta del agente:', error);
-                                            toast({
-                                              title: "Error",
-                                              description: "Error de conexión con el agente externo",
-                                              variant: "destructive"
-                                            });
-                                          }
-                                        }}
-                                        className="bg-blue-500 hover:bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-medium transition-colors ml-1"
-                                        title="Procesar con Agente Externo"
-                                      >
-                                        🤖 A.E
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              )}
-                              {message.fromMe && (
-                                <div className="text-xs pt-[10px] pb-[10px] ml-[2px] mr-[8px] flex-shrink-0">
-                                  <span className={`${
-                                    message.messageRead 
-                                      ? 'text-blue-500' 
-                                      : message.type === 'delivered' 
-                                        ? 'text-gray-500' 
-                                        : 'text-gray-400'
-                                  }`}>
-                                    {message.messageRead 
-                                      ? '✓✓' 
-                                      : (message.type === 'delivered' || message.type === 'received') 
-                                        ? '✓✓' 
-                                        : '✓'}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                  <div ref={messagesEndRef} />
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-
-            {/* Enhanced Message Input with Tools */}
-            <div className="p-4 border-t border-gray-200 bg-white">
-              {/* Toolbar */}
-              <div className="flex items-center space-x-2 mb-3">
-                {/* Emoji Picker */}
-                <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9 w-9 p-0"
-                    >
-                      <Smile className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80">
-                    <div className="grid grid-cols-8 gap-2 p-2">
-                      {['😊', '😂', '❤️', '👍', '👋', '🙏', '😘', '😍', '🤔', '😅', '👌', '🔥', '💯', '✨', '🎉', '🚀', '💪', '🙌', '👏', '💝', '🌟', '⭐', '💖', '💕'].map((emoji) => (
-                        <Button
-                          key={emoji}
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-lg"
-                          onClick={() => {
-                            setNewMessage(prev => prev + emoji);
-                            setEmojiPickerOpen(false);
-                          }}
-                        >
-                          {emoji}
-                        </Button>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-
-                {/* File Attachment Menu */}
-                <Popover open={fileMenuOpen} onOpenChange={setFileMenuOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9 w-9 p-0"
-                    >
-                      <Paperclip className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-48">
-                    <div className="space-y-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => {
-                          // Trigger file input for images
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.accept = 'image/*';
-                          input.onchange = (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (file) {
-                              toast({
-                                title: "Imagen seleccionada",
-                                description: `${file.name} listo para enviar`,
-                              });
-                            }
-                          };
-                          input.click();
-                          setFileMenuOpen(false);
-                        }}
-                      >
-                        <Image className="h-4 w-4 mr-2" />
-                        Imagen
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => {
-                          // Trigger file input for videos
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.accept = 'video/*';
-                          input.onchange = (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (file) {
-                              toast({
-                                title: "Video seleccionado",
-                                description: `${file.name} listo para enviar`,
-                              });
-                            }
-                          };
-                          input.click();
-                          setFileMenuOpen(false);
-                        }}
-                      >
-                        <Video className="h-4 w-4 mr-2" />
-                        Video
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => {
-                          // Trigger file input for documents
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.accept = '.pdf,.doc,.docx,.txt,.xlsx,.pptx';
-                          input.onchange = (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (file) {
-                              toast({
-                                title: "Documento seleccionado",
-                                description: `${file.name} listo para enviar`,
-                              });
-                            }
-                          };
-                          input.click();
-                          setFileMenuOpen(false);
-                        }}
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        Documento
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => {
-                          // Trigger file input for any file
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.onchange = (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (file) {
-                              toast({
-                                title: "Archivo seleccionado",
-                                description: `${file.name} listo para enviar`,
-                              });
-                            }
-                          };
-                          input.click();
-                          setFileMenuOpen(false);
-                        }}
-                      >
-                        <File className="h-4 w-4 mr-2" />
-                        Archivo
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-
-                {/* Botón R.A AI eliminado según solicitud del usuario */}
-
-                {/* Voice Note Button with Sound Waves */}
-                <Button
-                  variant={isRecording ? "destructive" : "outline"}
-                  size="sm"
-                  className={`h-9 px-3 ${isRecording ? 'bg-red-600 hover:bg-red-700' : ''}`}
-                  onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
-                  disabled={!selectedChat}
-                >
-                  {isRecording ? (
-                    <div className="flex items-center space-x-1">
-                      <span>🎤</span>
-                      {/* Animated Sound Waves */}
-                      <div className="flex items-center space-x-0.5">
-                        <div className="w-0.5 h-3 bg-white rounded-full animate-pulse" style={{animationDelay: '0ms'}}></div>
-                        <div className="w-0.5 h-4 bg-white rounded-full animate-pulse" style={{animationDelay: '150ms'}}></div>
-                        <div className="w-0.5 h-2 bg-white rounded-full animate-pulse" style={{animationDelay: '300ms'}}></div>
-                        <div className="w-0.5 h-5 bg-white rounded-full animate-pulse" style={{animationDelay: '450ms'}}></div>
-                        <div className="w-0.5 h-3 bg-white rounded-full animate-pulse" style={{animationDelay: '600ms'}}></div>
-                      </div>
-                    </div>
-                  ) : (
-                    <span>🎤</span>
-                  )}
-                </Button>
-
-                {/* Translator with Language Selector */}
-                <Popover open={languageSelectorOpen} onOpenChange={setLanguageSelectorOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={translationEnabled ? "default" : "outline"}
-                      size="sm"
-                      className={`h-9 px-3 ${translationEnabled ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                    >
-                      <Languages className="h-4 w-4 mr-1" />
-                      {translationEnabled ? 
-                        availableLanguages.find(lang => lang.code === selectedLanguage)?.flag : 
-                        '🌐'
-                      }
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64 p-3">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-sm">Traductor</h4>
-                        <Button
-                          variant={translationEnabled ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            setTranslationEnabled(!translationEnabled);
-                            toast({
-                              title: translationEnabled ? "Traductor desactivado" : "Traductor activado",
-                              description: translationEnabled 
-                                ? "Las respuestas automáticas se enviarán en español" 
-                                : `Las respuestas automáticas se traducirán al ${availableLanguages.find(l => l.code === selectedLanguage)?.name}`,
-                            });
-                          }}
-                        >
-                          {translationEnabled ? 'ON' : 'OFF'}
-                        </Button>
-                      </div>
-                      
-                      {translationEnabled && (
-                        <div className="space-y-2">
-                          <label className="text-xs text-gray-600 font-medium">Idioma de destino:</label>
-                          <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto">
-                            {availableLanguages.map((language) => (
-                              <Button
-                                key={language.code}
-                                variant={selectedLanguage === language.code ? "default" : "ghost"}
-                                size="sm"
-                                className="justify-start text-xs p-2 h-8"
-                                onClick={() => {
-                                  setSelectedLanguage(language.code);
-                                  toast({
-                                    title: "Idioma seleccionado",
-                                    description: `Las respuestas automáticas se traducirán al ${language.name}`,
-                                    duration: 2000
-                                  });
-                                  setLanguageSelectorOpen(false);
-                                }}
-                              >
-                                <span className="mr-1">{language.flag}</span>
-                                <span className="truncate">{language.name}</span>
-                              </Button>
-                            ))}
-                          </div>
+            {/* Messages Area */}
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4">
+                {messages && Array.isArray(messages) && messages.map((message: WhatsAppMessage) => (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`max-w-[45%] p-3 rounded-lg ${
+                      message.fromMe 
+                        ? 'bg-green-500 text-white' 
+                        : 'bg-white border'
+                    }`}>
+                      {!message.fromMe && message.author && (
+                        <div className="text-xs font-medium mb-1 text-gray-600">
+                          {message.author}
                         </div>
                       )}
                       
-                      <div className="text-xs text-gray-500 pt-2 border-t">
-                        {translationEnabled ? 
-                          `🤖 Las respuestas automáticas se enviarán en ${availableLanguages.find(l => l.code === selectedLanguage)?.name}` :
-                          'Las respuestas automáticas se enviarán en español'
-                        }
+                      <div className="text-sm">
+                        {message.body}
                       </div>
+                      
+                      <div className={`text-xs mt-1 ${
+                        message.fromMe ? 'text-green-100' : 'text-gray-500'
+                      }`}>
+                        {formatTimestamp(message.timestamp)}
+                      </div>
+                      
+                      <MessageTranslation 
+                        text={message.body}
+                        messageId={message.id}
+                        translationEnabled={translatorEnabled}
+                        messages={messages}
+                      />
                     </div>
-                  </PopoverContent>
-                </Popover>
+                  </motion.div>
+                ))}
+                <div ref={messagesEndRef} />
               </div>
+            </ScrollArea>
 
-              {/* Message Input */}
+            {/* Message Input */}
+            <div className="p-4 border-t bg-white">
               <div className="flex space-x-2">
                 <Input
-                  placeholder={translatorEnabled ? "Escribe un mensaje (se traducirá automáticamente)..." : isAutoSending ? "Auto-enviando en 5 segundos..." : "Escribe un mensaje..."}
                   value={newMessage}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setNewMessage(value);
-                    
-                    // Auto-envío con delay de 5 segundos
-                    if (autoSendTimer) {
-                      clearTimeout(autoSendTimer);
-                      setAutoSendTimer(null);
-                      setIsAutoSending(false);
-                    }
-                    
-                    if (value.trim().length > 0) {
-                      setIsAutoSending(true);
-                      const timer = setTimeout(() => {
-                        if (newMessage.trim().length > 0) {
-                          handleSendMessage();
-                        }
-                        setIsAutoSending(false);
-                        setAutoSendTimer(null);
-                      }, 5000);
-                      setAutoSendTimer(timer);
-                    }
-                  }}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      // Cancelar auto-envío si el usuario presiona Enter manualmente
-                      if (autoSendTimer) {
-                        clearTimeout(autoSendTimer);
-                        setAutoSendTimer(null);
-                        setIsAutoSending(false);
-                      }
-                      handleSendMessage();
-                    }
-                  }}
-                  className={`flex-1 ${isAutoSending ? 'border-orange-400 bg-orange-50' : ''}`}
-                  disabled={sendMessageMutation.isPending}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Type a message..."
+                  className="flex-1"
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                 />
                 <Button 
                   onClick={handleSendMessage}
                   disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                  className="bg-green-600 hover:bg-green-700"
+                  size="icon"
                 >
                   {sendMessageMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -2885,177 +678,28 @@ export function WhatsAppTwoColumn() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-gray-50">
-            <div className="text-center text-gray-500">
-              <MessageCircle className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-medium mb-2">Selecciona una conversación</h3>
-              <p>Elige un chat de la lista para empezar a conversar</p>
+          /* No Chat Selected */
+          <div className="flex-1 flex items-center justify-center text-center">
+            <div>
+              <MessageCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Select a chat to start messaging
+              </h3>
+              <p className="text-gray-500">
+                Choose a conversation from the chat list to view and send messages
+              </p>
             </div>
           </div>
         )}
       </div>
-      {/* Dialogs */}
-      {selectedChat && (
-        <ChatAssignmentDialog
-          open={assignmentDialogOpen}
-          onOpenChange={setAssignmentDialogOpen}
-          chatId={assignmentChatId || selectedChat.id}
-          accountId={assignmentAccountId || selectedChat.accountId}
-        />
-      )}
 
-      {selectedChat && (
-        <ChatCommentsDialog
-          open={commentsDialogOpen}
-          onOpenChange={setCommentsDialogOpen}
-          chatId={selectedChat.id}
-          chatName={selectedChat.name}
-        />
-      )}
-
-      {/* Diálogo de Configuración de Auto-Click */}
-      <AutoClickConfigDialog
-        open={showAutoClickConfig}
-        onOpenChange={setShowAutoClickConfig}
-        settings={autoClickSettings}
-        onSave={saveAutoClickSettings}
+      {/* Assignment Dialog */}
+      <ChatAssignmentDialog
+        open={assignmentDialogOpen}
+        onOpenChange={setAssignmentDialogOpen}
+        chatId={assignmentChatId}
+        accountId={assignmentAccountId}
       />
     </div>
-  );
-}
-
-// Componente del Diálogo de Configuración de Auto-Click
-function AutoClickConfigDialog({ 
-  open, 
-  onOpenChange, 
-  settings, 
-  onSave 
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  settings: {
-    aeWaitTime: number;
-    sendWaitTime: number;
-    enabled: boolean;
-  };
-  onSave: (newSettings: typeof settings) => void;
-}) {
-  const [tempSettings, setTempSettings] = useState(settings);
-
-  useEffect(() => {
-    setTempSettings(settings);
-  }, [settings]);
-
-  const handleSave = () => {
-    onSave(tempSettings);
-  };
-
-  const presets = [
-    { name: "Rápido", ae: 2000, send: 4000 },
-    { name: "Normal", ae: 4000, send: 8000 },
-    { name: "Lento", ae: 6000, send: 12000 },
-    { name: "Muy Lento", ae: 10000, send: 20000 }
-  ];
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <Settings className="h-5 w-5" />
-            <span>Configuración de Auto-Click</span>
-          </DialogTitle>
-          <DialogDescription>
-            Personaliza los tiempos de espera para el sistema de auto-click automático
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-6">
-          {/* Presets Rápidos */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">Presets Rápidos</label>
-            <div className="grid grid-cols-2 gap-2">
-              {presets.map((preset) => (
-                <Button
-                  key={preset.name}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setTempSettings({
-                    ...tempSettings,
-                    aeWaitTime: preset.ae,
-                    sendWaitTime: preset.send
-                  })}
-                  className="text-xs"
-                >
-                  {preset.name}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tiempo de espera después del clic A.E */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">
-              Tiempo después del clic "🤖 A.E" (milisegundos)
-            </label>
-            <Input
-              type="number"
-              min="1000"
-              max="30000"
-              step="500"
-              value={tempSettings.aeWaitTime}
-              onChange={(e) => setTempSettings({
-                ...tempSettings,
-                aeWaitTime: parseInt(e.target.value) || 4000
-              })}
-              className="w-full"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Tiempo que espera para que se genere la respuesta del agente (1-30 segundos)
-            </p>
-          </div>
-
-          {/* Intervalo entre ciclos */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">
-              Intervalo entre ciclos automáticos (milisegundos)
-            </label>
-            <Input
-              type="number"
-              min="2000"
-              max="60000"
-              step="1000"
-              value={tempSettings.sendWaitTime}
-              onChange={(e) => setTempSettings({
-                ...tempSettings,
-                sendWaitTime: parseInt(e.target.value) || 8000
-              })}
-              className="w-full"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Tiempo entre cada ejecución del auto-click (2-60 segundos)
-            </p>
-          </div>
-
-          {/* Vista previa de tiempos */}
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">Vista Previa:</h4>
-            <div className="text-xs text-blue-700 space-y-1">
-              <div>• Clic en "🤖 A.E" → Esperar {tempSettings.aeWaitTime / 1000}s → Clic en "Enviar"</div>
-              <div>• Repetir cada {tempSettings.sendWaitTime / 1000} segundos</div>
-            </div>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} className="bg-purple-600 hover:bg-purple-700">
-            Guardar Configuración
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
