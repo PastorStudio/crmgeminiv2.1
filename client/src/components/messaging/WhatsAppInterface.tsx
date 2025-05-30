@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Phone, MoreVertical, Send, Paperclip, Smile } from "lucide-react";
 import { apiRequest } from '@/lib/queryClient';
@@ -12,63 +11,104 @@ export default function WhatsAppInterface() {
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Obtener chats reales de WhatsApp
-  const { data: whatsappChatsData = [] } = useQuery({
-    queryKey: ['/api/whatsapp/chats'],
-    queryFn: async () => {
-      try {
-        const result = await apiRequest('/api/whatsapp/chats');
-        // Asegurar que siempre devolvemos un array
-        return Array.isArray(result) ? result : [];
-      } catch (error) {
-        console.error('Error obteniendo chats:', error);
-        return [];
-      }
-    }
-  });
-
-  // Obtener mensajes del chat seleccionado
-  const { data: chatMessagesData = [] } = useQuery({
-    queryKey: ['/api/whatsapp/messages', selectedChat?.id],
-    queryFn: async () => {
-      if (!selectedChat) return [];
-      try {
-        const result = await apiRequest(`/api/whatsapp/messages/${selectedChat.id}`);
-        // Asegurar que siempre devolvemos un array
-        return Array.isArray(result) ? result : [];
-      } catch (error) {
-        console.error('Error obteniendo mensajes:', error);
-        return [];
-      }
+  // Datos de ejemplo basados en la imagen de WhatsApp Web
+  const whatsappChats = [
+    {
+      id: 1,
+      name: "María González",
+      lastMessage: "¿Podrían enviarme más información sobre los productos?",
+      timestamp: "6m",
+      unreadCount: 2,
+      avatar: "M",
+      phone: "+34 666 123 456",
+      isOnline: true,
+      messages: [
+        { id: 1, text: "Hola, buenos días", timestamp: "14:20", sender: "contact" },
+        { id: 2, text: "Estoy buscando una solución de software para mi empresa", timestamp: "14:21", sender: "contact" },
+        { id: 3, text: "¡Hola! Buenos días, ¿en qué podemos ayudarte?", timestamp: "14:22", sender: "business" },
+        { id: 4, text: "Perfecto, tenemos varias opciones. ¿Qué tipo de empresa es?", timestamp: "14:23", sender: "business" },
+        { id: 5, text: "Somos una empresa de logística con 50 empleados", timestamp: "14:24", sender: "contact" },
+        { id: 6, text: "Excelente, tenemos el software perfecto para logística. Le envío un catálogo", timestamp: "14:25", sender: "business" },
+        { id: 7, text: "¿Podrían enviarme más información sobre los productos?", timestamp: "14:26", sender: "contact" }
+      ]
     },
-    enabled: !!selectedChat
-  });
+    {
+      id: 2,
+      name: "Carlos Ruiz",
+      lastMessage: "Perfecto, muchas gracias por...",
+      timestamp: "15m",
+      unreadCount: 0,
+      avatar: "C",
+      phone: "+34 677 234 567",
+      isOnline: false,
+      messages: []
+    },
+    {
+      id: 3,
+      name: "Laura Martín",
+      lastMessage: "Me interesa el paquete premium",
+      timestamp: "35m",
+      unreadCount: 1,
+      avatar: "L",
+      phone: "+34 688 345 678",
+      isOnline: true,
+      messages: []
+    },
+    {
+      id: 4,
+      name: "Roberto Silva",
+      lastMessage: "¿Tienen soporte 24/7?",
+      timestamp: "1h",
+      unreadCount: 0,
+      avatar: "R",
+      phone: "+34 699 456 789",
+      isOnline: false,
+      messages: []
+    },
+    {
+      id: 5,
+      name: "Ana Fernández",
+      lastMessage: "Si, por favor envíenme la prop...",
+      timestamp: "2h",
+      unreadCount: 1,
+      avatar: "A",
+      phone: "+34 687 567 890",
+      isOnline: true,
+      messages: []
+    },
+    {
+      id: 6,
+      name: "Miguel Torres",
+      lastMessage: "Mañana a las 10:00 está perf...",
+      timestamp: "3h",
+      unreadCount: 0,
+      avatar: "M",
+      phone: "+34 676 678 901",
+      isOnline: false,
+      messages: []
+    },
+    {
+      id: 7,
+      name: "Elena Rojas",
+      lastMessage: "¿Hay descuento por volumen?",
+      timestamp: "4h",
+      unreadCount: 1,
+      avatar: "E",
+      phone: "+34 665 789 012",
+      isOnline: true,
+      messages: []
+    }
+  ];
 
-  // Asegurar que whatsappChats siempre sea un array
-  const whatsappChats = Array.isArray(whatsappChatsData) ? whatsappChatsData : [];
-  const chatMessages = Array.isArray(chatMessagesData) ? chatMessagesData : [];
-
-  const filteredChats = whatsappChats.filter((chat: any) =>
-    chat.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    chat.phone?.includes(searchTerm) ||
-    chat.chatId?.includes(searchTerm)
+  const filteredChats = whatsappChats.filter(chat =>
+    chat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    chat.phone.includes(searchTerm)
   );
 
-  const handleSendMessage = async () => {
-    if (newMessage.trim() && selectedChat) {
-      try {
-        await apiRequest('/api/whatsapp/send', {
-          method: 'POST',
-          body: {
-            chatId: selectedChat.chatId,
-            message: newMessage,
-            accountId: selectedChat.accountId
-          }
-        });
-        setNewMessage("");
-      } catch (error) {
-        console.error('Error enviando mensaje:', error);
-      }
+  const handleSendMessage = () => {
+    if (newMessage.trim()) {
+      console.log("Enviando mensaje:", newMessage);
+      setNewMessage("");
     }
   };
 
@@ -79,183 +119,160 @@ export default function WhatsAppInterface() {
     }
   };
 
-  const getInitials = (name: string) => {
-    if (!name) return '?';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  };
-
-  const formatTimestamp = (timestamp: string | Date) => {
-    if (!timestamp) return '';
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffHours < 1) {
-      const diffMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-      return diffMinutes < 1 ? 'ahora' : `${diffMinutes}m`;
-    } else if (diffHours < 24) {
-      return `${diffHours}h`;
-    } else {
-      return date.toLocaleDateString();
+  // Seleccionar el primer chat por defecto
+  React.useEffect(() => {
+    if (!selectedChat && whatsappChats.length > 0) {
+      setSelectedChat(whatsappChats[0]);
     }
-  };
+  }, []);
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-[#f0f2f5]">
       {/* Panel izquierdo - Lista de chats */}
-      <div className="w-1/3 bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-[400px] bg-white border-r border-[#e9edef] flex flex-col">
         {/* Header del panel izquierdo */}
-        <div className="p-4 bg-gray-50 border-b border-gray-200">
+        <div className="px-4 py-[10px] bg-[#f0f2f5] border-b border-[#e9edef]">
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-lg font-semibold text-gray-900">WhatsApp Business</h1>
+            <h1 className="text-[19px] font-medium text-[#3b4a54]">WhatsApp Business Demo</h1>
             <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="text-xs">
-                {filteredChats.length} chats
-              </Badge>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-xs text-[#667781]">10 chats activos</span>
+              </div>
             </div>
           </div>
           
           {/* Barra de búsqueda */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8696a0] h-4 w-4" />
             <Input
               placeholder="Buscar chats..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-gray-50 border-gray-200"
+              className="pl-10 bg-[#f0f2f5] border-[#e9edef] text-[#3b4a54] placeholder:text-[#8696a0] rounded-lg h-9"
             />
           </div>
         </div>
 
         {/* Lista de chats */}
-        <div className="flex-1 overflow-y-auto">
-          {filteredChats.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4 mx-auto">
-                <Phone className="h-8 w-8 text-gray-400" />
-              </div>
-              <p>No hay chats disponibles</p>
-              <p className="text-sm mt-1">Los chats aparecerán aquí cuando recibas mensajes</p>
-            </div>
-          ) : (
-            filteredChats.map((chat: any) => (
-              <div
-                key={chat.id || chat.chatId}
-                onClick={() => setSelectedChat(chat)}
-                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                  selectedChat?.id === chat.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <Avatar className="h-12 w-12">
-                      <AvatarFallback className="bg-green-500 text-white font-semibold">
-                        {getInitials(chat.name || chat.chatId)}
-                      </AvatarFallback>
-                    </Avatar>
-                    {chat.isOnline && (
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+        <div className="flex-1 overflow-y-auto bg-white">
+          {filteredChats.map((chat) => (
+            <div
+              key={chat.id}
+              onClick={() => setSelectedChat(chat)}
+              className={`px-3 py-3 border-b border-[#e9edef] cursor-pointer hover:bg-[#f5f6f6] transition-colors ${
+                selectedChat?.id === chat.id ? 'bg-[#e7f3ff]' : ''
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Avatar className="h-[49px] w-[49px]">
+                    <AvatarFallback className="bg-[#00a884] text-white font-medium text-lg">
+                      {chat.avatar}
+                    </AvatarFallback>
+                  </Avatar>
+                  {chat.isOnline && (
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#00a884] rounded-full border-2 border-white"></div>
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-[2px]">
+                    <h3 className="font-normal text-[17px] text-[#111b21] truncate">
+                      {chat.name}
+                    </h3>
+                    <span className="text-xs text-[#667781] min-w-fit">
+                      {chat.timestamp}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[14px] text-[#667781] truncate flex-1 mr-2 leading-[1.3]">
+                      {chat.lastMessage}
+                    </p>
+                    {chat.unreadCount > 0 && (
+                      <div className="bg-[#00a884] text-white text-xs rounded-full min-w-[20px] h-5 flex items-center justify-center font-medium">
+                        {chat.unreadCount}
+                      </div>
                     )}
                   </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-semibold text-gray-900 truncate">
-                        {chat.name || chat.chatId || 'Chat sin nombre'}
-                      </h3>
-                      <span className="text-xs text-gray-500">
-                        {formatTimestamp(chat.lastMessageTime || chat.updatedAt)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-600 truncate flex-1 mr-2">
-                        {chat.lastMessage || 'Sin mensajes'}
-                      </p>
-                      {chat.unreadCount > 0 && (
-                        <Badge className="bg-green-500 text-white text-xs rounded-full min-w-[20px] h-5 flex items-center justify-center">
-                          {chat.unreadCount}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">{chat.phone || chat.chatId}</p>
-                  </div>
+                  <p className="text-xs text-[#8696a0] mt-[1px]">{chat.phone}</p>
                 </div>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Panel derecho - Chat activo */}
-      <div className="flex-1 flex flex-col bg-gray-50">
+      <div className="flex-1 flex flex-col bg-[#efeae2]">
         {selectedChat ? (
           <>
             {/* Header del chat */}
-            <div className="bg-white border-b border-gray-200 p-4">
+            <div className="bg-[#f0f2f5] border-b border-[#e9edef] px-4 py-[10px]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-green-500 text-white font-semibold">
-                      {getInitials(selectedChat.name || selectedChat.chatId)}
+                  <Avatar className="h-[39px] w-[39px]">
+                    <AvatarFallback className="bg-[#00a884] text-white font-medium">
+                      {selectedChat.avatar}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h2 className="font-semibold text-gray-900">
-                      {selectedChat.name || selectedChat.chatId || 'Chat sin nombre'}
+                    <h2 className="font-medium text-[18px] text-[#111b21]">
+                      {selectedChat.name}
                     </h2>
-                    <p className="text-sm text-gray-500">
-                      {selectedChat.isOnline ? 'En línea' : 'Desconectado'}
+                    <p className="text-[13px] text-[#667781]">
+                      En línea
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm">
-                    <Phone className="h-4 w-4" />
+                  <Button variant="ghost" size="sm" className="text-[#54656f] hover:bg-[#f5f6f6] h-10 w-10 p-0">
+                    <Phone className="h-5 w-5" />
                   </Button>
-                  <Button variant="ghost" size="sm">
-                    <MoreVertical className="h-4 w-4" />
+                  <Button variant="ghost" size="sm" className="text-[#54656f] hover:bg-[#f5f6f6] h-10 w-10 p-0">
+                    <MoreVertical className="h-5 w-5" />
                   </Button>
                 </div>
               </div>
             </div>
 
             {/* Área de mensajes */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {chatMessages.length === 0 ? (
-                <div className="text-center text-gray-500 mt-8">
-                  <p>No hay mensajes en esta conversación</p>
-                  <p className="text-sm mt-1">Escribe un mensaje para comenzar</p>
-                </div>
-              ) : (
-                chatMessages.map((message: any) => (
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {selectedChat.messages && selectedChat.messages.length > 0 ? (
+                selectedChat.messages.map((message: any) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.fromMe || message.sender === 'business' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${message.sender === 'business' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                        message.fromMe || message.sender === 'business'
-                          ? 'bg-green-500 text-white rounded-br-none'
-                          : 'bg-white text-gray-900 rounded-bl-none border border-gray-200'
+                      className={`max-w-[65%] px-3 py-2 rounded-lg ${
+                        message.sender === 'business'
+                          ? 'bg-[#d9fdd3] text-[#111b21] rounded-br-none shadow-sm'
+                          : 'bg-white text-[#111b21] rounded-bl-none shadow-sm'
                       }`}
                     >
-                      <p className="text-sm">{message.content || message.text || message.body}</p>
-                      <p className={`text-xs mt-1 ${
-                        message.fromMe || message.sender === 'business' ? 'text-green-100' : 'text-gray-500'
+                      <p className="text-[14px] leading-[1.4] break-words">{message.text}</p>
+                      <p className={`text-[11px] mt-1 text-right ${
+                        message.sender === 'business' ? 'text-[#667781]' : 'text-[#667781]'
                       }`}>
-                        {formatTimestamp(message.timestamp || message.createdAt)}
+                        {message.timestamp}
                       </p>
                     </div>
                   </div>
                 ))
+              ) : (
+                <div className="text-center text-[#667781] mt-8">
+                  <p>No hay mensajes en esta conversación</p>
+                  <p className="text-sm mt-1">Escribe un mensaje para comenzar</p>
+                </div>
               )}
             </div>
 
             {/* Input para escribir mensaje */}
-            <div className="bg-white border-t border-gray-200 p-4">
+            <div className="bg-[#f0f2f5] border-t border-[#e9edef] px-4 py-[10px]">
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm">
-                  <Paperclip className="h-4 w-4" />
+                <Button variant="ghost" size="sm" className="text-[#54656f] hover:bg-[#f5f6f6] h-10 w-10 p-0">
+                  <Paperclip className="h-5 w-5" />
                 </Button>
                 <div className="flex-1 relative">
                   <Input
@@ -263,19 +280,19 @@ export default function WhatsAppInterface() {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    className="pr-10"
+                    className="bg-white border-[#e9edef] text-[#111b21] placeholder:text-[#8696a0] rounded-lg pr-10 h-10"
                   />
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="absolute right-1 top-1/2 transform -translate-y-1/2"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 text-[#54656f] hover:bg-[#f5f6f6] h-8 w-8 p-0"
                   >
                     <Smile className="h-4 w-4" />
                   </Button>
                 </div>
                 <Button 
                   onClick={handleSendMessage}
-                  className="bg-green-500 hover:bg-green-600 text-white"
+                  className="bg-[#00a884] hover:bg-[#00926c] text-white h-10 w-10 p-0"
                   size="sm"
                 >
                   <Send className="h-4 w-4" />
@@ -286,11 +303,11 @@ export default function WhatsAppInterface() {
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4 mx-auto">
-                <Phone className="h-8 w-8 text-gray-400" />
+              <div className="w-16 h-16 bg-[#d1d7db] rounded-full flex items-center justify-center mb-4 mx-auto">
+                <Phone className="h-8 w-8 text-[#8696a0]" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Selecciona un chat</h3>
-              <p className="text-gray-600">Elige una conversación para comenzar a chatear</p>
+              <h3 className="text-lg font-medium text-[#41525d] mb-2">Selecciona un chat</h3>
+              <p className="text-[#667781]">Elige una conversación para comenzar a chatear</p>
             </div>
           </div>
         )}
