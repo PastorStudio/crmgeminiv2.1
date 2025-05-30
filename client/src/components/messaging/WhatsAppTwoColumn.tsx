@@ -57,7 +57,7 @@ import { AgentSelector } from './AgentSelector';
 import { VoiceNoteMessage } from './VoiceNoteMessage';
 
 // Componente de traducción automática
-function MessageTranslation({ text, messageId }: { text: string; messageId: string }) {
+function MessageTranslation({ text, messageId, translationEnabled }: { text: string; messageId: string; translationEnabled: boolean }) {
   const [translation, setTranslation] = useState<{
     translated: string;
     detectedLanguage: string;
@@ -67,7 +67,7 @@ function MessageTranslation({ text, messageId }: { text: string; messageId: stri
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!text || text.trim().length === 0) return;
+    if (!text || text.trim().length === 0 || !translationEnabled) return;
 
     const detectAndTranslate = async () => {
       setIsLoading(true);
@@ -106,7 +106,7 @@ function MessageTranslation({ text, messageId }: { text: string; messageId: stri
 
     const debounceTimeout = setTimeout(detectAndTranslate, 500);
     return () => clearTimeout(debounceTimeout);
-  }, [text, messageId]);
+  }, [text, messageId, translationEnabled]);
 
   if (isLoading) {
     return (
@@ -2545,6 +2545,7 @@ export function WhatsAppTwoColumn() {
                                       <MessageTranslation 
                                         text={message.body} 
                                         messageId={message.id}
+                                        translationEnabled={translationEnabled}
                                       />
                                     )}
                                   </div>
