@@ -127,9 +127,16 @@ export default function WhatsAppInterface() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-[#f0f2f5]">
-      {/* Panel izquierdo - Lista de chats */}
-      <div className="w-[400px] bg-white border-r border-[#e9edef] flex flex-col">
+    <div className="flex flex-col h-screen bg-[#f0f2f5]">
+      {/* Franja superior - Demo Banner */}
+      <div className="bg-[#075e54] text-white px-4 py-2 text-center text-sm font-medium">
+        WhatsApp Demo - Simulación Completa
+      </div>
+      
+      {/* Contenedor principal */}
+      <div className="flex flex-1 bg-[#f0f2f5]">
+        {/* Panel izquierdo - Lista de chats */}
+        <div className="w-[400px] bg-white border-r border-[#e9edef] flex flex-col">
         {/* Header del panel izquierdo */}
         <div className="px-4 py-[10px] bg-[#f0f2f5] border-b border-[#e9edef]">
           <div className="flex items-center justify-between mb-3">
@@ -311,6 +318,7 @@ export default function WhatsAppInterface() {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
