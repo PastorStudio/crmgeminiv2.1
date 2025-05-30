@@ -1175,6 +1175,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Web Scraping endpoints for External Agents
+  app.post("/api/scraping/extract", async (req: Request, res: Response) => {
+    try {
+      const { url, options = {} } = req.body;
+      
+      if (!url) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "URL es requerida" 
+        });
+      }
+
+      const { WebScrapingService } = await import('./services/webScrapingService');
+      const result = await WebScrapingService.smartScrape(url, options);
+      
+      res.json({
+        success: result.success,
+        data: result,
+        message: result.success ? "Contenido extraído exitosamente" : "Error al extraer contenido"
+      });
+    } catch (error) {
+      console.error("Error en scraping:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error interno del servidor",
+        error: error instanceof Error ? error.message : "Error desconocido"
+      });
+    }
+  });
+
+  app.post("/api/scraping/extract-specific", async (req: Request, res: Response) => {
+    try {
+      const { url, selectors } = req.body;
+      
+      if (!url || !selectors) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "URL y selectores son requeridos" 
+        });
+      }
+
+      const { WebScrapingService } = await import('./services/webScrapingService');
+      const result = await WebScrapingService.extractSpecificData(url, selectors);
+      
+      res.json({
+        success: true,
+        data: result,
+        message: "Datos específicos extraídos exitosamente"
+      });
+    } catch (error) {
+      console.error("Error en extracción específica:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error interno del servidor",
+        error: error instanceof Error ? error.message : "Error desconocido"
+      });
+    }
+  });
+
+  app.get("/api/scraping/check-url", async (req: Request, res: Response) => {
+    try {
+      const { url } = req.query;
+      
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ 
+          success: false, 
+          message: "URL es requerida" 
+        });
+      }
+
+      const { WebScrapingService } = await import('./services/webScrapingService');
+      const isAccessible = await WebScrapingService.isScrapeable(url);
+      
+      res.json({
+        success: true,
+        accessible: isAccessible,
+        message: isAccessible ? "URL accesible" : "URL no accesible"
+      });
+    } catch (error) {
+      console.error("Error verificando URL:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error verificando URL",
+        error: error instanceof Error ? error.message : "Error desconocido"
+      });
+    }
+  });
   
   // API de prueba para verificar el estado de Gemini
   app.get("/api/gemini/status", async (req: Request, res: Response) => {

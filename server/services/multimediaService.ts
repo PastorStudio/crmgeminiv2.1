@@ -64,6 +64,9 @@ export class MultimediaService {
       case 'image':
         console.log(`✅ IMAGEN detectada por messageType: ${messageType}`);
         return 'image';
+      case 'sticker':
+        console.log(`✅ STICKER detectado por messageType: ${messageType}`);
+        return 'image'; // Los stickers se manejan como imágenes
       case 'video':
         console.log(`✅ VIDEO detectado por messageType: ${messageType}`);
         return 'video';
