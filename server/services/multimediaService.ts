@@ -18,33 +18,67 @@ export class MultimediaService {
   static identifyFileType(messageType: string, mimeType?: string, filename?: string): string {
     console.log(`🔍 Identificando tipo de archivo: messageType=${messageType}, mimeType=${mimeType}, filename=${filename}`);
     
-    // Mapeo específico por tipo de mensaje de WhatsApp
+    // PRIORIDAD 1: Analizar MIME type primero (más confiable)
+    if (mimeType) {
+      if (mimeType.startsWith('image/')) {
+        console.log(`✅ IMAGEN detectada por MIME: ${mimeType}`);
+        return 'image';
+      }
+      if (mimeType.startsWith('video/')) {
+        console.log(`✅ VIDEO detectado por MIME: ${mimeType}`);
+        return 'video';
+      }
+      if (mimeType.startsWith('audio/')) {
+        console.log(`✅ AUDIO detectado por MIME: ${mimeType}`);
+        return 'voice';
+      }
+      if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('text') || mimeType.includes('word') || mimeType.includes('excel') || mimeType.includes('spreadsheet')) {
+        console.log(`✅ DOCUMENTO detectado por MIME: ${mimeType}`);
+        return 'document';
+      }
+    }
+    
+    // PRIORIDAD 2: Analizar extensión de archivo
+    if (filename) {
+      const ext = filename.split('.').pop()?.toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff'].includes(ext || '')) {
+        console.log(`✅ IMAGEN detectada por extensión: ${ext}`);
+        return 'image';
+      }
+      if (['mp4', 'avi', 'mov', 'webm', 'mkv', 'flv'].includes(ext || '')) {
+        console.log(`✅ VIDEO detectado por extensión: ${ext}`);
+        return 'video';
+      }
+      if (['mp3', 'wav', 'ogg', 'aac', 'm4a', 'opus'].includes(ext || '')) {
+        console.log(`✅ AUDIO detectado por extensión: ${ext}`);
+        return 'voice';
+      }
+      if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext || '')) {
+        console.log(`✅ DOCUMENTO detectado por extensión: ${ext}`);
+        return 'document';
+      }
+    }
+    
+    // PRIORIDAD 3: Usar tipo de mensaje de WhatsApp como respaldo
     switch (messageType) {
       case 'image':
+        console.log(`✅ IMAGEN detectada por messageType: ${messageType}`);
         return 'image';
       case 'video':
+        console.log(`✅ VIDEO detectado por messageType: ${messageType}`);
         return 'video';
       case 'audio':
+        console.log(`✅ AUDIO detectado por messageType: ${messageType}`);
+        return 'voice';
       case 'ptt': // Push-to-talk (notas de voz)
-        return messageType === 'ptt' ? 'voice' : 'audio';
+        console.log(`✅ NOTA DE VOZ detectada por messageType: ${messageType}`);
+        return 'voice';
       case 'document':
-        if (mimeType) {
-          if (mimeType.startsWith('image/')) return 'image';
-          if (mimeType.startsWith('video/')) return 'video';
-          if (mimeType.startsWith('audio/')) return 'audio';
-          if (mimeType.includes('pdf')) return 'document';
-          if (mimeType.includes('word') || mimeType.includes('text')) return 'document';
-          if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'document';
-        }
-        if (filename) {
-          const ext = filename.split('.').pop()?.toLowerCase();
-          if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return 'image';
-          if (['mp4', 'avi', 'mov', 'webm'].includes(ext || '')) return 'video';
-          if (['mp3', 'wav', 'ogg', 'aac'].includes(ext || '')) return 'audio';
-        }
+        console.log(`✅ DOCUMENTO detectado por messageType: ${messageType}`);
         return 'document';
       default:
-        return 'document';
+        console.log(`⚠️ Tipo no reconocido, usando 'unknown': ${messageType}`);
+        return 'unknown';
     }
   }
   
