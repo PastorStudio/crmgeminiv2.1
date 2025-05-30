@@ -1811,9 +1811,9 @@ export function WhatsAppTwoColumn() {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Left Panel - Chat List */}
-      <div className="w-1/3 bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-80 min-w-80 max-w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
         {/* Header with Account Selector */}
-        <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-red-600 via-black to-red-600 pt-[0px] pb-[0px] text-[14px] mt-[6px] mb-[6px] ml-[0px] mr-[0px] pl-[6px] pr-[6px]">
+        <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-red-600 via-black to-red-600 flex-shrink-0">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">WhatsApp Business</h2>
@@ -1834,12 +1834,12 @@ export function WhatsAppTwoColumn() {
         </div>
 
         {/* Search */}
-        <div className="p-4 border-b border-gray-200 mt-[-1px] mb-[-1px] pl-[20px] pr-[20px] pt-[2px] pb-[2px] ml-[2px] mr-[2px]">
+        <div className="p-3 border-b border-gray-200 flex-shrink-0">
           <Input
             placeholder="Buscar conversaciones..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-[100px] pr-[100px] pt-[4px] pb-[4px] mt-[10px] mb-[10px] ml-[-5px] mr-[-5px]"
+            className="w-full"
           />
         </div>
 
@@ -1869,7 +1869,7 @@ export function WhatsAppTwoColumn() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2, delay: index * 0.05 }}
-                    className="p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 ml-[-8px] mr-[-8px] pl-[10px] pr-[10px] pt-[10px] pb-[10px] mt-[0px] mb-[0px] text-[14px] font-bold"
+                    className="p-2 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 text-sm"
                     onClick={() => handleChatSelect?.(chat)}
                   >
                     <div className="flex items-center space-x-3">
@@ -1931,11 +1931,11 @@ export function WhatsAppTwoColumn() {
         </ScrollArea>
       </div>
       {/* Right Panel - Chat Messages */}
-      <div className="flex-1 flex flex-col ml-[2px] mr-[2px] mt-[-1px] mb-[-1px]">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {selectedChat ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 bg-white pl-[10px] pr-[10px] mt-[8px] mb-[8px] ml-[1px] mr-[1px] text-[18px]">
+            <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="relative">
@@ -2251,7 +2251,7 @@ export function WhatsAppTwoColumn() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
-                        className={`flex ${message.fromMe ? 'justify-end pt-[-34px] pb-[-34px] mt-[6px] mb-[6px] ml-[-4px] mr-[-4px] pl-[-20px] pr-[-20px] text-[14px]' : 'justify-start pt-[-34px] pb-[-34px] mt-[6px] mb-[6px] ml-[-4px] mr-[-4px] pl-[-20px] pr-[-20px] text-[14px]'}`}
+                        className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'} mb-2`}
                       >
                         <div className={`flex space-x-2 max-w-[80%] ${message.fromMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
                           {showAvatar && isFirstFromAuthor && (
