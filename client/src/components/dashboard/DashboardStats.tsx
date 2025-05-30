@@ -89,10 +89,10 @@ export default function DashboardStats() {
   // Get translated widget titles
   const getTranslatedTitles = () => {
     return {
-      totalLeads: staticTranslations['Total Leads'][currentLanguage] || 'Total Leads',
-      conversionRate: staticTranslations['Conversion Rate'][currentLanguage] || 'Conversion Rate',
-      activeConversations: staticTranslations['Active Conversations'][currentLanguage] || 'Active Conversations',
-      todayMeetings: staticTranslations["Today's Meetings"][currentLanguage] || "Today's Meetings"
+      totalLeads: staticTranslations['Total Leads'][currentLanguage as keyof typeof staticTranslations['Total Leads']] || 'Total Leads',
+      conversionRate: staticTranslations['Conversion Rate'][currentLanguage as keyof typeof staticTranslations['Conversion Rate']] || 'Conversion Rate',
+      activeConversations: staticTranslations['Active Conversations'][currentLanguage as keyof typeof staticTranslations['Active Conversations']] || 'Active Conversations',
+      todayMeetings: staticTranslations["Today's Meetings"][currentLanguage as keyof typeof staticTranslations["Today's Meetings"]] || "Today's Meetings"
     };
   };
 

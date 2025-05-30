@@ -90,15 +90,39 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     }
   }, [currentLanguage]);
 
-  // Auto-traducir página cuando cambia de ruta si no es español
+  // Auto-traducir página cuando se carga la página o cambia de ruta
   useEffect(() => {
-    if (currentLanguage !== 'es') {
-      const timer = setTimeout(() => {
-        translatePage(currentLanguage);
-      }, 500); // Esperar un poco para que la página se cargue
-      
-      return () => clearTimeout(timer);
-    }
+    const autoTranslate = () => {
+      if (currentLanguage !== 'es') {
+        setTimeout(() => {
+          translatePage(currentLanguage);
+        }, 1000); // Esperar que la página se cargue completamente
+      }
+    };
+
+    // Traducir inmediatamente al cargar
+    autoTranslate();
+
+    // Escuchar cambios de URL para re-traducir
+    let lastUrl = location.href;
+    const urlCheckInterval = setInterval(() => {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        autoTranslate();
+      }
+    }, 500);
+
+    // También escuchar eventos de navegación
+    const handleNavigationChange = () => {
+      setTimeout(autoTranslate, 1000);
+    };
+
+    window.addEventListener('popstate', handleNavigationChange);
+    
+    return () => {
+      clearInterval(urlCheckInterval);
+      window.removeEventListener('popstate', handleNavigationChange);
+    };
   }, [currentLanguage]);
 
   // Observador de mutaciones deshabilitado temporalmente para evitar retraducciones múltiples
