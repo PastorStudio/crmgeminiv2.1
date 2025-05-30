@@ -21,6 +21,9 @@ import { stableAutoResponseManager } from "./services/stableAutoResponse";
 import { deepSeekService } from "./services/deepseekService";
 import deepSeekAutoResponse from "./services/deepseekAutoResponse";
 import { directDeepSeekResponse } from "./services/directDeepSeekResponse";
+import { EnhancedAutoResponseService } from "./services/enhancedAutoResponseService";
+import { MultimediaService } from "./services/multimediaService";
+import { AutomaticLeadGenerator } from "./services/automaticLeadGenerator";
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
