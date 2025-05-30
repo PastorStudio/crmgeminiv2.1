@@ -176,12 +176,22 @@ const ChatAssignmentDialog = ({ open, onOpenChange, chatId, accountId }: ChatAss
       console.log('🔧 Enviando datos para crear asignación:', data);
       
       // Primero crear la asignación de agente usando endpoint directo
-      const assignmentResponse = await apiRequest('/api/chat-assignments/direct', {
+      const assignmentResponse = await fetch('/api/chat-assignments/direct', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(data),
       });
       
-      console.log('✅ Respuesta de asignación:', assignmentResponse);
+      if (!assignmentResponse.ok) {
+        const errorText = await assignmentResponse.text();
+        console.error('❌ Error en respuesta:', errorText);
+        throw new Error(`Error al crear asignación: ${errorText}`);
+      }
+      
+      const assignmentResult = await assignmentResponse.json();
+      console.log('✅ Respuesta de asignación:', assignmentResult);
       
       // Si hay categoría (ticket), crear también la categoría
       if (data.category && data.category !== '') {
