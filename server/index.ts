@@ -4080,6 +4080,134 @@ app.use((req, res, next) => {
     }
   });
 
+// Endpoint para traducción automática de mensajes
+app.post('/api/translate-message', async (req, res) => {
+  try {
+    const { text, messageId } = req.body;
+
+    if (!text || text.trim().length === 0) {
+      return res.json({
+        success: false,
+        error: 'Texto vacío'
+      });
+    }
+
+    // Detectar idioma y traducir usando Google Translate API
+    const detectedLanguage = await detectLanguage(text);
+    
+    // Solo traducir si no es español
+    if (detectedLanguage === 'es' || detectedLanguage === 'spa') {
+      return res.json({
+        success: true,
+        detectedLanguage,
+        isSpanish: true
+      });
+    }
+
+    // Traducir al español
+    const translatedText = await translateText(text, detectedLanguage, 'es');
+    
+    console.log(`🌐 Traducción: ${detectedLanguage} → es`);
+    console.log(`📝 Original: ${text.substring(0, 50)}...`);
+    console.log(`📝 Traducido: ${translatedText.substring(0, 50)}...`);
+
+    res.json({
+      success: true,
+      detectedLanguage,
+      translatedText,
+      originalText: text,
+      messageId
+    });
+
+  } catch (error) {
+    console.error('❌ Error en traducción:', error);
+    res.json({
+      success: false,
+      error: 'Error en el servicio de traducción'
+    });
+  }
+});
+
+// Función para detectar idioma usando Google Translate API
+async function detectLanguage(text: string): Promise<string> {
+  try {
+    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+    if (!apiKey) {
+      throw new Error('Google Translate API key no configurada');
+    }
+
+    const response = await fetch(`https://translation.googleapis.com/language/translate/v2/detect?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: text })
+    });
+
+    const result = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+
+    const detectedLang = result.data.detections[0][0].language;
+    console.log(`🔍 Idioma detectado: ${detectedLang} para texto: "${text.substring(0, 30)}..."`);
+    
+    return detectedLang || 'unknown';
+  } catch (error) {
+    console.error('❌ Error detectando idioma:', error);
+    
+    // Fallback: detección simple basada en caracteres
+    if (/[àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ]/.test(text.toLowerCase())) {
+      return /[àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ]/.test(text) ? 'fr' : 'en';
+    }
+    if (/[äöüß]/.test(text.toLowerCase())) return 'de';
+    if (/[àèìòù]/.test(text.toLowerCase())) return 'it';
+    if (/[ãõç]/.test(text.toLowerCase())) return 'pt';
+    if (/[\u4e00-\u9fff]/.test(text)) return 'zh';
+    if (/[\u3040-\u309f\u30a0-\u30ff]/.test(text)) return 'ja';
+    if (/[\uac00-\ud7af]/.test(text)) return 'ko';
+    if (/[\u0600-\u06ff]/.test(text)) return 'ar';
+    if (/[\u0400-\u04ff]/.test(text)) return 'ru';
+    
+    return 'en'; // Default a inglés
+  }
+}
+
+// Función para traducir texto usando Google Translate API
+async function translateText(text: string, fromLang: string, toLang: string): Promise<string> {
+  try {
+    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+    if (!apiKey) {
+      throw new Error('Google Translate API key no configurada');
+    }
+
+    const response = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        q: text,
+        source: fromLang,
+        target: toLang,
+        format: 'text'
+      })
+    });
+
+    const result = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+
+    if (result.data && result.data.translations && result.data.translations[0]) {
+      return result.data.translations[0].translatedText;
+    }
+    
+    throw new Error('Respuesta inválida del servicio de traducción');
+  } catch (error) {
+    console.error('❌ Error traduciendo texto:', error);
+    throw error;
+  }
+}
+
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client.
   // It is the only port that is not firewalled.

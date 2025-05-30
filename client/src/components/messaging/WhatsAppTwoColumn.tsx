@@ -56,7 +56,102 @@ import { AgentSelector } from './AgentSelector';
 
 import { VoiceNoteMessage } from './VoiceNoteMessage';
 
+// Componente de traducción automática
+function MessageTranslation({ text, messageId }: { text: string; messageId: string }) {
+  const [translation, setTranslation] = useState<{
+    translated: string;
+    detectedLanguage: string;
+    targetLanguage: string;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!text || text.trim().length === 0) return;
+
+    const detectAndTranslate = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const response = await fetch('/api/translate-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            text: text.trim(),
+            messageId 
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          // Solo mostrar traducción si el idioma detectado no es español
+          if (result.detectedLanguage !== 'es' && result.detectedLanguage !== 'spa') {
+            setTranslation({
+              translated: result.translatedText,
+              detectedLanguage: result.detectedLanguage,
+              targetLanguage: 'es'
+            });
+          }
+        } else {
+          setError(result.error || 'Error al traducir');
+        }
+      } catch (err) {
+        setError('Error de conexión');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const debounceTimeout = setTimeout(detectAndTranslate, 500);
+    return () => clearTimeout(debounceTimeout);
+  }, [text, messageId]);
+
+  if (isLoading) {
+    return (
+      <div className="mt-1 text-xs text-blue-500 opacity-75 flex items-center gap-1">
+        <span className="animate-spin">⏳</span>
+        Detectando idioma...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mt-1 text-xs text-red-400 opacity-75">
+        🔄 Error: {error}
+      </div>
+    );
+  }
+
+  if (!translation) {
+    return null;
+  }
+
+  const getLanguageFlag = (langCode: string) => {
+    const flags: Record<string, string> = {
+      'en': '🇺🇸', 'pt': '🇧🇷', 'fr': '🇫🇷', 'it': '🇮🇹', 
+      'de': '🇩🇪', 'zh': '🇨🇳', 'ja': '🇯🇵', 'ko': '🇰🇷',
+      'ar': '🇸🇦', 'ru': '🇷🇺', 'hi': '🇮🇳', 'th': '🇹🇭',
+      'vi': '🇻🇳', 'nl': '🇳🇱', 'sv': '🇸🇪', 'da': '🇩🇰'
+    };
+    return flags[langCode] || '🌐';
+  };
+
+  return (
+    <div className="mt-2 p-2 bg-blue-50 rounded-md border-l-4 border-blue-300">
+      <div className="flex items-start gap-2">
+        <span className="text-blue-600 text-xs font-medium flex items-center gap-1">
+          {getLanguageFlag(translation.detectedLanguage)} → 🇪🇸
+        </span>
+        <p className="text-blue-700 text-xs leading-relaxed flex-1">
+          {translation.translated}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId: number }) {
   const { data: assignmentResponse } = useQuery({
@@ -2444,7 +2539,15 @@ export function WhatsAppTwoColumn() {
                                   </div>
                                 ) : (
                                   /* Mensajes de texto normales */
-                                  <p className="text-sm whitespace-pre-wrap">{message.body || '[Mensaje sin contenido]'}</p>
+                                  <div>
+                                    <p className="text-sm whitespace-pre-wrap">{message.body || '[Mensaje sin contenido]'}</p>
+                                    {!message.fromMe && message.body && (
+                                      <MessageTranslation 
+                                        text={message.body} 
+                                        messageId={message.id}
+                                      />
+                                    )}
+                                  </div>
                                 )}
                               </div>
                               {!message.fromMe && (
