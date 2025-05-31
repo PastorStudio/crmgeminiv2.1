@@ -768,17 +768,18 @@ export function ModernMessagingSystem() {
                         key={message.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}
+                        className={`flex mx-1 mb-2 ${message.fromMe ? 'justify-end' : 'justify-start'}`}
+                        style={{ marginLeft: '5px', marginRight: '5px' }}
                       >
                         <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                           message.fromMe 
-                            ? 'bg-blue-500 text-white' 
-                            : 'bg-gray-100 text-gray-900'
+                            ? 'bg-blue-500 text-white rounded-br-md' 
+                            : 'bg-green-500 text-white rounded-bl-md'
                         }`}>
                           <p className="text-sm">{message.content}</p>
                           <div className="flex items-center justify-between mt-1">
                             <span className={`text-xs ${
-                              message.fromMe ? 'text-blue-100' : 'text-gray-500'
+                              message.fromMe ? 'text-blue-100' : 'text-green-100'
                             }`}>
                               {message.timestamp}
                             </span>
