@@ -2682,16 +2682,36 @@ export function WhatsAppTwoColumn() {
                                       </span>
                                       <button
                                         onClick={async () => {
-                                          if (!selectedChat || !message.body) return;
+                                          if (!selectedChat || !message.body) {
+                                            console.log('🚫 No se puede procesar: selectedChat o message.body faltante');
+                                            return;
+                                          }
                                           
                                           try {
-                                            console.log(`🤖 Enviando texto al agente externo: "${message.body}"`);
+                                            console.log(`🤖 Iniciando procesamiento con agente externo`);
+                                            console.log(`📝 Mensaje: "${message.body}"`);
+                                            console.log(`📋 Cuenta ID: ${selectedChat.accountId}`);
                                             
                                             // Obtener la configuración del agente asignado a esta cuenta
+                                            console.log('🔍 Consultando configuración de agente...');
                                             const configResponse = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/agent-config`);
-                                            const configResult = await configResponse.json();
+                                            console.log('📊 Status de respuesta:', configResponse.status);
                                             
-                                            if (!configResult.success || !configResult.config?.assignedExternalAgentId) {
+                                            const configResult = await configResponse.json();
+                                            console.log('📋 Configuración recibida:', configResult);
+                                            
+                                            if (!configResult.success) {
+                                              console.log('❌ Error en configuración:', configResult);
+                                              toast({
+                                                title: "Error de Configuración",
+                                                description: "No se pudo obtener la configuración de la cuenta",
+                                                variant: "destructive"
+                                              });
+                                              return;
+                                            }
+                                            
+                                            if (!configResult.config?.assignedExternalAgentId) {
+                                              console.log('❌ Sin agente asignado:', configResult.config);
                                               toast({
                                                 title: "Sin Agente Asignado",
                                                 description: "No hay un agente externo asignado a esta cuenta",
@@ -2700,7 +2720,10 @@ export function WhatsAppTwoColumn() {
                                               return;
                                             }
                                             
+                                            console.log(`✅ Agente encontrado: ${configResult.config.assignedExternalAgentId}`);
+                                            
                                             // Enviar el mensaje al agente externo y obtener respuesta
+                                            console.log('🚀 Enviando mensaje al agente externo...');
                                             const response = await fetch('/api/ai/chat-with-external-agent', {
                                               method: 'POST',
                                               headers: { 'Content-Type': 'application/json' },
@@ -2710,9 +2733,12 @@ export function WhatsAppTwoColumn() {
                                               })
                                             });
                                             
+                                            console.log('📊 Status de respuesta del agente:', response.status);
                                             const result = await response.json();
+                                            console.log('📋 Resultado del agente:', result);
                                             
                                             if (result.success && result.response) {
+                                              console.log('✅ Respuesta exitosa del agente');
                                               // Colocar la respuesta en el área de escritura
                                               setNewMessage(result.response);
                                               
@@ -2721,6 +2747,7 @@ export function WhatsAppTwoColumn() {
                                                 description: "La respuesta del agente externo se colocó en el área de escritura",
                                               });
                                             } else {
+                                              console.log('❌ Error en respuesta del agente:', result);
                                               toast({
                                                 title: "Error",
                                                 description: result.error || "No se pudo obtener respuesta del agente",
@@ -2728,7 +2755,7 @@ export function WhatsAppTwoColumn() {
                                               });
                                             }
                                           } catch (error) {
-                                            console.error('Error obteniendo respuesta del agente:', error);
+                                            console.error('💥 Error crítico en botón A.E.:', error);
                                             toast({
                                               title: "Error",
                                               description: "Error de conexión con el agente externo",
