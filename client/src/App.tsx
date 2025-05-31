@@ -40,6 +40,7 @@ import InternalAgents from './pages/InternalAgents';
 import GeminiAI from './pages/GeminiAI';
 import AgentAnalysis from './pages/AgentAnalysis';
 import DeepSeekSettings from './pages/DeepSeekSettings';
+import ModernMessaging from './pages/ModernMessaging';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
@@ -178,6 +179,21 @@ const AppRoutes: React.FC = () => {
                   <circle cx="17" cy="11" r="1" fill="white"/>
                 </svg>
                 Mensajes
+              </a>
+
+              <a href="/modern-messaging" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/modern-messaging' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="4" width="20" height="16" rx="3" fill="#25D366"/>
+                  <rect x="4" y="6" width="6" height="12" rx="1" fill="white"/>
+                  <rect x="12" y="6" width="10" height="12" rx="1" fill="white"/>
+                  <circle cx="7" cy="9" r="1" fill="#25D366"/>
+                  <rect x="5" y="11" width="4" height="1" fill="#666"/>
+                  <rect x="5" y="13" width="3" height="1" fill="#666"/>
+                  <circle cx="15" cy="9" r="1" fill="#25D366"/>
+                  <rect x="14" y="11" width="6" height="1" fill="#666"/>
+                  <rect x="14" y="13" width="4" height="1" fill="#666"/>
+                </svg>
+                Mensajería Moderna
               </a>
               
               <a href="/message-templates" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/message-templates' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
@@ -511,6 +527,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/" component={() => <PrivateRoute component={Dashboard} path="/" />} />
                 <Route path="/leads" component={() => <PrivateRoute component={Leads} path="/leads" />} />
                 <Route path="/messages" component={() => <PrivateRoute component={Messages} path="/messages" />} />
+                <Route path="/modern-messaging" component={() => <PrivateRoute component={ModernMessaging} path="/modern-messaging" />} />
                 <Route path="/calendar" component={() => <PrivateRoute component={Calendar} path="/calendar" />} />
                 <Route path="/tasks" component={() => <PrivateRoute component={Tasks} path="/tasks" />} />
                 <Route path="/tickets" component={() => <PrivateRoute component={TicketsSimple} path="/tickets" />} />
