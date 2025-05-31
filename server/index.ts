@@ -2397,6 +2397,10 @@ app.use((req, res, next) => {
   
   // Registrar rutas de WhatsApp accounts sin autenticación
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
+  
+  // Registrar rutas del sistema de mensajería moderno
+  const modernMessagingRouter = await import("./routes/modern-messaging");
+  app.use("/api/modern-messaging", modernMessagingRouter.default);
 
   // ✅ NUEVO ENDPOINT PARA ASIGNACIONES SIN CONFLICTOS
   app.get('/api/assignments/by-chat', async (req, res) => {
