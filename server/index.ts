@@ -2400,14 +2400,11 @@ app.use((req, res, next) => {
     console.error('❌ Error al inicializar notificaciones en tiempo real:', error);
   }
 
-
-  
   // Registrar rutas de WhatsApp accounts sin autenticación
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   
-  // Registrar rutas del sistema de mensajería simplificado
-  const { default: simpleMessagingRouter } = await import("./routes/simple-messaging");
-  app.use("/api/modern-messaging", simpleMessagingRouter);
+  // Registrar rutas del sistema de mensajería moderno que usa datos reales de WhatsApp
+  app.use("/api/modern-messaging", modernMessagingRouter);
 
   // ✅ NUEVO ENDPOINT PARA ASIGNACIONES SIN CONFLICTOS
   app.get('/api/assignments/by-chat', async (req, res) => {
