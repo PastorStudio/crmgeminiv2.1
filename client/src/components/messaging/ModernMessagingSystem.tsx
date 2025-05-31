@@ -164,11 +164,11 @@ export function ModernMessagingSystem() {
   });
 
   const { data: messages = [], isLoading: messagesLoading } = useQuery({
-    queryKey: ['/api/modern-messaging/messages', selectedChat?.id],
-    queryFn: () => selectedChat?.id ? 
-      fetch(`/api/modern-messaging/messages/${selectedChat.id}`).then(res => res.json()) : 
+    queryKey: ['/api/modern-messaging/messages', selectedChat?.id, selectedWhatsAppAccount],
+    queryFn: () => selectedChat?.id && selectedWhatsAppAccount ? 
+      fetch(`/api/modern-messaging/messages/${selectedChat.id}?accountId=${selectedWhatsAppAccount}`).then(res => res.json()) : 
       Promise.resolve([]),
-    enabled: !!selectedChat?.id
+    enabled: !!selectedChat?.id && !!selectedWhatsAppAccount
   });
 
   const { data: users = [] } = useQuery({
