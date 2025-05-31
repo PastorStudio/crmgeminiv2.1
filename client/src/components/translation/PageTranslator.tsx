@@ -504,30 +504,66 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
 
   // Función para resetear traducción
   const resetTranslation = () => {
-    if (currentLanguage === 'es') return;
-    
     try {
+      console.log('🔄 Reseteando traducción a español original...');
+      
       // Restaurar textos originales
-      originalTexts.forEach((originalText, element) => {
-        const textNodes = Array.from(element.childNodes).filter(
-          node => node.nodeType === Node.TEXT_NODE
-        );
-        
-        if (textNodes.length > 0) {
-          textNodes.forEach(node => {
-            node.textContent = originalText;
-          });
+      originalTexts.forEach((data, element) => {
+        try {
+          // Restaurar contenido de texto
+          if (typeof data === 'string') {
+            // Formato antiguo de compatibilidad
+            const textNodes = Array.from(element.childNodes).filter(
+              node => node.nodeType === Node.TEXT_NODE
+            );
+            
+            if (textNodes.length > 0) {
+              textNodes.forEach(node => {
+                node.textContent = data;
+              });
+            }
+          } else if (data && typeof data === 'object') {
+            // Formato nuevo con texto y atributos
+            const textNodes = Array.from(element.childNodes).filter(
+              node => node.nodeType === Node.TEXT_NODE
+            );
+            
+            if (textNodes.length > 0 && data.text) {
+              textNodes.forEach(node => {
+                node.textContent = data.text;
+              });
+            }
+            
+            // Restaurar atributos originales
+            if (data.attributes) {
+              data.attributes.forEach((originalValue, attr) => {
+                element.setAttribute(attr, originalValue);
+              });
+            }
+          }
+        } catch (elementError) {
+          console.warn('Error restaurando elemento:', element, elementError);
         }
       });
       
+      // Limpiar cache de traducciones
+      translationCache.clear();
+      
+      // Marcar como español y no traduciendo
       setCurrentLanguage('es');
+      setIsTranslating(false);
+      
+      // Guardar estado en localStorage
+      localStorage.setItem('translation-language', 'es');
+      
       toast({
-        title: "Traducción reiniciada",
-        description: "Página restaurada al español original",
+        title: "Sistema restaurado",
+        description: "Interfaz en español original sin traducciones",
         duration: 2000
       });
     } catch (error) {
       console.error('Error resetting translation:', error);
+      setIsTranslating(false);
     }
   };
 
