@@ -277,7 +277,7 @@ export function ModernMessagingSystem() {
     chat.phoneNumber?.includes(searchTerm)
   );
 
-  const unreadNotifications = notifications.filter((n: any) => !n.read).length;
+  const unreadNotifications = Array.isArray(notifications) ? notifications.filter((n: any) => !n.read).length : 0;
 
   const getStatusColor = (status: string) => {
     switch (status) {
