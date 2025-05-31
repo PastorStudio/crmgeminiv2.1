@@ -605,7 +605,9 @@ export const PageTranslationSelector: React.FC = () => {
                 className="justify-start text-xs p-2 h-8"
                 onClick={() => {
                   if (language.code === 'es') {
-                    resetTranslation();
+                    if (currentLanguage !== 'es') {
+                      resetTranslation();
+                    }
                   } else if (language.code !== currentLanguage) {
                     translatePage(language.code);
                   }
