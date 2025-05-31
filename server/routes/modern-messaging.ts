@@ -235,4 +235,57 @@ router.post('/assignments', async (req: Request, res: Response) => {
   }
 });
 
+// Assignment endpoints
+router.get('/assignment', async (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    assignment: {
+      autoAssignEnabled: true,
+      availableAgents: [],
+      currentAssignments: []
+    }
+  });
+});
+
+// Tickets endpoints
+router.get('/tickets', async (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    tickets: []
+  });
+});
+
+// Comments endpoints
+router.get('/comments', async (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    comments: []
+  });
+});
+
+// Analytics endpoints
+router.get('/analytics', async (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    analytics: {
+      totalMessages: 0,
+      activeChats: 0,
+      responseTime: 0,
+      satisfactionScore: 0
+    }
+  });
+});
+
+// Analyze conversations endpoint
+router.post('/analyze-conversations', async (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    analysis: {
+      sentiment: 'neutral',
+      topics: [],
+      suggestions: []
+    }
+  });
+});
+
 export default router;
