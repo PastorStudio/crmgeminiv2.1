@@ -2158,7 +2158,7 @@ export function WhatsAppTwoColumn() {
                     className="p-2 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 text-[12px]"
                     onClick={() => handleChatSelect?.(chat)}
                   >
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-3 pl-[-20px] pr-[-20px] ml-[-13px] mr-[-13px] text-[12px]">
                       <div className="relative">
                         <Avatar className="h-12 w-12">
                           <AvatarImage src={chat.profilePicUrl} />
