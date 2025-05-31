@@ -1,0 +1,278 @@
+Guía de Integración de Agente Externo para Sistema de Respuesta Automática
+Métodos de Integración
+1. Integración via API REST
+La forma más común y recomendada:
+
+Flujo básico:
+Usuario → Tu Sistema → API del Agente Externo → Respuesta → Tu Sistema → Usuario
+Implementación:
+python
+import requests
+import json
+
+class AgenteExternoIntegration:
+    def __init__(self, api_url, api_key):
+        self.api_url = api_url
+        self.api_key = api_key
+        
+    def enviar_mensaje(self, mensaje_usuario):
+        headers = {
+            'Authorization': f'Bearer {self.api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'message': mensaje_usuario,
+            'user_id': 'tu_sistema_user'
+        }
+        
+        response = requests.post(
+            f"{self.api_url}/chat", 
+            headers=headers, 
+            json=payload
+        )
+        
+        if response.status_code == 200:
+            return response.json()['response']
+        else:
+            return "Error al comunicarse con el agente externo"
+2. Integración via Webhooks
+Para sistemas que requieren comunicación en tiempo real:
+
+Configuración:
+1. Webhook de entrada: El agente externo envía respuestas a tu endpoint
+
+2. Webhook de salida: Tu sistema envía mensajes al agente externo
+
+python
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+@app.route('/webhook/recibir', methods=['POST'])
+def recibir_respuesta_agente():
+    data = request.json
+    respuesta_agente = data['message']
+    user_id = data['user_id']
+    
+    # Enviar respuesta al usuario en tu sistema
+    enviar_respuesta_a_usuario(user_id, respuesta_agente)
+    
+    return jsonify({'status': 'received'})
+
+def procesar_mensaje_usuario(mensaje, user_id):
+    # Enviar al agente externo
+    webhook_url = "https://agente-externo.com/webhook"
+    payload = {
+        'message': mensaje,
+        'user_id': user_id,
+        'callback_url': 'https://tu-sistema.com/webhook/recibir'
+    }
+    requests.post(webhook_url, json=payload)
+3. Integración via WebSockets
+Para comunicación bidireccional en tiempo real:
+
+python
+import websocket
+import json
+
+class WebSocketIntegration:
+    def __init__(self, ws_url):
+        self.ws_url = ws_url
+        self.ws = None
+        
+    def conectar(self):
+        self.ws = websocket.WebSocketApp(
+            self.ws_url,
+            on_message=self.on_message,
+            on_error=self.on_error,
+            on_close=self.on_close
+        )
+        
+    def on_message(self, ws, message):
+        data = json.loads(message)
+        # Procesar respuesta del agente externo
+        self.procesar_respuesta(data)
+        
+    def enviar_mensaje(self, mensaje):
+        if self.ws:
+            payload = json.dumps({'message': mensaje})
+            self.ws.send(payload)
+Arquitecturas Recomendadas
+Arquitectura Asíncrona (Recomendada)
+[Usuario] → [Tu Sistema] → [Cola de Mensajes] → [Worker] → [Agente Externo]
+                ↑                                                    ↓
+              [Respuesta] ← [Base de Datos] ← [Callback/Webhook] ←────┘
+Ventajas:
+No bloquea tu sistema mientras espera respuesta
+Mejor experiencia de usuario
+Manejo de errores más robusto
+Escalabilidad
+Arquitectura Síncrona (Más Simple)
+[Usuario] → [Tu Sistema] → [Agente Externo] → [Respuesta Directa] → [Usuario]
+Ventajas:
+Implementación más simple
+Respuesta inmediata
+Menos componentes a mantener
+Consideraciones de Implementación
+1. Manejo de Errores
+python
+def manejar_respuesta_agente(mensaje):
+    try:
+        respuesta = llamar_agente_externo(mensaje)
+        return respuesta
+    except requests.RequestException:
+        return "El agente externo no está disponible. Intenta más tarde."
+    except json.JSONDecodeError:
+        return "Error al procesar la respuesta del agente."
+2. Rate Limiting
+python
+import time
+from collections import defaultdict
+
+class RateLimiter:
+    def __init__(self, max_requests=10, time_window=60):
+        self.max_requests = max_requests
+        self.time_window = time_window
+        self.requests = defaultdict(list)
+    
+    def can_make_request(self, user_id):
+        now = time.time()
+        # Limpiar requests antiguos
+        self.requests[user_id] = [
+            req_time for req_time in self.requests[user_id] 
+            if now - req_time < self.time_window
+        ]
+        
+        return len(self.requests[user_id]) < self.max_requests
+3. Cacheing de Respuestas
+python
+import redis
+import hashlib
+
+class ResponseCache:
+    def __init__(self):
+        self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
+    
+    def get_cached_response(self, mensaje):
+        key = hashlib.md5(mensaje.encode()).hexdigest()
+        return self.redis_client.get(key)
+    
+    def cache_response(self, mensaje, respuesta, ttl=3600):
+        key = hashlib.md5(mensaje.encode()).hexdigest()
+        self.redis_client.setex(key, ttl, respuesta)
+Plataformas Comunes y sus APIs
+OpenAI API
+python
+import openai
+
+openai.api_key = "tu-api-key"
+
+def consultar_openai(mensaje):
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": mensaje}]
+    )
+    return response.choices[0].message.content
+Claude API (Anthropic)
+python
+import anthropic
+
+client = anthropic.Anthropic(api_key="tu-api-key")
+
+def consultar_claude(mensaje):
+    response = client.messages.create(
+        model="claude-3-sonnet-20240229",
+        max_tokens=1000,
+        messages=[{"role": "user", "content": mensaje}]
+    )
+    return response.content[0].text
+Google Bard/PaLM API
+python
+import google.generativeai as genai
+
+genai.configure(api_key="tu-api-key")
+model = genai.GenerativeModel('gemini-pro')
+
+def consultar_gemini(mensaje):
+    response = model.generate_content(mensaje)
+    return response.text
+Ejemplo de Implementación Completa
+Sistema con Cola de Mensajes (Redis + Celery)
+python
+# main.py
+from celery import Celery
+import redis
+
+# Configuración de Celery
+app = Celery('agente_integrator', broker='redis://localhost:6379')
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
+
+@app.task
+def procesar_mensaje_async(mensaje, user_id, session_id):
+    try:
+        # Llamar al agente externo
+        respuesta = llamar_agente_externo(mensaje)
+        
+        # Guardar respuesta
+        guardar_respuesta(user_id, session_id, respuesta)
+        
+        # Notificar al usuario (webhook, websocket, etc.)
+        notificar_usuario(user_id, respuesta)
+        
+    except Exception as e:
+        manejar_error(user_id, str(e))
+
+def recibir_mensaje_usuario(mensaje, user_id):
+    session_id = generar_session_id()
+    
+    # Enviar tarea a la cola
+    procesar_mensaje_async.delay(mensaje, user_id, session_id)
+    
+    return {
+        'status': 'processing',
+        'session_id': session_id,
+        'message': 'Tu mensaje está siendo procesado...'
+    }
+Seguridad y Mejores Prácticas
+1. Autenticación
+Usar API keys o tokens JWT
+Implementar refresh tokens para sesiones largas
+Validar todas las requests entrantes
+2. Validación de Datos
+python
+from pydantic import BaseModel, ValidationError
+
+class MensajeRequest(BaseModel):
+    mensaje: str
+    user_id: str
+    max_length: int = 1000
+
+def validar_mensaje(data):
+    try:
+        return MensajeRequest(**data)
+    except ValidationError as e:
+        raise ValueError(f"Datos inválidos: {e}")
+3. Logging y Monitoreo
+python
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def log_interaccion(user_id, mensaje, respuesta, tiempo_respuesta):
+    logger.info(f"User: {user_id}, Tiempo: {tiempo_respuesta}s, "
+                f"Mensaje: {mensaje[:50]}..., "
+                f"Respuesta: {respuesta[:50]}...")
+Conclusión
+La integración de un agente externo es totalmente factible. Te recomiendo:
+
+1. Empezar simple: API REST síncrona para pruebas
+
+2. Evolucionar: Implementar sistema asíncrono para producción
+
+3. Considerar costos: Muchas APIs cobran por request
+
+4. Implementar fallbacks: Qué hacer si el agente externo falla
+
+5. Monitorear performance: Tiempo de respuesta y disponibilidad
