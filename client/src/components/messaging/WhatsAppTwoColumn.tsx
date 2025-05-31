@@ -3555,7 +3555,7 @@ function AutoAEConfigDialog({
                       <SelectValue placeholder="Seleccionar agente externo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sin agente específico</SelectItem>
+                      <SelectItem value="none">Sin agente específico</SelectItem>
                       {externalAgents.map((agent: any) => (
                         <SelectItem key={agent.id} value={agent.id}>
                           {agent.name} ({agent.isActive ? 'Activo' : 'Inactivo'})
@@ -3572,7 +3572,7 @@ function AutoAEConfigDialog({
                   </div>
                 )}
                 
-                {tempConfig.selectedAgentId && (
+                {tempConfig.selectedAgentId && tempConfig.selectedAgentId !== "none" && (
                   <p className="text-xs text-green-600 mt-1">
                     ✓ Usará el agente seleccionado para generar respuestas automáticas
                   </p>
