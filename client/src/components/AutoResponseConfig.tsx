@@ -50,7 +50,17 @@ export function AutoResponseConfig({ accountId, accountName }: AutoResponseConfi
   // Obtener agentes externos disponibles
   const { data: agentsData, isLoading: agentsLoading } = useQuery({
     queryKey: ['/api/external-agents'],
-    queryFn: () => apiRequest('/api/external-agents')
+    queryFn: async () => {
+      console.log('🔍 Cargando agentes externos para AutoResponseConfig...');
+      try {
+        const response = await apiRequest('/api/external-agents');
+        console.log('✅ Agentes cargados:', response);
+        return response;
+      } catch (error) {
+        console.error('❌ Error cargando agentes:', error);
+        throw error;
+      }
+    }
   });
 
   // Obtener configuración actual
@@ -207,6 +217,9 @@ export function AutoResponseConfig({ accountId, accountName }: AutoResponseConfi
 
   const agents = agentsData?.success ? agentsData.agents : [];
   const selectedAgent = agents.find((agent: ExternalAgent) => agent.id === config.assignedExternalAgentId);
+  
+  console.log('📊 Agentes disponibles:', agents);
+  console.log('🔧 Configuración actual:', config);
 
   return (
     <Card>
