@@ -39,7 +39,17 @@ export class TranslationCacheService {
       return text;
     }
 
-    // Usar Google Translate API si está disponible
+    // Primero intentar usar DeepSeek con web scraping
+    try {
+      const deepSeekTranslation = await this.translateWithDeepSeek(text, targetLanguage);
+      if (deepSeekTranslation && deepSeekTranslation !== text) {
+        return deepSeekTranslation;
+      }
+    } catch (error) {
+      console.warn('DeepSeek translation error:', error);
+    }
+
+    // Fallback a Google Translate API si está disponible
     if (process.env.GOOGLE_TRANSLATE_API_KEY) {
       try {
         const response = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${process.env.GOOGLE_TRANSLATE_API_KEY}`, {
@@ -64,7 +74,7 @@ export class TranslationCacheService {
       }
     }
     
-    // Fallback con indicadores visuales si no hay API key
+    // Último fallback con indicadores visuales
     const languageNames: { [key: string]: string } = {
       'en': '[EN]',
       'fr': '[FR]', 
@@ -80,6 +90,127 @@ export class TranslationCacheService {
     
     const prefix = languageNames[targetLanguage] || `[${targetLanguage.toUpperCase()}]`;
     return `${prefix} ${text}`;
+  }
+
+  static async translateWithDeepSeek(text: string, targetLanguage: string): Promise<string> {
+    const puppeteer = require('puppeteer');
+    
+    const languageMap: { [key: string]: string } = {
+      'en': 'English',
+      'fr': 'French',
+      'de': 'German',
+      'pt': 'Portuguese',
+      'it': 'Italian',
+      'ru': 'Russian',
+      'zh': 'Chinese',
+      'ja': 'Japanese',
+      'ko': 'Korean',
+      'ar': 'Arabic'
+    };
+
+    const targetLangName = languageMap[targetLanguage] || targetLanguage;
+    
+    let browser;
+    try {
+      browser = await puppeteer.launch({ 
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      });
+      
+      const page = await browser.newPage();
+      
+      // Configurar user agent para evitar detección
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      
+      // Ir a DeepSeek Chat
+      await page.goto('https://chat.deepseek.com/', { waitUntil: 'networkidle2' });
+      
+      // Esperar a que cargue la página
+      await page.waitForTimeout(3000);
+      
+      // Encontrar el textarea de entrada
+      const inputSelector = 'textarea, [contenteditable="true"], input[type="text"]';
+      await page.waitForSelector(inputSelector, { timeout: 10000 });
+      
+      // Crear el prompt de traducción
+      const prompt = `Translate this text from Spanish to ${targetLangName}. Only respond with the translation, no explanations: "${text}"`;
+      
+      // Escribir en el input
+      await page.type(inputSelector, prompt);
+      
+      // Buscar y hacer clic en el botón de enviar
+      const sendButtonSelectors = [
+        'button[type="submit"]',
+        'button:contains("Send")',
+        'button:contains("Enviar")',
+        '[data-testid="send-button"]',
+        '.send-button',
+        'button:last-child'
+      ];
+      
+      let buttonClicked = false;
+      for (const selector of sendButtonSelectors) {
+        try {
+          await page.click(selector);
+          buttonClicked = true;
+          break;
+        } catch (e) {
+          // Continuar con el siguiente selector
+        }
+      }
+      
+      if (!buttonClicked) {
+        // Intentar presionar Enter
+        await page.keyboard.press('Enter');
+      }
+      
+      // Esperar la respuesta
+      await page.waitForTimeout(5000);
+      
+      // Buscar la respuesta en diferentes selectores posibles
+      const responseSelectors = [
+        '.message-content',
+        '.response-text',
+        '.chat-message:last-child',
+        '[data-testid="message-content"]',
+        '.prose',
+        'p:last-child'
+      ];
+      
+      let translatedText = '';
+      for (const selector of responseSelectors) {
+        try {
+          const elements = await page.$$(selector);
+          if (elements.length > 0) {
+            const lastElement = elements[elements.length - 1];
+            translatedText = await page.evaluate(el => el.textContent?.trim(), lastElement);
+            if (translatedText && translatedText !== prompt) {
+              break;
+            }
+          }
+        } catch (e) {
+          // Continuar con el siguiente selector
+        }
+      }
+      
+      // Limpiar la respuesta (quitar texto extra que pueda haber)
+      if (translatedText) {
+        // Remover cualquier texto que contenga el prompt original
+        translatedText = translatedText.replace(new RegExp(text, 'gi'), '').trim();
+        // Remover comillas si las hay
+        translatedText = translatedText.replace(/^["']|["']$/g, '').trim();
+      }
+      
+      return translatedText || text;
+      
+    } catch (error) {
+      console.error('Error en traducción con DeepSeek:', error);
+      return text;
+    } finally {
+      if (browser) {
+        await browser.close();
+      }
+    }
   }
 
   static async translateAndCache(originalText: string, targetLanguage: string, context: string = 'general'): Promise<string> {
@@ -199,58 +330,40 @@ export class TranslationCacheService {
   }
 
   static async bulkTranslateAndStore(texts: string[], targetLanguages: string[]): Promise<void> {
-    if (!process.env.GOOGLE_TRANSLATE_API_KEY) {
-      console.warn('No Google Translate API key available for bulk translation');
-      return;
-    }
-
-    console.log(`🌐 Iniciando traducción masiva de ${texts.length} textos a ${targetLanguages.length} idiomas...`);
+    console.log(`🌐 Iniciando traducción masiva con DeepSeek de ${texts.length} textos a ${targetLanguages.length} idiomas...`);
 
     for (const language of targetLanguages) {
       if (language === 'es') continue; // Skip source language
       
-      console.log(`📝 Traduciendo a ${language}...`);
+      console.log(`📝 Traduciendo a ${language} usando DeepSeek...`);
       
-      // Process in batches to avoid rate limiting
-      const batchSize = 10;
-      for (let i = 0; i < texts.length; i += batchSize) {
-        const batch = texts.slice(i, i + batchSize);
-        
+      // Process one by one to avoid overwhelming DeepSeek
+      for (const text of texts) {
         try {
-          const response = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${process.env.GOOGLE_TRANSLATE_API_KEY}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              q: batch,
-              source: 'es',
-              target: language,
-              format: 'text'
-            })
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            const translations = data.data.translations;
-            
-            // Save each translation to cache
-            for (let j = 0; j < batch.length; j++) {
-              const originalText = batch[j];
-              const translatedText = translations[j].translatedText;
-              await this.saveTranslation(originalText, translatedText, language);
-            }
+          // Check if translation already exists in cache
+          const cached = await this.getCachedTranslation(text, language);
+          if (cached && cached !== text) {
+            console.log(`✓ Ya existe traducción en cache para: ${text}`);
+            continue;
           }
+
+          console.log(`🔄 Traduciendo: ${text}`);
+          const translatedText = await this.translateWithDeepSeek(text, language);
+          
+          if (translatedText && translatedText !== text) {
+            await this.saveTranslation(text, translatedText, language);
+            console.log(`✅ Traducido y guardado: ${text} -> ${translatedText}`);
+          }
+          
+          // Delay between translations to avoid overwhelming the service
+          await new Promise(resolve => setTimeout(resolve, 3000));
         } catch (error) {
-          console.error(`Error translating batch to ${language}:`, error);
+          console.error(`Error traduciendo "${text}" a ${language}:`, error);
         }
-        
-        // Small delay to respect rate limits
-        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
     
-    console.log('✅ Traducción masiva completada');
+    console.log('✅ Traducción masiva con DeepSeek completada');
   }
 
   static clearMemoryCache(): void {
