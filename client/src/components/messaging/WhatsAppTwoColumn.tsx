@@ -2224,7 +2224,7 @@ export function WhatsAppTwoColumn() {
       {/* Right Panel - Chat Messages */}
       <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
         {selectedChat ? (
-          <>
+          <div className="flex flex-col h-full">
             {/* Chat Header */}
             <div className="p-4 border-b border-gray-200 bg-white shadow-sm flex-shrink-0">
               <div className="flex items-center justify-between">
@@ -3072,7 +3072,6 @@ export function WhatsAppTwoColumn() {
               </div>
             </div>
           </div>
-          </>
         ) : (
           <div className="flex-1 flex items-center justify-center bg-gray-50">
             <div className="text-center text-gray-500">
@@ -3127,7 +3126,7 @@ function AutoClickConfigDialog({
     sendWaitTime: number;
     enabled: boolean;
   };
-  onSave: (newSettings: typeof settings) => void;
+  onSave: (newSettings: any) => void;
 }) {
   const [tempSettings, setTempSettings] = useState(settings);
 
