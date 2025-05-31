@@ -215,6 +215,33 @@ export const externalAgents = pgTable('external_agents', {
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
+// Agent Metrics (para tickets)
+export const agentMetrics = pgTable('agent_metrics', {
+  id: serial('id').primaryKey(),
+  agentId: integer('agent_id').notNull(),
+  totalTickets: integer('total_tickets').default(0),
+  resolvedTickets: integer('resolved_tickets').default(0),
+  averageResponseTime: integer('average_response_time').default(0),
+  customerSatisfaction: real('customer_satisfaction').default(0),
+  activeTickets: integer('active_tickets').default(0),
+  date: date('date').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
+// Message Activity (para tickets)
+export const messageActivity = pgTable('message_activity', {
+  id: serial('id').primaryKey(),
+  chatId: text('chat_id').notNull(),
+  accountId: integer('account_id').notNull(),
+  messageCount: integer('message_count').default(0),
+  lastMessageAt: timestamp('last_message_at'),
+  isActive: boolean('is_active').default(true),
+  priority: text('priority').default('normal'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
 // Relaciones
 export const usersRelations = relations(users, ({ one, many }) => ({
   supervisor: one(users, {
