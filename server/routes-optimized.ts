@@ -14,7 +14,7 @@ import { z } from "zod";
 import { geminiLeadOrganizer } from "./services/geminiLeadOrganizer";
 
 // SISTEMA DE RUTAS OPTIMIZADO Y LIMPIO CON GEMINI AI
-export function registerOptimizedRoutes(app: Express): Server {
+export async function registerOptimizedRoutes(app: Express): Promise<Server> {
   
   // Validación de esquemas
   const validateUser = (req: Request, res: Response, next: any) => {
@@ -469,8 +469,8 @@ export function registerOptimizedRoutes(app: Express): Server {
   });
 
   // Integrar WebSocket de mensajería moderna para comunicación en tiempo real
-  // const { ModernMessagingWebSocket } = require('./services/modernMessagingWebSocket');
-  // const modernMessagingWS = new ModernMessagingWebSocket(httpServer);
+  const { ModernMessagingWebSocket } = await import('./services/modernMessagingWebSocket');
+  const modernMessagingWS = new ModernMessagingWebSocket(httpServer);
   
   console.log('🚀 Sistema WebSocket de mensajería moderna iniciado en /modern-messaging-ws');
 
