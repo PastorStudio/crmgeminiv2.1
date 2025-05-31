@@ -61,87 +61,67 @@ router.get('/whatsapp-accounts', async (req: Request, res: Response) => {
   }
 });
 
-// Get chats for a specific WhatsApp account
-router.get('/chats/:accountId', async (req: Request, res: Response) => {
+// Get chats for modern messaging - using working simple-messaging logic
+router.get('/chats', async (req: Request, res: Response) => {
   try {
-    const { accountId } = req.params;
+    const { accountId } = req.query;
     
-    // Get real WhatsApp chats using whatsapp-web.js
-    const instance = whatsappMultiAccountManager?.getInstance(parseInt(accountId));
+    if (!accountId) {
+      return res.json([]);
+    }
+
+    // Use same logic as simple-messaging that works
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
     
+    if (!whatsappMultiAccountManager) {
+      console.log('WhatsApp manager not available');
+      return res.json([]);
+    }
+
+    const accountIdNumber = parseInt(Array.isArray(accountId) ? accountId[0] : accountId as string);
+    const instance = whatsappMultiAccountManager.getInstance(accountIdNumber);
     if (!instance || !instance.client) {
-      console.log(`WhatsApp account ${accountId} not connected`);
-      return res.json({
-        success: true,
-        chats: []
-      });
+      console.log(`Account ${accountId} not initialized or client not ready`);
+      return res.json([]);
     }
 
-    try {
-      // Get real chats from WhatsApp
-      const chats = await instance.client.getChats();
+    const realChats = await instance.client.getChats();
+    
+    // Transform with real profile pictures
+    const formattedChats = await Promise.all(realChats.slice(0, 20).map(async (chat: any) => {
+      let profilePicUrl = '';
+      let contactName = chat.name || chat.pushname || chat.id.user;
       
-      // Transform real chats to frontend format
-      const formattedChats = await Promise.all(chats.slice(0, 20).map(async (chat: any) => {
-        let lastMessage = 'Sin mensajes';
-        let timestamp = new Date().toISOString();
-        
-        try {
-          const messages = await chat.fetchMessages({ limit: 1 });
-          if (messages.length > 0) {
-            const lastMsg = messages[0];
-            lastMessage = lastMsg.body || 'Archivo multimedia';
-            timestamp = lastMsg.timestamp ? new Date(lastMsg.timestamp * 1000).toISOString() : timestamp;
-          }
-        } catch (msgError) {
-          console.log('Error fetching last message for chat:', msgError);
-        }
-
-        // Get contact info and profile picture
-        let contactName = chat.name || 'Sin nombre';
-        let profilePicUrl = '';
-        
-        try {
+      try {
+        if (!chat.isGroup) {
           const contact = await chat.getContact();
-          contactName = contact.pushname || contact.name || contact.number || contactName;
           profilePicUrl = await contact.getProfilePicUrl() || '';
-        } catch (contactError) {
-          console.log('Error fetching contact info:', contactError);
+          contactName = contact.pushname || contact.name || contact.number || contactName;
         }
-
-        return {
-          id: chat.id._serialized || chat.id,
-          name: contactName,
-          lastMessage: lastMessage,
-          timestamp: timestamp,
-          unreadCount: chat.unreadCount || 0,
-          avatar: profilePicUrl,
-          status: 'unknown',
-          type: chat.isGroup ? 'group' : 'individual',
-          phoneNumber: chat.id.user || '',
-          accountId: parseInt(accountId)
-        };
-      }));
-
-      res.json({
-        success: true,
-        chats: formattedChats
-      });
-    } catch (whatsappError) {
-      console.error('Error fetching real WhatsApp chats:', whatsappError);
-      // Return empty array if WhatsApp is not ready
-      res.json({
-        success: true,
-        chats: []
-      });
-    }
+      } catch (error) {
+        profilePicUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${contactName}`;
+      }
+      
+      return {
+        id: chat.id._serialized || chat.id,
+        name: contactName,
+        lastMessage: chat.lastMessage?.body || 'Sin mensajes recientes',
+        timestamp: chat.lastMessage?.timestamp ? 
+          new Date(chat.lastMessage.timestamp * 1000).toISOString() : 
+          new Date().toISOString(),
+        unreadCount: chat.unreadCount || 0,
+        status: chat.isOnline ? 'online' : 'offline',
+        type: chat.isGroup ? 'group' : 'individual',
+        phoneNumber: chat.id.user || chat.id._serialized?.replace('@c.us', ''),
+        avatar: profilePicUrl,
+        accountId: accountIdNumber
+      };
+    }));
+    
+    res.json(formattedChats);
   } catch (error) {
-    console.error('Error in chats endpoint:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error al obtener chats',
-      chats: []
-    });
+    console.error('Error fetching real WhatsApp chats:', error);
+    res.json([]);
   }
 });
 
@@ -160,8 +140,19 @@ router.get('/messages/:chatId', async (req: Request, res: Response) => {
       });
     }
 
-    // Get real WhatsApp messages using whatsapp-web.js
-    const instance = whatsappMultiAccountManager?.getInstance(parseInt(accountId as string));
+    // Use same logic as simple-messaging for getting real messages
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+    
+    if (!whatsappMultiAccountManager) {
+      console.log('WhatsApp manager not available for messages');
+      return res.json({
+        success: true,
+        messages: []
+      });
+    }
+
+    const accountIdNumber = parseInt(accountId as string);
+    const instance = whatsappMultiAccountManager.getInstance(accountIdNumber);
     
     if (!instance || !instance.client) {
       console.log(`WhatsApp account ${accountId} not connected for messages`);
@@ -176,7 +167,7 @@ router.get('/messages/:chatId', async (req: Request, res: Response) => {
       const chat = await instance.client.getChatById(chatId);
       const messages = await chat.fetchMessages({ limit: 50 });
 
-      // Transform real messages to frontend format
+      // Transform real messages to frontend format with real profile pictures
       const formattedMessages = await Promise.all(messages.map(async (msg: any) => {
         let senderInfo = {
           name: 'Usuario',
@@ -191,6 +182,7 @@ router.get('/messages/:chatId', async (req: Request, res: Response) => {
             senderInfo.avatar = await contact.getProfilePicUrl() || '';
           } catch (contactError) {
             console.log('Error fetching sender info:', contactError);
+            senderInfo.avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${senderInfo.name}`;
           }
         }
 
