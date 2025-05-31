@@ -149,6 +149,9 @@ export function ModernMessagingSystem() {
 
   const { data: messages = [], isLoading: messagesLoading } = useQuery({
     queryKey: ['/api/modern-messaging/messages', selectedChat?.id],
+    queryFn: () => selectedChat?.id ? 
+      fetch(`/api/modern-messaging/messages/${selectedChat.id}`).then(res => res.json()) : 
+      Promise.resolve([]),
     enabled: !!selectedChat?.id
   });
 
@@ -622,7 +625,7 @@ export function ModernMessagingSystem() {
                           </div>
                         </div>
                       </motion.div>
-                    )) : []
+                    )) : [])
                   }
                   <div ref={messagesEndRef} />
                 </div>
