@@ -56,6 +56,17 @@ import { AgentSelector } from './AgentSelector';
 
 import { VoiceNoteMessage } from './VoiceNoteMessage';
 
+// Importar funciones automáticas
+import { 
+  enableAutoAE, 
+  disableAutoAE, 
+  enableAutoSend, 
+  disableAutoSend, 
+  getAutoFunctionsStatus,
+  toggleAutoAE,
+  toggleAutoSend 
+} from '@/lib/autoFunctions';
+
 // Sistema de traducción simple usando Google Translate API (igual que mensajes enviados)
 const translationCache = new Map<string, string>();
 
