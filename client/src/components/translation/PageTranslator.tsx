@@ -258,6 +258,12 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
             return;
           }
           
+          // Verificar atributo data-no-translate en el elemento o sus padres
+          if (element.getAttribute('data-no-translate') === 'true' || 
+              element.closest('[data-no-translate="true"]')) {
+            return;
+          }
+          
           // Evitar completamente elementos dentro del dashboard
           if (element.closest('.dashboard-stats')) {
             return;
@@ -456,7 +462,8 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
             }
             
             // Traducir atributos
-            for (const attr of data.attributes.keys()) {
+            const attributeKeys = Array.from(data.attributes.keys());
+            for (const attr of attributeKeys) {
               const originalValue = data.attributes.get(attr);
               if (originalValue) {
                 const translatedAttr = await translateText(originalValue, targetLanguage);
