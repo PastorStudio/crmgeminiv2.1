@@ -180,28 +180,7 @@ export const multimediaFiles = pgTable("multimedia_files", {
   updatedAt: timestamp("updatedAt").defaultNow(),
 });
 
-// Tabla para cache de traducciones - evita retraducir contenido
-export const translations = pgTable("translations", {
-  id: serial("id").primaryKey(),
-  // Texto original en español
-  originalText: text("originalText").notNull(),
-  // Idioma de destino (en, fr, de, it, pt, etc.)
-  targetLanguage: text("targetLanguage").notNull(),
-  // Texto traducido
-  translatedText: text("translatedText").notNull(),
-  // Contexto donde se usa (dashboard, messages, navigation, etc.)
-  context: text("context").default("general"),
-  // Hash único para identificar rápidamente
-  textHash: text("textHash").notNull(),
-  // Fecha de creación y actualización
-  createdAt: timestamp("createdAt").defaultNow(),
-  updatedAt: timestamp("updatedAt").defaultNow(),
-});
-
 // Insert schemas for each model
-export const insertTranslationSchema = createInsertSchema(translations);
-export type InsertTranslation = z.infer<typeof insertTranslationSchema>;
-export type Translation = typeof translations.$inferSelect;
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
   assignee: one(users, {
