@@ -6,14 +6,10 @@
 import { db } from '../db';
 import { storage } from '../storage';
 import { 
-  tickets, 
+  modernTickets, 
   agentMetrics, 
   messageActivity,
-  users,
-  type Ticket,
-  type InsertTicket,
-  type AgentMetrics,
-  type MessageActivity 
+  users
 } from '@shared/schema';
 import { eq, desc, and, gte, count } from 'drizzle-orm';
 
