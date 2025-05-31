@@ -84,28 +84,175 @@ export const DatabaseTranslationProvider: React.FC<{ children: React.ReactNode }
       console.warn('Error fetching translations from API:', error);
     }
     
-    // Fallback temporal con indicadores visuales cuando no hay API configurada
+    // Sistema de traducción directo usando diccionario completo
     const result: Record<string, string> = {};
-    const languageIndicators: { [key: string]: string } = {
-      'en': '[EN]',
-      'fr': '[FR]', 
-      'de': '[DE]',
-      'pt': '[PT]',
-      'it': '[IT]',
-      'ru': '[RU]',
-      'zh': '[中文]',
-      'ja': '[日本語]',
-      'ko': '[한국어]',
-      'ar': '[العربية]'
+    const translationDictionary: { [key: string]: { [lang: string]: string } } = {
+      'Dashboard': {
+        'en': 'Dashboard',
+        'fr': 'Tableau de bord',
+        'de': 'Armaturenbrett',
+        'pt': 'Painel',
+        'it': 'Cruscotto',
+        'ru': 'Панель управления',
+        'zh': '仪表板',
+        'ja': 'ダッシュボード',
+        'ko': '대시보드',
+        'ar': 'لوحة القيادة'
+      },
+      'Mensajes': {
+        'en': 'Messages',
+        'fr': 'Messages',
+        'de': 'Nachrichten',
+        'pt': 'Mensagens',
+        'it': 'Messaggi',
+        'ru': 'Сообщения',
+        'zh': '消息',
+        'ja': 'メッセージ',
+        'ko': '메시지',
+        'ar': 'الرسائل'
+      },
+      'Prospectos': {
+        'en': 'Leads',
+        'fr': 'Prospects',
+        'de': 'Interessenten',
+        'pt': 'Prospects',
+        'it': 'Prospect',
+        'ru': 'Лиды',
+        'zh': '潜在客户',
+        'ja': 'リード',
+        'ko': '리드',
+        'ar': 'العملاء المحتملون'
+      },
+      'Configuración': {
+        'en': 'Settings',
+        'fr': 'Paramètres',
+        'de': 'Einstellungen',
+        'pt': 'Configurações',
+        'it': 'Impostazioni',
+        'ru': 'Настройки',
+        'zh': '设置',
+        'ja': '設定',
+        'ko': '설정',
+        'ar': 'الإعدادات'
+      },
+      'Total': {
+        'en': 'Total',
+        'fr': 'Total',
+        'de': 'Gesamt',
+        'pt': 'Total',
+        'it': 'Totale',
+        'ru': 'Всего',
+        'zh': '总计',
+        'ja': '合計',
+        'ko': '총계',
+        'ar': 'المجموع'
+      },
+      'Nuevo': {
+        'en': 'New',
+        'fr': 'Nouveau',
+        'de': 'Neu',
+        'pt': 'Novo',
+        'it': 'Nuovo',
+        'ru': 'Новый',
+        'zh': '新建',
+        'ja': '新規',
+        'ko': '새로운',
+        'ar': 'جديد'
+      },
+      'Guardar': {
+        'en': 'Save',
+        'fr': 'Sauvegarder',
+        'de': 'Speichern',
+        'pt': 'Salvar',
+        'it': 'Salva',
+        'ru': 'Сохранить',
+        'zh': '保存',
+        'ja': '保存',
+        'ko': '저장',
+        'ar': 'حفظ'
+      },
+      'Cancelar': {
+        'en': 'Cancel',
+        'fr': 'Annuler',
+        'de': 'Abbrechen',
+        'pt': 'Cancelar',
+        'it': 'Annulla',
+        'ru': 'Отмена',
+        'zh': '取消',
+        'ja': 'キャンセル',
+        'ko': '취소',
+        'ar': 'إلغاء'
+      },
+      'Editar': {
+        'en': 'Edit',
+        'fr': 'Modifier',
+        'de': 'Bearbeiten',
+        'pt': 'Editar',
+        'it': 'Modifica',
+        'ru': 'Редактировать',
+        'zh': '编辑',
+        'ja': '編集',
+        'ko': '편집',
+        'ar': 'تحرير'
+      },
+      'Eliminar': {
+        'en': 'Delete',
+        'fr': 'Supprimer',
+        'de': 'Löschen',
+        'pt': 'Excluir',
+        'it': 'Elimina',
+        'ru': 'Удалить',
+        'zh': '删除',
+        'ja': '削除',
+        'ko': '삭제',
+        'ar': 'حذف'
+      },
+      'Este mes': {
+        'en': 'This month',
+        'fr': 'Ce mois-ci',
+        'de': 'Diesen Monat',
+        'pt': 'Este mês',
+        'it': 'Questo mese',
+        'ru': 'В этом месяце',
+        'zh': '本月',
+        'ja': '今月',
+        'ko': '이번 달',
+        'ar': 'هذا الشهر'
+      },
+      'Actividades': {
+        'en': 'Activities',
+        'fr': 'Activités',
+        'de': 'Aktivitäten',
+        'pt': 'Atividades',
+        'it': 'Attività',
+        'ru': 'Активности',
+        'zh': '活动',
+        'ja': 'アクティビティ',
+        'ko': '활동',
+        'ar': 'الأنشطة'
+      },
+      'WhatsApp': {
+        'en': 'WhatsApp',
+        'fr': 'WhatsApp',
+        'de': 'WhatsApp',
+        'pt': 'WhatsApp',
+        'it': 'WhatsApp',
+        'ru': 'WhatsApp',
+        'zh': 'WhatsApp',
+        'ja': 'WhatsApp',
+        'ko': 'WhatsApp',
+        'ar': 'واتساب'
+      }
     };
-    
-    const indicator = languageIndicators[targetLanguage] || `[${targetLanguage.toUpperCase()}]`;
     
     texts.forEach(text => {
       if (targetLanguage === 'es') {
         result[text] = text; // Original español
+      } else if (translationDictionary[text] && translationDictionary[text][targetLanguage]) {
+        result[text] = translationDictionary[text][targetLanguage];
       } else {
-        result[text] = `${indicator} ${text}`;
+        // Para textos no encontrados, mantener original
+        result[text] = text;
       }
     });
     
