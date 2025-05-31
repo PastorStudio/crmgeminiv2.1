@@ -33,10 +33,14 @@ export interface IStorage {
   // WhatsApp accounts methods
   getWhatsAppAccounts(): Promise<WhatsAppAccount[]>;
   createWhatsAppAccount(account: any): Promise<WhatsAppAccount>;
+  getAllWhatsappAccounts(): Promise<WhatsAppAccount[]>;
   
   // Chat assignments methods
   getChatAssignments(): Promise<ChatAssignment[]>;
   createChatAssignment(assignment: InsertChatAssignment): Promise<ChatAssignment>;
+  
+  // Additional required methods
+  initializeData(): Promise<void>;
 }
 
 // Database storage implementation
@@ -72,7 +76,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(users)
       .where(eq(users.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   async getLeads(): Promise<Lead[]> {
@@ -100,7 +104,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(leads)
       .where(eq(leads.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   async getWhatsAppAccounts(): Promise<WhatsAppAccount[]> {
@@ -125,6 +129,32 @@ export class DatabaseStorage implements IStorage {
       .values(assignment)
       .returning();
     return newAssignment;
+  }
+
+  async getAllWhatsappAccounts(): Promise<WhatsAppAccount[]> {
+    return await db.select().from(whatsappAccounts);
+  }
+
+  async initializeData(): Promise<void> {
+    try {
+      // Initialize basic data if needed
+      const existingAccounts = await this.getWhatsAppAccounts();
+      if (existingAccounts.length === 0) {
+        // Create a default WhatsApp account for testing
+        await this.createWhatsAppAccount({
+          name: 'Demo WhatsApp',
+          description: 'Cuenta de demostración',
+          ownerName: 'Sistema Demo',
+          ownerPhone: '+1234567890',
+          status: 'disconnected',
+          adminId: 1,
+          autoResponseEnabled: false,
+          responseDelay: 1000
+        });
+      }
+    } catch (error) {
+      console.error('Error initializing data:', error);
+    }
   }
 }
 

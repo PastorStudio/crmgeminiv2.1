@@ -5,6 +5,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
+import modernMessagingRouter from "./routes/modern-messaging";
 import { db, pool } from "./db";
 import { users, whatsappAccounts, autoResponseConfigs } from "@shared/schema";
 import { eq } from "drizzle-orm";
