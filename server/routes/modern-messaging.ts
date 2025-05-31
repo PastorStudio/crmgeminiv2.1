@@ -109,38 +109,52 @@ router.get('/messages/:chatId', async (req: Request, res: Response) => {
   try {
     const { chatId } = req.params;
     
-    // For now, return demo messages
-    const demoMessages = [
-      {
-        id: 'msg1',
-        chatId,
-        content: 'Hola, ¿cómo están?',
-        sender: 'user',
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        type: 'text'
-      },
-      {
-        id: 'msg2',
-        chatId,
-        content: 'Hola! Todo bien por aquí. ¿En qué te podemos ayudar?',
-        sender: 'agent',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        type: 'text'
-      },
-      {
-        id: 'msg3',
-        chatId,
-        content: 'Tengo una consulta sobre el producto que vi en su página',
-        sender: 'user',
-        timestamp: new Date().toISOString(),
-        type: 'text'
-      }
-    ];
+    const { accountId } = req.query;
+    
+    if (!accountId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Account ID is required',
+        messages: []
+      });
+    }
 
-    res.json({
-      success: true,
-      messages: demoMessages
-    });
+    // Get real WhatsApp messages
+    const instance = whatsappMultiAccountManager?.getInstance(parseInt(accountId as string));
+    if (!instance || !instance.client) {
+      console.log(`Account ${accountId} not connected for messages`);
+      return res.json({
+        success: true,
+        messages: []
+      });
+    }
+
+    try {
+      const chat = await instance.client.getChatById(chatId);
+      const messages = await chat.fetchMessages({ limit: 50 });
+
+      const formattedMessages = messages.map((msg: any) => ({
+        id: msg.id._serialized || msg.id,
+        chatId,
+        content: msg.body || '',
+        sender: msg.fromMe ? 'agent' : 'user',
+        timestamp: msg.timestamp ? new Date(msg.timestamp * 1000).toISOString() : new Date().toISOString(),
+        type: msg.type || 'text',
+        hasMedia: msg.hasMedia || false,
+        author: msg.author || chatId
+      }));
+
+      res.json({
+        success: true,
+        messages: formattedMessages.reverse() // Show oldest first
+      });
+    } catch (chatError) {
+      console.log(`Error fetching messages for chat ${chatId}:`, chatError);
+      res.json({
+        success: true,
+        messages: []
+      });
+    }
   } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({
@@ -274,6 +288,49 @@ router.get('/analytics', async (req: Request, res: Response) => {
       satisfactionScore: 0
     }
   });
+});
+
+// Send message endpoint
+router.post('/send-message', async (req: Request, res: Response) => {
+  try {
+    const { chatId, message, accountId } = req.body;
+    
+    if (!chatId || !message || !accountId) {
+      return res.status(400).json({
+        success: false,
+        error: 'ChatId, message y accountId son requeridos'
+      });
+    }
+
+    const instance = whatsappMultiAccountManager?.getInstance(parseInt(accountId));
+    if (!instance || !instance.client) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cuenta de WhatsApp no conectada'
+      });
+    }
+
+    // Send message through WhatsApp
+    const sentMessage = await instance.client.sendMessage(chatId, message);
+    
+    res.json({
+      success: true,
+      message: {
+        id: sentMessage.id._serialized || sentMessage.id,
+        chatId,
+        content: message,
+        sender: 'agent',
+        timestamp: new Date().toISOString(),
+        type: 'text'
+      }
+    });
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al enviar mensaje'
+    });
+  }
 });
 
 // Analyze conversations endpoint
