@@ -66,36 +66,77 @@ router.get('/chats/:accountId', async (req: Request, res: Response) => {
   try {
     const { accountId } = req.params;
     
-    // For now, return demo chats
-    const demoChats = [
-      {
-        id: 'chat1',
-        name: 'Juan Pérez',
-        lastMessage: 'Hola, tengo una consulta sobre el producto',
-        timestamp: new Date().toISOString(),
-        unreadCount: 2,
-        avatar: '/avatars/user1.jpg',
-        status: 'online',
-        accountId: parseInt(accountId)
-      },
-      {
-        id: 'chat2',
-        name: 'María García',
-        lastMessage: 'Gracias por la información',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        unreadCount: 0,
-        avatar: '/avatars/user2.jpg',
-        status: 'offline',
-        accountId: parseInt(accountId)
-      }
-    ];
+    // Get real WhatsApp chats using whatsapp-web.js
+    const instance = whatsappMultiAccountManager?.getInstance(parseInt(accountId));
+    
+    if (!instance || !instance.client) {
+      console.log(`WhatsApp account ${accountId} not connected`);
+      return res.json({
+        success: true,
+        chats: []
+      });
+    }
 
-    res.json({
-      success: true,
-      chats: demoChats
-    });
+    try {
+      // Get real chats from WhatsApp
+      const chats = await instance.client.getChats();
+      
+      // Transform real chats to frontend format
+      const formattedChats = await Promise.all(chats.slice(0, 20).map(async (chat: any) => {
+        let lastMessage = 'Sin mensajes';
+        let timestamp = new Date().toISOString();
+        
+        try {
+          const messages = await chat.fetchMessages({ limit: 1 });
+          if (messages.length > 0) {
+            const lastMsg = messages[0];
+            lastMessage = lastMsg.body || 'Archivo multimedia';
+            timestamp = lastMsg.timestamp ? new Date(lastMsg.timestamp * 1000).toISOString() : timestamp;
+          }
+        } catch (msgError) {
+          console.log('Error fetching last message for chat:', msgError);
+        }
+
+        // Get contact info and profile picture
+        let contactName = chat.name || 'Sin nombre';
+        let profilePicUrl = '';
+        
+        try {
+          const contact = await chat.getContact();
+          contactName = contact.pushname || contact.name || contact.number || contactName;
+          profilePicUrl = await contact.getProfilePicUrl() || '';
+        } catch (contactError) {
+          console.log('Error fetching contact info:', contactError);
+        }
+
+        return {
+          id: chat.id._serialized || chat.id,
+          name: contactName,
+          lastMessage: lastMessage,
+          timestamp: timestamp,
+          unreadCount: chat.unreadCount || 0,
+          avatar: profilePicUrl,
+          status: 'unknown',
+          type: chat.isGroup ? 'group' : 'individual',
+          phoneNumber: chat.id.user || '',
+          accountId: parseInt(accountId)
+        };
+      }));
+
+      res.json({
+        success: true,
+        chats: formattedChats
+      });
+    } catch (whatsappError) {
+      console.error('Error fetching real WhatsApp chats:', whatsappError);
+      // Return empty array if WhatsApp is not ready
+      res.json({
+        success: true,
+        chats: []
+      });
+    }
   } catch (error) {
-    console.error('Error fetching chats:', error);
+    console.error('Error in chats endpoint:', error);
     res.status(500).json({
       success: false,
       error: 'Error al obtener chats',
@@ -119,82 +160,66 @@ router.get('/messages/:chatId', async (req: Request, res: Response) => {
       });
     }
 
-    // Provide demo messages for testing
-    const demoMessages = [
-      {
-        id: 'msg1',
-        chatId,
-        content: 'Hola, estoy interesado en sus servicios',
-        sender: 'user',
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        type: 'text',
-        hasMedia: false,
-        author: chatId
-      },
-      {
-        id: 'msg2',
-        chatId,
-        content: 'Hola! Claro, con gusto te ayudo. ¿Qué información necesitas?',
-        sender: 'agent',
-        timestamp: new Date(Date.now() - 7000000).toISOString(),
-        type: 'text',
-        hasMedia: false,
-        author: 'agent'
-      },
-      {
-        id: 'msg3',
-        chatId,
-        content: 'Me gustaría conocer más sobre sus productos',
-        sender: 'user',
-        timestamp: new Date(Date.now() - 6800000).toISOString(),
-        type: 'text',
-        hasMedia: false,
-        author: chatId
-      },
-      {
-        id: 'msg4',
-        chatId,
-        content: 'Perfecto! Te envío información detallada sobre nuestros productos y servicios.',
-        sender: 'agent',
-        timestamp: new Date(Date.now() - 6600000).toISOString(),
-        type: 'text',
-        hasMedia: false,
-        author: 'agent'
-      }
-    ];
-
-    // Try to get real WhatsApp messages if available
+    // Get real WhatsApp messages using whatsapp-web.js
     const instance = whatsappMultiAccountManager?.getInstance(parseInt(accountId as string));
-    if (instance && instance.client) {
-      try {
-        const chat = await instance.client.getChatById(chatId);
-        const messages = await chat.fetchMessages({ limit: 50 });
+    
+    if (!instance || !instance.client) {
+      console.log(`WhatsApp account ${accountId} not connected for messages`);
+      return res.json({
+        success: true,
+        messages: []
+      });
+    }
 
-        const formattedMessages = messages.map((msg: any) => ({
+    try {
+      // Get real chat and messages from WhatsApp
+      const chat = await instance.client.getChatById(chatId);
+      const messages = await chat.fetchMessages({ limit: 50 });
+
+      // Transform real messages to frontend format
+      const formattedMessages = await Promise.all(messages.map(async (msg: any) => {
+        let senderInfo = {
+          name: 'Usuario',
+          avatar: ''
+        };
+
+        // Get sender information and profile picture for individual chats
+        if (!chat.isGroup && !msg.fromMe) {
+          try {
+            const contact = await chat.getContact();
+            senderInfo.name = contact.pushname || contact.name || contact.number || 'Usuario';
+            senderInfo.avatar = await contact.getProfilePicUrl() || '';
+          } catch (contactError) {
+            console.log('Error fetching sender info:', contactError);
+          }
+        }
+
+        return {
           id: msg.id._serialized || msg.id,
           chatId,
-          content: msg.body || '',
+          content: msg.body || (msg.hasMedia ? 'Archivo multimedia' : ''),
           sender: msg.fromMe ? 'agent' : 'user',
           timestamp: msg.timestamp ? new Date(msg.timestamp * 1000).toISOString() : new Date().toISOString(),
           type: msg.type || 'text',
           hasMedia: msg.hasMedia || false,
-          author: msg.author || chatId
-        }));
+          author: msg.fromMe ? 'agent' : senderInfo.name,
+          authorAvatar: msg.fromMe ? '' : senderInfo.avatar,
+          messageType: msg.type,
+          quotedMsg: msg.hasQuotedMsg ? msg.quotedMsg?.body : null
+        };
+      }));
 
-        return res.json({
-          success: true,
-          messages: formattedMessages.reverse()
-        });
-      } catch (chatError) {
-        console.log(`Error fetching real messages for chat ${chatId}, using demo messages:`, chatError);
-      }
+      res.json({
+        success: true,
+        messages: formattedMessages.reverse() // Show oldest first
+      });
+    } catch (chatError) {
+      console.error(`Error fetching real messages for chat ${chatId}:`, chatError);
+      res.json({
+        success: true,
+        messages: []
+      });
     }
-
-    // Return demo messages
-    res.json({
-      success: true,
-      messages: demoMessages
-    });
   } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({
