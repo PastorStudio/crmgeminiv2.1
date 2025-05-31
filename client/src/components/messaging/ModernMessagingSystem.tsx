@@ -141,10 +141,22 @@ export function ModernMessagingSystem() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // WhatsApp Account Management
+  const [selectedWhatsAppAccount, setSelectedWhatsAppAccount] = useState<number | null>(null);
+  const [showAccountSelector, setShowAccountSelector] = useState(false);
+
+  const { data: whatsappAccounts = [] } = useQuery({
+    queryKey: ['/api/whatsapp-accounts'],
+    enabled: true
+  });
+
   // Queries
   const { data: chats = [], isLoading: chatsLoading } = useQuery({
-    queryKey: ['/api/modern-messaging/chats'],
-    enabled: true
+    queryKey: ['/api/modern-messaging/chats', selectedWhatsAppAccount],
+    queryFn: () => selectedWhatsAppAccount ? 
+      fetch(`/api/modern-messaging/chats?accountId=${selectedWhatsAppAccount}`).then(res => res.json()) : 
+      Promise.resolve([]),
+    enabled: !!selectedWhatsAppAccount
   });
 
   const { data: messages = [], isLoading: messagesLoading } = useQuery({
@@ -319,6 +331,29 @@ export function ModernMessagingSystem() {
         </div>
         
         <div className="flex items-center space-x-3">
+          {/* WhatsApp Account Selector */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Cuenta WhatsApp:</span>
+            <Select 
+              value={selectedWhatsAppAccount?.toString() || ""} 
+              onValueChange={(value) => setSelectedWhatsAppAccount(parseInt(value))}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Seleccionar cuenta" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.isArray(whatsappAccounts) ? whatsappAccounts.map((account: any) => (
+                  <SelectItem key={account.id} value={account.id.toString()}>
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-2 h-2 rounded-full ${account.status === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <span>{account.name || `Cuenta ${account.id}`}</span>
+                    </div>
+                  </SelectItem>
+                )) : []}
+              </SelectContent>
+            </Select>
+          </div>
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -758,7 +793,7 @@ export function ModernMessagingSystem() {
           <div className="space-y-4">
             <ScrollArea className="h-64">
               <div className="space-y-3">
-                {comments.map((comment: ChatComment) => (
+                {Array.isArray(comments) ? comments.map((comment: ChatComment) => (
                   <div key={comment.id} className="flex space-x-3 p-3 bg-gray-50 rounded-lg">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={comment.user.avatar} />
@@ -777,8 +812,8 @@ export function ModernMessagingSystem() {
                       <p className="text-sm text-gray-700">{comment.content}</p>
                     </div>
                   </div>
-                ))}
-              </div>
+                )) : [])
+              }
             </ScrollArea>
             
             <div className="space-y-2">
