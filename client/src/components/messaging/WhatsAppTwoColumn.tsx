@@ -2146,7 +2146,7 @@ export function WhatsAppTwoColumn() {
               }
             </div>
           ) : (
-            <div className="space-y-1 p-2">
+            <div className="space-y-1 p-2 text-[12px]">
               <AnimatePresence>
                 {(filteredChats as any[])?.map((chat: any, index: number) => (
                   <motion.div
@@ -2599,7 +2599,7 @@ export function WhatsAppTwoColumn() {
                                   </div>
                                 ) : message.type === 'image' ? (
                                   /* Mensajes de imagen */
-                                  <div className="space-y-2">
+                                  (<div className="space-y-2">
                                     {message.mediaUrl || message._data?.mediaUrl ? (
                                       <img 
                                         src={message.mediaUrl || message._data?.mediaUrl} 
@@ -2627,10 +2627,10 @@ export function WhatsAppTwoColumn() {
                                         )}
                                       </div>
                                     )}
-                                  </div>
+                                  </div>)
                                 ) : (
                                   /* Mensajes de texto normales */
-                                  <div>
+                                  (<div>
                                     <p className="text-sm whitespace-pre-wrap">{message.body || '[Mensaje sin contenido]'}</p>
                                     {!message.fromMe && message.body && (
                                       <MessageTranslation 
@@ -2651,7 +2651,7 @@ export function WhatsAppTwoColumn() {
                                         </div>
                                       </div>
                                     )}
-                                  </div>
+                                  </div>)
                                 )}
                               </div>
                               {!message.fromMe && (
@@ -3084,7 +3084,6 @@ export function WhatsAppTwoColumn() {
           accountId={assignmentAccountId || selectedChat.accountId}
         />
       )}
-
       {selectedChat && (
         <ChatCommentsDialog
           open={commentsDialogOpen}
@@ -3093,7 +3092,6 @@ export function WhatsAppTwoColumn() {
           chatName={selectedChat.name}
         />
       )}
-
       {/* Diálogo de Configuración de Auto-Click */}
       <AutoClickConfigDialog
         open={showAutoClickConfig}
