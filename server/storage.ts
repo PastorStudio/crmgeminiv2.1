@@ -8,6 +8,7 @@ import {
   type InsertUser,
   type Lead,
   type InsertLead,
+  type InsertWhatsAppAccount,
   type WhatsAppAccount,
   type ChatAssignment,
   type InsertChatAssignment
@@ -32,8 +33,11 @@ export interface IStorage {
   
   // WhatsApp accounts methods
   getWhatsAppAccounts(): Promise<WhatsAppAccount[]>;
-  createWhatsAppAccount(account: any): Promise<WhatsAppAccount>;
+  createWhatsAppAccount(account: InsertWhatsAppAccount): Promise<WhatsAppAccount>;
   getAllWhatsappAccounts(): Promise<WhatsAppAccount[]>;
+  getWhatsappAccount(id: number): Promise<WhatsAppAccount | undefined>;
+  updateWhatsappAccount(id: number, updates: Partial<WhatsAppAccount>): Promise<WhatsAppAccount | undefined>;
+  deleteWhatsappAccount(id: number): Promise<boolean>;
   
   // Chat assignments methods
   getChatAssignments(): Promise<ChatAssignment[]>;
@@ -111,7 +115,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(whatsappAccounts);
   }
 
-  async createWhatsAppAccount(account: any): Promise<WhatsAppAccount> {
+  async createWhatsAppAccount(account: InsertWhatsAppAccount): Promise<WhatsAppAccount> {
     const [newAccount] = await db
       .insert(whatsappAccounts)
       .values(account)
@@ -133,6 +137,27 @@ export class DatabaseStorage implements IStorage {
 
   async getAllWhatsappAccounts(): Promise<WhatsAppAccount[]> {
     return await db.select().from(whatsappAccounts);
+  }
+
+  async getWhatsappAccount(id: number): Promise<WhatsAppAccount | undefined> {
+    const [account] = await db.select().from(whatsappAccounts).where(eq(whatsappAccounts.id, id));
+    return account || undefined;
+  }
+
+  async updateWhatsappAccount(id: number, updates: Partial<WhatsAppAccount>): Promise<WhatsAppAccount | undefined> {
+    const [account] = await db
+      .update(whatsappAccounts)
+      .set(updates)
+      .where(eq(whatsappAccounts.id, id))
+      .returning();
+    return account || undefined;
+  }
+
+  async deleteWhatsappAccount(id: number): Promise<boolean> {
+    const result = await db
+      .delete(whatsappAccounts)
+      .where(eq(whatsappAccounts.id, id));
+    return (result.rowCount || 0) > 0;
   }
 
   async initializeData(): Promise<void> {
