@@ -84,9 +84,31 @@ export const DatabaseTranslationProvider: React.FC<{ children: React.ReactNode }
       console.warn('Error fetching translations from API:', error);
     }
     
-    // Retornar textos originales si falla
+    // Fallback temporal con indicadores visuales cuando no hay API configurada
     const result: Record<string, string> = {};
-    texts.forEach(text => result[text] = text);
+    const languageIndicators: { [key: string]: string } = {
+      'en': '[EN]',
+      'fr': '[FR]', 
+      'de': '[DE]',
+      'pt': '[PT]',
+      'it': '[IT]',
+      'ru': '[RU]',
+      'zh': '[中文]',
+      'ja': '[日本語]',
+      'ko': '[한국어]',
+      'ar': '[العربية]'
+    };
+    
+    const indicator = languageIndicators[targetLanguage] || `[${targetLanguage.toUpperCase()}]`;
+    
+    texts.forEach(text => {
+      if (targetLanguage === 'es') {
+        result[text] = text; // Original español
+      } else {
+        result[text] = `${indicator} ${text}`;
+      }
+    });
+    
     return result;
   };
 
