@@ -2095,7 +2095,7 @@ export function WhatsAppTwoColumn() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex flex-row h-screen bg-gray-50">
       {/* Left Panel - Chat List */}
       <div className="w-80 min-w-80 max-w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
         {/* Header with Account Selector */}
@@ -2155,7 +2155,7 @@ export function WhatsAppTwoColumn() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2, delay: index * 0.05 }}
-                    className="p-2 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 text-sm"
+                    className="p-2 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 text-[12px]"
                     onClick={() => handleChatSelect?.(chat)}
                   >
                     <div className="flex items-center space-x-3">
