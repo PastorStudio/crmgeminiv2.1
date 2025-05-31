@@ -1711,18 +1711,109 @@ app.use((req, res, next) => {
     });
   });
   
-  // Habilitar respuesta automática
-  app.post('/api/external-agents/enable-auto-response', (req: Request, res: Response) => {
-    console.log('🔄 Endpoint enable-auto-response ejecutado con:', req.body);
-    res.setHeader('Content-Type', 'application/json');
-    externalAgentAPI.enableAutoResponse(req, res);
+  // Habilitar respuesta automática con manejo robusto
+  app.post('/api/external-agents/enable-auto-response', async (req: Request, res: Response) => {
+    try {
+      console.log('🔄 Endpoint enable-auto-response ejecutado con:', req.body);
+      console.log('🔍 Content-Type recibido:', req.headers['content-type']);
+      console.log('🔍 Raw body:', JSON.stringify(req.body));
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      
+      // Validar que tenemos los datos necesarios
+      const { accountId, agentId, delay = 3 } = req.body;
+      
+      if (!accountId || !agentId) {
+        return res.status(400).json({
+          success: false,
+          error: 'accountId y agentId son requeridos'
+        });
+      }
+      
+      // Habilitar usando el sistema simplificado
+      const config = WhatsAppAccountConfigManager.assignAgent(
+        parseInt(accountId),
+        agentId,
+        true
+      );
+      
+      const success = config !== null;
+      
+      if (success) {
+        console.log('✅ Respuesta automática habilitada exitosamente');
+        return res.json({
+          success: true,
+          message: 'Respuesta automática habilitada correctamente',
+          config: {
+            accountId: parseInt(accountId),
+            agentId,
+            autoResponseEnabled: true,
+            responseDelay: parseInt(delay)
+          }
+        });
+      } else {
+        console.log('❌ Error habilitando respuesta automática - integrador devolvió false');
+        return res.status(400).json({
+          success: false,
+          error: 'Error interno habilitando respuesta automática'
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en endpoint enable-auto-response:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
   });
   
-  // Deshabilitar respuesta automática
-  app.post('/api/external-agents/disable-auto-response', (req: Request, res: Response) => {
-    console.log('🔄 Endpoint disable-auto-response ejecutado con:', req.body);
-    res.setHeader('Content-Type', 'application/json');
-    externalAgentAPI.disableAutoResponse(req, res);
+  // Deshabilitar respuesta automática con manejo robusto
+  app.post('/api/external-agents/disable-auto-response', async (req: Request, res: Response) => {
+    try {
+      console.log('🔄 Endpoint disable-auto-response ejecutado con:', req.body);
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      
+      const { accountId } = req.body;
+      
+      if (!accountId) {
+        return res.status(400).json({
+          success: false,
+          error: 'accountId es requerido'
+        });
+      }
+      
+      // Deshabilitar usando el sistema simplificado
+      const config = WhatsAppAccountConfigManager.assignAgent(
+        parseInt(accountId),
+        null,
+        false
+      );
+      
+      const success = config !== null;
+      
+      if (success) {
+        console.log('✅ Respuesta automática deshabilitada exitosamente');
+        return res.json({
+          success: true,
+          message: 'Respuesta automática deshabilitada correctamente'
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: 'Error interno deshabilitando respuesta automática'
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en endpoint disable-auto-response:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
   });
   
   // Obtener configuración de respuesta automática

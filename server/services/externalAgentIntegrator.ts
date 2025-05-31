@@ -36,6 +36,7 @@ class ExternalAgentIntegrator {
   private processing = false;
   private maxRetries = 3;
   private responseTimeout = 30000; // 30 segundos
+  private persistentConfigs: Map<number, any> = new Map(); // Configuraciones persistentes
 
   /**
    * Procesa un mensaje entrante de WhatsApp y determina si debe enviar respuesta automática
