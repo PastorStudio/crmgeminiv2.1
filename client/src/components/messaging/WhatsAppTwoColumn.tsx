@@ -2095,46 +2095,39 @@ export function WhatsAppTwoColumn() {
   }
 
   return (
-    <div className="flex h-screen bg-white">
-      {/* Container principal */}
-      <div className="flex w-full mx-auto bg-white">
-        
-        {/* Left Panel - Chat List */}
-        <div className="w-96 min-w-96 max-w-96 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
-          {/* Header with Account Selector */}
-          <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 flex-shrink-0">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <MessageCircle className="h-6 w-6 text-white" />
-                  <h2 className="text-lg font-bold text-white">WhatsApp Business</h2>
-                </div>
-                <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-                  {selectedAccounts.length}/{(accounts as any[])?.length || 0}
-                </Badge>
-              </div>
-              
-              <AccountSelector
-                accounts={accounts as any}
-                selectedAccounts={selectedAccounts}
-                onAccountsChange={handleAccountsChange}
-                onAccountClick={handleAccountClick}
-              />
+    <div className="flex h-screen bg-gray-50">
+      {/* Left Panel - Chat List */}
+      <div className="w-80 min-w-80 max-w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+        {/* Header with Account Selector */}
+        <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-red-600 via-black to-red-600 flex-shrink-0">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">WhatsApp Business</h2>
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                {selectedAccounts.length}/{(accounts as any[])?.length || 0} seleccionadas
+              </Badge>
             </div>
-          </div>
+            
+            <AccountSelector
+              accounts={accounts as any}
+              selectedAccounts={selectedAccounts}
+              onAccountsChange={handleAccountsChange}
+              onAccountClick={handleAccountClick}
+            />
+            
 
-          {/* Search */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-            <div className="relative">
-              <Input
-                placeholder="Buscar conversaciones..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 bg-white border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-              />
-              <MessageSquare className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            </div>
           </div>
+        </div>
+
+        {/* Search */}
+        <div className="p-3 border-b border-gray-200 flex-shrink-0">
+          <Input
+            placeholder="Buscar conversaciones..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full"
+          />
+        </div>
 
 
 
@@ -2222,40 +2215,40 @@ export function WhatsAppTwoColumn() {
         </ScrollArea>
       </div>
       {/* Right Panel - Chat Messages */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {selectedChat ? (
-          <div className="flex flex-col h-full">
+          <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 bg-white shadow-sm flex-shrink-0">
+            <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-3">
                   <div className="relative">
-                    <Avatar className="h-12 w-12 ring-2 ring-emerald-100">
+                    <Avatar className="h-10 w-10">
                       <AvatarImage src={selectedChat.profilePicUrl} />
-                      <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold">
-                        {selectedChat.isGroup ? <Users className="h-6 w-6" /> : selectedChat.name.charAt(0).toUpperCase()}
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                        {selectedChat.isGroup ? <Users className="h-5 w-5" /> : selectedChat.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     {isContactOnline(selectedChat) && (
-                      <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-lg"></div>
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                     )}
                   </div>
                   
                   <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-1">
-                      <h3 className="font-bold text-lg text-gray-900">{selectedChat.name}</h3>
-                      {selectedChat.isGroup && <Users className="h-5 w-5 text-emerald-600" />}
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-semibold text-gray-900">{selectedChat.name}</h3>
+                      {selectedChat.isGroup && <Users className="h-4 w-4 text-gray-400" />}
                       <WhatsAppAccountBadge accountId={selectedChat.accountId} />
                       <TicketStatusBadge chatId={selectedChat.id} />
                     </div>
-                    <div className="flex items-center space-x-3 text-sm">
+                    <div className="flex items-center space-x-2 text-sm text-gray-500">
                       {isContactOnline(selectedChat) ? (
-                        <span className="flex items-center space-x-2 text-green-600 font-medium">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                          <span>En línea ahora</span>
+                        <span className="flex items-center space-x-1 text-green-600">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span>En línea</span>
                         </span>
                       ) : selectedChat.lastSeen ? (
-                        <span className="text-gray-500">Última vez: {formatTime(selectedChat.lastSeen)}</span>
+                        <span>Última vez: {formatTime(selectedChat.lastSeen)}</span>
                       ) : (
                         <AgentAssignmentDisplay chatId={selectedChat.id} />
                       )}
@@ -2488,9 +2481,9 @@ export function WhatsAppTwoColumn() {
               </div>
             </div>
 
-            {/* Messages Area - Centered Content */}
+            {/* Messages Area - Aligned with Header */}
             <ScrollArea className="flex-1 py-4">
-              <div className="px-6 max-w-4xl mx-auto">
+              <div className="px-4">
                 {loadingMessages ? (
                   <div className="flex items-center justify-center h-32">
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -3071,7 +3064,7 @@ export function WhatsAppTwoColumn() {
                 </Button>
               </div>
             </div>
-          </div>
+          </>
         ) : (
           <div className="flex-1 flex items-center justify-center bg-gray-50">
             <div className="text-center text-gray-500">
@@ -3113,12 +3106,6 @@ export function WhatsAppTwoColumn() {
 }
 
 // Componente del Diálogo de Configuración de Auto-Click
-type AutoClickSettings = {
-  aeWaitTime: number;
-  sendWaitTime: number;
-  enabled: boolean;
-};
-
 function AutoClickConfigDialog({ 
   open, 
   onOpenChange, 
@@ -3127,8 +3114,12 @@ function AutoClickConfigDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  settings: AutoClickSettings;
-  onSave: (newSettings: AutoClickSettings) => void;
+  settings: {
+    aeWaitTime: number;
+    sendWaitTime: number;
+    enabled: boolean;
+  };
+  onSave: (newSettings: typeof settings) => void;
 }) {
   const [tempSettings, setTempSettings] = useState(settings);
 
