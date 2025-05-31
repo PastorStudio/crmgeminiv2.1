@@ -140,6 +140,10 @@ export function ModernMessagingSystem() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // WebSocket for real-time messaging
+  const wsRef = useRef<WebSocket | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
 
   // WhatsApp Account Management
   const [selectedWhatsAppAccount, setSelectedWhatsAppAccount] = useState<number | null>(null);
@@ -266,18 +270,129 @@ export function ModernMessagingSystem() {
     }
   });
 
+  // WebSocket connection for real-time messaging
+  useEffect(() => {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/modern-messaging-ws`;
+    
+    const connectWebSocket = () => {
+      try {
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+        
+        ws.onopen = () => {
+          console.log('🔗 Conectado al WebSocket de mensajería moderna');
+          setWsConnected(true);
+          
+          // Subscribe to chat updates if we have a selected chat
+          if (selectedChat && selectedWhatsAppAccount) {
+            ws.send(JSON.stringify({
+              type: 'subscribe',
+              accountId: selectedWhatsAppAccount,
+              chatId: selectedChat.id
+            }));
+          }
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            switch (data.type) {
+              case 'new_message':
+                // Invalidate queries to refresh messages
+                queryClient.invalidateQueries({ queryKey: ['/api/modern-messaging/messages'] });
+                queryClient.invalidateQueries({ queryKey: ['/api/modern-messaging/chats'] });
+                
+                // Show notification for incoming messages
+                if (data.message && data.message.sender === 'user') {
+                  toast({
+                    title: 'Nuevo mensaje',
+                    description: `De: ${selectedChat?.name || 'Usuario'}`
+                  });
+                }
+                break;
+                
+              case 'connection':
+                console.log('📱 Estado de conexión:', data.status);
+                break;
+                
+              case 'error':
+                console.error('❌ Error WebSocket:', data.message);
+                toast({
+                  title: 'Error de conexión',
+                  description: data.message,
+                  variant: 'destructive'
+                });
+                break;
+            }
+          } catch (error) {
+            console.error('Error procesando mensaje WebSocket:', error);
+          }
+        };
+        
+        ws.onclose = () => {
+          console.log('🔌 WebSocket desconectado');
+          setWsConnected(false);
+          
+          // Reconnect after 3 seconds
+          setTimeout(connectWebSocket, 3000);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('❌ Error WebSocket:', error);
+          setWsConnected(false);
+        };
+        
+      } catch (error) {
+        console.error('Error iniciando WebSocket:', error);
+      }
+    };
+    
+    connectWebSocket();
+    
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
+  
+  // Subscribe to chat when selection changes
+  useEffect(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && selectedChat && selectedWhatsAppAccount) {
+      wsRef.current.send(JSON.stringify({
+        type: 'subscribe',
+        accountId: selectedWhatsAppAccount,
+        chatId: selectedChat.id
+      }));
+    }
+  }, [selectedChat, selectedWhatsAppAccount]);
+
   // Auto scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSendMessage = () => {
-    if (!selectedChat || !messageInput.trim()) return;
+    if (!selectedChat || !messageInput.trim() || !selectedWhatsAppAccount) return;
     
-    sendMessageMutation.mutate({
-      chatId: selectedChat.id,
-      content: messageInput.trim()
-    });
+    // Send via WebSocket for real-time delivery
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'send_message',
+        chatId: selectedChat.id,
+        content: messageInput.trim(),
+        accountId: selectedWhatsAppAccount
+      }));
+      setMessageInput('');
+    } else {
+      // Fallback to API if WebSocket is not available
+      sendMessageMutation.mutate({
+        chatId: selectedChat.id,
+        content: messageInput.trim()
+      });
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
