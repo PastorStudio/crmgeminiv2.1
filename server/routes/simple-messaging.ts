@@ -23,7 +23,13 @@ router.get('/chats', async (req, res) => {
     }
 
     // Get real WhatsApp chats for the selected account
-    const realChats = await whatsappMultiAccountManager.getChatsForAccount(parseInt(accountId));
+    const instance = whatsappMultiAccountManager.getInstance(parseInt(accountId));
+    if (!instance || !instance.client) {
+      console.log(`Account ${accountId} not initialized or client not ready`);
+      return res.json([]);
+    }
+
+    const realChats = await instance.client.getChats();
     
     // Transform real WhatsApp data to frontend format
     const formattedChats = realChats.map((chat: any) => ({

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { storage } from '../storage';
+import { whatsappMultiAccountManager } from '../services/whatsappMultiAccountManager';
 import { z } from 'zod';
 
 const router = Router();
@@ -12,19 +13,39 @@ router.get('/whatsapp-accounts', async (req: Request, res: Response) => {
     // Ensure we always return an array
     const validAccounts = Array.isArray(accounts) ? accounts : [];
     
-    // Transform data for frontend compatibility
-    const transformedAccounts = validAccounts.map(account => ({
-      id: account.id,
-      name: account.name || 'Sin nombre',
-      description: account.description || '',
-      status: account.status || 'disconnected',
-      ownerName: account.ownerName || '',
-      ownerPhone: account.ownerPhone || '',
-      autoResponseEnabled: account.autoResponseEnabled || false,
-      responseDelay: account.responseDelay || 1000,
-      createdAt: account.createdAt,
-      lastActivity: account.lastActivity
-    }));
+    // Transform data for frontend compatibility with real-time status
+    const transformedAccounts = validAccounts.map(account => {
+      // Get real-time status from WhatsApp manager
+      let realTimeStatus = 'disconnected';
+      try {
+        const instance = whatsappMultiAccountManager?.getInstance(account.id);
+        if (instance) {
+          if (instance.status.authenticated) {
+            realTimeStatus = 'connected';
+          } else if (instance.status.qrCode) {
+            realTimeStatus = 'waiting_qr';
+          } else if (instance.status.initialized) {
+            realTimeStatus = 'initializing';
+          }
+        }
+      } catch (error) {
+        // Keep default disconnected status
+      }
+
+      return {
+        id: account.id,
+        name: account.name || 'Sin nombre',
+        description: account.description || '',
+        status: realTimeStatus,
+        ownerName: account.ownerName || '',
+        ownerPhone: account.ownerPhone || '',
+        autoResponseEnabled: account.autoResponseEnabled || false,
+        responseDelay: account.responseDelay || 1000,
+        createdAt: account.createdAt,
+        lastActivity: account.lastActivity,
+        isConnected: realTimeStatus === 'connected'
+      };
+    });
 
     res.json({
       success: true,
