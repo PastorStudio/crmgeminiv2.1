@@ -335,7 +335,7 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     if (targetLanguage === 'es') {
       console.log('🚫 Idioma objetivo es español, no se requiere traducción');
       if (currentLanguage !== 'es') {
-        resetToSpanish();
+        resetTranslation();
       }
       return;
     }
@@ -350,7 +350,7 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
       
       // Si estamos volviendo al español, cambiar directamente
       if (targetLanguage === 'es') {
-        resetToSpanish();
+        resetTranslation();
         return;
       }
       
@@ -478,8 +478,8 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     }
   };
 
-  // Función para restaurar al español original
-  const resetToSpanish = () => {
+  // Función para resetear a español
+  const resetTranslation = () => {
     try {
       console.log('🔄 Reseteando traducción a español original...');
       
@@ -548,7 +548,7 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     translateText,
     isTranslating,
     translatePage,
-    resetTranslation: resetToSpanish
+    resetTranslation: resetTranslation
   };
 
   return (
@@ -596,7 +596,7 @@ export const PageTranslationSelector: React.FC = () => {
                 onClick={() => {
                   if (language.code === 'es') {
                     if (currentLanguage !== 'es') {
-                      resetToSpanish();
+                      resetTranslation();
                     }
                   } else if (language.code !== currentLanguage) {
                     translatePage(language.code);
