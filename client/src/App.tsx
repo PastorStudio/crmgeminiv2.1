@@ -44,7 +44,7 @@ import DeepSeekSettings from './pages/DeepSeekSettings';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
 
-import { AuthProvider, useAuth } from './lib/authContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { PageTranslationProvider } from './components/translation/PageTranslator';
 
