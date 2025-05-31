@@ -206,7 +206,7 @@ export function ModernMessagingSystem() {
 
   // Mutations
   const sendMessageMutation = useMutation({
-    mutationFn: (data: { chatId: string; content: string }) =>
+    mutationFn: (data: { chatId: string; content: string; accountId: number }) =>
       apiRequest('/api/modern-messaging/send-message', {
         method: 'POST',
         body: JSON.stringify(data)
@@ -302,13 +302,24 @@ export function ModernMessagingSystem() {
             const data = JSON.parse(event.data);
             
             switch (data.type) {
+              case 'welcome':
+                console.log('🎉 Conectado al sistema de mensajería:', data.message);
+                break;
+                
+              case 'message_sent':
+                // Message was sent successfully
+                console.log('✅ Mensaje enviado exitosamente:', data.message);
+                queryClient.invalidateQueries({ queryKey: ['/api/modern-messaging/messages'] });
+                queryClient.invalidateQueries({ queryKey: ['/api/modern-messaging/chats'] });
+                break;
+                
               case 'new_message':
-                // Invalidate queries to refresh messages
+                // New message received
                 queryClient.invalidateQueries({ queryKey: ['/api/modern-messaging/messages'] });
                 queryClient.invalidateQueries({ queryKey: ['/api/modern-messaging/chats'] });
                 
                 // Show notification for incoming messages
-                if (data.message && data.message.sender === 'user') {
+                if (data.message && !data.message.fromMe) {
                   toast({
                     title: 'Nuevo mensaje',
                     description: `De: ${selectedChat?.name || 'Usuario'}`
@@ -316,18 +327,21 @@ export function ModernMessagingSystem() {
                 }
                 break;
                 
-              case 'connection':
-                console.log('📱 Estado de conexión:', data.status);
+              case 'subscribed':
+                console.log(`✅ Suscrito a chat ${data.chatId} de cuenta ${data.accountId}`);
                 break;
                 
               case 'error':
                 console.error('❌ Error WebSocket:', data.message);
                 toast({
-                  title: 'Error de conexión',
+                  title: 'Error',
                   description: data.message,
                   variant: 'destructive'
                 });
                 break;
+                
+              default:
+                console.log('Mensaje WebSocket no reconocido:', data);
             }
           } catch (error) {
             console.error('Error procesando mensaje WebSocket:', error);
