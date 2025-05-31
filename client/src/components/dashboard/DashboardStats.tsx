@@ -183,69 +183,80 @@ export default function DashboardStats() {
           </CardContent>
         </Card>
 
-      {/* Active Conversations */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                <span className="material-icons text-blue-600">forum</span>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  {translatedTitles.activeConversations}
-                </dt>
-                <dd className="flex items-baseline">
-                  {isLoading ? (
-                    <Skeleton className="h-8 w-20" />
-                  ) : (
-                    <div className="text-2xl font-semibold text-gray-900">
-                      {getActiveConversations()}
+        {/* Active Conversations */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="px-4 py-5 sm:p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 bg-blue-100 rounded-md p-3">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <MessageCircle className="h-6 w-6 text-blue-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Active conversations count</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    {translatedTitles.activeConversations}
+                  </dt>
+                  <dd className="flex items-baseline">
+                    {isLoading ? (
+                      <Skeleton className="h-8 w-20" />
+                    ) : (
+                      <div className="text-2xl font-semibold text-gray-900">
+                        {getActiveConversations()}
+                      </div>
+                    )}
+                    <div className="ml-2 flex items-baseline text-sm font-semibold text-yellow-600">
+                      0%
                     </div>
-                  )}
-                  <div className="ml-2 flex items-baseline text-sm font-semibold text-yellow-600">
-                    <span className="material-icons text-sm">remove</span>
-                    <span className="sr-only">No change</span>
-                    0%
-                  </div>
-                </dd>
+                  </dd>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Today's Meetings */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 bg-purple-100 rounded-md p-3">
-                <span className="material-icons text-purple-600">calendar_today</span>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  {translatedTitles.todayMeetings}
-                </dt>
-                <dd className="flex items-baseline">
-                  {isLoading ? (
-                    <Skeleton className="h-8 w-20" />
-                  ) : (
-                    <div className="text-2xl font-semibold text-gray-900">
-                      {getTodayMeetings()}
+        {/* Today's Meetings */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="px-4 py-5 sm:p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 bg-purple-100 rounded-md p-3">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Calendar className="h-6 w-6 text-purple-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Today's scheduled meetings</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    {translatedTitles.todayMeetings}
+                  </dt>
+                  <dd className="flex items-baseline">
+                    {isLoading ? (
+                      <Skeleton className="h-8 w-20" />
+                    ) : (
+                      <div className="text-2xl font-semibold text-gray-900">
+                        {getTodayMeetings()}
+                      </div>
+                    )}
+                    <div className="ml-2 flex items-baseline text-sm font-semibold text-red-600">
+                      1.5%
                     </div>
-                  )}
-                  <div className="ml-2 flex items-baseline text-sm font-semibold text-red-600">
-                    <span className="material-icons text-sm">arrow_downward</span>
-                    <span className="sr-only">Decreased by</span>
-                    1.5%
-                  </div>
-                </dd>
+                  </dd>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+      </div>
+    </TooltipProvider>
   );
 }
