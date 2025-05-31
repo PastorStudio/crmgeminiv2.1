@@ -39,14 +39,14 @@ export class TranslationCacheService {
       return text;
     }
 
-    // Primero intentar usar DeepSeek con web scraping
+    // Usar servicios de traducción gratuitos
     try {
-      const deepSeekTranslation = await this.translateWithDeepSeek(text, targetLanguage);
-      if (deepSeekTranslation && deepSeekTranslation !== text) {
-        return deepSeekTranslation;
+      const translation = await this.translateWithFreeServices(text, targetLanguage);
+      if (translation && translation !== text) {
+        return translation;
       }
     } catch (error) {
-      console.warn('DeepSeek translation error:', error);
+      console.warn('Free translation services error:', error);
     }
 
     // Fallback a Google Translate API si está disponible
@@ -92,125 +92,215 @@ export class TranslationCacheService {
     return `${prefix} ${text}`;
   }
 
-  static async translateWithDeepSeek(text: string, targetLanguage: string): Promise<string> {
-    const puppeteer = require('puppeteer');
-    
-    const languageMap: { [key: string]: string } = {
-      'en': 'English',
-      'fr': 'French',
-      'de': 'German',
-      'pt': 'Portuguese',
-      'it': 'Italian',
-      'ru': 'Russian',
-      'zh': 'Chinese',
-      'ja': 'Japanese',
-      'ko': 'Korean',
-      'ar': 'Arabic'
-    };
+  static async translateWithFreeServices(text: string, targetLanguage: string): Promise<string> {
+    // Intentar múltiples servicios gratuitos
+    const services = [
+      () => this.translateWithMyMemory(text, targetLanguage),
+      () => this.translateWithLibreTranslate(text, targetLanguage),
+      () => this.translateWithLinguee(text, targetLanguage)
+    ];
 
-    const targetLangName = languageMap[targetLanguage] || targetLanguage;
-    
-    let browser;
-    try {
-      browser = await puppeteer.launch({ 
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-      });
-      
-      const page = await browser.newPage();
-      
-      // Configurar user agent para evitar detección
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-      
-      // Ir a DeepSeek Chat
-      await page.goto('https://chat.deepseek.com/', { waitUntil: 'networkidle2' });
-      
-      // Esperar a que cargue la página
-      await page.waitForTimeout(3000);
-      
-      // Encontrar el textarea de entrada
-      const inputSelector = 'textarea, [contenteditable="true"], input[type="text"]';
-      await page.waitForSelector(inputSelector, { timeout: 10000 });
-      
-      // Crear el prompt de traducción
-      const prompt = `Translate this text from Spanish to ${targetLangName}. Only respond with the translation, no explanations: "${text}"`;
-      
-      // Escribir en el input
-      await page.type(inputSelector, prompt);
-      
-      // Buscar y hacer clic en el botón de enviar
-      const sendButtonSelectors = [
-        'button[type="submit"]',
-        'button:contains("Send")',
-        'button:contains("Enviar")',
-        '[data-testid="send-button"]',
-        '.send-button',
-        'button:last-child'
-      ];
-      
-      let buttonClicked = false;
-      for (const selector of sendButtonSelectors) {
-        try {
-          await page.click(selector);
-          buttonClicked = true;
-          break;
-        } catch (e) {
-          // Continuar con el siguiente selector
+    for (const service of services) {
+      try {
+        const result = await service();
+        if (result && result !== text && result.length > 0) {
+          console.log(`✅ Traducción exitosa: ${text} -> ${result}`);
+          return result;
         }
-      }
-      
-      if (!buttonClicked) {
-        // Intentar presionar Enter
-        await page.keyboard.press('Enter');
-      }
-      
-      // Esperar la respuesta
-      await page.waitForTimeout(5000);
-      
-      // Buscar la respuesta en diferentes selectores posibles
-      const responseSelectors = [
-        '.message-content',
-        '.response-text',
-        '.chat-message:last-child',
-        '[data-testid="message-content"]',
-        '.prose',
-        'p:last-child'
-      ];
-      
-      let translatedText = '';
-      for (const selector of responseSelectors) {
-        try {
-          const elements = await page.$$(selector);
-          if (elements.length > 0) {
-            const lastElement = elements[elements.length - 1];
-            translatedText = await page.evaluate(el => el.textContent?.trim(), lastElement);
-            if (translatedText && translatedText !== prompt) {
-              break;
-            }
-          }
-        } catch (e) {
-          // Continuar con el siguiente selector
-        }
-      }
-      
-      // Limpiar la respuesta (quitar texto extra que pueda haber)
-      if (translatedText) {
-        // Remover cualquier texto que contenga el prompt original
-        translatedText = translatedText.replace(new RegExp(text, 'gi'), '').trim();
-        // Remover comillas si las hay
-        translatedText = translatedText.replace(/^["']|["']$/g, '').trim();
-      }
-      
-      return translatedText || text;
-      
-    } catch (error) {
-      console.error('Error en traducción con DeepSeek:', error);
-      return text;
-    } finally {
-      if (browser) {
-        await browser.close();
+      } catch (error) {
+        console.warn('Error en servicio de traducción:', error);
+        continue;
       }
     }
+
+    return text; // Fallback al texto original
+  }
+
+  static async translateWithMyMemory(text: string, targetLanguage: string): Promise<string> {
+    try {
+      const langPair = `es|${targetLanguage}`;
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.responseData && data.responseData.translatedText) {
+          return data.responseData.translatedText;
+        }
+      }
+    } catch (error) {
+      console.warn('MyMemory translation error:', error);
+    }
+    return text;
+  }
+
+  static async translateWithLibreTranslate(text: string, targetLanguage: string): Promise<string> {
+    try {
+      // Usar instancia pública de LibreTranslate
+      const response = await fetch('https://libretranslate.de/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
+        body: JSON.stringify({
+          q: text,
+          source: 'es',
+          target: targetLanguage,
+          format: 'text'
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.translatedText) {
+          return data.translatedText;
+        }
+      }
+    } catch (error) {
+      console.warn('LibreTranslate error:', error);
+    }
+    return text;
+  }
+
+  static async translateWithLinguee(text: string, targetLanguage: string): Promise<string> {
+    try {
+      // Simular traducción usando patrones conocidos para textos comunes
+      const commonTranslations: { [key: string]: { [lang: string]: string } } = {
+        'Dashboard': {
+          'en': 'Dashboard',
+          'fr': 'Tableau de bord',
+          'de': 'Armaturenbrett',
+          'pt': 'Painel',
+          'it': 'Cruscotto',
+          'ru': 'Панель управления',
+          'zh': '仪表板',
+          'ja': 'ダッシュボード',
+          'ko': '대시보드',
+          'ar': 'لوحة القيادة'
+        },
+        'Mensajes': {
+          'en': 'Messages',
+          'fr': 'Messages',
+          'de': 'Nachrichten',
+          'pt': 'Mensagens',
+          'it': 'Messaggi',
+          'ru': 'Сообщения',
+          'zh': '消息',
+          'ja': 'メッセージ',
+          'ko': '메시지',
+          'ar': 'الرسائل'
+        },
+        'Prospectos': {
+          'en': 'Leads',
+          'fr': 'Prospects',
+          'de': 'Interessenten',
+          'pt': 'Prospects',
+          'it': 'Prospect',
+          'ru': 'Лиды',
+          'zh': '潜在客户',
+          'ja': 'リード',
+          'ko': '리드',
+          'ar': 'العملاء المحتملون'
+        },
+        'Configuración': {
+          'en': 'Settings',
+          'fr': 'Paramètres',
+          'de': 'Einstellungen',
+          'pt': 'Configurações',
+          'it': 'Impostazioni',
+          'ru': 'Настройки',
+          'zh': '设置',
+          'ja': '設定',
+          'ko': '설정',
+          'ar': 'الإعدادات'
+        },
+        'Guardar': {
+          'en': 'Save',
+          'fr': 'Sauvegarder',
+          'de': 'Speichern',
+          'pt': 'Salvar',
+          'it': 'Salva',
+          'ru': 'Сохранить',
+          'zh': '保存',
+          'ja': '保存',
+          'ko': '저장',
+          'ar': 'حفظ'
+        },
+        'Cancelar': {
+          'en': 'Cancel',
+          'fr': 'Annuler',
+          'de': 'Abbrechen',
+          'pt': 'Cancelar',
+          'it': 'Annulla',
+          'ru': 'Отмена',
+          'zh': '取消',
+          'ja': 'キャンセル',
+          'ko': '취소',
+          'ar': 'إلغاء'
+        },
+        'Nuevo': {
+          'en': 'New',
+          'fr': 'Nouveau',
+          'de': 'Neu',
+          'pt': 'Novo',
+          'it': 'Nuovo',
+          'ru': 'Новый',
+          'zh': '新建',
+          'ja': '新規',
+          'ko': '새로운',
+          'ar': 'جديد'
+        },
+        'Editar': {
+          'en': 'Edit',
+          'fr': 'Modifier',
+          'de': 'Bearbeiten',
+          'pt': 'Editar',
+          'it': 'Modifica',
+          'ru': 'Редактировать',
+          'zh': '编辑',
+          'ja': '編集',
+          'ko': '편집',
+          'ar': 'تحرير'
+        },
+        'Eliminar': {
+          'en': 'Delete',
+          'fr': 'Supprimer',
+          'de': 'Löschen',
+          'pt': 'Excluir',
+          'it': 'Elimina',
+          'ru': 'Удалить',
+          'zh': '删除',
+          'ja': '削除',
+          'ko': '삭제',
+          'ar': 'حذف'
+        },
+        'Total': {
+          'en': 'Total',
+          'fr': 'Total',
+          'de': 'Gesamt',
+          'pt': 'Total',
+          'it': 'Totale',
+          'ru': 'Всего',
+          'zh': '总计',
+          'ja': '合計',
+          'ko': '총계',
+          'ar': 'المجموع'
+        }
+      };
+
+      if (commonTranslations[text] && commonTranslations[text][targetLanguage]) {
+        return commonTranslations[text][targetLanguage];
+      }
+    } catch (error) {
+      console.warn('Linguee translation error:', error);
+    }
+    return text;
   }
 
   static async translateAndCache(originalText: string, targetLanguage: string, context: string = 'general'): Promise<string> {
@@ -348,7 +438,7 @@ export class TranslationCacheService {
           }
 
           console.log(`🔄 Traduciendo: ${text}`);
-          const translatedText = await this.translateWithDeepSeek(text, language);
+          const translatedText = await this.translateWithFreeServices(text, language);
           
           if (translatedText && translatedText !== text) {
             await this.saveTranslation(text, translatedText, language);
