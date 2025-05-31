@@ -116,6 +116,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWhatsAppAccount(account: InsertWhatsAppAccount): Promise<WhatsAppAccount> {
+    // Verificar si no hay cuentas existentes para reiniciar la secuencia
+    const existingAccounts = await db.select().from(whatsappAccounts);
+    
+    if (existingAccounts.length === 0) {
+      // Reiniciar la secuencia de ID desde 1
+      try {
+        await db.execute(`ALTER SEQUENCE whatsapp_accounts_id_seq RESTART WITH 1`);
+        console.log('✅ Secuencia de ID de WhatsApp reiniciada desde 1');
+      } catch (error) {
+        console.log('⚠️ No se pudo reiniciar la secuencia, continuando con ID actual');
+      }
+    }
+    
     const [newAccount] = await db
       .insert(whatsappAccounts)
       .values(account)
