@@ -768,8 +768,8 @@ export function ModernMessagingSystem() {
                         key={message.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`flex mx-1 mb-2 ${message.fromMe ? 'justify-end' : 'justify-start'}`}
-                        style={{ marginLeft: '5px', marginRight: '5px' }}
+                        className={`flex mx-1 mb-1 ${message.fromMe ? 'justify-end' : 'justify-start'}`}
+                        style={{ marginLeft: '8px', marginRight: '8px' }}
                       >
                         <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                           message.fromMe 
