@@ -587,7 +587,7 @@ export function ModernMessagingSystem() {
                       ))}
                     </div>
                   ) : (
-                    messages.map((message: Message) => (
+                    Array.isArray(messages) ? messages.map((message: Message) => (
                       <motion.div
                         key={message.id}
                         initial={{ opacity: 0, y: 20 }}
@@ -622,8 +622,8 @@ export function ModernMessagingSystem() {
                           </div>
                         </div>
                       </motion.div>
-                    ))
-                  )}
+                    )) : []
+                  }
                   <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
