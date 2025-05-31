@@ -35,8 +35,11 @@ import { registerTemplateVariablesRoutes } from "./services/templateVariablesRou
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import chatAssignmentsRouter from "./routes/chatAssignments";
 import ticketsRouter from "./routes/tickets";
+import authRouter from "./routes/auth";
 // Referencias de APIs corregidas removidas para optimización
 import { translateText, detectLanguage } from "./routes/translation";
+import { authenticateToken, authorize, canAccessResource } from "./middleware/auth";
+import { RoleBasedAccessService } from "./services/roleBasedAccess";
 // Referencias de problemas corregidos removidas para optimización
 
 // Configurar middleware para upload de archivos
@@ -651,20 +654,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Leads endpoints - usando datos reales de WhatsApp
-  app.get("/api/leads", async (req: Request, res: Response) => {
+  // Registrar rutas de autenticación
+  app.use("/api/auth", authRouter);
+
+  // Leads endpoints - con segmentación por roles
+  app.get("/api/leads", authenticateToken, canAccessResource('lead'), async (req: Request, res: Response) => {
     try {
       const status = req.query.status as string;
       const assignedTo = req.query.assignedTo ? parseInt(req.query.assignedTo as string) : undefined;
       
-      // Primero obtenemos los leads de la base de datos
-      let dbLeads = [];
-      if (status) {
-        dbLeads = await storage.getLeadsByStatus(status);
-      } else if (assignedTo) {
-        dbLeads = await storage.getLeadsByAssignee(assignedTo);
-      } else {
-        dbLeads = await storage.getAllLeads();
+      // Obtener leads filtrados por rol del usuario
+      const filteredLeadsQuery = await RoleBasedAccessService.getFilteredLeads(req);
+      let dbLeads = await filteredLeadsQuery;
+      
+      // Aplicar filtros adicionales si se especifican
+      if (status && dbLeads.length > 0) {
+        dbLeads = dbLeads.filter(lead => lead.status === status);
+      }
+      if (assignedTo && dbLeads.length > 0) {
+        dbLeads = dbLeads.filter(lead => lead.assigneeId === assignedTo);
       }
       
       // Obtener mensajes para enriquecer los leads con su último mensaje
