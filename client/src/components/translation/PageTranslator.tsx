@@ -335,7 +335,7 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     if (targetLanguage === 'es') {
       console.log('🚫 Idioma objetivo es español, no se requiere traducción');
       if (currentLanguage !== 'es') {
-        resetTranslation();
+        setToSpanish();
       }
       return;
     }
@@ -348,9 +348,9 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     try {
       console.log(`🌐 Iniciando traducción de página a ${targetLanguage}`);
       
-      // Si estamos volviendo al español, restaurar directamente
+      // Si estamos volviendo al español, cambiar directamente
       if (targetLanguage === 'es') {
-        resetTranslation();
+        setToSpanish();
         return;
       }
       
@@ -478,69 +478,18 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     }
   };
 
-  // Función para resetear traducción
-  const resetTranslation = () => {
-    try {
-      console.log('🔄 Reseteando traducción a español original...');
-      
-      // Restaurar textos originales
-      originalTexts.forEach((data, element) => {
-        try {
-          // Restaurar contenido de texto
-          if (typeof data === 'string') {
-            // Formato antiguo de compatibilidad
-            const textNodes = Array.from(element.childNodes).filter(
-              node => node.nodeType === Node.TEXT_NODE
-            );
-            
-            if (textNodes.length > 0) {
-              textNodes.forEach(node => {
-                node.textContent = data;
-              });
-            }
-          } else if (data && typeof data === 'object') {
-            // Formato nuevo con texto y atributos
-            const textNodes = Array.from(element.childNodes).filter(
-              node => node.nodeType === Node.TEXT_NODE
-            );
-            
-            if (textNodes.length > 0 && (data as any).text) {
-              textNodes.forEach(node => {
-                node.textContent = (data as any).text;
-              });
-            }
-            
-            // Restaurar atributos originales
-            if ((data as any).attributes) {
-              (data as any).attributes.forEach((originalValue: string, attr: string) => {
-                element.setAttribute(attr, originalValue);
-              });
-            }
-          }
-        } catch (elementError) {
-          console.warn('Error restaurando elemento:', element, elementError);
-        }
-      });
-      
-      // Limpiar cache de traducciones
-      translationCache.clear();
-      
-      // Marcar como español y no traduciendo
-      setCurrentLanguage('es');
-      setIsTranslating(false);
-      
-      // Guardar estado en localStorage
-      localStorage.setItem('translation-language', 'es');
-      
-      toast({
-        title: "Sistema restaurado",
-        description: "Interfaz en español original sin traducciones",
-        duration: 2000
-      });
-    } catch (error) {
-      console.error('Error resetting translation:', error);
-      setIsTranslating(false);
-    }
+  // Función para cambiar a español (sin reseteo, solo cambio de estado)
+  const setToSpanish = () => {
+    console.log('🇪🇸 Cambiando a español - modo original');
+    setCurrentLanguage('es');
+    setIsTranslating(false);
+    localStorage.setItem('selectedLanguage', 'es');
+    
+    toast({
+      title: "Idioma cambiado",
+      description: "Interfaz en español original",
+      duration: 2000
+    });
   };
 
   const contextValue: PageTranslationContextType = {
@@ -548,7 +497,7 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     translateText,
     isTranslating,
     translatePage,
-    resetTranslation
+    resetTranslation: setToSpanish
   };
 
   return (
@@ -606,7 +555,7 @@ export const PageTranslationSelector: React.FC = () => {
                 onClick={() => {
                   if (language.code === 'es') {
                     if (currentLanguage !== 'es') {
-                      resetTranslation();
+                      setToSpanish();
                     }
                   } else if (language.code !== currentLanguage) {
                     translatePage(language.code);
