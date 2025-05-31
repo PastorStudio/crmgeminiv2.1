@@ -3417,7 +3417,7 @@ function AutoAEConfigDialog({
   const [tempConfig, setTempConfig] = useState(config);
 
   // Obtener agentes externos configurados
-  const { data: externalAgentsResponse } = useQuery({
+  const { data: externalAgentsResponse, isLoading: agentsLoading } = useQuery({
     queryKey: ['/api/external-agents'],
     retry: false,
     staleTime: 60000
@@ -3430,7 +3430,14 @@ function AutoAEConfigDialog({
     retry: false
   });
 
-  const externalAgents = (externalAgentsResponse as any)?.agents || [];
+  const externalAgents = externalAgentsResponse?.agents || [];
+  
+  console.log('🔍 Debug AutoAE Dialog:', {
+    open,
+    externalAgentsResponse,
+    agentsCount: externalAgents.length,
+    agentsLoading
+  });
 
   useEffect(() => {
     setTempConfig(config);
