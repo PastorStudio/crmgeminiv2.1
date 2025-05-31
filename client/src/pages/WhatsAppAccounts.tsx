@@ -570,6 +570,16 @@ const WhatsAppAccounts = () => {
         pingCount: 0,
         nextPing: 0
       };
+      
+      // Si hay pings activos, considerar la cuenta como autenticada
+      if (pingInfo?.pingStatus?.isActive && pingInfo?.pingStatus?.pingCount > 0) {
+        enhancedAccount.currentStatus = {
+          ...enhancedAccount.currentStatus,
+          authenticated: true,
+          ready: true,
+          initialized: true
+        };
+      }
     }
     
     return enhancedAccount;
