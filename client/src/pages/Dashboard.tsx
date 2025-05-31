@@ -83,31 +83,95 @@ export default function Dashboard() {
     });
   };
 
+  // Traducciones estáticas para saludos
+  const greetingTranslations = {
+    goodMorning: {
+      es: "¡Buenos días",
+      en: "Good morning",
+      fr: "Bonjour",
+      de: "Guten Morgen",
+      it: "Buongiorno",
+      pt: "Bom dia",
+      ru: "Доброе утро",
+      zh: "早上好",
+      ja: "おはようございます",
+      ko: "좋은 아침"
+    },
+    goodAfternoon: {
+      es: "¡Buenas tardes",
+      en: "Good afternoon",
+      fr: "Bon après-midi",
+      de: "Guten Tag",
+      it: "Buon pomeriggio",
+      pt: "Boa tarde",
+      ru: "Добрый день",
+      zh: "下午好",
+      ja: "こんにちは",
+      ko: "좋은 오후"
+    },
+    goodEvening: {
+      es: "¡Buenas noches",
+      en: "Good evening",
+      fr: "Bonsoir",
+      de: "Guten Abend",
+      it: "Buonasera",
+      pt: "Boa noite",
+      ru: "Добрый вечер",
+      zh: "晚上好",
+      ja: "こんばんは",
+      ko: "좋은 저녁"
+    },
+    goodNight: {
+      es: "¡Buenas madrugadas",
+      en: "Good night",
+      fr: "Bonne nuit",
+      de: "Gute Nacht",
+      it: "Buonanotte",
+      pt: "Boa madrugada",
+      ru: "Доброй ночи",
+      zh: "深夜好",
+      ja: "おやすみなさい",
+      ko: "좋은 새벽"
+    },
+    welcomeBack: {
+      es: "Bienvenido de vuelta al sistema de gestión WhatsApp",
+      en: "Welcome back to the WhatsApp management system",
+      fr: "Bienvenue dans le système de gestion WhatsApp",
+      de: "Willkommen zurück im WhatsApp-Verwaltungssystem",
+      it: "Bentornato nel sistema di gestione WhatsApp",
+      pt: "Bem-vindo de volta ao sistema de gestão WhatsApp",
+      ru: "Добро пожаловать обратно в систему управления WhatsApp",
+      zh: "欢迎回到WhatsApp管理系统",
+      ja: "WhatsApp管理システムへようこそ",
+      ko: "WhatsApp 관리 시스템에 다시 오신 것을 환영합니다"
+    }
+  };
+
   // Función para obtener el saludo según la hora
   const getGreeting = () => {
     const hour = new Date().getHours();
     
     if (hour >= 5 && hour < 12) {
       return {
-        text: "¡Buenos días",
+        text: greetingTranslations.goodMorning[currentLanguage as keyof typeof greetingTranslations.goodMorning] || greetingTranslations.goodMorning.es,
         icon: <Sun className="h-5 w-5 text-yellow-500" />,
         gradient: "from-yellow-400 to-orange-500"
       };
     } else if (hour >= 12 && hour < 18) {
       return {
-        text: "¡Buenas tardes",
+        text: greetingTranslations.goodAfternoon[currentLanguage as keyof typeof greetingTranslations.goodAfternoon] || greetingTranslations.goodAfternoon.es,
         icon: <Coffee className="h-5 w-5 text-amber-600" />,
         gradient: "from-amber-400 to-orange-600"
       };
     } else if (hour >= 18 && hour < 22) {
       return {
-        text: "¡Buenas noches",
+        text: greetingTranslations.goodEvening[currentLanguage as keyof typeof greetingTranslations.goodEvening] || greetingTranslations.goodEvening.es,
         icon: <Star className="h-5 w-5 text-purple-500" />,
         gradient: "from-purple-400 to-pink-500"
       };
     } else {
       return {
-        text: "¡Buenas madrugadas",
+        text: greetingTranslations.goodNight[currentLanguage as keyof typeof greetingTranslations.goodNight] || greetingTranslations.goodNight.es,
         icon: <Moon className="h-5 w-5 text-blue-400" />,
         gradient: "from-blue-400 to-indigo-600"
       };
@@ -195,7 +259,7 @@ export default function Dashboard() {
               <div className="flex items-center space-x-3">
                 {greeting.icon}
                 <p className="text-sm" data-no-translate="true">
-                  {greeting.text}, {user?.fullName || user?.username || 'Usuario'}! - Bienvenido de vuelta al sistema de gestión WhatsApp
+                  {greeting.text}, {user?.fullName || user?.username || 'Usuario'}! - {greetingTranslations.welcomeBack[currentLanguage as keyof typeof greetingTranslations.welcomeBack] || greetingTranslations.welcomeBack.es}
                 </p>
               </div>
               
