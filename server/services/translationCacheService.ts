@@ -34,8 +34,26 @@ export class TranslationCacheService {
   }
 
   static async translateText(text: string, targetLanguage: string): Promise<string> {
-    // Simplificado - usar Google Translate manualmente por ahora
-    return text; // Retorna el texto original hasta que se implemente la traducción
+    // Por ahora retorna el texto original con indicador de idioma
+    // Esto se activará completamente cuando se configure GOOGLE_TRANSLATE_API_KEY
+    if (targetLanguage === 'es') {
+      return text; // Texto original en español
+    }
+    
+    // Para otros idiomas, agregar indicador temporal
+    const languageNames: { [key: string]: string } = {
+      'en': '[EN]',
+      'fr': '[FR]', 
+      'de': '[DE]',
+      'pt': '[PT]',
+      'it': '[IT]',
+      'ru': '[RU]',
+      'zh': '[中文]',
+      'ja': '[日本語]'
+    };
+    
+    const prefix = languageNames[targetLanguage] || `[${targetLanguage.toUpperCase()}]`;
+    return `${prefix} ${text}`;
   }
 
   static async translateAndCache(originalText: string, targetLanguage: string, context: string = 'general'): Promise<string> {
