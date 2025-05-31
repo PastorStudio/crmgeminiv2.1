@@ -552,9 +552,15 @@ export function WhatsAppTwoColumn() {
   const [autoClickTimers, setAutoClickTimers] = useState<{ ae: NodeJS.Timeout | null; send: NodeJS.Timeout | null }>({ ae: null, send: null });
   const [autoClickEnabled, setAutoClickEnabled] = useState(false);
   const [showAutoClickConfig, setShowAutoClickConfig] = useState(false);
+  const [showAutoAEConfig, setShowAutoAEConfig] = useState(false);
   const [autoClickSettings, setAutoClickSettings] = useState({
     aeWaitTime: 4000,  // Tiempo de espera después del clic A.E (milisegundos)
     sendWaitTime: 8000, // Tiempo entre ciclos de auto-clic (milisegundos)
+    enabled: false
+  });
+  const [autoAEConfig, setAutoAEConfig] = useState({
+    delay: 2000,
+    selectedAgentId: '',
     enabled: false
   });
   
@@ -2777,16 +2783,8 @@ export function WhatsAppTwoColumn() {
                   variant={getAutoFunctionsStatus().autoAE ? "default" : "outline"}
                   size="sm"
                   className={`h-9 px-3 ${getAutoFunctionsStatus().autoAE ? 'bg-blue-500 hover:bg-blue-600 text-white' : ''}`}
-                  onClick={() => {
-                    const newStatus = toggleAutoAE();
-                    toast({
-                      title: newStatus ? "Auto A.E. Activado" : "Auto A.E. Desactivado",
-                      description: newStatus 
-                        ? "Detectará mensajes y clickeará A.E. después de 2 segundos"
-                        : "Auto-click desactivado",
-                    });
-                  }}
-                  title="Auto-click botón A.E. (2 segundos)"
+                  onClick={() => setShowAutoAEConfig(true)}
+                  title="Configurar Auto A.E."
                 >
                   <Zap className="h-4 w-4 mr-1" />
                   A.E
@@ -3150,6 +3148,30 @@ export function WhatsAppTwoColumn() {
         settings={autoClickSettings}
         onSave={saveAutoClickSettings}
       />
+      
+      {/* Diálogo de Configuración de Auto A.E. */}
+      <AutoAEConfigDialog
+        open={showAutoAEConfig}
+        onOpenChange={setShowAutoAEConfig}
+        config={autoAEConfig}
+        onSave={(newConfig) => {
+          setAutoAEConfig(newConfig);
+          if (newConfig.enabled) {
+            enableAutoAE();
+            toast({
+              title: "Auto A.E. Configurado",
+              description: `Activado con delay de ${newConfig.delay/1000}s${newConfig.selectedAgentId ? ` usando agente ${newConfig.selectedAgentId}` : ''}`,
+            });
+          } else {
+            disableAutoAE();
+            toast({
+              title: "Auto A.E. Desactivado",
+              description: "Auto-click del botón A.E. desactivado",
+            });
+          }
+        }}
+        selectedChat={selectedChat}
+      />
     </div>
   );
 }
@@ -3367,6 +3389,219 @@ function AutoClickConfigDialog({
           </Button>
           <Button onClick={handleSave} className="bg-purple-600 hover:bg-purple-700">
             Guardar Configuración
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Componente del Diálogo de Configuración de Auto A.E.
+function AutoAEConfigDialog({ 
+  open, 
+  onOpenChange, 
+  config, 
+  onSave,
+  selectedChat
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  config: {
+    delay: number;
+    selectedAgentId: string;
+    enabled: boolean;
+  };
+  onSave: (newConfig: typeof config) => void;
+  selectedChat: WhatsAppChat | null;
+}) {
+  const [tempConfig, setTempConfig] = useState(config);
+
+  // Obtener agentes externos configurados
+  const { data: externalAgentsResponse } = useQuery({
+    queryKey: ['/api/external-agents'],
+    retry: false,
+    staleTime: 60000
+  });
+
+  // Obtener configuración de respuestas automáticas de la cuenta
+  const { data: autoResponseConfig } = useQuery({
+    queryKey: ['/api/auto-response-config', selectedChat?.accountId],
+    enabled: !!selectedChat?.accountId,
+    retry: false
+  });
+
+  const externalAgents = (externalAgentsResponse as any)?.agents || [];
+
+  useEffect(() => {
+    setTempConfig(config);
+  }, [config]);
+
+  const handleSave = () => {
+    onSave(tempConfig);
+    onOpenChange(false);
+  };
+
+  const delayPresets = [
+    { name: "Instantáneo", delay: 500 },
+    { name: "Rápido", delay: 1000 },
+    { name: "Normal", delay: 2000 },
+    { name: "Lento", delay: 3000 },
+    { name: "Muy Lento", delay: 5000 }
+  ];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center space-x-2">
+            <Zap className="h-5 w-5 text-blue-500" />
+            <span>Configuración Auto A.E.</span>
+          </DialogTitle>
+          <DialogDescription>
+            Configura el auto-click del botón A.E. con tiempo de tardanza y agente asignado
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          {/* Estado actual */}
+          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+            <div>
+              <span className="font-medium text-sm">Estado Actual</span>
+              <p className="text-xs text-gray-600">
+                {getAutoFunctionsStatus().autoAE ? 'Activo' : 'Inactivo'}
+              </p>
+            </div>
+            <Badge variant={getAutoFunctionsStatus().autoAE ? "default" : "secondary"}>
+              {getAutoFunctionsStatus().autoAE ? "FUNCIONANDO" : "DETENIDO"}
+            </Badge>
+          </div>
+
+          {/* Toggle principal */}
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="font-medium text-sm">Activar Auto A.E.</label>
+              <p className="text-xs text-gray-500">
+                Detecta mensajes nuevos y hace click automático en A.E.
+              </p>
+            </div>
+            <Button
+              variant={tempConfig.enabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTempConfig({...tempConfig, enabled: !tempConfig.enabled})}
+              className={tempConfig.enabled ? "bg-blue-500 hover:bg-blue-600" : ""}
+            >
+              {tempConfig.enabled ? "Activado" : "Desactivado"}
+            </Button>
+          </div>
+
+          {/* Configuraciones solo si está activado */}
+          {tempConfig.enabled && (
+            <>
+              {/* Tiempo de tardanza */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Tiempo de Tardanza
+                </label>
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {delayPresets.map((preset) => (
+                    <Button
+                      key={preset.name}
+                      variant={tempConfig.delay === preset.delay ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setTempConfig({
+                        ...tempConfig,
+                        delay: preset.delay
+                      })}
+                      className="text-xs"
+                    >
+                      {preset.name}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Input
+                    type="number"
+                    min="500"
+                    max="10000"
+                    step="100"
+                    value={tempConfig.delay}
+                    onChange={(e) => setTempConfig({
+                      ...tempConfig,
+                      delay: parseInt(e.target.value) || 2000
+                    })}
+                    className="flex-1"
+                  />
+                  <span className="text-sm text-gray-500">ms</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Tiempo que espera después de detectar un mensaje nuevo ({tempConfig.delay/1000}s)
+                </p>
+              </div>
+
+              {/* Selector de Agente */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Agente Asignado
+                </label>
+                {externalAgents.length > 0 ? (
+                  <Select
+                    value={tempConfig.selectedAgentId}
+                    onValueChange={(value) => setTempConfig({
+                      ...tempConfig,
+                      selectedAgentId: value
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar agente externo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Sin agente específico</SelectItem>
+                      {externalAgents.map((agent: any) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.name} ({agent.isActive ? 'Activo' : 'Inactivo'})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="p-3 bg-gray-50 rounded-lg text-center">
+                    <p className="text-sm text-gray-600">No hay agentes externos configurados</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Ve a la página de Cuentas WhatsApp para configurar agentes
+                    </p>
+                  </div>
+                )}
+                
+                {tempConfig.selectedAgentId && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ Usará el agente seleccionado para generar respuestas automáticas
+                  </p>
+                )}
+              </div>
+
+              {/* Información de la cuenta */}
+              {selectedChat && (
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <h4 className="text-sm font-medium mb-2">Chat Seleccionado</h4>
+                  <div className="space-y-1 text-xs text-gray-600">
+                    <div>• Chat: {selectedChat.name}</div>
+                    <div>• Cuenta: {selectedChat.accountId}</div>
+                    {autoResponseConfig && (
+                      <div>• Respuesta automática: {autoResponseConfig.enabled ? 'Activada' : 'Desactivada'}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
+            Aplicar Configuración
           </Button>
         </DialogFooter>
       </DialogContent>
