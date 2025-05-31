@@ -16,11 +16,13 @@ export async function getWhatsAppAccounts(req: Request, res: Response) {
         try {
           const client = whatsappMultiAccountManager.getClient(account.id);
           let isConnected = false;
+          let isAuthenticated = false;
           
           if (client) {
             try {
               const state = await client.getState();
               isConnected = state === 'CONNECTED';
+              isAuthenticated = isConnected; // Si está conectado, está autenticado
             } catch (error) {
               console.error(`❌ Error verificando estado de cuenta ${account.id}:`, (error as Error).message);
             }
@@ -28,7 +30,12 @@ export async function getWhatsAppAccounts(req: Request, res: Response) {
           
           return {
             ...account,
-            isConnected
+            isConnected,
+            currentStatus: {
+              authenticated: isAuthenticated,
+              ready: isConnected,
+              error: null
+            }
           };
         } catch (error) {
           console.error(`❌ Error procesando cuenta ${account.id}:`, (error as Error).message);
