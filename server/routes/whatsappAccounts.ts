@@ -12,7 +12,7 @@ const router = Router();
 // Obtener todas las cuentas de WhatsApp
 router.get('/', async (req, res) => {
   try {
-    const accounts = await storage.getAllWhatsappAccounts();
+    const accounts = await storage.getWhatsAppAccounts();
     
     // Obtener el estado actual de cada cuenta desde el administrador de múltiples cuentas
     const accountsWithStatus = accounts.map(account => {
