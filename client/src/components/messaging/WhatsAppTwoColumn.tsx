@@ -2482,8 +2482,8 @@ export function WhatsAppTwoColumn() {
             </div>
 
             {/* Messages Area - Aligned with Header */}
-            <ScrollArea className="flex-1 py-4 px-[3%] text-[12px]">
-              <div className="px-4">
+            <ScrollArea className="flex-1 py-4 text-[12px]">
+              <div className="px-0">
                 {loadingMessages ? (
                   <div className="flex items-center justify-center h-32">
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -2512,7 +2512,7 @@ export function WhatsAppTwoColumn() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
-                        className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'} mb-2 px-1`}
+                        className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'} mb-2`}
                       >
                         <div className={`flex space-x-2 ${message.fromMe ? 'max-w-[55%] flex-row-reverse space-x-reverse mr-2' : 'max-w-[75%]'}`}>
                           {showAvatar && isFirstFromAuthor && (
