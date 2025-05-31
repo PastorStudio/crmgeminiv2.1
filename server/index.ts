@@ -1702,14 +1702,34 @@ app.use((req, res, next) => {
   // Importar endpoints de agentes externos
   const externalAgentAPI = await import('./routes/externalAgentAPI');
   
+  // Endpoint de prueba para verificar comunicación
+  app.get('/api/external-agents/test', (req: Request, res: Response) => {
+    res.json({
+      success: true,
+      message: 'Comunicación con agentes externos funcionando',
+      timestamp: new Date().toISOString()
+    });
+  });
+  
   // Habilitar respuesta automática
-  app.post('/api/external-agents/enable-auto-response', externalAgentAPI.enableAutoResponse);
+  app.post('/api/external-agents/enable-auto-response', (req: Request, res: Response) => {
+    console.log('🔄 Endpoint enable-auto-response ejecutado con:', req.body);
+    res.setHeader('Content-Type', 'application/json');
+    externalAgentAPI.enableAutoResponse(req, res);
+  });
   
   // Deshabilitar respuesta automática
-  app.post('/api/external-agents/disable-auto-response', externalAgentAPI.disableAutoResponse);
+  app.post('/api/external-agents/disable-auto-response', (req: Request, res: Response) => {
+    console.log('🔄 Endpoint disable-auto-response ejecutado con:', req.body);
+    res.setHeader('Content-Type', 'application/json');
+    externalAgentAPI.disableAutoResponse(req, res);
+  });
   
   // Obtener configuración de respuesta automática
-  app.get('/api/external-agents/auto-response-config/:accountId', externalAgentAPI.getAutoResponseConfig);
+  app.get('/api/external-agents/auto-response-config/:accountId', (req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/json');
+    externalAgentAPI.getAutoResponseConfig(req, res);
+  });
   
   // Obtener todas las configuraciones
   app.get('/api/external-agents/auto-response-configs', externalAgentAPI.getAllAutoResponseConfigs);
