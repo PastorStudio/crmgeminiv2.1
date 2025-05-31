@@ -98,30 +98,30 @@ export const dashboardStats = pgTable("dashboard_stats", {
 // Chat Assignments - Sistema moderno
 export const chatAssignments = pgTable('chat_assignments', {
   id: serial('id').primaryKey(),
-  chatId: text('chat_id').notNull().unique(),
-  accountId: integer('account_id'),
-  assignedToId: integer('assigned_to_id'),
-  assignedAt: timestamp('assigned_at').defaultNow(),
-  assignedById: integer('assigned_by_id'),
+  chatId: text('chatId').notNull().unique(),
+  accountId: integer('accountId'),
+  assignedToId: integer('assignedToId'),
+  assignedAt: timestamp('assignedAt').defaultNow(),
+  assignedById: integer('assignedById'),
   status: text('status').default('active'),
   priority: text('priority').default('medium'),
   category: text('category'),
   notes: text('notes'),
-  lastActivityAt: timestamp('last_activity_at').defaultNow(),
+  lastActivityAt: timestamp('lastActivityAt').defaultNow(),
 });
 
 // Chat Comments
 export const chatComments = pgTable('chat_comments', {
   id: serial('id').primaryKey(),
-  chatId: text('chat_id').notNull(),
-  accountId: integer('account_id'),
-  userId: integer('user_id'),
+  chatId: text('chatId').notNull(),
+  accountId: integer('accountId'),
+  userId: integer('userId'),
   content: text('content').notNull(),
-  isPrivate: boolean('is_private').default(true),
+  isPrivate: boolean('isPrivate').default(true),
   mentions: text('mentions').array(),
   attachments: jsonb('attachments'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at'),
+  createdAt: timestamp('createdAt').defaultNow(),
+  updatedAt: timestamp('updatedAt'),
 });
 
 // Modern Tickets
