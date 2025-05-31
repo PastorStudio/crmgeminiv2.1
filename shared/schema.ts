@@ -344,6 +344,7 @@ export const insertConversationAnalyticsSchema = createInsertSchema(conversation
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true });
+export const insertWhatsAppAccountSchema = createInsertSchema(whatsappAccounts).omit({ id: true, createdAt: true, lastActiveAt: true });
 
 // Tipos de TypeScript
 export type User = typeof users.$inferSelect;
@@ -363,4 +364,5 @@ export type InsertNotification = typeof insertNotificationSchema._type;
 export type Lead = typeof leads.$inferSelect;
 export type InsertLead = typeof insertLeadSchema._type;
 export type WhatsAppAccount = typeof whatsappAccounts.$inferSelect;
+export type InsertWhatsAppAccount = typeof insertWhatsAppAccountSchema._type;
 export type ExternalAgent = typeof externalAgents.$inferSelect;
