@@ -34,13 +34,37 @@ export class TranslationCacheService {
   }
 
   static async translateText(text: string, targetLanguage: string): Promise<string> {
-    // Por ahora retorna el texto original con indicador de idioma
-    // Esto se activará completamente cuando se configure GOOGLE_TRANSLATE_API_KEY
+    // Si es español, retorna el texto original
     if (targetLanguage === 'es') {
-      return text; // Texto original en español
+      return text;
+    }
+
+    // Usar Google Translate API si está disponible
+    if (process.env.GOOGLE_TRANSLATE_API_KEY) {
+      try {
+        const response = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${process.env.GOOGLE_TRANSLATE_API_KEY}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            q: text,
+            source: 'es',
+            target: targetLanguage,
+            format: 'text'
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          return data.data.translations[0].translatedText;
+        }
+      } catch (error) {
+        console.warn('Google Translate API error:', error);
+      }
     }
     
-    // Para otros idiomas, agregar indicador temporal
+    // Fallback con indicadores visuales si no hay API key
     const languageNames: { [key: string]: string } = {
       'en': '[EN]',
       'fr': '[FR]', 
@@ -49,7 +73,9 @@ export class TranslationCacheService {
       'it': '[IT]',
       'ru': '[RU]',
       'zh': '[中文]',
-      'ja': '[日本語]'
+      'ja': '[日本語]',
+      'ko': '[한국어]',
+      'ar': '[العربية]'
     };
     
     const prefix = languageNames[targetLanguage] || `[${targetLanguage.toUpperCase()}]`;
@@ -84,18 +110,147 @@ export class TranslationCacheService {
   static async preloadCommonTranslations(targetLanguage: string): Promise<void> {
     const commonTexts = [
       'Dashboard',
+      'Panel de Control',
+      'Mensajes',
       'Messages',
       'Leads',
+      'Prospectos',
+      'Configuración',
       'Settings',
+      'Reportes',
       'Reports',
+      'Guardar',
       'Save',
+      'Cancelar',
       'Cancel',
+      'Eliminar',
       'Delete',
+      'Editar',
       'Edit',
-      'Add'
+      'Agregar',
+      'Add',
+      'Usuario',
+      'User',
+      'Fecha',
+      'Date',
+      'Estado',
+      'Status',
+      'Activo',
+      'Active',
+      'Inactivo',
+      'Inactive',
+      'Total',
+      'Hoy',
+      'Today',
+      'Ayer',
+      'Yesterday',
+      'Esta semana',
+      'This week',
+      'Este mes',
+      'This month',
+      'Buscar',
+      'Search',
+      'Filtrar',
+      'Filter',
+      'Exportar',
+      'Export',
+      'Importar',
+      'Import',
+      'Enviar',
+      'Send',
+      'Recibir',
+      'Receive',
+      'Nombre',
+      'Name',
+      'Email',
+      'Teléfono',
+      'Phone',
+      'Empresa',
+      'Company',
+      'Notas',
+      'Notes',
+      'Acciones',
+      'Actions',
+      'Ver',
+      'View',
+      'Nuevo',
+      'New',
+      'Crear',
+      'Create',
+      'Actualizar',
+      'Update',
+      'Cerrar',
+      'Close',
+      'Abrir',
+      'Open',
+      'Completado',
+      'Completed',
+      'Pendiente',
+      'Pending',
+      'En progreso',
+      'In progress',
+      'Rechazado',
+      'Rejected',
+      'Aprobado',
+      'Approved'
     ];
 
     await this.getMultipleTranslations(commonTexts, targetLanguage);
+  }
+
+  static async bulkTranslateAndStore(texts: string[], targetLanguages: string[]): Promise<void> {
+    if (!process.env.GOOGLE_TRANSLATE_API_KEY) {
+      console.warn('No Google Translate API key available for bulk translation');
+      return;
+    }
+
+    console.log(`🌐 Iniciando traducción masiva de ${texts.length} textos a ${targetLanguages.length} idiomas...`);
+
+    for (const language of targetLanguages) {
+      if (language === 'es') continue; // Skip source language
+      
+      console.log(`📝 Traduciendo a ${language}...`);
+      
+      // Process in batches to avoid rate limiting
+      const batchSize = 10;
+      for (let i = 0; i < texts.length; i += batchSize) {
+        const batch = texts.slice(i, i + batchSize);
+        
+        try {
+          const response = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${process.env.GOOGLE_TRANSLATE_API_KEY}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              q: batch,
+              source: 'es',
+              target: language,
+              format: 'text'
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const translations = data.data.translations;
+            
+            // Save each translation to cache
+            for (let j = 0; j < batch.length; j++) {
+              const originalText = batch[j];
+              const translatedText = translations[j].translatedText;
+              await this.saveTranslation(originalText, translatedText, language);
+            }
+          }
+        } catch (error) {
+          console.error(`Error translating batch to ${language}:`, error);
+        }
+        
+        // Small delay to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    console.log('✅ Traducción masiva completada');
   }
 
   static clearMemoryCache(): void {

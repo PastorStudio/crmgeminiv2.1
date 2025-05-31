@@ -5469,6 +5469,44 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
     }
   });
 
+  // Pre-cargar traducciones comunes para un idioma específico
+  app.post("/api/translate/preload/:language", async (req: Request, res: Response) => {
+    try {
+      const { language } = req.params;
+      
+      if (!language) {
+        return res.status(400).json({ message: "Language parameter is required" });
+      }
+
+      await TranslationCacheService.preloadCommonTranslations(language);
+      res.json({ message: `Translations preloaded for ${language}` });
+    } catch (error) {
+      console.error("Preload error:", error);
+      res.status(500).json({ message: "Failed to preload translations" });
+    }
+  });
+
+  // Endpoint para traducción masiva de múltiples textos a múltiples idiomas
+  app.post("/api/translate/bulk", async (req: Request, res: Response) => {
+    try {
+      const { texts, targetLanguages } = req.body;
+      
+      if (!texts || !Array.isArray(texts) || !targetLanguages || !Array.isArray(targetLanguages)) {
+        return res.status(400).json({ message: "Texts and target languages arrays are required" });
+      }
+
+      if (!process.env.GOOGLE_TRANSLATE_API_KEY) {
+        return res.status(400).json({ message: "Google Translate API key not configured" });
+      }
+
+      await TranslationCacheService.bulkTranslateAndStore(texts, targetLanguages);
+      res.json({ message: `Bulk translation completed for ${texts.length} texts in ${targetLanguages.length} languages` });
+    } catch (error) {
+      console.error("Bulk translation error:", error);
+      res.status(500).json({ message: "Bulk translation failed" });
+    }
+  });
+
   app.post("/api/translate/preload/:language", async (req: Request, res: Response) => {
     try {
       const { language } = req.params;
