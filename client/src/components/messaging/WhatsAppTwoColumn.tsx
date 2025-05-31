@@ -3113,6 +3113,12 @@ export function WhatsAppTwoColumn() {
 }
 
 // Componente del Diálogo de Configuración de Auto-Click
+type AutoClickSettings = {
+  aeWaitTime: number;
+  sendWaitTime: number;
+  enabled: boolean;
+};
+
 function AutoClickConfigDialog({ 
   open, 
   onOpenChange, 
@@ -3121,12 +3127,8 @@ function AutoClickConfigDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  settings: {
-    aeWaitTime: number;
-    sendWaitTime: number;
-    enabled: boolean;
-  };
-  onSave: (newSettings: any) => void;
+  settings: AutoClickSettings;
+  onSave: (newSettings: AutoClickSettings) => void;
 }) {
   const [tempSettings, setTempSettings] = useState(settings);
 
