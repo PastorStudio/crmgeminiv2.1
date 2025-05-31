@@ -145,6 +145,18 @@ const WhatsAppAccounts = () => {
   const [agentConfigDialogOpen, setAgentConfigDialogOpen] = useState(false);
   const [selectedAccountForAgent, setSelectedAccountForAgent] = useState<WhatsAppAccount | null>(null);
   
+  // Effect to automatically close QR dialog when connection becomes authenticated
+  useEffect(() => {
+    if (selectedAccount?.currentStatus?.authenticated && qrDialogOpen) {
+      console.log('🔗 Cuenta conectada exitosamente, cerrando diálogo QR automáticamente');
+      setQrDialogOpen(false);
+      toast({
+        title: "Conexión exitosa",
+        description: `La cuenta ${selectedAccount.name} se ha conectado correctamente`,
+      });
+    }
+  }, [selectedAccount?.currentStatus?.authenticated, qrDialogOpen, selectedAccount?.name, toast]);
+  
   // Consulta para obtener agentes externos
   const { data: externalAgents = [] } = useQuery({
     queryKey: ['/api/external-agents'],
