@@ -163,13 +163,16 @@ export function ModernMessagingSystem() {
     enabled: !!selectedWhatsAppAccount
   });
 
-  const { data: messages = [], isLoading: messagesLoading } = useQuery({
+  const { data: messagesResponse, isLoading: messagesLoading } = useQuery({
     queryKey: ['/api/modern-messaging/messages', selectedChat?.id, selectedWhatsAppAccount],
     queryFn: () => selectedChat?.id && selectedWhatsAppAccount ? 
       fetch(`/api/modern-messaging/messages/${selectedChat.id}?accountId=${selectedWhatsAppAccount}`).then(res => res.json()) : 
-      Promise.resolve([]),
+      Promise.resolve({ success: true, messages: [] }),
     enabled: !!selectedChat?.id && !!selectedWhatsAppAccount
   });
+
+  // Extract real messages from API response
+  const messages = messagesResponse?.messages || [];
 
   const { data: users = [] } = useQuery({
     queryKey: ['/api/users'],
@@ -402,7 +405,12 @@ export function ModernMessagingSystem() {
     }
   };
 
-  const filteredChats = chats.filter((chat: Chat) =>
+  // Filter only real WhatsApp chats (exclude any demo data)
+  const realChats = Array.isArray(chats) ? chats.filter((chat: Chat) => 
+    chat.id && chat.id.includes('@c.us') // Only show real WhatsApp chat IDs
+  ) : [];
+
+  const filteredChats = realChats.filter((chat: Chat) =>
     chat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     chat.phoneNumber?.includes(searchTerm)
   );
