@@ -856,8 +856,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Activities endpoints
-  app.get("/api/activities", async (req: Request, res: Response) => {
+  // Activities endpoints - con segmentación por roles
+  app.get("/api/activities", authenticateToken, canAccessResource('activity'), async (req: Request, res: Response) => {
     try {
       const leadId = req.query.leadId ? parseInt(req.query.leadId as string) : undefined;
       const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
@@ -865,16 +865,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       
       if (leadId) {
+        // Verificar si el usuario puede acceder a este lead
+        const canAccess = await RoleBasedAccessService.canAccessLead(req, leadId);
+        if (!canAccess) {
+          return res.status(403).json({ message: "Acceso denegado a este lead" });
+        }
         const activities = await storage.getActivitiesByLead(leadId);
         return res.json(activities);
       } else if (userId && upcoming) {
+        // Verificar si el usuario puede ver actividades de otro usuario
+        if (userId !== req.user!.id && !['super_admin', 'admin', 'supervisor'].includes(req.user!.role)) {
+          return res.status(403).json({ message: "Solo puedes ver tus propias actividades" });
+        }
         const activities = await storage.getUpcomingActivities(userId, limit);
         return res.json(activities);
       } else if (userId) {
+        // Verificar si el usuario puede ver actividades de otro usuario
+        if (userId !== req.user!.id && !['super_admin', 'admin', 'supervisor'].includes(req.user!.role)) {
+          return res.status(403).json({ message: "Solo puedes ver tus propias actividades" });
+        }
         const activities = await storage.getActivitiesByUser(userId);
         return res.json(activities);
       } else {
-        return res.status(400).json({ message: "Missing required parameters" });
+        // Obtener actividades filtradas por rol
+        const filteredActivitiesQuery = await RoleBasedAccessService.getFilteredActivities(req);
+        const activities = await filteredActivitiesQuery;
+        return res.json(activities);
       }
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch activities" });
@@ -941,19 +957,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Messages endpoints
-  app.get("/api/messages", async (req: Request, res: Response) => {
+  // Messages endpoints - con segmentación por roles
+  app.get("/api/messages", authenticateToken, canAccessResource('message'), async (req: Request, res: Response) => {
     try {
       const leadId = req.query.leadId ? parseInt(req.query.leadId as string) : undefined;
       const recent = req.query.recent === "true";
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       
       if (leadId) {
+        // Verificar si el usuario puede acceder a este lead
+        const canAccess = await RoleBasedAccessService.canAccessLead(req, leadId);
+        if (!canAccess) {
+          return res.status(403).json({ message: "Acceso denegado a este lead" });
+        }
         const messages = await storage.getMessagesByLead(leadId);
         return res.json(messages);
       } else if (recent) {
-        const messages = await storage.getRecentMessages(limit);
-        return res.json(messages);
+        // Obtener mensajes filtrados por rol
+        const filteredMessagesQuery = await RoleBasedAccessService.getFilteredMessages(req);
+        const messages = await filteredMessagesQuery;
+        // Aplicar límite manualmente
+        const limitedMessages = limit ? messages.slice(0, limit) : messages.slice(0, 50);
+        return res.json(limitedMessages);
       } else {
         return res.status(400).json({ message: "Missing required parameters" });
       }
@@ -1070,9 +1095,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dashboard stats endpoint - usando datos reales de WhatsApp
-  app.get("/api/dashboard-stats", async (req: Request, res: Response) => {
+  // Dashboard stats endpoint - con segmentación por roles
+  app.get("/api/dashboard-stats", authenticateToken, async (req: Request, res: Response) => {
     try {
+      // Obtener configuración de alcance según el rol del usuario
+      const dashboardConfig = await RoleBasedAccessService.getDashboardStats(req);
+      
       // Intentar obtener estadísticas de la base de datos primero
       let stats = await storage.getDashboardStats();
       
