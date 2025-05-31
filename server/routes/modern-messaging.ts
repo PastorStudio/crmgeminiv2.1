@@ -222,36 +222,67 @@ router.get('/messages/:chatId', async (req: Request, res: Response) => {
   }
 });
 
-// Send a message
+// Send message using real WhatsApp
 router.post('/send-message', async (req: Request, res: Response) => {
   try {
-    const { chatId, content, type = 'text' } = req.body;
+    const { chatId, content, type = 'text', accountId } = req.body;
     
-    if (!chatId || !content) {
+    if (!chatId || !content || !accountId) {
       return res.status(400).json({
         success: false,
-        error: 'chatId y content son requeridos'
+        error: 'chatId, content y accountId son requeridos'
       });
     }
 
-    const newMessage = {
-      id: `msg_${Date.now()}`,
-      chatId,
-      content,
-      sender: 'agent',
-      timestamp: new Date().toISOString(),
-      type
-    };
+    // Use real WhatsApp to send message
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+    
+    if (!whatsappMultiAccountManager) {
+      return res.status(500).json({
+        success: false,
+        error: 'WhatsApp manager no disponible'
+      });
+    }
 
-    res.json({
-      success: true,
-      message: newMessage
-    });
+    const instance = whatsappMultiAccountManager.getInstance(parseInt(accountId));
+    
+    if (!instance || !instance.client) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cuenta de WhatsApp no conectada'
+      });
+    }
+
+    try {
+      // Send real message via WhatsApp
+      const sentMessage = await instance.client.sendMessage(chatId, content);
+      
+      const newMessage = {
+        id: sentMessage.id._serialized || `msg_${Date.now()}`,
+        chatId,
+        content,
+        sender: 'agent',
+        timestamp: new Date().toISOString(),
+        type,
+        status: 'sent'
+      };
+
+      res.json({
+        success: true,
+        message: newMessage
+      });
+    } catch (whatsappError) {
+      console.error('Error sending WhatsApp message:', whatsappError);
+      res.status(500).json({
+        success: false,
+        error: 'Error al enviar mensaje por WhatsApp'
+      });
+    }
   } catch (error) {
-    console.error('Error sending message:', error);
+    console.error('Error in send message endpoint:', error);
     res.status(500).json({
       success: false,
-      error: 'Error al enviar mensaje'
+      error: 'Error interno del servidor'
     });
   }
 });

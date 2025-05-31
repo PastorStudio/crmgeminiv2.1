@@ -393,7 +393,8 @@ export function ModernMessagingSystem() {
       // Fallback to API if WebSocket is not available
       sendMessageMutation.mutate({
         chatId: selectedChat.id,
-        content: messageInput.trim()
+        content: messageInput.trim(),
+        accountId: selectedWhatsAppAccount
       });
     }
   };
