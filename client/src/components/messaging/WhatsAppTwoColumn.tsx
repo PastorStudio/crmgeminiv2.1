@@ -2482,7 +2482,7 @@ export function WhatsAppTwoColumn() {
             </div>
 
             {/* Messages Area - Aligned with Header */}
-            <ScrollArea className="flex-1 py-4 -mx-4">
+            <ScrollArea className="flex-1 py-4 -mx-4 ml-[10px] mr-[10px] mt-[10px] mb-[10px] text-[12px]">
               <div className="px-4">
                 {loadingMessages ? (
                   <div className="flex items-center justify-center h-32">
