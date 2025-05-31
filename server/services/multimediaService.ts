@@ -5,7 +5,7 @@
 
 import { whatsappMultiAccountManager } from './whatsappMultiAccountManager';
 import { db } from '../db';
-import { multimediaFiles } from '@shared/schema';
+import { users } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import * as fs from 'fs';
 import * as path from 'path';

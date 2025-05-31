@@ -4,7 +4,7 @@
  */
 
 import { db } from '../db';
-import { leads, chatCategories, chatAssignments, users } from '@shared/schema';
+import { leads, chatAssignments, users } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 export class AutomaticLeadGenerator {
