@@ -335,7 +335,7 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     if (targetLanguage === 'es') {
       console.log('🚫 Idioma objetivo es español, no se requiere traducción');
       if (currentLanguage !== 'es') {
-        setToSpanish();
+        switchToSpanish();
       }
       return;
     }
@@ -350,7 +350,7 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
       
       // Si estamos volviendo al español, cambiar directamente
       if (targetLanguage === 'es') {
-        setToSpanish();
+        switchToSpanish();
         return;
       }
       
@@ -478,8 +478,8 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     }
   };
 
-  // Función para cambiar a español (sin reseteo, solo cambio de estado)
-  const setToSpanish = () => {
+  // Función simple para cambiar a español
+  const switchToSpanish = () => {
     console.log('🇪🇸 Cambiando a español - modo original');
     setCurrentLanguage('es');
     setIsTranslating(false);
@@ -497,7 +497,7 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     translateText,
     isTranslating,
     translatePage,
-    resetTranslation: setToSpanish
+    resetTranslation: switchToSpanish
   };
 
   return (
@@ -533,16 +533,6 @@ export const PageTranslationSelector: React.FC = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="font-medium text-sm">Traducir Página Completa</h4>
-            {currentLanguage !== 'es' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetTranslation}
-                disabled={isTranslating}
-              >
-                Resetear
-              </Button>
-            )}
           </div>
           
           <div className="grid grid-cols-2 gap-1 max-h-60 overflow-y-auto">
@@ -555,7 +545,7 @@ export const PageTranslationSelector: React.FC = () => {
                 onClick={() => {
                   if (language.code === 'es') {
                     if (currentLanguage !== 'es') {
-                      setToSpanish();
+                      switchToSpanish();
                     }
                   } else if (language.code !== currentLanguage) {
                     translatePage(language.code);
