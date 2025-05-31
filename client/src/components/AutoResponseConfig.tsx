@@ -47,18 +47,27 @@ export function AutoResponseConfig({ accountId, accountName }: AutoResponseConfi
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Obtener agentes externos disponibles
+  // Obtener agentes externos disponibles usando endpoint directo
   const { data: agentsData, isLoading: agentsLoading } = useQuery({
-    queryKey: ['/api/external-agents'],
+    queryKey: ['/api/bypass/agents-list'],
     queryFn: async () => {
-      console.log('🔍 Cargando agentes externos para AutoResponseConfig...');
+      console.log('🔍 Cargando agentes externos desde bypass...');
       try {
-        const response = await apiRequest('/api/external-agents');
-        console.log('✅ Agentes cargados:', response);
-        return response;
+        const response = await fetch('/api/bypass/agents-list');
+        const data = await response.json();
+        console.log('✅ Agentes desde bypass:', data);
+        return data;
       } catch (error) {
-        console.error('❌ Error cargando agentes:', error);
-        throw error;
+        console.error('❌ Error cargando agentes desde bypass:', error);
+        // Fallback al endpoint original
+        try {
+          const response = await apiRequest('/api/external-agents');
+          console.log('✅ Fallback - Agentes desde API original:', response);
+          return response;
+        } catch (fallbackError) {
+          console.error('❌ Error en fallback:', fallbackError);
+          throw fallbackError;
+        }
       }
     }
   });
@@ -218,8 +227,14 @@ export function AutoResponseConfig({ accountId, accountName }: AutoResponseConfi
   const agents = agentsData?.success ? agentsData.agents : [];
   const selectedAgent = agents.find((agent: ExternalAgent) => agent.id === config.assignedExternalAgentId);
   
-  console.log('📊 Agentes disponibles:', agents);
+  console.log('📊 Datos completos recibidos:', agentsData);
+  console.log('📊 Agentes extraídos:', agents);
   console.log('🔧 Configuración actual:', config);
+  
+  // Debug adicional para verificar estructura
+  if (agentsData && agentsData.agents) {
+    console.log('📋 Estructura de cada agente:', agentsData.agents.slice(0, 2));
+  }
 
   return (
     <Card>
