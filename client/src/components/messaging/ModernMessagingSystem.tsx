@@ -812,8 +812,8 @@ export function ModernMessagingSystem() {
                       <p className="text-sm text-gray-700">{comment.content}</p>
                     </div>
                   </div>
-                )) : [])
-              }
+                )) : []}
+              </div>
             </ScrollArea>
             
             <div className="space-y-2">
