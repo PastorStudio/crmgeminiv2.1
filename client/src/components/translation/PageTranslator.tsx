@@ -352,6 +352,12 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     if (targetLanguage === currentLanguage) return;
     if (isTranslating) return; // Evitar traducciones concurrentes
     
+    // Si ya estamos en español y se solicita español, no hacer nada
+    if (targetLanguage === 'es' && currentLanguage === 'es') {
+      console.log('🚫 Ya estamos en español, no se requiere traducción');
+      return;
+    }
+    
     setIsTranslating(true);
     
     try {
@@ -450,10 +456,13 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
             }
             
             // Traducir atributos
-            for (const [attr, originalValue] of data.attributes) {
-              const translatedAttr = await translateText(originalValue, targetLanguage);
-              if (translatedAttr && translatedAttr !== originalValue) {
-                element.setAttribute(attr, translatedAttr);
+            for (const attr of data.attributes.keys()) {
+              const originalValue = data.attributes.get(attr);
+              if (originalValue) {
+                const translatedAttr = await translateText(originalValue, targetLanguage);
+                if (translatedAttr && translatedAttr !== originalValue) {
+                  element.setAttribute(attr, translatedAttr);
+                }
               }
             }
             
@@ -575,7 +584,7 @@ export const PageTranslationSelector: React.FC = () => {
                 onClick={() => {
                   if (language.code === 'es') {
                     resetTranslation();
-                  } else {
+                  } else if (language.code !== currentLanguage) {
                     translatePage(language.code);
                   }
                   setIsOpen(false);
