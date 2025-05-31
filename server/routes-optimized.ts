@@ -478,12 +478,104 @@ export function registerOptimizedRoutes(app: Express): Server {
   wss.on('connection', (ws: WebSocket) => {
     console.log('✅ Cliente WebSocket conectado');
     
-    ws.on('message', (data: Buffer) => {
+    ws.on('message', async (data: Buffer) => {
       try {
         const message = JSON.parse(data.toString());
         console.log('📨 Mensaje WebSocket recibido:', message);
+        
+        // Handle different message types
+        switch (message.type) {
+          case 'send_message':
+            try {
+              const { chatId, content, accountId } = message;
+              
+              if (!chatId || !content || !accountId) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Datos incompletos para enviar mensaje'
+                }));
+                return;
+              }
+
+              // Import WhatsApp manager dynamically
+              const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+              
+              if (!whatsappMultiAccountManager) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'WhatsApp manager no disponible'
+                }));
+                return;
+              }
+
+              const instance = whatsappMultiAccountManager.getInstance(parseInt(accountId));
+              
+              if (!instance || !instance.client) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Cuenta de WhatsApp no conectada'
+                }));
+                return;
+              }
+
+              // Send real message via WhatsApp
+              const sentMessage = await instance.client.sendMessage(chatId, content);
+              
+              // Broadcast new message to all connected clients
+              const newMessage = {
+                id: sentMessage.id._serialized || `msg_${Date.now()}`,
+                chatId,
+                content,
+                fromMe: true,
+                timestamp: new Date().toISOString(),
+                type: 'text',
+                status: 'sent'
+              };
+
+              // Send confirmation to sender
+              ws.send(JSON.stringify({
+                type: 'message_sent',
+                message: newMessage
+              }));
+
+              // Broadcast to all clients for real-time updates
+              wss.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({
+                    type: 'new_message',
+                    message: newMessage
+                  }));
+                }
+              });
+
+            } catch (error) {
+              console.error('Error enviando mensaje via WebSocket:', error);
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Error al enviar mensaje'
+              }));
+            }
+            break;
+
+          case 'subscribe':
+            // Handle chat subscription for real-time updates
+            console.log(`Cliente suscrito a chat ${message.chatId} de cuenta ${message.accountId}`);
+            ws.send(JSON.stringify({
+              type: 'subscribed',
+              chatId: message.chatId,
+              accountId: message.accountId
+            }));
+            break;
+
+          default:
+            console.log('Tipo de mensaje WebSocket no reconocido:', message.type);
+        }
       } catch (error) {
         console.error('❌ Error procesando mensaje WebSocket:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Error procesando mensaje'
+        }));
       }
     });
 
@@ -491,10 +583,14 @@ export function registerOptimizedRoutes(app: Express): Server {
       console.log('🔌 Cliente WebSocket desconectado');
     });
 
+    ws.on('error', (error) => {
+      console.error('❌ Error WebSocket:', error);
+    });
+
     // Enviar mensaje de bienvenida
     ws.send(JSON.stringify({
       type: 'welcome',
-      message: 'Conectado al sistema optimizado',
+      message: 'Conectado al sistema de mensajería',
       timestamp: new Date().toISOString()
     }));
   });
