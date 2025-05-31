@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DashboardStats as IDashboardStats } from "@shared/schema";
 import { usePageTranslation } from "@/components/translation/PageTranslator";
 import { useEffect, useState } from "react";
+import { Users, TrendingUp, MessageCircle, Calendar } from "lucide-react";
 
 export default function DashboardStats() {
   // Fetch dashboard stats
@@ -105,70 +107,81 @@ export default function DashboardStats() {
   }, [currentLanguage]);
 
   return (
-    <div className="dashboard-stats mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-      {/* Total Leads */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 bg-primary-100 rounded-md p-3">
-                <span className="material-icons text-primary-600">people</span>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  {translatedTitles.totalLeads}
-                </dt>
-                <dd className="flex items-baseline">
-                  {isLoading ? (
-                    <Skeleton className="h-8 w-20" />
-                  ) : (
-                    <div className="text-2xl font-semibold text-gray-900">
-                      {(stats?.totalLeads || 0).toLocaleString()}
+    <TooltipProvider>
+      <div className="dashboard-stats mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Total Leads */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="px-4 py-5 sm:p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 bg-primary-100 rounded-md p-3">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Users className="h-6 w-6 text-primary-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Total number of leads in the system</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    {translatedTitles.totalLeads}
+                  </dt>
+                  <dd className="flex items-baseline">
+                    {isLoading ? (
+                      <Skeleton className="h-8 w-20" />
+                    ) : (
+                      <div className="text-2xl font-semibold text-gray-900">
+                        {(stats?.totalLeads || 0).toLocaleString()}
+                      </div>
+                    )}
+                    <div className="ml-2 flex items-baseline text-sm font-semibold text-green-600">
+                      8.2%
                     </div>
-                  )}
-                  <div className="ml-2 flex items-baseline text-sm font-semibold text-green-600">
-                    <span className="material-icons text-sm">arrow_upward</span>
-                    <span className="sr-only">Increased by</span>
-                    8.2%
-                  </div>
-                </dd>
+                  </dd>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Conversion Rate */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 bg-green-100 rounded-md p-3">
-                <span className="material-icons text-green-600">trending_up</span>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  {translatedTitles.conversionRate}
-                </dt>
-                <dd className="flex items-baseline">
-                  {isLoading ? (
-                    <Skeleton className="h-8 w-20" />
-                  ) : (
-                    <div className="text-2xl font-semibold text-gray-900">
-                      {formatConversionRate(stats?.performanceMetrics)}
+        {/* Conversion Rate */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="px-4 py-5 sm:p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 bg-green-100 rounded-md p-3">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <TrendingUp className="h-6 w-6 text-green-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Conversion rate percentage</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    {translatedTitles.conversionRate}
+                  </dt>
+                  <dd className="flex items-baseline">
+                    {isLoading ? (
+                      <Skeleton className="h-8 w-20" />
+                    ) : (
+                      <div className="text-2xl font-semibold text-gray-900">
+                        {formatConversionRate(stats?.performanceMetrics)}
+                      </div>
+                    )}
+                    <div className="ml-2 flex items-baseline text-sm font-semibold text-green-600">
+                      3.2%
                     </div>
-                  )}
-                  <div className="ml-2 flex items-baseline text-sm font-semibold text-green-600">
-                    <span className="material-icons text-sm">arrow_upward</span>
-                    <span className="sr-only">Increased by</span>
-                    3.2%
-                  </div>
-                </dd>
+                  </dd>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
       {/* Active Conversations */}
       <Card>
