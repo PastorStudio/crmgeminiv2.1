@@ -1518,6 +1518,9 @@ app.use((req, res, next) => {
   app.get('/api/auto-response/config/:chatId', whatsappAPI.getAutoResponseConfig);
   app.put('/api/auto-response/config/:chatId', whatsappAPI.updateAutoResponseConfig);
 
+  // Modern messaging system routes
+  app.use('/api/modern-messaging', modernMessagingRouter);
+
   // Registramos rutas directas para evitar la interceptación de Vite
   registerDirectAPIRoutes(app);
 
