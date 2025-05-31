@@ -59,10 +59,13 @@ router.get('/:id', async (req, res) => {
 // Esquema de validación para creación de cuentas
 const accountSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
-  description: z.string().optional(),
-  ownerName: z.string().optional(),
-  ownerPhone: z.string().optional(),
-  adminId: z.number().optional()
+  description: z.string().nullable().optional(),
+  ownerName: z.string().nullable().optional(),
+  ownerPhone: z.string().nullable().optional(),
+  adminId: z.number().nullable().optional(),
+  assignedExternalAgentId: z.string().nullable().optional(),
+  autoResponseEnabled: z.boolean().optional().default(false),
+  responseDelay: z.number().optional().default(3)
 });
 
 // Crear una nueva cuenta de WhatsApp
@@ -78,11 +81,17 @@ router.post('/', async (req, res) => {
     }
     
     // Crear cuenta en la base de datos
-    const newAccount = await storage.createWhatsappAccount({
-      ...validation.data,
+    const newAccount = await storage.createWhatsAppAccount({
+      name: validation.data.name,
+      description: validation.data.description || null,
+      ownerName: validation.data.ownerName || null,
+      ownerPhone: validation.data.ownerPhone || null,
+      adminId: validation.data.adminId || null,
+      assignedExternalAgentId: validation.data.assignedExternalAgentId || null,
+      autoResponseEnabled: validation.data.autoResponseEnabled || false,
+      responseDelay: validation.data.responseDelay || 3,
       status: 'inactive',
-      sessionData: {},
-      createdAt: new Date()
+      sessionData: null
     });
     
     res.status(201).json(newAccount);

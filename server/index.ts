@@ -1521,6 +1521,9 @@ app.use((req, res, next) => {
   // Modern messaging system routes
   app.use('/api/modern-messaging', modernMessagingRouter);
 
+  // WhatsApp accounts routes
+  app.use('/api/whatsapp-accounts', whatsappAccountsRouter);
+
   // Registramos rutas directas para evitar la interceptación de Vite
   registerDirectAPIRoutes(app);
 
