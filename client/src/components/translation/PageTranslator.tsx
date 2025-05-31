@@ -355,14 +355,17 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
 
   // Función para traducir toda la página (mejorada para evitar duplicaciones)
   const translatePage = async (targetLanguage: string) => {
-    if (targetLanguage === currentLanguage) return;
-    if (isTranslating) return; // Evitar traducciones concurrentes
-    
-    // Si ya estamos en español y se solicita español, no hacer nada
-    if (targetLanguage === 'es' && currentLanguage === 'es') {
-      console.log('🚫 Ya estamos en español, no se requiere traducción');
+    // Verificación estricta para español
+    if (targetLanguage === 'es') {
+      console.log('🚫 Idioma objetivo es español, no se requiere traducción');
+      if (currentLanguage !== 'es') {
+        resetTranslation();
+      }
       return;
     }
+    
+    if (targetLanguage === currentLanguage) return;
+    if (isTranslating) return; // Evitar traducciones concurrentes
     
     setIsTranslating(true);
     
