@@ -2095,9 +2095,9 @@ export function WhatsAppTwoColumn() {
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-      {/* Container principal centrado y profesional */}
-      <div className="flex w-full max-w-7xl mx-auto bg-white shadow-2xl rounded-lg overflow-hidden">
+    <div className="flex h-screen bg-white">
+      {/* Container principal */}
+      <div className="flex w-full mx-auto bg-white">
         
         {/* Left Panel - Chat List */}
         <div className="w-96 min-w-96 max-w-96 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
@@ -2488,9 +2488,9 @@ export function WhatsAppTwoColumn() {
               </div>
             </div>
 
-            {/* Messages Area - Aligned with Header */}
+            {/* Messages Area - Centered Content */}
             <ScrollArea className="flex-1 py-4">
-              <div className="px-4">
+              <div className="px-6 max-w-4xl mx-auto">
                 {loadingMessages ? (
                   <div className="flex items-center justify-center h-32">
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -2519,36 +2519,36 @@ export function WhatsAppTwoColumn() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
-                        className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'} mb-3 px-2`}
+                        className={`flex ${message.fromMe ? 'justify-end pr-4' : 'justify-start'} mb-2 px-1`}
                       >
-                        <div className={`flex space-x-3 ${message.fromMe ? 'max-w-[70%] flex-row-reverse space-x-reverse' : 'max-w-[85%]'}`}>
+                        <div className={`flex space-x-2 ${message.fromMe ? 'max-w-[45%] flex-row-reverse space-x-reverse' : 'max-w-[85%]'}`}>
                           {showAvatar && isFirstFromAuthor && (
-                            <Avatar className="h-10 w-10 mt-1 ring-2 ring-white shadow-md">
+                            <Avatar className="h-8 w-8 mt-1">
                               <AvatarImage src={message.authorProfilePic} />
-                              <AvatarFallback className="text-sm bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+                              <AvatarFallback className="text-xs bg-gray-200">
                                 {message.author?.charAt(0).toUpperCase() || 'U'}
                               </AvatarFallback>
                             </Avatar>
                           )}
                           
-                          <div className={`${showAvatar && !isFirstFromAuthor ? 'ml-13' : ''}`}>
+                          <div className={`${showAvatar && !isFirstFromAuthor ? 'ml-10' : ''}`}>
                             {selectedChat.isGroup && !message.fromMe && isFirstFromAuthor && (
-                              <div className="text-xs font-medium text-emerald-600 mb-1 px-4">
+                              <div className="text-xs text-gray-500 mb-1 px-3">
                                 {message.author || message.authorNumber}
                               </div>
                             )}
                             
-                            <div className={`flex items-end gap-2 ${message.fromMe ? 'justify-end' : 'flex-row'}`}>
+                            <div className={`flex items-end gap-1 ${message.fromMe ? 'justify-end' : 'flex-row'}`}>
                               {message.fromMe && (
-                                <div className="text-xs text-gray-400 flex-shrink-0 mb-1">
+                                <div className="text-xs text-gray-500 flex-shrink-0">
                                   {formatTime(message.timestamp)}
                                 </div>
                               )}
                               <div
-                                className={`px-4 py-3 rounded-2xl shadow-sm border ${
+                                className={`px-4 py-2 rounded-2xl ${
                                   message.fromMe
-                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-br-md border-emerald-300'
-                                    : 'bg-white text-gray-800 rounded-bl-md border-gray-200'
+                                    ? 'bg-blue-100 text-black rounded-br-md'
+                                    : 'bg-green-100 text-black rounded-bl-md'
                                 }`}
                               >
                                 {/* Mensajes de audio/nota de voz con transcripción */}
@@ -3017,79 +3017,68 @@ export function WhatsAppTwoColumn() {
               </div>
 
               {/* Message Input */}
-              <div className="flex items-center space-x-3">
-                <div className="relative flex-1">
-                  <Input
-                    placeholder={translatorEnabled ? "Escribe un mensaje (se traducirá automáticamente)..." : isAutoSending ? "Auto-enviando en 5 segundos..." : "Escribe un mensaje..."}
-                    value={newMessage}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setNewMessage(value);
-                      
-                      // Auto-envío con delay de 5 segundos
+              <div className="flex space-x-2">
+                <Input
+                  placeholder={translatorEnabled ? "Escribe un mensaje (se traducirá automáticamente)..." : isAutoSending ? "Auto-enviando en 5 segundos..." : "Escribe un mensaje..."}
+                  value={newMessage}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setNewMessage(value);
+                    
+                    // Auto-envío con delay de 5 segundos
+                    if (autoSendTimer) {
+                      clearTimeout(autoSendTimer);
+                      setAutoSendTimer(null);
+                      setIsAutoSending(false);
+                    }
+                    
+                    if (value.trim().length > 0) {
+                      setIsAutoSending(true);
+                      const timer = setTimeout(() => {
+                        if (newMessage.trim().length > 0) {
+                          handleSendMessage();
+                        }
+                        setIsAutoSending(false);
+                        setAutoSendTimer(null);
+                      }, 5000);
+                      setAutoSendTimer(timer);
+                    }
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      // Cancelar auto-envío si el usuario presiona Enter manualmente
                       if (autoSendTimer) {
                         clearTimeout(autoSendTimer);
                         setAutoSendTimer(null);
                         setIsAutoSending(false);
                       }
-                      
-                      if (value.trim().length > 0) {
-                        setIsAutoSending(true);
-                        const timer = setTimeout(() => {
-                          if (newMessage.trim().length > 0) {
-                            handleSendMessage();
-                          }
-                          setIsAutoSending(false);
-                          setAutoSendTimer(null);
-                        }, 5000);
-                        setAutoSendTimer(timer);
-                      }
-                    }}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        // Cancelar auto-envío si el usuario presiona Enter manualmente
-                        if (autoSendTimer) {
-                          clearTimeout(autoSendTimer);
-                          setAutoSendTimer(null);
-                          setIsAutoSending(false);
-                        }
-                        handleSendMessage();
-                      }
-                    }}
-                    className={`pr-10 h-12 text-base rounded-xl border-2 transition-all duration-200 ${
-                      isAutoSending 
-                        ? 'border-orange-400 bg-orange-50 focus:border-orange-500' 
-                        : 'border-gray-300 bg-white focus:border-emerald-500 focus:ring-emerald-500'
-                    }`}
-                    disabled={sendMessageMutation.isPending}
-                  />
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <Smile className="h-5 w-5 text-gray-400" />
-                  </div>
-                </div>
-                
+                      handleSendMessage();
+                    }
+                  }}
+                  className={`flex-1 ${isAutoSending ? 'border-orange-400 bg-orange-50' : ''}`}
+                  disabled={sendMessageMutation.isPending}
+                />
                 <Button 
                   onClick={handleSendMessage}
                   disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                  className="h-12 w-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  className="bg-green-600 hover:bg-green-700"
                 >
                   {sendMessageMutation.isPending ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Send className="h-5 w-5" />
+                    <Send className="h-4 w-4" />
                   )}
                 </Button>
               </div>
             </div>
+          </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+          <div className="flex-1 flex items-center justify-center bg-gray-50">
             <div className="text-center text-gray-500">
-              <div className="bg-white rounded-full p-6 shadow-lg mb-6 mx-auto w-fit">
-                <MessageCircle className="h-16 w-16 text-emerald-500" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3 text-gray-700">Selecciona una conversación</h3>
-              <p className="text-gray-500 max-w-md">Elige un chat de la lista para empezar a conversar y gestionar tus mensajes de WhatsApp Business</p>
+              <MessageCircle className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-lg font-medium mb-2">Selecciona una conversación</h3>
+              <p>Elige un chat de la lista para empezar a conversar</p>
             </div>
           </div>
         )}
