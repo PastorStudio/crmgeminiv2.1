@@ -2772,6 +2772,45 @@ export function WhatsAppTwoColumn() {
             <div className="p-4 border-t border-gray-200 bg-white">
               {/* Toolbar */}
               <div className="flex items-center space-x-2 mb-3">
+                {/* Auto Functions Quick Controls */}
+                <Button
+                  variant={getAutoFunctionsStatus().autoAE ? "default" : "outline"}
+                  size="sm"
+                  className={`h-9 px-3 ${getAutoFunctionsStatus().autoAE ? 'bg-blue-500 hover:bg-blue-600 text-white' : ''}`}
+                  onClick={() => {
+                    const newStatus = toggleAutoAE();
+                    toast({
+                      title: newStatus ? "Auto A.E. Activado" : "Auto A.E. Desactivado",
+                      description: newStatus 
+                        ? "Detectará mensajes y clickeará A.E. después de 2 segundos"
+                        : "Auto-click desactivado",
+                    });
+                  }}
+                  title="Auto-click botón A.E. (2 segundos)"
+                >
+                  <Zap className="h-4 w-4 mr-1" />
+                  A.E
+                </Button>
+
+                <Button
+                  variant={getAutoFunctionsStatus().autoSend ? "default" : "outline"}
+                  size="sm"
+                  className={`h-9 px-3 ${getAutoFunctionsStatus().autoSend ? 'bg-green-500 hover:bg-green-600 text-white' : ''}`}
+                  onClick={() => {
+                    const newStatus = toggleAutoSend();
+                    toast({
+                      title: newStatus ? "Auto-Envío Activado" : "Auto-Envío Desactivado",
+                      description: newStatus
+                        ? "Auto-envío cada 3-5 segundos"
+                        : "Auto-envío desactivado",
+                    });
+                  }}
+                  title="Auto-envío desde input (3-5 segundos)"
+                >
+                  <Send className="h-4 w-4 mr-1" />
+                  ENV
+                </Button>
+
                 {/* Emoji Picker */}
                 <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
                   <PopoverTrigger asChild>
