@@ -648,53 +648,28 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             }
           }
           
-          // Sistema de tickets temporalmente desactivado para evitar errores de esquema
-          console.log(`📋 Sistema de tickets desactivado temporalmente`);
-
-          // Procesar mensaje con autoMessageProcessor (sistema AI ON/OFF)
+          // Procesar mensaje con sistema simple de respuestas automáticas
           try {
-            console.log(`🔄 INICIANDO PROCESAMIENTO AUTOMÁTICO para mensaje en cuenta ${id}`);
+            console.log(`🤖 INICIANDO RESPUESTA AUTOMÁTICA SIMPLE para cuenta ${id}`);
             console.log(`📝 Mensaje: "${messageBody}" | fromMe: ${message.fromMe} | Chat: ${message.from}`);
             
-            const { autoMessageProcessor } = await import('./autoMessageProcessor');
+            const { SimpleAutoResponseService } = await import('./simpleAutoResponse');
             
-            await autoMessageProcessor.processMessage({
-              id: message.id._serialized,
-              body: messageBody,
-              fromMe: message.fromMe,
-              timestamp: message.timestamp,
-              chatId: message.from,
-              accountId: id,
-              contactName: message._data.notifyName || 'Cliente Anónimo',
-              contactPhone: message.from.replace('@c.us', '')
-            });
-
-            console.log(`✅ Mensaje procesado por autoMessageProcessor para cuenta ${id}`);
-          } catch (error) {
-            console.error(`❌ Error procesando mensaje con autoMessageProcessor:`, error);
-          }
-
-          // Procesar mensaje con el integrador de agentes externos
-          try {
-            console.log(`🤖 INICIANDO PROCESAMIENTO CON AGENTES EXTERNOS para cuenta ${id}`);
-            
-            const { externalAgentIntegrator } = await import('./externalAgentIntegrator');
-            
-            // Procesar mensaje para respuesta automática con agente externo
-            const processed = await externalAgentIntegrator.processIncomingMessage(
+            // Procesar mensaje para respuesta automática
+            const processed = await SimpleAutoResponseService.processIncomingMessage(
               id, // accountId
               message.from, // chatId
               messageBody, // message
-              message.from.replace('@c.us', '') // fromNumber
+              this.clients.get(id) // whatsappClient
             );
 
             if (processed) {
-              console.log(`✅ Mensaje procesado por agente externo para cuenta ${id}`);
+              console.log(`✅ Respuesta automática enviada para cuenta ${id}`);
             } else {
-              console.log(`⏭️ No se procesó mensaje con agente externo para cuenta ${id}`);
+              console.log(`⏭️ No se envió respuesta automática para cuenta ${id}`);
             }
           } catch (error) {
-            console.error(`❌ Error procesando mensaje con agente externo:`, error);
+            console.error(`❌ Error en respuesta automática:`, error);
           }
         }
       } catch (error) {
