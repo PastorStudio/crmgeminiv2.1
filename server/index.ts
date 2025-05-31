@@ -1697,6 +1697,29 @@ app.use((req, res, next) => {
     }
   });
 
+  // ===== ENDPOINTS DE RESPUESTAS AUTOMÁTICAS CON AGENTES EXTERNOS =====
+  
+  // Importar endpoints de agentes externos
+  const externalAgentAPI = await import('./routes/externalAgentAPI');
+  
+  // Habilitar respuesta automática
+  app.post('/api/external-agents/enable-auto-response', externalAgentAPI.enableAutoResponse);
+  
+  // Deshabilitar respuesta automática
+  app.post('/api/external-agents/disable-auto-response', externalAgentAPI.disableAutoResponse);
+  
+  // Obtener configuración de respuesta automática
+  app.get('/api/external-agents/auto-response-config/:accountId', externalAgentAPI.getAutoResponseConfig);
+  
+  // Obtener todas las configuraciones
+  app.get('/api/external-agents/auto-response-configs', externalAgentAPI.getAllAutoResponseConfigs);
+  
+  // Obtener estadísticas del integrador
+  app.get('/api/external-agents/stats', externalAgentAPI.getIntegratorStats);
+  
+  // Probar agente externo
+  app.post('/api/external-agents/test', externalAgentAPI.testExternalAgent);
+
   // ===== ENDPOINTS DE SINCRONIZACIÓN DE WHATSAPP =====
   
   // Limpiar caché y obtener datos frescos
