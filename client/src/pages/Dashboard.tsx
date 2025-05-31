@@ -13,9 +13,9 @@ import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/authContext";
 import { Loader2, Sun, Moon, Coffee, Star } from "lucide-react";
 import { getRealNow, formatNYTime } from "@/lib/timeSync";
-import { DatabaseTranslationProvider, DatabaseLanguageSelector } from "@/components/translation/DatabaseTranslator";
+import { PageTranslationSelector, usePageTranslation } from "@/components/translation/PageTranslator";
 
-function DashboardContent() {
+export default function Dashboard() {
   // Estados para el proceso de importación
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<null | {
@@ -28,8 +28,8 @@ function DashboardContent() {
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // Hook para el sistema de traducción con base de datos
-  // const { currentLanguage } = useDatabaseTranslation();
+  // Obtener el idioma actual del sistema de traducción
+  const { currentLanguage } = usePageTranslation();
 
   // Update time every second usando fecha sincronizada
   useEffect(() => {
@@ -68,7 +68,7 @@ function DashboardContent() {
       'bg': 'bg-BG'
     };
     
-    const locale = 'es-ES';
+    const locale = localeMap[currentLanguage] || 'es-ES';
     
     return getRealNow().toLocaleDateString(locale, {
       timeZone: 'America/New_York',
@@ -203,7 +203,7 @@ function DashboardContent() {
               <div className="flex items-center space-x-3">
                 {/* Selector de traducción global */}
                 <div className="bg-white/10 px-3 py-2 rounded-lg border border-white/20">
-                  <DatabaseLanguageSelector />
+                  <PageTranslationSelector />
                 </div>
                 
                 {/* Reloj del sistema */}
@@ -254,14 +254,5 @@ function DashboardContent() {
         </div>
       </PageContainer>
     </>
-  );
-}
-
-// Componente principal envuelto con el proveedor de traducción
-export default function Dashboard() {
-  return (
-    <DatabaseTranslationProvider>
-      <DashboardContent />
-    </DatabaseTranslationProvider>
   );
 }

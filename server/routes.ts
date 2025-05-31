@@ -18,7 +18,6 @@ import { db } from "./db";
 import jwt from "jsonwebtoken";
 // Importar las rutas de WhatsApp
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
-import { TranslationCacheService } from "./services/translationCacheService";
 import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
 import { authService } from "./services/authService";
 import { eq, and, ne, not, isNull } from "drizzle-orm";
@@ -5426,103 +5425,6 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
       });
     }
   });
-
-  return httpServer;
-}
-
-  // Translation Cache endpoints
-  app.post("/api/translate", async (req: Request, res: Response) => {
-    try {
-      const { text, targetLanguage, context = "general" } = req.body;
-      
-      if (!text || !targetLanguage) {
-        return res.status(400).json({ message: "Text and target language are required" });
-      }
-
-      const translatedText = await TranslationCacheService.translateAndCache(text, targetLanguage, context);
-      res.json({ translatedText });
-    } catch (error) {
-      console.error("Translation error:", error);
-      res.status(500).json({ message: "Translation failed", translatedText: text });
-    }
-  });
-
-  app.post("/api/translate/batch", async (req: Request, res: Response) => {
-    try {
-      const { texts, targetLanguage } = req.body;
-      
-      if (!texts || !Array.isArray(texts) || !targetLanguage) {
-        return res.status(400).json({ message: "Texts array and target language are required" });
-      }
-
-      const translations = await TranslationCacheService.getMultipleTranslations(texts, targetLanguage);
-      const result: Record<string, string> = {};
-      
-      for (const [original, translated] of translations.entries()) {
-        result[original] = translated;
-      }
-
-      res.json({ translations: result });
-    } catch (error) {
-      console.error("Batch translation error:", error);
-      res.status(500).json({ message: "Batch translation failed" });
-    }
-  });
-
-  // Pre-cargar traducciones comunes para un idioma específico
-  app.post("/api/translate/preload/:language", async (req: Request, res: Response) => {
-    try {
-      const { language } = req.params;
-      
-      if (!language) {
-        return res.status(400).json({ message: "Language parameter is required" });
-      }
-
-      await TranslationCacheService.preloadCommonTranslations(language);
-      res.json({ message: `Translations preloaded for ${language}` });
-    } catch (error) {
-      console.error("Preload error:", error);
-      res.status(500).json({ message: "Failed to preload translations" });
-    }
-  });
-
-  // Endpoint para traducción masiva de múltiples textos a múltiples idiomas usando DeepSeek
-  app.post("/api/translate/bulk", async (req: Request, res: Response) => {
-    try {
-      const { texts, targetLanguages } = req.body;
-      
-      if (!texts || !Array.isArray(texts) || !targetLanguages || !Array.isArray(targetLanguages)) {
-        return res.status(400).json({ message: "Texts and target languages arrays are required" });
-      }
-
-      console.log(`🚀 Iniciando traducción masiva con DeepSeek para ${texts.length} textos`);
-      
-      // Ejecutar traducción masiva en background
-      TranslationCacheService.bulkTranslateAndStore(texts, targetLanguages).catch(error => {
-        console.error("Error en traducción masiva:", error);
-      });
-
-      res.json({ message: `Bulk translation started for ${texts.length} texts in ${targetLanguages.length} languages using DeepSeek` });
-    } catch (error) {
-      console.error("Bulk translation error:", error);
-      res.status(500).json({ message: "Bulk translation failed" });
-    }
-  });
-
-  app.post("/api/translate/preload/:language", async (req: Request, res: Response) => {
-    try {
-      const { language } = req.params;
-      
-      await TranslationCacheService.preloadCommonTranslations(language);
-      res.json({ success: true, message: `Common translations preloaded for ${language}` });
-    } catch (error) {
-      console.error("Preload translation error:", error);
-      res.status(500).json({ message: "Failed to preload translations" });
-    }
-  });
-
-  // Analytics endpoints
-  registerAnalyticsRoutes(app);
 
   return httpServer;
 }
