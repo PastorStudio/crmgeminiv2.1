@@ -532,21 +532,46 @@ const WhatsAppAccounts = () => {
     }
   };
   
-  // Combinar datos de cuentas con información de ping
+  // Combinar datos de cuentas con información de ping y estado de conexión
   const accountsWithPing = accounts.map(account => {
-    if (pingStatusData?.success && pingStatusData.accounts) {
-      const pingInfo = pingStatusData.accounts.find((acc: any) => acc.accountId === account.id);
-      return {
-        ...account,
-        pingStatus: pingInfo?.pingStatus || {
-          isActive: false,
-          lastPing: 0,
-          pingCount: 0,
-          nextPing: 0
-        }
+    let enhancedAccount = { ...account };
+    
+    // Agregar información de estado de conexión desde sessionData si existe
+    if (account.sessionData) {
+      enhancedAccount.currentStatus = {
+        initialized: true,
+        authenticated: account.sessionData.authenticated || false,
+        ready: account.sessionData.ready || false,
+        error: account.sessionData.error || null
+      };
+    } else if (account.currentStatus) {
+      // Si la información viene directamente desde el servidor
+      enhancedAccount.currentStatus = {
+        initialized: true,
+        ...account.currentStatus
+      };
+    } else {
+      // Estado por defecto
+      enhancedAccount.currentStatus = {
+        initialized: false,
+        authenticated: false,
+        ready: false,
+        error: null
       };
     }
-    return account;
+    
+    // Agregar información de ping si está disponible
+    if (pingStatusData?.success && pingStatusData.accounts) {
+      const pingInfo = pingStatusData.accounts.find((acc: any) => acc.accountId === account.id);
+      enhancedAccount.pingStatus = pingInfo?.pingStatus || {
+        isActive: false,
+        lastPing: 0,
+        pingCount: 0,
+        nextPing: 0
+      };
+    }
+    
+    return enhancedAccount;
   });
 
   // Auto-refrescar la lista de cuentas cada 30 segundos
