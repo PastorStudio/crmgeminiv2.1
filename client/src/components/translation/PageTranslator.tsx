@@ -78,7 +78,7 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     }
   });
   const [isTranslating, setIsTranslating] = useState(false);
-  const [originalTexts, setOriginalTexts] = useState<Map<Element, string>>(new Map());
+  const [originalTexts, setOriginalTexts] = useState<Map<Element, { text: string, attributes: Map<string, string> } | string>>(new Map());
   const { toast } = useToast();
 
   // Guardar idioma seleccionado en localStorage
@@ -90,40 +90,16 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
     }
   }, [currentLanguage]);
 
-  // Auto-traducir página cuando se carga la página o cambia de ruta
+  // Solo auto-traducir una vez al cargar si no es español
   useEffect(() => {
-    const autoTranslate = () => {
-      if (currentLanguage !== 'es') {
-        setTimeout(() => {
-          translatePage(currentLanguage);
-        }, 1000); // Esperar que la página se cargue completamente
-      }
-    };
-
-    // Traducir inmediatamente al cargar
-    autoTranslate();
-
-    // Escuchar cambios de URL para re-traducir
-    let lastUrl = location.href;
-    const urlCheckInterval = setInterval(() => {
-      if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        autoTranslate();
-      }
-    }, 500);
-
-    // También escuchar eventos de navegación
-    const handleNavigationChange = () => {
-      setTimeout(autoTranslate, 1000);
-    };
-
-    window.addEventListener('popstate', handleNavigationChange);
-    
-    return () => {
-      clearInterval(urlCheckInterval);
-      window.removeEventListener('popstate', handleNavigationChange);
-    };
-  }, [currentLanguage]);
+    if (currentLanguage !== 'es') {
+      const timer = setTimeout(() => {
+        translatePage(currentLanguage);
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, []); // Solo ejecutar una vez al montar
 
   // Observador de mutaciones deshabilitado temporalmente para evitar retraducciones múltiples
   // TODO: Re-implementar con mejor lógica para detectar contenido realmente nuevo
@@ -528,15 +504,15 @@ export const PageTranslationProvider: React.FC<{ children: React.ReactNode }> = 
               node => node.nodeType === Node.TEXT_NODE
             );
             
-            if (textNodes.length > 0 && data.text) {
+            if (textNodes.length > 0 && (data as any).text) {
               textNodes.forEach(node => {
-                node.textContent = data.text;
+                node.textContent = (data as any).text;
               });
             }
             
             // Restaurar atributos originales
-            if (data.attributes) {
-              data.attributes.forEach((originalValue, attr) => {
+            if ((data as any).attributes) {
+              (data as any).attributes.forEach((originalValue: string, attr: string) => {
                 element.setAttribute(attr, originalValue);
               });
             }
