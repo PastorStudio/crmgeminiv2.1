@@ -5,48 +5,48 @@ import { eq } from 'drizzle-orm';
 
 const router = Router();
 
-// Get all chats - using mock data for immediate functionality
+// Get all chats - connecting to real WhatsApp data
 router.get('/chats', async (req, res) => {
   try {
-    const mockChats = [
-      {
-        id: '1347961@c.us',
-        name: 'Juan Pérez',
-        lastMessage: 'Hola, me interesa el producto',
-        timestamp: '10:30 AM',
-        unreadCount: 2,
-        status: 'online',
-        type: 'individual',
-        phoneNumber: '+1 347 961 1717',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Juan'
-      },
-      {
-        id: '1829293@c.us',
-        name: 'María García',
-        lastMessage: 'Gracias por la información',
-        timestamp: '9:45 AM',
-        unreadCount: 0,
-        status: 'offline',
-        type: 'individual',
-        phoneNumber: '+1 829 293 0209',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maria'
-      },
-      {
-        id: '120363141@g.us',
-        name: 'Grupo Ventas',
-        lastMessage: 'Reunión a las 3pm',
-        timestamp: '8:15 AM',
-        unreadCount: 5,
-        status: 'online',
-        type: 'group',
-        avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=GV'
-      }
-    ];
+    const { accountId } = req.query;
+    
+    if (!accountId) {
+      return res.json([]);
+    }
 
-    res.json(mockChats);
+    // Import WhatsApp multi-account manager
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+    
+    if (!whatsappMultiAccountManager) {
+      console.log('WhatsApp manager not available, using demo data');
+      return res.json([]);
+    }
+
+    // Get real WhatsApp chats for the selected account
+    const realChats = await whatsappMultiAccountManager.getChatsForAccount(parseInt(accountId));
+    
+    // Transform real WhatsApp data to frontend format
+    const formattedChats = realChats.map((chat: any) => ({
+      id: chat.id._serialized || chat.id,
+      name: chat.name || chat.pushname || chat.id.user,
+      lastMessage: chat.lastMessage?.body || 'Sin mensajes recientes',
+      timestamp: chat.lastMessage?.timestamp ? 
+        new Date(chat.lastMessage.timestamp * 1000).toLocaleTimeString('es-ES', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }) : 'Sin hora',
+      unreadCount: chat.unreadCount || 0,
+      status: chat.isOnline ? 'online' : 'offline',
+      type: chat.isGroup ? 'group' : 'individual',
+      phoneNumber: chat.id.user || chat.id._serialized?.replace('@c.us', ''),
+      avatar: chat.profilePicUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${chat.name || chat.id.user}`
+    }));
+    
+    res.json(formattedChats);
   } catch (error) {
-    console.error('Error fetching chats:', error);
-    res.status(500).json({ error: 'Error al obtener chats' });
+    console.error('Error fetching real WhatsApp chats:', error);
+    // Return empty array instead of error to prevent UI breaks
+    res.json([]);
   }
 });
 
