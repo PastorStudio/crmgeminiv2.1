@@ -323,6 +323,53 @@ router.get('/:id/status', async (req, res) => {
   }
 });
 
+// Obtener código QR de una cuenta
+router.get('/:id/qrcode', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+
+    // Obtener cuenta de la base de datos
+    const account = await storage.getWhatsappAccount(id);
+    if (!account) {
+      return res.status(404).json({ error: 'Cuenta no encontrada' });
+    }
+
+    // Obtener código QR del administrador de múltiples cuentas
+    const qrData = await whatsappMultiAccountManager.getQRWithImage(id);
+    
+    if (!qrData) {
+      // Intentar inicializar la cuenta si no tiene QR
+      await whatsappMultiAccountManager.initializeAccount(id);
+      const newQrData = await whatsappMultiAccountManager.getQRWithImage(id);
+      
+      if (!newQrData) {
+        return res.status(202).json({ 
+          message: 'Generando código QR, inténtelo de nuevo en unos segundos' 
+        });
+      }
+      
+      return res.json({
+        success: true,
+        qrcode: newQrData.qrcode,
+        qrDataUrl: newQrData.qrDataUrl
+      });
+    }
+
+    res.json({
+      success: true,
+      qrcode: qrData.qrcode,
+      qrDataUrl: qrData.qrDataUrl
+    });
+
+  } catch (error) {
+    console.error('Error al obtener código QR:', error);
+    res.status(500).json({ error: 'Error al obtener código QR' });
+  }
+});
+
 // Desconectar una cuenta
 router.post('/:id/disconnect', async (req, res) => {
   try {
