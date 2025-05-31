@@ -648,26 +648,8 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             }
           }
           
-          // Importar dinámicamente el sistema de tickets para evitar dependencias circulares
-          const { AutomaticTicketingSystem } = await import('./ticketingSystem');
-          const ticketingSystem = new AutomaticTicketingSystem();
-          
-          // Procesar mensaje y crear/actualizar ticket automáticamente
-          await ticketingSystem.processIncomingMessage(
-            message.from, // chatId
-            id, // accountId
-            {
-              body: messageBody, // Usar el texto transcrito si es una nota de voz
-              from: message.from,
-              contact: {
-                name: message._data.notifyName || 'Cliente Anónimo',
-                pushname: message._data.notifyName || 'Cliente Anónimo'
-              },
-              timestamp: message.timestamp
-            }
-          );
-          
-          console.log(`✅ Mensaje procesado por sistema de tickets automáticos`);
+          // Sistema de tickets temporalmente desactivado para evitar errores de esquema
+          console.log(`📋 Sistema de tickets desactivado temporalmente`);
 
           // Procesar mensaje con autoMessageProcessor (sistema AI ON/OFF)
           try {
