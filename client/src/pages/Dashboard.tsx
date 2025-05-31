@@ -194,7 +194,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 {greeting.icon}
-                <p className="text-sm">
+                <p className="text-sm" data-no-translate="true">
                   {greeting.text}, {user?.fullName || user?.username || 'Usuario'}! - Bienvenido de vuelta al sistema de gestión WhatsApp
                 </p>
               </div>
