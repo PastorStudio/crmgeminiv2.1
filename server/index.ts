@@ -1711,6 +1711,41 @@ app.use((req, res, next) => {
     });
   });
   
+  // Activar servicio de respuestas automáticas
+  app.post('/api/external-agents/activate-auto-response/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      
+      if (!accountId) {
+        return res.status(400).json({
+          success: false,
+          error: 'accountId es requerido'
+        });
+      }
+
+      const { EnhancedAutoResponseService } = await import('./services/enhancedAutoResponseService');
+      const result = await EnhancedAutoResponseService.activateAutoResponse(accountId);
+      
+      if (result) {
+        res.json({
+          success: true,
+          message: `Respuestas automáticas activadas para cuenta ${accountId}`
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Error activando respuestas automáticas'
+        });
+      }
+    } catch (error) {
+      console.error('Error en activateAutoResponse:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+
   // Habilitar respuesta automática con manejo robusto
   app.post('/api/external-agents/enable-auto-response', async (req: Request, res: Response) => {
     try {

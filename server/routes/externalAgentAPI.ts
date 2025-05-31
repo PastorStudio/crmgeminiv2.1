@@ -197,6 +197,43 @@ export async function getIntegratorStats(req: Request, res: Response) {
 }
 
 /**
+ * Activar respuestas automáticas para una cuenta
+ */
+export async function activateAutoResponse(req: Request, res: Response) {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    
+    if (!accountId) {
+      return res.status(400).json({
+        success: false,
+        error: 'accountId es requerido'
+      });
+    }
+
+    const { EnhancedAutoResponseService } = await import('../services/enhancedAutoResponseService');
+    const result = await EnhancedAutoResponseService.activateAutoResponse(accountId);
+    
+    if (result) {
+      res.json({
+        success: true,
+        message: `Respuestas automáticas activadas para cuenta ${accountId}`
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: 'Error activando respuestas automáticas'
+      });
+    }
+  } catch (error) {
+    console.error('Error en activateAutoResponse:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor'
+    });
+  }
+}
+
+/**
  * Probar agente externo con un mensaje de prueba
  */
 export async function testExternalAgent(req: Request, res: Response) {
