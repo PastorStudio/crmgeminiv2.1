@@ -5486,7 +5486,7 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
     }
   });
 
-  // Endpoint para traducción masiva de múltiples textos a múltiples idiomas
+  // Endpoint para traducción masiva de múltiples textos a múltiples idiomas usando DeepSeek
   app.post("/api/translate/bulk", async (req: Request, res: Response) => {
     try {
       const { texts, targetLanguages } = req.body;
@@ -5495,12 +5495,14 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
         return res.status(400).json({ message: "Texts and target languages arrays are required" });
       }
 
-      if (!process.env.GOOGLE_TRANSLATE_API_KEY) {
-        return res.status(400).json({ message: "Google Translate API key not configured" });
-      }
+      console.log(`🚀 Iniciando traducción masiva con DeepSeek para ${texts.length} textos`);
+      
+      // Ejecutar traducción masiva en background
+      TranslationCacheService.bulkTranslateAndStore(texts, targetLanguages).catch(error => {
+        console.error("Error en traducción masiva:", error);
+      });
 
-      await TranslationCacheService.bulkTranslateAndStore(texts, targetLanguages);
-      res.json({ message: `Bulk translation completed for ${texts.length} texts in ${targetLanguages.length} languages` });
+      res.json({ message: `Bulk translation started for ${texts.length} texts in ${targetLanguages.length} languages using DeepSeek` });
     } catch (error) {
       console.error("Bulk translation error:", error);
       res.status(500).json({ message: "Bulk translation failed" });
