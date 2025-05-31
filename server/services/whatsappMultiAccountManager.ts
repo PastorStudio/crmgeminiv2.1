@@ -691,6 +691,29 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           } catch (error) {
             console.error(`❌ Error procesando mensaje con autoMessageProcessor:`, error);
           }
+
+          // Procesar mensaje con el integrador de agentes externos
+          try {
+            console.log(`🤖 INICIANDO PROCESAMIENTO CON AGENTES EXTERNOS para cuenta ${id}`);
+            
+            const { externalAgentIntegrator } = await import('./externalAgentIntegrator');
+            
+            // Procesar mensaje para respuesta automática con agente externo
+            const processed = await externalAgentIntegrator.processIncomingMessage(
+              id, // accountId
+              message.from, // chatId
+              messageBody, // message
+              message.from.replace('@c.us', '') // fromNumber
+            );
+
+            if (processed) {
+              console.log(`✅ Mensaje procesado por agente externo para cuenta ${id}`);
+            } else {
+              console.log(`⏭️ No se procesó mensaje con agente externo para cuenta ${id}`);
+            }
+          } catch (error) {
+            console.error(`❌ Error procesando mensaje con agente externo:`, error);
+          }
         }
       } catch (error) {
         console.error(`❌ Error procesando mensaje para tickets automáticos:`, error);
