@@ -2512,9 +2512,10 @@ export function WhatsAppTwoColumn() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="flex justify-end pl-[-94px] pr-[-94px] ml-[59px] mr-[59px] mt-[-5px] mb-[-5px]"
+                        className={`flex mb-2 ${message.fromMe ? 'justify-end' : 'justify-start'}`}
+                        style={{ marginLeft: '5px', marginRight: '5px' }}
                       >
-                        <div className={`flex space-x-2 ${message.fromMe ? 'max-w-[55%] flex-row-reverse space-x-reverse mr-2' : 'max-w-[75%]'}`}>
+                        <div className={`flex space-x-2 ${message.fromMe ? 'max-w-[75%] flex-row-reverse space-x-reverse' : 'max-w-[75%]'}`}>
                           {showAvatar && isFirstFromAuthor && (
                             <Avatar className="h-8 w-8 mt-1">
                               <AvatarImage src={message.authorProfilePic} />
@@ -2540,8 +2541,8 @@ export function WhatsAppTwoColumn() {
                               <div
                                 className={`px-4 py-2 rounded-2xl ${
                                   message.fromMe
-                                    ? 'bg-blue-100 text-black rounded-br-md'
-                                    : 'bg-green-100 text-black rounded-bl-md'
+                                    ? 'bg-blue-500 text-white rounded-br-md'
+                                    : 'bg-green-500 text-white rounded-bl-md'
                                 }`}
                               >
                                 {/* Mensajes de audio/nota de voz con transcripción */}
