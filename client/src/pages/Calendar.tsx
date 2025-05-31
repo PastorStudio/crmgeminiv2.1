@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -39,6 +40,7 @@ import { Activity, Lead } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useGemini } from "@/hooks/useGemini";
+import { Video, Phone, Mail, ClipboardList, Calendar as CalendarIcon, Plus, CheckCircle, User } from "lucide-react";
 import type { CalendarProps } from "@/components/ui/calendar";
 
 // Activity form schema
@@ -208,19 +210,19 @@ export default function Calendar() {
     }
   };
 
-  // Get the icon for an activity type
+  // Get the icon component for an activity type
   const getActivityTypeIcon = (type: string) => {
     switch (type) {
       case "meeting":
-        return "videocam";
+        return <Video className="h-4 w-4" />;
       case "call":
-        return "call";
+        return <Phone className="h-4 w-4" />;
       case "email":
-        return "email";
+        return <Mail className="h-4 w-4" />;
       case "task":
-        return "assignment";
+        return <ClipboardList className="h-4 w-4" />;
       default:
-        return "event";
+        return <CalendarIcon className="h-4 w-4" />;
     }
   };
 
@@ -244,10 +246,11 @@ export default function Calendar() {
   };
 
   return (
-    <div className="p-6">
-      <Helmet>
-        <title>Calendar | GeminiCRM</title>
-        <meta name="description" content="Schedule and manage meetings, calls, and other activities with your leads" />
+    <TooltipProvider>
+      <div className="p-6">
+        <Helmet>
+          <title>Calendar | GeminiCRM</title>
+          <meta name="description" content="Schedule and manage meetings, calls, and other activities with your leads" />
       </Helmet>
 
       <div className="mb-6 flex justify-between items-baseline">
@@ -394,7 +397,14 @@ export default function Calendar() {
                 </div>
               ) : activitiesForSelectedDate?.length === 0 ? (
                 <div className="text-center py-10 text-gray-500">
-                  <span className="material-icons text-4xl mb-2 text-gray-300">event_busy</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CalendarIcon className="h-16 w-16 mb-2 text-gray-300 mx-auto" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>No hay actividades programadas</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <p className="font-medium">Sin actividades</p>
                   <p className="text-sm">No hay nada programado para este día</p>
                   <Button 
@@ -403,7 +413,14 @@ export default function Calendar() {
                     onClick={() => openActivityModal()}
                     className="mt-3 text-primary-600 hover:text-primary-700"
                   >
-                    <span className="material-icons text-sm mr-1">add_circle</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Plus className="h-4 w-4 mr-1" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Crear nueva actividad</p>
+                      </TooltipContent>
+                    </Tooltip>
                     Programar actividad
                   </Button>
                 </div>
@@ -417,7 +434,14 @@ export default function Calendar() {
                     >
                       <div className="flex items-center mb-2">
                         <div className={`rounded-full p-2 mr-3 ${getActivityTypeColor(activity.type)}`}>
-                          <span className="material-icons text-sm">{getActivityTypeIcon(activity.type)}</span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>{getActivityTypeIcon(activity.type)}</div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Tipo: {activity.type}</p>
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
                         <div className="flex-1">
                           <h4 className="font-medium text-gray-900">{activity.title}</h4>
@@ -426,7 +450,14 @@ export default function Calendar() {
                           </p>
                         </div>
                         {activity.completed && (
-                          <span className="material-icons text-green-500">check_circle</span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <CheckCircle className="h-5 w-5 text-green-500" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Actividad completada</p>
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                       </div>
                       {activity.description && (
@@ -434,8 +465,15 @@ export default function Calendar() {
                       )}
                       {activity.leadId && leads && (
                         <div className="ml-11 flex items-center text-sm text-gray-500">
-                          <span className="material-icons text-sm mr-1">person</span>
-                          {leads.find(lead => lead.id === activity.leadId)?.fullName || `Lead #${activity.leadId}`}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <User className="h-4 w-4 mr-1" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Lead asociado</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          {leads.find(lead => lead.id === activity.leadId)?.name || `Lead #${activity.leadId}`}
                         </div>
                       )}
                     </div>
@@ -709,6 +747,7 @@ export default function Calendar() {
           </Form>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
