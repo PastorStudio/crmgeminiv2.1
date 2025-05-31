@@ -68,12 +68,23 @@ export function AutoResponseConfig({ accountId, accountName }: AutoResponseConfi
 
   // Mutation para habilitar respuesta automática
   const enableMutation = useMutation({
-    mutationFn: (data: { accountId: number; agentId: string; delay: number }) =>
-      apiRequest('/api/external-agents/enable-auto-response', {
-        method: 'POST',
-        body: JSON.stringify(data)
-      }),
-    onSuccess: () => {
+    mutationFn: async (data: { accountId: number; agentId: string; delay: number }) => {
+      console.log('🔄 Habilitando respuesta automática:', data);
+      try {
+        const response = await apiRequest('/api/external-agents/enable-auto-response', {
+          method: 'POST',
+          body: data
+        });
+        console.log('✅ Respuesta del servidor:', response);
+        return response;
+      } catch (error) {
+        console.error('❌ Error en enableMutation:', error);
+        throw error;
+      }
+    },
+    onSuccess: (data) => {
+      console.log('✅ Respuesta automática habilitada exitosamente:', data);
+      setConfig(prev => ({ ...prev, autoResponseEnabled: true }));
       queryClient.invalidateQueries({ queryKey: [`/api/external-agents/auto-response-config/${accountId}`] });
       toast({
         title: 'Respuesta automática habilitada',
@@ -81,8 +92,9 @@ export function AutoResponseConfig({ accountId, accountName }: AutoResponseConfi
       });
     },
     onError: (error: any) => {
+      console.error('❌ Error al habilitar respuesta automática:', error);
       toast({
-        title: 'Error',
+        title: 'Error al habilitar',
         description: error.message || 'Error habilitando respuesta automática',
         variant: 'destructive'
       });

@@ -11,15 +11,19 @@ import { externalAgentIntegrator } from '../services/externalAgentIntegrator';
  */
 export async function enableAutoResponse(req: Request, res: Response) {
   try {
+    console.log('🔄 Solicitud para habilitar respuesta automática:', req.body);
     const { accountId, agentId, delay = 3 } = req.body;
 
     if (!accountId || !agentId) {
+      console.error('❌ Faltan parámetros requeridos:', { accountId, agentId });
       return res.status(400).json({
         success: false,
         error: 'accountId y agentId son requeridos'
       });
     }
 
+    console.log('🔧 Habilitando respuesta automática para:', { accountId, agentId, delay });
+    
     const success = externalAgentIntegrator.enableAutoResponse(
       parseInt(accountId),
       agentId,
@@ -27,21 +31,29 @@ export async function enableAutoResponse(req: Request, res: Response) {
     );
 
     if (success) {
+      console.log('✅ Respuesta automática habilitada exitosamente');
       res.json({
         success: true,
-        message: 'Respuesta automática habilitada correctamente'
+        message: 'Respuesta automática habilitada correctamente',
+        config: {
+          accountId: parseInt(accountId),
+          agentId,
+          delay: parseInt(delay),
+          enabled: true
+        }
       });
     } else {
+      console.error('❌ Error habilitando respuesta automática - integrador devolvió false');
       res.status(400).json({
         success: false,
-        error: 'Error habilitando respuesta automática'
+        error: 'Error habilitando respuesta automática - verificar agente o cuenta'
       });
     }
   } catch (error) {
-    console.error('Error en enableAutoResponse:', error);
+    console.error('❌ Error en enableAutoResponse:', error);
     res.status(500).json({
       success: false,
-      error: 'Error interno del servidor'
+      error: 'Error interno del servidor: ' + (error as Error).message
     });
   }
 }
