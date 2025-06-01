@@ -17,7 +17,7 @@ import {
   type InsertDashboardStats
 } from "@shared/schema";
 import { db } from './db';
-import { eq, desc, or } from 'drizzle-orm';
+import { eq, desc, or, sql } from 'drizzle-orm';
 
 // Interface for storage methods
 export interface IStorage {
@@ -161,54 +161,48 @@ export class DatabaseStorage implements IStorage {
     if (existingAccounts.length === 0) {
       // No hay cuentas, usar ID 1
       nextAvailableId = 1;
+      console.log(`🔍 Primera cuenta - asignando ID: ${nextAvailableId}`);
     } else {
-      // Buscar el primer hueco en la secuencia
+      // Buscar el primer ID disponible comenzando desde 1
       const usedIds = existingAccounts.map(acc => acc.id).sort((a, b) => a - b);
+      nextAvailableId = 1;
       
-      for (let i = 0; i < usedIds.length; i++) {
-        if (usedIds[i] !== i + 1) {
-          nextAvailableId = i + 1;
+      // Buscar el primer hueco en la secuencia
+      for (let candidateId = 1; candidateId <= usedIds.length + 1; candidateId++) {
+        if (!usedIds.includes(candidateId)) {
+          nextAvailableId = candidateId;
           break;
         }
-      }
-      
-      // Si no hay huecos, usar el siguiente número después del último
-      if (nextAvailableId === 1 && usedIds.length > 0) {
-        nextAvailableId = usedIds[usedIds.length - 1] + 1;
       }
       
       console.log(`🔍 Buscando ID disponible: IDs existentes [${usedIds.join(', ')}], asignando ID: ${nextAvailableId}`);
     }
     
-    // Usar INSERT directo con ON CONFLICT para manejar el ID específico
+    // Usar inserción directa con Drizzle especificando el ID
     try {
-      const [newAccount] = await db.execute(`
-        INSERT INTO whatsapp_accounts (id, name, description, status, phone, auto_response_enabled, assigned_external_agent_id, response_delay, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING *
-      `, [
-        nextAvailableId,
-        account.name,
-        account.description || null,
-        account.status || 'disconnected',
-        account.phone || null,
-        account.autoResponseEnabled || false,
-        account.assignedExternalAgentId || null,
-        account.responseDelay || 3,
-        new Date(),
-        new Date()
-      ]);
+      const [newAccount] = await db.insert(whatsappAccounts).values({
+        id: nextAvailableId,
+        name: account.name,
+        description: account.description || null,
+        status: account.status || 'disconnected',
+        phone: account.phone || null,
+        autoResponseEnabled: account.autoResponseEnabled || false,
+        assignedExternalAgentId: account.assignedExternalAgentId || null,
+        responseDelay: account.responseDelay || 3,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }).returning();
       
       console.log(`✅ Cuenta de WhatsApp creada con ID reutilizado: ${nextAvailableId}`);
       
       // Actualizar la secuencia para evitar conflictos futuros
       const maxId = Math.max(nextAvailableId, ...existingAccounts.map(acc => acc.id));
-      await db.execute(`SELECT setval('whatsapp_accounts_id_seq', $1, true)`, [maxId]);
+      await db.execute(sql`SELECT setval('whatsapp_accounts_id_seq', ${maxId}, true)`);
       
-      return newAccount.rows[0];
+      return newAccount;
     } catch (error) {
       console.error('❌ Error creando cuenta con ID específico:', error);
-      // Fallback: usar inserción normal
+      // Fallback: usar inserción normal sin ID específico
       const [newAccount] = await db
         .insert(whatsappAccounts)
         .values(account)
