@@ -100,6 +100,10 @@ export class EnhancedAutoResponseService {
    * Procesa un mensaje entrante y genera respuesta automática
    */
   private static async processIncomingMessage(accountId: number, message: any) {
+    console.log('❌ SISTEMA DE RESPUESTAS GENÉRICAS DESACTIVADO PERMANENTEMENTE');
+    console.log('❌ Usar únicamente agentes externos reales con OpenAI');
+    return;
+    
     try {
       // Solo procesar mensajes de clientes (no propios)
       if (message.fromMe) return;

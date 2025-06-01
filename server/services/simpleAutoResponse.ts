@@ -15,6 +15,10 @@ export class SimpleAutoResponseService {
     messageBody: string,
     whatsappClient: any
   ): Promise<boolean> {
+    console.log('❌ SISTEMA DE RESPUESTAS SIMPLES DESACTIVADO PERMANENTEMENTE');
+    console.log('❌ Usar únicamente agentes externos reales con OpenAI');
+    return false;
+    
     try {
       console.log(`🔍 Verificando configuración de respuesta automática para cuenta ${accountId}`);
       

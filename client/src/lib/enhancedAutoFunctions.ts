@@ -301,6 +301,10 @@ function autoSendFromInput(): boolean {
 
 // Monitor continuo del input para detectar contenido generado por agentes
 function startInputMonitoring() {
+  console.log('❌ MONITOREO DE INPUT DESACTIVADO PERMANENTEMENTE');
+  console.log('❌ Usar únicamente agentes externos reales con OpenAI');
+  return;
+  
   if (inputMonitorInterval) {
     clearInterval(inputMonitorInterval);
   }
