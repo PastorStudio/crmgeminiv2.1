@@ -91,6 +91,7 @@ app.get('/api/settings/gemini-key-status', async (req: Request, res: Response) =
     const hasKey = !!process.env.GEMINI_API_KEY;
     res.json({ hasKey, provider: 'gemini' });
   } catch (error) {
+    console.error('Gemini key status error:', error);
     res.status(500).json({ error: 'Failed to check Gemini key status' });
   }
 });
@@ -100,7 +101,35 @@ app.get('/api/settings/openai-key-status', async (req: Request, res: Response) =
     const hasKey = !!process.env.OPENAI_API_KEY;
     res.json({ hasKey, provider: 'openai' });
   } catch (error) {
+    console.error('OpenAI key status error:', error);
     res.status(500).json({ error: 'Failed to check OpenAI key status' });
+  }
+});
+
+// Missing endpoints that the frontend is trying to access
+app.get('/api/dashboard-stats', async (req: Request, res: Response) => {
+  try {
+    res.json({
+      totalLeads: 0,
+      activeChats: 0,
+      responseTime: '0m',
+      satisfaction: 0
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get dashboard stats' });
+  }
+});
+
+app.get('/api/direct/whatsapp/status', async (req: Request, res: Response) => {
+  try {
+    res.json({
+      authenticated: false,
+      qrCode: null,
+      status: 'disconnected',
+      message: 'Clean system - WhatsApp integration disabled'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get WhatsApp status' });
   }
 });
 
