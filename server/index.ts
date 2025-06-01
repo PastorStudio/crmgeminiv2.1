@@ -3224,21 +3224,26 @@ app.use((req, res, next) => {
   app.get("/api/whatsapp-accounts/:accountId/agent-config", async (req: Request, res: Response) => {
     try {
       const accountId = parseInt(req.params.accountId);
-      const { storage } = await import('./storage');
       
-      // Obtener la configuración del agente para esta cuenta
-      const account = await storage.getWhatsappAccount(accountId);
-      if (!account) {
-        return res.status(404).json({ error: 'Cuenta no encontrada' });
+      // Usar el nuevo sistema de persistencia
+      const { WhatsAppAccountConfigManager } = await import('./externalAgentsSimple');
+      const config = await WhatsAppAccountConfigManager.getAccountConfig(accountId);
+      
+      if (!config) {
+        return res.json({
+          success: true,
+          config: {
+            accountId,
+            assignedExternalAgentId: null,
+            autoResponseEnabled: false,
+            responseDelay: 3
+          }
+        });
       }
       
       res.json({
         success: true,
-        config: {
-          assignedExternalAgentId: account.assignedExternalAgentId,
-          autoResponseEnabled: account.autoResponseEnabled || false,
-          responseDelay: account.responseDelay || 3
-        }
+        config
       });
     } catch (error) {
       console.error('Error obteniendo configuración de agente:', error);
@@ -3251,25 +3256,23 @@ app.use((req, res, next) => {
     try {
       const accountId = parseInt(req.params.accountId);
       const { externalAgentId, autoResponseEnabled } = req.body;
-      const { storage } = await import('./storage');
       
       console.log(`🔄 Asignando agente externo ${externalAgentId} a cuenta ${accountId}`);
       
-      const updatedAccount = await storage.updateWhatsappAccount(accountId, {
-        assignedExternalAgentId: externalAgentId,
-        autoResponseEnabled: autoResponseEnabled || false
-      });
-      
-      if (!updatedAccount) {
-        return res.status(404).json({ error: 'Cuenta no encontrada' });
-      }
+      // Usar el nuevo sistema de persistencia
+      const { WhatsAppAccountConfigManager } = await import('./externalAgentsSimple');
+      const config = await WhatsAppAccountConfigManager.assignAgent(
+        accountId, 
+        externalAgentId, 
+        autoResponseEnabled || false
+      );
       
       console.log(`✅ Agente externo asignado exitosamente a cuenta ${accountId}`);
       
       res.json({
         success: true,
-        message: 'Agente externo asignado exitosamente',
-        account: updatedAccount
+        config,
+        message: 'Configuración guardada exitosamente'
       });
     } catch (error) {
       console.error('Error asignando agente externo:', error);

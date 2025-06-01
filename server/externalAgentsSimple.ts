@@ -155,7 +155,7 @@ export interface WhatsAppAccountConfig {
 export class WhatsAppAccountConfigManager {
   
   // Asignar agente a cuenta
-  static assignAgent(accountId: number, externalAgentId: string | null, autoResponseEnabled: boolean = false): WhatsAppAccountConfig {
+  static async assignAgent(accountId: number, externalAgentId: string | null, autoResponseEnabled: boolean = false): Promise<WhatsAppAccountConfig> {
     const config: WhatsAppAccountConfig = {
       accountId,
       assignedExternalAgentId: externalAgentId,
@@ -163,15 +163,64 @@ export class WhatsAppAccountConfigManager {
       responseDelay: 3
     };
 
+    // Guardar en memoria
     whatsappAccountConfigs.set(accountId, config);
-    console.log(`✅ Configuración guardada para cuenta ${accountId}: Agente ${externalAgentId}, Auto: ${autoResponseEnabled}`);
     
+    // También guardar en base de datos
+    try {
+      const { db } = await import('./db');
+      const { whatsappAccounts } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      await db.update(whatsappAccounts)
+        .set({
+          assignedExternalAgentId: externalAgentId,
+          autoResponseEnabled: autoResponseEnabled,
+          responseDelay: 3
+        })
+        .where(eq(whatsappAccounts.id, accountId));
+      
+      console.log(`✅ Configuración guardada en BD para cuenta ${accountId}: Agente ${externalAgentId}, Auto: ${autoResponseEnabled}`);
+    } catch (error) {
+      console.error('❌ Error guardando en BD:', error);
+    }
+    
+    console.log(`✅ Configuración guardada para cuenta ${accountId}: Agente ${externalAgentId}, Auto: ${autoResponseEnabled}`);
     return config;
   }
 
   // Obtener configuración de cuenta
-  static getAccountConfig(accountId: number): WhatsAppAccountConfig | null {
-    return whatsappAccountConfigs.get(accountId) || null;
+  static async getAccountConfig(accountId: number): Promise<WhatsAppAccountConfig | null> {
+    // Primero intentar obtener de memoria
+    let config = whatsappAccountConfigs.get(accountId);
+    
+    if (!config) {
+      // Si no está en memoria, cargar desde base de datos
+      try {
+        const { db } = await import('./db');
+        const { whatsappAccounts } = await import('@shared/schema');
+        const { eq } = await import('drizzle-orm');
+        
+        const [account] = await db.select().from(whatsappAccounts).where(eq(whatsappAccounts.id, accountId));
+        
+        if (account && account.assignedExternalAgentId) {
+          config = {
+            accountId,
+            assignedExternalAgentId: account.assignedExternalAgentId,
+            autoResponseEnabled: account.autoResponseEnabled || false,
+            responseDelay: account.responseDelay || 3
+          };
+          
+          // Guardar en memoria para próximas consultas
+          whatsappAccountConfigs.set(accountId, config);
+          console.log(`✅ Configuración cargada desde BD para cuenta ${accountId}: Agente ${config.assignedExternalAgentId}`);
+        }
+      } catch (error) {
+        console.error('❌ Error cargando desde BD:', error);
+      }
+    }
+    
+    return config || null;
   }
 
   // Listar todas las configuraciones
