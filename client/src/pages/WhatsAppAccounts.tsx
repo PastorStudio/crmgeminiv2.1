@@ -1095,14 +1095,22 @@ const WhatsAppAccounts = () => {
                   
                   {/* Contenido de la pestaña Código QR */}
                   <TabsContent value="qrcode" className="mt-4">
-                    {qrData?.qrcode ? (
+                    {qrData?.qrCode ? (
                       <div className="flex flex-col items-center">
                         <div className="bg-white p-4 rounded-lg mb-4">
                           <div 
                             id="qrcode-display"
                             className="qr-container w-64 h-64 flex items-center justify-center"
                           >
-                            <QRCodeDisplay qrData={qrData.qrcode} />
+                            <img 
+                              src={qrData.qrCode} 
+                              alt="Código QR para conectar WhatsApp" 
+                              className="w-64 h-64"
+                              onError={(e) => {
+                                console.error('Error cargando imagen QR:', e);
+                                handleRefreshQR();
+                              }}
+                            />
                           </div>
                         </div>
                         <p className="text-center text-sm text-muted-foreground mb-4">
