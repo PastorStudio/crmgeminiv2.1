@@ -1715,110 +1715,9 @@ export function WhatsAppTwoColumn() {
           // Reordenar chats para mostrar este chat al principio
           handleNewMessageReceived(selectedChat.id);
           
-          // Generar y enviar respuesta automática para el mensaje entrante
+          // Procesar automáticamente con agente externo (similar al botón A.E)
           setTimeout(async () => {
-            try {
-              console.log('🤖 Generando respuesta automática directa con OpenAI...');
-              
-              // Importar las funciones directas
-              const { generateExternalAgentResponse } = await import('@/lib/directAutoResponse');
-              
-              // Generar respuesta automática usando agente externo REAL
-              // Necesitamos obtener el ID del agente externo asignado
-              const configResponse = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/agent-config`);
-              const configData = await configResponse.json();
-              
-              // Usar la lógica exacta del "Probar Agente Intermediario" que ya funciona
-              console.log('🔥 USANDO SISTEMA REAL DE AGENTE EXTERNO...');
-              
-              // Obtener el agente asignado a esta cuenta
-              const accountConfigResponse = await fetch(`/api/whatsapp-accounts/1/agent-config`);
-              const accountConfig = await accountConfigResponse.json();
-              
-              if (!accountConfig.success || !accountConfig.config?.assignedExternalAgentId) {
-                console.log('❌ No hay agente externo asignado');
-                return;
-              }
-              
-              const agentId = accountConfig.config.assignedExternalAgentId;
-              
-              // Obtener información del agente
-              const agentsResponse = await fetch('/api/external-agents');
-              const agentsData = await agentsResponse.json();
-              
-              if (!agentsData.success) {
-                console.log('❌ Error obteniendo agentes externos');
-                return;
-              }
-              
-              const agent = agentsData.agents.find((a: any) => a.id === agentId);
-              if (!agent) {
-                console.log('❌ Agente no encontrado');
-                return;
-              }
-              
-              console.log(`🤖 Conectando con ${agent.name}...`);
-              
-              // Usar OpenAI directamente (igual que el botón "Probar Agente Intermediario")
-              const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
-                },
-                body: JSON.stringify({
-                  model: 'gpt-4o',
-                  messages: [
-                    {
-                      role: 'system',
-                      content: `Eres ${agent.name}, un asistente virtual inteligente y profesional especializado en atención al cliente.`
-                    },
-                    {
-                      role: 'user',
-                      content: lastIncomingMessage.body
-                    }
-                  ],
-                  max_tokens: 500,
-                  temperature: 0.7
-                })
-              });
-              
-              if (!openaiResponse.ok) {
-                const errorData = await openaiResponse.json();
-                console.log('❌ Error de OpenAI:', errorData.error?.message);
-                return;
-              }
-              
-              const openaiData = await openaiResponse.json();
-              const aiResponse = openaiData.choices[0]?.message?.content;
-              
-              if (!aiResponse) {
-                console.log('❌ No se pudo generar respuesta');
-                return;
-              }
-              
-              console.log('✅ RESPUESTA GENERADA CON OPENAI:', aiResponse.substring(0, 50) + '...');
-              
-              let autoResponse = aiResponse;
-                
-              // Si la traducción está habilitada, traducir la respuesta
-              if (translationEnabled && selectedLanguage !== 'es') {
-                console.log(`🌐 Traduciendo respuesta automática al ${selectedLanguage}...`);
-                autoResponse = await translateMessage(autoResponse, selectedLanguage);
-              }
-              
-              console.log('📤 Enviando respuesta automática:', autoResponse);
-              await sendAutoMessage(autoResponse);
-              
-              // Notificación indicando si fue traducida
-              toast({
-                title: "🤖 Respuesta automática enviada",
-                description: translationEnabled ? `Traducida al ${selectedLanguage.toUpperCase()}` : "Agente respondió automáticamente al último mensaje recibido",
-                duration: 3000
-              });
-            } catch (error) {
-              console.error('❌ Error en respuesta automática:', error);
-            }
+            await processWithExternalAgent(lastIncomingMessage);
           }, 2000);
           
           setLastProcessedMessageId(lastIncomingMessage.id);
@@ -1834,6 +1733,154 @@ export function WhatsAppTwoColumn() {
 
     setLastMessageCount(currentCount);
   }, [messages, smartBotsEnabled, selectedChat, lastMessageCount, lastProcessedMessageId]);
+
+  // Función para procesar automáticamente con agente externo (A.E automático)
+  const processWithExternalAgent = async (message: WhatsAppMessage) => {
+    try {
+      console.log('🤖 PROCESAMIENTO AUTOMÁTICO A.E - Mensaje recibido:', message.body);
+      
+      // Obtener agente asignado
+      const response = await fetch(`/api/whatsapp-accounts/${selectedChat?.accountId}/agent-config`);
+      if (!response.ok) {
+        console.log('❌ Error obteniendo configuración del agente');
+        return;
+      }
+
+      const config = await response.json();
+      if (!config.success || !config.config?.assignedExternalAgentId) {
+        console.log('❌ No hay agente externo asignado');
+        return;
+      }
+
+      const agentId = config.config.assignedExternalAgentId;
+      
+      // Obtener información del agente
+      const agentsResponse = await fetch('/api/external-agents');
+      const agentsData = await agentsResponse.json();
+      
+      if (!agentsData.success) {
+        console.log('❌ Error obteniendo agentes externos');
+        return;
+      }
+      
+      const agent = agentsData.agents.find((a: any) => a.id === agentId);
+      if (!agent) {
+        console.log('❌ Agente no encontrado');
+        return;
+      }
+
+      console.log(`🤖 GENERANDO RESPUESTA AUTOMÁTICA CON ${agent.name.toUpperCase()}...`);
+
+      let messageText = message.body;
+
+      // Detectar idioma y traducir si es necesario
+      const hasEnglishWords = /\b(hello|hi|how|are|you|what|where|when|why|please|thank|thanks|good|morning|afternoon|evening|night|yes|no|ok|okay|can|do|help|need|want|time|day|work|problem|issue|question|answer|service|customer|support|business|company|price|cost|buy|sell|pay|money|dollar|email|phone|call|message|text|send|receive|order|product|delivery|shipping|return|refund|cancel|confirm|appointment|meeting|schedule|available|busy|sorry|excuse|understand|know|think|believe|sure|maybe|probably|definitely|absolutely|exactly|correct|wrong|right|left|up|down|inside|outside)/i.test(messageText);
+      
+      if (hasEnglishWords) {
+        console.log('🌐 DETECTADO MENSAJE EN INGLÉS - Traduciendo automáticamente...');
+        
+        try {
+          const translationResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'Traduce el siguiente texto al español de manera natural y conversacional. Responde únicamente con la traducción, sin explicaciones adicionales.'
+                },
+                {
+                  role: 'user',
+                  content: messageText
+                }
+              ],
+              max_tokens: 200,
+              temperature: 0.3
+            })
+          });
+
+          if (translationResponse.ok) {
+            const translationData = await translationResponse.json();
+            const translatedText = translationData.choices[0]?.message?.content;
+            if (translatedText) {
+              messageText = translatedText;
+              console.log('✅ TEXTO TRADUCIDO AUTOMÁTICAMENTE:', messageText);
+            }
+          }
+        } catch (error) {
+          console.log('⚠️ Error en traducción automática, usando texto original');
+        }
+      }
+
+      // Generar respuesta con OpenAI usando el agente externo
+      console.log('🔥 GENERANDO RESPUESTA CON OPENAI...');
+      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: `Eres ${agent.name}, un asistente virtual inteligente y profesional especializado en atención al cliente. Responde de manera amigable, útil y profesional en español.`
+            },
+            {
+              role: 'user',
+              content: messageText
+            }
+          ],
+          max_tokens: 500,
+          temperature: 0.7
+        })
+      });
+
+      if (!openaiResponse.ok) {
+        const errorData = await openaiResponse.json();
+        console.log('❌ Error de OpenAI:', errorData.error?.message);
+        toast({
+          title: "❌ Error",
+          description: "No se pudo generar respuesta del agente externo automáticamente",
+          duration: 3000
+        });
+        return;
+      }
+
+      const openaiData = await openaiResponse.json();
+      const aiResponse = openaiData.choices[0]?.message?.content;
+
+      if (!aiResponse) {
+        console.log('❌ No se pudo generar respuesta automática');
+        return;
+      }
+
+      console.log('✅ RESPUESTA AUTOMÁTICA GENERADA:', aiResponse.substring(0, 50) + '...');
+
+      // *** CLAVE: Colocar la respuesta en el input automáticamente (no enviar) ***
+      console.log('📝 COLOCANDO RESPUESTA EN INPUT AUTOMÁTICAMENTE...');
+      setNewMessage(aiResponse);
+
+      toast({
+        title: "🤖 A.E Automático",
+        description: `${agent.name} generó respuesta automática y la colocó en el input`,
+        duration: 3000
+      });
+
+    } catch (error) {
+      console.error('❌ Error en A.E automático:', error);
+      toast({
+        title: "❌ Error A.E Automático",
+        description: "No se pudo procesar automáticamente el mensaje",
+        duration: 3000
+      });
+    }
+  };
 
   // Detectar y traducir mensajes en inglés automáticamente
   useEffect(() => {
