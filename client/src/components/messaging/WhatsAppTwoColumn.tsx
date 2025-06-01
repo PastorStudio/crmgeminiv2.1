@@ -2755,7 +2755,7 @@ export function WhatsAppTwoColumn() {
                       size="sm"
                       variant="outline"
                       className="bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
-                      onClick={generateResponseWithSelectedAgent}
+                      onClick={handleExternalAgentResponse}
                       disabled={externalAgentProcessing}
                     >
                       {externalAgentProcessing ? (
