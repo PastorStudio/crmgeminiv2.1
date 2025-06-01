@@ -4239,6 +4239,83 @@ app.use((req, res, next) => {
     }
   });
 
+  // Obtener foto de perfil real de WhatsApp de un contacto
+  app.get("/api/whatsapp-accounts/:accountId/contact/:contactId/profile-picture", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const contactId = req.params.contactId;
+      
+      console.log(`📸 Solicitando foto de perfil real para contacto ${contactId} en cuenta ${accountId}`);
+      
+      // Importar el administrador de cuentas múltiples
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      
+      // Obtener la foto de perfil desde WhatsApp
+      const profilePicUrl = await whatsappMultiAccountManager.getContactProfilePicture(accountId, contactId);
+      
+      if (profilePicUrl) {
+        console.log(`✅ Foto de perfil obtenida para ${contactId}: ${profilePicUrl.substring(0, 50)}...`);
+        res.json({
+          success: true,
+          contactId: contactId,
+          profilePicUrl: profilePicUrl
+        });
+      } else {
+        console.log(`📸 No se encontró foto de perfil para ${contactId}`);
+        res.json({
+          success: false,
+          contactId: contactId,
+          profilePicUrl: null,
+          message: 'No se pudo obtener la foto de perfil'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error obteniendo foto de perfil:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno obteniendo foto de perfil',
+        details: (error as Error).message
+      });
+    }
+  });
+
+  // Obtener información completa del contacto incluyendo foto de perfil
+  app.get("/api/whatsapp-accounts/:accountId/contact/:contactId/info", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const contactId = req.params.contactId;
+      
+      console.log(`👤 Obteniendo información completa del contacto ${contactId} en cuenta ${accountId}`);
+      
+      // Importar el administrador de cuentas múltiples
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      
+      // Obtener información del contacto
+      const contactInfo = await whatsappMultiAccountManager.getContactInfo(accountId, contactId);
+      
+      if (contactInfo) {
+        console.log(`✅ Información del contacto obtenida: ${contactInfo.name}`);
+        res.json({
+          success: true,
+          contact: contactInfo
+        });
+      } else {
+        console.log(`👤 No se encontró información para el contacto ${contactId}`);
+        res.status(404).json({
+          success: false,
+          message: 'Contacto no encontrado'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error obteniendo información del contacto:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno obteniendo información del contacto',
+        details: (error as Error).message
+      });
+    }
+  });
+
   // Obtener información específica de una cuenta de WhatsApp
   app.get("/api/whatsapp-accounts/:accountId", async (req: Request, res: Response) => {
     try {
