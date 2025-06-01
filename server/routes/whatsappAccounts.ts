@@ -131,32 +131,8 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// Eliminar una cuenta de WhatsApp
-router.delete('/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'ID inválido' });
-    }
-    
-    // Primero desconectar la cuenta si está activa
-    await whatsappMultiAccountManager.disconnectAccount(id);
-    
-    // Luego eliminar de la base de datos
-    await storage.deleteWhatsappAccount(id);
-    
-    // Sincronizar carpetas de sesión con los nuevos IDs
-    await syncSessionFolders();
-    
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error al eliminar cuenta de WhatsApp:', error);
-    res.status(500).json({ error: 'Error al eliminar cuenta de WhatsApp' });
-  }
-});
-
 // Eliminar todas las cuentas de WhatsApp
-router.delete('/', async (req, res) => {
+router.delete('/delete-all', async (req, res) => {
   try {
     console.log('🗑️ Iniciando eliminación completa de todas las cuentas de WhatsApp...');
     
@@ -189,6 +165,30 @@ router.delete('/', async (req, res) => {
   } catch (error) {
     console.error('❌ Error al eliminar todas las cuentas:', error);
     res.status(500).json({ error: 'Error al eliminar todas las cuentas de WhatsApp' });
+  }
+});
+
+// Eliminar una cuenta de WhatsApp
+router.delete('/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+    
+    // Primero desconectar la cuenta si está activa
+    await whatsappMultiAccountManager.disconnectAccount(id);
+    
+    // Luego eliminar de la base de datos
+    await storage.deleteWhatsappAccount(id);
+    
+    // Sincronizar carpetas de sesión con los nuevos IDs
+    await syncSessionFolders();
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error al eliminar cuenta de WhatsApp:', error);
+    res.status(500).json({ error: 'Error al eliminar cuenta de WhatsApp' });
   }
 });
 
