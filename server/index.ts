@@ -367,6 +367,96 @@ app.get('/api/whatsapp/ping-status/all', async (req: Request, res: Response) => 
   }
 });
 
+// WhatsApp account management endpoints
+app.get('/api/whatsapp-accounts/:id/qrcode', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // Generate a mock QR code for demo purposes
+    // In a real system, this would generate an actual WhatsApp QR code
+    const qrCode = `data:image/svg+xml;base64,${Buffer.from(`
+      <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+        <rect width="200" height="200" fill="white"/>
+        <rect x="20" y="20" width="160" height="160" fill="black"/>
+        <rect x="40" y="40" width="120" height="120" fill="white"/>
+        <text x="100" y="105" text-anchor="middle" font-size="14" fill="black">QR Code for</text>
+        <text x="100" y="125" text-anchor="middle" font-size="12" fill="black">Account ${id}</text>
+      </svg>
+    `).toString('base64')}`;
+    
+    res.json({
+      success: true,
+      qrCode,
+      message: 'QR code generated for WhatsApp connection'
+    });
+  } catch (error) {
+    console.error('QR code generation error:', error);
+    res.status(500).json({ error: 'Failed to generate QR code' });
+  }
+});
+
+app.post('/api/whatsapp-accounts/:id/initialize', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // Update account status to pending authentication
+    await db
+      .update(whatsappAccounts)
+      .set({ 
+        status: 'pending_auth',
+        lastActiveAt: new Date()
+      })
+      .where(eq(whatsappAccounts.id, parseInt(id)));
+    
+    console.log(`🔄 WhatsApp account ${id} initialization started`);
+    
+    res.json({
+      success: true,
+      message: 'WhatsApp account initialization started',
+      status: 'pending_auth'
+    });
+  } catch (error) {
+    console.error('WhatsApp initialization error:', error);
+    res.status(500).json({ error: 'Failed to initialize WhatsApp account' });
+  }
+});
+
+app.delete('/api/whatsapp-accounts/delete-all', async (req: Request, res: Response) => {
+  try {
+    await db.delete(whatsappAccounts);
+    
+    console.log('🗑️ All WhatsApp accounts deleted');
+    
+    res.json({
+      success: true,
+      message: 'All WhatsApp accounts deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete all accounts error:', error);
+    res.status(500).json({ error: 'Failed to delete accounts' });
+  }
+});
+
+app.delete('/api/whatsapp-accounts/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    await db
+      .delete(whatsappAccounts)
+      .where(eq(whatsappAccounts.id, parseInt(id)));
+    
+    console.log(`🗑️ WhatsApp account ${id} deleted`);
+    
+    res.json({
+      success: true,
+      message: 'WhatsApp account deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
 // Health check
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ 
