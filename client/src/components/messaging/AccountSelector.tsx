@@ -95,7 +95,7 @@ export function AccountSelector({
       <PopoverTrigger asChild>
         <Button 
           variant="outline" 
-          className="min-w-[200px] justify-between bg-white hover:bg-gray-50 border-gray-200 pt-[0px] pb-[0px] pl-[110px] pr-[110px] mt-[10px] mb-[10px]"
+          className="min-w-[200px] justify-between bg-white hover:bg-gray-50 border-gray-200 pt-[0px] pb-[0px] mt-[10px] mb-[10px] pl-[92px] pr-[92px]"
         >
           <div className="flex items-center space-x-2">
             <Smartphone className="h-4 w-4 text-green-600" />
