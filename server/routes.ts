@@ -28,6 +28,7 @@ import multer from "multer";
 import { messageTemplateService } from "./services/messageTemplateService";
 import { analyticsService } from "./services/analyticsService";
 import { excelImportService } from "./services/excelImportService";
+import webScrapingRouter from "./routes/webScrapingRoutes";
 import { massSenderService } from "./services/massSenderService";
 import { mediaGalleryRouter, mediaServeRouter } from "./services/mediaGalleryRoutes";
 import { mediaGalleryService } from "./services/mediaGalleryService";
@@ -73,6 +74,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Registrar rutas para cuentas de WhatsApp y asignaciones de chat
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   app.use("/api/tickets", ticketsRouter);
+  app.use("/api/web-scraping", webScrapingRouter);
   // ✅ ENDPOINTS DIRECTOS PARA ASIGNACIONES Y COMENTARIOS - POSTGRESQL REAL
   const { 
     createChatAssignment, 
