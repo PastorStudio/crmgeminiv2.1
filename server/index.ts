@@ -1425,25 +1425,8 @@ app.use((req, res, next) => {
   // Sistema limpio sin respuestas automáticas
   console.log("✅ Sistema inicializado correctamente sin respuestas automáticas");
 
-  // Inicializar servicio automático de agentes externos
-  try {
-    console.log("🤖 Iniciando sistema automático de agentes externos...");
-    const { AutoExternalAgentService } = await import('./services/autoExternalAgentService');
-    const autoAgentService = AutoExternalAgentService.getInstance();
-
-    // Iniciar monitoreo automático para cuentas activas
-    const accountsResult = await pool.query('SELECT id FROM whatsapp_accounts WHERE auto_response_enabled = true');
-    for (const account of accountsResult.rows) {
-      autoAgentService.startAutoMonitoring(account.id);
-      console.log(`🤖 Monitoreo automático iniciado para cuenta ${account.id}`);
-    }
-
-    // Limpiar cache de mensajes procesados
-    autoAgentService.cleanupProcessedMessages();
-    console.log("✅ Sistema automático de agentes externos iniciado exitosamente");
-  } catch (error) {
-    console.error("❌ Error al iniciar sistema automático de agentes externos:", error);
-  }
+  // External agent services removed - keeping only clean AI system with Gemini and OpenAI
+  console.log("✅ Clean AI system initialized successfully");
   
   // IMPORTANTE: Ruta alternativa para usuarios sin conflictos
   app.get('/api/system/users', async (req, res) => {
