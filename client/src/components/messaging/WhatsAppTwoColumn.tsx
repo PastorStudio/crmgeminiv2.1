@@ -2821,29 +2821,15 @@ export function WhatsAppTwoColumn() {
                                             
                                             let agentId = configResult.config?.assignedExternalAgentId;
                                             
-                                            // Si no hay agente asignado, usar Smartplanner IA (ID: 3) por defecto y asignarlo permanentemente
+                                            // Si no hay agente asignado, mostrar selector de agente
                                             if (!agentId) {
-                                              console.log('⚠️ Sin agente asignado, asignando Smartplanner IA (ID: 3) por defecto...');
-                                              agentId = "3"; // Smartplanner IA
-                                              
-                                              // Asignar permanentemente el agente a la cuenta
-                                              const assignResponse = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/assign-external-agent`, {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({
-                                                  externalAgentId: agentId,
-                                                  autoResponseEnabled: true
-                                                })
+                                              console.log('⚠️ Sin agente asignado, debe seleccionar un agente primero');
+                                              toast({
+                                                title: "Selecciona un Agente",
+                                                description: "Primero debes asignar un agente externo desde la configuración de la cuenta",
+                                                variant: "destructive"
                                               });
-                                              
-                                              if (assignResponse.ok) {
-                                                const assignResult = await assignResponse.json();
-                                                console.log('✅ Agente asignado permanentemente:', assignResult);
-                                                toast({
-                                                  title: "Agente Asignado",
-                                                  description: "Smartplanner IA ha sido asignado permanentemente a esta cuenta",
-                                                });
-                                              }
+                                              return;
                                             }
                                             
                                             console.log(`✅ Usando agente: ${agentId}`);
@@ -2870,43 +2856,12 @@ export function WhatsAppTwoColumn() {
                                             
                                             if (result.success && result.response) {
                                               console.log('✅ Respuesta exitosa del agente');
-                                              // Colocar la respuesta en el área de escritura
+                                              // Solo colocar la respuesta en el área de escritura (NO enviar automáticamente)
                                               setNewMessage(result.response);
-                                              
-                                              // Enviar automáticamente la respuesta después de 2 segundos
-                                              setTimeout(async () => {
-                                                console.log('🚀 Auto-enviando respuesta del agente...');
-                                                
-                                                // Enviar el mensaje directamente usando la API
-                                                try {
-                                                  const sendResponse = await fetch('/api/whatsapp/send-message', {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({
-                                                      accountId: selectedChat.accountId,
-                                                      chatId: selectedChat.id,
-                                                      message: result.response
-                                                    })
-                                                  });
-                                                  
-                                                  if (sendResponse.ok) {
-                                                    console.log('✅ Mensaje enviado automáticamente');
-                                                    setNewMessage(''); // Limpiar el input
-                                                    toast({
-                                                      title: "✅ Mensaje Enviado",
-                                                      description: "La respuesta del agente se envió exitosamente",
-                                                    });
-                                                  } else {
-                                                    console.log('❌ Error al enviar mensaje automáticamente');
-                                                  }
-                                                } catch (error) {
-                                                  console.error('Error enviando mensaje:', error);
-                                                }
-                                              }, 2000);
                                               
                                               toast({
                                                 title: "🤖 Respuesta Generada",
-                                                description: "La respuesta del agente se enviará automáticamente en 2 segundos",
+                                                description: "La respuesta del agente ha sido colocada en el input. Puedes revisarla y enviarla manualmente.",
                                               });
                                             } else {
                                               console.log('❌ Error en respuesta del agente:', result);
