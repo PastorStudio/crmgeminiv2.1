@@ -25,6 +25,21 @@ export class WorkingAutoResponseService {
         return false;
       }
       
+      // Obtener configuración actual de la cuenta
+      const accountConfig = await this.getAccountConfiguration(accountId);
+      if (!accountConfig || !accountConfig.autoResponseEnabled) {
+        console.log(`⏭️ Respuestas automáticas deshabilitadas para cuenta ${accountId}`);
+        return false;
+      }
+      
+      // Verificar si hay agente asignado
+      if (!accountConfig.assignedExternalAgentId) {
+        console.log(`⏭️ No hay agente externo asignado para cuenta ${accountId}`);
+        return false;
+      }
+      
+      console.log(`🎯 Usando agente asignado: ${accountConfig.assignedExternalAgentId}`);
+      
       // Generar respuesta usando OpenAI
       const response = await this.generateOpenAIResponse(messageBody);
       
@@ -44,6 +59,28 @@ export class WorkingAutoResponseService {
     } catch (error) {
       console.error(`❌ Error en respuesta automática:`, error);
       return false;
+    }
+  }
+
+  /**
+   * Obtiene la configuración actual de la cuenta de WhatsApp
+   */
+  private static async getAccountConfiguration(accountId: number) {
+    try {
+      const { db } = await import('../db');
+      const { whatsappAccounts } = await import('../../shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      const [account] = await db
+        .select()
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.id, accountId))
+        .limit(1);
+      
+      return account || null;
+    } catch (error) {
+      console.error(`❌ Error obteniendo configuración de cuenta ${accountId}:`, error);
+      return null;
     }
   }
 
