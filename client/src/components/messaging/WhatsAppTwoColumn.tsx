@@ -2677,6 +2677,28 @@ export function WhatsAppTwoColumn() {
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
 
+                  {/* BOTÓN CONFIGURACIÓN A.E - AGENTES EXTERNOS */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.1 }}
+                  >
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-blue-600 text-blue-600 hover:bg-blue-50 transition-all duration-300"
+                      onClick={() => {
+                        console.log('🔧 ABRIENDO CONFIGURACIÓN A.E - AGENTES EXTERNOS');
+                        setAssignmentDialogOpen(true);
+                      }}
+                    >
+                      <Zap className="h-4 w-4 mr-2" />
+                      A.E
+                      {externalAgentActive && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
+                      )}
+                    </Button>
+                  </motion.div>
                   
                   {/* A.E AI SWITCH - RESPUESTAS AUTOMÁTICAS */}
                   <motion.div
