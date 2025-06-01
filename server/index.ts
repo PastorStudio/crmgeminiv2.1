@@ -157,24 +157,51 @@ app.get('/api/settings/openai-key-status', async (req: Request, res: Response) =
 
 app.post('/api/settings/ai', async (req: Request, res: Response) => {
   try {
-    const { provider, enabled, systemPrompt, welcomePrompt, followUpPrompt } = req.body;
+    const { 
+      provider, 
+      enabled, 
+      systemPrompt, 
+      welcomePrompt, 
+      followUpPrompt,
+      responseTime,
+      temperature,
+      maxTokens,
+      autoAnalyzeLeads,
+      enrichLeadData,
+      smartLeadScoring,
+      messageGeneration,
+      intelligentSurveys
+    } = req.body;
     
     if (!provider) {
       return res.status(400).json({ error: 'Provider is required' });
     }
 
-    // Store prompts configuration
-    console.log(`AI provider ${provider} ${enabled ? 'enabled' : 'disabled'}`);
-    if (systemPrompt) console.log('System prompt configured:', systemPrompt.substring(0, 50) + '...');
-    if (welcomePrompt) console.log('Welcome prompt configured:', welcomePrompt.substring(0, 50) + '...');
-    if (followUpPrompt) console.log('Follow-up prompt configured:', followUpPrompt.substring(0, 50) + '...');
+    // Store complete AI configuration
+    console.log(`✅ AI provider ${provider} ${enabled ? 'enabled' : 'disabled'}`);
+    console.log(`⚙️ Response settings: ${responseTime}s delay, temperature: ${temperature}, max tokens: ${maxTokens}`);
+    if (systemPrompt) console.log('📝 System prompt configured:', systemPrompt.substring(0, 50) + '...');
+    if (welcomePrompt) console.log('👋 Welcome prompt configured:', welcomePrompt.substring(0, 50) + '...');
+    if (followUpPrompt) console.log('🔄 Follow-up prompt configured:', followUpPrompt.substring(0, 50) + '...');
     
     res.json({ 
       success: true, 
-      message: `${provider} configuration and prompts updated`,
+      message: `${provider} configuration and prompts updated successfully`,
       provider,
       enabled,
-      promptsConfigured: !!(systemPrompt || welcomePrompt || followUpPrompt)
+      settings: {
+        responseTime,
+        temperature, 
+        maxTokens,
+        promptsConfigured: !!(systemPrompt || welcomePrompt || followUpPrompt),
+        featuresEnabled: {
+          autoAnalyzeLeads,
+          enrichLeadData,
+          smartLeadScoring,
+          messageGeneration,
+          intelligentSurveys
+        }
+      }
     });
   } catch (error) {
     console.error('AI settings error:', error);

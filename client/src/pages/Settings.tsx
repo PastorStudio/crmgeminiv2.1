@@ -30,6 +30,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -153,6 +154,9 @@ export default function Settings() {
       systemPrompt: "Eres un asistente de ventas profesional. Responde de manera cordial, útil y enfocada en ayudar al cliente. Mantén un tono amigable pero profesional en todas las interacciones.",
       welcomePrompt: "Genera un mensaje de bienvenida cálido y profesional para nuevos contactos, presentando nuestros servicios de manera concisa.",
       followUpPrompt: "Crea mensajes de seguimiento personalizados basados en la conversación previa, ofreciendo valor adicional y manteniendo el interés del cliente.",
+      responseTime: 5,
+      temperature: 0.7,
+      maxTokens: 500,
       autoAnalyzeLeads: true,
       enrichLeadData: true,
       smartLeadScoring: true,
@@ -204,9 +208,24 @@ export default function Settings() {
         await apiRequest("POST", "/api/settings/update-gemini-key", { apiKey: values.geminiApiKey });
       }
       
-      // Simular actualización de otras configuraciones
-      // En una app real, esto se guardaría en la base de datos
-      return Promise.resolve();
+      // Enviar toda la configuración de AI al servidor
+      const response = await apiRequest("POST", "/api/settings/ai", {
+        provider: values.aiProvider,
+        enabled: values.enableGeminiAI,
+        systemPrompt: values.systemPrompt,
+        welcomePrompt: values.welcomePrompt,
+        followUpPrompt: values.followUpPrompt,
+        responseTime: values.responseTime,
+        temperature: values.temperature,
+        maxTokens: values.maxTokens,
+        autoAnalyzeLeads: values.autoAnalyzeLeads,
+        enrichLeadData: values.enrichLeadData,
+        smartLeadScoring: values.smartLeadScoring,
+        messageGeneration: values.messageGeneration,
+        intelligentSurveys: values.intelligentSurveys
+      });
+      
+      return response;
     },
     onSuccess: () => {
       // Invalidar la consulta para obtener el estado actualizado
@@ -647,6 +666,83 @@ export default function Settings() {
                         </FormItem>
                       )}
                     />
+
+                    {/* AI Response Controls */}
+                    <div className="space-y-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                      <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100">Configuración de Respuestas IA</h4>
+                      
+                      <FormField
+                        control={apiSettingsForm.control}
+                        name="responseTime"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tiempo de Respuesta (segundos): {field.value}s</FormLabel>
+                            <FormControl>
+                              <Slider
+                                min={1}
+                                max={30}
+                                step={1}
+                                value={[field.value]}
+                                onValueChange={(value) => field.onChange(value[0])}
+                                className="w-full"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Tiempo de espera antes de generar respuestas automáticas (1-30 segundos)
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={apiSettingsForm.control}
+                        name="temperature"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Creatividad/Temperatura: {field.value}</FormLabel>
+                            <FormControl>
+                              <Slider
+                                min={0}
+                                max={2}
+                                step={0.1}
+                                value={[field.value]}
+                                onValueChange={(value) => field.onChange(value[0])}
+                                className="w-full"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Controla la creatividad de las respuestas. 0 = conservador, 2 = muy creativo
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={apiSettingsForm.control}
+                        name="maxTokens"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Longitud de Respuesta: {field.value} tokens</FormLabel>
+                            <FormControl>
+                              <Slider
+                                min={50}
+                                max={2000}
+                                step={50}
+                                value={[field.value]}
+                                onValueChange={(value) => field.onChange(value[0])}
+                                className="w-full"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Longitud máxima de las respuestas generadas (50-2000 tokens)
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                     
                     <FormField
                       control={apiSettingsForm.control}
