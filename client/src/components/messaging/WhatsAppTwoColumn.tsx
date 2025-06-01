@@ -2732,9 +2732,8 @@ export function WhatsAppTwoColumn() {
                     >
                       <Bot className="h-4 w-4 mr-2" />
                       Usar IA
-                      </Button>
-                    </motion.div>
-                  )}
+                    </Button>
+                  </motion.div>
                   
 
 
