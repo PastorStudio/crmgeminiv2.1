@@ -183,7 +183,9 @@ const WhatsAppAccounts = () => {
   const { data: accounts = [], isLoading, error, refetch } = useQuery<WhatsAppAccount[]>({
     queryKey: ['/api/whatsapp-accounts'],
     queryFn: async () => {
-      return await apiRequest('/api/whatsapp-accounts');
+      const response = await apiRequest('/api/whatsapp-accounts');
+      // Ensure we always return an array
+      return Array.isArray(response) ? response : [];
     }
   });
 
@@ -568,7 +570,7 @@ const WhatsAppAccounts = () => {
   };
   
   // Combinar datos de cuentas con información de ping y estado de conexión
-  const accountsWithPing = accounts.map(account => {
+  const accountsWithPing = (Array.isArray(accounts) ? accounts : []).map(account => {
     let enhancedAccount = { ...account };
     
     // Agregar información de estado de conexión desde sessionData si existe
