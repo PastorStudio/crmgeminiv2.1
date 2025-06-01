@@ -3070,13 +3070,8 @@ export function WhatsAppTwoColumn() {
                                           try {
                                             console.log(`🤖 Iniciando procesamiento INTELIGENTE con agente externo`);
                                             
-                                            // 🧠 LÓGICA INTELIGENTE: SIEMPRE PROCESAR EN ESPAÑOL
+                                            // 🧠 LÓGICA INTELIGENTE: PROCESAR EN ESPAÑOL, RESPONDER SEGÚN TRADUCTOR
                                             let messageToProcess = message.body;
-                                            let detectedLanguageConfig = {
-                                              enabled: false,
-                                              language: 'es',
-                                              languageName: 'Español'
-                                            };
                                             
                                             // Detectar si el mensaje original está en español
                                             const isOriginalSpanish = detectLanguageFromMessage(message.body).code === 'es';
@@ -3089,52 +3084,36 @@ export function WhatsAppTwoColumn() {
                                               console.log('🇪🇸 MENSAJE ORIGINAL EN ESPAÑOL - Procesando directamente');
                                               console.log(`📝 Mensaje en español: "${message.body}"`);
                                               messageToProcess = message.body;
-                                              
-                                              // Si el traductor está activo, responder en ese idioma
-                                              if (translationEnabled) {
-                                                detectedLanguageConfig = {
-                                                  enabled: true,
-                                                  language: selectedLanguage,
-                                                  languageName: availableLanguages.find(l => l.code === selectedLanguage)?.name || 'Español'
-                                                };
-                                                console.log(`🌐 Responderá en: ${detectedLanguageConfig.languageName}`);
-                                              }
                                             } else if (hasTranslatedMessage) {
                                               // 🌍 Mensaje en otro idioma con traducción - usar traducción en español
                                               console.log('🌍 MENSAJE EN IDIOMA EXTRANJERO - Usando traducción al español');
                                               console.log(`📝 Original (${detectLanguageFromMessage(message.body).name}): "${message.body}"`);
                                               console.log(`🇪🇸 Traducido (Español): "${message.translatedText}"`);
                                               messageToProcess = message.translatedText;
-                                              
-                                              // Detectar idioma original para responder en el mismo
-                                              const originalLang = detectLanguageFromMessage(message.body);
-                                              detectedLanguageConfig = {
-                                                enabled: true,
-                                                language: originalLang.code,
-                                                languageName: originalLang.name
-                                              };
-                                              console.log(`🎯 Responderá en idioma original: ${detectedLanguageConfig.languageName}`);
                                             } else {
-                                              // 📝 Mensaje en otro idioma sin traducción - procesar como español y detectar idioma
-                                              console.log('📝 MENSAJE SIN TRADUCCIÓN - Procesando como español y detectando idioma');
+                                              // 📝 Mensaje en otro idioma sin traducción - usar directamente
+                                              console.log('📝 MENSAJE SIN TRADUCCIÓN - Procesando directamente');
                                               const detectedLang = detectLanguageFromMessage(message.body);
                                               console.log(`🔍 Idioma detectado: ${detectedLang.name}`);
-                                              
                                               messageToProcess = message.body;
-                                              detectedLanguageConfig = {
-                                                enabled: detectedLang.code !== 'es',
-                                                language: detectedLang.code,
-                                                languageName: detectedLang.name
-                                              };
-                                              
-                                              if (detectedLang.code !== 'es') {
-                                                console.log(`🌐 Responderá en: ${detectedLanguageConfig.languageName}`);
-                                              }
+                                            }
+                                            
+                                            // 🎯 CONFIGURACIÓN FINAL: Siempre generar en español
+                                            // La traducción automática se aplicará cuando se envíe el mensaje
+                                            const translationConfig = {
+                                              enabled: false,  // Siempre generar en español
+                                              language: 'es',
+                                              languageName: 'Español'
+                                            };
+                                            
+                                            console.log('🇪🇸 CONFIGURACIÓN: Respuesta se generará SIEMPRE en español');
+                                            if (translationEnabled) {
+                                              console.log(`🔄 Traductor activo: La respuesta se traducirá automáticamente a ${availableLanguages.find(l => l.code === selectedLanguage)?.name} al enviar`);
                                             }
                                             
                                             console.log(`📋 Mensaje a procesar: "${messageToProcess}"`);
                                             console.log(`📋 Cuenta ID: ${selectedChat.accountId}`);
-                                            console.log(`🌍 Configuración de idioma:`, detectedLanguageConfig);
+                                            console.log(`🌍 Configuración de idioma:`, translationConfig);
                                             
                                             // Obtener la configuración del agente asignado a esta cuenta
                                             console.log('🔍 Consultando configuración de agente...');
@@ -3177,7 +3156,7 @@ export function WhatsAppTwoColumn() {
                                               body: JSON.stringify({
                                                 agentId: agentId,
                                                 message: messageToProcess,
-                                                translationConfig: detectedLanguageConfig
+                                                translationConfig: translationConfig
                                               })
                                             });
                                             
@@ -3190,12 +3169,12 @@ export function WhatsAppTwoColumn() {
                                               // Solo colocar la respuesta en el área de escritura (NO enviar automáticamente)
                                               setNewMessage(result.response);
                                               
-                                              const languageInfo = detectedLanguageConfig.enabled ? 
-                                                ` en ${detectedLanguageConfig.languageName}` : '';
+                                              const languageInfo = translationEnabled ? 
+                                                ` (se traducirá a ${availableLanguages.find(l => l.code === selectedLanguage)?.name})` : '';
                                               
                                               toast({
                                                 title: "🧠 Respuesta Inteligente Generada",
-                                                description: `Respuesta del agente${languageInfo} lista en el input. Puedes revisarla y enviarla.`,
+                                                description: `Respuesta en español lista en el input${languageInfo}. Puedes revisarla y enviarla.`,
                                               });
                                             } else {
                                               console.log('❌ Error en respuesta del agente:', result);
