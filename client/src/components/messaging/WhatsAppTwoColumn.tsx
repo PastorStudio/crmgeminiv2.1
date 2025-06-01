@@ -2702,68 +2702,8 @@ export function WhatsAppTwoColumn() {
                     </Button>
                   </motion.div>
                   
-                  {/* A.E AI SWITCH - RESPUESTAS AUTOMÁTICAS */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
-                  >
-                    <Button
-                      size="sm"
-                      variant={externalAgentActive ? "default" : "outline"}
-                      className="hidden" // Ocultar el botón A.E AI original
-                      onClick={async () => {
-                        console.log('🚀 A.E AI TOGGLE PRESIONADO');
-                        
-                        if (!selectedChat) {
-                          toast({
-                            title: "Error",
-                            description: "Selecciona un chat primero",
-                            variant: "destructive"
-                          });
-                          return;
-                        }
 
-                        try {
-                          setExternalAgentProcessing(true);
-                          const newState = !externalAgentActive;
-                          
-                          console.log(`📡 ${newState ? 'ACTIVANDO' : 'DESACTIVANDO'} A.E AI para ${selectedChat.id}`);
-                          
-                          // Usar el mismo endpoint que funciona en configuración de cuentas
-                          const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/assign-external-agent`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                              externalAgentId: newState ? "2" : null, // Usar agente 2 que ya está configurado
-                              autoResponseEnabled: newState
-                            })
-                          });
-                          
-                          if (response.ok) {
-                            const result = await response.json();
-                            console.log('✅ Resultado:', result);
-                            
-                            if (result.success) {
-                              setExternalAgentActive(newState);
-                              
-                              toast({
-                                title: `🤖 A.E AI ${newState ? 'Activado' : 'Desactivado'}`,
-                                description: newState 
-                                  ? `Agente externo activado - responderá automáticamente a mensajes`
-                                  : `Agente externo desactivado`,
-                              });
-                              
-                              console.log(`✅ A.E AI ${newState ? 'ACTIVADO' : 'DESACTIVADO'} exitosamente`);
-                            } else {
-                              throw new Error(result.message || 'Error en la configuración');
-                            }
-                          } else {
-                            const errorText = await response.text();
-                            throw new Error(`Error HTTP: ${response.status} - ${errorText}`);
-                          }
-                        } catch (error) {
-                          console.error('❌ Error A.E AI:', error);
+
                           toast({
                             title: "Error",
                             description: "No se pudo cambiar el estado del A.E AI",
