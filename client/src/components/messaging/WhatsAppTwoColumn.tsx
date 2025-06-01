@@ -3607,7 +3607,7 @@ function ContactInfoPanel({ chat }: { chat: WhatsAppChat }) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-purple-600">
+      <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-purple-600 pt-[28px] pb-[28px]">
         <div className="flex items-center space-x-3">
           <Avatar className="h-12 w-12">
             <AvatarImage src={chat.profilePicUrl} />
@@ -3621,7 +3621,6 @@ function ContactInfoPanel({ chat }: { chat: WhatsAppChat }) {
           </div>
         </div>
       </div>
-
       {/* Contact Information */}
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
