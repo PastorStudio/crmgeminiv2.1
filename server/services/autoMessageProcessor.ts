@@ -22,6 +22,62 @@ export interface MessageForProcessing {
 export class AutoMessageProcessor {
   
   /**
+   * Detecta el idioma de un texto usando OpenAI
+   */
+  private async detectLanguage(text: string): Promise<string> {
+    try {
+      const OpenAI = require('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { 
+            role: "system", 
+            content: "Detecta el idioma del siguiente texto y responde únicamente con el código del idioma (es, en, fr, pt, it, de, etc.). Si es español, responde 'es'." 
+          },
+          { role: "user", content: text }
+        ],
+        max_tokens: 10,
+        temperature: 0,
+      });
+
+      return response.choices[0].message.content?.trim().toLowerCase() || 'es';
+    } catch (error) {
+      console.error('❌ Error detectando idioma:', error);
+      return 'es'; // Default al español
+    }
+  }
+
+  /**
+   * Traduce un texto al español usando OpenAI
+   */
+  private async translateToSpanish(text: string, fromLanguage: string): Promise<string> {
+    try {
+      const OpenAI = require('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { 
+            role: "system", 
+            content: `Traduce el siguiente texto del ${fromLanguage} al español de manera natural y precisa. Mantén el tono y el contexto original. Responde únicamente con la traducción.` 
+          },
+          { role: "user", content: text }
+        ],
+        max_tokens: 300,
+        temperature: 0.3,
+      });
+
+      return response.choices[0].message.content?.trim() || text;
+    } catch (error) {
+      console.error('❌ Error traduciendo texto:', error);
+      return text; // Retornar el texto original si falla la traducción
+    }
+  }
+
+  /**
    * Procesa un mensaje entrante y genera una respuesta automática si está configurado
    */
   async processMessage(message: MessageForProcessing): Promise<AutoMessageResponse> {
@@ -69,19 +125,35 @@ export class AutoMessageProcessor {
               const agentName = agentQuery[0].agentName;
               console.log(`🤖 Generando respuesta automática con ${agentName}...`);
               
+              // Detectar idioma del mensaje entrante
+              const detectedLanguage = await this.detectLanguage(message.body);
+              console.log(`🌐 Idioma detectado: ${detectedLanguage}`);
+              
+              let messageForAgent = message.body;
+              let wasTranslated = false;
+              
+              // Si no es español, traducir al español para mejor procesamiento
+              if (detectedLanguage !== 'es' && detectedLanguage !== 'spanish') {
+                console.log(`🔄 Traduciendo mensaje del ${detectedLanguage} al español...`);
+                messageForAgent = await this.translateToSpanish(message.body, detectedLanguage);
+                wasTranslated = true;
+                console.log(`📝 Mensaje traducido: "${messageForAgent.substring(0, 50)}..."`);
+              }
+              
               // Generar respuesta usando OpenAI
               const OpenAI = require('openai');
               const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
               
               const systemPrompt = `Eres ${agentName}, un asistente virtual profesional y amigable. 
               Responde de manera útil y conversacional en español. 
-              Mantén las respuestas concisas pero informativas.`;
+              Mantén las respuestas concisas pero informativas.
+              ${wasTranslated ? `NOTA: El mensaje original estaba en ${detectedLanguage} y ha sido traducido al español para tu mejor comprensión.` : ''}`;
               
               const response = await openai.chat.completions.create({
                 model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
                 messages: [
                   { role: "system", content: systemPrompt },
-                  { role: "user", content: message.body }
+                  { role: "user", content: messageForAgent }
                 ],
                 max_tokens: 200,
                 temperature: 0.7,
@@ -146,15 +218,34 @@ export class AutoMessageProcessor {
           console.log(`🤖 Generando respuesta automática con ${assignedAgent.name}...`);
           
           try {
+            // Detectar idioma del mensaje entrante
+            const detectedLanguage = await this.detectLanguage(message.body);
+            console.log(`🌐 Idioma detectado: ${detectedLanguage}`);
+            
+            let messageForAgent = message.body;
+            let wasTranslated = false;
+            
+            // Si no es español, traducir al español para mejor procesamiento
+            if (detectedLanguage !== 'es' && detectedLanguage !== 'spanish') {
+              console.log(`🔄 Traduciendo mensaje del ${detectedLanguage} al español...`);
+              messageForAgent = await this.translateToSpanish(message.body, detectedLanguage);
+              wasTranslated = true;
+              console.log(`📝 Mensaje traducido: "${messageForAgent.substring(0, 50)}..."`);
+            }
+            
             // Generar respuesta usando OpenAI
             const OpenAI = require('openai');
             const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
             
+            const enhancedContext = `${assignedAgent.context}
+            ${wasTranslated ? `NOTA: El mensaje original estaba en ${detectedLanguage} y ha sido traducido al español para tu mejor comprensión.` : ''}
+            Responde de manera útil y conversacional en español.`;
+            
             const response = await openai.chat.completions.create({
               model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
               messages: [
-                { role: "system", content: assignedAgent.context },
-                { role: "user", content: message.body }
+                { role: "system", content: enhancedContext },
+                { role: "user", content: messageForAgent }
               ],
               max_tokens: 200,
               temperature: 0.7,
