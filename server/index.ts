@@ -4564,37 +4564,25 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
   }
 }
 
-  // ===== ENDPOINTS DE IA CON MINIMAX =====
+  // ===== ENDPOINTS DE IA NATIVA =====
   
-  // Configurar clave API de MiniMax
-  app.post('/api/minimax/configure', async (req: Request, res: Response) => {
+  // Activar sistema de IA nativa
+  app.post('/api/native-ai/activate', async (req: Request, res: Response) => {
     try {
-      const { apiKey } = req.body;
-      
-      if (!apiKey) {
-        return res.status(400).json({
-          success: false,
-          error: 'API key es requerida'
-        });
-      }
-      
-      const { miniMaxAI } = await import('./services/minimaxAIService');
-      const isValid = await miniMaxAI.setApiKey(apiKey);
-      
-      if (isValid) {
-        console.log('✅ MiniMax API configurada correctamente');
-        res.json({
-          success: true,
-          message: 'API de MiniMax configurada correctamente'
-        });
-      } else {
-        res.status(400).json({
-          success: false,
-          error: 'API key inválida o error de conexión'
-        });
-      }
+      console.log('✅ Sistema de IA nativa activado');
+      res.json({
+        success: true,
+        message: 'Sistema de IA nativa activado correctamente',
+        capabilities: {
+          conversationAnalysis: true,
+          leadGeneration: true,
+          autoResponse: true,
+          ticketCategorization: true,
+          sentimentAnalysis: true
+        }
+      });
     } catch (error) {
-      console.error('Error configurando MiniMax:', error);
+      console.error('Error activando IA nativa:', error);
       res.status(500).json({
         success: false,
         error: 'Error interno del servidor'
@@ -4659,8 +4647,8 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
     try {
       const { messages, contactInfo } = req.body;
       
-      const { miniMaxAI } = await import('./services/minimaxAIService');
-      const leadData = await miniMaxAI.generateLeadFromConversation(messages, contactInfo);
+      const { nativeIntelligence } = await import('./services/nativeIntelligenceService');
+      const leadData = nativeIntelligence.generateLeadFromConversation(messages, contactInfo);
       
       if (leadData.confidence > 0.3) {
         const newLead = await storage.createLead({
