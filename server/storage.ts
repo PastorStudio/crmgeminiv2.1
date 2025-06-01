@@ -4,6 +4,7 @@ import {
   whatsappAccounts,
   chatAssignments,
   chatComments,
+  dashboardStats,
   type User, 
   type InsertUser,
   type Lead,
@@ -11,7 +12,9 @@ import {
   type InsertWhatsAppAccount,
   type WhatsAppAccount,
   type ChatAssignment,
-  type InsertChatAssignment
+  type InsertChatAssignment,
+  type DashboardStats,
+  type InsertDashboardStats
 } from "@shared/schema";
 import { db } from './db';
 import { eq, desc, or } from 'drizzle-orm';
@@ -28,9 +31,13 @@ export interface IStorage {
   
   // Lead methods
   getLeads(): Promise<Lead[]>;
+  getAllLeads(): Promise<Lead[]>;
   createLead(insertLead: InsertLead): Promise<Lead>;
   updateLead(id: number, updates: Partial<Lead>): Promise<Lead | undefined>;
   deleteLead(id: number): Promise<boolean>;
+  
+  // Activity methods
+  getActivitiesByUser(userId: number): Promise<any[]>;
   
   // WhatsApp accounts methods
   getWhatsAppAccounts(): Promise<WhatsAppAccount[]>;
@@ -49,6 +56,10 @@ export interface IStorage {
   getWhatsappAgentConfig(accountId: number): Promise<{agentId: string | null, autoResponse: boolean} | null>;
   toggleWhatsappAutoResponse(accountId: number): Promise<boolean>;
   updateWhatsappAccountAgentConfig(accountId: number, config: {assignedExternalAgentId?: string | null, autoResponseEnabled?: boolean, responseDelay?: number}): Promise<boolean>;
+  
+  // Dashboard stats methods
+  getDashboardStats(): Promise<DashboardStats | undefined>;
+  updateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats>;
   
   // Additional required methods
   initializeData(): Promise<void>;
@@ -96,6 +107,20 @@ export class DatabaseStorage implements IStorage {
 
   async getLeads(): Promise<Lead[]> {
     return await db.select().from(leads).orderBy(desc(leads.createdAt));
+  }
+
+  async getAllLeads(): Promise<Lead[]> {
+    return await db.select().from(leads).orderBy(desc(leads.createdAt));
+  }
+
+  async getActivitiesByUser(userId: number): Promise<any[]> {
+    try {
+      // Implementación básica - se puede expandir según el esquema de actividades
+      return [];
+    } catch (error) {
+      console.error('Error getting activities by user:', error);
+      return [];
+    }
   }
 
   async createLead(insertLead: InsertLead): Promise<Lead> {
@@ -278,6 +303,46 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error updating WhatsApp account agent config:', error);
       return false;
+    }
+  }
+
+  async getDashboardStats(): Promise<DashboardStats | undefined> {
+    try {
+      const [stats] = await db.select().from(dashboardStats);
+      return stats || undefined;
+    } catch (error) {
+      console.error('Error getting dashboard stats:', error);
+      return undefined;
+    }
+  }
+
+  async updateDashboardStats(statsData: InsertDashboardStats): Promise<DashboardStats> {
+    try {
+      // Verificar si hay estadísticas existentes
+      const existingStats = await this.getDashboardStats();
+      
+      if (existingStats) {
+        // Actualizar las estadísticas existentes
+        const [stats] = await db
+          .update(dashboardStats)
+          .set({
+            ...statsData,
+            updatedAt: new Date()
+          })
+          .where(eq(dashboardStats.id, existingStats.id))
+          .returning();
+        return stats;
+      } else {
+        // Crear nuevas estadísticas
+        const [stats] = await db
+          .insert(dashboardStats)
+          .values(statsData)
+          .returning();
+        return stats;
+      }
+    } catch (error) {
+      console.error('Error updating dashboard stats:', error);
+      throw error;
     }
   }
 
