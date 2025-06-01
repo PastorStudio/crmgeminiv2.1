@@ -3486,6 +3486,12 @@ export function WhatsAppTwoColumn() {
                         >
                           {translationEnabled ? 'ON' : 'OFF'}
                         </Button>
+                        
+                        {/* Selector de agente para botón azul A.E. */}
+                        <BlueAEAgentSelector 
+                          onAgentSelect={setBlueAESelectedAgentId}
+                          selectedAgentId={blueAESelectedAgentId}
+                        />
                       </div>
                       
                       {translationEnabled && (
@@ -3568,12 +3574,6 @@ export function WhatsAppTwoColumn() {
                   }}
                   className={`flex-1 ${isAutoSending ? 'border-orange-400 bg-orange-50' : ''}`}
                   disabled={sendMessageMutation.isPending}
-                />
-                
-                {/* Selector de agente para botón azul A.E. */}
-                <BlueAEAgentSelector 
-                  onAgentSelect={setBlueAESelectedAgentId}
-                  selectedAgentId={blueAESelectedAgentId}
                 />
                 
                 {/* Botón azul A.E. */}
