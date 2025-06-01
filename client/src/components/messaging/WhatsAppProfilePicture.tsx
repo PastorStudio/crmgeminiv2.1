@@ -39,6 +39,17 @@ export function WhatsAppProfilePicture({
     setError(false);
 
     try {
+      // Primero verificar si la cuenta está conectada
+      const statusResponse = await fetch('/api/direct/whatsapp/status');
+      const statusData = await statusResponse.json();
+      
+      if (!statusData.authenticated) {
+        console.log(`📸 Cuenta ${accountId} no conectada - usando iniciales para ${contactId}`);
+        setError(true);
+        setLoading(false);
+        return;
+      }
+      
       console.log(`📸 Obteniendo foto de perfil para ${contactId} en cuenta ${accountId}`);
       
       const response = await fetch(
