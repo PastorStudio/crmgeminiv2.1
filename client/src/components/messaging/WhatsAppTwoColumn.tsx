@@ -2582,7 +2582,7 @@ export function WhatsAppTwoColumn() {
         {selectedChat ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0">
+            <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0 pt-[28px] pb-[28px]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="relative">
@@ -3499,7 +3499,6 @@ export function WhatsAppTwoColumn() {
           accountId={assignmentAccountId || selectedChat.accountId}
         />
       )}
-
       {/* Right Panel - Contact Information (20%) */}
       <div className="w-[20%] bg-white border-l border-gray-200 flex flex-col overflow-hidden">
         {selectedChat ? (
@@ -3514,7 +3513,6 @@ export function WhatsAppTwoColumn() {
           </div>
         )}
       </div>
-
       {selectedChat && (
         <ChatCommentsDialog
           open={commentsDialogOpen}
@@ -3530,7 +3528,6 @@ export function WhatsAppTwoColumn() {
         settings={autoClickSettings}
         onSave={saveAutoClickSettings}
       />
-      
       {/* Diálogo de Configuración de Auto A.E. */}
       <AutoAEConfigDialog
         open={showAutoAEConfig}
