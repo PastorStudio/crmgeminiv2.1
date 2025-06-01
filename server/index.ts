@@ -8,220 +8,175 @@ import { eq } from "drizzle-orm";
 const app = express();
 const server = createServer(app);
 
-console.log('🚀 Starting clean CRM system with AI support (Gemini + OpenAI only)');
-
-// Middleware
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: false }));
 
-// Clean authentication
+console.log("Conectando a la base de datos PostgreSQL...");
+
+// Clean system startup message
+console.log("🚀 Starting clean CRM system with AI support (Gemini + OpenAI only)");
+console.log("✅ Clean CRM server running on port 5000");
+console.log("🤖 AI providers available: Gemini, OpenAI");
+console.log("🚫 External agents disabled - clean system only");
+console.log("⏰ Server time:", new Date().toUTCString());
+
+// Basic auth endpoint
 app.post('/auth/login', async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;
     
     if (!username || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Username and password required"
-      });
+      return res.status(400).json({ error: 'Username and password required' });
     }
-    
-    if (username === 'admin' && password === 'admin123') {
-      return res.json({
-        success: true,
-        message: "Login successful",
-        token: 'demo-token-admin',
-        user: {
-          id: 1,
-          username: 'admin',
-          role: 'admin',
-          email: 'admin@crm.com',
-          fullName: 'Administrator'
-        }
-      });
+
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+
+    if (user.length === 0 || user[0].password !== password) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
-    
-    if (username === 'DJP' && password === 'Mi123456@') {
-      return res.json({
-        success: true,
-        message: "Login successful",
-        token: 'demo-token-djp',
-        user: {
-          id: 3,
-          username: 'DJP',
-          role: 'super_admin',
-          email: 'superadmin@crm.com',
-          fullName: 'Super Administrator'
-        }
-      });
-    }
-    
-    return res.status(401).json({
-      success: false,
-      message: "Invalid credentials"
+
+    res.json({ 
+      success: true, 
+      user: { 
+        id: user[0].id, 
+        username: user[0].username,
+        role: user[0].role 
+      } 
     });
-    
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error"
-    });
+    res.status(500).json({ error: 'Login failed' });
   }
 });
 
-// API Status
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    message: 'Clean AI system running with Gemini and OpenAI support',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Users
+// User endpoints
 app.get('/api/users/:id', async (req: Request, res: Response) => {
   try {
     const userId = parseInt(req.params.id);
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-    
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
     if (user.length === 0) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+      return res.status(404).json({ error: 'User not found' });
     }
-    
-    res.json({ success: true, user: user[0] });
+
+    res.json({ id: user[0].id, username: user[0].username, role: user[0].role });
   } catch (error) {
-    console.error('Error getting user:', error);
-    res.status(500).json({ success: false, error: 'Failed to get user' });
+    console.error('Get user error:', error);
+    res.status(500).json({ error: 'Failed to get user' });
   }
 });
 
-// WhatsApp accounts
+// WhatsApp accounts endpoint
 app.get('/api/whatsapp/accounts', async (req: Request, res: Response) => {
   try {
     const accounts = await db.select().from(whatsappAccounts);
-    res.json({ success: true, accounts });
+    res.json(accounts);
   } catch (error) {
-    console.error('Error getting WhatsApp accounts:', error);
-    res.status(500).json({ success: false, error: 'Failed to get accounts' });
+    console.error('Get WhatsApp accounts error:', error);
+    res.status(500).json({ error: 'Failed to get WhatsApp accounts' });
   }
 });
 
-// AI Settings
+// AI Settings endpoints
 app.get('/api/settings/gemini-key-status', async (req: Request, res: Response) => {
   try {
     const hasKey = !!process.env.GEMINI_API_KEY;
-    res.json({
-      hasValidKey: hasKey,
-      isTemporary: false
-    });
+    res.json({ hasKey, provider: 'gemini' });
   } catch (error) {
-    console.error('Error checking Gemini key:', error);
-    res.json({ hasValidKey: false, isTemporary: false });
+    res.status(500).json({ error: 'Failed to check Gemini key status' });
   }
 });
 
 app.get('/api/settings/openai-key-status', async (req: Request, res: Response) => {
   try {
     const hasKey = !!process.env.OPENAI_API_KEY;
-    res.json({
-      hasValidKey: hasKey
-    });
+    res.json({ hasKey, provider: 'openai' });
   } catch (error) {
-    console.error('Error checking OpenAI key:', error);
-    res.json({ hasValidKey: false });
+    res.status(500).json({ error: 'Failed to check OpenAI key status' });
   }
 });
 
 app.post('/api/settings/ai', async (req: Request, res: Response) => {
   try {
-    const settings = req.body;
-    console.log('AI settings saved:', settings);
+    const { provider, enabled } = req.body;
     
-    res.json({
-      success: true,
-      message: 'AI settings saved successfully'
+    if (!provider) {
+      return res.status(400).json({ error: 'Provider is required' });
+    }
+
+    // In a clean system, we just acknowledge the setting
+    console.log(`AI provider ${provider} ${enabled ? 'enabled' : 'disabled'}`);
+    
+    res.json({ 
+      success: true, 
+      message: `${provider} configuration updated`,
+      provider,
+      enabled 
     });
-    
   } catch (error) {
-    console.error('Error saving AI settings:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to save AI settings'
-    });
+    console.error('AI settings error:', error);
+    res.status(500).json({ error: 'Failed to update AI settings' });
   }
 });
 
 app.post('/api/settings/notifications', async (req: Request, res: Response) => {
   try {
     const settings = req.body;
-    console.log('Notification settings saved:', settings);
-    
-    res.json({
-      success: true,
-      message: 'Notification settings saved successfully'
-    });
-    
+    console.log('Notification settings updated:', settings);
+    res.json({ success: true, message: 'Notification settings updated' });
   } catch (error) {
-    console.error('Error saving notification settings:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to save notification settings'
-    });
+    console.error('Notification settings error:', error);
+    res.status(500).json({ error: 'Failed to update notification settings' });
   }
 });
 
-// Block all external agent routes
-app.all('/api/external-*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'External agent functionality has been removed. Please use AI settings for Gemini or OpenAI configuration.',
-    redirect: '/settings'
-  });
-});
-
-// Basic chat and message endpoints
+// WhatsApp chats and messages (basic endpoints)
 app.get('/api/whatsapp/chats', async (req: Request, res: Response) => {
   try {
-    res.json({ success: true, chats: [] });
+    // Return empty array for clean system
+    res.json([]);
   } catch (error) {
-    console.error('Error getting chats:', error);
-    res.status(500).json({ success: false, error: 'Failed to get chats' });
+    console.error('Get chats error:', error);
+    res.status(500).json({ error: 'Failed to get chats' });
   }
 });
 
 app.get('/api/whatsapp/messages/:chatId', async (req: Request, res: Response) => {
   try {
-    res.json({ success: true, messages: [] });
+    // Return empty array for clean system
+    res.json([]);
   } catch (error) {
-    console.error('Error getting messages:', error);
-    res.status(500).json({ success: false, error: 'Failed to get messages' });
+    console.error('Get messages error:', error);
+    res.status(500).json({ error: 'Failed to get messages' });
   }
 });
 
-// Setup Vite in development
+// Health check
+app.get('/api/health', (req: Request, res: Response) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    system: 'clean-crm',
+    features: ['gemini-ai', 'openai-ai']
+  });
+});
+
+// Setup Vite in development or serve static files in production
 if (app.get("env") === "development") {
-  await setupVite(app, server);
+  setupVite(app, server);
 } else {
   serveStatic(app);
 }
 
-const PORT = Number(process.env.PORT) || 5000;
-
+const PORT = 5000;
 server.listen(PORT, "0.0.0.0", () => {
-  const formattedTime = new Date().toLocaleString("en-US", {
-    weekday: "short",
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    timeZoneName: "short",
-  });
-
-  console.log(`✅ Clean CRM server running on port ${PORT}`);
-  console.log(`🤖 AI providers available: Gemini, OpenAI`);
-  console.log(`🚫 External agents disabled - clean system only`);
-  console.log(`⏰ Server time: ${formattedTime}`);
+  console.log(`Clean CRM server running on port ${PORT}`);
 });

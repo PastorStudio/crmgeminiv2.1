@@ -962,7 +962,7 @@ const WhatsAppAccounts = () => {
                 {/* Clean AI system - external agents removed */}
                 <div className="mt-3 border-t pt-3">
                   <div className="text-sm text-muted-foreground">
-                    External agent functionality has been removed. Use Settings > AI Configuration to set up Gemini or OpenAI support.
+                    External agent functionality has been removed. Use Settings → AI Configuration to set up Gemini or OpenAI support.
                   </div>
                 </div>
 

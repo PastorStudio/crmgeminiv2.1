@@ -2711,13 +2711,27 @@ export function WhatsAppTwoColumn() {
 
 
 
-                          } catch (error) {
-                            console.error('Error en sistema de IA:', error);
-                          }
-                        }}
-                      >
-                        <Bot className="h-4 w-4 mr-2" />
-                        Usar IA
+                  {/* Clean AI Button */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.1 }}
+                  >
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-purple-600 text-purple-600 hover:bg-purple-50 transition-all duration-300"
+                      onClick={async () => {
+                        try {
+                          console.log('🤖 Using clean AI system');
+                          await handleAIResponse();
+                        } catch (error) {
+                          console.error('Error en sistema de IA:', error);
+                        }
+                      }}
+                    >
+                      <Bot className="h-4 w-4 mr-2" />
+                      Usar IA
                       </Button>
                     </motion.div>
                   )}
