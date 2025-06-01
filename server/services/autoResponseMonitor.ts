@@ -39,9 +39,13 @@ class AutoResponseMonitor {
     }
   }
   
-  async processChat(chatId: string, whatsappService: any) {
+  async processChat(chatId: string) {
     try {
-      const messages = await whatsappService.getChatMessages(1, chatId);
+      // Obtener mensajes del chat usando la API existente
+      const messagesResponse = await fetch(`http://localhost:5173/api/whatsapp-accounts/1/messages/${chatId}`);
+      if (!messagesResponse.ok) return;
+      
+      const messages = await messagesResponse.json();
       if (messages.length === 0) return;
       
       const latestMessage = messages[0];
