@@ -909,6 +909,65 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
+   * Obtiene la foto de perfil de un contacto
+   */
+  async getContactProfilePicture(accountId: number, contactId: string): Promise<string | null> {
+    try {
+      const instance = this.instances.get(accountId);
+      if (!instance || !instance.status.authenticated) {
+        console.warn(`Cuenta WhatsApp ID ${accountId} no autenticada para obtener foto de perfil`);
+        return null;
+      }
+
+      // Obtener la URL de la foto de perfil
+      const profilePicUrl = await instance.client.getProfilePicUrl(contactId);
+      return profilePicUrl || null;
+    } catch (error) {
+      console.warn(`Error obteniendo foto de perfil para ${contactId} en cuenta ${accountId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Obtiene información del contacto incluyendo foto de perfil
+   */
+  async getContactInfo(accountId: number, contactId: string): Promise<any> {
+    try {
+      const instance = this.instances.get(accountId);
+      if (!instance || !instance.status.authenticated) {
+        console.warn(`Cuenta WhatsApp ID ${accountId} no autenticada para obtener info de contacto`);
+        return null;
+      }
+
+      // Obtener información del contacto
+      const contact = await instance.client.getContactById(contactId);
+      if (!contact) {
+        return null;
+      }
+
+      // Obtener foto de perfil
+      let profilePicUrl = null;
+      try {
+        profilePicUrl = await instance.client.getProfilePicUrl(contactId);
+      } catch (picError) {
+        console.warn(`No se pudo obtener foto de perfil para ${contactId}:`, picError);
+      }
+
+      return {
+        id: contact.id._serialized,
+        name: contact.name || contact.pushname || contact.shortName || 'Sin nombre',
+        number: contact.number || '',
+        profilePicUrl: profilePicUrl,
+        isGroup: contact.isGroup || false,
+        isUser: contact.isUser || false
+      };
+    } catch (error) {
+      console.warn(`Error obteniendo información de contacto para ${contactId}:`, error);
+      return null;
+    }
+  }
+
+  /**
    * Desconecta una cuenta
    */
   async disconnectAccount(accountId: number): Promise<boolean> {
