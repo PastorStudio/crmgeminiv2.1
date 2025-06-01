@@ -152,23 +152,48 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWhatsAppAccount(account: InsertWhatsAppAccount): Promise<WhatsAppAccount> {
-    // Verificar si no hay cuentas existentes para reiniciar la secuencia
-    const existingAccounts = await db.select().from(whatsappAccounts);
+    // Buscar el primer ID disponible
+    const existingAccounts = await db.select({ id: whatsappAccounts.id }).from(whatsappAccounts).orderBy(whatsappAccounts.id);
+    
+    let nextAvailableId = 1;
     
     if (existingAccounts.length === 0) {
-      // Reiniciar la secuencia de ID desde 1
+      // No hay cuentas, usar ID 1
+      nextAvailableId = 1;
       try {
         await db.execute(`ALTER SEQUENCE whatsapp_accounts_id_seq RESTART WITH 1`);
         console.log('✅ Secuencia de ID de WhatsApp reiniciada desde 1');
       } catch (error) {
         console.log('⚠️ No se pudo reiniciar la secuencia, continuando con ID actual');
       }
+    } else {
+      // Buscar el primer hueco en la secuencia
+      const usedIds = existingAccounts.map(acc => acc.id).sort((a, b) => a - b);
+      
+      for (let i = 0; i < usedIds.length; i++) {
+        if (usedIds[i] !== i + 1) {
+          nextAvailableId = i + 1;
+          break;
+        }
+      }
+      
+      // Si no hay huecos, usar el siguiente número después del último
+      if (nextAvailableId === 1 && usedIds.length > 0) {
+        nextAvailableId = usedIds[usedIds.length - 1] + 1;
+      }
+      
+      console.log(`🔍 Buscando ID disponible: IDs existentes [${usedIds.join(', ')}], asignando ID: ${nextAvailableId}`);
     }
+    
+    // Crear cuenta con ID específico
+    const accountWithId = { ...account, id: nextAvailableId };
     
     const [newAccount] = await db
       .insert(whatsappAccounts)
-      .values(account)
+      .values(accountWithId)
       .returning();
+      
+    console.log(`✅ Cuenta de WhatsApp creada con ID reutilizado: ${newAccount.id}`);
     return newAccount;
   }
 
