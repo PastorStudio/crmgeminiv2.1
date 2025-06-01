@@ -318,21 +318,37 @@ app.post('/api/whatsapp-accounts', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Account name is required' });
     }
 
+    // Find the lowest available ID
+    const existingAccounts = await db
+      .select({ id: whatsappAccounts.id })
+      .from(whatsappAccounts)
+      .orderBy(whatsappAccounts.id);
+
+    let nextId = 1;
+    for (const account of existingAccounts) {
+      if (account.id === nextId) {
+        nextId++;
+      } else {
+        break;
+      }
+    }
+
     const [newAccount] = await db
       .insert(whatsappAccounts)
       .values({
+        id: nextId,
         name,
         description,
         ownerName,
         ownerPhone,
         status: 'inactive',
-        adminId: 1, // Default admin ID
+        adminId: 1,
         autoResponseEnabled: false,
         responseDelay: 3
       })
       .returning();
 
-    console.log(`✅ WhatsApp account created: ${name}`);
+    console.log(`✅ WhatsApp account created with ID ${nextId}: ${name}`);
     
     res.json({
       success: true,
@@ -359,11 +375,20 @@ app.delete('/api/whatsapp-accounts/:id', async (req: Request, res: Response) => 
       .where(eq(whatsappAccounts.id, accountId));
 
     console.log(`✅ WhatsApp account deleted: ID ${accountId}`);
+    console.log('🔄 System restart required after account deletion');
     
     res.json({
       success: true,
-      message: 'WhatsApp account deleted successfully'
+      message: 'WhatsApp account deleted successfully',
+      restartRequired: true
     });
+
+    // Restart system after deletion
+    setTimeout(() => {
+      console.log('🔄 Restarting system after account deletion...');
+      process.exit(0);
+    }, 1000);
+    
   } catch (error) {
     console.error('Delete WhatsApp account error:', error);
     res.status(500).json({ error: 'Failed to delete WhatsApp account' });
@@ -467,11 +492,20 @@ app.post('/api/whatsapp-accounts/delete-all', async (req: Request, res: Response
     await db.delete(whatsappAccounts);
 
     console.log(`✅ All WhatsApp accounts deleted`);
+    console.log('🔄 System restart required after deleting all accounts');
     
     res.json({
       success: true,
-      message: 'All WhatsApp accounts deleted successfully'
+      message: 'All WhatsApp accounts deleted successfully',
+      restartRequired: true
     });
+
+    // Restart system after deletion
+    setTimeout(() => {
+      console.log('🔄 Restarting system after deleting all accounts...');
+      process.exit(0);
+    }, 1000);
+    
   } catch (error) {
     console.error('Delete all WhatsApp accounts error:', error);
     res.status(500).json({ error: 'Failed to delete all WhatsApp accounts' });
@@ -484,11 +518,20 @@ app.delete('/api/whatsapp-accounts/delete-all', async (req: Request, res: Respon
     await db.delete(whatsappAccounts);
 
     console.log(`✅ All WhatsApp accounts deleted`);
+    console.log('🔄 System restart required after deleting all accounts');
     
     res.json({
       success: true,
-      message: 'All WhatsApp accounts deleted successfully'
+      message: 'All WhatsApp accounts deleted successfully',
+      restartRequired: true
     });
+
+    // Restart system after deletion
+    setTimeout(() => {
+      console.log('🔄 Restarting system after deleting all accounts...');
+      process.exit(0);
+    }, 1000);
+    
   } catch (error) {
     console.error('Delete all WhatsApp accounts error:', error);
     res.status(500).json({ error: 'Failed to delete all WhatsApp accounts' });
