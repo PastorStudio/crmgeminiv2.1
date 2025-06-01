@@ -108,6 +108,7 @@ import { ExternalAgentButton } from './ExternalAgentButton';
 import { AgentSelector } from './AgentSelector';
 
 import { VoiceNoteMessage } from './VoiceNoteMessage';
+import { WhatsAppProfilePicture } from './WhatsAppProfilePicture';
 
 // Importar funciones automáticas
 import { 
@@ -2572,12 +2573,14 @@ export function WhatsAppTwoColumn() {
                   >
                     <div className="flex items-center space-x-3 pl-[-20px] pr-[-20px] ml-[-13px] mr-[-13px] text-[12px]">
                       <div className="relative">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={chat.profilePicUrl} />
-                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                            {chat.isGroup ? <Users className="h-6 w-6" /> : chat.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <WhatsAppProfilePicture
+                          contactId={chat.id}
+                          accountId={chat.accountId}
+                          contactName={chat.name}
+                          isGroup={chat.isGroup}
+                          size="lg"
+                          className="h-12 w-12"
+                        />
                         {isContactOnline(chat) && (
                           <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                         )}
@@ -2635,12 +2638,14 @@ export function WhatsAppTwoColumn() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="relative">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={selectedChat.profilePicUrl} />
-                      <AvatarFallback className="bg-red-600 text-white">
-                        {selectedChat.isGroup ? <Users className="h-5 w-5" /> : selectedChat.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <WhatsAppProfilePicture
+                      contactId={selectedChat.id}
+                      accountId={selectedChat.accountId}
+                      contactName={selectedChat.name}
+                      isGroup={selectedChat.isGroup}
+                      size="md"
+                      className="h-10 w-10"
+                    />
                     {isContactOnline(selectedChat) && (
                       <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                     )}
