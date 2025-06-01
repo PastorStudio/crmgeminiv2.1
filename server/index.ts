@@ -25,6 +25,8 @@ import { directDeepSeekResponse } from "./services/directDeepSeekResponse";
 import { EnhancedAutoResponseService } from "./services/enhancedAutoResponseService";
 import { MultimediaService } from "./services/multimediaService";
 import { AutomaticLeadGenerator } from "./services/automaticLeadGenerator";
+import { conversationHistory } from './services/conversationHistory';
+import OpenAI from 'openai';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -4614,6 +4616,124 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
 
   // Inicializar el sistema de respuestas automáticas mejoradas
   EnhancedAutoResponseService.initialize().catch(console.error);
+
+  // ===== RUTAS API PARA HISTORIAL CONVERSACIONAL =====
+  
+  // Obtener historial de conversación
+  app.get('/api/conversation-history/:chatId/:agentId', async (req: Request, res: Response) => {
+    try {
+      const { chatId, agentId } = req.params;
+      const messages = await conversationHistory.getFullContext(chatId, agentId);
+      
+      res.json({
+        success: true,
+        messages: messages,
+        chatId,
+        agentId
+      });
+    } catch (error) {
+      console.error('Error obteniendo historial conversacional:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  // Agregar respuesta del asistente al historial
+  app.post('/api/conversation-history/:chatId/:agentId/add-response', async (req: Request, res: Response) => {
+    try {
+      const { chatId, agentId } = req.params;
+      const { content } = req.body;
+      
+      if (!content) {
+        return res.status(400).json({ success: false, error: 'Contenido requerido' });
+      }
+      
+      conversationHistory.addAssistantMessage(chatId, agentId, content);
+      
+      res.json({
+        success: true,
+        message: 'Respuesta agregada al historial'
+      });
+    } catch (error) {
+      console.error('Error agregando respuesta al historial:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  // Generar respuesta conversacional con agente externo especializado
+  app.post('/api/external-agents/:agentId/conversation', async (req: Request, res: Response) => {
+    try {
+      const { agentId } = req.params;
+      const { message, chatId, conversationHistory: history, agentContext } = req.body;
+      
+      // Inicializar OpenAI
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      // Construir prompt con contexto del agente especializado
+      const systemPrompt = `Eres ${agentContext.name}, ${agentContext.specialty}. 
+      
+Mantén una conversación natural y auténtica como este agente especializado. Usa tu conocimiento específico en tu área de especialización.
+
+Contexto del chat: ${chatId}
+Conversación previa: ${history.map((msg: any) => `${msg.role}: ${msg.content}`).join('\n')}
+
+Responde de manera conversacional, profesional y útil según tu especialización.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // El modelo más reciente de OpenAI lanzado en mayo 2024
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message }
+        ],
+        max_tokens: 300,
+        temperature: 0.7
+      });
+
+      const agentResponse = response.choices[0].message.content;
+      
+      if (!agentResponse) {
+        throw new Error('No se generó respuesta del agente');
+      }
+
+      // Actualizar contador de respuestas del agente
+      try {
+        const updateResponse = await fetch(`http://localhost:5173/api/external-agents-direct/${agentId}/increment-response`);
+        if (updateResponse.ok) {
+          console.log(`✅ Contador actualizado para agente ${agentId}`);
+        }
+      } catch (updateError) {
+        console.log('Info: No se pudo actualizar contador del agente');
+      }
+
+      res.json({
+        success: true,
+        response: agentResponse,
+        agentId: agentId,
+        agentName: agentContext.name,
+        conversational: true
+      });
+
+    } catch (error) {
+      console.error('Error generando respuesta conversacional:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Error generando respuesta del agente especializado' 
+      });
+    }
+  });
+
+  // Estadísticas del historial conversacional
+  app.get('/api/conversation-history/stats', async (req: Request, res: Response) => {
+    try {
+      const stats = conversationHistory.getStats();
+      res.json({
+        success: true,
+        stats
+      });
+    } catch (error) {
+      console.error('Error obteniendo estadísticas del historial:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
 
   // Inicializar el monitor de auto-respuestas para mensajes entrantes
   try {

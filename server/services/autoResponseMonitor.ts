@@ -90,7 +90,7 @@ class AutoResponseMonitor {
   
   async generateAndSendResponse(chatId: string, message: any) {
     try {
-      console.log(`🤖 Generando respuesta automática para ${chatId}...`);
+      console.log(`🧠 Procesando conversación real para ${chatId}...`);
       
       // Obtener configuración del agente
       const configResponse = await fetch('http://localhost:5173/api/whatsapp-accounts/1/agent-config');
@@ -99,14 +99,46 @@ class AutoResponseMonitor {
       const config = await configResponse.json();
       if (!config.assignedExternalAgentId) return;
       
-      // Generar respuesta
-      const responseResult = await fetch(`http://localhost:5173/api/external-agents/${config.assignedExternalAgentId}/response`, {
+      // Obtener información del agente especializado
+      const agentResponse = await fetch(`http://localhost:5173/api/external-agents-direct`);
+      if (!agentResponse.ok) return;
+      
+      const agentData = await agentResponse.json();
+      const agent = agentData.agents.find(a => a.id == config.assignedExternalAgentId);
+      if (!agent) return;
+      
+      console.log(`🎯 Agente especializado activo: ${agent.name}`);
+      
+      // Obtener historial conversacional completo
+      const contextResponse = await fetch(`http://localhost:5173/api/conversation-history/${chatId}/${agent.id}`);
+      let conversationHistory = [];
+      
+      if (contextResponse.ok) {
+        const historyData = await contextResponse.json();
+        conversationHistory = historyData.messages || [];
+      }
+      
+      // Agregar mensaje actual al historial
+      conversationHistory.push({
+        role: 'user',
+        content: message.body,
+        timestamp: new Date()
+      });
+      
+      // Generar respuesta con contexto conversacional completo
+      const responseResult = await fetch(`http://localhost:5173/api/external-agents/${config.assignedExternalAgentId}/conversation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: message.body,
           chatId: chatId,
-          accountId: 1
+          accountId: 1,
+          conversationHistory: conversationHistory,
+          agentContext: {
+            name: agent.name,
+            specialty: agent.notes,
+            provider: agent.provider
+          }
         })
       });
       
@@ -115,7 +147,16 @@ class AutoResponseMonitor {
       const responseData = await responseResult.json();
       
       if (responseData.success && responseData.response) {
-        console.log(`✅ Respuesta generada: ${responseData.response.substring(0, 50)}...`);
+        console.log(`✅ Respuesta conversacional: ${responseData.response.substring(0, 50)}...`);
+        
+        // Guardar respuesta en historial
+        await fetch(`http://localhost:5173/api/conversation-history/${chatId}/${agent.id}/add-response`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: responseData.response
+          })
+        });
         
         // Enviar respuesta después de 2 segundos
         setTimeout(async () => {
