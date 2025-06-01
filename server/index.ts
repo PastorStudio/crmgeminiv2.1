@@ -4564,6 +4564,221 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
   }
 }
 
+  // ===== ENDPOINTS DE IA CON MINIMAX =====
+  
+  // Configurar clave API de MiniMax
+  app.post('/api/minimax/configure', async (req: Request, res: Response) => {
+    try {
+      const { apiKey } = req.body;
+      
+      if (!apiKey) {
+        return res.status(400).json({
+          success: false,
+          error: 'API key es requerida'
+        });
+      }
+      
+      const { miniMaxAI } = await import('./services/minimaxAIService');
+      const isValid = await miniMaxAI.setApiKey(apiKey);
+      
+      if (isValid) {
+        console.log('✅ MiniMax API configurada correctamente');
+        res.json({
+          success: true,
+          message: 'API de MiniMax configurada correctamente'
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: 'API key inválida o error de conexión'
+        });
+      }
+    } catch (error) {
+      console.error('Error configurando MiniMax:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
+    }
+  });
+  
+  // Analizar conversación con IA
+  app.post('/api/ai/analyze-conversation', async (req: Request, res: Response) => {
+    try {
+      const { chatId, messages, contactInfo, accountId } = req.body;
+      
+      const { intelligentManager } = await import('./services/intelligentManagementService');
+      const result = await intelligentManager.processConversation(chatId, messages, contactInfo, accountId);
+      
+      console.log(`🤖 Análisis de IA completado para chat ${chatId}:`, result.analysis);
+      
+      res.json({
+        success: true,
+        analysis: result
+      });
+    } catch (error) {
+      console.error('Error en análisis de conversación:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error analizando conversación: ' + (error as Error).message
+      });
+    }
+  });
+  
+  // Procesar mensaje entrante con IA
+  app.post('/api/ai/process-message', async (req: Request, res: Response) => {
+    try {
+      const { chatId, message, contactInfo, accountId, allMessages } = req.body;
+      
+      const { intelligentManager } = await import('./services/intelligentManagementService');
+      const result = await intelligentManager.processIncomingMessage(
+        chatId, 
+        message, 
+        contactInfo, 
+        accountId, 
+        allMessages || []
+      );
+      
+      console.log(`🤖 Procesamiento de mensaje completado para chat ${chatId}`);
+      
+      res.json({
+        success: true,
+        ...result
+      });
+    } catch (error) {
+      console.error('Error procesando mensaje:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error procesando mensaje: ' + (error as Error).message
+      });
+    }
+  });
+  
+  // Generar lead automáticamente
+  app.post('/api/ai/generate-lead', async (req: Request, res: Response) => {
+    try {
+      const { messages, contactInfo } = req.body;
+      
+      const { miniMaxAI } = await import('./services/minimaxAIService');
+      const leadData = await miniMaxAI.generateLeadFromConversation(messages, contactInfo);
+      
+      if (leadData.confidence > 0.3) {
+        const newLead = await storage.createLead({
+          name: leadData.name,
+          email: leadData.email || `${contactInfo.phone}@whatsapp.contact`,
+          phone: leadData.phone,
+          company: leadData.company,
+          source: 'whatsapp',
+          status: leadData.status,
+          notes: leadData.notes,
+          priority: leadData.priority,
+          assigneeId: null,
+          budget: 0
+        });
+        
+        console.log(`🎯 Lead generado automáticamente: ${leadData.name}`);
+        
+        res.json({
+          success: true,
+          lead: newLead,
+          confidence: leadData.confidence
+        });
+      } else {
+        res.json({
+          success: false,
+          error: 'Confianza insuficiente para crear lead',
+          confidence: leadData.confidence
+        });
+      }
+    } catch (error) {
+      console.error('Error generando lead:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error generando lead: ' + (error as Error).message
+      });
+    }
+  });
+  
+  // Obtener recomendaciones de asignación de agentes
+  app.post('/api/ai/agent-recommendations', async (req: Request, res: Response) => {
+    try {
+      const { analysis } = req.body;
+      
+      const availableAgents = await storage.getAllUsers();
+      const { intelligentManager } = await import('./services/intelligentManagementService');
+      
+      const recommendation = await intelligentManager.getAgentAssignmentRecommendations(
+        analysis, 
+        availableAgents
+      );
+      
+      res.json({
+        success: true,
+        recommendation
+      });
+    } catch (error) {
+      console.error('Error obteniendo recomendaciones:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error obteniendo recomendaciones: ' + (error as Error).message
+      });
+    }
+  });
+  
+  // Actualizar estadísticas del dashboard con datos de IA
+  app.post('/api/ai/update-dashboard', async (req: Request, res: Response) => {
+    try {
+      const { intelligentManager } = await import('./services/intelligentManagementService');
+      await intelligentManager.updateDashboardWithAIData();
+      
+      console.log('📊 Estadísticas del dashboard actualizadas con datos de IA');
+      
+      res.json({
+        success: true,
+        message: 'Dashboard actualizado con análisis de IA'
+      });
+    } catch (error) {
+      console.error('Error actualizando dashboard:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error actualizando dashboard: ' + (error as Error).message
+      });
+    }
+  });
+  
+  // Mover lead entre etapas (drag-and-drop)
+  app.put('/api/leads/:leadId/stage', async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.leadId);
+      const { status, notes } = req.body;
+      
+      const updatedLead = await storage.updateLead(leadId, {
+        status,
+        notes: notes || undefined
+      });
+      
+      if (updatedLead) {
+        console.log(`📋 Lead ${leadId} movido a etapa: ${status}`);
+        
+        res.json({
+          success: true,
+          lead: updatedLead
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: 'Lead no encontrado'
+        });
+      }
+    } catch (error) {
+      console.error('Error moviendo lead:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error moviendo lead: ' + (error as Error).message
+      });
+    }
+  });
+
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
