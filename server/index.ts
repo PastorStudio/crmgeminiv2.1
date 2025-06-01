@@ -145,7 +145,7 @@ app.post('/api/settings/update-gemini-key', async (req: Request, res: Response) 
   }
 });
 
-app.get('/api/settings/gemini-key', async (req: Request, res: Response) => {
+app.get('/api/settings/gemini-key-status', async (req: Request, res: Response) => {
   try {
     const hasValidKey = !!process.env.GEMINI_API_KEY;
     res.json({ 
@@ -159,7 +159,7 @@ app.get('/api/settings/gemini-key', async (req: Request, res: Response) => {
   }
 });
 
-app.get('/api/settings/openai-key', async (req: Request, res: Response) => {
+app.get('/api/settings/openai-key-status', async (req: Request, res: Response) => {
   try {
     const hasValidKey = !!process.env.OPENAI_API_KEY;
     res.json({ 
