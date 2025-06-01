@@ -41,7 +41,9 @@ import {
   Loader2,
   Ticket,
   Play,
-  RefreshCw
+  RefreshCw,
+  Zap,
+  Bot
 } from 'lucide-react';
 
 // Import components
@@ -2163,6 +2165,42 @@ export function WhatsAppTwoColumn() {
     }
   };
 
+  // 3. FUNCIONALIDAD: AUTO-ENVÍO INTELIGENTE
+  const [autoSendEnabled, setAutoSendEnabled] = useState(false);
+  
+  const handleAutoSendToggle = () => {
+    setAutoSendEnabled(!autoSendEnabled);
+    toast({
+      title: autoSendEnabled ? "Auto-envío Desactivado" : "Auto-envío Activado",
+      description: autoSendEnabled 
+        ? "Los mensajes no se enviarán automáticamente" 
+        : "Los mensajes con contenido se enviarán automáticamente",
+      duration: 3000
+    });
+  };
+
+  // Efecto para auto-envío cuando hay contenido generado
+  useEffect(() => {
+    if (autoSendEnabled && newMessage && newMessage.trim().length > 0 && selectedChat) {
+      // Detectar si el mensaje fue generado por Robot A.E (contiene palabras clave de respuesta automática)
+      const isGeneratedResponse = /\b(gracias|hola|buenos días|buenas tardes|atención|cliente|servicio|ayuda|consulta|información)/i.test(newMessage);
+      
+      if (isGeneratedResponse) {
+        console.log('🚀 AUTO-ENVÍO ACTIVADO - Enviando mensaje generado automáticamente...');
+        
+        // Enviar mensaje después de una pequeña pausa
+        setTimeout(() => {
+          handleSendMessage();
+          toast({
+            title: "🚀 Mensaje Auto-enviado",
+            description: "El mensaje fue enviado automáticamente",
+            duration: 3000
+          });
+        }, 1500);
+      }
+    }
+  }, [newMessage, autoSendEnabled, selectedChat]);
+
 
 
 
@@ -2580,6 +2618,43 @@ export function WhatsAppTwoColumn() {
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
                   {/* 1. BOTÓN RAYO + A.E - ASIGNACIÓN PERMANENTE */}
+                  <Button
+                    onClick={handlePermanentAgentAssignment}
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                    title="Asignar Agente Externo Permanentemente"
+                  >
+                    <Zap className="h-4 w-4 mr-1" />
+                    A.E
+                  </Button>
+
+                  {/* 2. BOTÓN ROBOT A.E - GENERAR RESPUESTA */}
+                  <Button
+                    onClick={handleRobotResponseGeneration}
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 border-blue-300 text-blue-700 hover:bg-blue-50"
+                    title="Generar Respuesta con Robot A.E"
+                  >
+                    <Bot className="h-4 w-4 mr-1" />
+                    A.E
+                  </Button>
+
+                  {/* 3. BOTÓN AUTO-ENVÍO */}
+                  <Button
+                    onClick={handleAutoSendToggle}
+                    variant={autoSendEnabled ? "default" : "outline"}
+                    size="sm"
+                    className={`h-8 px-3 ${autoSendEnabled 
+                      ? "bg-green-600 hover:bg-green-700 text-white" 
+                      : "border-green-300 text-green-700 hover:bg-green-50"
+                    }`}
+                    title="Activar/Desactivar Auto-envío"
+                  >
+                    <Play className="h-4 w-4 mr-1" />
+                    Auto
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"
