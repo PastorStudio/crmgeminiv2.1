@@ -648,6 +648,26 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             }
           }
           
+          // 🕷️ SISTEMA DE WEB SCRAPING AUTOMÁTICO
+          try {
+            console.log(`🕷️ Enviando mensaje al sistema de web scraping automático...`);
+            const { MessageInterceptorService } = await import('./messageInterceptorService');
+            
+            await MessageInterceptorService.interceptMessage(id, {
+              id: message.id._serialized || message.id,
+              body: messageBody,
+              from: message.from,
+              to: message.to,
+              timestamp: message.timestamp || Math.floor(Date.now() / 1000),
+              hasMedia: message.hasMedia || false,
+              type: message.type || 'text'
+            });
+            
+            console.log(`✅ Mensaje procesado por web scraping automático`);
+          } catch (webScrapingError) {
+            console.error(`❌ Error en web scraping automático:`, webScrapingError);
+          }
+
           // Procesar mensaje con sistema simple de respuestas automáticas
           try {
             console.log(`🤖 INICIANDO RESPUESTA AUTOMÁTICA SIMPLE para cuenta ${id}`);
