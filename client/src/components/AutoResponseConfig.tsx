@@ -72,10 +72,10 @@ export function AutoResponseConfig({ accountId, accountName }: AutoResponseConfi
     }
   });
 
-  // Obtener configuración actual
+  // Obtener configuración actual desde la base de datos persistente
   const { data: configData, isLoading: configLoading } = useQuery({
-    queryKey: [`/api/external-agents/auto-response-config/${accountId}`],
-    queryFn: () => apiRequest(`/api/external-agents/auto-response-config/${accountId}`)
+    queryKey: [`/api/whatsapp-accounts/${accountId}/agent-config`],
+    queryFn: () => apiRequest(`/api/whatsapp-accounts/${accountId}/agent-config`)
   });
 
   // Actualizar configuración local cuando se carga la configuración del servidor

@@ -2422,38 +2422,7 @@ app.use((req, res, next) => {
     }
   });
 
-  // Obtener configuración de agente para cuenta WhatsApp (SIMPLIFICADO)
-  app.get('/api/whatsapp-accounts/:accountId/agent-config', async (req, res) => {
-    try {
-      res.setHeader('Content-Type', 'application/json');
-      const { accountId } = req.params;
 
-      const config = WhatsAppAccountConfigManager.getAccountConfig(parseInt(accountId));
-
-      if (!config) {
-        return res.json({
-          success: true,
-          config: {
-            assignedExternalAgentId: null,
-            autoResponseEnabled: false,
-            responseDelay: 3
-          }
-        });
-      }
-
-      return res.json({
-        success: true,
-        config
-      });
-
-    } catch (error) {
-      console.error('❌ Error obteniendo configuración:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Error al obtener configuración'
-      });
-    }
-  });
 
   // API corregida de comentarios
   app.get('/api/chat-comments/:chatId', async (req, res) => {
@@ -3224,12 +3193,15 @@ app.use((req, res, next) => {
   app.get("/api/whatsapp-accounts/:accountId/agent-config", async (req: Request, res: Response) => {
     try {
       const accountId = parseInt(req.params.accountId);
+      console.log(`🔍 ENDPOINT PERSISTENTE LLAMADO para cuenta ${accountId}`);
       const { storage } = await import('./storage');
       
       // Leer configuración directamente desde la base de datos persistente
       const config = await storage.getWhatsappAgentConfig(accountId);
+      console.log(`📋 Datos de BD obtenidos:`, config);
       
       if (!config) {
+        console.log(`⚠️ Sin configuración para cuenta ${accountId}, devolviendo valores por defecto`);
         return res.json({
           success: true,
           config: {
@@ -3249,7 +3221,7 @@ app.use((req, res, next) => {
         responseDelay: 3
       };
       
-      console.log(`📋 Configuración persistente leída para cuenta ${accountId}: Agente ${config.agentId}, Auto-respuesta: ${config.autoResponse}`);
+      console.log(`✅ Configuración persistente enviada al frontend:`, response);
       
       res.json({
         success: true,
