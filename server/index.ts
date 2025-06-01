@@ -1850,6 +1850,64 @@ app.use((req, res, next) => {
     }
   });
 
+  // ===== ENDPOINT CRÍTICO: PROCESAMIENTO AUTOMÁTICO DE MENSAJES NUEVOS =====
+  app.post('/api/auto-process-message', async (req, res) => {
+    try {
+      const { accountId, chatId, messageText, messageId, fromMe } = req.body;
+      
+      // Solo procesar mensajes entrantes (no propios)
+      if (fromMe) {
+        return res.json({ success: false, reason: 'Mensaje propio, ignorado' });
+      }
+      
+      console.log(`🔥 PROCESANDO MENSAJE AUTOMÁTICO - Cuenta: ${accountId}, Chat: ${chatId}`);
+      console.log(`💬 Mensaje: "${messageText?.substring(0, 50)}..."`);
+      
+      // Verificar configuración de la cuenta
+      const [account] = await db
+        .select()
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.id, accountId))
+        .limit(1);
+      
+      if (!account || !account.autoResponseEnabled || !account.assignedExternalAgentId) {
+        console.log('⏭️ Respuestas automáticas no configuradas');
+        return res.json({ success: false, reason: 'Respuestas automáticas no configuradas' });
+      }
+      
+      console.log(`🤖 Agente asignado: ${account.assignedExternalAgentId}`);
+      
+      // Usar el servicio de agentes externos reales con OpenAI
+      const { RealExternalAgentService } = await import('./services/realExternalAgents');
+      
+      const response = await RealExternalAgentService.sendMessageToRealAgent(
+        account.assignedExternalAgentId,
+        messageText
+      );
+      
+      if (response.success && response.response) {
+        console.log(`✅ RESPUESTA GENERADA CON OPENAI: "${response.response.substring(0, 50)}..."`);
+        
+        // TODO: Aquí se enviará la respuesta real a WhatsApp
+        console.log(`📤 RESPUESTA LISTA PARA WHATSAPP en chat: ${chatId}`);
+        
+        res.json({
+          success: true,
+          response: response.response,
+          agentName: response.agentName,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        console.log(`❌ Error generando respuesta: ${response.error}`);
+        res.json({ success: false, error: response.error });
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en procesamiento automático:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ===== A.E AI - SISTEMA ULTRA-SIMPLIFICADO =====
   
   // A.E AI TOGGLE - CON PROCESADOR AUTOMÁTICO
