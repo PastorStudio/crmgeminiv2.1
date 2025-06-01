@@ -1801,24 +1801,21 @@ export function WhatsAppTwoColumn() {
               
               let autoResponse = aiResponse;
                 
-                // Si la traducción está habilitada, traducir la respuesta
-                if (translationEnabled && selectedLanguage !== 'es') {
-                  console.log(`🌐 Traduciendo respuesta automática al ${selectedLanguage}...`);
-                  autoResponse = await translateMessage(autoResponse, selectedLanguage);
-                }
-                
-                console.log('📤 Enviando respuesta automática:', autoResponse);
-                await sendAutoMessage(autoResponse);
-                
-                // Notificación indicando si fue traducida
-                toast({
-                  title: "🤖 Respuesta automática enviada",
-                  description: translationEnabled ? `Traducida al ${selectedLanguage.toUpperCase()}` : "SmartBots respondió automáticamente al último mensaje recibido",
-                  duration: 3000
-                });
-              } else {
-                console.log('❌ No se pudo generar respuesta automática');
+              // Si la traducción está habilitada, traducir la respuesta
+              if (translationEnabled && selectedLanguage !== 'es') {
+                console.log(`🌐 Traduciendo respuesta automática al ${selectedLanguage}...`);
+                autoResponse = await translateMessage(autoResponse, selectedLanguage);
               }
+              
+              console.log('📤 Enviando respuesta automática:', autoResponse);
+              await sendAutoMessage(autoResponse);
+              
+              // Notificación indicando si fue traducida
+              toast({
+                title: "🤖 Respuesta automática enviada",
+                description: translationEnabled ? `Traducida al ${selectedLanguage.toUpperCase()}` : "Agente respondió automáticamente al último mensaje recibido",
+                duration: 3000
+              });
             } catch (error) {
               console.error('❌ Error en respuesta automática:', error);
             }
