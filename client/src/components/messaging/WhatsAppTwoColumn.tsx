@@ -848,6 +848,7 @@ export function WhatsAppTwoColumn() {
   const [externalAgentActive, setExternalAgentActive] = useState(false);
   const [externalAgentProcessing, setExternalAgentProcessing] = useState(false);
   const [externalAgentUrl, setExternalAgentUrl] = useState<string>('');
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 
   // Cargar estado del agente externo al seleccionar chat
   useEffect(() => {
@@ -884,8 +885,6 @@ export function WhatsAppTwoColumn() {
       return;
     }
 
-    // Obtener el agente seleccionado del selector de rayo
-    const selectedAgentId = tempConfig.selectedAgentId;
     if (!selectedAgentId) {
       toast({
         title: "Sin agente seleccionado",
@@ -2733,9 +2732,21 @@ export function WhatsAppTwoColumn() {
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
-
                   
-                  {/* A.E AI SWITCH - RESPUESTAS AUTOMÁTICAS */}
+                  {/* SELECTOR DE AGENTE (RAYO) */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.05 }}
+                  >
+                    <AgentSelector
+                      chatId={selectedChat?.id || ''}
+                      accountId={selectedChat?.accountId || 0}
+                      onAgentChange={(agentId) => setSelectedAgentId(agentId)}
+                    />
+                  </motion.div>
+
+                  {/* BOTÓN AZUL A.E. */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
