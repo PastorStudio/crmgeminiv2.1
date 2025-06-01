@@ -2621,31 +2621,6 @@ export function WhatsAppTwoColumn() {
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
-                  {/* 1. BOTÓN RAYO + A.E - ASIGNACIÓN PERMANENTE */}
-                  <Button
-                    onClick={handlePermanentAgentAssignment}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3 border-yellow-300 text-yellow-700 hover:bg-yellow-50"
-                    title="Asignar Agente Externo Permanentemente"
-                  >
-                    <Zap className="h-4 w-4 mr-1" />
-                    A.E
-                  </Button>
-
-                  {/* 2. BOTÓN ROBOT A.E - GENERAR RESPUESTA */}
-                  <Button
-                    onClick={handleRobotResponseGeneration}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3 border-blue-300 text-blue-700 hover:bg-blue-50"
-                    title="Generar Respuesta con Robot A.E"
-                  >
-                    <Bot className="h-4 w-4 mr-1" />
-                    A.E
-                  </Button>
-
-                  {/* 3. BOTÓN AUTO-ENVÍO */}
 
                   
                   {/* A.E AI SWITCH - RESPUESTAS AUTOMÁTICAS */}
