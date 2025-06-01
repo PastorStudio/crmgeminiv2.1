@@ -2459,8 +2459,8 @@ export function WhatsAppTwoColumn() {
 
   return (
     <div className="flex flex-row h-screen bg-gray-50">
-      {/* Left Panel - Chat List (25%) */}
-      <div className="w-80 min-w-80 max-w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+      {/* Left Panel - Chat List (30%) */}
+      <div className="w-[30%] bg-white border-r border-gray-200 flex flex-col overflow-hidden">
         {/* Header with Account Selector */}
         <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-red-600 via-black to-red-600 flex-shrink-0">
           <div className="space-y-3">
@@ -2578,7 +2578,7 @@ export function WhatsAppTwoColumn() {
         </ScrollArea>
       </div>
       {/* Middle Panel - Chat Messages (50%) */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="w-[50%] flex flex-col overflow-hidden">
         {selectedChat ? (
           <>
             {/* Chat Header */}
@@ -2646,56 +2646,7 @@ export function WhatsAppTwoColumn() {
                   </Button>
 
                   {/* 3. BOTÓN AUTO-ENVÍO */}
-                  <Button
-                    onClick={handleAutoSendToggle}
-                    variant={autoSendEnabled ? "default" : "outline"}
-                    size="sm"
-                    className={`h-8 px-3 ${autoSendEnabled 
-                      ? "bg-green-600 hover:bg-green-700 text-white" 
-                      : "border-green-300 text-green-700 hover:bg-green-50"
-                    }`}
-                    title="Activar/Desactivar Auto-envío"
-                  >
-                    <Play className="h-4 w-4 mr-1" />
-                    Auto
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-orange-500 text-orange-600 hover:bg-orange-50 shadow-sm transition-all duration-300"
-                    onClick={handlePermanentAgentAssignment}
-                  >
-                    <Zap className="h-4 w-4 mr-1" />
-                    A.E
-                  </Button>
 
-                  {/* 2. BOTÓN ROBOT A.E - GENERAR RESPUESTA */}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-purple-500 text-purple-600 hover:bg-purple-50 shadow-sm transition-all duration-300"
-                    onClick={handleRobotResponseGeneration}
-                  >
-                    <Bot className="h-4 w-4 mr-1" />
-                    A.E
-                  </Button>
-
-                  {/* Assignment Button */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-blue-600 text-blue-600 hover:bg-blue-50 shadow-sm transition-all duration-300"
-                      onClick={() => setAssignmentDialogOpen(true)}
-                    >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Asignar
-                    </Button>
-                  </motion.div>
                   
                   {/* A.E AI SWITCH - RESPUESTAS AUTOMÁTICAS */}
                   <motion.div
@@ -3574,8 +3525,8 @@ export function WhatsAppTwoColumn() {
         />
       )}
 
-      {/* Right Panel - Contact Information (25%) */}
-      <div className="w-80 min-w-80 max-w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden">
+      {/* Right Panel - Contact Information (20%) */}
+      <div className="w-[20%] bg-white border-l border-gray-200 flex flex-col overflow-hidden">
         {selectedChat ? (
           <ContactInfoPanel chat={selectedChat} />
         ) : (
