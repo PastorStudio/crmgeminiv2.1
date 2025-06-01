@@ -3070,7 +3070,7 @@ export function WhatsAppTwoColumn() {
                                           try {
                                             console.log(`🤖 Iniciando procesamiento INTELIGENTE con agente externo`);
                                             
-                                            // 🧠 LÓGICA INTELIGENTE: PROCESAR EN ESPAÑOL, RESPONDER SEGÚN TRADUCTOR
+                                            // 🧠 LÓGICA INTELIGENTE: PROCESAR EN ESPAÑOL, SIEMPRE RESPONDER EN ESPAÑOL
                                             let messageToProcess = message.body;
                                             
                                             // Detectar si el mensaje original está en español
@@ -3098,12 +3098,13 @@ export function WhatsAppTwoColumn() {
                                               messageToProcess = message.body;
                                             }
                                             
-                                            // 🎯 CONFIGURACIÓN FINAL: Siempre generar en español
+                                            // 🎯 CONFIGURACIÓN OBLIGATORIA: SIEMPRE GENERAR EN ESPAÑOL
                                             // La traducción automática se aplicará cuando se envíe el mensaje
                                             const translationConfig = {
-                                              enabled: false,  // Siempre generar en español
+                                              enabled: false,  // FORZAR: Siempre generar en español
                                               language: 'es',
-                                              languageName: 'Español'
+                                              languageName: 'Español',
+                                              forceSpanish: true // Bandera para forzar español
                                             };
                                             
                                             console.log('🇪🇸 CONFIGURACIÓN: Respuesta se generará SIEMPRE en español');

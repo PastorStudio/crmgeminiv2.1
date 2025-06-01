@@ -411,7 +411,17 @@ app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response)
     
     console.log(`🤖 Conectando con agente real: ${agentId}`);
     console.log(`💬 Mensaje: "${message}"`);
-    console.log(`🌐 Configuración de traducción:`, translationConfig);
+    console.log(`🌐 Configuración original:`, translationConfig);
+    
+    // 🇪🇸 FORZAR CONFIGURACIÓN EN ESPAÑOL - SIEMPRE
+    const spanishConfig = {
+      enabled: false,
+      language: 'es',
+      languageName: 'Español',
+      forceSpanish: true
+    };
+    
+    console.log(`🇪🇸 FORZANDO RESPUESTA EN ESPAÑOL - configuración aplicada:`, spanishConfig);
     
     // Usar el servicio de agentes externos reales
     const { RealExternalAgentService } = await import('./services/realExternalAgents');
@@ -419,7 +429,7 @@ app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response)
     const realAgentResponse = await RealExternalAgentService.sendMessageToRealAgent(
       agentId,
       message,
-      translationConfig
+      spanishConfig
     );
     
     if (realAgentResponse.success) {
