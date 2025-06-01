@@ -107,6 +107,7 @@ import { AutoResponseFixed } from './AutoResponseFixed';
 import { ChatCommentsDialog } from './ChatCommentsDialog';
 import { ExternalAgentButton } from './ExternalAgentButton';
 import { AgentSelector } from './AgentSelector';
+import { BlueAEAgentSelector } from './BlueAEAgentSelector';
 
 import { VoiceNoteMessage } from './VoiceNoteMessage';
 import { WhatsAppProfilePicture } from './WhatsAppProfilePicture';
@@ -581,6 +582,7 @@ export function WhatsAppTwoColumn() {
   const [selectedChat, setSelectedChat] = useState<WhatsAppChat | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
+  const [blueAESelectedAgentId, setBlueAESelectedAgentId] = useState<string | null>(null);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
   const [assignmentChatId, setAssignmentChatId] = useState<string>('');
@@ -885,7 +887,7 @@ export function WhatsAppTwoColumn() {
       return;
     }
 
-    if (!selectedAgentId) {
+    if (!blueAESelectedAgentId) {
       toast({
         title: "Sin agente seleccionado",
         description: "Selecciona un agente en el selector de rayo primero",
@@ -897,7 +899,7 @@ export function WhatsAppTwoColumn() {
     try {
       setExternalAgentProcessing(true);
       
-      console.log('📤 Generando respuesta con agente:', selectedAgentId);
+      console.log('📤 BOTÓN AZUL A.E. - Generando respuesta con agente:', blueAESelectedAgentId);
       
       const response = await fetch('/api/external-agents/generate-response', {
         method: 'POST',
@@ -905,7 +907,7 @@ export function WhatsAppTwoColumn() {
         body: JSON.stringify({ 
           chatId: selectedChat.id,
           accountId: selectedChat.accountId,
-          agentId: selectedAgentId
+          agentId: blueAESelectedAgentId
         })
       });
       
