@@ -345,6 +345,65 @@ app.post('/api/whatsapp-accounts', async (req: Request, res: Response) => {
   }
 });
 
+// Delete single WhatsApp account
+app.delete('/api/whatsapp-accounts/:id', async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.id);
+    
+    if (!accountId) {
+      return res.status(400).json({ error: 'Valid account ID is required' });
+    }
+
+    await db
+      .delete(whatsappAccounts)
+      .where(eq(whatsappAccounts.id, accountId));
+
+    console.log(`✅ WhatsApp account deleted: ID ${accountId}`);
+    
+    res.json({
+      success: true,
+      message: 'WhatsApp account deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete WhatsApp account error:', error);
+    res.status(500).json({ error: 'Failed to delete WhatsApp account' });
+  }
+});
+
+// Delete all WhatsApp accounts (using POST due to Vite middleware issues)
+app.post('/api/whatsapp-accounts/delete-all', async (req: Request, res: Response) => {
+  try {
+    await db.delete(whatsappAccounts);
+
+    console.log(`✅ All WhatsApp accounts deleted`);
+    
+    res.json({
+      success: true,
+      message: 'All WhatsApp accounts deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete all WhatsApp accounts error:', error);
+    res.status(500).json({ error: 'Failed to delete all WhatsApp accounts' });
+  }
+});
+
+// Also keep the DELETE method for compatibility
+app.delete('/api/whatsapp-accounts/delete-all', async (req: Request, res: Response) => {
+  try {
+    await db.delete(whatsappAccounts);
+
+    console.log(`✅ All WhatsApp accounts deleted`);
+    
+    res.json({
+      success: true,
+      message: 'All WhatsApp accounts deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete all WhatsApp accounts error:', error);
+    res.status(500).json({ error: 'Failed to delete all WhatsApp accounts' });
+  }
+});
+
 // External agents endpoint (clean system - always empty)
 app.get('/api/external-agents', async (req: Request, res: Response) => {
   try {
@@ -376,6 +435,9 @@ app.get('/api/health', (req: Request, res: Response) => {
     features: ['gemini-ai', 'openai-ai']
   });
 });
+
+// Ensure all API routes are registered before Vite setup
+console.log("📡 API routes registered successfully");
 
 // Setup Vite in development or serve static files in production
 if (app.get("env") === "development") {
