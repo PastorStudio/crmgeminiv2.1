@@ -5151,4 +5151,41 @@ Responde de manera conversacional, profesional y útil según tu especializació
     }
   });
 
+  // Endpoint de prueba para el sistema de web scraping automático
+  app.post('/api/web-scraping/test-message', async (req: Request, res: Response) => {
+    try {
+      const { accountId, chatId, message } = req.body;
+      
+      if (!accountId || !chatId || !message) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Se requieren accountId, chatId y message' 
+        });
+      }
+
+      console.log(`🧪 Procesando mensaje de prueba: "${message}"`);
+      
+      // Simular mensaje entrante
+      const testMessage = {
+        id: `test_${Date.now()}`,
+        body: message,
+        from: chatId,
+        to: 'test@c.us',
+        timestamp: Math.floor(Date.now() / 1000),
+        hasMedia: false,
+        type: 'text'
+      };
+
+      await MessageInterceptorService.interceptMessage(accountId, testMessage);
+      
+      res.json({
+        success: true,
+        message: 'Mensaje de prueba procesado correctamente'
+      });
+    } catch (error) {
+      console.error('Error procesando mensaje de prueba:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
 })();
