@@ -160,12 +160,6 @@ export class DatabaseStorage implements IStorage {
     if (existingAccounts.length === 0) {
       // No hay cuentas, usar ID 1
       nextAvailableId = 1;
-      try {
-        await db.execute(`ALTER SEQUENCE whatsapp_accounts_id_seq RESTART WITH 1`);
-        console.log('✅ Secuencia de ID de WhatsApp reiniciada desde 1');
-      } catch (error) {
-        console.log('⚠️ No se pudo reiniciar la secuencia, continuando con ID actual');
-      }
     } else {
       // Buscar el primer hueco en la secuencia
       const usedIds = existingAccounts.map(acc => acc.id).sort((a, b) => a - b);
@@ -185,16 +179,41 @@ export class DatabaseStorage implements IStorage {
       console.log(`🔍 Buscando ID disponible: IDs existentes [${usedIds.join(', ')}], asignando ID: ${nextAvailableId}`);
     }
     
-    // Crear cuenta con ID específico
-    const accountWithId = { ...account, id: nextAvailableId };
-    
-    const [newAccount] = await db
-      .insert(whatsappAccounts)
-      .values(accountWithId)
-      .returning();
+    // Usar INSERT directo con ON CONFLICT para manejar el ID específico
+    try {
+      const [newAccount] = await db.execute(`
+        INSERT INTO whatsapp_accounts (id, name, description, status, phone, auto_response_enabled, assigned_external_agent_id, response_delay, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING *
+      `, [
+        nextAvailableId,
+        account.name,
+        account.description || null,
+        account.status || 'disconnected',
+        account.phone || null,
+        account.autoResponseEnabled || false,
+        account.assignedExternalAgentId || null,
+        account.responseDelay || 3,
+        new Date(),
+        new Date()
+      ]);
       
-    console.log(`✅ Cuenta de WhatsApp creada con ID reutilizado: ${newAccount.id}`);
-    return newAccount;
+      console.log(`✅ Cuenta de WhatsApp creada con ID reutilizado: ${nextAvailableId}`);
+      
+      // Actualizar la secuencia para evitar conflictos futuros
+      const maxId = Math.max(nextAvailableId, ...existingAccounts.map(acc => acc.id));
+      await db.execute(`SELECT setval('whatsapp_accounts_id_seq', $1, true)`, [maxId]);
+      
+      return newAccount.rows[0];
+    } catch (error) {
+      console.error('❌ Error creando cuenta con ID específico:', error);
+      // Fallback: usar inserción normal
+      const [newAccount] = await db
+        .insert(whatsappAccounts)
+        .values(account)
+        .returning();
+      return newAccount;
+    }
   }
 
   async getChatAssignments(): Promise<ChatAssignment[]> {
