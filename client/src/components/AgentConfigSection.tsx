@@ -208,7 +208,7 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
           Agente Asignado:
         </label>
         <Select
-          value={autoConfig?.assignedAgentId || 'none'}
+          value={currentAgentId || 'none'}
           onValueChange={handleAgentChange}
           disabled={updateConfigMutation.isPending}
         >
@@ -235,10 +235,10 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
       )}
 
       {/* Toggle AI ON/OFF - Control principal */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Switch
-            checked={autoConfig?.enabled || false}
+            checked={currentEnabled}
             onCheckedChange={handleToggleAI}
             disabled={updateConfigMutation.isPending}
           />
@@ -251,6 +251,21 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
           <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
         )}
       </div>
+
+      {/* Botón de guardar cambios */}
+      {hasChanges && (
+        <div className="mb-3">
+          <Button
+            onClick={handleSaveChanges}
+            disabled={updateConfigMutation.isPending}
+            size="sm"
+            className="w-full bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Save className="w-3 h-3 mr-1" />
+            {updateConfigMutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
+          </Button>
+        </div>
+      )}
 
       {/* Estado actual del sistema */}
       {assignedAgent && (
