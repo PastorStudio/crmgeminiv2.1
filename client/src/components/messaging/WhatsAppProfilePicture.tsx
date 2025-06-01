@@ -52,8 +52,9 @@ export function WhatsAppProfilePicture({
       
       console.log(`📸 Obteniendo foto de perfil para ${contactId} en cuenta ${accountId}`);
       
+      // Usar API directa para evitar interceptación de Vite
       const response = await fetch(
-        `/api/whatsapp-accounts/${accountId}/contact/${encodeURIComponent(contactId)}/profile-picture`,
+        `/api/direct/whatsapp-accounts/${accountId}/contact/${encodeURIComponent(contactId)}/profile-picture`,
         {
           method: 'GET',
           headers: {

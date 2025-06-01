@@ -914,16 +914,44 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   async getContactProfilePicture(accountId: number, contactId: string): Promise<string | null> {
     try {
       const instance = this.instances.get(accountId);
-      if (!instance || !instance.status.authenticated) {
-        console.warn(`Cuenta WhatsApp ID ${accountId} no autenticada para obtener foto de perfil`);
+      if (!instance) {
+        console.warn(`Instancia WhatsApp ID ${accountId} no encontrada para foto de perfil`);
         return null;
       }
 
-      // Obtener la URL de la foto de perfil
-      const profilePicUrl = await instance.client.getProfilePicUrl(contactId);
-      return profilePicUrl || null;
+      if (!instance.client) {
+        console.warn(`Cliente WhatsApp ID ${accountId} no inicializado para foto de perfil`);
+        return null;
+      }
+
+      // Verificar estado de conexión real
+      const clientState = await instance.client.getState();
+      console.log(`📸 Estado del cliente ${accountId}: ${clientState}`);
+      
+      if (clientState !== 'CONNECTED') {
+        console.warn(`Cliente WhatsApp ID ${accountId} no conectado (${clientState}) para foto de perfil`);
+        return null;
+      }
+
+      console.log(`📸 Obteniendo foto de perfil para ${contactId} desde cuenta ${accountId}`);
+      
+      // Obtener la URL de la foto de perfil con timeout
+      const profilePicUrl = await Promise.race([
+        instance.client.getProfilePicUrl(contactId),
+        new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 10000)
+        )
+      ]);
+      
+      if (profilePicUrl) {
+        console.log(`✅ Foto de perfil obtenida para ${contactId}: ${profilePicUrl.substring(0, 100)}...`);
+        return profilePicUrl;
+      } else {
+        console.log(`📸 Sin foto de perfil disponible para ${contactId}`);
+        return null;
+      }
     } catch (error) {
-      console.warn(`Error obteniendo foto de perfil para ${contactId} en cuenta ${accountId}:`, error);
+      console.warn(`❌ Error obteniendo foto de perfil para ${contactId} en cuenta ${accountId}:`, error);
       return null;
     }
   }
