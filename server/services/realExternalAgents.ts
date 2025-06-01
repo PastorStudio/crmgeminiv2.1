@@ -21,7 +21,7 @@ export class RealExternalAgentService {
   static async sendMessageToRealAgent(
     agentId: string, 
     message: string, 
-    translationConfig?: { enabled: boolean; language: string; languageName: string }
+    translationConfig?: { enabled: boolean; language: string; languageName: string; forceSpanish?: boolean }
   ): Promise<RealAgentResponse> {
     try {
       console.log(`🚀 Enviando mensaje a agente externo real ID: ${agentId}`);
@@ -70,8 +70,10 @@ export class RealExternalAgentService {
       
       console.log(`✅ Respuesta real recibida del agente ${agentName}: ${responseText.substring(0, 50)}...`);
       
-      // Aplicar traducción si está configurada
-      if (translationConfig?.enabled && translationConfig.language !== 'es') {
+      // IMPORTANTE: Si forceSpanish está activo, NO aplicar traducción
+      if (translationConfig?.forceSpanish) {
+        console.log('🇪🇸 FORZAR ESPAÑOL ACTIVO - Respuesta se mantiene en español');
+      } else if (translationConfig?.enabled && translationConfig.language !== 'es') {
         console.log(`🌐 Traduciendo respuesta al ${translationConfig.languageName}...`);
         try {
           responseText = await this.translateToLanguage(responseText, translationConfig.language, translationConfig.languageName);
