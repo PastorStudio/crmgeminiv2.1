@@ -423,6 +423,9 @@ app.post('/api/whatsapp-accounts/:id/initialize', async (req: Request, res: Resp
   }
 });
 
+// Store for WhatsApp client instances
+const whatsappClients = new Map();
+
 // Get QR Code for WhatsApp account
 app.get('/api/whatsapp-accounts/:id/qrcode', async (req: Request, res: Response) => {
   try {
@@ -443,46 +446,143 @@ app.get('/api/whatsapp-accounts/:id/qrcode', async (req: Request, res: Response)
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Generate QR code using qrcode library
-    const QRCode = await import('qrcode');
+    // Import WhatsApp Web library
+    const { Client, LocalAuth } = await import('whatsapp-web.js');
     
-    // Generate a unique session ID for WhatsApp connection
-    const sessionId = `whatsapp_session_${accountId}_${Date.now()}`;
-    const qrString = `whatsapp://connect/${sessionId}`;
+    // Create or get existing client for this account
+    let client = whatsappClients.get(accountId);
     
-    const qrCodeDataUrl = await QRCode.toDataURL(qrString, {
-      errorCorrectionLevel: 'M',
-      type: 'image/png',
-      quality: 0.92,
-      margin: 1,
-      color: {
-        dark: '#000000',
-        light: '#FFFFFF'
-      },
-      width: 256
-    });
+    if (!client) {
+      client = new Client({
+        authStrategy: new LocalAuth({
+          clientId: `whatsapp_account_${accountId}`
+        }),
+        puppeteer: {
+          headless: true,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-gpu'
+          ]
+        }
+      });
 
-    // Update account with session data
-    await db
-      .update(whatsappAccounts)
-      .set({ 
-        status: 'pending_auth',
-        sessionData: { sessionId, qrGenerated: new Date().toISOString() }
-      })
-      .where(eq(whatsappAccounts.id, accountId));
+      whatsappClients.set(accountId, client);
 
-    console.log(`✅ QR code generated for account ID ${accountId}`);
-    
-    res.json({
-      success: true,
-      qrCode: qrCodeDataUrl,
-      status: 'pending_auth',
-      sessionId,
-      message: 'Scan this QR code with WhatsApp mobile app to connect your account'
-    });
+      // Store QR code when generated
+      let qrCodeData = null;
+      
+      client.on('qr', async (qr) => {
+        console.log(`✅ Real WhatsApp QR code generated for account ID ${accountId}`);
+        
+        // Generate QR code image from the real WhatsApp QR string
+        const QRCode = await import('qrcode');
+        qrCodeData = await QRCode.toDataURL(qr, {
+          errorCorrectionLevel: 'M',
+          type: 'image/png',
+          quality: 0.92,
+          margin: 1,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          },
+          width: 256
+        });
+
+        // Update account with real QR data
+        await db
+          .update(whatsappAccounts)
+          .set({ 
+            status: 'pending_auth',
+            sessionData: { 
+              qrCode: qrCodeData,
+              qrGenerated: new Date().toISOString(),
+              realWhatsApp: true
+            }
+          })
+          .where(eq(whatsappAccounts.id, accountId));
+      });
+
+      client.on('ready', async () => {
+        console.log(`✅ WhatsApp client ready for account ID ${accountId}`);
+        await db
+          .update(whatsappAccounts)
+          .set({ 
+            status: 'connected',
+            sessionData: { 
+              authenticated: true,
+              ready: true,
+              connectedAt: new Date().toISOString()
+            }
+          })
+          .where(eq(whatsappAccounts.id, accountId));
+      });
+
+      client.on('authenticated', async () => {
+        console.log(`✅ WhatsApp authenticated for account ID ${accountId}`);
+        await db
+          .update(whatsappAccounts)
+          .set({ status: 'authenticated' })
+          .where(eq(whatsappAccounts.id, accountId));
+      });
+
+      client.on('auth_failure', async (msg) => {
+        console.error(`❌ WhatsApp auth failure for account ID ${accountId}:`, msg);
+        await db
+          .update(whatsappAccounts)
+          .set({ 
+            status: 'auth_failed',
+            sessionData: { error: msg }
+          })
+          .where(eq(whatsappAccounts.id, accountId));
+      });
+
+      client.on('disconnected', async (reason) => {
+        console.log(`🔌 WhatsApp disconnected for account ID ${accountId}:`, reason);
+        await db
+          .update(whatsappAccounts)
+          .set({ status: 'disconnected' })
+          .where(eq(whatsappAccounts.id, accountId));
+        whatsappClients.delete(accountId);
+      });
+
+      // Initialize the client
+      client.initialize();
+    }
+
+    // Wait a moment for QR generation
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Get updated account data
+    const [updatedAccount] = await db
+      .select()
+      .from(whatsappAccounts)
+      .where(eq(whatsappAccounts.id, accountId))
+      .limit(1);
+
+    if (updatedAccount?.sessionData?.qrCode) {
+      res.json({
+        success: true,
+        qrCode: updatedAccount.sessionData.qrCode,
+        status: updatedAccount.status,
+        message: 'Scan this REAL WhatsApp QR code with your WhatsApp mobile app'
+      });
+    } else {
+      res.json({
+        success: false,
+        error: 'QR code not yet generated. Please try again in a few seconds.',
+        status: 'initializing'
+      });
+    }
+
   } catch (error) {
-    console.error('Get QR code error:', error);
-    res.status(500).json({ error: 'Failed to generate QR code' });
+    console.error('Get WhatsApp QR code error:', error);
+    res.status(500).json({ error: 'Failed to generate real WhatsApp QR code' });
   }
 });
 
