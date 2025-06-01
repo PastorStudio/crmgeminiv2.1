@@ -4615,4 +4615,13 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
   // Inicializar el sistema de respuestas automáticas mejoradas
   EnhancedAutoResponseService.initialize().catch(console.error);
 
+  // Inicializar el monitor de auto-respuestas para mensajes entrantes
+  try {
+    const { autoResponseMonitor } = await import('./services/autoResponseMonitor');
+    await autoResponseMonitor.startMonitoring();
+    console.log('🚀 Monitor de auto-respuestas iniciado exitosamente');
+  } catch (error) {
+    console.error('❌ Error iniciando monitor de auto-respuestas:', error);
+  }
+
 })();
