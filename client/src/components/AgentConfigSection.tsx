@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Bot, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Bot, CheckCircle, XCircle, Loader2, Save } from 'lucide-react';
 
 interface AgentConfigSectionProps {
   accountId: number;
@@ -25,6 +27,12 @@ interface AutoResponseConfig {
 export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Estado local para cambios pendientes
+  const [pendingChanges, setPendingChanges] = useState<{
+    enabled?: boolean;
+    assignedAgentId?: string | null;
+  }>({});
 
   // Obtener agentes externos disponibles
   const { data: externalAgents = [], isLoading: loadingAgents } = useQuery({
@@ -118,29 +126,42 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
   });
 
   const handleToggleAI = (enabled: boolean) => {
-    console.log('🔄 Toggle AI clicked:', { enabled, accountId, currentAgentId: autoConfig?.assignedAgentId });
-    
-    // Solo enviar el estado enabled, sin cambiar el agente asignado
-    updateConfigMutation.mutate({
-      enabled
-      // No enviar agentId para evitar cambios no deseados
-    });
+    setPendingChanges(prev => ({ ...prev, enabled }));
   };
 
   const handleAgentChange = (agentId: string) => {
     const finalAgentId = agentId === 'none' ? null : agentId;
-    
-    // Actualizar la configuración con el nuevo agente
-    updateConfigMutation.mutate({
-      enabled: autoConfig?.enabled || false,
-      agentId: finalAgentId
-    });
+    setPendingChanges(prev => ({ ...prev, assignedAgentId: finalAgentId }));
   };
+
+  const handleSaveChanges = () => {
+    if (Object.keys(pendingChanges).length === 0) {
+      toast({
+        title: "Sin cambios",
+        description: "No hay cambios pendientes para guardar",
+      });
+      return;
+    }
+
+    updateConfigMutation.mutate({
+      enabled: pendingChanges.enabled !== undefined ? pendingChanges.enabled : autoConfig?.enabled,
+      agentId: pendingChanges.assignedAgentId !== undefined ? pendingChanges.assignedAgentId : autoConfig?.assignedAgentId
+    });
+    
+    setPendingChanges({});
+  };
+
+  // Verificar si hay cambios pendientes
+  const hasChanges = Object.keys(pendingChanges).length > 0;
+  
+  // Valores actuales considerando cambios pendientes
+  const currentEnabled = pendingChanges.enabled !== undefined ? pendingChanges.enabled : autoConfig?.enabled || false;
+  const currentAgentId = pendingChanges.assignedAgentId !== undefined ? pendingChanges.assignedAgentId : autoConfig?.assignedAgentId;
 
 
 
   const assignedAgent = externalAgents.find((agent: ExternalAgent) => 
-    agent.id === autoConfig?.assignedAgentId
+    agent.id === currentAgentId
   );
 
   if (loadingAgents || loadingConfig) {
@@ -162,7 +183,7 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
           Agente Externo
         </h4>
         <div className="flex items-center gap-2">
-          {autoConfig?.enabled ? (
+          {currentEnabled ? (
             <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
               <CheckCircle className="w-3 h-3 mr-1" />
               AI ON
@@ -171,6 +192,11 @@ export function AgentConfigSection({ accountId }: AgentConfigSectionProps) {
             <Badge variant="secondary" className="bg-gray-100 text-gray-800 border-gray-200">
               <XCircle className="w-3 h-3 mr-1" />
               AI OFF
+            </Badge>
+          )}
+          {hasChanges && (
+            <Badge variant="outline" className="bg-yellow-50 text-yellow-800 border-yellow-300">
+              Cambios pendientes
             </Badge>
           )}
         </div>
