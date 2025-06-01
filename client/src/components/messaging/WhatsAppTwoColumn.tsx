@@ -2760,9 +2760,34 @@ export function WhatsAppTwoColumn() {
                                               setNewMessage(result.response);
                                               
                                               // Enviar automáticamente la respuesta después de 2 segundos
-                                              setTimeout(() => {
+                                              setTimeout(async () => {
                                                 console.log('🚀 Auto-enviando respuesta del agente...');
-                                                handleSendMessage();
+                                                
+                                                // Enviar el mensaje directamente usando la API
+                                                try {
+                                                  const sendResponse = await fetch('/api/whatsapp/send-message', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({
+                                                      accountId: selectedChat.accountId,
+                                                      chatId: selectedChat.id,
+                                                      message: result.response
+                                                    })
+                                                  });
+                                                  
+                                                  if (sendResponse.ok) {
+                                                    console.log('✅ Mensaje enviado automáticamente');
+                                                    setNewMessage(''); // Limpiar el input
+                                                    toast({
+                                                      title: "✅ Mensaje Enviado",
+                                                      description: "La respuesta del agente se envió exitosamente",
+                                                    });
+                                                  } else {
+                                                    console.log('❌ Error al enviar mensaje automáticamente');
+                                                  }
+                                                } catch (error) {
+                                                  console.error('Error enviando mensaje:', error);
+                                                }
                                               }, 2000);
                                               
                                               toast({
