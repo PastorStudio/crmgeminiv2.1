@@ -2844,11 +2844,12 @@ export function WhatsAppTwoColumn() {
 
 
                   
-                  {/* Comments Button */}
+                  {/* Comments Button - OCULTO */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3, delay: 0.2 }}
+                    className="hidden"
                   >
                     <Button
                       size="sm"
@@ -3599,7 +3600,7 @@ export function WhatsAppTwoColumn() {
       {/* Right Panel - Contact Information (20%) */}
       <div className="w-[20%] bg-white border-l border-gray-200 flex flex-col overflow-hidden">
         {selectedChat ? (
-          <ContactInfoPanel chat={selectedChat} />
+          <ContactInfoPanel chat={selectedChat} setCommentsDialogOpen={setCommentsDialogOpen} />
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500">
             <div className="text-center">
@@ -3653,7 +3654,7 @@ export function WhatsAppTwoColumn() {
 }
 
 // Componente del Panel de Información del Contacto
-function ContactInfoPanel({ chat }: { chat: WhatsAppChat }) {
+function ContactInfoPanel({ chat, setCommentsDialogOpen }: { chat: WhatsAppChat; setCommentsDialogOpen: (open: boolean) => void }) {
   const { data: chatAssignment } = useQuery({
     queryKey: [`/api/chat-assignments/${chat.id}`],
     enabled: !!chat.id
@@ -3715,6 +3716,9 @@ function ContactInfoPanel({ chat }: { chat: WhatsAppChat }) {
           <div className="flex-1">
             <h3 className="font-semibold text-white text-lg">{chat.name}</h3>
             <p className="text-red-400 text-sm">{chat.isGroup ? 'Grupo' : 'Contacto individual'}</p>
+            <div className="mt-2">
+              <WhatsAppAccountBadge accountId={chat.accountId} />
+            </div>
           </div>
         </div>
       </div>
@@ -3793,8 +3797,8 @@ function ContactInfoPanel({ chat }: { chat: WhatsAppChat }) {
             </div>
           </div>
 
-          {/* g. Sección de Comentarios */}
-          <div className="bg-gray-50 p-3 rounded-lg">
+          {/* g. Sección de Comentarios - CLICKEABLE */}
+          <div className="bg-gray-50 p-3 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors duration-200" onClick={() => setCommentsDialogOpen(true)}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
                 <MessageSquareText className="h-4 w-4 text-gray-600" />
