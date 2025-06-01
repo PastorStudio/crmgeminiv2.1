@@ -2843,7 +2843,7 @@ export function WhatsAppTwoColumn() {
                     <p>No hay mensajes en este chat</p>
                   </div>
                 ) : (
-                  <div className="space-y-4 pt-[-20px] pb-[-20px] mt-[-32px] mb-[-32px] text-[12px] text-left">
+                  <div className="space-y-4 px-4 py-4 text-[10px] text-left w-full max-w-full overflow-hidden">
                   {messages.map((message, index) => {
                     const showAvatar = selectedChat.isGroup && !message.fromMe;
                     const isFirstFromAuthor = index === 0 || 
