@@ -177,49 +177,90 @@ app.post('/api/settings/ai', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Provider is required' });
     }
 
-    // Store complete AI configuration
-    console.log(`✅ AI provider ${provider} ${enabled ? 'enabled' : 'disabled'}`);
-    console.log(`⚙️ Response settings: ${responseTime}s delay, temperature: ${temperature}, max tokens: ${maxTokens}`);
-    if (systemPrompt) console.log('📝 System prompt configured:', systemPrompt.substring(0, 50) + '...');
-    if (welcomePrompt) console.log('👋 Welcome prompt configured:', welcomePrompt.substring(0, 50) + '...');
-    if (followUpPrompt) console.log('🔄 Follow-up prompt configured:', followUpPrompt.substring(0, 50) + '...');
+    // Save to database using Drizzle ORM
+    const { aiSettings } = await import("@shared/schema");
+    
+    // Check if settings already exist
+    const existingSettings = await db.select().from(aiSettings).limit(1);
+    
+    const settingsData = {
+      aiProvider: provider,
+      enabled,
+      systemPrompt,
+      welcomePrompt,
+      followUpPrompt,
+      responseTime: responseTime || 5,
+      temperature: temperature || 0.7,
+      maxTokens: maxTokens || 500,
+      autoAnalyzeLeads: autoAnalyzeLeads || false,
+      enrichLeadData: enrichLeadData || false,
+      smartLeadScoring: smartLeadScoring || false,
+      messageGeneration: messageGeneration || false,
+      intelligentSurveys: intelligentSurveys || false,
+      updatedAt: new Date()
+    };
+
+    let savedSettings;
+    if (existingSettings.length > 0) {
+      // Update existing settings
+      [savedSettings] = await db
+        .update(aiSettings)
+        .set(settingsData)
+        .where(eq(aiSettings.id, existingSettings[0].id))
+        .returning();
+    } else {
+      // Create new settings
+      [savedSettings] = await db
+        .insert(aiSettings)
+        .values(settingsData)
+        .returning();
+    }
+
+    console.log(`✅ AI configuration saved to database: ${provider} ${enabled ? 'enabled' : 'disabled'}`);
     
     res.json({ 
       success: true, 
-      message: `${provider} configuration and prompts updated successfully`,
-      provider,
-      enabled,
-      settings: {
-        responseTime,
-        temperature, 
-        maxTokens,
-        promptsConfigured: !!(systemPrompt || welcomePrompt || followUpPrompt),
-        featuresEnabled: {
-          autoAnalyzeLeads,
-          enrichLeadData,
-          smartLeadScoring,
-          messageGeneration,
-          intelligentSurveys
-        }
-      }
+      message: `${provider} configuration saved successfully`,
+      settings: savedSettings
     });
   } catch (error) {
     console.error('AI settings error:', error);
-    res.status(500).json({ error: 'Failed to update AI settings' });
+    res.status(500).json({ error: 'Failed to save AI settings' });
   }
 });
 
 // Endpoint to get current AI configuration
 app.get('/api/settings/ai-config', async (req: Request, res: Response) => {
   try {
-    res.json({
-      provider: 'gemini',
-      enabled: true,
-      systemPrompt: 'Eres un asistente de ventas profesional. Responde de manera cordial, útil y enfocada en ayudar al cliente.',
-      welcomePrompt: 'Genera un mensaje de bienvenida cálido y profesional para nuevos contactos.',
-      followUpPrompt: 'Crea mensajes de seguimiento personalizados basados en la conversación previa.',
-      hasValidKey: !!(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY)
-    });
+    const { aiSettings } = await import("@shared/schema");
+    
+    // Get latest settings from database
+    const [settings] = await db.select().from(aiSettings).orderBy(aiSettings.createdAt).limit(1);
+    
+    if (settings) {
+      res.json({
+        ...settings,
+        hasValidKey: !!(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY)
+      });
+    } else {
+      // Return default values if no settings found
+      res.json({
+        aiProvider: 'gemini',
+        enabled: true,
+        systemPrompt: 'Eres un asistente de ventas profesional. Responde de manera cordial, útil y enfocada en ayudar al cliente.',
+        welcomePrompt: 'Genera un mensaje de bienvenida cálido y profesional para nuevos contactos.',
+        followUpPrompt: 'Crea mensajes de seguimiento personalizados basados en la conversación previa.',
+        responseTime: 5,
+        temperature: 0.7,
+        maxTokens: 500,
+        autoAnalyzeLeads: true,
+        enrichLeadData: true,
+        smartLeadScoring: true,
+        messageGeneration: true,
+        intelligentSurveys: true,
+        hasValidKey: !!(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY)
+      });
+    }
   } catch (error) {
     console.error('AI config error:', error);
     res.status(500).json({ error: 'Failed to get AI configuration' });
@@ -258,14 +299,49 @@ app.get('/api/whatsapp/messages/:chatId', async (req: Request, res: Response) =>
   }
 });
 
-// WhatsApp accounts endpoint
+// WhatsApp accounts endpoints
 app.get('/api/whatsapp-accounts', async (req: Request, res: Response) => {
   try {
-    // Return empty array for clean system (no WhatsApp accounts configured)
-    res.json([]);
+    const accounts = await db.select().from(whatsappAccounts).orderBy(whatsappAccounts.createdAt);
+    res.json(accounts);
   } catch (error) {
     console.error('Get WhatsApp accounts error:', error);
     res.status(500).json({ error: 'Failed to get WhatsApp accounts' });
+  }
+});
+
+app.post('/api/whatsapp-accounts', async (req: Request, res: Response) => {
+  try {
+    const { name, description, ownerName, ownerPhone } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Account name is required' });
+    }
+
+    const [newAccount] = await db
+      .insert(whatsappAccounts)
+      .values({
+        name,
+        description,
+        ownerName,
+        ownerPhone,
+        status: 'inactive',
+        adminId: 1, // Default admin ID
+        autoResponseEnabled: false,
+        responseDelay: 3
+      })
+      .returning();
+
+    console.log(`✅ WhatsApp account created: ${name}`);
+    
+    res.json({
+      success: true,
+      message: 'WhatsApp account created successfully',
+      account: newAccount
+    });
+  } catch (error) {
+    console.error('Create WhatsApp account error:', error);
+    res.status(500).json({ error: 'Failed to create WhatsApp account' });
   }
 });
 
