@@ -874,74 +874,7 @@ export function WhatsAppTwoColumn() {
     loadAgentStatus();
   }, [selectedChat]);
 
-  // Función para generar respuesta con agente seleccionado (Botón azul A.E.)
-  const generateResponseWithSelectedAgent = async () => {
-    console.log('🚀 BOTÓN AZUL A.E. - Generando respuesta con agente seleccionado');
-    
-    if (!selectedChat) {
-      toast({
-        title: "Error",
-        description: "Selecciona un chat primero",
-        variant: "destructive"
-      });
-      return;
-    }
 
-    if (!blueAESelectedAgentId) {
-      toast({
-        title: "Sin agente seleccionado",
-        description: "Selecciona un agente en el selector de rayo primero",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      setExternalAgentProcessing(true);
-      
-      console.log('📤 BOTÓN AZUL A.E. - Generando respuesta con agente:', blueAESelectedAgentId);
-      
-      const response = await fetch('/api/external-agents/generate-response', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          chatId: selectedChat.id,
-          accountId: selectedChat.accountId,
-          agentId: blueAESelectedAgentId
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.success && result.response) {
-        // Colocar la respuesta en el campo de texto para que el usuario pueda editarla
-        setNewMessage(result.response);
-        toast({
-          title: "Respuesta generada",
-          description: "Puedes editarla antes de enviar",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: result.error || "No se pudo generar respuesta",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Error generando respuesta:', error);
-      toast({
-        title: "Error",
-        description: "Error al generar respuesta con agente externo",
-        variant: "destructive"
-      });
-    } finally {
-      setExternalAgentProcessing(false);
-    }
-  };
 
   // Función para alternar A.E AI (Agentes Externos) - Solo para selector de rayo
   const toggleExternalAgent = async () => {
