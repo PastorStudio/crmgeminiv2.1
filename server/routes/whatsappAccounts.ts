@@ -155,6 +155,43 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Eliminar todas las cuentas de WhatsApp
+router.delete('/', async (req, res) => {
+  try {
+    console.log('🗑️ Iniciando eliminación completa de todas las cuentas de WhatsApp...');
+    
+    // Obtener todas las cuentas antes de eliminarlas
+    const allAccounts = await storage.getAllWhatsappAccounts();
+    
+    // Desconectar todas las cuentas activas
+    for (const account of allAccounts) {
+      try {
+        await whatsappMultiAccountManager.disconnectAccount(account.id);
+        console.log(`✅ Cuenta ${account.id} (${account.name}) desconectada`);
+      } catch (error) {
+        console.error(`⚠️ Error desconectando cuenta ${account.id}:`, error);
+      }
+    }
+    
+    // Eliminar todas las cuentas de la base de datos
+    await storage.deleteAllWhatsappAccounts();
+    
+    // Limpiar carpetas de sesión
+    await cleanAllSessionFolders();
+    
+    console.log('✅ Todas las cuentas eliminadas y contador de IDs reiniciado');
+    
+    res.json({ 
+      success: true, 
+      message: 'Todas las cuentas han sido eliminadas y el contador de IDs reiniciado',
+      deletedCount: allAccounts.length
+    });
+  } catch (error) {
+    console.error('❌ Error al eliminar todas las cuentas:', error);
+    res.status(500).json({ error: 'Error al eliminar todas las cuentas de WhatsApp' });
+  }
+});
+
 /**
  * Sincroniza las carpetas de sesión con los IDs actualizados
  * Esta función se llama después de eliminar una cuenta y reorganizar los IDs

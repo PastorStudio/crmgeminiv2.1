@@ -332,6 +332,30 @@ const WhatsAppAccounts = () => {
     }
   });
 
+  // Mutation para eliminar todas las cuentas
+  const deleteAllAccountsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('/api/whatsapp-accounts/delete-all', {
+        method: 'DELETE'
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Todas las cuentas eliminadas',
+        description: 'Se han eliminado todas las cuentas y reiniciado el contador de IDs.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+      setSelectedAccount(null);
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'No se pudieron eliminar todas las cuentas.',
+        variant: 'destructive',
+      });
+    }
+  });
+
   // Mutation para asignar agente externo
   const assignExternalAgentMutation = useMutation({
     mutationFn: async ({ accountId, externalAgentId, autoResponseEnabled }: { 
@@ -413,6 +437,16 @@ const WhatsAppAccounts = () => {
     // Confirmar eliminación
     if (window.confirm(`¿Está seguro de que desea eliminar la cuenta ${account.name}?`)) {
       deleteAccountMutation.mutate(account.id);
+    }
+  };
+
+  // Eliminar todas las cuentas
+  const handleDeleteAll = () => {
+    // Confirmar eliminación con doble verificación
+    if (window.confirm('⚠️ ATENCIÓN: Esta acción eliminará TODAS las cuentas de WhatsApp y reiniciará el contador de IDs desde 1.\n\n¿Está completamente seguro de que desea continuar?')) {
+      if (window.confirm('Esta acción es IRREVERSIBLE. Se perderán todos los datos de las cuentas.\n\n¿Confirma que desea eliminar TODAS las cuentas?')) {
+        deleteAllAccountsMutation.mutate();
+      }
     }
   };
 
@@ -660,6 +694,15 @@ const WhatsAppAccounts = () => {
         <div className="flex gap-2">
           <Button onClick={() => refetch()} size="sm" variant="outline">
             <RefreshCw className="mr-2 h-4 w-4" /> Actualizar
+          </Button>
+          <Button 
+            onClick={handleDeleteAll} 
+            size="sm" 
+            variant="destructive"
+            disabled={deleteAllAccountsMutation.isPending || accounts.length === 0}
+          >
+            <Trash className="mr-2 h-4 w-4" /> 
+            {deleteAllAccountsMutation.isPending ? 'Eliminando...' : 'Eliminar Todo'}
           </Button>
           <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
             <DialogTrigger asChild>
