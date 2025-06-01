@@ -3518,7 +3518,34 @@ function AutoAEConfigDialog({
     setTempConfig(config);
   }, [config]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    // Si se ha seleccionado un agente específico, asignarlo automáticamente a la cuenta
+    if (tempConfig.selectedAgentId && tempConfig.selectedAgentId !== "none" && selectedChat) {
+      try {
+        const response = await fetch('/api/external-agents/assign', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            accountId: selectedChat.accountId,
+            externalAgentId: parseInt(tempConfig.selectedAgentId),
+            autoResponseEnabled: true,
+            responseDelay: 3
+          }),
+        });
+
+        if (response.ok) {
+          toast({
+            title: "Agente Asignado Automáticamente",
+            description: `El agente se ha asignado permanentemente a la cuenta WhatsApp ${selectedChat.accountId}`,
+          });
+        }
+      } catch (error) {
+        console.error('Error asignando agente automáticamente:', error);
+      }
+    }
+    
     onSave(tempConfig);
     onOpenChange(false);
   };
