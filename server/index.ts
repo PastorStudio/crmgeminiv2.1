@@ -26,6 +26,8 @@ import { EnhancedAutoResponseService } from "./services/enhancedAutoResponseServ
 import { MultimediaService } from "./services/multimediaService";
 import { AutomaticLeadGenerator } from "./services/automaticLeadGenerator";
 import { conversationHistory } from './services/conversationHistory';
+import { MessageInterceptorService } from './services/messageInterceptorService';
+import { AutoWebScrapingHandler } from './services/autoWebScrapingHandler';
 import OpenAI from 'openai';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
@@ -5083,5 +5085,70 @@ Responde de manera conversacional, profesional y útil según tu especializació
   } catch (error) {
     console.error('❌ Error iniciando monitor de auto-respuestas:', error);
   }
+
+  // Inicializar sistema automático de web scraping
+  try {
+    console.log('🕷️ Iniciando sistema automático de web scraping...');
+    await MessageInterceptorService.initialize();
+    console.log('✅ Sistema de web scraping automático iniciado correctamente');
+  } catch (error) {
+    console.error('❌ Error iniciando sistema de web scraping automático:', error);
+  }
+
+  // Endpoints para control de web scraping automático
+  app.post('/api/web-scraping/activate/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { agentId } = req.body;
+      
+      if (!agentId) {
+        return res.status(400).json({ success: false, error: 'Se requiere agentId' });
+      }
+      
+      MessageInterceptorService.activateForAccount(accountId, agentId);
+      
+      res.json({ 
+        success: true, 
+        message: `Web scraping automático activado para cuenta ${accountId}` 
+      });
+    } catch (error) {
+      console.error('Error activando web scraping:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  app.post('/api/web-scraping/deactivate/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      
+      MessageInterceptorService.deactivateForAccount(accountId);
+      
+      res.json({ 
+        success: true, 
+        message: `Web scraping automático desactivado para cuenta ${accountId}` 
+      });
+    } catch (error) {
+      console.error('Error desactivando web scraping:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  app.get('/api/web-scraping/status/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      
+      const isActive = MessageInterceptorService.isActiveForAccount(accountId);
+      const stats = MessageInterceptorService.getStats();
+      
+      res.json({
+        success: true,
+        isActive,
+        stats
+      });
+    } catch (error) {
+      console.error('Error obteniendo estado de web scraping:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
 
 })();
