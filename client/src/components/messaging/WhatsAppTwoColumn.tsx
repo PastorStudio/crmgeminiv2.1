@@ -1,4 +1,53 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+
+// Función de detección automática de idioma
+const detectLanguageFromMessage = (text: string) => {
+  const lowerText = text.toLowerCase();
+  
+  // Patrones básicos para detectar idiomas comunes
+  const patterns = {
+    en: /\b(hello|hi|how are you|thank you|thanks|please|good|yes|no|the|and|is|are|was|were)\b/g,
+    fr: /\b(bonjour|salut|merci|s'il vous plaît|oui|non|le|la|les|et|est|sont|était|étaient|comment allez-vous)\b/g,
+    de: /\b(hallo|danke|bitte|ja|nein|der|die|das|und|ist|sind|war|waren|wie geht es ihnen)\b/g,
+    it: /\b(ciao|grazie|prego|sì|no|il|la|i|le|e|è|sono|era|erano|come stai)\b/g,
+    pt: /\b(olá|obrigado|obrigada|por favor|sim|não|o|a|os|as|e|é|são|era|eram|como está)\b/g,
+    zh: /[\u4e00-\u9fff]/g,
+    ja: /[\u3040-\u309f\u30a0-\u30ff]/g,
+    ar: /[\u0600-\u06ff]/g,
+    ru: /[\u0400-\u04ff]/g
+  };
+  
+  let maxMatches = 0;
+  let detectedLang = 'es'; // Por defecto español
+  
+  Object.entries(patterns).forEach(([lang, pattern]) => {
+    const matches = (text.match(pattern) || []).length;
+    if (matches > maxMatches) {
+      maxMatches = matches;
+      detectedLang = lang;
+    }
+  });
+  
+  // Mapeo de códigos a nombres y banderas
+  const languageMap: Record<string, {name: string, flag: string}> = {
+    en: { name: 'Inglés', flag: '🇺🇸' },
+    fr: { name: 'Francés', flag: '🇫🇷' },
+    de: { name: 'Alemán', flag: '🇩🇪' },
+    it: { name: 'Italiano', flag: '🇮🇹' },
+    pt: { name: 'Portugués', flag: '🇵🇹' },
+    zh: { name: 'Chino', flag: '🇨🇳' },
+    ja: { name: 'Japonés', flag: '🇯🇵' },
+    ar: { name: 'Árabe', flag: '🇸🇦' },
+    ru: { name: 'Ruso', flag: '🇷🇺' },
+    es: { name: 'Español', flag: '🇪🇸' }
+  };
+  
+  return {
+    code: detectedLang,
+    name: languageMap[detectedLang]?.name || 'Español',
+    flag: languageMap[detectedLang]?.flag || '🇪🇸'
+  };
+};
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -3019,9 +3068,61 @@ export function WhatsAppTwoColumn() {
                                           }
                                           
                                           try {
-                                            console.log(`🤖 Iniciando procesamiento con agente externo`);
-                                            console.log(`📝 Mensaje: "${message.body}"`);
+                                            console.log(`🤖 Iniciando procesamiento INTELIGENTE con agente externo`);
+                                            
+                                            // 🧠 DETECCIÓN INTELIGENTE DE IDIOMA Y TRADUCCIÓN
+                                            let messageToProcess = message.body;
+                                            let detectedLanguageConfig = {
+                                              enabled: false,
+                                              language: 'es',
+                                              languageName: 'Español'
+                                            };
+                                            
+                                            // Buscar mensaje traducido (con globo y bandera)
+                                            const hasTranslatedMessage = message.translatedText && message.translatedText.trim() !== '';
+                                            
+                                            if (hasTranslatedMessage) {
+                                              console.log('🌐 MENSAJE CON TRADUCCIÓN DETECTADO');
+                                              console.log(`📝 Mensaje original: "${message.body}"`);
+                                              console.log(`🌍 Mensaje traducido: "${message.translatedText}"`);
+                                              
+                                              // Usar el mensaje traducido para generar la respuesta
+                                              messageToProcess = message.translatedText;
+                                              
+                                              // Si hay traducción activa en el sistema, usar esa configuración
+                                              if (translationEnabled) {
+                                                detectedLanguageConfig = {
+                                                  enabled: true,
+                                                  language: selectedLanguage,
+                                                  languageName: availableLanguages.find(l => l.code === selectedLanguage)?.name || 'Español'
+                                                };
+                                                console.log(`🎯 Usando configuración de traductor activo: ${detectedLanguageConfig.languageName}`);
+                                              } else {
+                                                // Detectar idioma automáticamente del mensaje original
+                                                const autoDetectedLang = detectLanguageFromMessage(message.body);
+                                                detectedLanguageConfig = {
+                                                  enabled: true,
+                                                  language: autoDetectedLang.code,
+                                                  languageName: autoDetectedLang.name
+                                                };
+                                                console.log(`🔍 Idioma auto-detectado: ${detectedLanguageConfig.languageName}`);
+                                              }
+                                            } else {
+                                              console.log('📝 Mensaje sin traducción, procesando en español');
+                                              // Si no hay traducción pero el traductor está activo, usarlo
+                                              if (translationEnabled) {
+                                                detectedLanguageConfig = {
+                                                  enabled: true,
+                                                  language: selectedLanguage,
+                                                  languageName: availableLanguages.find(l => l.code === selectedLanguage)?.name || 'Español'
+                                                };
+                                                console.log(`🌐 Traductor activo - responderá en: ${detectedLanguageConfig.languageName}`);
+                                              }
+                                            }
+                                            
+                                            console.log(`📋 Mensaje a procesar: "${messageToProcess}"`);
                                             console.log(`📋 Cuenta ID: ${selectedChat.accountId}`);
+                                            console.log(`🌍 Configuración de idioma:`, detectedLanguageConfig);
                                             
                                             // Obtener la configuración del agente asignado a esta cuenta
                                             console.log('🔍 Consultando configuración de agente...');
@@ -3057,18 +3158,14 @@ export function WhatsAppTwoColumn() {
                                             console.log(`✅ Usando agente: ${agentId}`);
                                             
                                             // Enviar el mensaje al agente externo y obtener respuesta
-                                            console.log('🚀 Enviando mensaje al agente externo...');
+                                            console.log('🚀 Enviando mensaje INTELIGENTE al agente externo...');
                                             const response = await fetch('/api/ai/chat-with-external-agent', {
                                               method: 'POST',
                                               headers: { 'Content-Type': 'application/json' },
                                               body: JSON.stringify({
                                                 agentId: agentId,
-                                                message: message.body,
-                                                translationConfig: {
-                                                  enabled: translationEnabled,
-                                                  language: selectedLanguage,
-                                                  languageName: availableLanguages.find(l => l.code === selectedLanguage)?.name || 'Español'
-                                                }
+                                                message: messageToProcess,
+                                                translationConfig: detectedLanguageConfig
                                               })
                                             });
                                             
@@ -3081,9 +3178,12 @@ export function WhatsAppTwoColumn() {
                                               // Solo colocar la respuesta en el área de escritura (NO enviar automáticamente)
                                               setNewMessage(result.response);
                                               
+                                              const languageInfo = detectedLanguageConfig.enabled ? 
+                                                ` en ${detectedLanguageConfig.languageName}` : '';
+                                              
                                               toast({
-                                                title: "🤖 Respuesta Generada",
-                                                description: "La respuesta del agente ha sido colocada en el input. Puedes revisarla y enviarla manualmente.",
+                                                title: "🧠 Respuesta Inteligente Generada",
+                                                description: `Respuesta del agente${languageInfo} lista en el input. Puedes revisarla y enviarla.`,
                                               });
                                             } else {
                                               console.log('❌ Error en respuesta del agente:', result);
