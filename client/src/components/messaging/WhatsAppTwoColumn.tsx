@@ -2710,17 +2710,34 @@ export function WhatsAppTwoColumn() {
                                               return;
                                             }
                                             
-                                            if (!configResult.config?.assignedExternalAgentId) {
-                                              console.log('❌ Sin agente asignado:', configResult.config);
-                                              toast({
-                                                title: "Sin Agente Asignado",
-                                                description: "No hay un agente externo asignado a esta cuenta",
-                                                variant: "destructive"
+                                            let agentId = configResult.config?.assignedExternalAgentId;
+                                            
+                                            // Si no hay agente asignado, usar Smartplanner IA (ID: 3) por defecto y asignarlo permanentemente
+                                            if (!agentId) {
+                                              console.log('⚠️ Sin agente asignado, asignando Smartplanner IA (ID: 3) por defecto...');
+                                              agentId = "3"; // Smartplanner IA
+                                              
+                                              // Asignar permanentemente el agente a la cuenta
+                                              const assignResponse = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/assign-external-agent`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                  externalAgentId: agentId,
+                                                  autoResponseEnabled: true
+                                                })
                                               });
-                                              return;
+                                              
+                                              if (assignResponse.ok) {
+                                                const assignResult = await assignResponse.json();
+                                                console.log('✅ Agente asignado permanentemente:', assignResult);
+                                                toast({
+                                                  title: "Agente Asignado",
+                                                  description: "Smartplanner IA ha sido asignado permanentemente a esta cuenta",
+                                                });
+                                              }
                                             }
                                             
-                                            console.log(`✅ Agente encontrado: ${configResult.config.assignedExternalAgentId}`);
+                                            console.log(`✅ Usando agente: ${agentId}`);
                                             
                                             // Enviar el mensaje al agente externo y obtener respuesta
                                             console.log('🚀 Enviando mensaje al agente externo...');
@@ -2728,7 +2745,7 @@ export function WhatsAppTwoColumn() {
                                               method: 'POST',
                                               headers: { 'Content-Type': 'application/json' },
                                               body: JSON.stringify({
-                                                agentId: configResult.config.assignedExternalAgentId,
+                                                agentId: agentId,
                                                 message: message.body
                                               })
                                             });
