@@ -1,34 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
-import { registerOptimizedRoutes } from "./routes-optimized";
 import { setupVite, serveStatic, log } from "./vite";
-import { registerDirectAPIRoutes } from "./services/directApiServer";
-import { storage } from "./storage";
-import whatsappAccountsRouter from "./routes/whatsappAccounts";
-import modernMessagingRouter from "./routes/modern-messaging";
 import { db, pool } from "./db";
-import { users, whatsappAccounts, autoResponseConfigs } from "@shared/schema";
+import { users, whatsappAccounts } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import * as agentAssignmentRoutes from "./routes/agentAssignments";
-import { invisibleAgentIntegrator } from "./services/invisibleAgentIntegrator";
-import { realTimeNotificationService } from "./services/realTimeNotificationService";
-import * as whatsappAPI from "./routes/whatsappAPI";
-import { internalAgentManager } from "./services/internalAgentManager";
-import { agentActivityTracker } from "./services/agentActivityTracker";
-import { agentRoleManager } from "./services/agentRoleManager";
-import { simpleLiveStatus } from "./services/simpleLiveStatus";
-import { WhatsAppSyncManager } from "./utils/whatsappSync";
-import { stableAutoResponseManager } from "./services/stableAutoResponse";
-import { deepSeekService } from "./services/deepseekService";
-import deepSeekAutoResponse from "./services/deepseekAutoResponse";
-import { directDeepSeekResponse } from "./services/directDeepSeekResponse";
-import { EnhancedAutoResponseService } from "./services/enhancedAutoResponseService";
-import { MultimediaService } from "./services/multimediaService";
-import { AutomaticLeadGenerator } from "./services/automaticLeadGenerator";
-import { conversationHistory } from './services/conversationHistory';
-import { MessageInterceptorService } from './services/messageInterceptorService';
-import { AutoWebScrapingHandler } from './services/autoWebScrapingHandler';
-import OpenAI from 'openai';
+import cors from 'cors';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
