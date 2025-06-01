@@ -23,6 +23,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -43,6 +50,7 @@ const profileFormSchema = z.object({
 // API integration settings schema
 const apiSettingsSchema = z.object({
   enableGeminiAI: z.boolean().default(true),
+  aiProvider: z.enum(["gemini", "openai"]).default("gemini"),
   geminiApiKey: z.string().optional(),
   autoAnalyzeLeads: z.boolean().default(true),
   enrichLeadData: z.boolean().default(true),
@@ -130,6 +138,7 @@ export default function Settings() {
     resolver: zodResolver(apiSettingsSchema),
     defaultValues: {
       enableGeminiAI: true,
+      aiProvider: "gemini",
       geminiApiKey: "",
       autoAnalyzeLeads: true,
       enrichLeadData: true,
@@ -532,7 +541,32 @@ export default function Settings() {
                   <Separator />
                   
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium">AI Features</h3>
+                    <h3 className="text-lg font-medium">AI Provider Selection</h3>
+                    
+                    <FormField
+                      control={apiSettingsForm.control}
+                      name="aiProvider"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Primary AI Provider</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select AI provider" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="gemini">Google Gemini AI</SelectItem>
+                              <SelectItem value="openai">OpenAI GPT</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Choose which AI provider to use for auto-responses and chat assistance
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     
                     <FormField
                       control={apiSettingsForm.control}
@@ -540,9 +574,9 @@ export default function Settings() {
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                           <div className="space-y-0.5">
-                            <FormLabel>Automatic Lead Analysis</FormLabel>
+                            <FormLabel>Enable Auto-Responses</FormLabel>
                             <FormDescription className="text-xs">
-                              Automatically analyze new leads with Gemini AI
+                              Enable AI-powered automatic responses in WhatsApp chats
                             </FormDescription>
                           </div>
                           <FormControl>

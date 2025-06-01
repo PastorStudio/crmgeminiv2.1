@@ -1668,9 +1668,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ENDPOINT DUPLICADO REMOVIDO - YA ESTÁ AL INICIO
+  // AI Configuration endpoints
+  app.get("/api/settings/ai-config", async (req: Request, res: Response) => {
+    try {
+      // Return current AI configuration
+      const config = {
+        aiProvider: process.env.AI_PROVIDER || 'gemini',
+        autoResponseEnabled: process.env.AUTO_RESPONSE_ENABLED === 'true',
+        systemPrompt: process.env.SYSTEM_PROMPT || 'You are a helpful WhatsApp assistant. Be concise and friendly.',
+        maxResponseLength: parseInt(process.env.MAX_RESPONSE_LENGTH || '500')
+      };
+      
+      res.json({ success: true, config });
+    } catch (error) {
+      console.error('Error getting AI config:', error);
+      res.status(500).json({ success: false, error: 'Failed to get AI configuration' });
+    }
+  });
 
+  app.post("/api/settings/ai-config", async (req: Request, res: Response) => {
+    try {
+      const { aiProvider, autoResponseEnabled, systemPrompt, maxResponseLength } = req.body;
+      
+      // Save configuration (in a real app, this would be saved to database)
+      process.env.AI_PROVIDER = aiProvider;
+      process.env.AUTO_RESPONSE_ENABLED = autoResponseEnabled ? 'true' : 'false';
+      process.env.SYSTEM_PROMPT = systemPrompt;
+      process.env.MAX_RESPONSE_LENGTH = maxResponseLength?.toString();
+      
+      res.json({ success: true, message: 'AI configuration updated' });
+    } catch (error) {
+      console.error('Error updating AI config:', error);
+      res.status(500).json({ success: false, error: 'Failed to update AI configuration' });
+    }
+  });
 
+  // AI Response Generation endpoint
+  app.post("/api/ai/generate-response", async (req: Request, res: Response) => {
+    try {
+      const { chatId, provider, userMessage, conversationHistory } = req.body;
+      
+      // Import the clean AI service
+      const { cleanAIService } = await import('./services/cleanAIService');
+      
+      const systemPrompt = process.env.SYSTEM_PROMPT || 'You are a helpful WhatsApp assistant. Be concise and friendly.';
+      
+      const response = await cleanAIService.generateResponse(
+        provider || process.env.AI_PROVIDER || 'gemini',
+        userMessage,
+        conversationHistory || [],
+        systemPrompt
+      );
+      
+      res.json(response);
+    } catch (error) {
+      console.error('Error generating AI response:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to generate AI response',
+        provider: req.body.provider || 'unknown'
+      });
+    }
+  });
   
   // API Key Management endpoints
   app.get("/api/settings/gemini-key-status", async (req: Request, res: Response) => {
