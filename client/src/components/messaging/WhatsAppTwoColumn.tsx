@@ -3241,16 +3241,8 @@ export function WhatsAppTwoColumn() {
                   variant={getAutoFunctionsStatus().autoAE ? "default" : "outline"}
                   size="sm"
                   className={`h-9 px-3 ${getAutoFunctionsStatus().autoAE ? 'bg-blue-500 hover:bg-blue-600 text-white' : ''}`}
-                  onClick={() => {
-                    const newStatus = toggleAutoAE();
-                    toast({
-                      title: newStatus ? "Auto A.E. Activado" : "Auto A.E. Desactivado",
-                      description: newStatus
-                        ? "El sistema procesará automáticamente todos los mensajes entrantes con agentes externos"
-                        : "Auto A.E. desactivado - solo funcionará manualmente",
-                    });
-                  }}
-                  title="Activar/Desactivar Auto A.E."
+                  onClick={() => setShowAutoAEConfig(true)}
+                  title="Configurar Auto A.E. - cambiar agente y tiempo de click"
                 >
                   <Zap className="h-4 w-4 mr-1" />
                   A.E
