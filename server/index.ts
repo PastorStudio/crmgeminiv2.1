@@ -407,80 +407,39 @@ app.post('/api/external-agents-direct', async (req: Request, res: Response) => {
 // Endpoint para conectar con agentes externos reales usando OpenAI
 app.post('/api/ai/chat-with-external-agent', async (req: Request, res: Response) => {
   try {
-    const { message, agentId } = req.body;
+    const { message, agentId, translationConfig } = req.body;
     
     console.log(`🤖 Conectando con agente real: ${agentId}`);
     console.log(`💬 Mensaje: "${message}"`);
+    console.log(`🌐 Configuración de traducción:`, translationConfig);
     
-    // Verificar que tenemos la clave API
-    if (!process.env.OPENAI_API_KEY) {
+    // Usar el servicio de agentes externos reales
+    const { RealExternalAgentService } = await import('./services/realExternalAgents');
+    
+    const realAgentResponse = await RealExternalAgentService.sendMessageToRealAgent(
+      agentId,
+      message,
+      translationConfig
+    );
+    
+    if (realAgentResponse.success) {
+      console.log(`✅ RESPUESTA REAL DEL AGENTE: ${realAgentResponse.response?.substring(0, 50)}...`);
+      return res.json({
+        success: true,
+        response: realAgentResponse.response,
+        agentName: realAgentResponse.agentName,
+        source: 'Real External Agent',
+        responseTime: Date.now(),
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      console.log(`❌ Error en comunicación real: ${realAgentResponse.error}`);
       return res.status(500).json({
         success: false,
-        error: 'OPENAI_API_KEY no está configurada',
+        error: `Error conectando con agente externo: ${realAgentResponse.error}`,
+        message: 'No se pudo conectar con el agente externo'
       });
     }
-
-    // Usar SQL directo para obtener el agente
-    const result = await pool.query('SELECT agent_name FROM external_agents WHERE id = $1', [agentId]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: `Agente ${agentId} no encontrado`,
-      });
-    }
-    
-    const agent = result.rows[0];
-    const agentName = agent.agent_name || 'Asistente Virtual';
-    
-    console.log(`👤 Nombre del agente: ${agentName}`);
-    
-    // Conectar con OpenAI usando la clave configurada
-    const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ 
-      apiKey: process.env.OPENAI_API_KEY 
-    });
-    
-    // Crear contexto específico según el nombre del agente
-    let agentContext = `Eres ${agentName}, un asistente virtual inteligente y profesional.`;
-    
-    if (agentName.toLowerCase().includes('smartbots')) {
-      agentContext = `Eres ${agentName}, un experto en automatización, bots inteligentes y tecnología. Ayudas a las empresas a automatizar procesos, crear chatbots y implementar soluciones de inteligencia artificial. Tu especialidad es simplificar la tecnología para que sea accesible a todos.`;
-    } else if (agentName.toLowerCase().includes('smartflyer')) {
-      agentContext = `Eres ${agentName}, un experto en viajes, aerolíneas y turismo. Ayudas a las personas a planificar viajes perfectos, encontrar las mejores ofertas de vuelos, recomendar destinos y resolver cualquier consulta relacionada con viajes.`;
-    } else if (agentName.toLowerCase().includes('smartplanner')) {
-      agentContext = `Eres ${agentName}, un experto en planificación, organización y productividad. Tu misión es ayudar a las personas a organizar sus tareas, proyectos y tiempo de manera eficiente para maximizar su productividad.`;
-    } else if (agentName.toLowerCase().includes('legal')) {
-      agentContext = `Eres ${agentName}, un experto en asuntos legales y asesoría jurídica. Proporcionas orientación legal clara y comprensible para personas y empresas, siempre recordando que tu información es educativa y que es importante consultar con un abogado certificado para casos específicos.`;
-    }
-    
-    console.log(`🎯 Contexto personalizado: ${agentContext}`);
-    
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      messages: [
-        { role: "system", content: agentContext },
-        { role: "user", content: message }
-      ],
-      max_tokens: 500,
-      temperature: 0.7
-    });
-    
-    const responseText = completion.choices[0].message.content;
-    
-    // Actualizar el contador de respuestas del agente usando SQL directo
-    await pool.query('UPDATE external_agents SET response_count = COALESCE(response_count, 0) + 1 WHERE id = $1', [agentId]);
-    
-    console.log('✅ Respuesta real recibida de OpenAI');
-    
-    return res.json({
-      success: true,
-      response: responseText,
-      agentName: agentName,
-      source: 'OpenAI GPT-4o',
-      responseTime: Date.now(),
-      timestamp: new Date().toISOString()
-    });
     
   } catch (error: any) {
     console.error('❌ Error conectando con agente:', error);
@@ -3634,34 +3593,41 @@ app.use((req, res, next) => {
       const agentName = agentQuery.rows[0].agent_name;
       console.log(`🤖 Generando respuesta con agente: ${agentName}`);
       
-      // Generar respuesta usando OpenAI
-      const OpenAI = require('openai');
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      // Usar el servicio de agentes externos reales
+      const { RealExternalAgentService } = await import('./services/realExternalAgents');
       
-      const systemPrompt = `Eres ${agentName}, un asistente virtual profesional y amigable. 
-      Responde de manera útil y conversacional en español. 
-      Mantén las respuestas concisas pero informativas.`;
+      // Preparar configuración de traducción si está disponible
+      const translationConfig = req.body.translationConfig || {
+        enabled: false,
+        language: 'es',
+        languageName: 'Español'
+      };
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: messageText }
-        ],
-        max_tokens: 200,
-        temperature: 0.7,
+      console.log(`🌐 Configuración de traducción:`, translationConfig);
+      
+      const realAgentResponse = await RealExternalAgentService.sendMessageToRealAgent(
+        config.assigned_external_agent_id,
+        messageText,
+        translationConfig
+      );
+      
+      if (realAgentResponse.success) {
+        console.log(`✅ RESPUESTA REAL DEL AGENTE: ${realAgentResponse.response?.substring(0, 50)}...`);
+        return res.json({
+          success: true,
+          response: realAgentResponse.response,
+          agentName: realAgentResponse.agentName
+        });
+      }
+      
+      // Si falla la comunicación real, retornar error
+      console.log(`❌ Error en comunicación real: ${realAgentResponse.error}`);
+      return res.status(500).json({
+        success: false,
+        error: `Error conectando con agente externo: ${realAgentResponse.error}`
       });
-
-      const autoResponse = response.choices[0].message.content || 'Lo siento, no pude procesar tu mensaje.';
       
-      console.log(`✅ RESPUESTA GENERADA: ${autoResponse}`);
-      
-      return res.json({
-        success: true,
-        message: 'Respuesta generada exitosamente',
-        response: autoResponse,
-        agentName: agentName
-      });
+      /* Código OpenAI comentado - ahora usamos agentes reales */
       
     } catch (error) {
       console.error('❌ Error procesando mensaje:', error);
