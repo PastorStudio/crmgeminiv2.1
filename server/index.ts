@@ -85,7 +85,26 @@ app.get('/api/whatsapp/accounts', async (req: Request, res: Response) => {
   }
 });
 
-// AI Settings endpoints (duplicates removed)
+// AI Settings endpoints
+app.get('/api/settings/gemini-key-status', async (req: Request, res: Response) => {
+  try {
+    const hasKey = !!process.env.GEMINI_API_KEY;
+    res.json({ hasKey, provider: 'gemini' });
+  } catch (error) {
+    console.error('Gemini key status error:', error);
+    res.status(500).json({ error: 'Failed to check Gemini key status' });
+  }
+});
+
+app.get('/api/settings/openai-key-status', async (req: Request, res: Response) => {
+  try {
+    const hasKey = !!process.env.OPENAI_API_KEY;
+    res.json({ hasKey, provider: 'openai' });
+  } catch (error) {
+    console.error('OpenAI key status error:', error);
+    res.status(500).json({ error: 'Failed to check OpenAI key status' });
+  }
+});
 
 // Missing endpoints that the frontend is trying to access
 app.get('/api/dashboard-stats', async (req: Request, res: Response) => {
@@ -126,10 +145,9 @@ app.post('/api/settings/update-gemini-key', async (req: Request, res: Response) 
   }
 });
 
-app.get('/api/settings/gemini-key-status', async (req: Request, res: Response) => {
+app.get('/api/settings/gemini-key', async (req: Request, res: Response) => {
   try {
     const hasValidKey = !!process.env.GEMINI_API_KEY;
-    console.log(`✅ Gemini API key status check: ${hasValidKey ? 'FOUND' : 'NOT FOUND'}`);
     res.json({ 
       hasValidKey,
       isTemporary: false,
@@ -141,10 +159,9 @@ app.get('/api/settings/gemini-key-status', async (req: Request, res: Response) =
   }
 });
 
-app.get('/api/settings/openai-key-status', async (req: Request, res: Response) => {
+app.get('/api/settings/openai-key', async (req: Request, res: Response) => {
   try {
     const hasValidKey = !!process.env.OPENAI_API_KEY;
-    console.log(`✅ OpenAI API key status check: ${hasValidKey ? 'FOUND' : 'NOT FOUND'}`);
     res.json({ 
       hasValidKey,
       provider: 'openai'
@@ -157,72 +174,24 @@ app.get('/api/settings/openai-key-status', async (req: Request, res: Response) =
 
 app.post('/api/settings/ai', async (req: Request, res: Response) => {
   try {
-    const { 
-      provider, 
-      enabled, 
-      systemPrompt, 
-      welcomePrompt, 
-      followUpPrompt,
-      responseTime,
-      temperature,
-      maxTokens,
-      autoAnalyzeLeads,
-      enrichLeadData,
-      smartLeadScoring,
-      messageGeneration,
-      intelligentSurveys
-    } = req.body;
+    const { provider, enabled } = req.body;
     
     if (!provider) {
       return res.status(400).json({ error: 'Provider is required' });
     }
 
-    // Store complete AI configuration
-    console.log(`✅ AI provider ${provider} ${enabled ? 'enabled' : 'disabled'}`);
-    console.log(`⚙️ Response settings: ${responseTime}s delay, temperature: ${temperature}, max tokens: ${maxTokens}`);
-    if (systemPrompt) console.log('📝 System prompt configured:', systemPrompt.substring(0, 50) + '...');
-    if (welcomePrompt) console.log('👋 Welcome prompt configured:', welcomePrompt.substring(0, 50) + '...');
-    if (followUpPrompt) console.log('🔄 Follow-up prompt configured:', followUpPrompt.substring(0, 50) + '...');
+    // In a clean system, we just acknowledge the setting
+    console.log(`AI provider ${provider} ${enabled ? 'enabled' : 'disabled'}`);
     
     res.json({ 
       success: true, 
-      message: `${provider} configuration and prompts updated successfully`,
+      message: `${provider} configuration updated`,
       provider,
-      enabled,
-      settings: {
-        responseTime,
-        temperature, 
-        maxTokens,
-        promptsConfigured: !!(systemPrompt || welcomePrompt || followUpPrompt),
-        featuresEnabled: {
-          autoAnalyzeLeads,
-          enrichLeadData,
-          smartLeadScoring,
-          messageGeneration,
-          intelligentSurveys
-        }
-      }
+      enabled 
     });
   } catch (error) {
     console.error('AI settings error:', error);
     res.status(500).json({ error: 'Failed to update AI settings' });
-  }
-});
-
-// Endpoint to get current AI configuration
-app.get('/api/settings/ai-config', async (req: Request, res: Response) => {
-  try {
-    res.json({
-      provider: 'gemini',
-      enabled: true,
-      systemPrompt: 'Eres un asistente de ventas profesional. Responde de manera cordial, útil y enfocada en ayudar al cliente.',
-      welcomePrompt: 'Genera un mensaje de bienvenida cálido y profesional para nuevos contactos.',
-      followUpPrompt: 'Crea mensajes de seguimiento personalizados basados en la conversación previa.',
-      hasValidKey: !!(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY)
-    });
-  } catch (error) {
-    console.error('AI config error:', error);
-    res.status(500).json({ error: 'Failed to get AI configuration' });
   }
 });
 
