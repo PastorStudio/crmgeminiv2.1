@@ -32,6 +32,19 @@ export function SimpleAutoToggle({ accountId }: SimpleAutoToggleProps) {
   };
 
   const toggleAutoResponse = async () => {
+    // Verificar si Auto A.E. está activo antes de activar respuestas automáticas
+    if (!isEnabled) {
+      const autoFunctions = (window as any).getAutoFunctionsStatus?.();
+      if (autoFunctions?.autoAE) {
+        toast({
+          title: "Conflicto Detectado",
+          description: "Auto A.E. está activo. Desactívalo primero para usar respuestas automáticas de la cuenta.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
     setIsLoading(true);
     
     try {
