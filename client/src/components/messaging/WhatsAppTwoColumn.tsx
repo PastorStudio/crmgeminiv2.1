@@ -1728,27 +1728,78 @@ export function WhatsAppTwoColumn() {
               const configResponse = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/agent-config`);
               const configData = await configResponse.json();
               
-              // Usar el nuevo endpoint de procesamiento automático
-              console.log('🔥 ACTIVANDO PROCESAMIENTO AUTOMÁTICO CON OPENAI...');
+              // Usar la lógica exacta del "Probar Agente Intermediario" que ya funciona
+              console.log('🔥 USANDO SISTEMA REAL DE AGENTE EXTERNO...');
               
-              const response = await fetch('/api/auto-process-message', {
+              // Obtener el agente asignado a esta cuenta
+              const accountConfigResponse = await fetch(`/api/whatsapp-accounts/1/agent-config`);
+              const accountConfig = await accountConfigResponse.json();
+              
+              if (!accountConfig.success || !accountConfig.config?.assignedExternalAgentId) {
+                console.log('❌ No hay agente externo asignado');
+                return;
+              }
+              
+              const agentId = accountConfig.config.assignedExternalAgentId;
+              
+              // Obtener información del agente
+              const agentsResponse = await fetch('/api/external-agents');
+              const agentsData = await agentsResponse.json();
+              
+              if (!agentsData.success) {
+                console.log('❌ Error obteniendo agentes externos');
+                return;
+              }
+              
+              const agent = agentsData.agents.find((a: any) => a.id === agentId);
+              if (!agent) {
+                console.log('❌ Agente no encontrado');
+                return;
+              }
+              
+              console.log(`🤖 Conectando con ${agent.name}...`);
+              
+              // Usar OpenAI directamente (igual que el botón "Probar Agente Intermediario")
+              const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+                },
                 body: JSON.stringify({
-                  accountId: 1,
-                  chatId: selectedChat,
-                  messageText: lastIncomingMessage.body,
-                  messageId: lastIncomingMessage.id,
-                  fromMe: false
+                  model: 'gpt-4o',
+                  messages: [
+                    {
+                      role: 'system',
+                      content: `Eres ${agent.name}, un asistente virtual inteligente y profesional especializado en atención al cliente.`
+                    },
+                    {
+                      role: 'user',
+                      content: lastIncomingMessage.body
+                    }
+                  ],
+                  max_tokens: 500,
+                  temperature: 0.7
                 })
               });
               
-              const result = await response.json();
+              if (!openaiResponse.ok) {
+                const errorData = await openaiResponse.json();
+                console.log('❌ Error de OpenAI:', errorData.error?.message);
+                return;
+              }
               
-              if (result.success && result.response) {
-                console.log('✅ RESPUESTA GENERADA CON OPENAI:', result.response.substring(0, 50) + '...');
-                
-                let autoResponse = result.response;
+              const openaiData = await openaiResponse.json();
+              const aiResponse = openaiData.choices[0]?.message?.content;
+              
+              if (!aiResponse) {
+                console.log('❌ No se pudo generar respuesta');
+                return;
+              }
+              
+              console.log('✅ RESPUESTA GENERADA CON OPENAI:', aiResponse.substring(0, 50) + '...');
+              
+              let autoResponse = aiResponse;
                 
                 // Si la traducción está habilitada, traducir la respuesta
                 if (translationEnabled && selectedLanguage !== 'es') {
