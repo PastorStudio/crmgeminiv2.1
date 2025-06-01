@@ -147,6 +147,26 @@ export const modernTickets = pgTable('modern_tickets', {
   resolvedAt: timestamp('resolved_at'),
 });
 
+// AI Settings
+export const aiSettings = pgTable('ai_settings', {
+  id: serial('id').primaryKey(),
+  aiProvider: text('ai_provider').default('gemini'),
+  enabled: boolean('enabled').default(true),
+  systemPrompt: text('system_prompt'),
+  welcomePrompt: text('welcome_prompt'),
+  followUpPrompt: text('follow_up_prompt'),
+  responseTime: integer('response_time').default(5),
+  temperature: doublePrecision('temperature').default(0.7),
+  maxTokens: integer('max_tokens').default(500),
+  autoAnalyzeLeads: boolean('auto_analyze_leads').default(true),
+  enrichLeadData: boolean('enrich_lead_data').default(true),
+  smartLeadScoring: boolean('smart_lead_scoring').default(true),
+  messageGeneration: boolean('message_generation').default(true),
+  intelligentSurveys: boolean('intelligent_surveys').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at'),
+});
+
 // Auto Response Configs
 export const autoResponseConfigs = pgTable('auto_response_configs', {
   id: serial('id').primaryKey(),
@@ -363,6 +383,7 @@ export const messagesRelations = relations(messages, ({ one }) => ({
 }));
 
 // Esquemas de inserción
+export const insertAiSettingsSchema = createInsertSchema(aiSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
 export const insertChatCommentSchema = createInsertSchema(chatComments).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertModernTicketSchema = createInsertSchema(modernTickets).omit({ id: true, createdAt: true, updatedAt: true });
@@ -376,6 +397,8 @@ export const insertWhatsAppAccountSchema = createInsertSchema(whatsappAccounts).
 // Tipos de TypeScript
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof insertUserSchema._type;
+export type AiSettings = typeof aiSettings.$inferSelect;
+export type InsertAiSettings = typeof insertAiSettingsSchema._type;
 export type ChatAssignment = typeof chatAssignments.$inferSelect;
 export type InsertChatAssignment = typeof insertChatAssignmentSchema._type;
 export type ChatComment = typeof chatComments.$inferSelect;
