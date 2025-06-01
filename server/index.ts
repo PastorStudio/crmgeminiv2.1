@@ -85,6 +85,35 @@ app.get('/api/whatsapp/accounts', async (req: Request, res: Response) => {
   }
 });
 
+// Alternative endpoint for WhatsApp accounts
+app.get('/api/whatsapp-accounts', async (req: Request, res: Response) => {
+  try {
+    const accounts = await db.select().from(whatsappAccounts);
+    res.json(accounts);
+  } catch (error) {
+    console.error('Get WhatsApp accounts error:', error);
+    res.status(500).json({ error: 'Failed to get WhatsApp accounts' });
+  }
+});
+
+// External agents endpoint (disabled in clean system)
+app.get('/api/external-agents', async (req: Request, res: Response) => {
+  try {
+    res.json([]); // Return empty array for clean system
+  } catch (error) {
+    res.status(500).json({ error: 'External agents disabled in clean system' });
+  }
+});
+
+// WhatsApp ping status endpoint
+app.get('/api/whatsapp/ping-status/all', async (req: Request, res: Response) => {
+  try {
+    res.json({}); // Return empty object for clean system
+  } catch (error) {
+    res.status(500).json({ error: 'WhatsApp ping disabled in clean system' });
+  }
+});
+
 // AI Settings endpoints
 app.get('/api/settings/gemini-key-status', async (req: Request, res: Response) => {
   try {
