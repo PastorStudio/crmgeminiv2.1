@@ -2582,13 +2582,13 @@ export function WhatsAppTwoColumn() {
         {selectedChat ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0 pt-[28px] pb-[28px]">
+            <div className="p-4 border-b border-gray-200 bg-black flex-shrink-0 pt-[28px] pb-[28px]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="relative">
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={selectedChat.profilePicUrl} />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                      <AvatarFallback className="bg-red-600 text-white">
                         {selectedChat.isGroup ? <Users className="h-5 w-5" /> : selectedChat.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -2599,14 +2599,14 @@ export function WhatsAppTwoColumn() {
                   
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
-                      <h3 className="font-semibold text-gray-900">{selectedChat.name}</h3>
-                      {selectedChat.isGroup && <Users className="h-4 w-4 text-gray-400" />}
+                      <h3 className="font-semibold text-white">{selectedChat.name}</h3>
+                      {selectedChat.isGroup && <Users className="h-4 w-4 text-red-400" />}
                       <WhatsAppAccountBadge accountId={selectedChat.accountId} />
                       <TicketStatusBadge chatId={selectedChat.id} />
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-gray-500">
+                    <div className="flex items-center space-x-2 text-sm text-red-400">
                       {isContactOnline(selectedChat) ? (
-                        <span className="flex items-center space-x-1 text-green-600">
+                        <span className="flex items-center space-x-1 text-green-400">
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                           <span>En línea</span>
                         </span>
