@@ -1055,7 +1055,7 @@ export default function UserManagement() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-6">
-                      {error ? `Error: ${error}` : 'No hay usuarios registrados'}
+                      {error ? `Error: ${error instanceof Error ? error.message : String(error)}` : 'No hay usuarios registrados'}
                     </TableCell>
                   </TableRow>
                 )}
