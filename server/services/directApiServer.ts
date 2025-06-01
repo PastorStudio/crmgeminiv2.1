@@ -263,5 +263,45 @@ export function registerDirectAPIRoutes(app: Express): void {
     }
   });
 
+  // Endpoint directo para fotos de perfil de WhatsApp
+  app.get('/api/direct/whatsapp-accounts/:accountId/contact/:contactId/profile-picture', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const contactId = req.params.contactId;
+      
+      console.log(`📸 API Directa: Solicitando foto de perfil para contacto ${contactId} en cuenta ${accountId}`);
+      
+      // Obtener la foto de perfil desde WhatsApp
+      const profilePicUrl = await whatsappMultiAccountManager.getContactProfilePicture(accountId, contactId);
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      
+      if (profilePicUrl) {
+        console.log(`✅ API Directa: Foto de perfil obtenida para ${contactId}`);
+        res.json({
+          success: true,
+          contactId: contactId,
+          profilePicUrl: profilePicUrl
+        });
+      } else {
+        console.log(`📸 API Directa: No se encontró foto de perfil para ${contactId}`);
+        res.json({
+          success: false,
+          contactId: contactId,
+          profilePicUrl: null,
+          message: 'No se pudo obtener la foto de perfil'
+        });
+      }
+    } catch (error) {
+      console.error('❌ API Directa: Error obteniendo foto de perfil:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno obteniendo foto de perfil',
+        details: (error as Error).message
+      });
+    }
+  });
+
   console.log('Rutas de API directa registradas correctamente');
 }
