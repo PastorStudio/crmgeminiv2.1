@@ -3707,18 +3707,30 @@ function ContactInfoPanel({ chat }: { chat: WhatsAppChat }) {
                 {(chatComments as any)?.length || 0}
               </Badge>
             </div>
-            <div className="space-y-2 max-h-32 overflow-y-auto">
+            <div className="space-y-2 max-h-40 overflow-y-auto">
               {(chatComments as any)?.length > 0 ? (
                 (chatComments as any).map((comment: any, index: number) => (
-                  <div key={index} className="bg-white p-2 rounded text-xs border">
-                    <p className="text-gray-700">{comment.content}</p>
-                    <p className="text-gray-500 text-xs mt-1">
-                      {new Date(comment.createdAt).toLocaleDateString()}
-                    </p>
+                  <div key={index} className="bg-white p-3 rounded-lg text-xs border border-gray-200 shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-medium text-blue-600 text-xs">
+                        {comment.createdBy || comment.agentName || 'Agente'}
+                      </span>
+                      <span className="text-gray-400 text-xs">
+                        {new Date(comment.createdAt).toLocaleDateString('es-ES', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-gray-700 leading-relaxed">{comment.content}</p>
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500 text-sm">Sin comentarios</p>
+                <div className="text-center py-4">
+                  <p className="text-gray-400 text-sm">Sin comentarios</p>
+                  <p className="text-gray-400 text-xs mt-1">Los comentarios aparecerán aquí</p>
+                </div>
               )}
             </div>
           </div>
