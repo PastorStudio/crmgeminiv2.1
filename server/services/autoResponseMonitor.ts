@@ -120,13 +120,38 @@ class AutoResponseMonitor {
         // Enviar respuesta después de 2 segundos
         setTimeout(async () => {
           try {
+            let finalResponse = responseData.response;
+            
+            // Verificar si el sistema de traducción está activo
+            try {
+              const translateConfigResponse = await fetch('http://localhost:5173/api/auto-response/config');
+              if (translateConfigResponse.ok) {
+                const translateConfig = await translateConfigResponse.json();
+                
+                // Si la traducción está habilitada y hay un idioma objetivo configurado
+                if (translateConfig.translateEnabled && translateConfig.targetLanguage && translateConfig.targetLanguage !== 'es') {
+                  console.log(`🌐 Traduciendo respuesta de español a ${translateConfig.targetLanguage}`);
+                  
+                  const translatedResponse = await this.translateText(finalResponse, 'es', translateConfig.targetLanguage);
+                  if (translatedResponse) {
+                    finalResponse = translatedResponse;
+                    console.log(`✅ Respuesta traducida: ${finalResponse.substring(0, 50)}...`);
+                  } else {
+                    console.log(`⚠️ Error en traducción, usando respuesta original`);
+                  }
+                }
+              }
+            } catch (translateError) {
+              console.log(`⚠️ Sistema de traducción no disponible, usando respuesta original`);
+            }
+            
             const sendResponse = await fetch('http://localhost:5173/api/whatsapp/send-message', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 accountId: 1,
                 chatId: chatId,
-                message: responseData.response
+                message: finalResponse
               })
             });
             
@@ -142,6 +167,28 @@ class AutoResponseMonitor {
       }
     } catch (error) {
       console.error('Error generando respuesta automática:', error);
+    }
+  }
+
+  async translateText(text: string, fromLang: string, toLang: string): Promise<string | null> {
+    try {
+      const response = await fetch('http://localhost:5173/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: text,
+          from: fromLang,
+          to: toLang
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.translatedText;
+      }
+      return null;
+    } catch (error) {
+      return null;
     }
   }
 }
