@@ -4217,10 +4217,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { externalAgentService } = await import('./services/externalAgentService');
-      
-      // Generar respuesta usando el agente externo
-      const response = await externalAgentService.sendMessageToAgent(agentId, message, context?.chatId || 'default-chat');
+      // External agent service removed - using clean AI system
+      const response = null;
       
       if (response) {
         console.log(`✅ Respuesta generada exitosamente para agente ${agentId}`);
@@ -4340,9 +4338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { externalAgentService } = await import('./services/externalAgentService');
       
-      const agent = await externalAgentService.createAgent({
         name: name || `Agente ${Date.now()}`,
         agentUrl,
         description: description || null,
@@ -4446,9 +4442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         agentName = 'Gemini AI';
       }
 
-      const { externalAgentService } = await import('./services/externalAgentService');
       
-      const agent = await externalAgentService.createAgent({
         name: agentName,
         agentUrl: agentUrl,
         description: `Agente intermediario conectado a ${agentName}`,
@@ -4758,9 +4752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/external-agents/:agentId/activate', async (req: Request, res: Response) => {
     try {
       const { agentId } = req.params;
-      const { externalAgentService } = await import('./services/externalAgentService');
       
-      const success = await externalAgentService.activateAgent(agentId);
       if (!success) {
         return res.status(404).json({ success: false, error: 'Agente no encontrado' });
       }
@@ -4777,9 +4769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/external-agents/:agentId/deactivate', async (req: Request, res: Response) => {
     try {
       const { agentId } = req.params;
-      const { externalAgentService } = await import('./services/externalAgentService');
       
-      const success = await externalAgentService.deactivateAgent(agentId);
       if (!success) {
         return res.status(404).json({ success: false, error: 'Agente no encontrado' });
       }
@@ -4798,9 +4788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { agentId } = req.params;
       const updates = req.body;
       
-      const { externalAgentService } = await import('./services/externalAgentService');
       
-      const updatedAgent = await externalAgentService.updateAgent(agentId, updates);
       if (!updatedAgent) {
         return res.status(404).json({ success: false, error: 'Agente no encontrado' });
       }
@@ -4821,9 +4809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/external-agents/:agentId', async (req: Request, res: Response) => {
     try {
       const { agentId } = req.params;
-      const { externalAgentService } = await import('./services/externalAgentService');
       
-      const success = await externalAgentService.deleteAgent(agentId);
       if (!success) {
         return res.status(404).json({ success: false, error: 'Agente no encontrado' });
       }
@@ -4842,9 +4828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { agentId } = req.params;
       const { message = "Hola, esta es una prueba del sistema de agentes", chatId = "test-chat", accountId = 1 } = req.body;
       
-      const { externalAgentService } = await import('./services/externalAgentService');
       
-      const agentResponse = await externalAgentService.processMessageForAgent(
         message,
         chatId,
         accountId,
@@ -4879,9 +4863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { externalAgentService } = await import('./services/externalAgentService');
       
-      const previewResult = await externalAgentService.generateAgentPreview(agentId, testMessages);
 
       console.log(`🔍 Preview generado para agente ${agentId}:`, previewResult);
       res.json(previewResult);
@@ -4906,9 +4888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { externalAgentService } = await import('./services/externalAgentService');
       
-      const agentResponse = await externalAgentService.processMessageForAgent(
         message,
         userInfo?.chatId || 'test-chat',
         userInfo?.accountId || 1,
@@ -4929,8 +4909,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/external-agents', async (req: Request, res: Response) => {
     try {
       console.log('📋 Obteniendo lista de agentes desde base de datos...');
-      const { externalAgentService } = await import('./services/externalAgentService');
-      const agents = await externalAgentService.getAllAgents();
       
       console.log('📊 Agentes encontrados en base de datos:', agents.length, agents);
       
@@ -4951,8 +4929,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/external-agents/stats', async (req: Request, res: Response) => {
     try {
       console.log('📊 Obteniendo estadísticas de agentes desde base de datos...');
-      const { externalAgentService } = await import('./services/externalAgentService');
-      const stats = await externalAgentService.getAgentStats();
       
       res.setHeader('Content-Type', 'application/json');
       res.json(stats);
@@ -4970,11 +4946,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { agentId } = req.params;
       const { activate } = req.body;
       
-      const { externalAgentService } = await import('./services/externalAgentService');
       
       const result = activate 
-        ? externalAgentService.activateAgent(agentId)
-        : externalAgentService.deactivateAgent(agentId);
 
       if (result) {
         res.json({
@@ -4998,8 +4971,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/external-agents/stats', async (req: Request, res: Response) => {
     try {
-      const { externalAgentService } = await import('./services/externalAgentService');
-      const stats = externalAgentService.getAgentStats();
       
       res.json({
         success: true,

@@ -1655,8 +1655,7 @@ app.use((req, res, next) => {
 
   // ===== ENDPOINTS DE RESPUESTAS AUTOMÁTICAS CON AGENTES EXTERNOS =====
   
-  // Importar endpoints de agentes externos
-  const externalAgentAPI = await import('./routes/externalAgentAPI');
+  // External agent API removed - keeping only clean AI system
   
   // Endpoint de prueba para verificar comunicación
   app.get('/api/external-agents/test', (req: Request, res: Response) => {
@@ -1807,20 +1806,7 @@ app.use((req, res, next) => {
     }
   });
   
-  // Obtener configuración de respuesta automática
-  app.get('/api/external-agents/auto-response-config/:accountId', (req: Request, res: Response) => {
-    res.setHeader('Content-Type', 'application/json');
-    externalAgentAPI.getAutoResponseConfig(req, res);
-  });
-  
-  // Obtener todas las configuraciones
-  app.get('/api/external-agents/auto-response-configs', externalAgentAPI.getAllAutoResponseConfigs);
-  
-  // Obtener estadísticas del integrador
-  app.get('/api/external-agents/stats', externalAgentAPI.getIntegratorStats);
-  
-  // Probar agente externo
-  app.post('/api/external-agents/test', externalAgentAPI.testExternalAgent);
+  // External agent endpoints removed - keeping only clean AI system
 
   // ===== ENDPOINTS DE SINCRONIZACIÓN DE WHATSAPP =====
   
