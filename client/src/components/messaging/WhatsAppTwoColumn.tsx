@@ -60,6 +60,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AIResponseGenerator } from '@/components/AIResponseGenerator';
 import { toast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -3090,47 +3091,18 @@ export function WhatsAppTwoColumn() {
                                       <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium animate-pulse">
                                         ÚLTIMO RECIBIDO
                                       </span>
-                                      <button
-                                        onClick={async () => {
-                                          if (!selectedChat || !message.body) {
-                                            console.log('🚫 No se puede procesar: selectedChat o message.body faltante');
-                                            return;
-                                          }
-                                          
-                                          try {
-                                            console.log(`🤖 Iniciando procesamiento INTELIGENTE con agente externo`);
-                                            
-                                            // 🧠 LÓGICA INTELIGENTE: PROCESAR EN ESPAÑOL, SIEMPRE RESPONDER EN ESPAÑOL
-                                            let messageToProcess = message.body;
-                                            
-                                            // Detectar si el mensaje original está en español
-                                            const isOriginalSpanish = detectLanguageFromMessage(message.body).code === 'es';
-                                            
-                                            // Buscar mensaje traducido disponible
-                                            const hasTranslatedMessage = message.translatedText && message.translatedText.trim() !== '';
-                                            
-                                            if (isOriginalSpanish) {
-                                              // ✅ Mensaje original en español - usar directamente
-                                              console.log('🇪🇸 MENSAJE ORIGINAL EN ESPAÑOL - Procesando directamente');
-                                              console.log(`📝 Mensaje en español: "${message.body}"`);
-                                              messageToProcess = message.body;
-                                            } else if (hasTranslatedMessage) {
-                                              // 🌍 Mensaje en otro idioma con traducción - usar traducción en español
-                                              console.log('🌍 MENSAJE EN IDIOMA EXTRANJERO - Usando traducción al español');
-                                              console.log(`📝 Original (${detectLanguageFromMessage(message.body).name}): "${message.body}"`);
-                                              console.log(`🇪🇸 Traducido (Español): "${message.translatedText}"`);
-                                              messageToProcess = message.translatedText;
-                                            } else {
-                                              // 📝 Mensaje en otro idioma sin traducción - usar directamente
-                                              console.log('📝 MENSAJE SIN TRADUCCIÓN - Procesando directamente');
-                                              const detectedLang = detectLanguageFromMessage(message.body);
-                                              console.log(`🔍 Idioma detectado: ${detectedLang.name}`);
-                                              messageToProcess = message.body;
-                                            }
-                                            
-                                            // 🎯 CONFIGURACIÓN OBLIGATORIA: SIEMPRE GENERAR EN ESPAÑOL
-                                            // La traducción automática se aplicará cuando se envíe el mensaje
-                                            const translationConfig = {
+                                      <AIResponseGenerator
+                                        chatId={selectedChat?.id || ''}
+                                        messages={selectedChatMessages}
+                                        onResponseGenerated={(response) => {
+                                          // Handle the generated response
+                                          console.log('Generated AI response:', response);
+                                          toast({
+                                            title: "AI Response Generated",
+                                            description: "You can now send or edit the response"
+                                          });
+                                        }}
+                                      />
                                               enabled: false,  // FORZAR: Siempre generar en español
                                               language: 'es',
                                               languageName: 'Español',
