@@ -17,9 +17,15 @@ import {
   Send, 
   User,
   Building,
-  MessageSquareMore, 
+  MessageSquareMore,
+  Phone,
+  Target,
+  FileText,
+  UserCheck,
+  Bot,
+  MessageSquareText,
+  Users,
   Clock, 
-  Users, 
   Smartphone,
   Wifi,
   WifiOff,
@@ -35,15 +41,13 @@ import {
   Paperclip,
   Languages,
   Image,
-  FileText,
   Video,
   File,
   Loader2,
   Ticket,
   Play,
   RefreshCw,
-  Zap,
-  Bot
+  Zap
 } from 'lucide-react';
 
 // Import components
@@ -3624,6 +3628,204 @@ export function WhatsAppTwoColumn() {
         }}
         selectedChat={selectedChat}
       />
+    </div>
+  );
+}
+
+// Componente del Panel de Información del Contacto
+function ContactInfoPanel({ chat }: { chat: WhatsAppChat }) {
+  const { data: chatAssignment } = useQuery({
+    queryKey: [`/api/chat-assignments/${chat.id}`],
+    enabled: !!chat.id
+  });
+  
+  const { data: chatComments } = useQuery({
+    queryKey: [`/api/chat-comments/${chat.id}`],
+    enabled: !!chat.id
+  });
+  
+  const { data: externalAgentsResponse } = useQuery({
+    queryKey: ['/api/external-agents'],
+  });
+  
+  const { data: accounts } = useQuery({
+    queryKey: ['/api/whatsapp/accounts']
+  });
+  
+  // Función para obtener el nombre del agente asignado del sistema
+  const getSystemAgentName = () => {
+    if (chatAssignment && (chatAssignment as any).assignedToId) {
+      return `Usuario ${(chatAssignment as any).assignedToId}`;
+    }
+    return "Sin asignar";
+  };
+  
+  // Función para obtener el agente de respuesta automática
+  const getAutoResponseAgent = () => {
+    const account = (accounts as any[])?.find(acc => acc.id === chat.accountId);
+    if (account?.assignedExternalAgentId) {
+      const agent = (externalAgentsResponse as any)?.agents?.find((agent: any) => agent.id === account.assignedExternalAgentId);
+      return agent ? agent.name : "Agente desconocido";
+    }
+    return "Sin agente automático";
+  };
+  
+  // Simular datos de mensajes (en una implementación real, esto vendría del backend)
+  const getMessageStats = () => {
+    // Aquí deberías obtener las estadísticas reales de mensajes desde el backend
+    return {
+      sent: 12,
+      replied: 8
+    };
+  };
+  
+  const messageStats = getMessageStats();
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-purple-600">
+        <div className="flex items-center space-x-3">
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={chat.profilePicUrl} />
+            <AvatarFallback className="bg-white text-blue-600 font-semibold">
+              {chat.isGroup ? <Users className="h-6 w-6" /> : chat.name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <h3 className="font-semibold text-white text-lg">{chat.name}</h3>
+            <p className="text-blue-100 text-sm">{chat.isGroup ? 'Grupo' : 'Contacto individual'}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Contact Information */}
+      <ScrollArea className="flex-1 p-4">
+        <div className="space-y-4">
+          
+          {/* a. Nombre */}
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="flex items-center space-x-2 mb-2">
+              <User className="h-4 w-4 text-gray-600" />
+              <span className="font-medium text-sm text-gray-700">Nombre</span>
+            </div>
+            <p className="text-gray-900 font-medium">{chat.name}</p>
+          </div>
+
+          {/* b. Número */}
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="flex items-center space-x-2 mb-2">
+              <Phone className="h-4 w-4 text-gray-600" />
+              <span className="font-medium text-sm text-gray-700">Número</span>
+            </div>
+            <p className="text-gray-900 font-mono">{chat.id.replace('@c.us', '').replace('@g.us', '')}</p>
+          </div>
+
+          {/* c. Leads */}
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="flex items-center space-x-2 mb-2">
+              <Target className="h-4 w-4 text-gray-600" />
+              <span className="font-medium text-sm text-gray-700">Leads</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-900">Potencial cliente</span>
+              <Badge variant="outline" className="text-xs">
+                Activo
+              </Badge>
+            </div>
+          </div>
+
+          {/* d. Tickets */}
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="flex items-center space-x-2 mb-2">
+              <FileText className="h-4 w-4 text-gray-600" />
+              <span className="font-medium text-sm text-gray-700">Tickets</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-900">
+                {(chatAssignment as any)?.category || 'Sin categoría'}
+              </span>
+              <Badge variant="secondary" className="text-xs">
+                {(chatAssignment as any)?.status || 'Pendiente'}
+              </Badge>
+            </div>
+          </div>
+
+          {/* e. Agente del Sistema */}
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="flex items-center space-x-2 mb-2">
+              <UserCheck className="h-4 w-4 text-gray-600" />
+              <span className="font-medium text-sm text-gray-700">Agente del Sistema</span>
+            </div>
+            <p className="text-gray-900">{getSystemAgentName()}</p>
+          </div>
+
+          {/* f. Agente de Respuesta Automática */}
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="flex items-center space-x-2 mb-2">
+              <Bot className="h-4 w-4 text-gray-600" />
+              <span className="font-medium text-sm text-gray-700">Agente de Respuesta Automática</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-900">{getAutoResponseAgent()}</span>
+              <Badge variant={getAutoResponseAgent() !== "Sin agente automático" ? "default" : "secondary"} className="text-xs">
+                {getAutoResponseAgent() !== "Sin agente automático" ? "Activo" : "Inactivo"}
+              </Badge>
+            </div>
+          </div>
+
+          {/* g. Sección de Comentarios */}
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2">
+                <MessageSquareText className="h-4 w-4 text-gray-600" />
+                <span className="font-medium text-sm text-gray-700">Comentarios</span>
+              </div>
+              <Badge variant="outline" className="text-xs">
+                {(chatComments as any)?.length || 0}
+              </Badge>
+            </div>
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {(chatComments as any)?.length > 0 ? (
+                (chatComments as any).map((comment: any, index: number) => (
+                  <div key={index} className="bg-white p-2 rounded text-xs border">
+                    <p className="text-gray-700">{comment.content}</p>
+                    <p className="text-gray-500 text-xs mt-1">
+                      {new Date(comment.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-sm">Sin comentarios</p>
+              )}
+            </div>
+          </div>
+
+          {/* h. Cantidad de Mensajes */}
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="flex items-center space-x-2 mb-3">
+              <MessageCircle className="h-4 w-4 text-gray-600" />
+              <span className="font-medium text-sm text-gray-700">Estadísticas de Mensajes</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-green-100 p-2 rounded text-center">
+                <div className="text-green-700 font-semibold text-lg">{messageStats.sent}</div>
+                <div className="text-green-600 text-xs">Enviados</div>
+              </div>
+              <div className="bg-blue-100 p-2 rounded text-center">
+                <div className="text-blue-700 font-semibold text-lg">{messageStats.replied}</div>
+                <div className="text-blue-600 text-xs">Respondidos</div>
+              </div>
+            </div>
+            <div className="mt-2 text-center">
+              <span className="text-xs text-gray-500">
+                Tasa de respuesta: {messageStats.sent > 0 ? Math.round((messageStats.replied / messageStats.sent) * 100) : 0}%
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </ScrollArea>
     </div>
   );
 }
