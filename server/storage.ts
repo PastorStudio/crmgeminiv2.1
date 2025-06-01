@@ -46,6 +46,7 @@ export interface IStorage {
   getWhatsappAccount(id: number): Promise<WhatsAppAccount | undefined>;
   updateWhatsappAccount(id: number, updates: Partial<WhatsAppAccount>): Promise<WhatsAppAccount | undefined>;
   deleteWhatsappAccount(id: number): Promise<boolean>;
+  deleteAllWhatsappAccounts(): Promise<boolean>;
   
   // Chat assignments methods
   getChatAssignments(): Promise<ChatAssignment[]>;
@@ -251,6 +252,22 @@ export class DatabaseStorage implements IStorage {
       .delete(whatsappAccounts)
       .where(eq(whatsappAccounts.id, id));
     return (result.rowCount || 0) > 0;
+  }
+
+  async deleteAllWhatsappAccounts(): Promise<boolean> {
+    try {
+      // Eliminar todas las cuentas
+      await db.delete(whatsappAccounts);
+      
+      // Reiniciar la secuencia de ID desde 1
+      await db.execute(`ALTER SEQUENCE whatsapp_accounts_id_seq RESTART WITH 1`);
+      
+      console.log('✅ Todas las cuentas eliminadas y secuencia de ID reiniciada desde 1');
+      return true;
+    } catch (error) {
+      console.error('❌ Error eliminando todas las cuentas:', error);
+      return false;
+    }
   }
 
   // WhatsApp agent configuration methods
