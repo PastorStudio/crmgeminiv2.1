@@ -11,6 +11,8 @@ let lastMessageCount = 0;
 let autoAETimer: NodeJS.Timeout | null = null;
 let autoSendTimer: NodeJS.Timeout | null = null;
 let messageMonitorInterval: NodeJS.Timeout | null = null;
+let inputMonitorInterval: NodeJS.Timeout | null = null;
+let lastInputContent = '';
 
 /**
  * 1. FUNCIÓN AUTO-CLICK BOTÓN A.E.
@@ -155,44 +157,80 @@ function startAutoAEMonitoring() {
  * Auto-envío del input cada 3-5 segundos (aleatorio)
  */
 
-// Buscar y enviar mensaje del input
+// Buscar y enviar mensaje del input (MEJORADO PARA DETECTAR RESPUESTAS DEL AGENTE)
 function autoSendFromInput(): boolean {
   try {
     console.log('📤 Buscando área de input para auto-envío...');
     
-    // Buscar área de input con texto
+    // Buscar área de input con texto (más selectores y más agresivo)
     const inputSelectors = [
       'input[type="text"]',
       'textarea',
       '[contenteditable="true"]',
       'input[placeholder*="mensaje"]',
       'textarea[placeholder*="mensaje"]',
-      '[data-testid="compose-text"]'
+      '[data-testid="compose-text"]',
+      '[class*="input"]',
+      '[class*="text-area"]',
+      '[class*="compose"]',
+      'div[role="textbox"]',
+      'span[data-testid="conversation-compose-box-input"]'
     ];
     
     let inputElement = null;
+    let messageText = '';
     
+    // Buscar en todos los selectores posibles
     for (const selector of inputSelectors) {
       const inputs = document.querySelectorAll(selector);
       for (const input of inputs) {
-        const value = input.value || input.textContent || '';
+        // Obtener valor de múltiples formas
+        let value = '';
+        if (input.value) value = input.value;
+        else if (input.textContent) value = input.textContent;
+        else if (input.innerText) value = input.innerText;
+        else if (input.innerHTML) value = input.innerHTML.replace(/<[^>]*>/g, ''); // Remover HTML tags
+        
         if (value.trim().length > 0) {
           inputElement = input;
+          messageText = value.trim();
           break;
         }
       }
       if (inputElement) break;
     }
     
+    // Si no encontramos nada, buscar de forma más agresiva
     if (!inputElement) {
+      // Buscar cualquier elemento que pueda contener texto generado por el agente
+      const allElements = document.querySelectorAll('*');
+      for (const element of allElements) {
+        const computedStyle = window.getComputedStyle(element);
+        const isVisible = computedStyle.display !== 'none' && computedStyle.visibility !== 'hidden';
+        
+        if (isVisible && (element.isContentEditable || element.tagName === 'INPUT' || element.tagName === 'TEXTAREA')) {
+          let value = '';
+          if (element.value) value = element.value;
+          else if (element.textContent) value = element.textContent;
+          else if (element.innerText) value = element.innerText;
+          
+          if (value.trim().length > 0) {
+            inputElement = element;
+            messageText = value.trim();
+            break;
+          }
+        }
+      }
+    }
+    
+    if (!inputElement || !messageText) {
       console.log('📝 No hay texto en el input para enviar');
       return false;
     }
     
-    const messageText = inputElement.value || inputElement.textContent || '';
     console.log(`📨 Texto encontrado en input: "${messageText.substring(0, 50)}..."`);
     
-    // Buscar botón de envío
+    // Buscar botón de envío con múltiples métodos
     const sendMethods = [
       // Método 1: Por texto
       () => Array.from(document.querySelectorAll('button')).find(btn => 
@@ -261,7 +299,65 @@ function autoSendFromInput(): boolean {
   }
 }
 
-// Programar auto-envío aleatorio entre 3-5 segundos
+// Monitor continuo del input para detectar contenido generado por agentes
+function startInputMonitoring() {
+  if (inputMonitorInterval) {
+    clearInterval(inputMonitorInterval);
+  }
+  
+  console.log('🔍 INICIANDO MONITOREO CONTINUO DEL INPUT');
+  
+  inputMonitorInterval = setInterval(() => {
+    if (!autoSendEnabled) return;
+    
+    // Buscar cualquier input con contenido
+    const inputSelectors = [
+      'input[type="text"]',
+      'textarea',
+      '[contenteditable="true"]',
+      'input[placeholder*="mensaje"]',
+      'textarea[placeholder*="mensaje"]',
+      '[data-testid="compose-text"]',
+      '[class*="input"]',
+      '[class*="text-area"]',
+      '[class*="compose"]',
+      'div[role="textbox"]'
+    ];
+    
+    let currentContent = '';
+    
+    for (const selector of inputSelectors) {
+      const inputs = document.querySelectorAll(selector);
+      for (const input of Array.from(inputs)) {
+        let value = '';
+        if ((input as any).value) value = (input as any).value;
+        else if (input.textContent) value = input.textContent;
+        else if ((input as any).innerText) value = (input as any).innerText;
+        
+        if (value.trim().length > 0) {
+          currentContent = value.trim();
+          break;
+        }
+      }
+      if (currentContent) break;
+    }
+    
+    // Si hay contenido nuevo, enviar inmediatamente
+    if (currentContent && currentContent !== lastInputContent) {
+      console.log(`🚀 CONTENIDO NUEVO DETECTADO: "${currentContent.substring(0, 50)}..."`);
+      lastInputContent = currentContent;
+      
+      // Enviar inmediatamente sin esperar
+      const sent = autoSendFromInput();
+      if (sent) {
+        console.log('✅ AUTO-ENVÍO INSTANTÁNEO COMPLETADO');
+        lastInputContent = ''; // Reset para detectar próximo contenido
+      }
+    }
+  }, 500); // Revisar cada 500ms para detección rápida
+}
+
+// Programar auto-envío de respaldo (en caso de que el monitor no funcione)
 function scheduleNextAutoSend() {
   if (autoSendTimer) {
     clearTimeout(autoSendTimer);
@@ -269,17 +365,16 @@ function scheduleNextAutoSend() {
   
   if (!autoSendEnabled) return;
   
-  // Tiempo aleatorio entre 3000ms (3s) y 5000ms (5s)
+  // Tiempo más largo como respaldo: 3-5 segundos
   const randomDelay = Math.floor(Math.random() * (5000 - 3000 + 1)) + 3000;
-  console.log(`⏰ Próximo auto-envío en ${randomDelay/1000} segundos`);
+  console.log(`⏰ Próximo auto-envío de respaldo en ${randomDelay/1000} segundos`);
   
   autoSendTimer = setTimeout(() => {
     if (autoSendEnabled) {
       const sent = autoSendFromInput();
       if (sent) {
-        console.log('✅ Auto-envío completado');
+        console.log('✅ Auto-envío de respaldo completado');
       }
-      // Programar siguiente envío
       scheduleNextAutoSend();
     }
   }, randomDelay);
@@ -312,19 +407,26 @@ export function disableAutoAE() {
 
 // Activar auto-envío
 export function enableAutoSend() {
-  console.log('🟢 ACTIVANDO AUTO-ENVÍO (3-5 segundos)');
+  console.log('🟢 ACTIVANDO AUTO-ENVÍO CON MONITOREO CONTINUO');
   autoSendEnabled = true;
-  scheduleNextAutoSend();
+  lastInputContent = ''; // Reset del contenido previo
+  startInputMonitoring(); // Iniciar monitoreo continuo del input
+  scheduleNextAutoSend(); // Iniciar respaldo
 }
 
 // Desactivar auto-envío
 export function disableAutoSend() {
-  console.log('🔴 DESACTIVANDO AUTO-ENVÍO');
+  console.log('🔴 DESACTIVANDO AUTO-ENVÍO Y MONITOREO');
   autoSendEnabled = false;
   if (autoSendTimer) {
     clearTimeout(autoSendTimer);
     autoSendTimer = null;
   }
+  if (inputMonitorInterval) {
+    clearInterval(inputMonitorInterval);
+    inputMonitorInterval = null;
+  }
+  lastInputContent = ''; // Reset del contenido
 }
 
 // Obtener estado actual
