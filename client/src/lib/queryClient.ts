@@ -56,7 +56,7 @@ export async function apiRequest<T = any>(
       console.error('Respuesta HTML detectada (interceptada por Vite):', url);
       
       // Para rutas específicas, intentar usar XMLHttpRequest como alternativa
-      if (url.includes('/api/integrations/whatsapp/')) {
+      if (url.includes('/api/integrations/whatsapp/') || url.includes('/api/whatsapp-accounts/')) {
         return await makeXhrRequest<T>(urlWithTimestamp, method, headers, body);
       }
       
@@ -104,7 +104,7 @@ async function makeXhrRequest<TData = any>(
               initialized: true, 
               ready: false, 
               error: 'Interceptado por Vite - Intenta recargar la página' 
-            } as unknown as T);
+            } as unknown as TData);
           } else {
             // Intentar parsear JSON
             try {
@@ -116,7 +116,7 @@ async function makeXhrRequest<TData = any>(
                 initialized: true, 
                 ready: false, 
                 error: 'Error al procesar respuesta' 
-              } as unknown as T);
+              } as unknown as TData);
             }
           }
         } catch (e) {
@@ -180,7 +180,7 @@ export const getQueryFn: <T>(options: {
         console.error('Respuesta HTML detectada en getQueryFn (interceptada por Vite):', url);
         
         // Para rutas específicas, intentar usar XMLHttpRequest como alternativa
-        if (url.includes('/api/integrations/whatsapp/')) {
+        if (url.includes('/api/integrations/whatsapp/') || url.includes('/api/whatsapp-accounts/')) {
           return await makeXhrRequest<T>(urlWithTimestamp, 'GET', headers);
         }
         
