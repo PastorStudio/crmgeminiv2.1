@@ -335,7 +335,7 @@ const WhatsAppAccounts = () => {
   // Mutation para eliminar todas las cuentas
   const deleteAllAccountsMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/whatsapp-accounts/delete-all', {
+      return await apiRequest('/api/whatsapp-accounts', {
         method: 'DELETE'
       });
     },
