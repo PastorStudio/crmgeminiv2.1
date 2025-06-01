@@ -43,6 +43,11 @@ export interface IStorage {
   getChatAssignments(): Promise<ChatAssignment[]>;
   createChatAssignment(assignment: InsertChatAssignment): Promise<ChatAssignment>;
   
+  // WhatsApp agent configuration methods
+  setWhatsappAgentConfig(accountId: number, agentId: string, autoResponse: boolean): Promise<boolean>;
+  getWhatsappAgentConfig(accountId: number): Promise<{agentId: string | null, autoResponse: boolean} | null>;
+  toggleWhatsappAutoResponse(accountId: number): Promise<boolean>;
+  
   // Additional required methods
   initializeData(): Promise<void>;
 }
@@ -173,6 +178,73 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
+  // WhatsApp agent configuration methods
+  async setWhatsappAgentConfig(accountId: number, agentId: string, autoResponse: boolean): Promise<boolean> {
+    try {
+      const updates = {
+        assignedExternalAgentId: agentId,
+        autoResponseEnabled: autoResponse
+      };
+      
+      const result = await db
+        .update(whatsappAccounts)
+        .set(updates)
+        .where(eq(whatsappAccounts.id, accountId))
+        .returning();
+        
+      console.log(`✅ Configuración persistente guardada - Cuenta: ${accountId}, Agente: ${agentId}, Auto-respuesta: ${autoResponse}`);
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error setting WhatsApp agent config:', error);
+      return false;
+    }
+  }
+
+  async getWhatsappAgentConfig(accountId: number): Promise<{agentId: string | null, autoResponse: boolean} | null> {
+    try {
+      const [account] = await db
+        .select({
+          agentId: whatsappAccounts.assignedExternalAgentId,
+          autoResponse: whatsappAccounts.autoResponseEnabled
+        })
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.id, accountId));
+        
+      if (!account) return null;
+      
+      return {
+        agentId: account.agentId,
+        autoResponse: account.autoResponse || false
+      };
+    } catch (error) {
+      console.error('Error getting WhatsApp agent config:', error);
+      return null;
+    }
+  }
+
+  async toggleWhatsappAutoResponse(accountId: number): Promise<boolean> {
+    try {
+      // Get current config
+      const config = await this.getWhatsappAgentConfig(accountId);
+      if (!config) return false;
+      
+      // Toggle auto response but keep agent assignment
+      const newAutoResponse = !config.autoResponse;
+      
+      const result = await db
+        .update(whatsappAccounts)
+        .set({ autoResponseEnabled: newAutoResponse })
+        .where(eq(whatsappAccounts.id, accountId))
+        .returning();
+        
+      console.log(`🔄 Auto-respuesta cambiada - Cuenta: ${accountId}, Estado: ${newAutoResponse}, Agente mantiene: ${config.agentId}`);
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error toggling auto response:', error);
+      return false;
+    }
+  }
+
   async initializeData(): Promise<void> {
     try {
       // Initialize basic data if needed
@@ -189,6 +261,13 @@ export class DatabaseStorage implements IStorage {
           autoResponseEnabled: false,
           responseDelay: 1000
         });
+      }
+      
+      // Asegurar que la cuenta 1 tenga asignado el agente Smartplanner IA permanentemente
+      const account1 = await this.getWhatsappAccount(1);
+      if (account1 && account1.assignedExternalAgentId !== '3') {
+        await this.setWhatsappAgentConfig(1, '3', true);
+        console.log('🔧 Asignación persistente restaurada: Cuenta 1 -> Smartplanner IA (ID: 3)');
       }
     } catch (error) {
       console.error('Error initializing data:', error);
