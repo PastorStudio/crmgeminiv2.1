@@ -3894,6 +3894,20 @@ function AutoClickConfigDialog({
   };
 
   const handleToggleAutoAE = () => {
+    // Verificar si las respuestas automáticas de la cuenta están activas
+    const hasActiveAutoResponse = accounts?.some((acc: any) => 
+      acc.autoResponseEnabled && acc.assignedExternalAgentId
+    );
+    
+    if (hasActiveAutoResponse) {
+      toast({
+        title: "Conflicto Detectado",
+        description: "Las respuestas automáticas de la cuenta están activas. Desactívalas primero para usar Auto A.E.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const newStatus = toggleAutoAE();
     setAutoFunctionsStatus(getAutoFunctionsStatus());
     toast({

@@ -242,4 +242,9 @@ export function cleanupAutoFunctions() {
 // Auto-limpiar al salir
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', cleanupAutoFunctions);
+  
+  // Exponer funciones globalmente para evitar conflictos
+  (window as any).getAutoFunctionsStatus = getAutoFunctionsStatus;
+  (window as any).toggleAutoAE = toggleAutoAE;
+  (window as any).toggleAutoSend = toggleAutoSend;
 }
