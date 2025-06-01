@@ -668,19 +668,19 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             console.error(`❌ Error en web scraping automático:`, webScrapingError);
           }
 
-          // Procesar mensaje con sistema simple de respuestas automáticas
+          // Procesar mensaje con sistema funcional de respuestas automáticas
           try {
-            console.log(`🤖 INICIANDO RESPUESTA AUTOMÁTICA SIMPLE para cuenta ${id}`);
+            console.log(`🤖 INICIANDO RESPUESTA AUTOMÁTICA para cuenta ${id}`);
             console.log(`📝 Mensaje: "${messageBody}" | fromMe: ${message.fromMe} | Chat: ${message.from}`);
             
-            const { SimpleAutoResponseService } = await import('./simpleAutoResponse');
+            const { WorkingAutoResponseService } = await import('./workingAutoResponse');
             
             // Procesar mensaje para respuesta automática
-            const processed = await SimpleAutoResponseService.processIncomingMessage(
+            const processed = await WorkingAutoResponseService.processIncomingMessage(
               id, // accountId
               message.from, // chatId
               messageBody, // message
-              this.clients.get(id) // whatsappClient
+              client // whatsappClient
             );
 
             if (processed) {

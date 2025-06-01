@@ -3,7 +3,7 @@
  * Evita conflictos con el sistema de ticketing
  */
 
-import { SimpleExternalAgentManager, WhatsAppAccountConfigManager } from './externalAgentsSimple';
+import OpenAI from 'openai';
 
 export class SimpleAutoResponseService {
   /**
@@ -15,38 +15,32 @@ export class SimpleAutoResponseService {
     messageBody: string,
     whatsappClient: any
   ): Promise<boolean> {
-    console.log('❌ SISTEMA DE RESPUESTAS SIMPLES DESACTIVADO PERMANENTEMENTE');
-    console.log('❌ Usar únicamente agentes externos reales con OpenAI');
-    return false;
     
     try {
-      console.log(`🔍 Verificando configuración de respuesta automática para cuenta ${accountId}`);
+      console.log(`🤖 PROCESANDO RESPUESTA AUTOMÁTICA para cuenta ${accountId}, chat: ${chatId}`);
+      console.log(`📝 Mensaje recibido: "${messageBody}"`);
       
-      // Obtener configuración de la cuenta
-      const config = WhatsAppAccountConfigManager.getAccountConfig(accountId);
-      
-      if (!config || !config.autoResponseEnabled || !config.assignedExternalAgentId) {
-        console.log(`⏭️ Respuesta automática desactivada para cuenta ${accountId}`);
+      // Verificar que el cliente de WhatsApp esté disponible
+      if (!whatsappClient) {
+        console.log(`❌ Cliente de WhatsApp no disponible para cuenta ${accountId}`);
         return false;
       }
       
-      console.log(`✅ Configuración encontrada:`, config);
+      // Generar respuesta usando OpenAI directamente
+      const response = await this.generateOpenAIResponse(messageBody);
       
-      // Obtener agente asignado
-      const agent = SimpleExternalAgentManager.getAgent(config.assignedExternalAgentId);
-      
-      if (!agent || !agent.isActive) {
-        console.log(`❌ Agente no encontrado o inactivo: ${config.assignedExternalAgentId}`);
+      if (!response) {
+        console.log(`❌ No se pudo generar respuesta automática`);
         return false;
       }
       
-      console.log(`🤖 Agente encontrado: ${agent.name}`);
+      console.log(`✅ Respuesta generada: "${response}"`);
       
-      // Simular delay configurado
-      await new Promise(resolve => setTimeout(resolve, config.responseDelay * 1000));
+      // Enviar respuesta por WhatsApp
+      await whatsappClient.sendMessage(chatId, response);
+      console.log(`📤 Respuesta enviada exitosamente a ${chatId}`);
       
-      // Generar respuesta usando el agente externo
-      const response = await this.generateResponse(agent, messageBody);
+      return true;
       
       if (response) {
         console.log(`📤 Enviando respuesta automática: "${response}"`);
