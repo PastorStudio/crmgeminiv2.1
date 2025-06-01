@@ -2583,7 +2583,7 @@ export function WhatsAppTwoColumn() {
                         )}
                       </div>
                       
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 ml-[15px] mr-[15px] pl-[-6px] pr-[-6px]">
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center space-x-2">
                             <span className="font-medium text-gray-900 truncate">{chat.name}</span>
