@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { WhatsAppConnectionStatus } from './WhatsAppConnectionStatus';
 
 // Función de detección automática de idioma
 const detectLanguageFromMessage = (text: string) => {
