@@ -2455,7 +2455,7 @@ export function WhatsAppTwoColumn() {
 
   return (
     <div className="flex flex-row h-screen bg-gray-50">
-      {/* Left Panel - Chat List (30%) */}
+      {/* Left Panel - Chat List (25%) */}
       <div className="w-80 min-w-80 max-w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
         {/* Header with Account Selector */}
         <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-red-600 via-black to-red-600 flex-shrink-0">
@@ -3569,6 +3569,22 @@ export function WhatsAppTwoColumn() {
           accountId={assignmentAccountId || selectedChat.accountId}
         />
       )}
+
+      {/* Right Panel - Contact Information (25%) */}
+      <div className="w-80 min-w-80 max-w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden">
+        {selectedChat ? (
+          <ContactInfoPanel chat={selectedChat} />
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-gray-500">
+            <div className="text-center">
+              <User className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+              <h3 className="text-lg font-medium mb-2">Información del Contacto</h3>
+              <p>Selecciona un chat para ver los datos del contacto</p>
+            </div>
+          </div>
+        )}
+      </div>
+
       {selectedChat && (
         <ChatCommentsDialog
           open={commentsDialogOpen}
