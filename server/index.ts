@@ -258,6 +258,39 @@ app.get('/api/whatsapp/messages/:chatId', async (req: Request, res: Response) =>
   }
 });
 
+// WhatsApp accounts endpoint
+app.get('/api/whatsapp-accounts', async (req: Request, res: Response) => {
+  try {
+    // Return empty array for clean system (no WhatsApp accounts configured)
+    res.json([]);
+  } catch (error) {
+    console.error('Get WhatsApp accounts error:', error);
+    res.status(500).json({ error: 'Failed to get WhatsApp accounts' });
+  }
+});
+
+// External agents endpoint (clean system - always empty)
+app.get('/api/external-agents', async (req: Request, res: Response) => {
+  try {
+    // Return empty array for clean system (no external agents)
+    res.json([]);
+  } catch (error) {
+    console.error('Get external agents error:', error);
+    res.status(500).json({ error: 'Failed to get external agents' });
+  }
+});
+
+// WhatsApp ping status endpoint
+app.get('/api/whatsapp/ping-status/all', async (req: Request, res: Response) => {
+  try {
+    // Return empty object for clean system
+    res.json({});
+  } catch (error) {
+    console.error('WhatsApp ping status error:', error);
+    res.status(500).json({ error: 'Failed to get WhatsApp status' });
+  }
+});
+
 // Health check
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ 
