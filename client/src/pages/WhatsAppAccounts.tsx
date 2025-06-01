@@ -183,9 +183,7 @@ const WhatsAppAccounts = () => {
   const { data: accounts = [], isLoading, error, refetch } = useQuery<WhatsAppAccount[]>({
     queryKey: ['/api/whatsapp-accounts'],
     queryFn: async () => {
-      const response = await apiRequest('/api/whatsapp-accounts');
-      // Ensure we always return an array
-      return Array.isArray(response) ? response : [];
+      return await apiRequest('/api/whatsapp-accounts');
     }
   });
 
@@ -338,7 +336,7 @@ const WhatsAppAccounts = () => {
   const deleteAllAccountsMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest('/api/whatsapp-accounts/delete-all', {
-        method: 'POST'
+        method: 'DELETE'
       });
     },
     onSuccess: () => {
@@ -570,7 +568,7 @@ const WhatsAppAccounts = () => {
   };
   
   // Combinar datos de cuentas con información de ping y estado de conexión
-  const accountsWithPing = (Array.isArray(accounts) ? accounts : []).map(account => {
+  const accountsWithPing = accounts.map(account => {
     let enhancedAccount = { ...account };
     
     // Agregar información de estado de conexión desde sessionData si existe
@@ -1095,22 +1093,14 @@ const WhatsAppAccounts = () => {
                   
                   {/* Contenido de la pestaña Código QR */}
                   <TabsContent value="qrcode" className="mt-4">
-                    {qrData?.qrCode ? (
+                    {qrData?.qrcode ? (
                       <div className="flex flex-col items-center">
                         <div className="bg-white p-4 rounded-lg mb-4">
                           <div 
                             id="qrcode-display"
                             className="qr-container w-64 h-64 flex items-center justify-center"
                           >
-                            <img 
-                              src={qrData.qrCode} 
-                              alt="Código QR para conectar WhatsApp" 
-                              className="w-64 h-64"
-                              onError={(e) => {
-                                console.error('Error cargando imagen QR:', e);
-                                handleRefreshQR();
-                              }}
-                            />
+                            <QRCodeDisplay qrData={qrData.qrcode} />
                           </div>
                         </div>
                         <p className="text-center text-sm text-muted-foreground mb-4">
