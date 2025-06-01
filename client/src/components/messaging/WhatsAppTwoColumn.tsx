@@ -1728,20 +1728,34 @@ export function WhatsAppTwoColumn() {
               const configResponse = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/agent-config`);
               const configData = await configResponse.json();
               
-              if (configData.success && configData.config?.assignedExternalAgentId) {
-                let autoResponse = await generateExternalAgentResponse(lastIncomingMessage.body, configData.config.assignedExternalAgentId);
-              } else {
-                console.log('❌ No hay agente externo asignado para respuesta automática');
-                return;
-              }
+              // Usar el nuevo endpoint de procesamiento automático
+              console.log('🔥 ACTIVANDO PROCESAMIENTO AUTOMÁTICO CON OPENAI...');
               
-              // Si la traducción está habilitada, traducir la respuesta
-              if (autoResponse && translationEnabled && selectedLanguage !== 'es') {
-                console.log(`🌐 Traduciendo respuesta automática al ${selectedLanguage}...`);
-                autoResponse = await translateMessage(autoResponse, selectedLanguage);
-              }
+              const response = await fetch('/api/auto-process-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  accountId: 1,
+                  chatId: selectedChat,
+                  messageText: lastIncomingMessage.body,
+                  messageId: lastIncomingMessage.id,
+                  fromMe: false
+                })
+              });
               
-              if (autoResponse) {
+              const result = await response.json();
+              
+              if (result.success && result.response) {
+                console.log('✅ RESPUESTA GENERADA CON OPENAI:', result.response.substring(0, 50) + '...');
+                
+                let autoResponse = result.response;
+                
+                // Si la traducción está habilitada, traducir la respuesta
+                if (translationEnabled && selectedLanguage !== 'es') {
+                  console.log(`🌐 Traduciendo respuesta automática al ${selectedLanguage}...`);
+                  autoResponse = await translateMessage(autoResponse, selectedLanguage);
+                }
+                
                 console.log('📤 Enviando respuesta automática:', autoResponse);
                 await sendAutoMessage(autoResponse);
                 
