@@ -70,9 +70,9 @@ import {
   MessageSquareMore,
   Phone,
   Target,
+  Bot,
   FileText,
   UserCheck,
-  Bot,
   MessageSquareText,
   Users,
   Clock, 
@@ -1848,6 +1848,70 @@ export function WhatsAppTwoColumn() {
   }, [messages, smartBotsEnabled, selectedChat, lastMessageCount, lastProcessedMessageId]);
 
   // Función para procesar automáticamente con agente externo (A.E automático)
+  // Función específica para el botón azul A.E.
+  const handleExternalAgentResponse = async () => {
+    if (!selectedChat) {
+      toast({
+        title: "Sin chat seleccionado",
+        description: "Selecciona un chat primero",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!blueAESelectedAgentId) {
+      toast({
+        title: "Sin agente seleccionado",
+        description: "Selecciona un agente en el selector de rayo primero",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setExternalAgentProcessing(true);
+      
+      console.log('📤 BOTÓN AZUL A.E. - Generando respuesta con agente:', blueAESelectedAgentId);
+      
+      const response = await fetch('/api/external-agents/generate-response', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          chatId: selectedChat.id,
+          accountId: selectedChat.accountId,
+          agentId: blueAESelectedAgentId
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && data.response) {
+        // Mostrar la respuesta generada en el campo de mensaje
+        setNewMessage(data.response);
+        toast({
+          title: "✅ Respuesta generada",
+          description: `Agente ${blueAESelectedAgentId} generó una respuesta`,
+          variant: "default"
+        });
+      } else {
+        throw new Error(data.error || 'Error desconocido');
+      }
+    } catch (error: any) {
+      console.error('❌ Error generando respuesta con A.E.:', error);
+      toast({
+        title: "Error generando respuesta",
+        description: error.message || "Error desconocido",
+        variant: "destructive"
+      });
+    } finally {
+      setExternalAgentProcessing(false);
+    }
+  };
+
   const processWithExternalAgent = async (message: WhatsAppMessage) => {
     try {
       console.log('🤖 PROCESAMIENTO AUTOMÁTICO A.E - Mensaje recibido:', message.body);
@@ -3572,6 +3636,27 @@ export function WhatsAppTwoColumn() {
                   className={`flex-1 ${isAutoSending ? 'border-orange-400 bg-orange-50' : ''}`}
                   disabled={sendMessageMutation.isPending}
                 />
+                
+                {/* Selector de agente para botón azul A.E. */}
+                <BlueAEAgentSelector 
+                  onAgentSelect={setBlueAESelectedAgentId}
+                  selectedAgentId={blueAESelectedAgentId}
+                />
+                
+                {/* Botón azul A.E. */}
+                <Button 
+                  onClick={handleExternalAgentResponse}
+                  disabled={!blueAESelectedAgentId || externalAgentProcessing}
+                  className="bg-blue-600 hover:bg-blue-700"
+                  title="Generar respuesta con agente seleccionado"
+                >
+                  {externalAgentProcessing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Bot className="h-4 w-4" />
+                  )}
+                </Button>
+                
                 <Button 
                   onClick={handleSendMessage}
                   disabled={!newMessage.trim() || sendMessageMutation.isPending}
