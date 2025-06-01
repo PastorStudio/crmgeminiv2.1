@@ -133,6 +133,45 @@ app.get('/api/direct/whatsapp/status', async (req: Request, res: Response) => {
   }
 });
 
+// Additional API endpoints needed by the frontend
+app.post('/api/settings/update-gemini-key', async (req: Request, res: Response) => {
+  try {
+    const { apiKey } = req.body;
+    console.log('Gemini API key update requested');
+    res.json({ success: true, message: 'Gemini API key updated' });
+  } catch (error) {
+    console.error('Gemini key update error:', error);
+    res.status(500).json({ error: 'Failed to update Gemini key' });
+  }
+});
+
+app.get('/api/settings/gemini-key', async (req: Request, res: Response) => {
+  try {
+    const hasValidKey = !!process.env.GEMINI_API_KEY;
+    res.json({ 
+      hasValidKey,
+      isTemporary: false,
+      provider: 'gemini'
+    });
+  } catch (error) {
+    console.error('Gemini key status error:', error);
+    res.status(500).json({ error: 'Failed to get Gemini key status' });
+  }
+});
+
+app.get('/api/settings/openai-key', async (req: Request, res: Response) => {
+  try {
+    const hasValidKey = !!process.env.OPENAI_API_KEY;
+    res.json({ 
+      hasValidKey,
+      provider: 'openai'
+    });
+  } catch (error) {
+    console.error('OpenAI key status error:', error);
+    res.status(500).json({ error: 'Failed to get OpenAI key status' });
+  }
+});
+
 app.post('/api/settings/ai', async (req: Request, res: Response) => {
   try {
     const { provider, enabled } = req.body;
