@@ -3,7 +3,7 @@
  * Para automatizar la creación de leads, tickets y análisis de conversaciones
  */
 
-import { miniMaxAI } from './minimaxAIService';
+import { nativeIntelligence } from './nativeIntelligenceService';
 import { storage } from '../storage';
 
 export interface AutoAnalysisResult {
@@ -32,8 +32,8 @@ export class IntelligentManagementService {
   ): Promise<AutoAnalysisResult> {
     
     try {
-      // 1. Analizar la conversación con MiniMax
-      const analysis = await miniMaxAI.analyzeConversation(messages);
+      // 1. Analizar la conversación con sistema nativo
+      const analysis = nativeIntelligence.analyzeConversation(messages);
       
       let leadCreated = false;
       let ticketCreated = false;
@@ -42,7 +42,7 @@ export class IntelligentManagementService {
       // 2. Determinar si crear un lead
       if (analysis.leadQuality === 'high' || analysis.leadQuality === 'medium') {
         try {
-          const leadData = await miniMaxAI.generateLeadFromConversation(messages, contactInfo);
+          const leadData = nativeIntelligence.generateLeadFromConversation(messages, contactInfo);
           
           // Verificar si ya existe un lead para este contacto
           const existingLeads = await storage.getAllLeads();
@@ -77,7 +77,7 @@ export class IntelligentManagementService {
       if (analysis.priority === 'urgent' || analysis.priority === 'high' || 
           analysis.category === 'soporte' || analysis.category === 'reclamo') {
         try {
-          const ticketInfo = await miniMaxAI.categorizeTicket(messages);
+          const ticketInfo = nativeIntelligence.categorizeTicket(messages);
           
           // Crear asignación de chat (equivalente a ticket)
           const existingAssignment = await storage.getChatAssignments();
@@ -178,10 +178,11 @@ export class IntelligentManagementService {
             analysis.analysis.confidence > 0.6) {
           
           try {
-            response = await miniMaxAI.generateAutoResponse(allMessages, {
+            const autoResponse = nativeIntelligence.generateAutoResponse(allMessages, {
               agentName: 'Asistente Virtual',
               company: 'Nuestra empresa'
             });
+            response = autoResponse.response;
             shouldRespond = true;
           } catch (error) {
             console.error('Error generating auto response:', error);
