@@ -284,37 +284,6 @@ async function syncSessionFolders() {
   }
 }
 
-/**
- * Limpia todas las carpetas de sesión de WhatsApp
- * Esta función se llama cuando se eliminan todas las cuentas
- */
-async function cleanAllSessionFolders() {
-  try {
-    console.log("🧹 Limpiando todas las carpetas de sesión...");
-    
-    // Importar módulos necesarios
-    const path = require('path');
-    const fs = require('fs');
-    
-    // Definir directorio de cuentas
-    const TEMP_DIR = path.join(process.cwd(), 'temp');
-    const ACCOUNTS_DIR = path.join(TEMP_DIR, 'whatsapp-accounts');
-    
-    // Si el directorio existe, eliminarlo completamente
-    if (fs.existsSync(ACCOUNTS_DIR)) {
-      fs.rmSync(ACCOUNTS_DIR, { recursive: true, force: true });
-      console.log("✅ Todas las carpetas de sesión eliminadas");
-    }
-    
-    // Recrear el directorio vacío
-    fs.mkdirSync(ACCOUNTS_DIR, { recursive: true });
-    console.log("✅ Directorio de sesiones recreado vacío");
-    
-  } catch (error) {
-    console.error("❌ Error al limpiar carpetas de sesión:", error);
-  }
-}
-
 // Inicializar una cuenta de WhatsApp
 router.post('/:id/initialize', async (req, res) => {
   try {
