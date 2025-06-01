@@ -2746,7 +2746,12 @@ export function WhatsAppTwoColumn() {
                                               headers: { 'Content-Type': 'application/json' },
                                               body: JSON.stringify({
                                                 agentId: agentId,
-                                                message: message.body
+                                                message: message.body,
+                                                translationConfig: {
+                                                  enabled: translationEnabled,
+                                                  language: selectedLanguage,
+                                                  languageName: availableLanguages.find(l => l.code === selectedLanguage)?.name || 'Español'
+                                                }
                                               })
                                             });
                                             
