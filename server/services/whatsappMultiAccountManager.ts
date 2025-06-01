@@ -654,7 +654,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             const { MessageInterceptorService } = await import('./messageInterceptorService');
             
             await MessageInterceptorService.interceptMessage(id, {
-              id: message.id._serialized || message.id,
+              id: message.id._serialized || String(message.id),
               body: messageBody,
               from: message.from,
               to: message.to,
