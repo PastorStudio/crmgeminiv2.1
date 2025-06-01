@@ -2689,7 +2689,8 @@ export function WhatsAppTwoColumn() {
                       className="border-blue-600 text-blue-600 hover:bg-blue-50 transition-all duration-300"
                       onClick={() => {
                         console.log('🔧 ABRIENDO CONFIGURACIÓN A.E - AGENTES EXTERNOS');
-                        setAssignmentDialogOpen(true);
+                        // Abrir página de agentes externos en nueva pestaña
+                        window.open('/external-agents', '_blank');
                       }}
                     >
                       <Zap className="h-4 w-4 mr-2" />
