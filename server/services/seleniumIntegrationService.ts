@@ -38,75 +38,138 @@ export class SeleniumIntegrationService {
       try {
         console.log(`🤖 Iniciando web scraping para agente: ${agentUrl}`);
         
-        const args = [this.pythonScriptPath, agentUrl, message];
+        // Intentar primero con Selenium completo
+        const seleniumArgs = [this.pythonScriptPath, agentUrl, message];
         if (agentId) {
-          args.push(agentId);
+          seleniumArgs.push(agentId);
         }
 
-        const pythonProcess = spawn('python3', args, {
+        const seleniumProcess = spawn('python3', seleniumArgs, {
           stdio: ['pipe', 'pipe', 'pipe'],
-          timeout: 60000 // 60 segundos timeout
+          timeout: 30000 // Reducir timeout a 30 segundos
         });
 
         let stdout = '';
         let stderr = '';
 
-        pythonProcess.stdout.on('data', (data) => {
+        seleniumProcess.stdout.on('data', (data) => {
           stdout += data.toString();
         });
 
-        pythonProcess.stderr.on('data', (data) => {
+        seleniumProcess.stderr.on('data', (data) => {
           stderr += data.toString();
         });
 
-        pythonProcess.on('close', (code) => {
+        seleniumProcess.on('close', (code) => {
           if (code === 0) {
             try {
               const result = JSON.parse(stdout);
-              console.log(`✅ Respuesta obtenida del agente externo: ${result.response?.substring(0, 100)}...`);
+              console.log(`✅ Respuesta Selenium obtenida: ${result.response?.substring(0, 100)}...`);
               resolve(result);
+              return;
             } catch (parseError) {
-              console.error('❌ Error parseando respuesta JSON:', parseError);
-              resolve({
-                success: false,
-                error: `Error parseando respuesta: ${parseError}`
-              });
+              console.log('🔄 Selenium falló, intentando servicio simplificado...');
+              this.fallbackToSimpleService(agentUrl, message, agentId, resolve);
+              return;
             }
           } else {
-            console.error(`❌ Proceso Python terminó con código: ${code}`);
-            console.error(`Stderr: ${stderr}`);
-            resolve({
-              success: false,
-              error: `Proceso terminó con código ${code}: ${stderr}`
-            });
+            console.log('🔄 Selenium no disponible, usando servicio simplificado...');
+            this.fallbackToSimpleService(agentUrl, message, agentId, resolve);
           }
         });
 
-        pythonProcess.on('error', (error) => {
-          console.error('❌ Error ejecutando proceso Python:', error);
-          resolve({
-            success: false,
-            error: `Error ejecutando Python: ${error.message}`
-          });
+        seleniumProcess.on('error', (error) => {
+          console.log('🔄 Error en Selenium, usando servicio simplificado...');
+          this.fallbackToSimpleService(agentUrl, message, agentId, resolve);
         });
 
-        // Timeout manual
+        // Timeout más corto para Selenium
         setTimeout(() => {
-          pythonProcess.kill();
-          resolve({
-            success: false,
-            error: 'Timeout: El proceso tardó más de 60 segundos'
-          });
-        }, 60000);
+          seleniumProcess.kill();
+          console.log('🔄 Timeout Selenium, usando servicio simplificado...');
+          this.fallbackToSimpleService(agentUrl, message, agentId, resolve);
+        }, 30000);
 
       } catch (error) {
-        console.error('❌ Error general en getAgentResponse:', error);
-        resolve({
-          success: false,
-          error: `Error general: ${error}`
-        });
+        console.log('🔄 Error general, usando servicio simplificado...');
+        this.fallbackToSimpleService(agentUrl, message, agentId, resolve);
       }
     });
+  }
+
+  /**
+   * Método fallback usando el servicio simplificado
+   */
+  private fallbackToSimpleService(
+    agentUrl: string, 
+    message: string, 
+    agentId: string | undefined, 
+    resolve: (value: SeleniumResponse) => void
+  ): void {
+    try {
+      const simpleScriptPath = path.join(process.cwd(), 'server', 'services', 'simpleWebScrapingService.py');
+      const args = [simpleScriptPath, agentUrl, message];
+      if (agentId) {
+        args.push(agentId);
+      }
+
+      const simpleProcess = spawn('python3', args, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 15000 // 15 segundos para el servicio simple
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      simpleProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      simpleProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      simpleProcess.on('close', (code) => {
+        if (code === 0) {
+          try {
+            const result = JSON.parse(stdout);
+            console.log(`✅ Respuesta simplificada obtenida: ${result.response?.substring(0, 100)}...`);
+            resolve(result);
+          } catch (parseError) {
+            resolve({
+              success: false,
+              error: `Error parseando respuesta simplificada: ${parseError}`
+            });
+          }
+        } else {
+          resolve({
+            success: false,
+            error: `Servicio simplificado terminó con código ${code}: ${stderr}`
+          });
+        }
+      });
+
+      simpleProcess.on('error', (error) => {
+        resolve({
+          success: false,
+          error: `Error en servicio simplificado: ${error.message}`
+        });
+      });
+
+      setTimeout(() => {
+        simpleProcess.kill();
+        resolve({
+          success: false,
+          error: 'Timeout: Ambos servicios fallaron'
+        });
+      }, 15000);
+
+    } catch (error) {
+      resolve({
+        success: false,
+        error: `Error crítico: ${error}`
+      });
+    }
   }
 
   /**
