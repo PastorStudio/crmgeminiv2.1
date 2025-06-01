@@ -78,9 +78,37 @@ export class AutoMessageProcessor {
   }
 
   /**
+   * Traduce un texto a un idioma específico usando OpenAI
+   */
+  private async translateToLanguage(text: string, targetLanguage: string, targetLanguageName: string): Promise<string> {
+    try {
+      const OpenAI = require('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { 
+            role: "system", 
+            content: `Traduce el siguiente texto al ${targetLanguageName} de manera natural y precisa. Mantén el tono y el contexto original. Responde únicamente con la traducción.` 
+          },
+          { role: "user", content: text }
+        ],
+        max_tokens: 300,
+        temperature: 0.3,
+      });
+
+      return response.choices[0].message.content?.trim() || text;
+    } catch (error) {
+      console.error('❌ Error traduciendo al idioma objetivo:', error);
+      return text; // Retornar el texto original si falla la traducción
+    }
+  }
+
+  /**
    * Procesa un mensaje entrante y genera una respuesta automática si está configurado
    */
-  async processMessage(message: MessageForProcessing): Promise<AutoMessageResponse> {
+  async processMessage(message: MessageForProcessing, translationConfig?: { enabled: boolean; language: string; languageName: string }): Promise<AutoMessageResponse> {
     try {
       console.log(`🔄 PROCESANDO MENSAJE AUTOMÁTICO: "${message.body.substring(0, 50)}..." en cuenta ${message.accountId}`);
       
@@ -123,51 +151,28 @@ export class AutoMessageProcessor {
             
             if (agentQuery.length > 0) {
               const agentName = agentQuery[0].agentName;
-              console.log(`🤖 Generando respuesta automática con ${agentName}...`);
+              console.log(`🤖 Conectando con agente externo real: ${agentName}...`);
               
-              // Detectar idioma del mensaje entrante
-              const detectedLanguage = await this.detectLanguage(message.body);
-              console.log(`🌐 Idioma detectado: ${detectedLanguage}`);
+              // Usar el servicio de agentes externos reales
+              const { RealExternalAgentService } = await import('./realExternalAgents');
               
-              let messageForAgent = message.body;
-              let wasTranslated = false;
+              const realAgentResponse = await RealExternalAgentService.sendMessageToRealAgent(
+                directConfig.assignedExternalAgentId,
+                message.body,
+                translationConfig
+              );
               
-              // Si no es español, traducir al español para mejor procesamiento
-              if (detectedLanguage !== 'es' && detectedLanguage !== 'spanish') {
-                console.log(`🔄 Traduciendo mensaje del ${detectedLanguage} al español...`);
-                messageForAgent = await this.translateToSpanish(message.body, detectedLanguage);
-                wasTranslated = true;
-                console.log(`📝 Mensaje traducido: "${messageForAgent.substring(0, 50)}..."`);
+              if (realAgentResponse.success) {
+                console.log(`✅ RESPUESTA REAL DEL AGENTE ${agentName}: ${realAgentResponse.response?.substring(0, 50)}...`);
+                return {
+                  success: true,
+                  response: realAgentResponse.response,
+                  agentName: realAgentResponse.agentName
+                };
+              } else {
+                console.log(`❌ Error en comunicación real con ${agentName}: ${realAgentResponse.error}`);
+                return { success: false };
               }
-              
-              // Generar respuesta usando OpenAI
-              const OpenAI = require('openai');
-              const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-              
-              const systemPrompt = `Eres ${agentName}, un asistente virtual profesional y amigable. 
-              Responde de manera útil y conversacional en español. 
-              Mantén las respuestas concisas pero informativas.
-              ${wasTranslated ? `NOTA: El mensaje original estaba en ${detectedLanguage} y ha sido traducido al español para tu mejor comprensión.` : ''}`;
-              
-              const response = await openai.chat.completions.create({
-                model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-                messages: [
-                  { role: "system", content: systemPrompt },
-                  { role: "user", content: messageForAgent }
-                ],
-                max_tokens: 200,
-                temperature: 0.7,
-              });
-
-              const autoResponse = response.choices[0].message.content || 'Lo siento, no pude procesar tu mensaje.';
-              
-              console.log(`✅ RESPUESTA GENERADA POR ${agentName}: ${autoResponse.substring(0, 50)}...`);
-              
-              return {
-                success: true,
-                response: autoResponse,
-                agentName: agentName
-              };
             }
           }
         }
@@ -215,53 +220,31 @@ export class AutoMessageProcessor {
         const assignedAgent = defaultAgents.find(agent => agent.id === account.assignedExternalAgentId);
         
         if (assignedAgent) {
-          console.log(`🤖 Generando respuesta automática con ${assignedAgent.name}...`);
+          console.log(`🤖 Conectando con agente externo real: ${assignedAgent.name}...`);
           
           try {
-            // Detectar idioma del mensaje entrante
-            const detectedLanguage = await this.detectLanguage(message.body);
-            console.log(`🌐 Idioma detectado: ${detectedLanguage}`);
+            // Usar el servicio de agentes externos reales
+            const { RealExternalAgentService } = await import('./realExternalAgents');
             
-            let messageForAgent = message.body;
-            let wasTranslated = false;
+            const realAgentResponse = await RealExternalAgentService.sendMessageToRealAgent(
+              assignedAgent.id,
+              message.body,
+              translationConfig
+            );
             
-            // Si no es español, traducir al español para mejor procesamiento
-            if (detectedLanguage !== 'es' && detectedLanguage !== 'spanish') {
-              console.log(`🔄 Traduciendo mensaje del ${detectedLanguage} al español...`);
-              messageForAgent = await this.translateToSpanish(message.body, detectedLanguage);
-              wasTranslated = true;
-              console.log(`📝 Mensaje traducido: "${messageForAgent.substring(0, 50)}..."`);
+            if (realAgentResponse.success) {
+              console.log(`✅ RESPUESTA REAL DEL AGENTE ${assignedAgent.name}: ${realAgentResponse.response?.substring(0, 50)}...`);
+              return {
+                success: true,
+                response: realAgentResponse.response,
+                agentName: realAgentResponse.agentName
+              };
+            } else {
+              console.log(`❌ Error en comunicación real con ${assignedAgent.name}: ${realAgentResponse.error}`);
+              return { success: false };
             }
-            
-            // Generar respuesta usando OpenAI
-            const OpenAI = require('openai');
-            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-            
-            const enhancedContext = `${assignedAgent.context}
-            ${wasTranslated ? `NOTA: El mensaje original estaba en ${detectedLanguage} y ha sido traducido al español para tu mejor comprensión.` : ''}
-            Responde de manera útil y conversacional en español.`;
-            
-            const response = await openai.chat.completions.create({
-              model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-              messages: [
-                { role: "system", content: enhancedContext },
-                { role: "user", content: messageForAgent }
-              ],
-              max_tokens: 200,
-              temperature: 0.7,
-            });
-
-            const autoResponse = response.choices[0].message.content || 'Lo siento, no pude procesar tu mensaje.';
-            
-            console.log(`✅ RESPUESTA GENERADA POR ${assignedAgent.name}: ${autoResponse.substring(0, 50)}...`);
-            
-            return {
-              success: true,
-              response: autoResponse,
-              agentName: assignedAgent.name
-            };
-          } catch (openaiError) {
-            console.error('❌ Error generando respuesta con OpenAI:', openaiError);
+          } catch (realAgentError) {
+            console.error('❌ Error conectando con agente externo real:', realAgentError);
             return { success: false };
           }
         }
