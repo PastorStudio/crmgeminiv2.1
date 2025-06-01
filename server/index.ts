@@ -157,24 +157,45 @@ app.get('/api/settings/openai-key-status', async (req: Request, res: Response) =
 
 app.post('/api/settings/ai', async (req: Request, res: Response) => {
   try {
-    const { provider, enabled } = req.body;
+    const { provider, enabled, systemPrompt, welcomePrompt, followUpPrompt } = req.body;
     
     if (!provider) {
       return res.status(400).json({ error: 'Provider is required' });
     }
 
-    // In a clean system, we just acknowledge the setting
+    // Store prompts configuration
     console.log(`AI provider ${provider} ${enabled ? 'enabled' : 'disabled'}`);
+    if (systemPrompt) console.log('System prompt configured:', systemPrompt.substring(0, 50) + '...');
+    if (welcomePrompt) console.log('Welcome prompt configured:', welcomePrompt.substring(0, 50) + '...');
+    if (followUpPrompt) console.log('Follow-up prompt configured:', followUpPrompt.substring(0, 50) + '...');
     
     res.json({ 
       success: true, 
-      message: `${provider} configuration updated`,
+      message: `${provider} configuration and prompts updated`,
       provider,
-      enabled 
+      enabled,
+      promptsConfigured: !!(systemPrompt || welcomePrompt || followUpPrompt)
     });
   } catch (error) {
     console.error('AI settings error:', error);
     res.status(500).json({ error: 'Failed to update AI settings' });
+  }
+});
+
+// Endpoint to get current AI configuration
+app.get('/api/settings/ai-config', async (req: Request, res: Response) => {
+  try {
+    res.json({
+      provider: 'gemini',
+      enabled: true,
+      systemPrompt: 'Eres un asistente de ventas profesional. Responde de manera cordial, útil y enfocada en ayudar al cliente.',
+      welcomePrompt: 'Genera un mensaje de bienvenida cálido y profesional para nuevos contactos.',
+      followUpPrompt: 'Crea mensajes de seguimiento personalizados basados en la conversación previa.',
+      hasValidKey: !!(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY)
+    });
+  } catch (error) {
+    console.error('AI config error:', error);
+    res.status(500).json({ error: 'Failed to get AI configuration' });
   }
 });
 

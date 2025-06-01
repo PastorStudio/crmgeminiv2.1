@@ -52,6 +52,12 @@ const apiSettingsSchema = z.object({
   enableGeminiAI: z.boolean().default(true),
   aiProvider: z.enum(["gemini", "openai"]).default("gemini"),
   geminiApiKey: z.string().optional(),
+  systemPrompt: z.string().default("Eres un asistente de ventas profesional. Responde de manera cordial, útil y enfocada en ayudar al cliente. Mantén un tono amigable pero profesional en todas las interacciones."),
+  welcomePrompt: z.string().default("Genera un mensaje de bienvenida cálido y profesional para nuevos contactos, presentando nuestros servicios de manera concisa."),
+  followUpPrompt: z.string().default("Crea mensajes de seguimiento personalizados basados en la conversación previa, ofreciendo valor adicional y manteniendo el interés del cliente."),
+  responseTime: z.number().min(1).max(30).default(5),
+  temperature: z.number().min(0).max(2).default(0.7),
+  maxTokens: z.number().min(50).max(2000).default(500),
   autoAnalyzeLeads: z.boolean().default(true),
   enrichLeadData: z.boolean().default(true),
   smartLeadScoring: z.boolean().default(true),
@@ -144,6 +150,9 @@ export default function Settings() {
       enableGeminiAI: true,
       aiProvider: "gemini",
       geminiApiKey: "",
+      systemPrompt: "Eres un asistente de ventas profesional. Responde de manera cordial, útil y enfocada en ayudar al cliente. Mantén un tono amigable pero profesional en todas las interacciones.",
+      welcomePrompt: "Genera un mensaje de bienvenida cálido y profesional para nuevos contactos, presentando nuestros servicios de manera concisa.",
+      followUpPrompt: "Crea mensajes de seguimiento personalizados basados en la conversación previa, ofreciendo valor adicional y manteniendo el interés del cliente.",
       autoAnalyzeLeads: true,
       enrichLeadData: true,
       smartLeadScoring: true,
@@ -566,6 +575,73 @@ export default function Settings() {
                           </Select>
                           <FormDescription>
                             Choose which AI provider to use for auto-responses and chat assistance
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <Separator className="my-6" />
+                    
+                    <h3 className="text-lg font-medium">Custom AI Prompts</h3>
+                    
+                    <FormField
+                      control={apiSettingsForm.control}
+                      name="systemPrompt"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>System Prompt</FormLabel>
+                          <FormControl>
+                            <textarea 
+                              className="w-full h-32 p-3 border rounded-md resize-vertical"
+                              placeholder="Eres un asistente de ventas especializado en [tu empresa]. Responde de manera profesional, amigable y útil. Siempre mantén un tono cordial y ofrece ayuda específica basada en nuestros servicios..."
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Define el comportamiento base del AI. Este prompt se usa para todas las respuestas automáticas.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={apiSettingsForm.control}
+                      name="welcomePrompt"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Welcome Message Prompt</FormLabel>
+                          <FormControl>
+                            <textarea 
+                              className="w-full h-24 p-3 border rounded-md resize-vertical"
+                              placeholder="Genera un mensaje de bienvenida profesional para nuevos contactos que escriben por primera vez..."
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Prompt específico para generar mensajes de bienvenida automáticos.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={apiSettingsForm.control}
+                      name="followUpPrompt"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Follow-up Prompt</FormLabel>
+                          <FormControl>
+                            <textarea 
+                              className="w-full h-24 p-3 border rounded-md resize-vertical"
+                              placeholder="Genera mensajes de seguimiento personalizados basados en el historial de conversación..."
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Prompt para generar mensajes de seguimiento automáticos.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
