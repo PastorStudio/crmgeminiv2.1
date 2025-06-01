@@ -48,19 +48,35 @@ class SeleniumAgentService:
             if self.headless:
                 chrome_options.add_argument("--headless")
             
-            # Opciones esenciales para Replit
+            # Opciones esenciales para entornos containerizados como Replit
             chrome_options.add_argument("--no-sandbox")
             chrome_options.add_argument("--disable-dev-shm-usage")
             chrome_options.add_argument("--disable-gpu")
             chrome_options.add_argument("--disable-extensions")
             chrome_options.add_argument("--disable-web-security")
             chrome_options.add_argument("--allow-running-insecure-content")
+            chrome_options.add_argument("--disable-setuid-sandbox")
+            chrome_options.add_argument("--disable-background-timer-throttling")
+            chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+            chrome_options.add_argument("--disable-renderer-backgrounding")
             chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
             
-            # Instalar ChromeDriver automáticamente
-            service = Service(ChromeDriverManager().install())
+            # Usar Chromium instalado en el sistema en lugar de ChromeDriver automático
+            chrome_options.binary_location = "/nix/store/*/bin/chromium"
             
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            try:
+                # Intentar usar chromedriver del sistema primero
+                service = Service("/nix/store/*/bin/chromedriver")
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            except:
+                # Fallback a ChromeDriver automático
+                try:
+                    service = Service(ChromeDriverManager().install())
+                    self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                except:
+                    # Último fallback sin service especificado
+                    self.driver = webdriver.Chrome(options=chrome_options)
+            
             self.driver.set_window_size(1920, 1080)
             self.driver.implicitly_wait(10)
             
