@@ -2860,8 +2860,8 @@ export function WhatsAppTwoColumn() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="flex justify-start ml-[-6px] mr-[-6px] pl-[-10px] pr-[-10px] pt-[-10px] pb-[-10px] mt-[4px] mb-[4px]"
-                        style={{ marginLeft: '8px', marginRight: '8px' }}
+                        className={`flex mb-1 ${message.fromMe ? 'justify-end' : 'justify-start'}`}
+                        style={{ marginLeft: '5px', marginRight: '5px' }}
                       >
                         <div className={`flex space-x-2 ${message.fromMe ? 'max-w-[75%] flex-row-reverse space-x-reverse' : 'max-w-[75%]'}`}>
                           {showAvatar && isFirstFromAuthor && (
