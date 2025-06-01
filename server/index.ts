@@ -4589,6 +4589,32 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
       });
     }
   });
+
+  // Poblar sistema con datos de demostración
+  app.post('/api/system/populate-demo-data', async (req: Request, res: Response) => {
+    try {
+      const { populateSystemData } = await import('./scripts/populateSystemData');
+      await populateSystemData();
+      
+      res.json({
+        success: true,
+        message: 'Sistema poblado exitosamente con datos de demostración',
+        features: [
+          'Leads generados automáticamente',
+          'Tickets categorizados por IA',
+          'Análisis de conversaciones',
+          'Respuestas automáticas contextuales',
+          'Agentes externos con IA nativa'
+        ]
+      });
+    } catch (error) {
+      console.error('Error poblando sistema:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error poblando el sistema con datos de demostración'
+      });
+    }
+  });
   
   // Analizar conversación con IA
   app.post('/api/ai/analyze-conversation', async (req: Request, res: Response) => {

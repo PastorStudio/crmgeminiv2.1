@@ -3,8 +3,8 @@
  * Para automatizar la creación de leads, tickets y análisis de conversaciones
  */
 
-import { nativeIntelligence } from './nativeIntelligenceService';
 import { storage } from '../storage';
+import { nativeIntelligence } from './nativeIntelligenceService';
 
 export interface AutoAnalysisResult {
   leadCreated?: boolean;
