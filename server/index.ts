@@ -3224,10 +3224,10 @@ app.use((req, res, next) => {
   app.get("/api/whatsapp-accounts/:accountId/agent-config", async (req: Request, res: Response) => {
     try {
       const accountId = parseInt(req.params.accountId);
+      const { storage } = await import('./storage');
       
-      // Usar el nuevo sistema de persistencia
-      const { WhatsAppAccountConfigManager } = await import('./externalAgentsSimple');
-      const config = await WhatsAppAccountConfigManager.getAccountConfig(accountId);
+      // Leer configuración directamente desde la base de datos persistente
+      const config = await storage.getWhatsappAgentConfig(accountId);
       
       if (!config) {
         return res.json({
@@ -3241,12 +3241,22 @@ app.use((req, res, next) => {
         });
       }
       
+      // Convertir formato de la base de datos al formato esperado por el frontend
+      const response = {
+        accountId,
+        assignedExternalAgentId: config.agentId,
+        autoResponseEnabled: config.autoResponse,
+        responseDelay: 3
+      };
+      
+      console.log(`📋 Configuración persistente leída para cuenta ${accountId}: Agente ${config.agentId}, Auto-respuesta: ${config.autoResponse}`);
+      
       res.json({
         success: true,
-        config
+        config: response
       });
     } catch (error) {
-      console.error('Error obteniendo configuración de agente:', error);
+      console.error('❌ Error obteniendo configuración persistente:', error);
       res.status(500).json({ error: 'Error interno del servidor' });
     }
   });
