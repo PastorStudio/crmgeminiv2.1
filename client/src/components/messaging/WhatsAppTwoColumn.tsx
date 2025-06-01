@@ -2222,7 +2222,7 @@ export function WhatsAppTwoColumn() {
 
   return (
     <div className="flex flex-row h-screen bg-gray-50">
-      {/* Left Panel - Chat List */}
+      {/* Left Panel - Chat List (30%) */}
       <div className="w-80 min-w-80 max-w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
         {/* Header with Account Selector */}
         <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-red-600 via-black to-red-600 flex-shrink-0">
