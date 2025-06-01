@@ -2759,9 +2759,15 @@ export function WhatsAppTwoColumn() {
                                               // Colocar la respuesta en el área de escritura
                                               setNewMessage(result.response);
                                               
+                                              // Enviar automáticamente la respuesta después de 2 segundos
+                                              setTimeout(() => {
+                                                console.log('🚀 Auto-enviando respuesta del agente...');
+                                                handleSendMessage();
+                                              }, 2000);
+                                              
                                               toast({
                                                 title: "🤖 Respuesta Generada",
-                                                description: "La respuesta del agente externo se colocó en el área de escritura",
+                                                description: "La respuesta del agente se enviará automáticamente en 2 segundos",
                                               });
                                             } else {
                                               console.log('❌ Error en respuesta del agente:', result);
