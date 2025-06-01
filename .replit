@@ -1,10 +1,10 @@
-modules = ["nodejs-20", "web", "postgresql-16"]
+modules = ["nodejs-20", "web", "postgresql-16", "python-3.11"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["jq", "chromium", "glib", "gobject-introspection", "nss", "gtk3", "cairo", "pango", "libxkbcommon", "alsa-lib", "libdrm", "xorg.libXcomposite", "xorg.libXcursor", "xorg.libXi", "xorg.libXtst", "cups", "dbus", "atk", "gdk-pixbuf", "xorg.libxshmfence", "mesa"]
+packages = ["alsa-lib", "atk", "cairo", "chromium", "cups", "dbus", "gdk-pixbuf", "geckodriver", "glib", "gobject-introspection", "gtk3", "jq", "libdrm", "libxkbcommon", "mesa", "nss", "pango", "xorg.libXcomposite", "xorg.libXcursor", "xorg.libXi", "xorg.libXtst", "xorg.libxshmfence"]
 
 [deployment]
 deploymentTarget = "autoscale"
