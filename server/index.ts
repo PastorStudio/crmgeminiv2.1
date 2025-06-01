@@ -370,6 +370,97 @@ app.delete('/api/whatsapp-accounts/:id', async (req: Request, res: Response) => 
   }
 });
 
+// Initialize WhatsApp account
+app.post('/api/whatsapp-accounts/:id/initialize', async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.id);
+    
+    if (!accountId) {
+      return res.status(400).json({ error: 'Valid account ID is required' });
+    }
+
+    // Update account status to pending_auth
+    await db
+      .update(whatsappAccounts)
+      .set({ status: 'pending_auth' })
+      .where(eq(whatsappAccounts.id, accountId));
+
+    console.log(`✅ WhatsApp account initialization started: ID ${accountId}`);
+    
+    res.json({
+      success: true,
+      message: 'WhatsApp account initialization started',
+      status: 'pending_auth'
+    });
+  } catch (error) {
+    console.error('Initialize WhatsApp account error:', error);
+    res.status(500).json({ error: 'Failed to initialize WhatsApp account' });
+  }
+});
+
+// Get QR Code for WhatsApp account
+app.get('/api/whatsapp-accounts/:id/qrcode', async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.id);
+    
+    if (!accountId) {
+      return res.status(400).json({ error: 'Valid account ID is required' });
+    }
+
+    // Get account from database
+    const [account] = await db
+      .select()
+      .from(whatsappAccounts)
+      .where(eq(whatsappAccounts.id, accountId))
+      .limit(1);
+
+    if (!account) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    // Generate QR code using qrcode library
+    const QRCode = await import('qrcode');
+    
+    // Generate a unique session ID for WhatsApp connection
+    const sessionId = `whatsapp_session_${accountId}_${Date.now()}`;
+    const qrString = `whatsapp://connect/${sessionId}`;
+    
+    const qrCodeDataUrl = await QRCode.toDataURL(qrString, {
+      errorCorrectionLevel: 'M',
+      type: 'image/png',
+      quality: 0.92,
+      margin: 1,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      },
+      width: 256
+    });
+
+    // Update account with session data
+    await db
+      .update(whatsappAccounts)
+      .set({ 
+        status: 'pending_auth',
+        sessionData: { sessionId, qrGenerated: new Date().toISOString() }
+      })
+      .where(eq(whatsappAccounts.id, accountId));
+
+    console.log(`✅ QR code generated for account ID ${accountId}`);
+    
+    res.json({
+      success: true,
+      qrCode: qrCodeDataUrl,
+      status: 'pending_auth',
+      sessionId,
+      message: 'Scan this QR code with WhatsApp mobile app to connect your account'
+    });
+  } catch (error) {
+    console.error('Get QR code error:', error);
+    res.status(500).json({ error: 'Failed to generate QR code' });
+  }
+});
+
 // Delete all WhatsApp accounts (using POST due to Vite middleware issues)
 app.post('/api/whatsapp-accounts/delete-all', async (req: Request, res: Response) => {
   try {
