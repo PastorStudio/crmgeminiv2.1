@@ -47,6 +47,7 @@ export interface IStorage {
   setWhatsappAgentConfig(accountId: number, agentId: string, autoResponse: boolean): Promise<boolean>;
   getWhatsappAgentConfig(accountId: number): Promise<{agentId: string | null, autoResponse: boolean} | null>;
   toggleWhatsappAutoResponse(accountId: number): Promise<boolean>;
+  updateWhatsappAccountAgentConfig(accountId: number, config: {assignedExternalAgentId?: string | null, autoResponseEnabled?: boolean, responseDelay?: number}): Promise<boolean>;
   
   // Additional required methods
   initializeData(): Promise<void>;
@@ -241,6 +242,36 @@ export class DatabaseStorage implements IStorage {
       return result.length > 0;
     } catch (error) {
       console.error('Error toggling auto response:', error);
+      return false;
+    }
+  }
+
+  async updateWhatsappAccountAgentConfig(accountId: number, config: {assignedExternalAgentId?: string | null, autoResponseEnabled?: boolean, responseDelay?: number}): Promise<boolean> {
+    try {
+      const updateData: any = {};
+      
+      if (config.assignedExternalAgentId !== undefined) {
+        updateData.assignedExternalAgentId = config.assignedExternalAgentId;
+      }
+      
+      if (config.autoResponseEnabled !== undefined) {
+        updateData.autoResponseEnabled = config.autoResponseEnabled;
+      }
+      
+      if (config.responseDelay !== undefined) {
+        updateData.responseDelay = config.responseDelay;
+      }
+      
+      const result = await db
+        .update(whatsappAccounts)
+        .set(updateData)
+        .where(eq(whatsappAccounts.id, accountId))
+        .returning();
+        
+      console.log(`✅ Configuración de agente actualizada - Cuenta: ${accountId}`, updateData);
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error updating WhatsApp account agent config:', error);
       return false;
     }
   }
