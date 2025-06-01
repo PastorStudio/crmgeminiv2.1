@@ -15,16 +15,21 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Send, Loader2, Clock, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 interface ChatComment {
   id: number;
   chatId: string;
   comment: string;
+  text?: string;
   userId: number;
   createdAt: string;
+  timestamp?: string;
   user?: {
     id: number;
     fullName: string;
+    name?: string;
     username: string;
     role: string;
     avatar?: string;
@@ -127,16 +132,24 @@ export function ChatCommentsDialog({
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-ES', { 
-      day: '2-digit', 
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit', 
-      minute: '2-digit',
-      second: '2-digit'
-    });
+  const formatDate = (dateInput: string | Date | number | null | undefined) => {
+    try {
+      if (!dateInput) {
+        return 'Fecha no disponible';
+      }
+      
+      const date = new Date(dateInput);
+      
+      // Verificar si la fecha es válida
+      if (isNaN(date.getTime())) {
+        return 'Fecha no válida';
+      }
+      
+      return format(date, 'dd/MM/yyyy HH:mm:ss', { locale: es });
+    } catch (error) {
+      console.warn('Error formateando fecha:', error, 'Input:', dateInput);
+      return 'Error en fecha';
+    }
   };
 
   const getInitials = (name: string) => {
@@ -196,7 +209,7 @@ export function ChatCommentsDialog({
             ) : (
               <div className="space-y-3 py-2">
                 {comments
-                  .sort((a, b) => {
+                  .sort((a: any, b: any) => {
                     const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
                     const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
                     return timeB - timeA; // Más nuevo primero (descendente)
