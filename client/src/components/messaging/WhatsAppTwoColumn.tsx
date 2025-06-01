@@ -3607,17 +3607,17 @@ function ContactInfoPanel({ chat }: { chat: WhatsAppChat }) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-purple-600 pt-[28px] pb-[28px]">
+      <div className="p-4 border-b border-gray-200 bg-black pt-[28px] pb-[28px]">
         <div className="flex items-center space-x-3">
           <Avatar className="h-12 w-12">
             <AvatarImage src={chat.profilePicUrl} />
-            <AvatarFallback className="bg-white text-blue-600 font-semibold">
+            <AvatarFallback className="bg-red-600 text-white font-semibold">
               {chat.isGroup ? <Users className="h-6 w-6" /> : chat.name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <h3 className="font-semibold text-white text-lg">{chat.name}</h3>
-            <p className="text-blue-100 text-sm">{chat.isGroup ? 'Grupo' : 'Contacto individual'}</p>
+            <p className="text-red-400 text-sm">{chat.isGroup ? 'Grupo' : 'Contacto individual'}</p>
           </div>
         </div>
       </div>
