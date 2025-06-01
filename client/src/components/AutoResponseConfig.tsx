@@ -104,7 +104,7 @@ export function AutoResponseConfig({ accountId, accountName }: AutoResponseConfi
     onSuccess: (data) => {
       console.log('✅ Respuesta automática habilitada exitosamente:', data);
       setConfig(prev => ({ ...prev, autoResponseEnabled: true }));
-      queryClient.invalidateQueries({ queryKey: [`/api/external-agents/auto-response-config/${accountId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp-accounts/${accountId}/agent-config`] });
       toast({
         title: 'Respuesta automática habilitada',
         description: `Se habilitaron las respuestas automáticas para ${accountName}`
@@ -128,7 +128,7 @@ export function AutoResponseConfig({ accountId, accountName }: AutoResponseConfi
         body: JSON.stringify(data)
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/external-agents/auto-response-config/${accountId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp-accounts/${accountId}/agent-config`] });
       toast({
         title: 'Respuesta automática deshabilitada',
         description: `Se deshabilitaron las respuestas automáticas para ${accountName}`
