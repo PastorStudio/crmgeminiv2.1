@@ -3093,10 +3093,9 @@ export function WhatsAppTwoColumn() {
                                       </span>
                                       <AIResponseGenerator
                                         chatId={selectedChat?.id || ''}
-                                        messages={selectedChatMessages}
+                                        messages={selectedChatMessages || []}
                                         onResponseGenerated={(response) => {
-                                          // Handle the generated response
-                                          console.log('Generated AI response:', response);
+                                          setNewMessage(response);
                                           toast({
                                             title: "AI Response Generated",
                                             description: "You can now send or edit the response"
