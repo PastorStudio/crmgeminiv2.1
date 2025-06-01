@@ -4338,26 +4338,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      
-        name: name || `Agente ${Date.now()}`,
-        agentUrl,
-        description: description || null,
-        triggerKeywords: triggerKeywords || [],
-        responseDelay: responseDelay || 3,
-        accountId: 1,
-        isActive: true
-      });
-
+      // External agent functionality removed - keeping only clean AI system
       res.json({
-        success: true,
-        agent,
-        message: `Agente ${agent.name} configurado exitosamente`
+        success: false,
+        message: 'External agent functionality has been removed. Use AI settings for Gemini or OpenAI instead.'
       });
     } catch (error) {
-      console.error('❌ Error configurando agente externo:', error);
+      console.error('External agent route accessed:', error);
       res.status(500).json({
         success: false,
-        error: 'Error interno del servidor'
+        error: 'External agent functionality not available'
       });
     }
   });

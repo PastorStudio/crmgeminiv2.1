@@ -2710,30 +2710,14 @@ export function WhatsAppTwoColumn() {
 
 
 
-                              } else {
-                                toast({
-                                  title: "❌ Error A.E AI",
-                                  description: result.message || "No se pudo procesar el mensaje",
-                                  variant: "destructive",
-                                  duration: 5000,
-                                });
-                              }
-                            } else {
-                              throw new Error(`HTTP ${response.status}`);
-                            }
+
                           } catch (error) {
-                            console.error('❌ Error probando A.E AI:', error);
-                            toast({
-                              title: "❌ Error de Conexión",
-                              description: "No se pudo conectar con el servidor A.E AI",
-                              variant: "destructive",
-                              duration: 5000,
-                            });
+                            console.error('Error en sistema de IA:', error);
                           }
                         }}
                       >
                         <Bot className="h-4 w-4 mr-2" />
-                        Probar
+                        Usar IA
                       </Button>
                     </motion.div>
                   )}
