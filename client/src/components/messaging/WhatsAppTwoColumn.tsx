@@ -39,9 +39,7 @@ import {
   Video,
   File,
   Loader2,
-  Zap,
   Ticket,
-  Bot,
   Play,
   RefreshCw
 } from 'lucide-react';
@@ -1968,6 +1966,203 @@ export function WhatsAppTwoColumn() {
     }
   }, [accounts, selectedAccounts]);
 
+  // 1. FUNCIONALIDAD: ASIGNACIÓN PERMANENTE DE AGENTE EXTERNO (RAYO + A.E)
+  const handlePermanentAgentAssignment = async () => {
+    if (!selectedChat) {
+      toast({
+        title: "Error",
+        description: "Selecciona un chat primero",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      console.log('⚡ INICIANDO ASIGNACIÓN PERMANENTE DE AGENTE EXTERNO...');
+      
+      // Obtener agentes externos disponibles
+      const agentsResponse = await fetch('/api/external-agents');
+      const agentsData = await agentsResponse.json();
+      
+      if (!agentsData.success || !agentsData.agents?.length) {
+        toast({
+          title: "No hay agentes disponibles",
+          description: "No se encontraron agentes externos configurados",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Usar el primer agente disponible o el agente por defecto
+      const selectedAgent = agentsData.agents[0];
+
+      // Asignar permanentemente el agente a la cuenta
+      const assignResponse = await fetch('/api/whatsapp-accounts/assign-permanent-agent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accountId: selectedChat.accountId,
+          chatId: selectedChat.id,
+          agentId: selectedAgent.id,
+          agentName: selectedAgent.name,
+          isPermanent: true
+        })
+      });
+
+      if (assignResponse.ok) {
+        const result = await assignResponse.json();
+        
+        toast({
+          title: "⚡ Agente Asignado Permanentemente",
+          description: `${selectedAgent.name} ahora está asignado permanentemente a esta cuenta`,
+          duration: 4000
+        });
+
+        console.log('✅ AGENTE ASIGNADO PERMANENTEMENTE:', selectedAgent.name);
+        
+        // Actualizar estado local para reflejar la asignación
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+        
+      } else {
+        throw new Error('Error en la asignación');
+      }
+
+    } catch (error) {
+      console.error('❌ Error en asignación permanente:', error);
+      toast({
+        title: "Error en Asignación",
+        description: "No se pudo asignar el agente permanentemente",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // 2. FUNCIONALIDAD: GENERAR RESPUESTA CON ROBOT A.E (TRADUCCIÓN + RESPUESTA)
+  const handleRobotResponseGeneration = async () => {
+    if (!selectedChat || !messages?.length) {
+      toast({
+        title: "Error",
+        description: "Selecciona un chat con mensajes primero",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      console.log('🤖 INICIANDO GENERACIÓN DE RESPUESTA CON ROBOT A.E...');
+
+      // Obtener el último mensaje recibido (no enviado por nosotros)
+      const lastIncomingMessage = (messages as any[])
+        .filter(msg => !msg.fromMe)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+
+      if (!lastIncomingMessage) {
+        toast({
+          title: "No hay mensajes entrantes",
+          description: "No se encontró un mensaje entrante para procesar",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      let messageText = lastIncomingMessage.body;
+
+      // Detectar si el mensaje está en inglés y traducir automáticamente
+      const hasEnglishWords = /\b(hello|hi|how|are|you|what|where|when|why|please|thank|thanks|good|morning|afternoon|evening|night|yes|no|ok|okay|can|do|help|need|want|time|day|work|problem|issue|question|answer|service|customer|support|business|company|price|cost|buy|sell|pay|money|dollar|email|phone|call|message|text|send|receive|order|product|delivery|shipping|return|refund|cancel|confirm|appointment|meeting|schedule|available|busy|sorry|excuse|understand|know|think|believe|sure|maybe|probably|definitely|absolutely|exactly|correct|wrong|right|left|up|down|inside|outside)/i.test(messageText);
+      
+      if (hasEnglishWords) {
+        console.log('🌐 MENSAJE EN INGLÉS DETECTADO - Traduciendo...');
+        
+        try {
+          const translationResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'Traduce el siguiente texto al español de manera natural y conversacional. Responde únicamente con la traducción, sin explicaciones adicionales.'
+                },
+                {
+                  role: 'user',
+                  content: messageText
+                }
+              ],
+              max_tokens: 150,
+              temperature: 0.3
+            })
+          });
+
+          if (translationResponse.ok) {
+            const translationData = await translationResponse.json();
+            messageText = translationData.choices[0]?.message?.content || messageText;
+            console.log('✅ MENSAJE TRADUCIDO:', messageText);
+          }
+        } catch (translationError) {
+          console.warn('⚠️ Error en traducción, usando mensaje original:', translationError);
+        }
+      }
+
+      // Generar respuesta usando OpenAI
+      const responseGenerationResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: 'Eres un asistente de atención al cliente profesional y amigable. Responde de manera útil, concisa y personalizada al mensaje del cliente. Mantén un tono cordial y profesional.'
+            },
+            {
+              role: 'user',
+              content: messageText
+            }
+          ],
+          max_tokens: 200,
+          temperature: 0.7
+        })
+      });
+
+      if (responseGenerationResponse.ok) {
+        const responseData = await responseGenerationResponse.json();
+        const generatedResponse = responseData.choices[0]?.message?.content;
+
+        if (generatedResponse) {
+          // Colocar la respuesta generada en el input (NO auto-enviar)
+          setNewMessage(generatedResponse);
+          
+          toast({
+            title: "🤖 Respuesta Robot A.E Generada",
+            description: "Respuesta colocada en el input. Puedes editarla antes de enviar.",
+            duration: 4000
+          });
+
+          console.log('✅ RESPUESTA ROBOT A.E GENERADA Y COLOCADA EN INPUT');
+        }
+      } else {
+        throw new Error('Error generando respuesta');
+      }
+
+    } catch (error) {
+      console.error('❌ Error en Robot A.E:', error);
+      toast({
+        title: "Error Robot A.E",
+        description: "No se pudo generar la respuesta automática",
+        variant: "destructive"
+      });
+    }
+  };
+
 
 
 
@@ -2340,7 +2535,7 @@ export function WhatsAppTwoColumn() {
           )}
         </ScrollArea>
       </div>
-      {/* Right Panel - Chat Messages */}
+      {/* Middle Panel - Chat Messages (50%) */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {selectedChat ? (
           <>
@@ -2384,6 +2579,28 @@ export function WhatsAppTwoColumn() {
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
+                  {/* 1. BOTÓN RAYO + A.E - ASIGNACIÓN PERMANENTE */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-orange-500 text-orange-600 hover:bg-orange-50 shadow-sm transition-all duration-300"
+                    onClick={handlePermanentAgentAssignment}
+                  >
+                    <Zap className="h-4 w-4 mr-1" />
+                    A.E
+                  </Button>
+
+                  {/* 2. BOTÓN ROBOT A.E - GENERAR RESPUESTA */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-purple-500 text-purple-600 hover:bg-purple-50 shadow-sm transition-all duration-300"
+                    onClick={handleRobotResponseGeneration}
+                  >
+                    <Bot className="h-4 w-4 mr-1" />
+                    A.E
+                  </Button>
+
                   {/* Assignment Button */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
