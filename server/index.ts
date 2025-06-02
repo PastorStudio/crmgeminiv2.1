@@ -189,10 +189,9 @@ app.post('/api/settings/notifications', async (req: Request, res: Response) => {
   }
 });
 
-// WhatsApp chats and messages (basic endpoints)
+// WhatsApp endpoints
 app.get('/api/whatsapp/chats', async (req: Request, res: Response) => {
   try {
-    // Return empty array for clean system
     res.json([]);
   } catch (error) {
     console.error('Get chats error:', error);
@@ -202,11 +201,27 @@ app.get('/api/whatsapp/chats', async (req: Request, res: Response) => {
 
 app.get('/api/whatsapp/messages/:chatId', async (req: Request, res: Response) => {
   try {
-    // Return empty array for clean system
     res.json([]);
   } catch (error) {
     console.error('Get messages error:', error);
     res.status(500).json({ error: 'Failed to get messages' });
+  }
+});
+
+// Additional endpoints needed by frontend
+app.get('/api/external-agents', async (req: Request, res: Response) => {
+  try {
+    res.json([]); // Clean system has no external agents
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get external agents' });
+  }
+});
+
+app.get('/api/whatsapp/ping-status/all', async (req: Request, res: Response) => {
+  try {
+    res.json({}); // Clean system has no ping status
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get ping status' });
   }
 });
 
