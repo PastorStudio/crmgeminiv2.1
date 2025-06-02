@@ -140,9 +140,9 @@ export default function AISettings() {
 
   // Cargar cuentas de WhatsApp con estado real de conexión
   const { data: whatsappAccountsData, isLoading: isLoadingAccounts } = useQuery({
-    queryKey: ['/api/whatsapp-accounts/real-time-status'],
+    queryKey: ['/api/whatsapp-status-check'],
     queryFn: async () => {
-      const response = await fetch('/api/whatsapp-accounts/real-time-status');
+      const response = await fetch('/api/whatsapp-status-check');
       if (!response.ok) {
         throw new Error('Error al cargar cuentas de WhatsApp');
       }
@@ -829,6 +829,78 @@ export default function AISettings() {
               </CardFooter>
             </form>
           </Form>
+        </CardContent>
+      </Card>
+
+      {/* WhatsApp Accounts and Prompt Assignment */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5" />
+            WhatsApp Accounts & Prompt Assignment
+          </CardTitle>
+          <CardDescription>
+            Assign AI prompts to specific WhatsApp accounts and monitor connection status
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingAccounts ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {whatsappAccounts.map((account) => (
+                <div key={account.id} className="p-4 border rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${
+                        account.realStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'
+                      }`}></div>
+                      <div>
+                        <h4 className="font-medium">{account.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Status: {account.realStatus === 'connected' ? 'Connected' : 'Disconnected'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={account.assignedPromptId?.toString() || ""}
+                        onValueChange={(value) => handleAssignPrompt(account.id, parseInt(value))}
+                      >
+                        <SelectTrigger className="w-48">
+                          <SelectValue placeholder="Select AI Prompt" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">No Prompt Assigned</SelectItem>
+                          {aiPrompts.map((prompt) => (
+                            <SelectItem key={prompt.id} value={prompt.id.toString()}>
+                              {prompt.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {account.assignedPromptId && (
+                    <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
+                      <strong>Assigned Prompt:</strong> {
+                        aiPrompts.find(p => p.id === account.assignedPromptId)?.name || 'Unknown'
+                      }
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {whatsappAccounts.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No WhatsApp accounts found. Create a WhatsApp account first.
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
       </div>

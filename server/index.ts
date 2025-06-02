@@ -1904,6 +1904,63 @@ app.use((req, res, next) => {
   app.get('/api/auto-response/config/:chatId', whatsappAPI.getAutoResponseConfig);
   app.put('/api/auto-response/config/:chatId', whatsappAPI.updateAutoResponseConfig);
 
+  // ===== ENDPOINT PARA VERIFICAR ESTADO DE WHATSAPP (ruta separada para evitar conflictos) =====
+  app.get('/api/whatsapp-status-check', async (req: Request, res: Response) => {
+    try {
+      console.log('🔍 Consultando estado real de WhatsApp para todas las cuentas');
+      
+      // Obtener todas las cuentas de WhatsApp
+      const accounts = await db.select().from(whatsappAccounts);
+      
+      // Intentar obtener el manager de WhatsApp
+      let whatsappManager;
+      try {
+        const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+        whatsappManager = whatsappMultiAccountManager;
+      } catch (error) {
+        console.log('⚠️ Manager de WhatsApp no disponible');
+      }
+      
+      const accountsWithStatus = await Promise.all(accounts.map(async (account) => {
+        let realStatus = 'disconnected';
+        let hasActiveSession = false;
+        
+        // Verificar si tiene sesión activa
+        if (whatsappManager) {
+          try {
+            const status = await whatsappManager.getAccountStatus(account.id);
+            if (status && (status.authenticated || status.ready)) {
+              realStatus = 'connected';
+              hasActiveSession = true;
+            }
+          } catch (error) {
+            console.log(`⚠️ No se pudo verificar estado para cuenta ${account.id}`);
+          }
+        }
+        
+        return {
+          ...account,
+          realStatus,
+          hasActiveSession,
+          lastStatusCheck: new Date().toISOString()
+        };
+      }));
+      
+      console.log('✅ Estados actualizados para', accountsWithStatus.length, 'cuentas');
+      res.json({
+        success: true,
+        accounts: accountsWithStatus
+      });
+      
+    } catch (error) {
+      console.error('❌ Error obteniendo estado real de WhatsApp:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error al obtener estado de WhatsApp'
+      });
+    }
+  });
+
   // Modern messaging system routes
   app.use('/api/modern-messaging', modernMessagingRouter);
 
@@ -2083,62 +2140,7 @@ app.use((req, res, next) => {
     }
   });
 
-  // ===== ENDPOINT PARA ESTADO REAL DE WHATSAPP (debe ir antes de las rutas con parámetros) =====
-  app.get('/api/whatsapp-accounts/real-time-status', async (req: Request, res: Response) => {
-    try {
-      console.log('🔍 Consultando estado real de WhatsApp para todas las cuentas');
-      
-      // Obtener todas las cuentas de WhatsApp
-      const accounts = await db.select().from(whatsappAccounts);
-      
-      // Intentar obtener el manager de WhatsApp
-      let whatsappManager;
-      try {
-        const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
-        whatsappManager = whatsappMultiAccountManager;
-      } catch (error) {
-        console.log('⚠️ Manager de WhatsApp no disponible');
-      }
-      
-      const accountsWithStatus = await Promise.all(accounts.map(async (account) => {
-        let realStatus = 'disconnected';
-        let hasActiveSession = false;
-        
-        // Verificar si tiene sesión activa
-        if (whatsappManager) {
-          try {
-            const status = await whatsappManager.getAccountStatus(account.id);
-            if (status && (status.authenticated || status.ready)) {
-              realStatus = 'connected';
-              hasActiveSession = true;
-            }
-          } catch (error) {
-            console.log(`⚠️ No se pudo verificar estado para cuenta ${account.id}`);
-          }
-        }
-        
-        return {
-          ...account,
-          realStatus,
-          hasActiveSession,
-          lastStatusCheck: new Date().toISOString()
-        };
-      }));
-      
-      console.log('✅ Estados actualizados para', accountsWithStatus.length, 'cuentas');
-      res.json({
-        success: true,
-        accounts: accountsWithStatus
-      });
-      
-    } catch (error) {
-      console.error('❌ Error obteniendo estado real de WhatsApp:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error al obtener estado de WhatsApp'
-      });
-    }
-  });
+
 
   // ===== ENDPOINTS DE RESPUESTAS AUTOMÁTICAS CON AGENTES EXTERNOS =====
   
