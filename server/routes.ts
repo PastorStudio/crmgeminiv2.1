@@ -1993,6 +1993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Autonomous WhatsApp AI System - Converts every chat to lead cards and tickets
+  const { getAutonomousLeads, getAutonomousStats, forceProcessMessages, processSpecificMessage, getConversionMetrics, getRecentActivity } = await import('./routes/autonomousApi');
   app.get("/api/autonomous/leads", getAutonomousLeads);
   app.get("/api/autonomous/stats", getAutonomousStats);
   app.post("/api/autonomous/process", forceProcessMessages);

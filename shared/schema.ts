@@ -481,28 +481,28 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
   assignee: one(users, {
-    fields: [leads.assigneeId],
+    fields: [leads.assignedTo],
     references: [users.id]
   }),
-  activities: many(activities),
-  messages: many(messages),
+  activities: many(enhancedActivities),
+  messages: many(enhancedMessagesTable),
 }));
 
-export const activitiesRelations = relations(activities, ({ one }) => ({
+export const activitiesRelations = relations(enhancedActivities, ({ one }) => ({
   lead: one(leads, {
-    fields: [activities.leadId],
+    fields: [enhancedActivities.leadId],
     references: [leads.id]
   }),
   user: one(users, {
-    fields: [activities.userId],
+    fields: [enhancedActivities.userId],
     references: [users.id],
     relationName: "userActivities"
   })
 }));
 
-export const messagesRelations = relations(messages, ({ one }) => ({
+export const enhancedMessagesRelations = relations(enhancedMessagesTable, ({ one }) => ({
   lead: one(leads, {
-    fields: [messages.leadId],
+    fields: [enhancedMessagesTable.leadId],
     references: [leads.id]
   })
 }));
