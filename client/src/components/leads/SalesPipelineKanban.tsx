@@ -208,9 +208,6 @@ export default function SalesPipelineKanban() {
                                   <h4 className="font-medium text-sm text-gray-900 line-clamp-2">
                                     {lead.title}
                                   </h4>
-                                  <Badge variant={getStatusBadgeVariant(lead.status)} className="text-xs ml-2">
-                                    {lead.status}
-                                  </Badge>
                                 </div>
                                 
                                 <div className="text-xs text-gray-600 space-y-1">
