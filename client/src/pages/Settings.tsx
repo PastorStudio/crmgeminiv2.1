@@ -202,8 +202,7 @@ export default function Settings() {
         description: "Your API integration settings have been saved.",
       });
       
-      // Limpiar el campo después de guardar
-      apiSettingsForm.setValue("geminiApiKey", "");
+      // Form cleared after save
     },
     onError: (error) => {
       toast({
