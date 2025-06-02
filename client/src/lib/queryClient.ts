@@ -27,20 +27,17 @@ export async function apiRequest<T = any>(
     ...options?.headers
   };
 
-  // Keep API URLs relative for now
-  let fullUrl = url;
-
   // Añadir parámetro timestamp para evitar caché
-  const urlWithTimestamp = fullUrl.includes('?') 
-    ? `${fullUrl}&_t=${Date.now()}` 
-    : `${fullUrl}?_t=${Date.now()}`;
+  const urlWithTimestamp = url.includes('?') 
+    ? `${url}&_t=${Date.now()}` 
+    : `${url}?_t=${Date.now()}`;
 
   try {
     const res = await fetch(urlWithTimestamp, {
       method,
       headers,
       body,
-      mode: 'cors',
+      credentials: "include",
       cache: 'no-store'
     });
 
