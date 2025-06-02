@@ -42,6 +42,7 @@ import GeminiAI from './pages/GeminiAI';
 import AgentAnalysis from './pages/AgentAnalysis';
 import DeepSeekSettings from './pages/DeepSeekSettings';
 import ModernMessaging from './pages/ModernMessaging';
+import IntelligentResponseTest from './pages/IntelligentResponseTest';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
@@ -548,6 +549,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/gemini-ai" component={() => <PrivateRoute component={GeminiAI} path="/gemini-ai" />} />
                 <Route path="/settings" component={() => <PrivateRoute component={Settings} path="/settings" />} />
                 <Route path="/ai-settings" component={() => <PrivateRoute component={AISettings} path="/ai-settings" />} />
+                <Route path="/intelligent-response-test" component={() => <PrivateRoute component={IntelligentResponseTest} path="/intelligent-response-test" />} />
                 <Route path="/media-gallery" component={() => <PrivateRoute component={MediaGallery} path="/media-gallery" />} />
                 <Route path="/message-templates" component={() => <PrivateRoute component={MessageTemplates} path="/message-templates" />} />
                 <Route path="/mass-sender" component={() => <PrivateRoute component={MassSender} path="/mass-sender" />} />
