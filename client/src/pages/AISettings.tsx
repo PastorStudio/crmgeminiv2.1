@@ -150,6 +150,21 @@ export default function AISettings() {
   });
 
   const whatsappAccounts = whatsappAccountsData?.accounts || [];
+
+  // AI Prompt form setup
+  const promptForm = useForm<AiPromptValues>({
+    resolver: zodResolver(aiPromptSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      content: "",
+      provider: "openai",
+      temperature: 0.7,
+      maxTokens: 1000,
+      model: "gpt-4o",
+      isActive: true,
+    },
+  });
   
   // AI Integration form setup
   const aiForm = useForm<AiIntegrationValues>({
@@ -260,6 +275,152 @@ export default function AISettings() {
     saveSettingsMutation.mutate(values);
   };
 
+  // AI Prompt mutations
+  const createPromptMutation = useMutation({
+    mutationFn: async (data: AiPromptValues) => {
+      const response = await fetch('/api/ai-prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Error al crear prompt');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/ai-prompts'] });
+      setIsPromptDialogOpen(false);
+      setEditingPrompt(null);
+      promptForm.reset();
+      toast({
+        title: "Prompt creado",
+        description: "El prompt AI ha sido creado exitosamente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const updatePromptMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<AiPromptValues> }) => {
+      const response = await fetch(`/api/ai-prompts/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Error al actualizar prompt');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/ai-prompts'] });
+      setIsPromptDialogOpen(false);
+      setEditingPrompt(null);
+      promptForm.reset();
+      toast({
+        title: "Prompt actualizado",
+        description: "El prompt AI ha sido actualizado exitosamente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const deletePromptMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/ai-prompts/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Error al eliminar prompt');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/ai-prompts'] });
+      setPromptToDelete(null);
+      toast({
+        title: "Prompt eliminado",
+        description: "El prompt AI ha sido eliminado exitosamente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const assignPromptMutation = useMutation({
+    mutationFn: async ({ accountId, promptId }: { accountId: number; promptId: number }) => {
+      const response = await fetch(`/api/whatsapp-accounts/${accountId}/assign-prompt/${promptId}`, {
+        method: 'POST',
+      });
+      if (!response.ok) throw new Error('Error al asignar prompt');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+      toast({
+        title: "Prompt asignado",
+        description: "El prompt ha sido asignado a la cuenta de WhatsApp exitosamente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Form handlers
+  const handleCreatePrompt = () => {
+    setEditingPrompt(null);
+    promptForm.reset();
+    setIsPromptDialogOpen(true);
+  };
+
+  const handleEditPrompt = (prompt: AiPrompt) => {
+    setEditingPrompt(prompt);
+    promptForm.reset({
+      name: prompt.name,
+      description: prompt.description || "",
+      content: prompt.content,
+      provider: prompt.provider as "openai" | "gemini" | "qwen3",
+      temperature: prompt.temperature,
+      maxTokens: prompt.maxTokens,
+      model: prompt.model,
+      isActive: prompt.isActive,
+    });
+    setIsPromptDialogOpen(true);
+  };
+
+  const handleDeletePrompt = (prompt: AiPrompt) => {
+    setPromptToDelete(prompt);
+  };
+
+  const onPromptSubmit = (values: AiPromptValues) => {
+    if (editingPrompt) {
+      updatePromptMutation.mutate({ id: editingPrompt.id, data: values });
+    } else {
+      createPromptMutation.mutate(values);
+    }
+  };
+
+  const handleAssignPrompt = (accountId: number, promptId: number) => {
+    assignPromptMutation.mutate({ accountId, promptId });
+  };
+
   return (
     <>
       <Helmet>
@@ -274,7 +435,167 @@ export default function AISettings() {
         </p>
       </div>
 
-      <Card>
+      <div className="space-y-6">
+        {/* AI Prompt Management Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="h-5 w-5" />
+                  AI Prompt Management
+                </CardTitle>
+                <CardDescription>
+                  Create and manage custom AI prompts for different WhatsApp accounts
+                </CardDescription>
+              </div>
+              <Button onClick={handleCreatePrompt} className="gap-2">
+                <Plus className="h-4 w-4" />
+                New Prompt
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoadingPrompts ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Loading prompts...</p>
+              </div>
+            ) : aiPrompts.length === 0 ? (
+              <div className="text-center py-8">
+                <Bot className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-500 mb-4">No AI prompts created yet</p>
+                <Button onClick={handleCreatePrompt} variant="outline" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create Your First Prompt
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Provider</TableHead>
+                      <TableHead>Model</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Assigned To</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {aiPrompts.map((prompt) => {
+                      const assignedAccount = whatsappAccounts.find(
+                        account => account.assignedPromptId === prompt.id
+                      );
+                      
+                      return (
+                        <TableRow key={prompt.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{prompt.name}</p>
+                              {prompt.description && (
+                                <p className="text-sm text-gray-500">{prompt.description}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {prompt.provider.toUpperCase()}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-sm bg-gray-100 px-2 py-1 rounded">
+                              {prompt.model}
+                            </code>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={prompt.isActive ? "default" : "secondary"}>
+                              {prompt.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {assignedAccount ? (
+                              <Badge variant="outline">
+                                {assignedAccount.name}
+                              </Badge>
+                            ) : (
+                              <span className="text-gray-400 text-sm">Unassigned</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center gap-2 justify-end">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditPrompt(prompt)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeletePrompt(prompt)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+
+                {/* WhatsApp Account Assignment Section */}
+                {whatsappAccounts.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="font-medium mb-4">Quick Assignment</h4>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {whatsappAccounts.map((account) => (
+                        <div key={account.id} className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h5 className="font-medium">{account.name}</h5>
+                            <Badge variant="outline" className="text-xs">
+                              {account.status}
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-gray-500 mb-3">
+                            Currently assigned: {
+                              aiPrompts.find(p => p.id === account.assignedPromptId)?.name || 
+                              "No prompt assigned"
+                            }
+                          </div>
+                          <Select
+                            value={account.assignedPromptId?.toString() || ""}
+                            onValueChange={(value) => {
+                              if (value) {
+                                handleAssignPrompt(account.id, parseInt(value));
+                              }
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Assign a prompt" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {aiPrompts.filter(p => p.isActive).map((prompt) => (
+                                <SelectItem key={prompt.id} value={prompt.id.toString()}>
+                                  {prompt.name} ({prompt.provider})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* AI Integration Settings */}
+        <Card>
         <CardHeader>
           <CardTitle>AI Integration</CardTitle>
           <CardDescription>
@@ -499,6 +820,217 @@ export default function AISettings() {
           </Form>
         </CardContent>
       </Card>
+      </div>
+
+      {/* AI Prompt Dialog */}
+      <Dialog open={isPromptDialogOpen} onOpenChange={setIsPromptDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingPrompt ? "Edit AI Prompt" : "Create New AI Prompt"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingPrompt 
+                ? "Update the AI prompt configuration" 
+                : "Create a new AI prompt for WhatsApp responses"
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...promptForm}>
+            <form onSubmit={promptForm.handleSubmit(onPromptSubmit)} className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={promptForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Prompt Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Customer Service Assistant" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={promptForm.control}
+                  name="provider"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>AI Provider</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select provider" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="openai">OpenAI</SelectItem>
+                          <SelectItem value="gemini">Gemini</SelectItem>
+                          <SelectItem value="qwen3">Qwen3</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={promptForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Brief description of this prompt's purpose" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={promptForm.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Prompt Content</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="You are a helpful customer service assistant. Respond professionally and concisely to customer inquiries..."
+                        className="min-h-32"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <FormField
+                  control={promptForm.control}
+                  name="model"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Model</FormLabel>
+                      <FormControl>
+                        <Input placeholder="gpt-4o" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={promptForm.control}
+                  name="temperature"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Temperature</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.1" 
+                          min="0" 
+                          max="2" 
+                          placeholder="0.7"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={promptForm.control}
+                  name="maxTokens"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Max Tokens</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          min="1" 
+                          max="4000" 
+                          placeholder="1000"
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 1000)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={promptForm.control}
+                name="isActive"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2">
+                    <FormControl>
+                      <Checkbox 
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormLabel className="text-sm font-normal">
+                      Active (prompt can be assigned to accounts)
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsPromptDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={createPromptMutation.isPending || updatePromptMutation.isPending}
+                >
+                  {createPromptMutation.isPending || updatePromptMutation.isPending 
+                    ? "Saving..." 
+                    : editingPrompt ? "Update Prompt" : "Create Prompt"
+                  }
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!promptToDelete} onOpenChange={(open) => !open && setPromptToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete AI Prompt</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{promptToDelete?.name}"? This action cannot be undone.
+              Any WhatsApp accounts using this prompt will lose their AI configuration.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => promptToDelete && deletePromptMutation.mutate(promptToDelete.id)}
+              disabled={deletePromptMutation.isPending}
+            >
+              {deletePromptMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
