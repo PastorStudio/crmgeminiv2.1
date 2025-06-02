@@ -77,6 +77,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Registrar rutas para cuentas de WhatsApp y asignaciones de chat
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
+  
+  // Import enhanced WhatsApp account management
+  const whatsappAccountEnhancementsRouter = await import('./routes/whatsappAccountEnhancements');
+  app.use("/api/whatsapp-accounts-enhanced", whatsappAccountEnhancementsRouter.default);
+  
   app.use("/api/tickets", ticketsRouter);
   app.use("/api/web-scraping", webScrapingRouter);
   
