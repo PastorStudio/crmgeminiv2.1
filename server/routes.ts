@@ -4655,7 +4655,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { accountId } = req.params;
       
-      // Get account from database
+      console.log(`🔍 [BYPASS] Obteniendo agentes desde PostgreSQL...`);
+      const agents = await storage.getAllExternalAgents();
+      console.log(`✅ [BYPASS] ${agents.length} agentes encontrados en PostgreSQL`);
+      
+      // Get account from database with enhanced data
       const account = await storage.getWhatsappAccount(parseInt(accountId));
       if (!account) {
         return res.status(404).json({
@@ -4664,13 +4668,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Get config from persistent database instead of cache
+      const config = await storage.getWhatsappAgentConfig(parseInt(accountId));
+      console.log(`📋 Datos de BD obtenidos:`, config);
+      
+      const responseConfig = {
+        accountId: parseInt(accountId),
+        assignedExternalAgentId: config?.agentId || account.assignedExternalAgentId || '3',
+        autoResponseEnabled: config?.autoResponse !== undefined ? config.autoResponse : (account.autoResponseEnabled || false),
+        responseDelay: account.responseDelay || 3,
+        customPrompt: account.customPrompt || null,
+        keepAliveEnabled: account.keepAliveEnabled !== false
+      };
+
+      console.log(`✅ Configuración persistente enviada al frontend:`, responseConfig);
+      
       res.json({
         success: true,
-        config: {
-          assignedExternalAgentId: account.assignedExternalAgentId,
-          autoResponseEnabled: account.autoResponseEnabled || false,
-          responseDelay: account.responseDelay || 3
-        }
+        config: responseConfig
       });
 
     } catch (error) {
@@ -4678,6 +4693,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         error: 'Failed to get agent configuration'
+      });
+    }
+  });
+
+  // Update WhatsApp Account Configuration with Custom Prompt Support
+  app.post('/api/whatsapp-accounts/:accountId/update-config', async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      const { assignedExternalAgentId, autoResponseEnabled, responseDelay, customPrompt, keepAliveEnabled } = req.body;
+      
+      console.log(`🔧 Actualizando configuración de cuenta ${accountId}:`, req.body);
+      
+      // Update account configuration in database
+      const updateData: any = {};
+      
+      if (assignedExternalAgentId !== undefined) {
+        updateData.assignedExternalAgentId = assignedExternalAgentId;
+        // Also update the separate config table for persistent agent assignment
+        await storage.setWhatsappAgentConfig(parseInt(accountId), assignedExternalAgentId, autoResponseEnabled || false);
+      }
+      
+      if (autoResponseEnabled !== undefined) {
+        updateData.autoResponseEnabled = autoResponseEnabled;
+        // Update persistent config
+        const currentConfig = await storage.getWhatsappAgentConfig(parseInt(accountId));
+        await storage.setWhatsappAgentConfig(parseInt(accountId), currentConfig?.agentId || assignedExternalAgentId || '3', autoResponseEnabled);
+      }
+      
+      if (responseDelay !== undefined) updateData.responseDelay = responseDelay;
+      if (customPrompt !== undefined) updateData.customPrompt = customPrompt;
+      if (keepAliveEnabled !== undefined) updateData.keepAliveEnabled = keepAliveEnabled;
+      
+      // Update last activity
+      updateData.lastActivity = new Date();
+      
+      const updatedAccount = await storage.updateWhatsappAccount(parseInt(accountId), updateData);
+      
+      if (!updatedAccount) {
+        return res.status(404).json({
+          success: false,
+          error: 'WhatsApp account not found'
+        });
+      }
+      
+      console.log(`✅ Configuración actualizada para cuenta ${accountId}`);
+      
+      res.json({
+        success: true,
+        account: updatedAccount,
+        message: 'Configuración actualizada exitosamente'
+      });
+      
+    } catch (error) {
+      console.error(`Error updating account ${req.params.accountId} config:`, error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update account configuration'
       });
     }
   });
