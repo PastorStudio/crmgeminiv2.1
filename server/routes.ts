@@ -660,13 +660,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Leads endpoints - working direct implementation
+  // Leads endpoints - real database connection
   app.get("/api/leads", async (req: Request, res: Response) => {
     try {
-      const allLeads = await db.select().from(leads);
+      const result = await pool.query(`
+        SELECT 
+          id,
+          name,
+          email,
+          phone,
+          source,
+          status,
+          "assigneeId",
+          company,
+          budget,
+          notes,
+          priority,
+          tags,
+          "createdAt"
+        FROM leads 
+        ORDER BY "createdAt" DESC
+      `);
       
-      // Transform for frontend compatibility
-      const transformedLeads = allLeads.map(lead => ({
+      const transformedLeads = result.rows.map((lead: any) => ({
         id: lead.id,
         title: lead.name,
         name: lead.name,
@@ -674,15 +690,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone: lead.phone,
         source: lead.source,
         status: lead.status,
-        assignedTo: lead.assignedTo,
+        assignedTo: lead.assigneeId,
         company: lead.company,
-        budget: lead.budget || 0,
+        budget: parseFloat(lead.budget) || 0,
         notes: lead.notes,
         priority: lead.priority,
-        tags: lead.tags,
+        tags: lead.tags || [],
         createdAt: lead.createdAt,
         stage: 'lead',
-        value: lead.budget ? lead.budget.toString() : '0',
+        value: lead.budget ? parseFloat(lead.budget).toString() : '0',
         currency: 'USD',
         probability: 50,
         updatedAt: lead.createdAt
@@ -692,6 +708,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching leads:", error);
       res.status(500).json({ error: "Error al obtener leads" });
+    }
+  });
+
+  // Activities endpoint with real data
+  app.get("/api/activities", async (req: Request, res: Response) => {
+    try {
+      const result = await pool.query(`
+        SELECT 
+          id, 
+          type, 
+          title, 
+          description, 
+          "createdAt",
+          "updatedAt"
+        FROM sales_activities 
+        ORDER BY "createdAt" DESC 
+        LIMIT 20
+      `);
+      
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching activities:", error);
+      res.status(500).json({ error: "Error al obtener actividades" });
+    }
+  });
+
+  // Messages endpoint with real data
+  app.get("/api/messages", async (req: Request, res: Response) => {
+    try {
+      const result = await pool.query(`
+        SELECT 
+          id,
+          "messageId",
+          "fromNumber",
+          "toNumber",
+          content,
+          direction,
+          "timestamp",
+          "whatsappAccountId"
+        FROM whatsapp_messages 
+        ORDER BY "timestamp" DESC 
+        LIMIT 50
+      `);
+      
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ error: "Error al obtener mensajes" });
+    }
+  });
+
+  // Tickets endpoint with real data
+  app.get("/api/tickets", async (req: Request, res: Response) => {
+    try {
+      const result = await pool.query(`
+        SELECT 
+          id,
+          title,
+          description,
+          status,
+          priority,
+          "createdAt",
+          "updatedAt"
+        FROM support_tickets 
+        ORDER BY "createdAt" DESC
+      `);
+      
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching tickets:", error);
+      res.status(500).json({ error: "Error al obtener tickets" });
     }
   });
 
