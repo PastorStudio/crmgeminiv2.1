@@ -48,6 +48,7 @@ import AgentSecurity from './pages/AgentSecurity';
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
 import { ModelNotificationProvider } from './lib/modelNotification';
+import { GlobalActivityTracker } from '@/components/GlobalActivityTracker';
 
 import { AuthProvider, useAuth } from './lib/authContext';
 import { Loader2 } from 'lucide-react';
@@ -495,6 +496,22 @@ const AppRoutes: React.FC = () => {
                 </svg>
                 AI Integration
               </a>
+              
+              <a href="/agent-security" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/agent-security' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="11" width="18" height="10" rx="2" fill="#DC2626"/>
+                  <rect x="7" y="7" width="10" height="4" rx="2" stroke="#DC2626" strokeWidth="2" fill="none"/>
+                  <circle cx="12" cy="15" r="2" fill="white"/>
+                  <rect x="11" y="16" width="2" height="3" fill="white"/>
+                </svg>
+                <span className="relative">
+                  Control y Seguridad
+                  <span className="absolute top-0 right-0 -mt-2 -mr-2 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </span>
+                </span>
+              </a>
 
 
 
@@ -612,6 +629,9 @@ const AppRoutes: React.FC = () => {
       <ModelNotificationProvider>
         <Toaster />
       </ModelNotificationProvider>
+      
+      {/* Sistema de rastreo global de actividades para seguridad y control */}
+      {isAuthenticated && <GlobalActivityTracker />}
     </div>
   );
 };
