@@ -5218,16 +5218,31 @@ Responde de manera conversacional, profesional y útil según tu especializació
   // Guardar configuraciones de AI
   app.post('/api/ai-settings', async (req: Request, res: Response) => {
     try {
+      console.log('📝 Recibiendo configuraciones AI:', req.body);
+      res.setHeader('Content-Type', 'application/json');
+      
       const { aiSettings, insertAiSettingsSchema } = await import('@shared/schema');
       const { eq } = await import('drizzle-orm');
       
       // Validar datos de entrada
-      const validatedData = insertAiSettingsSchema.parse(req.body);
+      let validatedData;
+      try {
+        validatedData = insertAiSettingsSchema.parse(req.body);
+        console.log('✅ Datos validados:', validatedData);
+      } catch (validationError) {
+        console.error('❌ Error de validación:', validationError);
+        return res.status(400).json({ 
+          success: false,
+          error: 'Error de validación de datos',
+          details: validationError instanceof Error ? validationError.message : 'Error de validación'
+        });
+      }
       
       // Verificar si ya existe una configuración
       const [existingSettings] = await db.select().from(aiSettings).limit(1);
       
       if (existingSettings) {
+        console.log('🔄 Actualizando configuración existente con ID:', existingSettings.id);
         // Actualizar configuración existente
         const [updatedSettings] = await db
           .update(aiSettings)
@@ -5238,27 +5253,30 @@ Responde de manera conversacional, profesional y útil según tu especializació
           .where(eq(aiSettings.id, existingSettings.id))
           .returning();
         
-        res.json({
+        console.log('✅ Configuración actualizada:', updatedSettings);
+        return res.json({
           success: true,
           message: 'Configuraciones de AI actualizadas correctamente',
           data: updatedSettings
         });
       } else {
+        console.log('🆕 Creando nueva configuración');
         // Crear nueva configuración
         const [newSettings] = await db
           .insert(aiSettings)
           .values(validatedData)
           .returning();
         
-        res.json({
+        console.log('✅ Nueva configuración creada:', newSettings);
+        return res.json({
           success: true,
           message: 'Configuraciones de AI creadas correctamente',
           data: newSettings
         });
       }
     } catch (error) {
-      console.error('Error guardando configuraciones AI:', error);
-      res.status(500).json({ 
+      console.error('❌ Error guardando configuraciones AI:', error);
+      return res.status(500).json({ 
         success: false,
         error: 'Error al guardar configuraciones',
         details: error instanceof Error ? error.message : 'Error desconocido'
