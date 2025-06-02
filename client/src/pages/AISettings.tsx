@@ -55,7 +55,13 @@ export default function AISettings() {
   // Cargar configuraciones desde la base de datos
   const { data: aiSettings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['/api/ai-settings'],
-    queryFn: () => fetch('/api/ai-settings').then(res => res.json())
+    queryFn: async () => {
+      const response = await fetch('/api/ai-settings');
+      if (!response.ok) {
+        throw new Error('Error al cargar configuraciones');
+      }
+      return response.json();
+    }
   });
   
   // AI Integration form setup
@@ -75,6 +81,8 @@ export default function AISettings() {
   // Actualizar formulario cuando se cargan las configuraciones
   useEffect(() => {
     if (aiSettings) {
+      const hasExistingConfig = aiSettings.selectedProvider || aiSettings.geminiApiKey || aiSettings.openaiApiKey || aiSettings.qwenApiKey;
+      
       aiForm.reset({
         selectedProvider: aiSettings.selectedProvider || "gemini",
         geminiApiKey: aiSettings.geminiApiKey || "",
@@ -84,25 +92,54 @@ export default function AISettings() {
         temperature: aiSettings.temperature || 0.7,
         enableAIResponses: aiSettings.enableAIResponses || false,
       });
+
+      // Mostrar mensaje de bienvenida solo si hay configuraciones existentes
+      if (hasExistingConfig) {
+        toast({
+          title: "📋 Configuraciones cargadas",
+          description: `Proveedor actual: ${(aiSettings.selectedProvider || "gemini").toUpperCase()}`,
+          duration: 2000,
+        });
+      }
     }
-  }, [aiSettings, aiForm]);
+  }, [aiSettings, aiForm, toast]);
 
   // Mutación para guardar configuraciones
   const saveSettingsMutation = useMutation({
-    mutationFn: (data: AiIntegrationValues) => 
-      apiRequest('/api/ai-settings', { method: 'POST', body: data }),
-    onSuccess: () => {
+    mutationFn: async (data: AiIntegrationValues) => {
+      const response = await fetch('/api/ai-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al guardar configuraciones');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['/api/ai-settings'] });
+      
+      // Mostrar mensaje específico según si se creó o actualizó
+      const isNewConfiguration = response.message?.includes('creadas');
+      
       toast({
-        title: "Configuración guardada",
-        description: "Las configuraciones de AI han sido guardadas exitosamente.",
+        title: isNewConfiguration ? "🎉 Configuración creada" : "✅ Configuración actualizada",
+        description: response.message || "Las configuraciones de AI han sido guardadas exitosamente.",
+        duration: 4000,
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: "No se pudo guardar la configuración. Inténtalo de nuevo.",
+        title: "❌ Error al guardar",
+        description: error.message || "No se pudo guardar la configuración. Inténtalo de nuevo.",
         variant: "destructive",
+        duration: 5000,
       });
     }
   });

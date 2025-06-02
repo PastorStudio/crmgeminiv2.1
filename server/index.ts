@@ -5218,8 +5218,8 @@ Responde de manera conversacional, profesional y útil según tu especializació
   // Guardar configuraciones de AI
   app.post('/api/ai-settings', async (req: Request, res: Response) => {
     try {
-      const { aiSettings } = await import('@shared/schema');
-      const { insertAiSettingsSchema } = await import('@shared/schema');
+      const { aiSettings, insertAiSettingsSchema } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
       
       // Validar datos de entrada
       const validatedData = insertAiSettingsSchema.parse(req.body);
@@ -5238,7 +5238,11 @@ Responde de manera conversacional, profesional y útil según tu especializació
           .where(eq(aiSettings.id, existingSettings.id))
           .returning();
         
-        res.json(updatedSettings);
+        res.json({
+          success: true,
+          message: 'Configuraciones de AI actualizadas correctamente',
+          data: updatedSettings
+        });
       } else {
         // Crear nueva configuración
         const [newSettings] = await db
@@ -5246,11 +5250,19 @@ Responde de manera conversacional, profesional y útil según tu especializació
           .values(validatedData)
           .returning();
         
-        res.json(newSettings);
+        res.json({
+          success: true,
+          message: 'Configuraciones de AI creadas correctamente',
+          data: newSettings
+        });
       }
     } catch (error) {
       console.error('Error guardando configuraciones AI:', error);
-      res.status(500).json({ error: 'Error al guardar configuraciones' });
+      res.status(500).json({ 
+        success: false,
+        error: 'Error al guardar configuraciones',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
     }
   });
 
