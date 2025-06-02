@@ -3455,30 +3455,114 @@ app.use((req, res, next) => {
   // Registrar actividad de agente (login, page_view, etc.)
   app.post("/api/agent-activity", async (req: Request, res: Response) => {
     try {
-      const { agentId, action, page, details, ipAddress, userAgent, sessionToken } = req.body;
+      const { agentId, activity, page, details, ipAddress, userAgent } = req.body;
+      
+      // Parsear detalles si es string JSON
+      let parsedDetails = details;
+      if (typeof details === 'string') {
+        try {
+          parsedDetails = JSON.parse(details);
+        } catch (e) {
+          parsedDetails = { raw: details };
+        }
+      }
       
       // Guardar actividad real en la base de datos
       const { agentPageVisits } = await import('@shared/schema');
       
-      const [activity] = await db.insert(agentPageVisits).values({
+      const [activityRecord] = await db.insert(agentPageVisits).values({
         agentId: agentId || 1,
-        action: action || 'page_view',
+        action: activity || 'page_view',
         page: page || '/',
-        details: details || `Visitó ${page}`,
-        ipAddress: ipAddress || '127.0.0.1',
-        userAgent: userAgent || 'Unknown'
+        details: JSON.stringify(parsedDetails || `Visitó ${page}`),
+        ipAddress: ipAddress || req.ip || '127.0.0.1',
+        userAgent: userAgent || req.get('User-Agent') || 'Unknown',
+        activityType: parsedDetails?.category || 'general',
+        targetElement: parsedDetails?.target || null,
+        coordinates: parsedDetails?.coordinates ? JSON.stringify(parsedDetails.coordinates) : null,
+        formData: parsedDetails?.fields ? JSON.stringify(parsedDetails.fields) : null,
+        sessionDuration: parsedDetails?.sessionDuration || null,
+        category: parsedDetails?.category || 'general'
       }).returning();
       
-      console.log(`📝 Actividad registrada: ${action} - Agente ${agentId} - Página: ${page}`);
+      console.log(`📝 Actividad registrada: ${activity} - Agente ${agentId} - Página: ${page} - Categoría: ${parsedDetails?.category || 'general'}`);
       res.json({
         success: true,
-        activity,
+        activity: activityRecord,
         message: 'Actividad registrada correctamente'
       });
     } catch (error) {
       console.error('❌ Error registrando actividad:', error);
       res.status(500).json({ 
         error: 'Error registrando actividad',
+        details: (error as Error).message
+      });
+    }
+  });
+
+  // Obtener actividades de agentes para dashboard de seguridad
+  app.get("/api/agent-activities", async (req: Request, res: Response) => {
+    try {
+      const { agentId, timeRange = '24h' } = req.query;
+      
+      // Calcular fecha desde
+      const now = new Date();
+      let since = new Date();
+      switch (timeRange) {
+        case '1h':
+          since.setHours(now.getHours() - 1);
+          break;
+        case '24h':
+          since.setDate(now.getDate() - 1);
+          break;
+        case '7d':
+          since.setDate(now.getDate() - 7);
+          break;
+        default:
+          since.setDate(now.getDate() - 1);
+      }
+
+      let query = `
+        SELECT * FROM agent_page_visits 
+        WHERE timestamp >= $1
+      `;
+      const params: any[] = [since.toISOString()];
+
+      if (agentId) {
+        query += ` AND agent_id = $2`;
+        params.push(parseInt(agentId as string));
+      }
+
+      query += ` ORDER BY timestamp DESC LIMIT 500`;
+
+      const result = await db.execute(query, params);
+      
+      // Obtener estadísticas
+      const statsQuery = `
+        SELECT 
+          COUNT(*) as total_activities,
+          COUNT(DISTINCT agent_id) as active_agents,
+          category,
+          COUNT(*) as category_count
+        FROM agent_page_visits 
+        WHERE timestamp >= $1
+        GROUP BY category
+      `;
+      
+      const statsResult = await db.execute(statsQuery, [since.toISOString()]);
+
+      res.json({
+        success: true,
+        activities: result.rows,
+        totalActivities: result.rows.length,
+        stats: statsResult.rows,
+        timeRange,
+        since: since.toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo actividades:', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo actividades',
         details: (error as Error).message
       });
     }
