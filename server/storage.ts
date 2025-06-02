@@ -13,8 +13,7 @@ import {
   type WhatsAppAccount,
   type ChatAssignment,
   type InsertChatAssignment,
-  type DashboardStats,
-  type InsertDashboardStats
+
 } from "@shared/schema";
 import { db } from './db';
 import { eq, desc, or, sql } from 'drizzle-orm';
@@ -59,8 +58,8 @@ export interface IStorage {
   updateWhatsappAccountAgentConfig(accountId: number, config: {assignedExternalAgentId?: string | null, autoResponseEnabled?: boolean, responseDelay?: number}): Promise<boolean>;
   
   // Dashboard stats methods
-  getDashboardStats(): Promise<DashboardStats | undefined>;
-  updateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats>;
+  getDashboardStats(): Promise<any | undefined>;
+  updateDashboardStats(stats: any): Promise<any>;
   
   // Additional required methods
   initializeData(): Promise<void>;
