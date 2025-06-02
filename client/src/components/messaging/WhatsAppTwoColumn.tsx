@@ -2902,7 +2902,9 @@ export function WhatsAppTwoColumn() {
                     <p>No hay mensajes en este chat</p>
                   </div>
                 ) : (
-                  <div className="space-y-4 px-4 py-4 text-[10px] text-left w-full max-w-full overflow-hidden">
+                  <div className="flex">
+                    {/* Messages Container - Positioned between chat list and contact info */}
+                    <div className="flex-1 space-y-4 px-4 py-4 text-[10px] text-left w-full max-w-full overflow-hidden">
                   {messages.map((message, index) => {
                     const showAvatar = selectedChat.isGroup && !message.fromMe;
                     const isFirstFromAuthor = index === 0 || 
@@ -3098,6 +3100,7 @@ export function WhatsAppTwoColumn() {
                     );
                   })}
                   <div ref={messagesEndRef} />
+                    </div>
                   </div>
                 )}
               </div>
