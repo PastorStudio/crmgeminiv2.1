@@ -39,6 +39,14 @@ import ticketsRouter from "./routes/tickets";
 // Referencias de APIs corregidas removidas para optimización
 import { translateText, detectLanguage } from "./routes/translation";
 // Referencias de problemas corregidos removidas para optimización
+import { 
+  getAutonomousLeads, 
+  getAutonomousStats, 
+  forceProcessMessages, 
+  processSpecificMessage, 
+  getConversionMetrics, 
+  getRecentActivity 
+} from "./routes/autonomousApi";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -1983,6 +1991,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Autonomous WhatsApp AI System - Converts every chat to lead cards and tickets
+  app.get("/api/autonomous/leads", getAutonomousLeads);
+  app.get("/api/autonomous/stats", getAutonomousStats);
+  app.post("/api/autonomous/process", forceProcessMessages);
+  app.post("/api/autonomous/process-message", processSpecificMessage);
+  app.get("/api/autonomous/metrics", getConversionMetrics);
+  app.get("/api/autonomous/activity", getRecentActivity);
 
   // Rutas para WhatsApp - Usando implementación directa
   // Estas rutas ahora están gestionadas por el servicio registerWhatsAppRoutes que se llama al inicio
