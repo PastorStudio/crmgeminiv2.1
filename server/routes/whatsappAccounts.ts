@@ -12,7 +12,7 @@ const router = Router();
 // Obtener todas las cuentas de WhatsApp
 router.get('/', async (req, res) => {
   try {
-    const accounts = await storage.getWhatsAppAccounts();
+    const accounts = await storage.getAllWhatsappAccounts();
     
     // Obtener el estado actual de cada cuenta desde el administrador de múltiples cuentas
     const accountsWithStatus = accounts.map(account => {
@@ -23,10 +23,17 @@ router.get('/', async (req, res) => {
       };
     });
     
-    res.json(accountsWithStatus);
+    res.json({
+      success: true,
+      accounts: accountsWithStatus
+    });
   } catch (error) {
     console.error('Error al obtener cuentas de WhatsApp:', error);
-    res.status(500).json({ error: 'Error al obtener cuentas de WhatsApp' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Error al obtener cuentas de WhatsApp',
+      accounts: [] // Always provide empty array as fallback
+    });
   }
 });
 

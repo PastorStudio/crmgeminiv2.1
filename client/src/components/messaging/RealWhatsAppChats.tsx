@@ -50,15 +50,17 @@ export function RealWhatsAppChats({ onChatSelect }: RealWhatsAppChatsProps) {
   const queryClient = useQueryClient();
 
   // Cargar todas las cuentas de WhatsApp
-  const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
+  const { data: accountsResponse, isLoading: loadingAccounts } = useQuery({
     queryKey: ['whatsapp-accounts'],
     queryFn: async () => {
       const response = await fetch('/api/whatsapp-accounts');
       if (!response.ok) throw new Error('Error al cargar cuentas');
-      return response.json() as Promise<WhatsAppAccount[]>;
+      return response.json();
     },
     refetchInterval: 5000 // Refrescar cada 5 segundos
   });
+
+  const accounts = accountsResponse?.accounts || [];
 
   // Cargar estado de conexión para cada cuenta
   const { data: connectionStatuses = {} } = useQuery({
