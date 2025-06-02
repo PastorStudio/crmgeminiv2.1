@@ -1,35 +1,30 @@
 import { Request, Response } from "express";
-import { pool } from "../db";
 
 /**
  * API directa para leads que funciona con consultas SQL puras
  * Evita problemas de esquemas de Drizzle
  */
 
-export async function getLeadsDirectAPI(req: Request, res: Response) {
-  try {
-    console.log("📋 Consultando leads con API directa...");
-    
-    const result = await pool.query(`
-      SELECT 
-        id,
-        name,
-        email,
-        phone,
-        source,
-        status,
-        "assigneeId",
-        company,
-        budget,
-        notes,
-        priority,
-        tags,
-        "createdAt"
-      FROM leads 
-      ORDER BY "createdAt" DESC
-    `);
+async function createDirectConnection() {
+  const { Pool } = require('@neondatabase/serverless');
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  return pool;
+}
 
+export async function getLeadsDirectAPI(req: Request, res: Response) {
+  let pool;
+  try {
+    console.log("📋 Iniciando consulta de leads...");
+    
+    pool = await createDirectConnection();
+    console.log("✅ Conexión directa creada");
+    
+    const result = await pool.query('SELECT * FROM leads ORDER BY "createdAt" DESC');
     console.log(`📋 Leads encontrados: ${result.rows.length}`);
+    
+    if (result.rows.length > 0) {
+      console.log("📋 Primer lead:", result.rows[0]);
+    }
 
     // Transformar datos para compatibilidad con el frontend
     const leadsData = result.rows.map((row: any) => ({
@@ -54,10 +49,16 @@ export async function getLeadsDirectAPI(req: Request, res: Response) {
       updatedAt: row.createdAt
     }));
 
+    console.log("✅ Retornando datos al frontend");
     res.json(leadsData);
   } catch (error) {
-    console.error("❌ Error en API directa de leads:", error);
-    res.status(500).json({ error: "Error al obtener leads" });
+    console.error("❌ Error específico:", error.message);
+    console.error("❌ Stack completo:", error.stack);
+    res.status(500).json({ error: "Error al obtener leads", details: error.message });
+  } finally {
+    if (pool) {
+      await pool.end();
+    }
   }
 }
 
