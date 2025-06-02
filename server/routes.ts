@@ -660,8 +660,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Leads endpoints - using simple API
-  app.get("/api/leads", getLeadsSimpleAPI);
+  // Leads endpoints - direct inline implementation
+  app.get("/api/leads", async (req: Request, res: Response) => {
+    try {
+      console.log("📋 [INLINE] Consultando leads directamente...");
+      
+      // Crear conexión directa
+      const { Pool } = require('@neondatabase/serverless');
+      const directPool = new Pool({ connectionString: process.env.DATABASE_URL });
+      
+      const result = await directPool.query('SELECT * FROM leads ORDER BY "createdAt" DESC');
+      console.log(`📋 [INLINE] Leads encontrados: ${result.rows.length}`);
+      
+      if (result.rows.length > 0) {
+        console.log("📋 [INLINE] Primer lead:", result.rows[0]);
+      }
+
+      // Transformar datos para el frontend
+      const leadsData = result.rows.map((row: any) => ({
+        id: row.id,
+        title: row.name,
+        name: row.name,
+        email: row.email,
+        phone: row.phone,
+        source: row.source,
+        status: row.status,
+        assignedTo: row.assigneeId,
+        company: row.company,
+        budget: row.budget || 0,
+        notes: row.notes,
+        priority: row.priority,
+        tags: row.tags,
+        createdAt: row.createdAt,
+        stage: 'lead',
+        value: row.budget ? row.budget.toString() : '0',
+        currency: 'USD',
+        probability: 50,
+        updatedAt: row.createdAt
+      }));
+
+      console.log("✅ [INLINE] Retornando", leadsData.length, "leads");
+      await directPool.end();
+      res.json(leadsData);
+    } catch (error) {
+      console.error("❌ [INLINE] Error:", error.message);
+      res.status(500).json({ error: "Error al obtener leads", details: error.message });
+    }
+  });
 
   app.get("/api/leads/:id", async (req: Request, res: Response) => {
     try {
