@@ -103,8 +103,25 @@ export default function SalesPipelineKanban() {
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
-    // TODO: Implement API call to update lead status
-    console.log(`Moving lead ${draggableId} from ${source.droppableId} to ${destination.droppableId}`);
+    // Update lead status based on the destination column
+    const leadId = parseInt(draggableId);
+    const newStatus = destination.droppableId;
+
+    // Optimistically update the UI
+    setColumns(prevColumns => {
+      const newColumns = [...prevColumns];
+      const sourceColumnIndex = newColumns.findIndex(col => col.id === source.droppableId);
+      const destColumnIndex = newColumns.findIndex(col => col.id === destination.droppableId);
+
+      const sourceLead = newColumns[sourceColumnIndex].leads[source.index];
+      newColumns[sourceColumnIndex].leads.splice(source.index, 1);
+      newColumns[destColumnIndex].leads.splice(destination.index, 0, { ...sourceLead, status: newStatus });
+
+      return newColumns;
+    });
+
+    // Make API call to update the lead status in the database
+    updateLeadMutation.mutate({ leadId, status: newStatus });
   };
 
   const getStatusBadgeVariant = (status: string) => {
