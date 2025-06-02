@@ -48,7 +48,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { AgentConfigSection } from '@/components/AgentConfigSection';
-
+import { AutoResponseConfig } from '@/components/AutoResponseConfig';
 
 // Importar componente de conexión por teléfono
 import { WhatsAppPhoneConnect } from '@/components/messaging/WhatsAppPhoneConnect';
@@ -959,11 +959,12 @@ const WhatsAppAccounts = () => {
                   </div>
                 )}
 
-                {/* Clean AI system - external agents removed */}
+                {/* Sección de configuración de respuestas automáticas */}
                 <div className="mt-3 border-t pt-3">
-                  <div className="text-sm text-muted-foreground">
-                    External agent functionality has been removed. Use Settings → AI Configuration to set up Gemini or OpenAI support.
-                  </div>
+                  <AutoResponseConfig 
+                    accountId={account.id} 
+                    accountName={account.name} 
+                  />
                 </div>
 
               </CardContent>
