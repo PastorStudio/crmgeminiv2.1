@@ -27,13 +27,8 @@ export async function apiRequest<T = any>(
     ...options?.headers
   };
 
-  // Use absolute URL to bypass Vite completely
+  // Keep API URLs relative for now
   let fullUrl = url;
-  if (url.startsWith('/api/')) {
-    const port = window.location.port || '3000';
-    const basePort = port === '3000' || port === '5173' ? '5000' : port;
-    fullUrl = `http://localhost:${basePort}${url}`;
-  }
 
   // Añadir parámetro timestamp para evitar caché
   const urlWithTimestamp = fullUrl.includes('?') 
