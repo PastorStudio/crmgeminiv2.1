@@ -4828,6 +4828,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Automatic Responder Control endpoints
+  // Keep-Alive Management for Persistent Connections
+  app.post('/api/whatsapp-accounts/:accountId/enable-keepalive', async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      
+      const updatedAccount = await storage.updateWhatsappAccount(parseInt(accountId), {
+        keepAliveEnabled: true,
+        lastActivity: new Date(),
+        connectionAttempts: 0
+      });
+      
+      if (!updatedAccount) {
+        return res.status(404).json({
+          success: false,
+          error: 'WhatsApp account not found'
+        });
+      }
+      
+      console.log(`🔄 Keep-alive habilitado para cuenta ${accountId}`);
+      
+      res.json({
+        success: true,
+        message: 'Keep-alive enabled for persistent connection'
+      });
+      
+    } catch (error) {
+      console.error(`Error enabling keep-alive for account ${req.params.accountId}:`, error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to enable keep-alive'
+      });
+    }
+  });
+
+  // Enhanced WhatsApp Accounts Endpoint with Proper User Access Control
+  app.get('/api/whatsapp/accounts', async (req: Request, res: Response) => {
+    try {
+      console.log('🔄 Obteniendo cuentas de WhatsApp...');
+      
+      const accounts = await storage.getAllWhatsappAccounts();
+      console.log(`✅ Cuentas obtenidas: ${accounts.length}`);
+      
+      const transformedAccounts = accounts.map(account => {
+        const statusInfo = whatsappMultiAccountManager?.getStatus(account.id);
+        const realTimeStatus = statusInfo?.status || account.status || 'inactive';
+        
+        const lastActivity = account.lastActivity || account.lastActiveAt || account.createdAt;
+        const lastActivityDisplay = lastActivity ? 
+          new Date(lastActivity).toLocaleDateString() : 
+          'Nunca';
+        
+        return {
+          id: account.id,
+          name: account.name || 'Sin nombre',
+          description: account.description || '',
+          status: realTimeStatus,
+          ownerName: account.ownerName || 'No asignado',
+          ownerPhone: account.ownerPhone || 'No registrado',
+          autoResponseEnabled: account.autoResponseEnabled || false,
+          responseDelay: account.responseDelay || 1000,
+          customPrompt: account.customPrompt || null,
+          keepAliveEnabled: account.keepAliveEnabled !== false,
+          lastActivity: lastActivityDisplay,
+          createdAt: account.createdAt,
+          isConnected: realTimeStatus === 'connected' || realTimeStatus === 'ready'
+        };
+      });
+
+      res.json({
+        success: true,
+        accounts: transformedAccounts
+      });
+    } catch (error) {
+      console.error('Error fetching WhatsApp accounts:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error al obtener cuentas de WhatsApp',
+        accounts: []
+      });
+    }
+  });
+
   app.get('/api/automatic-responder/status', async (req: Request, res: Response) => {
     try {
       const { automaticWhatsAppResponder } = await import('./services/automaticWhatsAppResponder');
