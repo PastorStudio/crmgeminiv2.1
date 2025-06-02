@@ -30,7 +30,6 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -53,12 +52,6 @@ const apiSettingsSchema = z.object({
   enableGeminiAI: z.boolean().default(true),
   aiProvider: z.enum(["gemini", "openai"]).default("gemini"),
   geminiApiKey: z.string().optional(),
-  systemPrompt: z.string().default("Eres un asistente de ventas profesional. Responde de manera cordial, útil y enfocada en ayudar al cliente. Mantén un tono amigable pero profesional en todas las interacciones."),
-  welcomePrompt: z.string().default("Genera un mensaje de bienvenida cálido y profesional para nuevos contactos, presentando nuestros servicios de manera concisa."),
-  followUpPrompt: z.string().default("Crea mensajes de seguimiento personalizados basados en la conversación previa, ofreciendo valor adicional y manteniendo el interés del cliente."),
-  responseTime: z.number().min(1).max(30).default(5),
-  temperature: z.number().min(0).max(2).default(0.7),
-  maxTokens: z.number().min(50).max(2000).default(500),
   autoAnalyzeLeads: z.boolean().default(true),
   enrichLeadData: z.boolean().default(true),
   smartLeadScoring: z.boolean().default(true),
@@ -151,12 +144,6 @@ export default function Settings() {
       enableGeminiAI: true,
       aiProvider: "gemini",
       geminiApiKey: "",
-      systemPrompt: "Eres un asistente de ventas profesional. Responde de manera cordial, útil y enfocada en ayudar al cliente. Mantén un tono amigable pero profesional en todas las interacciones.",
-      welcomePrompt: "Genera un mensaje de bienvenida cálido y profesional para nuevos contactos, presentando nuestros servicios de manera concisa.",
-      followUpPrompt: "Crea mensajes de seguimiento personalizados basados en la conversación previa, ofreciendo valor adicional y manteniendo el interés del cliente.",
-      responseTime: 5,
-      temperature: 0.7,
-      maxTokens: 500,
       autoAnalyzeLeads: true,
       enrichLeadData: true,
       smartLeadScoring: true,
@@ -208,24 +195,9 @@ export default function Settings() {
         await apiRequest("POST", "/api/settings/update-gemini-key", { apiKey: values.geminiApiKey });
       }
       
-      // Enviar toda la configuración de AI al servidor
-      const response = await apiRequest("POST", "/api/settings/ai", {
-        provider: values.aiProvider,
-        enabled: values.enableGeminiAI,
-        systemPrompt: values.systemPrompt,
-        welcomePrompt: values.welcomePrompt,
-        followUpPrompt: values.followUpPrompt,
-        responseTime: values.responseTime,
-        temperature: values.temperature,
-        maxTokens: values.maxTokens,
-        autoAnalyzeLeads: values.autoAnalyzeLeads,
-        enrichLeadData: values.enrichLeadData,
-        smartLeadScoring: values.smartLeadScoring,
-        messageGeneration: values.messageGeneration,
-        intelligentSurveys: values.intelligentSurveys
-      });
-      
-      return response;
+      // Simular actualización de otras configuraciones
+      // En una app real, esto se guardaría en la base de datos
+      return Promise.resolve();
     },
     onSuccess: () => {
       // Invalidar la consulta para obtener el estado actualizado
@@ -599,150 +571,6 @@ export default function Settings() {
                         </FormItem>
                       )}
                     />
-                    
-                    <Separator className="my-6" />
-                    
-                    <h3 className="text-lg font-medium">Custom AI Prompts</h3>
-                    
-                    <FormField
-                      control={apiSettingsForm.control}
-                      name="systemPrompt"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>System Prompt</FormLabel>
-                          <FormControl>
-                            <textarea 
-                              className="w-full h-32 p-3 border rounded-md resize-vertical"
-                              placeholder="Eres un asistente de ventas especializado en [tu empresa]. Responde de manera profesional, amigable y útil. Siempre mantén un tono cordial y ofrece ayuda específica basada en nuestros servicios..."
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Define el comportamiento base del AI. Este prompt se usa para todas las respuestas automáticas.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={apiSettingsForm.control}
-                      name="welcomePrompt"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Welcome Message Prompt</FormLabel>
-                          <FormControl>
-                            <textarea 
-                              className="w-full h-24 p-3 border rounded-md resize-vertical"
-                              placeholder="Genera un mensaje de bienvenida profesional para nuevos contactos que escriben por primera vez..."
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Prompt específico para generar mensajes de bienvenida automáticos.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={apiSettingsForm.control}
-                      name="followUpPrompt"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Follow-up Prompt</FormLabel>
-                          <FormControl>
-                            <textarea 
-                              className="w-full h-24 p-3 border rounded-md resize-vertical"
-                              placeholder="Genera mensajes de seguimiento personalizados basados en el historial de conversación..."
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Prompt para generar mensajes de seguimiento automáticos.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* AI Response Controls */}
-                    <div className="space-y-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
-                      <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100">Configuración de Respuestas IA</h4>
-                      
-                      <FormField
-                        control={apiSettingsForm.control}
-                        name="responseTime"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Tiempo de Respuesta (segundos): {field.value}s</FormLabel>
-                            <FormControl>
-                              <Slider
-                                min={1}
-                                max={30}
-                                step={1}
-                                value={[field.value]}
-                                onValueChange={(value) => field.onChange(value[0])}
-                                className="w-full"
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Tiempo de espera antes de generar respuestas automáticas (1-30 segundos)
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={apiSettingsForm.control}
-                        name="temperature"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Creatividad/Temperatura: {field.value}</FormLabel>
-                            <FormControl>
-                              <Slider
-                                min={0}
-                                max={2}
-                                step={0.1}
-                                value={[field.value]}
-                                onValueChange={(value) => field.onChange(value[0])}
-                                className="w-full"
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Controla la creatividad de las respuestas. 0 = conservador, 2 = muy creativo
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={apiSettingsForm.control}
-                        name="maxTokens"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Longitud de Respuesta: {field.value} tokens</FormLabel>
-                            <FormControl>
-                              <Slider
-                                min={50}
-                                max={2000}
-                                step={50}
-                                value={[field.value]}
-                                onValueChange={(value) => field.onChange(value[0])}
-                                className="w-full"
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Longitud máxima de las respuestas generadas (50-2000 tokens)
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
                     
                     <FormField
                       control={apiSettingsForm.control}

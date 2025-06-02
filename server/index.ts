@@ -157,113 +157,24 @@ app.get('/api/settings/openai-key-status', async (req: Request, res: Response) =
 
 app.post('/api/settings/ai', async (req: Request, res: Response) => {
   try {
-    const { 
-      provider, 
-      enabled, 
-      systemPrompt, 
-      welcomePrompt, 
-      followUpPrompt,
-      responseTime,
-      temperature,
-      maxTokens,
-      autoAnalyzeLeads,
-      enrichLeadData,
-      smartLeadScoring,
-      messageGeneration,
-      intelligentSurveys
-    } = req.body;
+    const { provider, enabled } = req.body;
     
     if (!provider) {
       return res.status(400).json({ error: 'Provider is required' });
     }
 
-    // Save to database using Drizzle ORM
-    const { aiSettings } = await import("@shared/schema");
-    
-    // Check if settings already exist
-    const existingSettings = await db.select().from(aiSettings).limit(1);
-    
-    const settingsData = {
-      aiProvider: provider,
-      enabled,
-      systemPrompt,
-      welcomePrompt,
-      followUpPrompt,
-      responseTime: responseTime || 5,
-      temperature: temperature || 0.7,
-      maxTokens: maxTokens || 500,
-      autoAnalyzeLeads: autoAnalyzeLeads || false,
-      enrichLeadData: enrichLeadData || false,
-      smartLeadScoring: smartLeadScoring || false,
-      messageGeneration: messageGeneration || false,
-      intelligentSurveys: intelligentSurveys || false,
-      updatedAt: new Date()
-    };
-
-    let savedSettings;
-    if (existingSettings.length > 0) {
-      // Update existing settings
-      [savedSettings] = await db
-        .update(aiSettings)
-        .set(settingsData)
-        .where(eq(aiSettings.id, existingSettings[0].id))
-        .returning();
-    } else {
-      // Create new settings
-      [savedSettings] = await db
-        .insert(aiSettings)
-        .values(settingsData)
-        .returning();
-    }
-
-    console.log(`✅ AI configuration saved to database: ${provider} ${enabled ? 'enabled' : 'disabled'}`);
+    // In a clean system, we just acknowledge the setting
+    console.log(`AI provider ${provider} ${enabled ? 'enabled' : 'disabled'}`);
     
     res.json({ 
       success: true, 
-      message: `${provider} configuration saved successfully`,
-      settings: savedSettings
+      message: `${provider} configuration updated`,
+      provider,
+      enabled 
     });
   } catch (error) {
     console.error('AI settings error:', error);
-    res.status(500).json({ error: 'Failed to save AI settings' });
-  }
-});
-
-// Endpoint to get current AI configuration
-app.get('/api/settings/ai-config', async (req: Request, res: Response) => {
-  try {
-    const { aiSettings } = await import("@shared/schema");
-    
-    // Get latest settings from database
-    const [settings] = await db.select().from(aiSettings).orderBy(aiSettings.createdAt).limit(1);
-    
-    if (settings) {
-      res.json({
-        ...settings,
-        hasValidKey: !!(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY)
-      });
-    } else {
-      // Return default values if no settings found
-      res.json({
-        aiProvider: 'gemini',
-        enabled: true,
-        systemPrompt: 'Eres un asistente de ventas profesional. Responde de manera cordial, útil y enfocada en ayudar al cliente.',
-        welcomePrompt: 'Genera un mensaje de bienvenida cálido y profesional para nuevos contactos.',
-        followUpPrompt: 'Crea mensajes de seguimiento personalizados basados en la conversación previa.',
-        responseTime: 5,
-        temperature: 0.7,
-        maxTokens: 500,
-        autoAnalyzeLeads: true,
-        enrichLeadData: true,
-        smartLeadScoring: true,
-        messageGeneration: true,
-        intelligentSurveys: true,
-        hasValidKey: !!(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY)
-      });
-    }
-  } catch (error) {
-    console.error('AI config error:', error);
-    res.status(500).json({ error: 'Failed to get AI configuration' });
+    res.status(500).json({ error: 'Failed to update AI settings' });
   }
 });
 
@@ -296,162 +207,6 @@ app.get('/api/whatsapp/messages/:chatId', async (req: Request, res: Response) =>
   } catch (error) {
     console.error('Get messages error:', error);
     res.status(500).json({ error: 'Failed to get messages' });
-  }
-});
-
-// WhatsApp accounts endpoints
-app.get('/api/whatsapp-accounts', async (req: Request, res: Response) => {
-  try {
-    const accounts = await db.select().from(whatsappAccounts).orderBy(whatsappAccounts.createdAt);
-    res.json(accounts);
-  } catch (error) {
-    console.error('Get WhatsApp accounts error:', error);
-    res.status(500).json({ error: 'Failed to get WhatsApp accounts' });
-  }
-});
-
-app.post('/api/whatsapp-accounts', async (req: Request, res: Response) => {
-  try {
-    const { name, description, ownerName, ownerPhone } = req.body;
-    
-    if (!name) {
-      return res.status(400).json({ error: 'Account name is required' });
-    }
-
-    const [newAccount] = await db
-      .insert(whatsappAccounts)
-      .values({
-        name,
-        description,
-        ownerName,
-        ownerPhone,
-        status: 'inactive',
-        adminId: 1, // Default admin ID
-        autoResponseEnabled: false,
-        responseDelay: 3
-      })
-      .returning();
-
-    console.log(`✅ WhatsApp account created: ${name}`);
-    
-    res.json({
-      success: true,
-      message: 'WhatsApp account created successfully',
-      account: newAccount
-    });
-  } catch (error) {
-    console.error('Create WhatsApp account error:', error);
-    res.status(500).json({ error: 'Failed to create WhatsApp account' });
-  }
-});
-
-// External agents endpoint (clean system - always empty)
-app.get('/api/external-agents', async (req: Request, res: Response) => {
-  try {
-    // Return empty array for clean system (no external agents)
-    res.json([]);
-  } catch (error) {
-    console.error('Get external agents error:', error);
-    res.status(500).json({ error: 'Failed to get external agents' });
-  }
-});
-
-// WhatsApp ping status endpoint
-app.get('/api/whatsapp/ping-status/all', async (req: Request, res: Response) => {
-  try {
-    // Return empty object for clean system
-    res.json({});
-  } catch (error) {
-    console.error('WhatsApp ping status error:', error);
-    res.status(500).json({ error: 'Failed to get WhatsApp status' });
-  }
-});
-
-// WhatsApp account management endpoints
-app.get('/api/whatsapp-accounts/:id/qrcode', async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    
-    // Check if account exists
-    const account = await storage.getWhatsAppAccount(parseInt(id));
-    if (!account) {
-      return res.status(404).json({ error: 'Account not found' });
-    }
-    
-    // For real WhatsApp integration, we need to initialize WhatsApp Web client
-    // This requires whatsapp-web.js which needs a real WhatsApp session
-    // Currently returning error to indicate real WhatsApp integration is needed
-    res.status(501).json({
-      success: false,
-      error: 'Real WhatsApp integration required',
-      message: 'To generate actual WhatsApp QR codes, the system needs to connect to WhatsApp Web API. This requires proper WhatsApp Business API credentials or whatsapp-web.js setup.',
-      accountId: id
-    });
-  } catch (error) {
-    console.error('QR code generation error:', error);
-    res.status(500).json({ error: 'Failed to generate QR code' });
-  }
-});
-
-app.post('/api/whatsapp-accounts/:id/initialize', async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    
-    // Update account status to pending authentication
-    await db
-      .update(whatsappAccounts)
-      .set({ 
-        status: 'pending_auth',
-        lastActiveAt: new Date()
-      })
-      .where(eq(whatsappAccounts.id, parseInt(id)));
-    
-    console.log(`🔄 WhatsApp account ${id} initialization started`);
-    
-    res.json({
-      success: true,
-      message: 'WhatsApp account initialization started',
-      status: 'pending_auth'
-    });
-  } catch (error) {
-    console.error('WhatsApp initialization error:', error);
-    res.status(500).json({ error: 'Failed to initialize WhatsApp account' });
-  }
-});
-
-app.delete('/api/whatsapp-accounts/delete-all', async (req: Request, res: Response) => {
-  try {
-    await db.delete(whatsappAccounts);
-    
-    console.log('🗑️ All WhatsApp accounts deleted');
-    
-    res.json({
-      success: true,
-      message: 'All WhatsApp accounts deleted successfully'
-    });
-  } catch (error) {
-    console.error('Delete all accounts error:', error);
-    res.status(500).json({ error: 'Failed to delete accounts' });
-  }
-});
-
-app.delete('/api/whatsapp-accounts/:id', async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    
-    await db
-      .delete(whatsappAccounts)
-      .where(eq(whatsappAccounts.id, parseInt(id)));
-    
-    console.log(`🗑️ WhatsApp account ${id} deleted`);
-    
-    res.json({
-      success: true,
-      message: 'WhatsApp account deleted successfully'
-    });
-  } catch (error) {
-    console.error('Delete account error:', error);
-    res.status(500).json({ error: 'Failed to delete account' });
   }
 });
 

@@ -183,9 +183,7 @@ const WhatsAppAccounts = () => {
   const { data: accounts = [], isLoading, error, refetch } = useQuery<WhatsAppAccount[]>({
     queryKey: ['/api/whatsapp-accounts'],
     queryFn: async () => {
-      const response = await apiRequest('/api/whatsapp-accounts');
-      // Ensure we always return an array
-      return Array.isArray(response) ? response : [];
+      return await apiRequest('/api/whatsapp-accounts');
     }
   });
 
@@ -203,62 +201,23 @@ const WhatsAppAccounts = () => {
     refetchInterval: 5000, // Actualizar cada 5 segundos
   });
   
-  // Estado para código QR
-  const [qrData, setQrData] = useState<any>(null);
-  const [isQrLoading, setIsQrLoading] = useState(false);
-
-  // Función para obtener código QR con fetch directo
-  const fetchQrCode = async (accountId: number) => {
-    setIsQrLoading(true);
-    try {
-      const response = await fetch(`/api/whatsapp-accounts/${accountId}/qrcode?_t=${Date.now()}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        cache: 'no-store'
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('QR Data received:', data);
-        setQrData(data.success ? data : null);
-      } else if (response.status === 501) {
-        // Real WhatsApp integration required
-        const errorData = await response.json();
-        setQrData({ 
-          success: false, 
-          error: errorData.error,
-          message: errorData.message 
-        });
-      } else {
-        console.error('Error response:', response.status);
-        setQrData(null);
+  // Consulta para obtener código QR
+  const { data: qrData, isLoading: isQrLoading, refetch: refetchQr } = useQuery({
+    queryKey: ['/api/whatsapp-accounts', selectedAccount?.id, 'qrcode'],
+    queryFn: async () => {
+      if (!selectedAccount) return null;
+      try {
+        const data = await apiRequest(`/api/whatsapp-accounts/${selectedAccount.id}/qrcode`);
+        return data.success ? data : null;
+      } catch (error) {
+        console.error('Error fetching QR code:', error);
+        return null;
       }
-    } catch (error) {
-      console.error('Error fetching QR code:', error);
-      setQrData(null);
-    } finally {
-      setIsQrLoading(false);
-    }
-  };
-
-  // Efecto para obtener QR cuando se abre el diálogo
-  useEffect(() => {
-    if (selectedAccount && qrDialogOpen && ['inactive', 'pending_auth'].includes(selectedAccount.status || '')) {
-      fetchQrCode(selectedAccount.id);
-      
-      // Refrescar cada 5 segundos
-      const interval = setInterval(() => {
-        if (qrDialogOpen) {
-          fetchQrCode(selectedAccount.id);
-        }
-      }, 5000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [selectedAccount, qrDialogOpen]);
+    },
+    enabled: !!selectedAccount && qrDialogOpen && 
+             ['inactive', 'pending_auth'].includes(selectedAccount.status || ''),
+    refetchInterval: qrDialogOpen ? 5000 : false // Refrescar cada 5 segundos si el diálogo está abierto
+  });
   
   // Mutation para crear cuenta
   const createAccountMutation = useMutation({
@@ -463,9 +422,7 @@ const WhatsAppAccounts = () => {
   
   // Actualizar QR code
   const handleRefreshQR = () => {
-    if (selectedAccount) {
-      fetchQrCode(selectedAccount.id);
-    }
+    refetchQr();
   };
   
   // Desconectar cuenta
@@ -611,7 +568,7 @@ const WhatsAppAccounts = () => {
   };
   
   // Combinar datos de cuentas con información de ping y estado de conexión
-  const accountsWithPing = (Array.isArray(accounts) ? accounts : []).map(account => {
+  const accountsWithPing = accounts.map(account => {
     let enhancedAccount = { ...account };
     
     // Agregar información de estado de conexión desde sessionData si existe
@@ -1136,14 +1093,14 @@ const WhatsAppAccounts = () => {
                   
                   {/* Contenido de la pestaña Código QR */}
                   <TabsContent value="qrcode" className="mt-4">
-                    {qrData?.qrCode ? (
+                    {qrData?.qrcode ? (
                       <div className="flex flex-col items-center">
                         <div className="bg-white p-4 rounded-lg mb-4">
                           <div 
                             id="qrcode-display"
                             className="qr-container w-64 h-64 flex items-center justify-center"
                           >
-                            <img src={qrData.qrCode} alt="WhatsApp QR Code" className="w-full h-full object-contain" />
+                            <QRCodeDisplay qrData={qrData.qrcode} />
                           </div>
                         </div>
                         <p className="text-center text-sm text-muted-foreground mb-4">
