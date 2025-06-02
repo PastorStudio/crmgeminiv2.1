@@ -30,33 +30,27 @@ export async function getLeads(req: Request, res: Response) {
     const leadsData = await db
       .select({
         id: leads.id,
-        title: leads.title,
+        title: leads.name,
+        name: leads.name,
+        email: leads.email,
+        phone: leads.phone,
         status: leads.status,
-        stage: leads.stage,
-        value: leads.value,
-        currency: leads.currency,
-        probability: leads.probability,
         priority: leads.priority,
         source: leads.source,
-        assignedTo: leads.assignedTo,
-        expectedCloseDate: leads.expectedCloseDate,
-        actualCloseDate: leads.actualCloseDate,
-        lastContactDate: leads.lastContactDate,
-        nextFollowUpDate: leads.nextFollowUpDate,
+        assignedTo: leads.assigneeId,
         notes: leads.notes,
         tags: leads.tags,
         createdAt: leads.createdAt,
-        updatedAt: leads.updatedAt,
-        contactId: leads.contactId,
-        whatsappAccountId: leads.whatsappAccountId,
-        // Contact information
-        contactName: contacts.name,
-        contactPhone: contacts.phone,
-        contactEmail: contacts.email,
-        contactCompany: contacts.company,
+        company: leads.company,
+        budget: leads.budget,
+        // Default values for Kanban compatibility
+        stage: sql`'lead'`.as('stage'),
+        value: sql`COALESCE(${leads.budget}::text, '0')`.as('value'),
+        currency: sql`'USD'`.as('currency'),
+        probability: sql`50`.as('probability'),
+        updatedAt: leads.createdAt,
       })
       .from(leads)
-      .leftJoin(contacts, eq(leads.contactId, contacts.id))
       .orderBy(desc(leads.createdAt));
 
     res.json(leadsData);

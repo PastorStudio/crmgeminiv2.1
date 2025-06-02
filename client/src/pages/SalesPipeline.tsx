@@ -33,9 +33,6 @@ export default function SalesPipeline() {
                 <p className="text-sm font-medium text-gray-600">Nuevos</p>
                 <p className="text-2xl font-bold text-blue-600">-</p>
               </div>
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                Nuevo
-              </Badge>
             </div>
           </CardContent>
         </Card>
@@ -47,9 +44,6 @@ export default function SalesPipeline() {
                 <p className="text-sm font-medium text-gray-600">Asignados</p>
                 <p className="text-2xl font-bold text-purple-600">-</p>
               </div>
-              <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                Asignado
-              </Badge>
             </div>
           </CardContent>
         </Card>
@@ -61,9 +55,6 @@ export default function SalesPipeline() {
                 <p className="text-sm font-medium text-gray-600">Contactados</p>
                 <p className="text-2xl font-bold text-yellow-600">-</p>
               </div>
-              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                Contactado
-              </Badge>
             </div>
           </CardContent>
         </Card>
@@ -75,9 +66,6 @@ export default function SalesPipeline() {
                 <p className="text-sm font-medium text-gray-600">Negociación</p>
                 <p className="text-2xl font-bold text-orange-600">-</p>
               </div>
-              <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                Negociando
-              </Badge>
             </div>
           </CardContent>
         </Card>
@@ -89,9 +77,6 @@ export default function SalesPipeline() {
                 <p className="text-sm font-medium text-gray-600">Completados</p>
                 <p className="text-2xl font-bold text-green-600">-</p>
               </div>
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
-                Completado
-              </Badge>
             </div>
           </CardContent>
         </Card>
@@ -103,9 +88,6 @@ export default function SalesPipeline() {
                 <p className="text-sm font-medium text-gray-600">No Interesados</p>
                 <p className="text-2xl font-bold text-red-600">-</p>
               </div>
-              <Badge variant="secondary" className="bg-red-100 text-red-800">
-                Rechazado
-              </Badge>
             </div>
           </CardContent>
         </Card>
