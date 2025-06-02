@@ -50,6 +50,13 @@ type AiIntegrationValues = z.infer<typeof aiIntegrationSchema>;
 
 export default function AISettings() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // Cargar configuraciones desde la base de datos
+  const { data: aiSettings, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ['/api/ai-settings'],
+    queryFn: () => fetch('/api/ai-settings').then(res => res.json())
+  });
   
   // AI Integration form setup
   const aiForm = useForm<AiIntegrationValues>({
@@ -59,18 +66,50 @@ export default function AISettings() {
       geminiApiKey: "",
       openaiApiKey: "",
       qwenApiKey: "",
-      customPrompt: "",
+      customPrompt: "Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.",
       temperature: 0.7,
       enableAIResponses: true,
     },
   });
 
+  // Actualizar formulario cuando se cargan las configuraciones
+  useEffect(() => {
+    if (aiSettings) {
+      aiForm.reset({
+        selectedProvider: aiSettings.selectedProvider || "gemini",
+        geminiApiKey: aiSettings.geminiApiKey || "",
+        openaiApiKey: aiSettings.openaiApiKey || "",
+        qwenApiKey: aiSettings.qwenApiKey || "",
+        customPrompt: aiSettings.customPrompt || "Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.",
+        temperature: aiSettings.temperature || 0.7,
+        enableAIResponses: aiSettings.enableAIResponses || false,
+      });
+    }
+  }, [aiSettings, aiForm]);
+
+  // Mutación para guardar configuraciones
+  const saveSettingsMutation = useMutation({
+    mutationFn: (data: AiIntegrationValues) => 
+      apiRequest('/api/ai-settings', { method: 'POST', body: data }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/ai-settings'] });
+      toast({
+        title: "Configuración guardada",
+        description: "Las configuraciones de AI han sido guardadas exitosamente.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo guardar la configuración. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
+  });
+
   // AI Integration form submission handler
   const onAiIntegrationSubmit = (values: AiIntegrationValues) => {
-    toast({
-      title: "AI Integration Updated",
-      description: `Settings saved for ${values.selectedProvider.toUpperCase()} provider`,
-    });
+    saveSettingsMutation.mutate(values);
   };
 
   return (
@@ -301,8 +340,11 @@ export default function AISettings() {
               </div>
 
               <CardFooter className="px-0">
-                <Button type="submit">
-                  Save AI Integration Settings
+                <Button 
+                  type="submit" 
+                  disabled={saveSettingsMutation.isPending || isLoadingSettings}
+                >
+                  {saveSettingsMutation.isPending ? "Guardando..." : "Guardar Configuraciones de AI"}
                 </Button>
               </CardFooter>
             </form>
