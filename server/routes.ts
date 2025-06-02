@@ -42,7 +42,7 @@ import ticketsRouter from "./routes/tickets";
 import { translateText, detectLanguage } from "./routes/translation";
 // Referencias de problemas corregidos removidas para optimización
 import autonomousApiRouter from "./routes/autonomousApi";
-import { getLeads, createLead, updateLeadStatus, updateLead, deleteLead, getLeadStats } from "./routes/leads";
+import { getLeadsSimple, updateLeadStatusSimple, deleteLeadSimple, getLeadStatsSimple } from "./routes/leads-simple";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -662,19 +662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Leads endpoints - using real data from database
   app.get("/api/leads", async (req: Request, res: Response) => {
-    try {
-      console.log('📋 Fetching leads from database...');
-      
-      // Simple approach: Use storage interface which is already working
-      const dbLeads = await storage.getLeads();
-      console.log(`📋 Found ${dbLeads.length} leads from storage`);
-      
-      // Return existing leads
-      res.json(dbLeads);
-    } catch (error) {
-      console.error('📋 Error fetching leads:', error);
-      res.status(500).json({ error: "Error al obtener leads" });
-    }
+    await getLeadsSimple(req, res);
   });
 
   app.get("/api/leads/:id", async (req: Request, res: Response) => {
