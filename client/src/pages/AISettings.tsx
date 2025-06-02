@@ -107,20 +107,44 @@ export default function AISettings() {
   // Mutación para guardar configuraciones
   const saveSettingsMutation = useMutation({
     mutationFn: async (data: AiIntegrationValues) => {
-      const response = await fetch('/api/ai-settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+      console.log('🔥 Enviando datos al servidor:', data);
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Error al guardar configuraciones');
+      try {
+        const response = await fetch('/api/ai-settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+        
+        console.log('📡 Respuesta del servidor - Status:', response.status);
+        console.log('📡 Respuesta del servidor - Headers:', response.headers.get('content-type'));
+        
+        // Obtener el texto crudo primero
+        const responseText = await response.text();
+        console.log('📡 Respuesta del servidor - Texto crudo:', responseText);
+        
+        if (!response.ok) {
+          throw new Error(`Error del servidor: ${response.status} - ${responseText}`);
+        }
+        
+        // Intentar parsear como JSON
+        let jsonData;
+        try {
+          jsonData = JSON.parse(responseText);
+          console.log('✅ JSON parseado exitosamente:', jsonData);
+        } catch (parseError) {
+          console.error('❌ Error parseando JSON:', parseError);
+          throw new Error(`Respuesta no es JSON válido: ${responseText.substring(0, 100)}...`);
+        }
+        
+        return jsonData;
+      } catch (fetchError) {
+        console.error('❌ Error en fetch:', fetchError);
+        throw fetchError;
       }
-      
-      return response.json();
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['/api/ai-settings'] });
