@@ -370,7 +370,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateDashboardStats(statsData: InsertDashboardStats): Promise<DashboardStats> {
+  async updateDashboardStats(statsData: any): Promise<any> {
     try {
       // Verificar si hay estadísticas existentes
       const existingStats = await this.getDashboardStats();
