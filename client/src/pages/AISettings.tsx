@@ -140,9 +140,9 @@ export default function AISettings() {
 
   // Cargar cuentas de WhatsApp con estado real de conexión
   const { data: whatsappAccountsData, isLoading: isLoadingAccounts } = useQuery({
-    queryKey: ['/api/whatsapp-accounts/status'],
+    queryKey: ['/api/whatsapp-accounts/real-time-status'],
     queryFn: async () => {
-      const response = await fetch('/api/whatsapp-accounts/status');
+      const response = await fetch('/api/whatsapp-accounts/real-time-status');
       if (!response.ok) {
         throw new Error('Error al cargar cuentas de WhatsApp');
       }

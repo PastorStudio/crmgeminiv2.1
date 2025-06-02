@@ -50,8 +50,14 @@ export class DirectAutoResponse {
         return false;
       }
       
-      // USAR CONFIGURACIÓN AI PERSONALIZADA en lugar de agentes externos
-      console.log(`🤖 Generando respuesta con configuración AI personalizada para cuenta ${message.accountId}...`);
+      // Verificar si tiene un prompt asignado antes de intentar responder
+      if (!account.assignedPromptId) {
+        console.log(`❌ Cuenta ${message.accountId} no tiene prompt asignado - NO SE GENERARÁ RESPUESTA AUTOMÁTICA`);
+        return false;
+      }
+      
+      // USAR CONFIGURACIÓN AI PERSONALIZADA con prompt asignado
+      console.log(`🤖 Generando respuesta con prompt asignado ${account.assignedPromptId} para cuenta ${message.accountId}...`);
       
       // Generar respuesta usando la configuración AI personalizada
       const responseText = await this.generateAIResponse(message.messageText, message.accountId);
@@ -95,8 +101,8 @@ export class DirectAutoResponse {
       const account = accountWithPrompt[0];
       
       if (!account.assignedPromptId) {
-        console.log(`⚠️ Cuenta ${accountId} no tiene prompt asignado`);
-        return "Gracias por tu mensaje. Te responderemos a la brevedad.";
+        console.log(`❌ Cuenta ${accountId} no tiene prompt asignado - NO SE GENERARÁ RESPUESTA AUTOMÁTICA`);
+        return null;
       }
 
       // Obtener el prompt específico asignado

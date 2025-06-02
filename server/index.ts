@@ -2083,8 +2083,8 @@ app.use((req, res, next) => {
     }
   });
 
-  // ===== ENDPOINT PARA ESTADO REAL DE WHATSAPP =====
-  app.get('/api/whatsapp-accounts/status', async (req: Request, res: Response) => {
+  // ===== ENDPOINT PARA ESTADO REAL DE WHATSAPP (debe ir antes de las rutas con parámetros) =====
+  app.get('/api/whatsapp-accounts/real-time-status', async (req: Request, res: Response) => {
     try {
       console.log('🔍 Consultando estado real de WhatsApp para todas las cuentas');
       
