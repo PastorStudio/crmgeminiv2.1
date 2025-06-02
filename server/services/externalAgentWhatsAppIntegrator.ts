@@ -96,10 +96,32 @@ export class ExternalAgentWhatsAppIntegrator {
   }
 
   /**
-   * Genera respuesta usando OpenAI con el contexto específico del agente
+   * Genera respuesta usando la configuración AI personalizada guardada
    */
   private async generateResponseWithOpenAI(agentName: string, message: string): Promise<string | null> {
     try {
+      console.log(`🎯 Generando respuesta con configuración AI personalizada para ${agentName}`);
+
+      // Intentar usar el servicio de respuestas inteligentes con configuración personalizada
+      try {
+        const { intelligentResponseService } = await import('./intelligentResponseService');
+        
+        const intelligentResponse = await intelligentResponseService.generateResponse({
+          chatId: 'auto-response-chat',
+          accountId: 1, // Dinámicamente obtenible si es necesario
+          userMessage: message,
+          customerName: agentName
+        });
+
+        if (intelligentResponse && intelligentResponse.message) {
+          console.log(`✅ Respuesta generada con ${intelligentResponse.provider} usando prompt personalizado`);
+          return intelligentResponse.message;
+        }
+      } catch (intelligentError) {
+        console.log('⚠️ Configuración AI personalizada no disponible, usando fallback:', intelligentError.message);
+      }
+
+      // Fallback: OpenAI directo si no hay configuración personalizada
       if (!process.env.OPENAI_API_KEY) {
         console.error('❌ OPENAI_API_KEY no configurada');
         return null;
@@ -110,10 +132,10 @@ export class ExternalAgentWhatsAppIntegrator {
         apiKey: process.env.OPENAI_API_KEY 
       });
 
-      // Crear contexto específico según el agente
+      // Crear contexto específico según el agente (fallback)
       const agentContext = this.getAgentContext(agentName);
 
-      console.log(`🎯 Enviando a OpenAI con contexto de ${agentName}`);
+      console.log(`🎯 Enviando a OpenAI con contexto fallback de ${agentName}`);
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
@@ -134,7 +156,7 @@ export class ExternalAgentWhatsAppIntegrator {
       return completion.choices[0].message.content;
 
     } catch (error) {
-      console.error('❌ Error generando respuesta con OpenAI:', error);
+      console.error('❌ Error generando respuesta:', error);
       return null;
     }
   }
