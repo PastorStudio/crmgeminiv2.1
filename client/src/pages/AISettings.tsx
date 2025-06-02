@@ -34,6 +34,37 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Plus, Edit, Trash2, Settings, Bot } from "lucide-react";
 
 // AI Integration settings schema
 const aiIntegrationSchema = z.object({
@@ -46,11 +77,41 @@ const aiIntegrationSchema = z.object({
   enableAIResponses: z.boolean().default(true),
 });
 
+// AI Prompt schema
+const aiPromptSchema = z.object({
+  name: z.string().min(1, "El nombre es requerido"),
+  description: z.string().optional(),
+  content: z.string().min(10, "El contenido debe tener al menos 10 caracteres"),
+  provider: z.enum(["openai", "gemini", "qwen3"]).default("openai"),
+  temperature: z.number().min(0).max(2).default(0.7),
+  maxTokens: z.number().min(100).max(4000).default(1000),
+  model: z.string().default("gpt-4o"),
+  isActive: z.boolean().default(true),
+});
+
+type AiPrompt = {
+  id: number;
+  name: string;
+  description?: string;
+  content: string;
+  provider: string;
+  temperature: number;
+  maxTokens: number;
+  model: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type AiIntegrationValues = z.infer<typeof aiIntegrationSchema>;
+type AiPromptValues = z.infer<typeof aiPromptSchema>;
 
 export default function AISettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isPromptDialogOpen, setIsPromptDialogOpen] = useState(false);
+  const [editingPrompt, setEditingPrompt] = useState<AiPrompt | null>(null);
+  const [promptToDelete, setPromptToDelete] = useState<AiPrompt | null>(null);
   
   // Cargar configuraciones desde la base de datos
   const { data: aiSettings, isLoading: isLoadingSettings } = useQuery({
@@ -63,6 +124,32 @@ export default function AISettings() {
       return response.json();
     }
   });
+
+  // Cargar prompts de AI
+  const { data: aiPrompts = [], isLoading: isLoadingPrompts } = useQuery({
+    queryKey: ['/api/ai-prompts'],
+    queryFn: async () => {
+      const response = await fetch('/api/ai-prompts');
+      if (!response.ok) {
+        throw new Error('Error al cargar prompts');
+      }
+      return response.json();
+    }
+  });
+
+  // Cargar cuentas de WhatsApp
+  const { data: whatsappAccountsData, isLoading: isLoadingAccounts } = useQuery({
+    queryKey: ['/api/whatsapp-accounts'],
+    queryFn: async () => {
+      const response = await fetch('/api/whatsapp-accounts');
+      if (!response.ok) {
+        throw new Error('Error al cargar cuentas de WhatsApp');
+      }
+      return response.json();
+    }
+  });
+
+  const whatsappAccounts = whatsappAccountsData?.accounts || [];
   
   // AI Integration form setup
   const aiForm = useForm<AiIntegrationValues>({
