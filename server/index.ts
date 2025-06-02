@@ -7,8 +7,8 @@ import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import modernMessagingRouter from "./routes/modern-messaging";
 import { db, pool } from "./db";
-import { users, whatsappAccounts, autoResponseConfigs } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { users, whatsappAccounts, autoResponseConfigs, agentPageVisits } from "@shared/schema";
+import { eq, gte, desc, and, sql } from "drizzle-orm";
 import * as agentAssignmentRoutes from "./routes/agentAssignments";
 import { invisibleAgentIntegrator } from "./services/invisibleAgentIntegrator";
 import { realTimeNotificationService } from "./services/realTimeNotificationService";
@@ -3522,40 +3522,43 @@ app.use((req, res, next) => {
           since.setDate(now.getDate() - 1);
       }
 
-      let query = `
-        SELECT * FROM agent_page_visits 
-        WHERE timestamp >= $1
-      `;
-      const params: any[] = [since.toISOString()];
-
+      // Usar Drizzle para consultar actividades
+      let activities;
       if (agentId) {
-        query += ` AND agent_id = $2`;
-        params.push(parseInt(agentId as string));
+        activities = await db.select()
+          .from(agentPageVisits)
+          .where(and(
+            gte(agentPageVisits.timestamp, since),
+            eq(agentPageVisits.agentId, parseInt(agentId as string))
+          ))
+          .orderBy(desc(agentPageVisits.timestamp))
+          .limit(500);
+      } else {
+        activities = await db.select()
+          .from(agentPageVisits)
+          .where(gte(agentPageVisits.timestamp, since))
+          .orderBy(desc(agentPageVisits.timestamp))
+          .limit(500);
       }
 
-      query += ` ORDER BY timestamp DESC LIMIT 500`;
-
-      const result = await db.execute(query, params);
+      const result = { rows: activities };
       
-      // Obtener estadísticas
-      const statsQuery = `
-        SELECT 
-          COUNT(*) as total_activities,
-          COUNT(DISTINCT agent_id) as active_agents,
-          category,
-          COUNT(*) as category_count
-        FROM agent_page_visits 
-        WHERE timestamp >= $1
-        GROUP BY category
-      `;
-      
-      const statsResult = await db.execute(statsQuery, [since.toISOString()]);
+      // Obtener estadísticas usando Drizzle
+      const statsResult = await db.select({
+        category: agentPageVisits.category,
+        category_count: sql`COUNT(*)`.as('category_count'),
+        total_activities: sql`COUNT(*)`.as('total_activities'),
+        active_agents: sql`COUNT(DISTINCT ${agentPageVisits.agentId})`.as('active_agents')
+      })
+      .from(agentPageVisits)
+      .where(gte(agentPageVisits.timestamp, since))
+      .groupBy(agentPageVisits.category);
 
       res.json({
         success: true,
-        activities: result.rows,
-        totalActivities: result.rows.length,
-        stats: statsResult.rows,
+        activities: activities,
+        totalActivities: activities.length,
+        stats: statsResult,
         timeRange,
         since: since.toISOString()
       });
