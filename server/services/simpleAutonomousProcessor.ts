@@ -241,18 +241,18 @@ export class SimpleAutonomousProcessor {
           .update(contacts)
           .set({
             name: contactInfo.name,
-            updatedAt: new Date()
+            updated_at: new Date()
           })
           .where(eq(contacts.id, existingContact.id));
         
         return existingContact;
       }
 
-      // Create new contact
+      // Create new contact with minimal required fields
       const [newContact] = await db
         .insert(contacts)
         .values({
-          name: contactInfo.name,
+          name: contactInfo.name || 'WhatsApp Contact',
           phone: contactInfo.phone
         })
         .returning();
