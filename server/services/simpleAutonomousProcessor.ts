@@ -273,8 +273,27 @@ export class SimpleAutonomousProcessor {
     return budgetMatch ? budgetMatch[0] : undefined;
   }
 
+  private async getAvailableAgent() {
+    try {
+      // Get users with 'agent' role for ticket assignments
+      const agents = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, 'agent'))
+        .limit(1);
+      
+      return agents.length > 0 ? agents[0] : null;
+    } catch (error) {
+      console.error('Error obteniendo agente disponible:', error);
+      return null;
+    }
+  }
+
   private async createLead(contact: any, analysis: ChatAnalysis, chatId: string) {
     try {
+      // Get available agents (users with role 'agent')
+      const availableAgent = await this.getAvailableAgent();
+      
       const [newLead] = await db
         .insert(leads)
         .values({
@@ -285,8 +304,8 @@ export class SimpleAutonomousProcessor {
           status: 'new',
           priority: analysis.urgency,
           source: 'whatsapp',
-          assignedTo: null,
-          notes: `Lead automático generado desde WhatsApp.\nIntent: ${analysis.intent}\nSentiment: ${analysis.sentiment}\nChat ID: ${chatId}`
+          assignedTo: availableAgent?.id || null,
+          notes: `Lead automático generado desde WhatsApp.\nIntent: ${analysis.intent}\nSentiment: ${analysis.sentiment}\nChat ID: ${chatId}${availableAgent ? `\nAsignado a: ${availableAgent.fullName}` : '\nSin agente disponible'}`
         })
         .returning();
 
