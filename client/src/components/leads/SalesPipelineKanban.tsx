@@ -164,9 +164,7 @@ export default function SalesPipelineKanban() {
     <Card className="mb-6">
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="text-lg font-semibold">Sales Pipeline</div>
-          </CardTitle>
+          <div className="text-lg font-semibold">Sales Pipeline</div>
         </CardTitle>
       </CardHeader>
       <CardContent>

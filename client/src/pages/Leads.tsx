@@ -174,38 +174,51 @@ export default function Leads() {
         </Button>
       </div>
 
-      <Card className="mb-6">
-        <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="w-full">
-              <Input
-                placeholder="Search leads by name, email, or company..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-md"
-              />
-            </div>
-            <div className="flex items-center gap-3">
-              <Select 
-                value={selectedStatus || ""}
-                onValueChange={(value) => setSelectedStatus(value === "all" ? null : value)}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="contacted">Contacted</SelectItem>
-                  <SelectItem value="meeting">Meeting</SelectItem>
-                  <SelectItem value="closed-won">Closed (Won)</SelectItem>
-                  <SelectItem value="closed-lost">Closed (Lost)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <Tabs defaultValue="pipeline" className="w-full">
+        <div className="flex items-center justify-between mb-4">
+          <TabsList className="grid w-auto grid-cols-2">
+            <TabsTrigger value="pipeline" className="flex items-center space-x-2">
+              <Kanban className="h-4 w-4" />
+              <span>Sales Pipeline</span>
+            </TabsTrigger>
+            <TabsTrigger value="table" className="flex items-center space-x-2">
+              <span>Table View</span>
+            </TabsTrigger>
+          </TabsList>
+          
+          <div className="flex items-center gap-3">
+            <Input
+              placeholder="Search leads..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-64"
+            />
+            <Select 
+              value={selectedStatus || ""}
+              onValueChange={(value) => setSelectedStatus(value === "all" ? null : value)}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="new">New</SelectItem>
+                <SelectItem value="contacted">Contacted</SelectItem>
+                <SelectItem value="meeting">Meeting</SelectItem>
+                <SelectItem value="closed-won">Closed (Won)</SelectItem>
+                <SelectItem value="closed-lost">Closed (Lost)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+
+        <TabsContent value="pipeline">
+          <SalesPipelineKanban />
+        </TabsContent>
+
+        <TabsContent value="table">
+          <Card>
+            <CardContent className="pt-6">
           {isLoading ? (
             <div className="animate-pulse space-y-3">
               {[...Array(5)].map((_, i) => (
@@ -326,8 +339,10 @@ export default function Leads() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {editingLead && (
         <LeadForm 
