@@ -1,23 +1,14 @@
 import { Request, Response } from "express";
+import { pool } from "../db";
 
 /**
  * API directa para leads que funciona con consultas SQL puras
  * Evita problemas de esquemas de Drizzle
  */
 
-async function createDirectConnection() {
-  const { Pool } = require('@neondatabase/serverless');
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  return pool;
-}
-
 export async function getLeadsDirectAPI(req: Request, res: Response) {
-  let pool;
   try {
     console.log("📋 Iniciando consulta de leads...");
-    
-    pool = await createDirectConnection();
-    console.log("✅ Conexión directa creada");
     
     const result = await pool.query('SELECT * FROM leads ORDER BY "createdAt" DESC');
     console.log(`📋 Leads encontrados: ${result.rows.length}`);
@@ -55,10 +46,6 @@ export async function getLeadsDirectAPI(req: Request, res: Response) {
     console.error("❌ Error específico:", error.message);
     console.error("❌ Stack completo:", error.stack);
     res.status(500).json({ error: "Error al obtener leads", details: error.message });
-  } finally {
-    if (pool) {
-      await pool.end();
-    }
   }
 }
 
