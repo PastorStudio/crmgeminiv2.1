@@ -30,6 +30,7 @@ import { MessageInterceptorService } from './services/messageInterceptorService'
 import { AutoWebScrapingHandler } from './services/autoWebScrapingHandler';
 import OpenAI from 'openai';
 import { autonomousProcessor } from './services/autonomousProcessor';
+import { realTimeAutonomousProcessor } from './services/realTimeAutonomousProcessor';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
