@@ -440,6 +440,77 @@ export class DatabaseStorage implements IStorage {
       console.error('Error initializing data:', error);
     }
   }
+
+  // AI Prompts management
+  async getAiPrompts(): Promise<AiPrompt[]> {
+    try {
+      return await db.select().from(aiPrompts);
+    } catch (error) {
+      console.error('Error getting AI prompts:', error);
+      return [];
+    }
+  }
+
+  async getAiPrompt(id: number): Promise<AiPrompt | undefined> {
+    try {
+      const [prompt] = await db.select().from(aiPrompts).where(eq(aiPrompts.id, id));
+      return prompt || undefined;
+    } catch (error) {
+      console.error('Error getting AI prompt:', error);
+      return undefined;
+    }
+  }
+
+  async createAiPrompt(insertPrompt: InsertAiPrompt): Promise<AiPrompt> {
+    try {
+      const [prompt] = await db
+        .insert(aiPrompts)
+        .values(insertPrompt)
+        .returning();
+      return prompt;
+    } catch (error) {
+      console.error('Error creating AI prompt:', error);
+      throw error;
+    }
+  }
+
+  async updateAiPrompt(id: number, updates: Partial<InsertAiPrompt>): Promise<AiPrompt | null> {
+    try {
+      const [prompt] = await db
+        .update(aiPrompts)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(aiPrompts.id, id))
+        .returning();
+      return prompt || null;
+    } catch (error) {
+      console.error('Error updating AI prompt:', error);
+      return null;
+    }
+  }
+
+  async deleteAiPrompt(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(aiPrompts).where(eq(aiPrompts.id, id));
+      return result.count > 0;
+    } catch (error) {
+      console.error('Error deleting AI prompt:', error);
+      return false;
+    }
+  }
+
+  async assignPromptToAccount(accountId: number, promptId: number): Promise<boolean> {
+    try {
+      const result = await db
+        .update(whatsappAccounts)
+        .set({ assignedPromptId: promptId })
+        .where(eq(whatsappAccounts.id, accountId))
+        .returning();
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error assigning prompt to account:', error);
+      return false;
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();
