@@ -65,7 +65,9 @@ class IntelligentResponseService {
           response = await this.generateGeminiResponse(fullContext, aiConfig);
           break;
         case 'qwen3':
-          response = await this.generateQwenResponse(fullContext, aiConfig);
+          // Temporalmente usar Gemini hasta arreglar Qwen3
+          console.log('⚠️ Qwen3 solicitado pero usando Gemini temporalmente');
+          response = await this.generateGeminiResponse(fullContext, aiConfig);
           break;
         default:
           response = await this.generateGeminiResponse(fullContext, aiConfig);

@@ -262,6 +262,47 @@ app.post('/api/intelligent-response/process', async (req: Request, res: Response
   }
 });
 
+// Endpoint para test de AI
+app.post('/api/test-ai', async (req: Request, res: Response) => {
+  try {
+    console.log('🧪 Test directo de AI iniciado');
+    
+    const { intelligentResponseService } = await import('./services/intelligentResponseService');
+    
+    const testContext = {
+      chatId: 'test-chat',
+      accountId: 1,
+      userMessage: 'Hola, necesito información sobre sus servicios de internet'
+    };
+    
+    console.log('📝 Contexto de prueba:', testContext);
+    
+    const response = await intelligentResponseService.generateResponse(testContext);
+    
+    console.log('✅ Respuesta recibida:', response);
+    
+    res.json({
+      success: true,
+      testContext,
+      response,
+      diagnosis: {
+        hasMessage: !!response.message,
+        messageLength: response.message?.length || 0,
+        provider: response.provider,
+        confidence: response.confidence
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en test AI:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // Analizar sentimiento de mensaje
 app.post('/api/intelligent-response/analyze', async (req: Request, res: Response) => {
   try {
