@@ -873,7 +873,7 @@ export default function AISettings() {
                           <SelectValue placeholder="Select AI Prompt" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">No Prompt Assigned</SelectItem>
+                          <SelectItem value="none">No Prompt Assigned</SelectItem>
                           {aiPrompts.map((prompt) => (
                             <SelectItem key={prompt.id} value={prompt.id.toString()}>
                               {prompt.name}
