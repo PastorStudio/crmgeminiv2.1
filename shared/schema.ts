@@ -26,10 +26,11 @@ export const aiPrompts = pgTable("ai_prompts", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  promptText: text("prompt_text").notNull(),
+  content: text("content").notNull(),
   provider: text("provider").notNull().default("gemini"), // gemini, openai, qwen3
   temperature: real("temperature").default(0.7),
   maxTokens: integer("max_tokens").default(1000),
+  model: text("model").default("gpt-4o"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

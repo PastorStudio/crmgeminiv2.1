@@ -263,11 +263,12 @@ app.post('/api/ai-prompts', async (req: Request, res: Response) => {
     const [newPrompt] = await db.insert(aiPrompts).values({
       name,
       description,
-      promptText: content, // Map content to promptText field
+      content,
       provider,
       temperature,
-      maxTokens: maxTokens,
-      isActive: isActive
+      maxTokens,
+      model,
+      isActive
     }).returning();
     
     console.log('✅ Prompt creado:', newPrompt);
@@ -294,11 +295,11 @@ app.put('/api/ai-prompts/:id', async (req: Request, res: Response) => {
     
     const updates = req.body;
     
-    // Map camelCase to database schema field names
+    // Map fields directly to schema field names
     const mappedUpdates: any = {};
     if (updates.name !== undefined) mappedUpdates.name = updates.name;
     if (updates.description !== undefined) mappedUpdates.description = updates.description;
-    if (updates.content !== undefined) mappedUpdates.promptText = updates.content;
+    if (updates.content !== undefined) mappedUpdates.content = updates.content;
     if (updates.provider !== undefined) mappedUpdates.provider = updates.provider;
     if (updates.temperature !== undefined) mappedUpdates.temperature = updates.temperature;
     if (updates.maxTokens !== undefined) mappedUpdates.maxTokens = updates.maxTokens;
