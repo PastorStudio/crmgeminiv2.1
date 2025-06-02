@@ -2679,28 +2679,7 @@ export function WhatsAppTwoColumn() {
                 <div className="flex items-center space-x-2">
 
                   {/* BOTÓN CONFIGURACIÓN A.E - AGENTES EXTERNOS */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
-                  >
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-blue-600 text-blue-600 hover:bg-blue-50 transition-all duration-300"
-                      onClick={() => {
-                        console.log('🔧 ABRIENDO CONFIGURACIÓN A.E - AGENTES EXTERNOS');
-                        // Abrir página de agentes externos en nueva pestaña
-                        window.open('/external-agents', '_blank');
-                      }}
-                    >
-                      <Zap className="h-4 w-4 mr-2" />
-                      A.E
-                      {externalAgentActive && (
-                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
-                      )}
-                    </Button>
-                  </motion.div>
+
                   
                   {/* A.E AI SWITCH - RESPUESTAS AUTOMÁTICAS */}
                   <motion.div
@@ -3091,17 +3070,6 @@ export function WhatsAppTwoColumn() {
                                       <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium animate-pulse">
                                         ÚLTIMO RECIBIDO
                                       </span>
-                                      <AIResponseGenerator
-                                        chatId={selectedChat?.id || ''}
-                                        messages={messages || []}
-                                        onResponseGenerated={(response) => {
-                                          setNewMessage(response);
-                                          toast({
-                                            title: "AI Response Generated",
-                                            description: "You can now send or edit the response"
-                                          });
-                                        }}
-                                      />
                                     </>
                                   )}
                                 </div>
