@@ -699,7 +699,7 @@ const WhatsAppAccounts = () => {
             onClick={handleDeleteAll} 
             size="sm" 
             variant="destructive"
-            disabled={deleteAllAccountsMutation.isPending || accounts.length === 0}
+            disabled={deleteAllAccountsMutation.isPending || (Array.isArray(accounts) ? accounts : []).length === 0}
           >
             <Trash className="mr-2 h-4 w-4" /> 
             {deleteAllAccountsMutation.isPending ? 'Eliminando...' : 'Eliminar Todo'}
@@ -808,7 +808,7 @@ const WhatsAppAccounts = () => {
           {/* Generar 10 posiciones fijas */}
           {Array.from({ length: 10 }, (_, index) => {
             const position = index + 1;
-            const existingAccount = accounts.find(acc => acc.id === position);
+            const existingAccount = (Array.isArray(accounts) ? accounts : []).find(acc => acc.id === position);
             const isOccupied = !!existingAccount;
             
             return (
