@@ -353,31 +353,10 @@ export function WhatsAppSimple({ selectedLeadId, onSelectLead }: WhatsAppInterfa
     enabled: !!whatsappStatus?.authenticated
   });
   
-  // Query para obtener la asignación del chat actual
-  const {
-    data: chatAssignment,
-    isLoading: isLoadingAssignment,
-    refetch: refetchAssignment
-  } = useQuery({
-    queryKey: ['/api/chat-assignments/by-chat', selectedChatId, currentAccountId],
-    queryFn: async () => {
-      if (!selectedChatId || !currentAccountId) return null;
-      try {
-        // Importar en línea apiRequest
-        const { apiRequest } = await import('@/lib/queryClient');
-        const response = await apiRequest(`/api/chat-assignments/by-chat?chatId=${selectedChatId}&accountId=${currentAccountId}`);
-        return response;
-      } catch (error) {
-        // Si es error 404, significa que no hay asignación
-        if ((error as any)?.status === 404) {
-          return null;
-        }
-        console.error('Error obteniendo asignación de chat:', error);
-        return null;
-      }
-    },
-    enabled: !!selectedChatId && !!currentAccountId
-  });
+  // CONSULTAS DE ASIGNACIONES DESHABILITADAS - Sistema AI no las necesita
+  const chatAssignment = null;
+  const isLoadingAssignment = false;
+  const refetchAssignment = () => {};
   
   // Actualizar información del agente asignado cuando cambia la asignación
   useEffect(() => {

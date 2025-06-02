@@ -59,7 +59,7 @@ export class AutoExternalAgentService {
       } catch (error) {
         console.error(`❌ Error monitoreando mensajes para cuenta ${accountId}:`, error);
       }
-    }, 2000); // Verificar cada 2 segundos
+    }, 8000); // Verificar cada 8 segundos para reducir carga
   }
 
   /**
