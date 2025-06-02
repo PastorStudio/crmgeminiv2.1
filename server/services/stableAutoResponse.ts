@@ -130,7 +130,7 @@ class StableAutoResponseManager {
       
       for (const [accountId, config] of this.configs) {
         if (config.enabled) {
-          console.log(`✅ Cuenta ${accountId} - Respuestas automáticas ACTIVAS con agente: ${config.agentName}`);
+          console.log(`✅ Cuenta ${accountId} - Respuestas automáticas ACTIVAS con configuración AI personalizada`);
         }
       }
       
