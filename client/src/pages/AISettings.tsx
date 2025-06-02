@@ -138,16 +138,17 @@ export default function AISettings() {
     }
   });
 
-  // Cargar cuentas de WhatsApp
+  // Cargar cuentas de WhatsApp con estado real de conexión
   const { data: whatsappAccountsData, isLoading: isLoadingAccounts } = useQuery({
-    queryKey: ['/api/whatsapp-accounts'],
+    queryKey: ['/api/whatsapp-accounts/status'],
     queryFn: async () => {
-      const response = await fetch('/api/whatsapp-accounts');
+      const response = await fetch('/api/whatsapp-accounts/status');
       if (!response.ok) {
         throw new Error('Error al cargar cuentas de WhatsApp');
       }
       return response.json();
-    }
+    },
+    refetchInterval: 10000 // Actualizar cada 10 segundos para mostrar estado en tiempo real
   });
 
   const whatsappAccounts = whatsappAccountsData?.accounts || [];
@@ -556,9 +557,18 @@ export default function AISettings() {
                         <div key={account.id} className="border rounded-lg p-4">
                           <div className="flex items-center justify-between mb-2">
                             <h5 className="font-medium">{account.name}</h5>
-                            <Badge variant="outline" className="text-xs">
-                              {account.status}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                variant={account.realStatus === 'connected' ? "default" : "outline"} 
+                                className={`text-xs ${
+                                  account.realStatus === 'connected' 
+                                    ? 'bg-green-100 text-green-800 border-green-300' 
+                                    : 'bg-gray-100 text-gray-800 border-gray-300'
+                                }`}
+                              >
+                                {account.realStatus === 'connected' ? '🟢 Connected' : '🔴 Disconnected'}
+                              </Badge>
+                            </div>
                           </div>
                           <div className="text-sm text-gray-500 mb-3">
                             Currently assigned: {
