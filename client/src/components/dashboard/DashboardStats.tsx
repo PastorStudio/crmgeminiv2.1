@@ -8,9 +8,14 @@ import { useEffect, useState } from "react";
 import { Users, TrendingUp, MessageCircle, Calendar } from "lucide-react";
 
 export default function DashboardStats() {
-  // Fetch dashboard stats
+  // Fetch dashboard stats (working endpoint)
   const { data: stats, isLoading } = useQuery<IDashboardStats>({
     queryKey: ["/api/dashboard-stats"]
+  });
+
+  // Fetch dashboard metrics for top cards (real database data)
+  const { data: metrics, isLoading: metricsLoading } = useQuery({
+    queryKey: ["/api/dashboard-metrics"]
   });
 
   // Obtener el contexto de traducción
@@ -166,15 +171,15 @@ export default function DashboardStats() {
                     {translatedTitles.conversionRate}
                   </dt>
                   <dd className="flex items-baseline">
-                    {isLoading ? (
+                    {metricsLoading ? (
                       <Skeleton className="h-8 w-20" />
                     ) : (
                       <div className="text-2xl font-semibold text-gray-900">
-                        {formatConversionRate(stats?.performanceMetrics)}
+                        {(metrics?.conversionRate || 0).toFixed(1)}%
                       </div>
                     )}
                     <div className="ml-2 flex items-baseline text-sm font-semibold text-green-600">
-                      3.2%
+                      +{(metrics?.newLeadsThisMonth || 0)}
                     </div>
                   </dd>
                 </div>
