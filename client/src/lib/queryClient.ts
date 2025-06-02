@@ -43,7 +43,7 @@ export async function apiRequest<T = any>(
       method,
       headers,
       body,
-      credentials: "include",
+      mode: 'cors',
       cache: 'no-store'
     });
 
