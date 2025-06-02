@@ -183,7 +183,8 @@ const AppRoutes: React.FC = () => {
                 Mensajes
               </a>
 
-              <a href="/modern-messaging" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/modern-messaging' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Mensajería Moderna */}
+              {/*<a href="/modern-messaging" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/modern-messaging' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="2" y="4" width="20" height="16" rx="3" fill="#25D366"/>
                   <rect x="4" y="6" width="6" height="12" rx="1" fill="white"/>
@@ -196,7 +197,7 @@ const AppRoutes: React.FC = () => {
                   <rect x="14" y="13" width="4" height="1" fill="#666"/>
                 </svg>
                 Mensajería Moderna
-              </a>
+              </a>*/}
               
               <a href="/message-templates" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/message-templates' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -220,7 +221,8 @@ const AppRoutes: React.FC = () => {
                 Envío Masivo
               </a>
               
-              <a href="/auto-response-settings" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/auto-response-settings' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Respuestas Auto */}
+              {/*<a href="/auto-response-settings" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/auto-response-settings' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="8" width="18" height="8" rx="4" fill="#06B6D4"/>
                   <circle cx="8" cy="12" r="2" fill="white"/>
@@ -228,9 +230,10 @@ const AppRoutes: React.FC = () => {
                   <path d="M10 10l4 4M14 10l-4 4" stroke="#06B6D4" strokeWidth="1.5"/>
                 </svg>
                 Respuestas Auto
-              </a>
+              </a>*/}
 
-              <a href="/external-agents" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/external-agents' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Agentes Externos */}
+              {/*<a href="/external-agents" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/external-agents' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="3" width="18" height="18" rx="3" fill="#F59E0B"/>
                   <circle cx="8" cy="8" r="2" fill="white"/>
@@ -239,9 +242,10 @@ const AppRoutes: React.FC = () => {
                   <rect x="9" y="16" width="6" height="2" rx="1" fill="white"/>
                 </svg>
                 Agentes Externos
-              </a>
+              </a>*/}
               
-              <a href="/internal-agents" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/internal-agents' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Agentes Internos */}
+              {/*<a href="/internal-agents" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/internal-agents' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="3" width="18" height="18" rx="3" fill="#3B82F6"/>
                   <circle cx="8" cy="8" r="2" fill="white"/>
@@ -251,9 +255,10 @@ const AppRoutes: React.FC = () => {
                   <path d="M12 11v4m0-4l2-2m-2 2l-2-2" stroke="white" strokeWidth="1" fill="none"/>
                 </svg>
                 Agentes Internos
-              </a>
+              </a>*/}
 
-              <a href="/agent-analysis" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/agent-analysis' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Análisis Completo */}
+              {/*<a href="/agent-analysis" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/agent-analysis' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="3" width="18" height="18" rx="3" fill="#8B5CF6"/>
                   <rect x="6" y="8" width="12" height="2" rx="1" fill="white"/>
@@ -263,7 +268,7 @@ const AppRoutes: React.FC = () => {
                   <path d="M16 6h4m-2-2v4" stroke="white" strokeWidth="1"/>
                 </svg>
                 Análisis Completo
-              </a>
+              </a>*/}
               
               {/* Planificación */}
               <div className="px-3 pt-3 pb-1">
@@ -360,7 +365,8 @@ const AppRoutes: React.FC = () => {
                 Cuentas WhatsApp
               </a>
               
-              <a href="/whatsapp-manager" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-manager' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Gestor WhatsApp */}
+              {/*<a href="/whatsapp-manager" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-manager' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="9" fill="#128C7E"/>
                   <rect x="8" y="8" width="8" height="8" rx="2" fill="white"/>
@@ -370,9 +376,10 @@ const AppRoutes: React.FC = () => {
                   <path d="M10 15h4v1h-4z" fill="#25D366"/>
                 </svg>
                 Gestor WhatsApp
-              </a>
+              </a>*/}
 
-              <a href="/whatsapp-connection" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-connection' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Conectar WhatsApp */}
+              {/*<a href="/whatsapp-connection" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-connection' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="2" y="2" width="20" height="20" rx="4" fill="#DCF2F1"/>
                   <rect x="4" y="4" width="6" height="6" rx="1" fill="#0EA5E9"/>
@@ -382,7 +389,7 @@ const AppRoutes: React.FC = () => {
                   <circle cx="12" cy="12" r="2" fill="white" stroke="#374151" strokeWidth="1"/>
                 </svg>
                 Conectar WhatsApp
-              </a>
+              </a>*/}
 
               <a href="/agent-monitoring" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/agent-monitoring' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -449,7 +456,8 @@ const AppRoutes: React.FC = () => {
                 </span>
               </a>
               
-              <a href="/chat-assignments" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/chat-assignments' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Asignar Chats */}
+              {/*<a href="/chat-assignments" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/chat-assignments' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="4" width="18" height="14" rx="3" fill="#8B5CF6"/>
                   <circle cx="8" cy="9" r="1.5" fill="white"/>
@@ -458,7 +466,7 @@ const AppRoutes: React.FC = () => {
                   <path d="M18 18l-3-3H6a1 1 0 01-1-1v-1h14v1a1 1 0 01-1 1z" fill="#A855F7"/>
                 </svg>
                 Asignar Chats
-              </a>
+              </a>*/}
               
               <a href="/ai-settings" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/ai-settings' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
