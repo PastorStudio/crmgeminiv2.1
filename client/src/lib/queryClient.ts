@@ -27,10 +27,16 @@ export async function apiRequest<T = any>(
     ...options?.headers
   };
 
+  // Convert relative API URLs to absolute URLs to bypass Vite interceptor
+  let fullUrl = url;
+  if (url.startsWith('/api/')) {
+    fullUrl = `http://localhost:5000${url}`;
+  }
+
   // Añadir parámetro timestamp para evitar caché
-  const urlWithTimestamp = url.includes('?') 
-    ? `${url}&_t=${Date.now()}` 
-    : `${url}?_t=${Date.now()}`;
+  const urlWithTimestamp = fullUrl.includes('?') 
+    ? `${fullUrl}&_t=${Date.now()}` 
+    : `${fullUrl}?_t=${Date.now()}`;
 
   try {
     const res = await fetch(urlWithTimestamp, {
