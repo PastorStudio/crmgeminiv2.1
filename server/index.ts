@@ -223,6 +223,175 @@ app.post('/api/ai-settings', async (req: Request, res: Response) => {
   }
 });
 
+// ===== AI PROMPTS API =====
+// Get all AI prompts
+app.get('/api/ai-prompts', async (req: Request, res: Response) => {
+  try {
+    console.log('📋 GET /api/ai-prompts - Obteniendo prompts AI');
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    const { aiPrompts } = await import('@shared/schema');
+    const prompts = await db.select().from(aiPrompts).orderBy(aiPrompts.createdAt);
+    
+    console.log('✅ Prompts obtenidos:', prompts.length);
+    res.json(prompts);
+  } catch (error) {
+    console.error('❌ Error obteniendo prompts AI:', error);
+    res.status(500).json({ error: 'Error al obtener prompts' });
+  }
+});
+
+// Create new AI prompt
+app.post('/api/ai-prompts', async (req: Request, res: Response) => {
+  try {
+    console.log('📝 POST /api/ai-prompts - Creando prompt AI');
+    res.setHeader('Content-Type', 'application/json');
+    
+    const { aiPrompts } = await import('@shared/schema');
+    const {
+      name,
+      description,
+      content,
+      provider = 'openai',
+      temperature = 0.7,
+      maxTokens = 1000,
+      model = 'gpt-4o',
+      isActive = true
+    } = req.body;
+
+    const [newPrompt] = await db.insert(aiPrompts).values({
+      name,
+      description,
+      content,
+      provider,
+      temperature,
+      maxTokens,
+      model,
+      isActive
+    }).returning();
+    
+    console.log('✅ Prompt creado:', newPrompt);
+    res.json({
+      success: true,
+      message: 'Prompt AI creado exitosamente',
+      data: newPrompt
+    });
+  } catch (error) {
+    console.error('❌ Error creando prompt AI:', error);
+    res.status(500).json({ error: 'Error al crear prompt' });
+  }
+});
+
+// Update AI prompt
+app.put('/api/ai-prompts/:id', async (req: Request, res: Response) => {
+  try {
+    const promptId = parseInt(req.params.id);
+    console.log('🔄 PUT /api/ai-prompts - Actualizando prompt:', promptId);
+    res.setHeader('Content-Type', 'application/json');
+    
+    const { aiPrompts } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
+    const updates = req.body;
+    
+    const [updatedPrompt] = await db
+      .update(aiPrompts)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(aiPrompts.id, promptId))
+      .returning();
+    
+    if (!updatedPrompt) {
+      return res.status(404).json({
+        success: false,
+        error: 'Prompt no encontrado'
+      });
+    }
+    
+    console.log('✅ Prompt actualizado:', updatedPrompt);
+    res.json({
+      success: true,
+      message: 'Prompt AI actualizado exitosamente',
+      data: updatedPrompt
+    });
+  } catch (error) {
+    console.error('❌ Error actualizando prompt AI:', error);
+    res.status(500).json({ error: 'Error al actualizar prompt' });
+  }
+});
+
+// Delete AI prompt
+app.delete('/api/ai-prompts/:id', async (req: Request, res: Response) => {
+  try {
+    const promptId = parseInt(req.params.id);
+    console.log('🗑️ DELETE /api/ai-prompts - Eliminando prompt:', promptId);
+    res.setHeader('Content-Type', 'application/json');
+    
+    const { aiPrompts } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
+    const [deletedPrompt] = await db
+      .delete(aiPrompts)
+      .where(eq(aiPrompts.id, promptId))
+      .returning();
+    
+    if (!deletedPrompt) {
+      return res.status(404).json({
+        success: false,
+        error: 'Prompt no encontrado'
+      });
+    }
+    
+    console.log('✅ Prompt eliminado exitosamente');
+    res.json({
+      success: true,
+      message: 'Prompt AI eliminado exitosamente'
+    });
+  } catch (error) {
+    console.error('❌ Error eliminando prompt AI:', error);
+    res.status(500).json({ error: 'Error al eliminar prompt' });
+  }
+});
+
+// Assign prompt to WhatsApp account
+app.post('/api/whatsapp-accounts/:accountId/assign-prompt/:promptId', async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    const promptId = parseInt(req.params.promptId);
+    
+    console.log('🔗 Asignando prompt', promptId, 'a cuenta', accountId);
+    res.setHeader('Content-Type', 'application/json');
+    
+    const { whatsappAccounts } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
+    const [updatedAccount] = await db
+      .update(whatsappAccounts)
+      .set({ assignedPromptId: promptId })
+      .where(eq(whatsappAccounts.id, accountId))
+      .returning();
+    
+    if (!updatedAccount) {
+      return res.status(404).json({
+        success: false,
+        error: 'Cuenta no encontrada'
+      });
+    }
+    
+    console.log('✅ Prompt asignado exitosamente');
+    res.json({
+      success: true,
+      message: 'Prompt asignado exitosamente a la cuenta de WhatsApp'
+    });
+  } catch (error) {
+    console.error('❌ Error asignando prompt:', error);
+    res.status(500).json({ error: 'Error al asignar prompt' });
+  }
+});
+
 // ===== RESPUESTAS INTELIGENTES CON AI =====
 // Procesar mensaje y generar respuesta inteligente
 app.post('/api/intelligent-response/process', async (req: Request, res: Response) => {
