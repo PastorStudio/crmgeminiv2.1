@@ -9,12 +9,12 @@ export async function getLeadsSimple(req: Request, res: Response) {
   try {
     console.log("🔄 Ejecutando consulta SQL directa para obtener leads...");
     
-    // Usar pool directamente para evitar problemas con Drizzle
-    const { pool } = await import("../db");
-    const client = await pool.connect();
+    // Usar el pool de conexiones directamente
+    const { Pool } = await import("@neondatabase/serverless");
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     
     try {
-      const result = await client.query(`
+      const result = await pool.query(`
         SELECT 
           id,
           name,
@@ -61,7 +61,7 @@ export async function getLeadsSimple(req: Request, res: Response) {
 
       res.json(leadsData);
     } finally {
-      client.release();
+      await pool.end();
     }
   } catch (error) {
     console.error("❌ Error en getLeadsSimple:", error);
