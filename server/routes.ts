@@ -42,7 +42,7 @@ import ticketsRouter from "./routes/tickets";
 import { translateText, detectLanguage } from "./routes/translation";
 // Referencias de problemas corregidos removidas para optimización
 import autonomousApiRouter from "./routes/autonomousApi";
-import { getLeadsSimple, updateLeadStatusSimple, deleteLeadSimple, getLeadStatsSimple } from "./routes/leads-simple";
+import { getLeadsDirectAPI, updateLeadStatusDirectAPI, deleteLeadDirectAPI, getLeadStatsDirectAPI } from "./routes/direct-leads-api";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -660,62 +660,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Leads endpoints - using real data from database
-  app.get("/api/leads", async (req: Request, res: Response) => {
-    try {
-      console.log("Consultando leads desde la base de datos...");
-      
-      // Usar el pool existente
-      const result = await pool.query(`
-        SELECT 
-          id,
-          name,
-          email,
-          phone,
-          source,
-          status,
-          "assigneeId",
-          company,
-          budget,
-          notes,
-          priority,
-          tags,
-          "createdAt"
-        FROM leads 
-        ORDER BY "createdAt" DESC
-      `);
-
-      console.log(`Leads encontrados: ${result.rows.length}`);
-
-      // Transformar datos para el frontend
-      const leadsData = result.rows.map((row: any) => ({
-        id: row.id,
-        title: row.name,
-        name: row.name,
-        email: row.email,
-        phone: row.phone,
-        source: row.source,
-        status: row.status,
-        assignedTo: row.assigneeId,
-        company: row.company,
-        budget: row.budget,
-        notes: row.notes,
-        priority: row.priority,
-        tags: row.tags,
-        createdAt: row.createdAt,
-        stage: 'lead',
-        value: row.budget ? row.budget.toString() : '0',
-        currency: 'USD',
-        probability: 50,
-        updatedAt: row.createdAt
-      }));
-
-      res.json(leadsData);
-    } catch (error) {
-      console.error("Error obteniendo leads:", error);
-      res.status(500).json({ error: "Error al obtener leads" });
-    }
-  });
+  // Leads endpoints - using direct API
+  app.get("/api/leads", getLeadsDirectAPI);
 
   app.get("/api/leads/:id", async (req: Request, res: Response) => {
     try {
