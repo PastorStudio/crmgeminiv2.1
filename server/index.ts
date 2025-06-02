@@ -89,7 +89,7 @@ app.get('/api/users/:id', async (req: Request, res: Response) => {
 });
 
 // WhatsApp accounts endpoints
-app.get('/api/whatsapp/accounts', async (req: Request, res: Response) => {
+app.get('/server-api/whatsapp/accounts', async (req: Request, res: Response) => {
   try {
     const accounts = await db.select().from(whatsappAccounts);
     res.json(accounts);
@@ -302,6 +302,14 @@ app.get('/api/health', (req: Request, res: Response) => {
     system: 'clean-crm',
     features: ['gemini-ai', 'openai-ai']
   });
+});
+
+// Add a special bypass route that definitely won't be intercepted
+app.all('/bypass-api/*', (req, res, next) => {
+  const originalPath = req.path.replace('/bypass-api', '/api');
+  req.url = originalPath + (req.url.includes('?') ? '&' + req.url.split('?')[1] : '');
+  Object.defineProperty(req, 'path', { value: originalPath, writable: true });
+  next();
 });
 
 // Important: Setup Vite AFTER all API routes are defined

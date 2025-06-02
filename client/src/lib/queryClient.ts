@@ -27,10 +27,10 @@ export async function apiRequest<T = any>(
     ...options?.headers
   };
 
-  // Convert relative API URLs to absolute URLs to bypass Vite interceptor
+  // Use bypass route to avoid Vite interception
   let fullUrl = url;
   if (url.startsWith('/api/')) {
-    fullUrl = `http://localhost:5000${url}`;
+    fullUrl = url.replace('/api/', '/bypass-api/');
   }
 
   // Añadir parámetro timestamp para evitar caché
