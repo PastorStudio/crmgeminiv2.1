@@ -53,8 +53,8 @@ export const contacts = pgTable("contacts", {
   lastSeen: timestamp("lastSeen"),
   source: text("source").default("whatsapp"),
   isActive: boolean("isActive").default(true),
-  createdAt: timestamp("createdAt").defaultNow(),
-  updatedAt: timestamp("updatedAt").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Leads del Sales Pipeline

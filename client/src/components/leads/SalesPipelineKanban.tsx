@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
-import { Eye, MessageSquare, Calendar } from "lucide-react";
+import { Eye, MessageSquare, Calendar, Plus, Edit, Trash2 } from "lucide-react";
 import { Lead } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface PipelineColumn {
   id: string;
@@ -21,52 +23,74 @@ export default function SalesPipelineKanban() {
   });
 
   const [columns, setColumns] = useState<PipelineColumn[]>([]);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Organize leads into columns by status
+  // Mutation for updating lead status
+  const updateLeadMutation = useMutation({
+    mutationFn: async ({ leadId, status }: { leadId: number; status: string }) => {
+      return await apiRequest(`/api/leads/${leadId}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+        headers: { "Content-Type": "application/json" }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      toast({
+        title: "Lead actualizado",
+        description: "El estado del lead se ha actualizado correctamente.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado del lead.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Organize leads into columns by status - 5-step pipeline
   useEffect(() => {
     if (allLeads) {
       const statusColumns: PipelineColumn[] = [
         {
           id: "new",
-          title: "New Leads",
+          title: "Nuevo",
           color: "bg-blue-100 border-blue-200",
           leads: allLeads.filter(lead => lead.status === "new")
         },
         {
+          id: "assigned",
+          title: "Asignado",
+          color: "bg-purple-100 border-purple-200",
+          leads: allLeads.filter(lead => lead.status === "assigned")
+        },
+        {
           id: "contacted",
-          title: "Contacted",
+          title: "Contactado",
           color: "bg-yellow-100 border-yellow-200",
           leads: allLeads.filter(lead => lead.status === "contacted")
         },
         {
-          id: "meeting",
-          title: "Meeting Scheduled",
-          color: "bg-purple-100 border-purple-200",
-          leads: allLeads.filter(lead => lead.status === "meeting")
-        },
-        {
-          id: "proposal",
-          title: "Proposal Sent",
-          color: "bg-orange-100 border-orange-200",
-          leads: allLeads.filter(lead => lead.status === "proposal")
-        },
-        {
           id: "negotiation",
-          title: "Negotiation",
-          color: "bg-indigo-100 border-indigo-200",
+          title: "Negociación",
+          color: "bg-orange-100 border-orange-200",
           leads: allLeads.filter(lead => lead.status === "negotiation")
         },
         {
-          id: "closed-won",
-          title: "Won",
+          id: "completed",
+          title: "Completado",
           color: "bg-green-100 border-green-200",
-          leads: allLeads.filter(lead => lead.status === "closed-won")
+          leads: allLeads.filter(lead => lead.status === "completed" || lead.status === "closed-won")
         },
         {
-          id: "closed-lost",
-          title: "Lost",
+          id: "not-interested",
+          title: "No Interesado",
           color: "bg-red-100 border-red-200",
-          leads: allLeads.filter(lead => lead.status === "closed-lost")
+          leads: allLeads.filter(lead => lead.status === "not-interested" || lead.status === "closed-lost")
         }
       ];
       setColumns(statusColumns);
