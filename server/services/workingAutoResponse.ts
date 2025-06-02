@@ -32,16 +32,11 @@ export class WorkingAutoResponseService {
         return false;
       }
       
-      // Verificar si hay agente asignado
-      if (!accountConfig.assignedExternalAgentId) {
-        console.log(`⏭️ No hay agente externo asignado para cuenta ${accountId}`);
-        return false;
-      }
+      // SISTEMA AI PERSONALIZADO: Usar configuración AI en lugar de agentes externos
+      console.log(`🤖 Usando configuración AI personalizada para cuenta ${accountId}`);
       
-      console.log(`🎯 Usando agente asignado: ${accountConfig.assignedExternalAgentId}`);
-      
-      // Generar respuesta usando OpenAI
-      const response = await this.generateOpenAIResponse(messageBody);
+      // Generar respuesta usando la configuración AI personalizada
+      const response = await this.generateAIResponse(messageBody, accountId);
       
       if (!response) {
         console.log(`❌ No se pudo generar respuesta automática`);
@@ -85,44 +80,29 @@ export class WorkingAutoResponseService {
   }
 
   /**
-   * Genera una respuesta usando OpenAI
+   * Genera respuesta usando configuración AI personalizada de AI Settings
    */
-  private static async generateOpenAIResponse(messageBody: string): Promise<string | null> {
+  private static async generateAIResponse(messageBody: string, accountId: number): Promise<string | null> {
     try {
-      const openai = new OpenAI({ 
-        apiKey: process.env.OPENAI_API_KEY 
-      });
-
-      if (!process.env.OPENAI_API_KEY) {
-        console.log(`❌ OpenAI API key no disponible`);
-        return "Gracias por tu mensaje. Te responderemos a la brevedad.";
+      // Obtener configuración AI personalizada
+      const { IntelligentResponseService } = await import('./intelligentResponseService');
+      
+      console.log(`🤖 Generando respuesta con configuración AI personalizada para cuenta ${accountId}`);
+      console.log(`📝 Mensaje: "${messageBody}"`);
+      
+      // Usar el servicio de respuestas inteligentes que lee la configuración AI
+      const response = await IntelligentResponseService.generateResponse(messageBody, accountId);
+      
+      if (response) {
+        console.log(`✅ Respuesta AI personalizada generada: "${response}"`);
+        return response;
       }
-
-      console.log(`🤖 Generando respuesta con OpenAI para: "${messageBody}"`);
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: "Eres un asistente de atención al cliente profesional. Responde de manera amable, útil y en español. Mantén las respuestas concisas y profesionales."
-          },
-          {
-            role: "user",
-            content: messageBody
-          }
-        ],
-        max_tokens: 150,
-        temperature: 0.7
-      });
-
-      const generatedResponse = response.choices[0].message.content;
-      console.log(`✅ Respuesta OpenAI generada: "${generatedResponse}"`);
-      
-      return generatedResponse;
+      console.log(`⚠️ No se pudo generar respuesta con configuración AI, usando fallback`);
+      return "Gracias por tu mensaje. Te responderemos a la brevedad.";
       
     } catch (error) {
-      console.error(`❌ Error generando respuesta OpenAI:`, error);
+      console.error(`❌ Error generando respuesta AI personalizada:`, error);
       // Fallback a respuesta predeterminada
       return "Gracias por tu mensaje. Te responderemos a la brevedad.";
     }

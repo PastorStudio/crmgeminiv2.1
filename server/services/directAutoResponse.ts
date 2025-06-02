@@ -50,58 +50,18 @@ export class DirectAutoResponse {
         return false;
       }
       
-      // Verificar si tiene agente asignado
-      if (!account.assignedExternalAgentId) {
-        console.log('⏭️ No hay agente externo asignado');
-        return false;
-      }
+      // USAR CONFIGURACIÓN AI PERSONALIZADA en lugar de agentes externos
+      console.log(`🤖 Generando respuesta con configuración AI personalizada para cuenta ${message.accountId}...`);
       
-      const agentId = account.assignedExternalAgentId;
-      
-      // Buscar información del agente
-      const agentInfo = await db.select()
-        .from(externalAgents)
-        .where(eq(externalAgents.id, agentId))
-        .limit(1);
-      
-      if (agentInfo.length === 0) {
-        console.log('❌ Agente externo no encontrado');
-        return false;
-      }
-      
-      const agent = agentInfo[0];
-      console.log(`🤖 Generando respuesta con ${agent.agentName}...`);
-      
-      // Generar respuesta usando OpenAI
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o", // newest OpenAI model
-        messages: [
-          {
-            role: "system",
-            content: `Eres ${agent.agentName}, un asistente especializado en atención al cliente. 
-                     Responde de manera amigable, profesional y útil. 
-                     Mantén las respuestas concisas pero informativas.`
-          },
-          {
-            role: "user",
-            content: message.messageText
-          }
-        ],
-        max_tokens: 500,
-        temperature: 0.7
-      });
-      
-      const responseText = response.choices[0]?.message?.content;
+      // Generar respuesta usando la configuración AI personalizada
+      const responseText = await this.generateAIResponse(message.messageText, message.accountId);
       
       if (!responseText) {
-        console.log('❌ No se pudo generar respuesta');
+        console.log('❌ No se pudo generar respuesta con configuración AI');
         return false;
       }
       
-      console.log(`✅ Respuesta generada: "${responseText}"`);
-      
-      // TODO: Aquí conectaremos con WhatsApp para enviar la respuesta
-      // Por ahora, solo logueamos que la respuesta está lista
+      console.log(`✅ Respuesta AI personalizada generada: "${responseText}"`);
       console.log(`📤 RESPUESTA LISTA PARA ENVÍO al chat ${message.chatId}`);
       
       return true;
@@ -112,6 +72,34 @@ export class DirectAutoResponse {
     }
   }
   
+  /**
+   * Genera respuesta usando configuración AI personalizada de AI Settings
+   */
+  private static async generateAIResponse(messageBody: string, accountId: number): Promise<string | null> {
+    try {
+      // Obtener configuración AI personalizada desde AI Settings
+      const { IntelligentResponseService } = await import('./intelligentResponseService');
+      
+      console.log(`🤖 Usando configuración AI personalizada para cuenta ${accountId}`);
+      console.log(`📝 Mensaje: "${messageBody}"`);
+      
+      // Usar el servicio de respuestas inteligentes que lee la configuración AI
+      const response = await IntelligentResponseService.generateResponse(messageBody, accountId);
+      
+      if (response) {
+        console.log(`✅ Respuesta AI personalizada: "${response}"`);
+        return response;
+      }
+      
+      console.log(`⚠️ No se pudo generar respuesta con configuración AI, usando fallback`);
+      return "Gracias por tu mensaje. Te responderemos a la brevedad.";
+      
+    } catch (error) {
+      console.error(`❌ Error generando respuesta AI personalizada:`, error);
+      return "Gracias por tu mensaje. Te responderemos a la brevedad.";
+    }
+  }
+
   /**
    * Verificar si una cuenta tiene respuestas automáticas activas
    */
@@ -125,7 +113,7 @@ export class DirectAutoResponse {
       if (account.length === 0) return false;
       
       const acc = account[0];
-      return acc.autoResponseEnabled && acc.assignedExternalAgentId;
+      return acc.autoResponseEnabled === true;
     } catch (error) {
       console.error('Error verificando auto-respuesta:', error);
       return false;
