@@ -472,6 +472,17 @@ const AppRoutes: React.FC = () => {
                 AI Integration
               </a>
 
+              <a href="/intelligent-response-test" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/intelligent-response-test' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="18" height="18" rx="3" fill="#10B981"/>
+                  <circle cx="8" cy="9" r="2" fill="white"/>
+                  <circle cx="16" cy="9" r="2" fill="white"/>
+                  <path d="M7 15c0-1.5 1-3 5-3s5 1.5 5 3" stroke="white" strokeWidth="2" fill="none"/>
+                  <rect x="11" y="6" width="2" height="3" fill="#10B981"/>
+                </svg>
+                Pruebas AI
+              </a>
+
               <a href="/settings" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/settings' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="8" fill="#374151"/>
