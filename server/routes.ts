@@ -7,10 +7,9 @@ import { storage } from "./storage";
 import { 
   insertUserSchema, 
   insertLeadSchema, 
-  insertActivitySchema, 
-  insertMessageSchema, 
-  insertSurveySchema,
-  insertDashboardStatsSchema
+  insertAiPromptSchema,
+  AiPrompt,
+  InsertAiPrompt
 } from "@shared/schema";
 import { z } from "zod";
 import { apiKeyManager } from "./services/apiKeyManager";

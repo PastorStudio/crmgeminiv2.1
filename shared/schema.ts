@@ -21,6 +21,20 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updatedat"),
 });
 
+// AI Prompts for WhatsApp accounts
+export const aiPrompts = pgTable("ai_prompts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  promptText: text("prompt_text").notNull(),
+  provider: text("provider").notNull().default("gemini"), // gemini, openai, qwen3
+  temperature: real("temperature").default(0.7),
+  maxTokens: integer("max_tokens").default(1000),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // WhatsApp Accounts
 export const whatsappAccounts = pgTable("whatsapp_accounts", {
   id: serial("id").primaryKey(),
@@ -35,6 +49,7 @@ export const whatsappAccounts = pgTable("whatsapp_accounts", {
   autoResponseEnabled: boolean("autoresponseenabled").default(false),
   responseDelay: integer("responsedelay").default(3),
   customPrompt: text("customprompt"), // Custom AI prompt for this account
+  assignedPromptId: integer("assigned_prompt_id").references(() => aiPrompts.id), // Reference to AI prompt
   keepAliveEnabled: boolean("keepaliveenabled").default(true), // Persistent connection
   lastActivity: timestamp("lastactivity"),
   connectionAttempts: integer("connectionattempts").default(0),
@@ -513,6 +528,7 @@ export const enhancedMessagesRelations = relations(enhancedMessagesTable, ({ one
 }));
 
 // Esquemas de inserción
+export const insertAiPromptSchema = createInsertSchema(aiPrompts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAiSettingsSchema = createInsertSchema(aiSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
 export const insertChatCommentSchema = createInsertSchema(chatComments).omit({ id: true, createdAt: true, updatedAt: true });
@@ -546,3 +562,5 @@ export type InsertLead = typeof insertLeadSchema._type;
 export type WhatsAppAccount = typeof whatsappAccounts.$inferSelect;
 export type InsertWhatsAppAccount = typeof insertWhatsAppAccountSchema._type;
 export type ExternalAgent = typeof externalAgents.$inferSelect;
+export type AiPrompt = typeof aiPrompts.$inferSelect;
+export type InsertAiPrompt = typeof insertAiPromptSchema._type;
