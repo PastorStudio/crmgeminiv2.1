@@ -42,7 +42,7 @@ import ticketsRouter from "./routes/tickets";
 import { translateText, detectLanguage } from "./routes/translation";
 // Referencias de problemas corregidos removidas para optimización
 import autonomousApiRouter from "./routes/autonomousApi";
-import { getLeadsDirectAPI, updateLeadStatusDirectAPI, deleteLeadDirectAPI, getLeadStatsDirectAPI } from "./routes/direct-leads-api";
+import { getLeadsSimpleAPI, getLeadStatsSimpleAPI } from "./routes/leads-simple";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -660,8 +660,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Leads endpoints - using direct API
-  app.get("/api/leads", getLeadsDirectAPI);
+  // Leads endpoints - using simple API
+  app.get("/api/leads", getLeadsSimpleAPI);
 
   app.get("/api/leads/:id", async (req: Request, res: Response) => {
     try {
