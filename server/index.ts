@@ -263,12 +263,11 @@ app.post('/api/ai-prompts', async (req: Request, res: Response) => {
     const [newPrompt] = await db.insert(aiPrompts).values({
       name,
       description,
-      content,
+      promptText: content, // Map content to promptText field
       provider,
       temperature,
-      max_tokens: maxTokens,
-      model,
-      is_active: isActive
+      maxTokens: maxTokens,
+      isActive: isActive
     }).returning();
     
     console.log('✅ Prompt creado:', newPrompt);
@@ -295,22 +294,22 @@ app.put('/api/ai-prompts/:id', async (req: Request, res: Response) => {
     
     const updates = req.body;
     
-    // Map camelCase to snake_case for database columns
+    // Map camelCase to database schema field names
     const mappedUpdates: any = {};
     if (updates.name !== undefined) mappedUpdates.name = updates.name;
     if (updates.description !== undefined) mappedUpdates.description = updates.description;
-    if (updates.content !== undefined) mappedUpdates.content = updates.content;
+    if (updates.content !== undefined) mappedUpdates.promptText = updates.content;
     if (updates.provider !== undefined) mappedUpdates.provider = updates.provider;
     if (updates.temperature !== undefined) mappedUpdates.temperature = updates.temperature;
-    if (updates.maxTokens !== undefined) mappedUpdates.max_tokens = updates.maxTokens;
+    if (updates.maxTokens !== undefined) mappedUpdates.maxTokens = updates.maxTokens;
     if (updates.model !== undefined) mappedUpdates.model = updates.model;
-    if (updates.isActive !== undefined) mappedUpdates.is_active = updates.isActive;
+    if (updates.isActive !== undefined) mappedUpdates.isActive = updates.isActive;
     
     const [updatedPrompt] = await db
       .update(aiPrompts)
       .set({
         ...mappedUpdates,
-        updated_at: new Date()
+        updatedAt: new Date()
       })
       .where(eq(aiPrompts.id, promptId))
       .returning();
