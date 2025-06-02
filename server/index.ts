@@ -304,14 +304,6 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-// Add a special bypass route that definitely won't be intercepted
-app.all('/bypass-api/*', (req, res, next) => {
-  const originalPath = req.path.replace('/bypass-api', '/api');
-  req.url = originalPath + (req.url.includes('?') ? '&' + req.url.split('?')[1] : '');
-  Object.defineProperty(req, 'path', { value: originalPath, writable: true });
-  next();
-});
-
 // Important: Setup Vite AFTER all API routes are defined
 // This ensures API routes are processed before Vite's catch-all middleware
 if (app.get("env") === "development") {
