@@ -35,7 +35,8 @@ import { useToast } from "@/hooks/use-toast";
 import LeadForm from "@/components/leads/LeadForm";
 import { LeadDetail } from "@/components/leads/LeadDetail";
 import { useGemini } from "@/hooks/useGemini";
-import { Eye, BrainCircuit, Plus, MoreVertical } from "lucide-react";
+import { Eye, BrainCircuit, Plus, MoreVertical, Kanban } from "lucide-react";
+import SalesPipelineKanban from "@/components/leads/SalesPipelineKanban";
 
 export default function Leads() {
   const [searchTerm, setSearchTerm] = useState("");

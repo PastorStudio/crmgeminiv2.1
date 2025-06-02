@@ -308,8 +308,8 @@ export default function Dashboard() {
         {/* Dashboard Stats */}
         <DashboardStats />
         
-        {/* Sales Pipeline */}
-        <SalesPipeline />
+        {/* Administrative Metrics */}
+        <AdminMetrics />
         
         {/* Upcoming Activities and Recent Conversations */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
