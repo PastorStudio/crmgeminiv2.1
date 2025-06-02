@@ -297,8 +297,8 @@ app.post('/api/test-ai', async (req: Request, res: Response) => {
     console.error('❌ Error en test AI:', error);
     res.status(500).json({
       success: false,
-      error: error.message,
-      stack: error.stack
+      error: error instanceof Error ? error.message : 'Error desconocido',
+      stack: error instanceof Error ? error.stack : undefined
     });
   }
 });
