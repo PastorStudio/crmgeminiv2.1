@@ -232,6 +232,18 @@ export const enhancedMessagesTable = pgTable("enhanced_messages_table", {
   sentAt: timestamp("sentAt").defaultNow(),
 });
 
+// Agent page visits tracking
+export const agentPageVisits = pgTable("agent_page_visits", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").notNull(),
+  page: text("page").notNull(),
+  action: text("action").notNull().default("page_view"),
+  details: text("details"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
 // Dashboard Stats
 export const dashboardStats = pgTable("dashboard_stats", {
   id: serial("id").primaryKey(),
