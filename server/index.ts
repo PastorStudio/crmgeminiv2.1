@@ -221,6 +221,76 @@ app.post('/api/ai-settings', async (req: Request, res: Response) => {
   }
 });
 
+// ===== RESPUESTAS INTELIGENTES CON AI =====
+// Procesar mensaje y generar respuesta inteligente
+app.post('/api/intelligent-response/process', async (req: Request, res: Response) => {
+  try {
+    console.log('🤖 Procesando mensaje para respuesta inteligente');
+    const { chatId, accountId, userMessage, customerName, customerLocation } = req.body;
+    
+    if (!chatId || !accountId || !userMessage) {
+      return res.status(400).json({
+        success: false,
+        error: 'Faltan parámetros requeridos: chatId, accountId, userMessage'
+      });
+    }
+
+    // Importar el servicio de respuestas inteligentes
+    const { intelligentResponseService } = await import('./services/intelligentResponseService');
+    
+    // Generar respuesta
+    const response = await intelligentResponseService.generateResponse({
+      chatId,
+      accountId: parseInt(accountId),
+      userMessage,
+      customerName,
+      customerLocation
+    });
+
+    res.json({
+      success: true,
+      response
+    });
+    
+  } catch (error) {
+    console.error('❌ Error procesando respuesta inteligente:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+      details: error instanceof Error ? error.message : 'Error desconocido'
+    });
+  }
+});
+
+// Analizar sentimiento de mensaje
+app.post('/api/intelligent-response/analyze', async (req: Request, res: Response) => {
+  try {
+    const { message } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({
+        success: false,
+        error: 'Parámetro message requerido'
+      });
+    }
+
+    const { intelligentResponseService } = await import('./services/intelligentResponseService');
+    const analysis = await intelligentResponseService.analyzeMessage(message);
+
+    res.json({
+      success: true,
+      analysis
+    });
+    
+  } catch (error) {
+    console.error('❌ Error analizando mensaje:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor'
+    });
+  }
+});
+
 // === ENDPOINTS BYPASS COMPLETO PARA DEEPSEEK ===
 app.post("/bypass/deepseek-activate", (req: Request, res: Response) => {
   console.log('🚀 [BYPASS] Activando DeepSeek para cuenta:', req.body.accountId);
