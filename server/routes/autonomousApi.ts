@@ -32,7 +32,7 @@ router.post('/process-all', async (req: Request, res: Response) => {
 // Obtener estadísticas del sistema autónomo
 router.get('/stats', async (req: Request, res: Response) => {
   try {
-    const stats = realTimeAutonomousProcessor.getStats();
+    const stats = simpleAutonomousProcessor.getStats();
     
     res.json({
       success: true,
