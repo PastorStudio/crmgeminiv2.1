@@ -26,21 +26,21 @@ export const whatsappAccounts = pgTable("whatsapp_accounts", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  ownerName: text("ownerName"),
-  ownerPhone: text("ownerPhone"),
-  sessionData: jsonb("sessionData"),
+  ownerName: text("ownername"),
+  ownerPhone: text("ownerphone"),
+  sessionData: jsonb("sessiondata"),
   status: text("status").default("inactive"),
-  adminId: integer("adminId"),
-  assignedExternalAgentId: text("assignedExternalAgentId"),
-  autoResponseEnabled: boolean("autoResponseEnabled").default(false),
-  responseDelay: integer("responseDelay").default(3),
-  customPrompt: text("customPrompt"), // Custom AI prompt for this account
-  keepAliveEnabled: boolean("keepAliveEnabled").default(true), // Persistent connection
-  lastActivity: timestamp("lastActivity"),
-  connectionAttempts: integer("connectionAttempts").default(0),
-  maxReconnectAttempts: integer("maxReconnectAttempts").default(5),
-  createdAt: timestamp("createdAt").defaultNow(),
-  lastActiveAt: timestamp("lastActiveAt"),
+  adminId: integer("adminid"),
+  assignedExternalAgentId: text("assignedexternalagentid"),
+  autoResponseEnabled: boolean("autoresponseenabled").default(false),
+  responseDelay: integer("responsedelay").default(3),
+  customPrompt: text("customprompt"), // Custom AI prompt for this account
+  keepAliveEnabled: boolean("keepaliveenabled").default(true), // Persistent connection
+  lastActivity: timestamp("lastactivity"),
+  connectionAttempts: integer("connectionattempts").default(0),
+  maxReconnectAttempts: integer("maxreconnectattempts").default(5),
+  createdAt: timestamp("createdat").defaultNow(),
+  lastActiveAt: timestamp("lastactiveat"),
 });
 
 // Contactos - información centralizada de contactos
