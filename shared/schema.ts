@@ -198,6 +198,20 @@ export const notifications = pgTable('notifications', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// AI Configuration Settings
+export const aiSettings = pgTable('ai_settings', {
+  id: serial('id').primaryKey(),
+  selectedProvider: text('selected_provider').default('gemini').notNull(),
+  geminiApiKey: text('gemini_api_key'),
+  openaiApiKey: text('openai_api_key'),
+  qwenApiKey: text('qwen_api_key'),
+  customPrompt: text('custom_prompt').default('Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.'),
+  temperature: real('temperature').default(0.7),
+  enableAIResponses: boolean('enable_ai_responses').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
 // External Agents
 export const externalAgents = pgTable('external_agents', {
   id: text('id').primaryKey(),
@@ -363,6 +377,7 @@ export const messagesRelations = relations(messages, ({ one }) => ({
 }));
 
 // Esquemas de inserción
+export const insertAiSettingsSchema = createInsertSchema(aiSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
 export const insertChatCommentSchema = createInsertSchema(chatComments).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertModernTicketSchema = createInsertSchema(modernTickets).omit({ id: true, createdAt: true, updatedAt: true });
@@ -374,6 +389,8 @@ export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, creat
 export const insertWhatsAppAccountSchema = createInsertSchema(whatsappAccounts).omit({ id: true, createdAt: true, lastActiveAt: true });
 
 // Tipos de TypeScript
+export type AiSettings = typeof aiSettings.$inferSelect;
+export type InsertAiSettings = typeof insertAiSettingsSchema._type;
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof insertUserSchema._type;
 export type ChatAssignment = typeof chatAssignments.$inferSelect;

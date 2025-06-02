@@ -5188,4 +5188,70 @@ Responde de manera conversacional, profesional y útil según tu especializació
     }
   });
 
+  // ===== RUTAS DE CONFIGURACIONES AI =====
+  
+  // Obtener configuraciones de AI
+  app.get('/api/ai-settings', async (req: Request, res: Response) => {
+    try {
+      const { aiSettings } = await import('@shared/schema');
+      const [settings] = await db.select().from(aiSettings).limit(1);
+      
+      if (!settings) {
+        // Crear configuración por defecto si no existe
+        const [newSettings] = await db.insert(aiSettings).values({
+          selectedProvider: 'gemini',
+          customPrompt: 'Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.',
+          temperature: 0.7,
+          enableAIResponses: false
+        }).returning();
+        
+        return res.json(newSettings);
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      console.error('Error obteniendo configuraciones AI:', error);
+      res.status(500).json({ error: 'Error al obtener configuraciones' });
+    }
+  });
+
+  // Guardar configuraciones de AI
+  app.post('/api/ai-settings', async (req: Request, res: Response) => {
+    try {
+      const { aiSettings } = await import('@shared/schema');
+      const { insertAiSettingsSchema } = await import('@shared/schema');
+      
+      // Validar datos de entrada
+      const validatedData = insertAiSettingsSchema.parse(req.body);
+      
+      // Verificar si ya existe una configuración
+      const [existingSettings] = await db.select().from(aiSettings).limit(1);
+      
+      if (existingSettings) {
+        // Actualizar configuración existente
+        const [updatedSettings] = await db
+          .update(aiSettings)
+          .set({
+            ...validatedData,
+            updatedAt: new Date()
+          })
+          .where(eq(aiSettings.id, existingSettings.id))
+          .returning();
+        
+        res.json(updatedSettings);
+      } else {
+        // Crear nueva configuración
+        const [newSettings] = await db
+          .insert(aiSettings)
+          .values(validatedData)
+          .returning();
+        
+        res.json(newSettings);
+      }
+    } catch (error) {
+      console.error('Error guardando configuraciones AI:', error);
+      res.status(500).json({ error: 'Error al guardar configuraciones' });
+    }
+  });
+
 })();
