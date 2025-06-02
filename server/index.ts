@@ -30,7 +30,7 @@ import { MessageInterceptorService } from './services/messageInterceptorService'
 import { AutoWebScrapingHandler } from './services/autoWebScrapingHandler';
 import OpenAI from 'openai';
 import { autonomousProcessor } from './services/autonomousProcessor';
-import { realTimeAutonomousProcessor } from './services/realTimeAutonomousProcessor';
+import { simpleAutonomousProcessor } from './services/simpleAutonomousProcessor';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -2807,6 +2807,10 @@ app.use((req, res, next) => {
   
   // Registrar rutas del sistema de mensajería moderno que usa datos reales de WhatsApp
   app.use("/api/modern-messaging", modernMessagingRouter);
+
+  // Registrar rutas del sistema autónomo de procesamiento
+  const autonomousRouter = await import('./routes/autonomousApi');
+  app.use("/api/autonomous", autonomousRouter.default);
 
   // ✅ NUEVO ENDPOINT PARA ASIGNACIONES SIN CONFLICTOS
   app.get('/api/assignments/by-chat', async (req, res) => {

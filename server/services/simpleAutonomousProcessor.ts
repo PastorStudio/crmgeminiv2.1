@@ -1,0 +1,344 @@
+/**
+ * Sistema Autónomo Simplificado - Compatible con esquema existente
+ * Convierte automáticamente chats de WhatsApp en leads y tickets
+ */
+
+import { db } from '../db';
+import { leads, activities, enhancedMessagesTable as messages, contacts } from '../../shared/schema';
+import { eq, desc, and, sql } from 'drizzle-orm';
+
+interface ChatAnalysis {
+  sentiment: 'positive' | 'negative' | 'neutral';
+  intent: 'sales' | 'support' | 'inquiry' | 'complaint';
+  urgency: 'low' | 'medium' | 'high';
+  leadPotential: number;
+  shouldCreateLead: boolean;
+  shouldCreateTicket: boolean;
+  extractedInfo: {
+    name?: string;
+    company?: string;
+    products?: string[];
+    budget?: string;
+    phone?: string;
+  };
+}
+
+export class SimpleAutonomousProcessor {
+  private isProcessing: boolean = false;
+  private processedChats: Set<string> = new Set();
+
+  constructor() {
+    console.log('🚀 Sistema Autónomo Simplificado iniciado');
+    // Start monitoring immediately
+    setTimeout(() => this.checkAndProcess(), 5000);
+    // Then check every 30 seconds
+    setInterval(() => this.checkAndProcess(), 30000);
+  }
+
+  public async forceProcessAllChats(): Promise<{ leadsCreated: number; messagesProcessed: number }> {
+    console.log('🔄 Forzando procesamiento de todos los chats disponibles...');
+    
+    try {
+      // Clear processed cache to reprocess everything
+      this.processedChats.clear();
+      
+      const result = await this.checkAndProcess();
+      
+      console.log(`✅ Procesamiento completado: ${result.leadsCreated} leads, ${result.messagesProcessed} mensajes procesados`);
+      
+      return result;
+    } catch (error) {
+      console.error('❌ Error en procesamiento forzado:', error);
+      return { leadsCreated: 0, messagesProcessed: 0 };
+    }
+  }
+
+  private async checkAndProcess(): Promise<{ leadsCreated: number; messagesProcessed: number }> {
+    if (this.isProcessing) {
+      return { leadsCreated: 0, messagesProcessed: 0 };
+    }
+
+    try {
+      this.isProcessing = true;
+      
+      // Get WhatsApp status
+      const whatsappStatus = await this.getWhatsAppStatus();
+      
+      if (!whatsappStatus.authenticated) {
+        console.log('📵 WhatsApp no autenticado, esperando conexión...');
+        return { leadsCreated: 0, messagesProcessed: 0 };
+      }
+
+      // Get all available chats
+      const chats = await this.getAllChats();
+      
+      if (chats.length === 0) {
+        console.log('📭 No hay chats disponibles para procesar');
+        return { leadsCreated: 0, messagesProcessed: 0 };
+      }
+
+      console.log(`📱 Procesando ${chats.length} chats de WhatsApp...`);
+
+      let leadsCreated = 0;
+      let messagesProcessed = 0;
+
+      for (const chat of chats) {
+        try {
+          const result = await this.processSingleChat(chat);
+          if (result.leadCreated) leadsCreated++;
+          messagesProcessed += result.messagesProcessed;
+        } catch (chatError) {
+          console.error(`❌ Error procesando chat ${chat.id}:`, chatError);
+        }
+      }
+
+      if (leadsCreated > 0) {
+        console.log(`✅ Procesamiento completado: ${leadsCreated} nuevos leads creados`);
+      }
+
+      return { leadsCreated, messagesProcessed };
+
+    } catch (error) {
+      console.error('❌ Error en procesamiento automático:', error);
+      return { leadsCreated: 0, messagesProcessed: 0 };
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
+  private async getWhatsAppStatus(): Promise<{ authenticated: boolean; status: string }> {
+    try {
+      const response = await fetch('http://localhost:5000/api/direct/whatsapp/status');
+      const data = await response.json();
+      return {
+        authenticated: data.authenticated || false,
+        status: data.status || 'disconnected'
+      };
+    } catch (error) {
+      return { authenticated: false, status: 'error' };
+    }
+  }
+
+  private async getAllChats(): Promise<any[]> {
+    try {
+      const response = await fetch('http://localhost:5000/api/direct/whatsapp/chats');
+      const chats = await response.json();
+      return Array.isArray(chats) ? chats : [];
+    } catch (error) {
+      console.error('Error obteniendo chats:', error);
+      return [];
+    }
+  }
+
+  private async processSingleChat(chat: any): Promise<{ leadCreated: boolean; messagesProcessed: number }> {
+    const chatId = chat.id?._serialized || chat.id || `chat_${Date.now()}`;
+    
+    // Skip if already processed
+    if (this.processedChats.has(chatId)) {
+      return { leadCreated: false, messagesProcessed: 0 };
+    }
+
+    try {
+      // Extract contact information
+      const contactInfo = this.extractContactInfo(chat);
+      
+      // Get or create contact in database
+      const contact = await this.getOrCreateContact(contactInfo);
+      
+      // Analyze chat content
+      const analysis = this.performBasicAnalysis(chat, contactInfo);
+      
+      // Create lead if potential detected
+      let leadCreated = false;
+      if (analysis.shouldCreateLead) {
+        const lead = await this.createLead(contact, analysis, chatId);
+        if (lead) {
+          leadCreated = true;
+          console.log(`💼 Lead creado para: ${contactInfo.name} (${contactInfo.phone})`);
+        }
+      }
+
+      // Store conversation messages
+      const messagesStored = await this.storeMessages(contact, chatId, analysis);
+      
+      // Mark as processed
+      this.processedChats.add(chatId);
+      
+      return { leadCreated, messagesProcessed: messagesStored };
+
+    } catch (error) {
+      console.error(`Error procesando chat ${chatId}:`, error);
+      return { leadCreated: false, messagesProcessed: 0 };
+    }
+  }
+
+  private extractContactInfo(chat: any) {
+    const contact = chat.contact || {};
+    const phoneNumber = chat.id?._serialized?.split('@')[0] || 
+                       chat.id?.user || 
+                       chat.number || 
+                       `unknown_${Date.now()}`;
+    
+    return {
+      name: contact.pushname || 
+            contact.name || 
+            contact.shortName || 
+            contact.formattedName || 
+            `Contacto ${phoneNumber}`,
+      phone: phoneNumber,
+      whatsappId: chat.id?._serialized || chat.id,
+      isGroup: chat.isGroup || false,
+      lastSeen: chat.timestamp ? new Date(chat.timestamp * 1000) : new Date()
+    };
+  }
+
+  private async getOrCreateContact(contactInfo: any) {
+    try {
+      // Try to find existing contact by phone
+      const [existingContact] = await db
+        .select()
+        .from(contacts)
+        .where(eq(contacts.phone, contactInfo.phone))
+        .limit(1);
+
+      if (existingContact) {
+        // Update existing contact
+        await db
+          .update(contacts)
+          .set({
+            name: contactInfo.name,
+            updatedAt: new Date()
+          })
+          .where(eq(contacts.id, existingContact.id));
+        
+        return existingContact;
+      }
+
+      // Create new contact
+      const [newContact] = await db
+        .insert(contacts)
+        .values({
+          name: contactInfo.name,
+          phone: contactInfo.phone
+        })
+        .returning();
+
+      return newContact;
+    } catch (error) {
+      console.error('Error manejando contacto:', error);
+      throw error;
+    }
+  }
+
+  private performBasicAnalysis(chat: any, contactInfo: any): ChatAnalysis {
+    // Get last message content for analysis
+    const lastMessage = chat.lastMessage?.body || '';
+    const messageText = lastMessage.toLowerCase();
+    
+    // Simple keyword analysis
+    const salesKeywords = ['precio', 'costo', 'comprar', 'producto', 'servicio', 'cotización', 'presupuesto', 'vender', 'oferta'];
+    const supportKeywords = ['problema', 'ayuda', 'error', 'falla', 'soporte', 'reclamo', 'queja'];
+    const urgentKeywords = ['urgente', 'inmediato', 'ya', 'rápido', 'ahora', 'emergency'];
+    
+    const salesScore = salesKeywords.filter(keyword => messageText.includes(keyword)).length;
+    const supportScore = supportKeywords.filter(keyword => messageText.includes(keyword)).length;
+    const urgencyScore = urgentKeywords.filter(keyword => messageText.includes(keyword)).length;
+    
+    // Determine intent and create lead if there's any interaction
+    const hasInteraction = lastMessage.trim().length > 0 || chat.unreadCount > 0;
+    
+    return {
+      sentiment: salesScore > supportScore ? 'positive' : supportScore > 0 ? 'negative' : 'neutral',
+      intent: salesScore > 0 ? 'sales' : supportScore > 0 ? 'support' : 'inquiry',
+      urgency: urgencyScore > 0 ? 'high' : salesScore > 0 ? 'medium' : 'low',
+      leadPotential: Math.min((salesScore * 25) + (hasInteraction ? 25 : 0), 100),
+      shouldCreateLead: hasInteraction, // Create lead for any interaction
+      shouldCreateTicket: supportScore > 0,
+      extractedInfo: {
+        name: contactInfo.name,
+        phone: contactInfo.phone,
+        products: this.extractProducts(messageText),
+        budget: this.extractBudget(messageText)
+      }
+    };
+  }
+
+  private extractProducts(text: string): string[] {
+    const productKeywords = ['producto', 'servicio', 'plan', 'paquete', 'software', 'app', 'aplicación'];
+    return productKeywords.filter(keyword => text.includes(keyword));
+  }
+
+  private extractBudget(text: string): string | undefined {
+    const budgetMatch = text.match(/(\$|€|£|₹|\d+)\s*(\d+(?:,\d{3})*(?:\.\d{2})?)/);
+    return budgetMatch ? budgetMatch[0] : undefined;
+  }
+
+  private async createLead(contact: any, analysis: ChatAnalysis, chatId: string) {
+    try {
+      const [newLead] = await db
+        .insert(leads)
+        .values({
+          name: `WhatsApp Lead: ${contact.name}`,
+          company: analysis.extractedInfo.company || 'WhatsApp Contact',
+          email: `${contact.phone}@whatsapp.lead`,
+          phone: contact.phone,
+          status: 'new',
+          priority: analysis.urgency,
+          source: 'whatsapp',
+          assignedTo: null,
+          notes: `Lead automático generado desde WhatsApp.\nIntent: ${analysis.intent}\nSentiment: ${analysis.sentiment}\nChat ID: ${chatId}`
+        })
+        .returning();
+
+      // Create initial activity
+      await db
+        .insert(activities)
+        .values({
+          leadId: newLead.id,
+          userId: 1, // System user
+          type: 'note',
+          title: 'Lead automático creado',
+          description: `Lead generado automáticamente desde WhatsApp para ${contact.name}`,
+          status: 'completed',
+          priority: analysis.urgency
+        });
+
+      return newLead;
+    } catch (error) {
+      console.error('Error creando lead:', error);
+      return null;
+    }
+  }
+
+  private async storeMessages(contact: any, chatId: string, analysis: ChatAnalysis): Promise<number> {
+    try {
+      // Store a summary message representing the conversation
+      await db
+        .insert(messages)
+        .values({
+          leadId: null, // Not linked to specific lead yet
+          userId: 1, // System user
+          type: 'whatsapp',
+          subject: `WhatsApp: ${contact.name}`,
+          content: `Conversación automática procesada desde WhatsApp.\nContacto: ${contact.name}\nTeléfono: ${contact.phone}\nIntent: ${analysis.intent}\nSentiment: ${analysis.sentiment}`,
+          status: 'sent',
+          priority: analysis.urgency
+        });
+
+      return 1;
+    } catch (error) {
+      console.error('Error almacenando mensajes:', error);
+      return 0;
+    }
+  }
+
+  public getStats() {
+    return {
+      isProcessing: this.isProcessing,
+      processedChats: this.processedChats.size,
+      lastProcessed: new Date().toISOString()
+    };
+  }
+}
+
+export const simpleAutonomousProcessor = new SimpleAutonomousProcessor();

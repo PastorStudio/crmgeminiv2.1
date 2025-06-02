@@ -3,7 +3,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { realTimeAutonomousProcessor } from '../services/realTimeAutonomousProcessor';
+import { simpleAutonomousProcessor } from '../services/simpleAutonomousProcessor';
 
 const router = Router();
 
@@ -12,11 +12,12 @@ router.post('/process-all', async (req: Request, res: Response) => {
   try {
     console.log('🚀 Iniciando procesamiento forzado de todos los chats...');
     
-    await realTimeAutonomousProcessor.forceProcessAllChats();
+    const result = await simpleAutonomousProcessor.forceProcessAllChats();
     
     res.json({
       success: true,
-      message: 'Procesamiento automático iniciado',
+      message: 'Procesamiento automático completado',
+      result,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
