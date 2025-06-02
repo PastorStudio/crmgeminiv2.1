@@ -224,6 +224,14 @@ const WhatsAppAccounts = () => {
         const data = await response.json();
         console.log('QR Data received:', data);
         setQrData(data.success ? data : null);
+      } else if (response.status === 501) {
+        // Real WhatsApp integration required
+        const errorData = await response.json();
+        setQrData({ 
+          success: false, 
+          error: errorData.error,
+          message: errorData.message 
+        });
       } else {
         console.error('Error response:', response.status);
         setQrData(null);

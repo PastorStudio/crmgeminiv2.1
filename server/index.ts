@@ -372,22 +372,20 @@ app.get('/api/whatsapp-accounts/:id/qrcode', async (req: Request, res: Response)
   try {
     const { id } = req.params;
     
-    // Generate a mock QR code for demo purposes
-    // In a real system, this would generate an actual WhatsApp QR code
-    const qrCode = `data:image/svg+xml;base64,${Buffer.from(`
-      <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
-        <rect width="200" height="200" fill="white"/>
-        <rect x="20" y="20" width="160" height="160" fill="black"/>
-        <rect x="40" y="40" width="120" height="120" fill="white"/>
-        <text x="100" y="105" text-anchor="middle" font-size="14" fill="black">QR Code for</text>
-        <text x="100" y="125" text-anchor="middle" font-size="12" fill="black">Account ${id}</text>
-      </svg>
-    `).toString('base64')}`;
+    // Check if account exists
+    const account = await storage.getWhatsAppAccount(parseInt(id));
+    if (!account) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
     
-    res.json({
-      success: true,
-      qrCode,
-      message: 'QR code generated for WhatsApp connection'
+    // For real WhatsApp integration, we need to initialize WhatsApp Web client
+    // This requires whatsapp-web.js which needs a real WhatsApp session
+    // Currently returning error to indicate real WhatsApp integration is needed
+    res.status(501).json({
+      success: false,
+      error: 'Real WhatsApp integration required',
+      message: 'To generate actual WhatsApp QR codes, the system needs to connect to WhatsApp Web API. This requires proper WhatsApp Business API credentials or whatsapp-web.js setup.',
+      accountId: id
     });
   } catch (error) {
     console.error('QR code generation error:', error);
