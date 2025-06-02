@@ -294,7 +294,7 @@ export default function Settings() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="api">AI Integration</TabsTrigger>
+          <TabsTrigger value="ai">AI Integration</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
         
@@ -424,10 +424,10 @@ export default function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <Form {...apiSettingsForm}>
-                <form onSubmit={apiSettingsForm.handleSubmit(onApiSettingsSubmit)} className="space-y-6">
+              <Form {...aiForm}>
+                <form onSubmit={aiForm.handleSubmit(onAiIntegrationSubmit)} className="space-y-6">
                   <FormField
-                    control={apiSettingsForm.control}
+                    control={aiForm.control}
                     name="enableGeminiAI"
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
@@ -520,7 +520,7 @@ export default function Settings() {
                   </div>
                   
                   <FormField
-                    control={apiSettingsForm.control}
+                    control={aiForm.control}
                     name="geminiApiKey"
                     render={({ field }) => (
                       <FormItem>
@@ -546,8 +546,8 @@ export default function Settings() {
                     <h3 className="text-lg font-medium">AI Provider Selection</h3>
                     
                     <FormField
-                      control={apiSettingsForm.control}
-                      name="aiProvider"
+                      control={aiForm.control}
+                      name="selectedProvider"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Primary AI Provider</FormLabel>
