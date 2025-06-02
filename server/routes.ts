@@ -41,6 +41,7 @@ import ticketsRouter from "./routes/tickets";
 import { translateText, detectLanguage } from "./routes/translation";
 // Referencias de problemas corregidos removidas para optimización
 import autonomousApiRouter from "./routes/autonomousApi";
+import { getLeads, createLead, updateLeadStatus, updateLead, deleteLead, getLeadStats } from "./routes/leads";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -814,6 +815,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid lead data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create lead" });
+    }
+  });
+
+  // Update lead status (for Kanban drag-and-drop)
+  app.patch("/api/leads/:id/status", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      if (!leadId || isNaN(leadId)) {
+        return res.status(400).json({ error: "ID de lead inválido" });
+      }
+
+      // Validate status
+      const validStatuses = ["new", "assigned", "contacted", "negotiation", "completed", "not-interested"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Estado inválido" });
+      }
+
+      const updatedLead = await storage.updateLead(leadId, { status });
+      
+      if (!updatedLead) {
+        return res.status(404).json({ error: "Lead no encontrado" });
+      }
+
+      res.json(updatedLead);
+    } catch (error) {
+      console.error("Error updating lead status:", error);
+      res.status(500).json({ error: "Error al actualizar estado del lead" });
     }
   });
 

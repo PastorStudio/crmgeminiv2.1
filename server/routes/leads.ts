@@ -1,0 +1,212 @@
+import { Request, Response } from "express";
+import { db } from "../db";
+import { leads, contacts } from "@shared/schema";
+import { eq, desc, sql } from "drizzle-orm";
+import { z } from "zod";
+
+// Schema for updating lead status
+const updateLeadStatusSchema = z.object({
+  status: z.enum(["new", "assigned", "contacted", "negotiation", "completed", "not-interested"])
+});
+
+// Schema for creating/updating leads
+const leadSchema = z.object({
+  title: z.string().min(1),
+  contactId: z.number(),
+  whatsappAccountId: z.number(),
+  status: z.enum(["new", "assigned", "contacted", "negotiation", "completed", "not-interested"]).default("new"),
+  priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
+  value: z.string().optional(),
+  probability: z.number().min(0).max(100).default(0),
+  notes: z.string().optional(),
+  assignedTo: z.number().optional(),
+});
+
+/**
+ * Get all leads with contact information
+ */
+export async function getLeads(req: Request, res: Response) {
+  try {
+    const leadsData = await db
+      .select({
+        id: leads.id,
+        title: leads.title,
+        status: leads.status,
+        stage: leads.stage,
+        value: leads.value,
+        currency: leads.currency,
+        probability: leads.probability,
+        priority: leads.priority,
+        source: leads.source,
+        assignedTo: leads.assignedTo,
+        expectedCloseDate: leads.expectedCloseDate,
+        actualCloseDate: leads.actualCloseDate,
+        lastContactDate: leads.lastContactDate,
+        nextFollowUpDate: leads.nextFollowUpDate,
+        notes: leads.notes,
+        tags: leads.tags,
+        createdAt: leads.createdAt,
+        updatedAt: leads.updatedAt,
+        contactId: leads.contactId,
+        whatsappAccountId: leads.whatsappAccountId,
+        // Contact information
+        contactName: contacts.name,
+        contactPhone: contacts.phone,
+        contactEmail: contacts.email,
+        contactCompany: contacts.company,
+      })
+      .from(leads)
+      .leftJoin(contacts, eq(leads.contactId, contacts.id))
+      .orderBy(desc(leads.createdAt));
+
+    res.json(leadsData);
+  } catch (error) {
+    console.error("Error getting leads:", error);
+    res.status(500).json({ error: "Error al obtener leads" });
+  }
+}
+
+/**
+ * Create a new lead
+ */
+export async function createLead(req: Request, res: Response) {
+  try {
+    const validatedData = leadSchema.parse(req.body);
+    
+    const [newLead] = await db
+      .insert(leads)
+      .values(validatedData)
+      .returning();
+
+    res.status(201).json(newLead);
+  } catch (error) {
+    console.error("Error creating lead:", error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Datos inválidos", details: error.errors });
+    }
+    res.status(500).json({ error: "Error al crear lead" });
+  }
+}
+
+/**
+ * Update lead status (for drag-and-drop)
+ */
+export async function updateLeadStatus(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const leadId = parseInt(id);
+    
+    if (isNaN(leadId)) {
+      return res.status(400).json({ error: "ID de lead inválido" });
+    }
+
+    const validatedData = updateLeadStatusSchema.parse(req.body);
+    
+    const [updatedLead] = await db
+      .update(leads)
+      .set({ 
+        status: validatedData.status,
+        updatedAt: new Date()
+      })
+      .where(eq(leads.id, leadId))
+      .returning();
+
+    if (!updatedLead) {
+      return res.status(404).json({ error: "Lead no encontrado" });
+    }
+
+    res.json(updatedLead);
+  } catch (error) {
+    console.error("Error updating lead status:", error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Datos inválidos", details: error.errors });
+    }
+    res.status(500).json({ error: "Error al actualizar estado del lead" });
+  }
+}
+
+/**
+ * Update a lead
+ */
+export async function updateLead(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const leadId = parseInt(id);
+    
+    if (isNaN(leadId)) {
+      return res.status(400).json({ error: "ID de lead inválido" });
+    }
+
+    const validatedData = leadSchema.partial().parse(req.body);
+    
+    const [updatedLead] = await db
+      .update(leads)
+      .set({ 
+        ...validatedData,
+        updatedAt: new Date()
+      })
+      .where(eq(leads.id, leadId))
+      .returning();
+
+    if (!updatedLead) {
+      return res.status(404).json({ error: "Lead no encontrado" });
+    }
+
+    res.json(updatedLead);
+  } catch (error) {
+    console.error("Error updating lead:", error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Datos inválidos", details: error.errors });
+    }
+    res.status(500).json({ error: "Error al actualizar lead" });
+  }
+}
+
+/**
+ * Delete a lead
+ */
+export async function deleteLead(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const leadId = parseInt(id);
+    
+    if (isNaN(leadId)) {
+      return res.status(400).json({ error: "ID de lead inválido" });
+    }
+
+    const [deletedLead] = await db
+      .delete(leads)
+      .where(eq(leads.id, leadId))
+      .returning();
+
+    if (!deletedLead) {
+      return res.status(404).json({ error: "Lead no encontrado" });
+    }
+
+    res.json({ message: "Lead eliminado correctamente" });
+  } catch (error) {
+    console.error("Error deleting lead:", error);
+    res.status(500).json({ error: "Error al eliminar lead" });
+  }
+}
+
+/**
+ * Get lead statistics for dashboard
+ */
+export async function getLeadStats(req: Request, res: Response) {
+  try {
+    const stats = await db
+      .select({
+        status: leads.status,
+        count: sql<number>`count(*)::int`,
+        totalValue: sql<number>`sum(cast(${leads.value} as decimal))::decimal`
+      })
+      .from(leads)
+      .groupBy(leads.status);
+
+    res.json(stats);
+  } catch (error) {
+    console.error("Error getting lead stats:", error);
+    res.status(500).json({ error: "Error al obtener estadísticas de leads" });
+  }
+}
