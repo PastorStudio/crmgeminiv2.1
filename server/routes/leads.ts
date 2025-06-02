@@ -9,17 +9,19 @@ const updateLeadStatusSchema = z.object({
   status: z.enum(["new", "assigned", "contacted", "negotiation", "completed", "not-interested"])
 });
 
-// Schema for creating/updating leads
+// Schema for creating/updating leads (matching actual database structure)
 const leadSchema = z.object({
-  title: z.string().min(1),
-  contactId: z.number(),
-  whatsappAccountId: z.number(),
+  name: z.string().min(1),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  source: z.string().optional(),
   status: z.enum(["new", "assigned", "contacted", "negotiation", "completed", "not-interested"]).default("new"),
   priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
-  value: z.string().optional(),
-  probability: z.number().min(0).max(100).default(0),
+  company: z.string().optional(),
+  budget: z.number().optional(),
   notes: z.string().optional(),
-  assignedTo: z.number().optional(),
+  assigneeId: z.number().optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 /**
@@ -99,8 +101,7 @@ export async function updateLeadStatus(req: Request, res: Response) {
     const [updatedLead] = await db
       .update(leads)
       .set({ 
-        status: validatedData.status,
-        updatedAt: new Date()
+        status: validatedData.status
       })
       .where(eq(leads.id, leadId))
       .returning();
@@ -135,10 +136,7 @@ export async function updateLead(req: Request, res: Response) {
     
     const [updatedLead] = await db
       .update(leads)
-      .set({ 
-        ...validatedData,
-        updatedAt: new Date()
-      })
+      .set(validatedData)
       .where(eq(leads.id, leadId))
       .returning();
 
