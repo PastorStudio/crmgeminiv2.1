@@ -8,20 +8,6 @@ import { eq } from "drizzle-orm";
 const app = express();
 const server = createServer(app);
 
-// Enable CORS for cross-origin requests from frontend
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -88,8 +74,8 @@ app.get('/api/users/:id', async (req: Request, res: Response) => {
   }
 });
 
-// WhatsApp accounts endpoints
-app.get('/server-api/whatsapp/accounts', async (req: Request, res: Response) => {
+// WhatsApp accounts endpoint
+app.get('/api/whatsapp/accounts', async (req: Request, res: Response) => {
   try {
     const accounts = await db.select().from(whatsappAccounts);
     res.json(accounts);
@@ -99,62 +85,26 @@ app.get('/server-api/whatsapp/accounts', async (req: Request, res: Response) => 
   }
 });
 
-app.post('/api/whatsapp/accounts', async (req: Request, res: Response) => {
+// AI Settings endpoints
+app.get('/api/settings/gemini-key-status', async (req: Request, res: Response) => {
   try {
-    const { name, description, ownerName, ownerPhone } = req.body;
-    
-    if (!name) {
-      return res.status(400).json({ error: 'Name is required' });
-    }
-
-    const newAccount = await db.insert(whatsappAccounts).values({
-      name,
-      description: description || null,
-      ownerName: ownerName || null,
-      ownerPhone: ownerPhone || null,
-      status: 'inactive',
-      autoResponseEnabled: false,
-      sessionData: null,
-      adminId: 1, // Default admin user
-      assignedExternalAgentId: null,
-      autoResponseDelay: 5000,
-      lastActiveAt: new Date()
-    }).returning();
-
-    res.json(newAccount[0]);
+    const hasKey = !!process.env.GEMINI_API_KEY;
+    res.json({ hasKey, provider: 'gemini' });
   } catch (error) {
-    console.error('Create WhatsApp account error:', error);
-    res.status(500).json({ error: 'Failed to create WhatsApp account' });
+    console.error('Gemini key status error:', error);
+    res.status(500).json({ error: 'Failed to check Gemini key status' });
   }
 });
 
-app.delete('/api/whatsapp/accounts/:id', async (req: Request, res: Response) => {
+app.get('/api/settings/openai-key-status', async (req: Request, res: Response) => {
   try {
-    const accountId = parseInt(req.params.id);
-    
-    if (isNaN(accountId)) {
-      return res.status(400).json({ error: 'Invalid account ID' });
-    }
-
-    await db.delete(whatsappAccounts).where(eq(whatsappAccounts.id, accountId));
-    res.json({ success: true, message: 'Account deleted successfully' });
+    const hasKey = !!process.env.OPENAI_API_KEY;
+    res.json({ hasKey, provider: 'openai' });
   } catch (error) {
-    console.error('Delete WhatsApp account error:', error);
-    res.status(500).json({ error: 'Failed to delete WhatsApp account' });
+    console.error('OpenAI key status error:', error);
+    res.status(500).json({ error: 'Failed to check OpenAI key status' });
   }
 });
-
-app.delete('/api/whatsapp/accounts', async (req: Request, res: Response) => {
-  try {
-    await db.delete(whatsappAccounts);
-    res.json({ success: true, message: 'All accounts deleted successfully' });
-  } catch (error) {
-    console.error('Delete all WhatsApp accounts error:', error);
-    res.status(500).json({ error: 'Failed to delete all WhatsApp accounts' });
-  }
-});
-
-// AI Settings endpoints (duplicates removed)
 
 // Missing endpoints that the frontend is trying to access
 app.get('/api/dashboard-stats', async (req: Request, res: Response) => {
@@ -180,47 +130,6 @@ app.get('/api/direct/whatsapp/status', async (req: Request, res: Response) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to get WhatsApp status' });
-  }
-});
-
-// Additional API endpoints needed by the frontend
-app.post('/api/settings/update-gemini-key', async (req: Request, res: Response) => {
-  try {
-    const { apiKey } = req.body;
-    console.log('Gemini API key update requested');
-    res.json({ success: true, message: 'Gemini API key updated' });
-  } catch (error) {
-    console.error('Gemini key update error:', error);
-    res.status(500).json({ error: 'Failed to update Gemini key' });
-  }
-});
-
-app.get('/api/settings/gemini-key-status', async (req: Request, res: Response) => {
-  try {
-    const hasValidKey = !!process.env.GEMINI_API_KEY;
-    console.log(`✅ Gemini API key status check: ${hasValidKey ? 'FOUND' : 'NOT FOUND'}`);
-    res.json({ 
-      hasValidKey,
-      isTemporary: false,
-      provider: 'gemini'
-    });
-  } catch (error) {
-    console.error('Gemini key status error:', error);
-    res.status(500).json({ error: 'Failed to get Gemini key status' });
-  }
-});
-
-app.get('/api/settings/openai-key-status', async (req: Request, res: Response) => {
-  try {
-    const hasValidKey = !!process.env.OPENAI_API_KEY;
-    console.log(`✅ OpenAI API key status check: ${hasValidKey ? 'FOUND' : 'NOT FOUND'}`);
-    res.json({ 
-      hasValidKey,
-      provider: 'openai'
-    });
-  } catch (error) {
-    console.error('OpenAI key status error:', error);
-    res.status(500).json({ error: 'Failed to get OpenAI key status' });
   }
 });
 
@@ -258,9 +167,10 @@ app.post('/api/settings/notifications', async (req: Request, res: Response) => {
   }
 });
 
-// WhatsApp endpoints
+// WhatsApp chats and messages (basic endpoints)
 app.get('/api/whatsapp/chats', async (req: Request, res: Response) => {
   try {
+    // Return empty array for clean system
     res.json([]);
   } catch (error) {
     console.error('Get chats error:', error);
@@ -270,27 +180,11 @@ app.get('/api/whatsapp/chats', async (req: Request, res: Response) => {
 
 app.get('/api/whatsapp/messages/:chatId', async (req: Request, res: Response) => {
   try {
+    // Return empty array for clean system
     res.json([]);
   } catch (error) {
     console.error('Get messages error:', error);
     res.status(500).json({ error: 'Failed to get messages' });
-  }
-});
-
-// Additional endpoints needed by frontend
-app.get('/api/external-agents', async (req: Request, res: Response) => {
-  try {
-    res.json([]); // Clean system has no external agents
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get external agents' });
-  }
-});
-
-app.get('/api/whatsapp/ping-status/all', async (req: Request, res: Response) => {
-  try {
-    res.json({}); // Clean system has no ping status
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get ping status' });
   }
 });
 
@@ -304,8 +198,7 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-// Important: Setup Vite AFTER all API routes are defined
-// This ensures API routes are processed before Vite's catch-all middleware
+// Setup Vite in development or serve static files in production
 if (app.get("env") === "development") {
   setupVite(app, server);
 } else {

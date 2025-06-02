@@ -567,45 +567,8 @@ const WhatsAppAccounts = () => {
     }
   };
   
-  // Temporary fallback data until API communication is fixed
-  const fallbackAccounts = [
-    {
-      id: 1,
-      name: "Prueba",
-      description: "ventas poor sisiite",
-      status: "pending_auth",
-      sessionData: null,
-      ownerName: null,
-      ownerPhone: null,
-      autoResponseEnabled: true,
-      responseDelay: 3000,
-      adminId: 5,
-      assignedExternalAgentId: "3",
-      createdAt: "2025-06-01T17:26:24.315Z",
-      lastActiveAt: null
-    },
-    {
-      id: 2,
-      name: "Cuenta de Prueba",
-      description: "Cuenta creada para probar funcionalidad",
-      status: "inactive",
-      sessionData: null,
-      ownerName: null,
-      ownerPhone: null,
-      autoResponseEnabled: false,
-      responseDelay: 3000,
-      adminId: null,
-      assignedExternalAgentId: null,
-      createdAt: "2025-06-02T00:30:16.026Z",
-      lastActiveAt: null
-    }
-  ];
-
-  // Use fallback data if API is not working
-  const validAccounts = Array.isArray(accounts) && accounts.length > 0 ? accounts : fallbackAccounts;
-
   // Combinar datos de cuentas con información de ping y estado de conexión
-  const accountsWithPing = validAccounts.map(account => {
+  const accountsWithPing = accounts.map(account => {
     let enhancedAccount = { ...account };
     
     // Agregar información de estado de conexión desde sessionData si existe
@@ -736,7 +699,7 @@ const WhatsAppAccounts = () => {
             onClick={handleDeleteAll} 
             size="sm" 
             variant="destructive"
-            disabled={deleteAllAccountsMutation.isPending || (Array.isArray(accounts) ? accounts : []).length === 0}
+            disabled={deleteAllAccountsMutation.isPending || accounts.length === 0}
           >
             <Trash className="mr-2 h-4 w-4" /> 
             {deleteAllAccountsMutation.isPending ? 'Eliminando...' : 'Eliminar Todo'}
@@ -845,7 +808,7 @@ const WhatsAppAccounts = () => {
           {/* Generar 10 posiciones fijas */}
           {Array.from({ length: 10 }, (_, index) => {
             const position = index + 1;
-            const existingAccount = (Array.isArray(accounts) ? accounts : []).find(acc => acc.id === position);
+            const existingAccount = accounts.find(acc => acc.id === position);
             const isOccupied = !!existingAccount;
             
             return (
