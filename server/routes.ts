@@ -664,67 +664,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('📋 Fetching leads from database...');
       
-      // Get all leads from database
-      const dbLeads = await db.select().from(leads);
-      console.log(`📋 Found ${dbLeads.length} leads in database`);
+      // Use direct SQL query to get leads data
+      const result = await pool.query('SELECT * FROM leads ORDER BY "createdAt" DESC');
+      const dbLeads = result.rows;
       
-      // If no leads exist, create some sample leads with realistic data
-      if (dbLeads.length === 0) {
-        console.log('📋 No leads found, creating sample leads...');
-        
-        const sampleLeads = [
-          {
-            name: "Juan Pérez",
-            phone: "+573001234567",
-            source: "WhatsApp",
-            status: "new",
-            assignedTo: 3,
-            notes: "Interesado en plan premium, solicitar cotización"
-          },
-          {
-            name: "María González",
-            phone: "+573007654321",
-            source: "WhatsApp",
-            status: "assigned",
-            assignedTo: 3,
-            notes: "Cliente recurrente, enviar propuesta actualizada"
-          },
-          {
-            name: "Carlos Rodríguez",
-            phone: "+573009876543",
-            source: "WhatsApp",
-            status: "contacted",
-            assignedTo: 3,
-            notes: "Programar llamada para el viernes"
-          },
-          {
-            name: "Ana López",
-            phone: "+573005555555",
-            source: "WhatsApp",
-            status: "negotiation",
-            assignedTo: 3,
-            notes: "Negociando descuento, muy interesada"
-          },
-          {
-            name: "Pedro Martín",
-            phone: "+573002222222",
-            source: "WhatsApp",
-            status: "completed",
-            assignedTo: 3,
-            notes: "Venta cerrada exitosamente"
-          }
-        ];
-
-        for (const leadData of sampleLeads) {
-          await db.insert(leads).values(leadData);
-        }
-        
-        // Fetch the newly created leads
-        const newLeads = await db.select().from(leads);
-        console.log(`📋 Created ${newLeads.length} sample leads`);
-        
-        return res.json(newLeads);
-      }
+      console.log(`📋 Found ${dbLeads.length} leads in database`);
       
       // Return existing leads
       res.json(dbLeads);
