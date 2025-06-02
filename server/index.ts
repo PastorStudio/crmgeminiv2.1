@@ -266,9 +266,9 @@ app.post('/api/ai-prompts', async (req: Request, res: Response) => {
       content,
       provider,
       temperature,
-      maxTokens,
+      max_tokens: maxTokens,
       model,
-      isActive
+      is_active: isActive
     }).returning();
     
     console.log('✅ Prompt creado:', newPrompt);
@@ -295,11 +295,22 @@ app.put('/api/ai-prompts/:id', async (req: Request, res: Response) => {
     
     const updates = req.body;
     
+    // Map camelCase to snake_case for database columns
+    const mappedUpdates: any = {};
+    if (updates.name !== undefined) mappedUpdates.name = updates.name;
+    if (updates.description !== undefined) mappedUpdates.description = updates.description;
+    if (updates.content !== undefined) mappedUpdates.content = updates.content;
+    if (updates.provider !== undefined) mappedUpdates.provider = updates.provider;
+    if (updates.temperature !== undefined) mappedUpdates.temperature = updates.temperature;
+    if (updates.maxTokens !== undefined) mappedUpdates.max_tokens = updates.maxTokens;
+    if (updates.model !== undefined) mappedUpdates.model = updates.model;
+    if (updates.isActive !== undefined) mappedUpdates.is_active = updates.isActive;
+    
     const [updatedPrompt] = await db
       .update(aiPrompts)
       .set({
-        ...updates,
-        updatedAt: new Date()
+        ...mappedUpdates,
+        updated_at: new Date()
       })
       .where(eq(aiPrompts.id, promptId))
       .returning();
