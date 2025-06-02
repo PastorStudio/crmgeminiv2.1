@@ -44,58 +44,56 @@ deployment-package/
 
 ## ⚡ Inicio Rápido
 
-### 1. Requisitos Previos
-
-- **Node.js** v18.0.0 o superior
-- **PostgreSQL** v14.0 o superior
-- **API Keys** de OpenAI, Google Gemini y/o Qwen3
-
-### 2. Instalación Básica
+### Opción 1: Instalación Automática (Recomendado)
 
 ```bash
 # Extraer el paquete
-unzip crm-whatsapp-ai-deployment.zip
-cd crm-whatsapp-ai-deployment
+tar -xzf crm-whatsapp-ai-deployment-XXXXXX.tar.gz
+cd crm-whatsapp-ai-deployment-XXXXXX
 
-# Configurar backend
+# Instalación completa automática
+chmod +x scripts/install.sh
+./scripts/install.sh
+
+# Configurar API keys y iniciar
+./scripts/quick-start.sh
+```
+
+### Opción 2: Instalación Manual
+
+```bash
+# 1. Requisitos previos
+# - Node.js v18+, PostgreSQL v14+, PM2
+
+# 2. Extraer y configurar
+tar -xzf crm-whatsapp-ai-deployment-XXXXXX.tar.gz
+cd crm-whatsapp-ai-deployment-XXXXXX
+
+# 3. Configurar backend
 cd backend
 npm install
 cp .env.example .env
-# Editar .env con tus configuraciones
+# Editar .env con configuraciones
 
-# Configurar frontend
+# 4. Configurar frontend
 cd ../frontend
 npm install
 cp .env.example .env
-# Editar .env con la URL de tu servidor
-```
 
-### 3. Configurar Base de Datos
-
-```sql
--- Crear base de datos PostgreSQL
-CREATE DATABASE crm_whatsapp_ai;
-CREATE USER crm_user WITH ENCRYPTED PASSWORD 'tu_password';
-GRANT ALL PRIVILEGES ON DATABASE crm_whatsapp_ai TO crm_user;
-```
-
-```bash
-# Ejecutar migraciones
-cd backend
+# 5. Base de datos y despliegue
+cd ../backend
 npm run db:push
+cd ..
+pm2 start ecosystem.config.js
 ```
 
-### 4. Ejecutar en Desarrollo
+### Scripts Incluidos
 
-```bash
-# Terminal 1 - Backend
-cd backend
-npm run dev
-
-# Terminal 2 - Frontend
-cd frontend
-npm run dev
-```
+- **`scripts/install.sh`** - Instalación completa automática del sistema
+- **`scripts/quick-start.sh`** - Inicio rápido para desarrollo
+- **`scripts/deploy.sh`** - Despliegue en servidor configurado
+- **`scripts/manage.sh`** - Gestión completa del sistema (menú interactivo)
+- **`scripts/nginx-setup.sh`** - Configuración de proxy reverso con SSL
 
 ---
 
