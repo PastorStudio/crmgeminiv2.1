@@ -85,17 +85,24 @@ export class WorkingAutoResponseService {
   private static async generateAIResponse(messageBody: string, accountId: number): Promise<string | null> {
     try {
       // Obtener configuración AI personalizada
-      const { IntelligentResponseService } = await import('./intelligentResponseService');
+      const { intelligentResponseService } = await import('./intelligentResponseService');
       
       console.log(`🤖 Generando respuesta con configuración AI personalizada para cuenta ${accountId}`);
       console.log(`📝 Mensaje: "${messageBody}"`);
       
-      // Usar el servicio de respuestas inteligentes que lee la configuración AI
-      const response = await IntelligentResponseService.generateResponse(messageBody, accountId);
+      // Crear el contexto requerido para el servicio
+      const context = {
+        chatId: 'default-chat',
+        accountId: accountId,
+        userMessage: messageBody
+      };
       
-      if (response) {
-        console.log(`✅ Respuesta AI personalizada generada: "${response}"`);
-        return response;
+      // Usar el servicio de respuestas inteligentes que lee la configuración AI
+      const aiResponse = await intelligentResponseService.generateResponse(context);
+      
+      if (aiResponse && aiResponse.message) {
+        console.log(`✅ Respuesta AI personalizada generada: "${aiResponse.message}"`);
+        return aiResponse.message;
       }
       
       console.log(`⚠️ No se pudo generar respuesta con configuración AI, usando fallback`);
