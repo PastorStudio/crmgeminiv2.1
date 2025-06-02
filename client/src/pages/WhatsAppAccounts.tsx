@@ -180,12 +180,14 @@ const WhatsAppAccounts = () => {
   });
   
   // Consulta para obtener cuentas
-  const { data: accounts = [], isLoading, error, refetch } = useQuery<WhatsAppAccount[]>({
+  const { data: accountsResponse, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/whatsapp-accounts'],
     queryFn: async () => {
       return await apiRequest('/api/whatsapp-accounts');
     }
   });
+
+  const accounts = accountsResponse?.accounts || [];
 
   // Consulta para obtener estado de ping de todas las cuentas
   const { data: pingStatusData } = useQuery({
