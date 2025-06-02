@@ -212,11 +212,11 @@ export default function DashboardStats() {
                       <Skeleton className="h-8 w-20" />
                     ) : (
                       <div className="text-2xl font-semibold text-gray-900">
-                        {getActiveConversations()}
+                        {(stats?.totalMessages || 0).toLocaleString()}
                       </div>
                     )}
-                    <div className="ml-2 flex items-baseline text-sm font-semibold text-yellow-600">
-                      0%
+                    <div className="ml-2 flex items-baseline text-sm font-semibold text-blue-600">
+                      WhatsApp
                     </div>
                   </dd>
                 </div>
@@ -249,11 +249,11 @@ export default function DashboardStats() {
                       <Skeleton className="h-8 w-20" />
                     ) : (
                       <div className="text-2xl font-semibold text-gray-900">
-                        {getTodayMeetings()}
+                        {(stats?.totalTickets || 0).toLocaleString()}
                       </div>
                     )}
-                    <div className="ml-2 flex items-baseline text-sm font-semibold text-red-600">
-                      1.5%
+                    <div className="ml-2 flex items-baseline text-sm font-semibold text-purple-600">
+                      Tickets
                     </div>
                   </dd>
                 </div>
