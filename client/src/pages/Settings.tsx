@@ -86,10 +86,8 @@ export default function Settings() {
   const { data: user, isLoading: userLoading } = useQuery<User>({
     queryKey: [`/api/users/${userId}`],
     queryFn: async () => {
-      const response = await fetch(`/api/users/${userId}`);
-      if (!response.ok) throw new Error('Failed to fetch user');
-      const data = await response.json();
-      return data.user || data;
+      const response = await apiRequest("GET", `/api/users/${userId}`);
+      return await response.json();
     },
   });
 
@@ -119,8 +117,7 @@ export default function Settings() {
   }>({
     queryKey: ["/api/settings/gemini-key-status"],
     queryFn: async () => {
-      const response = await fetch("/api/settings/gemini-key-status");
-      if (!response.ok) throw new Error('Failed to fetch Gemini key status');
+      const response = await apiRequest("GET", "/api/settings/gemini-key-status");
       return await response.json();
     },
   });
@@ -131,8 +128,7 @@ export default function Settings() {
   }>({
     queryKey: ["/api/settings/openai-key-status"],
     queryFn: async () => {
-      const response = await fetch("/api/settings/openai-key-status");
-      if (!response.ok) throw new Error('Failed to fetch OpenAI key status');
+      const response = await apiRequest("GET", "/api/settings/openai-key-status");
       return await response.json();
     },
   });

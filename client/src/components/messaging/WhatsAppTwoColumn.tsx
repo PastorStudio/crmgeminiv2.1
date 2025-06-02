@@ -2701,17 +2701,8 @@ export function WhatsAppTwoColumn() {
                       )}
                     </Button>
                   </motion.div>
-
-
-
-
-
-
-
-
-
-
-                  {/* Clean AI Button */}
+                  
+                  {/* A.E AI SWITCH - RESPUESTAS AUTOMÁTICAS */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -2719,21 +2710,160 @@ export function WhatsAppTwoColumn() {
                   >
                     <Button
                       size="sm"
-                      variant="outline"
-                      className="border-purple-600 text-purple-600 hover:bg-purple-50 transition-all duration-300"
+                      variant={externalAgentActive ? "default" : "outline"}
+                      className="hidden" // Ocultar el botón A.E AI original
                       onClick={async () => {
+                        console.log('🚀 A.E AI TOGGLE PRESIONADO');
+                        
+                        if (!selectedChat) {
+                          toast({
+                            title: "Error",
+                            description: "Selecciona un chat primero",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+
                         try {
-                          console.log('🤖 Using clean AI system');
-                          await handleAIResponse();
+                          setExternalAgentProcessing(true);
+                          const newState = !externalAgentActive;
+                          
+                          console.log(`📡 ${newState ? 'ACTIVANDO' : 'DESACTIVANDO'} A.E AI para ${selectedChat.id}`);
+                          
+                          // Usar el mismo endpoint que funciona en configuración de cuentas
+                          const response = await fetch(`/api/whatsapp-accounts/${selectedChat.accountId}/assign-external-agent`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                              externalAgentId: newState ? "2" : null, // Usar agente 2 que ya está configurado
+                              autoResponseEnabled: newState
+                            })
+                          });
+                          
+                          if (response.ok) {
+                            const result = await response.json();
+                            console.log('✅ Resultado:', result);
+                            
+                            if (result.success) {
+                              setExternalAgentActive(newState);
+                              
+                              toast({
+                                title: `🤖 A.E AI ${newState ? 'Activado' : 'Desactivado'}`,
+                                description: newState 
+                                  ? `Agente externo activado - responderá automáticamente a mensajes`
+                                  : `Agente externo desactivado`,
+                              });
+                              
+                              console.log(`✅ A.E AI ${newState ? 'ACTIVADO' : 'DESACTIVADO'} exitosamente`);
+                            } else {
+                              throw new Error(result.message || 'Error en la configuración');
+                            }
+                          } else {
+                            const errorText = await response.text();
+                            throw new Error(`Error HTTP: ${response.status} - ${errorText}`);
+                          }
                         } catch (error) {
-                          console.error('Error en sistema de IA:', error);
+                          console.error('❌ Error A.E AI:', error);
+                          toast({
+                            title: "Error",
+                            description: "No se pudo cambiar el estado del A.E AI",
+                            variant: "destructive"
+                          });
+                        } finally {
+                          setExternalAgentProcessing(false);
                         }
                       }}
+                      disabled={externalAgentProcessing}
                     >
-                      <Bot className="h-4 w-4 mr-2" />
-                      Usar IA
+                      {externalAgentProcessing ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Bot className="h-4 w-4 mr-2" />
+                      )}
+                      A.E AI
+                      {externalAgentActive && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
+                      )}
                     </Button>
                   </motion.div>
+
+                  {/* SELECTOR DE AGENTE EXTERNO REMOVIDO */}
+
+
+
+
+
+                  {/* BOTÓN DE PRUEBA A.E AI - ELIMINADO COMPLETAMENTE */}
+                  {false && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3, delay: 0.2 }}
+                    >
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="hidden border-green-600 text-green-600 hover:bg-green-50 transition-all duration-300"
+                        onClick={async () => {
+                          if (!selectedChat) return;
+                          
+                          try {
+                            console.log('🧪 PROBANDO A.E AI');
+                            
+                            const response = await fetch('/api/debug-ae-ai/probe', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                chatId: selectedChat.id,
+                                message: "Hola, necesito ayuda con información sobre productos",
+                                accountId: selectedChat.accountId
+                              })
+                            });
+                            
+                            if (response.ok) {
+                              const result = await response.json();
+                              console.log('📋 Resultado completo de A.E AI:', result);
+                              
+                              if (result.success && result.processed) {
+                                toast({
+                                  title: "✅ A.E AI Funcionando",
+                                  description: `Respuesta generada por ${result.config?.agentName || 'Smartbots'}. Revisa la consola del servidor para ver la respuesta completa.`,
+                                  duration: 8000,
+                                });
+                              } else if (result.needsActivation) {
+                                toast({
+                                  title: "⚠️ A.E AI Inactivo",
+                                  description: "Activa primero el A.E AI presionando el botón morado.",
+                                  variant: "destructive",
+                                  duration: 5000,
+                                });
+                              } else {
+                                toast({
+                                  title: "❌ Error A.E AI",
+                                  description: result.message || "No se pudo procesar el mensaje",
+                                  variant: "destructive",
+                                  duration: 5000,
+                                });
+                              }
+                            } else {
+                              throw new Error(`HTTP ${response.status}`);
+                            }
+                          } catch (error) {
+                            console.error('❌ Error probando A.E AI:', error);
+                            toast({
+                              title: "❌ Error de Conexión",
+                              description: "No se pudo conectar con el servidor A.E AI",
+                              variant: "destructive",
+                              duration: 5000,
+                            });
+                          }
+                        }}
+                      >
+                        <Bot className="h-4 w-4 mr-2" />
+                        Probar
+                      </Button>
+                    </motion.div>
+                  )}
                   
 
 
