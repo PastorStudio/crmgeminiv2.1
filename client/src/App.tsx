@@ -11,6 +11,7 @@ import Messages from './pages/Messages';
 import Calendar from './pages/CalendarFixed';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import AISettings from './pages/AISettings';
 import Tasks from './pages/Tasks';
 import MediaGallery from './pages/MediaGallery';
 import MessageTemplates from './pages/MessageTemplates';
@@ -458,6 +459,18 @@ const AppRoutes: React.FC = () => {
                 Asignar Chats
               </a>
               
+              <a href="/ai-settings" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/ai-settings' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="8" fill="#9333EA"/>
+                  <path d="M8 12h8M12 8v8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                  <circle cx="9" cy="9" r="1.5" fill="#C084FC"/>
+                  <circle cx="15" cy="15" r="1.5" fill="#A855F7"/>
+                  <circle cx="15" cy="9" r="1" fill="white"/>
+                  <circle cx="9" cy="15" r="1" fill="white"/>
+                </svg>
+                AI Integration
+              </a>
+
               <a href="/settings" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/settings' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="8" fill="#374151"/>
@@ -534,6 +547,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/analytics" component={() => <PrivateRoute component={Analytics} path="/analytics" />} />
                 <Route path="/gemini-ai" component={() => <PrivateRoute component={GeminiAI} path="/gemini-ai" />} />
                 <Route path="/settings" component={() => <PrivateRoute component={Settings} path="/settings" />} />
+                <Route path="/ai-settings" component={() => <PrivateRoute component={AISettings} path="/ai-settings" />} />
                 <Route path="/media-gallery" component={() => <PrivateRoute component={MediaGallery} path="/media-gallery" />} />
                 <Route path="/message-templates" component={() => <PrivateRoute component={MessageTemplates} path="/message-templates" />} />
                 <Route path="/mass-sender" component={() => <PrivateRoute component={MassSender} path="/mass-sender" />} />
