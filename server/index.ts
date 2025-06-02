@@ -3522,43 +3522,46 @@ app.use((req, res, next) => {
           since.setDate(now.getDate() - 1);
       }
 
-      // Usar Drizzle para consultar actividades
-      let activities;
-      if (agentId) {
-        activities = await db.select()
-          .from(agentPageVisits)
-          .where(and(
-            gte(agentPageVisits.timestamp, since),
-            eq(agentPageVisits.agentId, parseInt(agentId as string))
-          ))
-          .orderBy(desc(agentPageVisits.timestamp))
-          .limit(500);
-      } else {
-        activities = await db.select()
-          .from(agentPageVisits)
-          .where(gte(agentPageVisits.timestamp, since))
-          .orderBy(desc(agentPageVisits.timestamp))
-          .limit(500);
-      }
-
-      const result = { rows: activities };
+      // Usar SQL directo para evitar problemas de ORM
+      let query = `
+        SELECT id, agent_id, page, action, details, ip_address, user_agent, timestamp, activity_type, category
+        FROM agent_page_visits 
+        WHERE timestamp >= $1
+      `;
       
-      // Obtener estadísticas usando Drizzle
-      const statsResult = await db.select({
-        category: agentPageVisits.category,
-        category_count: sql`COUNT(*)`.as('category_count'),
-        total_activities: sql`COUNT(*)`.as('total_activities'),
-        active_agents: sql`COUNT(DISTINCT ${agentPageVisits.agentId})`.as('active_agents')
-      })
-      .from(agentPageVisits)
-      .where(gte(agentPageVisits.timestamp, since))
-      .groupBy(agentPageVisits.category);
+      let params = [since];
+      
+      if (agentId) {
+        query += ` AND agent_id = $2`;
+        params.push(parseInt(agentId as string));
+      }
+      
+      query += ` ORDER BY timestamp DESC LIMIT 500`;
+      
+      const result = await pool.query(query, params);
+      const activities = result.rows;
+
+      console.log(`📊 Encontradas ${activities.length} actividades históricas`);
+      
+      // Obtener estadísticas simples
+      const agentIds = [...new Set(activities.map((a: any) => a.agent_id))];
+      const categoryStats = activities.reduce((acc: any, activity: any) => {
+        const cat = activity.category || 'general';
+        acc[cat] = (acc[cat] || 0) + 1;
+        return acc;
+      }, {});
+      
+      const totalStats = {
+        total_activities: activities.length,
+        active_agents: agentIds.length,
+        categories: categoryStats
+      };
 
       res.json({
         success: true,
         activities: activities,
         totalActivities: activities.length,
-        stats: statsResult,
+        stats: totalStats,
         timeRange,
         since: since.toISOString()
       });
