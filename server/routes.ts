@@ -719,6 +719,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // WhatsApp Data Synchronization endpoints
+  app.post("/api/whatsapp/sync/:accountId", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      
+      if (!accountId) {
+        return res.status(400).json({ error: "Account ID required" });
+      }
+
+      const { whatsappDataSync } = await import('./services/whatsappDataSync');
+      const result = await whatsappDataSync.forceSync(accountId);
+      
+      console.log(`🔄 Sincronización manual iniciada para cuenta ${accountId}`);
+      
+      res.json({
+        success: result.success,
+        message: result.success ? `Sincronización completada` : 'Error en sincronización',
+        data: result
+      });
+    } catch (error) {
+      console.error('❌ Error en sincronización manual:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  });
+
+  app.post("/api/whatsapp/auto-sync", async (req: Request, res: Response) => {
+    try {
+      const { accountId, chats } = req.body;
+      
+      if (!accountId || !chats) {
+        return res.status(400).json({ error: "Account ID and chats data required" });
+      }
+
+      const { whatsappDataSync } = await import('./services/whatsappDataSync');
+      await whatsappDataSync.syncWhatsAppDataToDatabase(accountId, chats);
+      
+      console.log(`✅ Auto-sincronización completada para cuenta ${accountId} con ${chats.length} chats`);
+      
+      res.json({
+        success: true,
+        message: `Database updated with ${chats.length} WhatsApp chats`
+      });
+    } catch (error) {
+      console.error('❌ Error en auto-sincronización:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  });
+
   // Leads endpoint using direct database connection like dashboard-stats
   app.get("/api/leads", async (req: Request, res: Response) => {
     try {
