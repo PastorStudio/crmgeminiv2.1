@@ -129,25 +129,25 @@ export const conversations = pgTable("conversations", {
   updatedAt: timestamp("updatedAt").defaultNow(),
 });
 
-// Mensajes individuales con análisis de IA
-export const messages = pgTable("messages", {
+// Enhanced messages table with AI analysis
+export const enhancedMessages = pgTable("enhanced_messages", {
   id: serial("id").primaryKey(),
-  conversationId: integer("conversationId").notNull(),
+  conversationId: integer("conversationId"),
   contactId: integer("contactId"),
   whatsappAccountId: integer("whatsappAccountId").notNull(),
-  messageId: text("messageId").notNull().unique(), // ID único de WhatsApp
+  messageId: text("messageId").notNull().unique(),
   fromNumber: text("fromNumber").notNull(),
   toNumber: text("toNumber").notNull(),
   content: text("content"),
-  messageType: text("messageType").default("text"), // text, image, audio, video, document
-  direction: text("direction").notNull(), // inbound, outbound
+  messageType: text("messageType").default("text"),
+  direction: text("direction").notNull(),
   isFromBot: boolean("isFromBot").default(false),
   mediaUrl: text("mediaUrl"),
   metadata: jsonb("metadata"),
-  aiAnalysis: jsonb("aiAnalysis"), // Análisis de contenido por IA
+  aiAnalysis: jsonb("aiAnalysis"),
   sentiment: text("sentiment"),
   intent: text("intent"),
-  entities: jsonb("entities"), // Entidades extraídas (nombres, fechas, etc.)
+  entities: jsonb("entities"),
   isProcessed: boolean("isProcessed").default(false),
   timestamp: timestamp("timestamp").notNull(),
   createdAt: timestamp("createdAt").defaultNow(),
@@ -186,8 +186,8 @@ export const activities = pgTable("activities", {
   createdAt: timestamp("createdAt").defaultNow(),
 });
 
-// Activities (tabla única consolidada)
-export const activities = pgTable("activities", {
+// Enhanced activities for autonomous system
+export const enhancedActivities = pgTable("enhanced_activities", {
   id: serial("id").primaryKey(),
   leadId: integer("leadId"),
   userId: integer("userId"),
@@ -200,8 +200,8 @@ export const activities = pgTable("activities", {
   createdAt: timestamp("createdAt").defaultNow(),
 });
 
-// Messages
-export const messages = pgTable("messages", {
+// Enhanced messages for autonomous system
+export const enhancedMessagesTable = pgTable("enhanced_messages_table", {
   id: serial("id").primaryKey(),
   leadId: integer("leadId"),
   content: text("content").notNull(),
