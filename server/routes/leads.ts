@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "../db";
-import { leads, contacts } from "@shared/schema";
+import { leads } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 
