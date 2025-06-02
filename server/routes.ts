@@ -20,8 +20,9 @@ import jwt from "jsonwebtoken";
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
 import { authService } from "./services/authService";
-import { eq, and, ne, not, isNull } from "drizzle-orm";
-import { users, whatsappAccounts, userWhatsappAccounts, chatAssignments, chatCategories } from "@shared/schema";
+import { eq, and, ne, not, isNull, sql } from "drizzle-orm";
+import { users, whatsappAccounts, userWhatsappAccounts, chatAssignments, chatCategories, leads } from "@shared/schema";
+import { pool } from "./db";
 
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import multer from "multer";
@@ -664,17 +665,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('📋 Fetching leads from database...');
       
-      // Use direct SQL query to get leads data
-      const result = await pool.query('SELECT * FROM leads ORDER BY "createdAt" DESC');
-      const dbLeads = result.rows;
-      
-      console.log(`📋 Found ${dbLeads.length} leads in database`);
+      // Simple approach: Use storage interface which is already working
+      const dbLeads = await storage.getLeads();
+      console.log(`📋 Found ${dbLeads.length} leads from storage`);
       
       // Return existing leads
       res.json(dbLeads);
     } catch (error) {
       console.error('📋 Error fetching leads:', error);
-      res.status(500).json({ error: "Error fetching leads from database" });
+      res.status(500).json({ error: "Error al obtener leads" });
     }
   });
 
