@@ -64,6 +64,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Edit, Trash2, Settings, Bot } from "lucide-react";
 
 // AI Integration settings schema
