@@ -1,5 +1,4 @@
 import { db } from "../db";
-import { agentSessions, type AgentSession } from "@shared/schema";
 import { eq, and, gte } from "drizzle-orm";
 
 /**
@@ -7,7 +6,7 @@ import { eq, and, gte } from "drizzle-orm";
  * Determina si un agente está actualmente activo en el sistema
  */
 export class LiveStatusTracker {
-  private activeAgents = new Set<number>();
+  private activeAgents = new Map<number, Date>();
   private heartbeatInterval = 30000; // 30 segundos
   private sessionTimeout = 60000; // 1 minuto
 
@@ -20,21 +19,7 @@ export class LiveStatusTracker {
    * Marcar agente como activo (heartbeat)
    */
   async markAgentActive(agentId: number): Promise<void> {
-    this.activeAgents.add(agentId);
-    
-    // Actualizar solo el campo isActive por ahora
-    await db
-      .update(agentSessions)
-      .set({ 
-        isActive: true 
-      })
-      .where(
-        and(
-          eq(agentSessions.agentId, agentId),
-          eq(agentSessions.isActive, true)
-        )
-      );
-    
+    this.activeAgents.set(agentId, new Date());
     console.log(`💚 Agente ${agentId} marcado como activo`);
   }
 
@@ -43,20 +28,6 @@ export class LiveStatusTracker {
    */
   async markAgentInactive(agentId: number): Promise<void> {
     this.activeAgents.delete(agentId);
-    
-    await db
-      .update(agentSessions)
-      .set({ 
-        isActive: false,
-        logoutTime: new Date()
-      })
-      .where(
-        and(
-          eq(agentSessions.agentId, agentId),
-          eq(agentSessions.isActive, true)
-        )
-      );
-    
     console.log(`⚫ Agente ${agentId} marcado como inactivo`);
   }
 
@@ -64,7 +35,6 @@ export class LiveStatusTracker {
    * Verificar si un agente está activo
    */
   async isAgentActive(agentId: number): Promise<boolean> {
-    // Por ahora usamos memoria para verificar estado activo
     return this.activeAgents.has(agentId);
   }
 
@@ -72,28 +42,16 @@ export class LiveStatusTracker {
    * Obtener todos los agentes activos
    */
   async getActiveAgents(): Promise<number[]> {
-    return Array.from(this.activeAgents);
+    return Array.from(this.activeAgents.keys());
   }
 
   /**
    * Limpiar sesiones inactivas
    */
   private async cleanupInactiveSessions(): Promise<void> {
-    const timeoutAgo = new Date(Date.now() - this.sessionTimeout);
-    
-    const inactiveSessions = await db
-      .select()
-      .from(agentSessions)
-      .where(
-        and(
-          eq(agentSessions.isActive, true),
-          gte(agentSessions.lastHeartbeat, timeoutAgo)
-        )
-      );
-
-    for (const session of inactiveSessions) {
-      await this.markAgentInactive(session.agentId);
-    }
+    // For now, we'll keep agents active until they explicitly disconnect
+    // In a production environment, you might want to implement a heartbeat mechanism
+    console.log('🧹 Cleanup routine executed (in-memory only)');
   }
 
   /**
