@@ -20,7 +20,7 @@ class AutoResponseMonitor {
     
     setInterval(async () => {
       await this.checkForNewMessages();
-    }, 3000); // Verificar cada 3 segundos
+    }, 10000); // Verificar cada 10 segundos para reducir carga
   }
   
   async checkForNewMessages() {

@@ -100,7 +100,7 @@ class RealAutoResponseManager {
 
     this.intervalId = setInterval(async () => {
       await this.checkForNewMessages();
-    }, 3000); // Revisar cada 3 segundos
+    }, 12000); // Revisar cada 12 segundos para reducir carga
 
     console.log('✅ Monitoreo automático iniciado');
   }
