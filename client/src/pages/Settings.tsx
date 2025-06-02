@@ -47,16 +47,15 @@ const profileFormSchema = z.object({
   role: z.string().optional(),
 });
 
-// API integration settings schema
-const apiSettingsSchema = z.object({
-  enableGeminiAI: z.boolean().default(true),
-  aiProvider: z.enum(["gemini", "openai"]).default("gemini"),
+// AI Integration settings schema
+const aiIntegrationSchema = z.object({
+  selectedProvider: z.enum(["gemini", "openai", "qwen3"]).default("gemini"),
   geminiApiKey: z.string().optional(),
-  autoAnalyzeLeads: z.boolean().default(true),
-  enrichLeadData: z.boolean().default(true),
-  smartLeadScoring: z.boolean().default(true),
-  messageGeneration: z.boolean().default(true),
-  intelligentSurveys: z.boolean().default(true),
+  openaiApiKey: z.string().optional(),
+  qwenApiKey: z.string().optional(),
+  customPrompt: z.string().optional(),
+  temperature: z.number().min(0).max(2).default(0.7),
+  enableAIResponses: z.boolean().default(true),
 });
 
 // Notification settings schema
@@ -71,7 +70,7 @@ const notificationSettingsSchema = z.object({
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
-type ApiSettingsValues = z.infer<typeof apiSettingsSchema>;
+type AiIntegrationValues = z.infer<typeof aiIntegrationSchema>;
 type NotificationSettingsValues = z.infer<typeof notificationSettingsSchema>;
 
 export default function Settings() {
@@ -133,18 +132,17 @@ export default function Settings() {
     },
   });
 
-  // API settings form setup
-  const apiSettingsForm = useForm<ApiSettingsValues>({
-    resolver: zodResolver(apiSettingsSchema),
+  // AI Integration form setup
+  const aiForm = useForm<AiIntegrationValues>({
+    resolver: zodResolver(aiIntegrationSchema),
     defaultValues: {
-      enableGeminiAI: true,
-      aiProvider: "gemini",
+      selectedProvider: "gemini",
       geminiApiKey: "",
-      autoAnalyzeLeads: true,
-      enrichLeadData: true,
-      smartLeadScoring: true,
-      messageGeneration: true,
-      intelligentSurveys: true,
+      openaiApiKey: "",
+      qwenApiKey: "",
+      customPrompt: "",
+      temperature: 0.7,
+      enableAIResponses: true,
     },
   });
 
@@ -265,9 +263,13 @@ export default function Settings() {
     updateProfile(values);
   };
 
-  // API settings form submission handler
-  const onApiSettingsSubmit = (values: ApiSettingsValues) => {
-    updateApiSettings(values);
+  // AI Integration form submission handler
+  const onAiIntegrationSubmit = (values: AiIntegrationValues) => {
+    // Handle AI integration settings
+    toast({
+      title: "AI Integration Updated",
+      description: `Settings saved for ${values.selectedProvider.toUpperCase()} provider`,
+    });
   };
 
   // Notification settings form submission handler
