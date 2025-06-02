@@ -3093,7 +3093,7 @@ export function WhatsAppTwoColumn() {
                                       </span>
                                       <AIResponseGenerator
                                         chatId={selectedChat?.id || ''}
-                                        messages={selectedChatMessages || []}
+                                        messages={messages || []}
                                         onResponseGenerated={(response) => {
                                           setNewMessage(response);
                                           toast({
