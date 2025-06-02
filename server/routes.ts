@@ -5723,5 +5723,100 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
     }
   });
 
+  // AI Prompts API Routes
+  app.get("/api/ai-prompts", async (req: Request, res: Response) => {
+    try {
+      const prompts = await storage.getAiPrompts();
+      res.json(prompts);
+    } catch (error) {
+      console.error('Error getting AI prompts:', error);
+      res.status(500).json({ success: false, error: 'Error al obtener prompts de IA' });
+    }
+  });
+
+  app.get("/api/ai-prompts/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const prompt = await storage.getAiPrompt(id);
+      
+      if (!prompt) {
+        return res.status(404).json({ success: false, error: 'Prompt no encontrado' });
+      }
+      
+      res.json(prompt);
+    } catch (error) {
+      console.error('Error getting AI prompt:', error);
+      res.status(500).json({ success: false, error: 'Error al obtener prompt de IA' });
+    }
+  });
+
+  app.post("/api/ai-prompts", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertAiPromptSchema.parse(req.body);
+      const prompt = await storage.createAiPrompt(validatedData);
+      res.json({ success: true, prompt });
+    } catch (error) {
+      console.error('Error creating AI prompt:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ success: false, error: 'Datos inválidos', details: error.errors });
+      }
+      res.status(500).json({ success: false, error: 'Error al crear prompt de IA' });
+    }
+  });
+
+  app.put("/api/ai-prompts/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertAiPromptSchema.partial().parse(req.body);
+      const prompt = await storage.updateAiPrompt(id, validatedData);
+      
+      if (!prompt) {
+        return res.status(404).json({ success: false, error: 'Prompt no encontrado' });
+      }
+      
+      res.json({ success: true, prompt });
+    } catch (error) {
+      console.error('Error updating AI prompt:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ success: false, error: 'Datos inválidos', details: error.errors });
+      }
+      res.status(500).json({ success: false, error: 'Error al actualizar prompt de IA' });
+    }
+  });
+
+  app.delete("/api/ai-prompts/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteAiPrompt(id);
+      
+      if (!success) {
+        return res.status(404).json({ success: false, error: 'Prompt no encontrado' });
+      }
+      
+      res.json({ success: true, message: 'Prompt eliminado correctamente' });
+    } catch (error) {
+      console.error('Error deleting AI prompt:', error);
+      res.status(500).json({ success: false, error: 'Error al eliminar prompt de IA' });
+    }
+  });
+
+  app.post("/api/whatsapp-accounts/:accountId/assign-prompt/:promptId", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const promptId = parseInt(req.params.promptId);
+      
+      const success = await storage.assignPromptToAccount(accountId, promptId);
+      
+      if (!success) {
+        return res.status(404).json({ success: false, error: 'Cuenta o prompt no encontrado' });
+      }
+      
+      res.json({ success: true, message: 'Prompt asignado correctamente' });
+    } catch (error) {
+      console.error('Error assigning prompt to account:', error);
+      res.status(500).json({ success: false, error: 'Error al asignar prompt a la cuenta' });
+    }
+  });
+
   return httpServer;
 }
