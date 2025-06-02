@@ -74,7 +74,7 @@ app.get('/api/users/:id', async (req: Request, res: Response) => {
   }
 });
 
-// WhatsApp accounts endpoint
+// WhatsApp accounts endpoints
 app.get('/api/whatsapp/accounts', async (req: Request, res: Response) => {
   try {
     const accounts = await db.select().from(whatsappAccounts);
@@ -82,6 +82,61 @@ app.get('/api/whatsapp/accounts', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Get WhatsApp accounts error:', error);
     res.status(500).json({ error: 'Failed to get WhatsApp accounts' });
+  }
+});
+
+app.post('/api/whatsapp/accounts', async (req: Request, res: Response) => {
+  try {
+    const { name, description, ownerName, ownerPhone } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    const newAccount = await db.insert(whatsappAccounts).values({
+      name,
+      description: description || null,
+      ownerName: ownerName || null,
+      ownerPhone: ownerPhone || null,
+      status: 'inactive',
+      autoResponseEnabled: false,
+      sessionData: null,
+      adminId: 1, // Default admin user
+      assignedExternalAgentId: null,
+      autoResponseDelay: 5000,
+      lastActiveAt: new Date()
+    }).returning();
+
+    res.json(newAccount[0]);
+  } catch (error) {
+    console.error('Create WhatsApp account error:', error);
+    res.status(500).json({ error: 'Failed to create WhatsApp account' });
+  }
+});
+
+app.delete('/api/whatsapp/accounts/:id', async (req: Request, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.id);
+    
+    if (isNaN(accountId)) {
+      return res.status(400).json({ error: 'Invalid account ID' });
+    }
+
+    await db.delete(whatsappAccounts).where(eq(whatsappAccounts.id, accountId));
+    res.json({ success: true, message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Delete WhatsApp account error:', error);
+    res.status(500).json({ error: 'Failed to delete WhatsApp account' });
+  }
+});
+
+app.delete('/api/whatsapp/accounts', async (req: Request, res: Response) => {
+  try {
+    await db.delete(whatsappAccounts);
+    res.json({ success: true, message: 'All accounts deleted successfully' });
+  } catch (error) {
+    console.error('Delete all WhatsApp accounts error:', error);
+    res.status(500).json({ error: 'Failed to delete all WhatsApp accounts' });
   }
 });
 
@@ -235,7 +290,8 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-// Setup Vite in development or serve static files in production
+// Important: Setup Vite AFTER all API routes are defined
+// This ensures API routes are processed before Vite's catch-all middleware
 if (app.get("env") === "development") {
   setupVite(app, server);
 } else {
