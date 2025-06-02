@@ -101,6 +101,126 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// ===== CONFIGURACIONES AI (BYPASS VITE) =====
+// Obtener configuraciones de AI
+app.get('/api/ai-settings', async (req: Request, res: Response) => {
+  try {
+    console.log('📋 GET /api/ai-settings - Obteniendo configuraciones AI');
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    const { aiSettings } = await import('@shared/schema');
+    const [settings] = await db.select().from(aiSettings).limit(1);
+    
+    if (!settings) {
+      // Crear configuración por defecto si no existe
+      const [newSettings] = await db.insert(aiSettings).values({
+        selectedProvider: 'gemini',
+        customPrompt: 'Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.',
+        temperature: 0.7,
+        enableAIResponses: false
+      }).returning();
+      
+      console.log('✅ Configuración por defecto creada');
+      return res.json(newSettings);
+    }
+    
+    console.log('✅ Configuraciones existentes enviadas');
+    res.json(settings);
+  } catch (error) {
+    console.error('❌ Error obteniendo configuraciones AI:', error);
+    res.status(500).json({ error: 'Error al obtener configuraciones' });
+  }
+});
+
+// Guardar configuraciones de AI
+app.post('/api/ai-settings', async (req: Request, res: Response) => {
+  console.log('📝 POST /api/ai-settings - Inicio del endpoint (BYPASS)');
+  console.log('📝 Datos recibidos:', req.body);
+  
+  // Establecer headers primero
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-cache');
+  
+  try {
+    // Importaciones estáticas para evitar problemas
+    const { aiSettings } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
+    // Validación manual sin esquema para evitar conflictos
+    const {
+      selectedProvider,
+      geminiApiKey,
+      openaiApiKey,
+      qwenApiKey,
+      customPrompt,
+      temperature,
+      enableAIResponses
+    } = req.body;
+    
+    console.log('✅ Validando datos manualmente...');
+    
+    // Crear objeto de datos validados manualmente
+    const validatedData = {
+      selectedProvider: selectedProvider || 'gemini',
+      geminiApiKey: geminiApiKey || null,
+      openaiApiKey: openaiApiKey || null,
+      qwenApiKey: qwenApiKey || null,
+      customPrompt: customPrompt || 'Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.',
+      temperature: temperature || 0.7,
+      enableAIResponses: enableAIResponses || false
+    };
+    
+    console.log('✅ Datos procesados:', validatedData);
+    
+    // Verificar si ya existe una configuración
+    const [existingSettings] = await db.select().from(aiSettings).limit(1);
+    
+    if (existingSettings) {
+      console.log('🔄 Actualizando configuración existente con ID:', existingSettings.id);
+      // Actualizar configuración existente
+      const [updatedSettings] = await db
+        .update(aiSettings)
+        .set({
+          ...validatedData,
+          updatedAt: new Date()
+        })
+        .where(eq(aiSettings.id, existingSettings.id))
+        .returning();
+      
+      console.log('✅ Configuración actualizada exitosamente');
+      return res.status(200).json({
+        success: true,
+        message: 'Configuraciones de AI actualizadas correctamente',
+        data: updatedSettings
+      });
+    } else {
+      console.log('🆕 Creando nueva configuración');
+      // Crear nueva configuración
+      const [newSettings] = await db
+        .insert(aiSettings)
+        .values(validatedData)
+        .returning();
+      
+      console.log('✅ Nueva configuración creada exitosamente');
+      return res.status(200).json({
+        success: true,
+        message: 'Configuraciones de AI creadas correctamente',
+        data: newSettings
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error crítico en /api/ai-settings (BYPASS):', error);
+    console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+    
+    return res.status(500).json({ 
+      success: false,
+      error: 'Error interno del servidor',
+      details: error instanceof Error ? error.message : 'Error desconocido'
+    });
+  }
+});
+
 // === ENDPOINTS BYPASS COMPLETO PARA DEEPSEEK ===
 app.post("/bypass/deepseek-activate", (req: Request, res: Response) => {
   console.log('🚀 [BYPASS] Activando DeepSeek para cuenta:', req.body.accountId);
@@ -5188,119 +5308,6 @@ Responde de manera conversacional, profesional y útil según tu especializació
     }
   });
 
-  // ===== RUTAS DE CONFIGURACIONES AI =====
-  
-  // Obtener configuraciones de AI
-  app.get('/api/ai-settings', async (req: Request, res: Response) => {
-    try {
-      const { aiSettings } = await import('@shared/schema');
-      const [settings] = await db.select().from(aiSettings).limit(1);
-      
-      if (!settings) {
-        // Crear configuración por defecto si no existe
-        const [newSettings] = await db.insert(aiSettings).values({
-          selectedProvider: 'gemini',
-          customPrompt: 'Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.',
-          temperature: 0.7,
-          enableAIResponses: false
-        }).returning();
-        
-        return res.json(newSettings);
-      }
-      
-      res.json(settings);
-    } catch (error) {
-      console.error('Error obteniendo configuraciones AI:', error);
-      res.status(500).json({ error: 'Error al obtener configuraciones' });
-    }
-  });
 
-  // Guardar configuraciones de AI
-  app.post('/api/ai-settings', async (req: Request, res: Response) => {
-    console.log('📝 POST /api/ai-settings - Inicio del endpoint');
-    console.log('📝 Datos recibidos:', req.body);
-    
-    // Establecer headers primero
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 'no-cache');
-    
-    try {
-      // Importaciones estáticas para evitar problemas
-      const { aiSettings } = await import('@shared/schema');
-      const { eq } = await import('drizzle-orm');
-      
-      // Validación manual sin esquema para evitar conflictos
-      const {
-        selectedProvider,
-        geminiApiKey,
-        openaiApiKey,
-        qwenApiKey,
-        customPrompt,
-        temperature,
-        enableAIResponses
-      } = req.body;
-      
-      console.log('✅ Validando datos manualmente...');
-      
-      // Crear objeto de datos validados manualmente
-      const validatedData = {
-        selectedProvider: selectedProvider || 'gemini',
-        geminiApiKey: geminiApiKey || null,
-        openaiApiKey: openaiApiKey || null,
-        qwenApiKey: qwenApiKey || null,
-        customPrompt: customPrompt || 'Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.',
-        temperature: temperature || 0.7,
-        enableAIResponses: enableAIResponses || false
-      };
-      
-      console.log('✅ Datos procesados:', validatedData);
-      
-      // Verificar si ya existe una configuración
-      const [existingSettings] = await db.select().from(aiSettings).limit(1);
-      
-      if (existingSettings) {
-        console.log('🔄 Actualizando configuración existente con ID:', existingSettings.id);
-        // Actualizar configuración existente
-        const [updatedSettings] = await db
-          .update(aiSettings)
-          .set({
-            ...validatedData,
-            updatedAt: new Date()
-          })
-          .where(eq(aiSettings.id, existingSettings.id))
-          .returning();
-        
-        console.log('✅ Configuración actualizada exitosamente');
-        return res.status(200).json({
-          success: true,
-          message: 'Configuraciones de AI actualizadas correctamente',
-          data: updatedSettings
-        });
-      } else {
-        console.log('🆕 Creando nueva configuración');
-        // Crear nueva configuración
-        const [newSettings] = await db
-          .insert(aiSettings)
-          .values(validatedData)
-          .returning();
-        
-        console.log('✅ Nueva configuración creada exitosamente');
-        return res.status(200).json({
-          success: true,
-          message: 'Configuraciones de AI creadas correctamente',
-          data: newSettings
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error crítico en /api/ai-settings:', error);
-      console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
-      
-      return res.status(500).json({ 
-        success: false,
-        error: 'Error interno del servidor',
-        details: error instanceof Error ? error.message : 'Error desconocido'
-      });
-    }
-  });
 
 })();
