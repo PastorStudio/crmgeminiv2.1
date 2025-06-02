@@ -27,10 +27,12 @@ export async function apiRequest<T = any>(
     ...options?.headers
   };
 
-  // Use bypass route to avoid Vite interception
+  // Use absolute URL to bypass Vite completely
   let fullUrl = url;
   if (url.startsWith('/api/')) {
-    fullUrl = url.replace('/api/', '/bypass-api/');
+    const port = window.location.port || '3000';
+    const basePort = port === '3000' || port === '5173' ? '5000' : port;
+    fullUrl = `http://localhost:${basePort}${url}`;
   }
 
   // Añadir parámetro timestamp para evitar caché
