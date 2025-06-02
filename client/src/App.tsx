@@ -42,6 +42,7 @@ import GeminiAI from './pages/GeminiAI';
 import AgentAnalysis from './pages/AgentAnalysis';
 import DeepSeekSettings from './pages/DeepSeekSettings';
 import ModernMessaging from './pages/ModernMessaging';
+import SalesPipeline from './pages/SalesPipeline';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
@@ -166,6 +167,20 @@ const AppRoutes: React.FC = () => {
                   <path d="M12 14v6M8 18h8" stroke="#10B981" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
                 Leads
+              </a>
+              
+              <a href="/sales-pipeline" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/sales-pipeline' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="4" width="4" height="16" rx="1" fill="#3B82F6"/>
+                  <rect x="7" y="6" width="4" height="14" rx="1" fill="#8B5CF6"/>
+                  <rect x="12" y="8" width="4" height="12" rx="1" fill="#F59E0B"/>
+                  <rect x="17" y="10" width="4" height="10" rx="1" fill="#10B981"/>
+                  <circle cx="4" cy="2" r="1" fill="#EF4444"/>
+                  <circle cx="9" cy="4" r="1" fill="#EF4444"/>
+                  <circle cx="14" cy="6" r="1" fill="#EF4444"/>
+                  <circle cx="19" cy="8" r="1" fill="#EF4444"/>
+                </svg>
+                Pipeline Ventas
               </a>
               
               {/* Comunicación */}
@@ -550,6 +565,7 @@ const AppRoutes: React.FC = () => {
                 {/* Rutas protegidas */}
                 <Route path="/" component={() => <PrivateRoute component={Dashboard} path="/" />} />
                 <Route path="/leads" component={() => <PrivateRoute component={Leads} path="/leads" />} />
+                <Route path="/sales-pipeline" component={() => <PrivateRoute component={SalesPipeline} path="/sales-pipeline" />} />
                 <Route path="/messages" component={() => <PrivateRoute component={Messages} path="/messages" />} />
                 <Route path="/modern-messaging" component={() => <PrivateRoute component={ModernMessaging} path="/modern-messaging" />} />
                 <Route path="/calendar" component={() => <PrivateRoute component={Calendar} path="/calendar" />} />
