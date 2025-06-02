@@ -183,13 +183,14 @@ export class DatabaseStorage implements IStorage {
         id: nextAvailableId,
         name: account.name,
         description: account.description || null,
-        status: account.status || 'disconnected',
-        phone: account.phone || null,
+        ownerName: account.ownerName || null,
+        ownerPhone: account.ownerPhone || null,
+        status: account.status || 'inactive',
         autoResponseEnabled: account.autoResponseEnabled || false,
         assignedExternalAgentId: account.assignedExternalAgentId || null,
         responseDelay: account.responseDelay || 3,
         createdAt: new Date(),
-        updatedAt: new Date()
+        lastActiveAt: new Date()
       }).returning();
       
       console.log(`✅ Cuenta de WhatsApp creada con ID reutilizado: ${nextAvailableId}`);
@@ -204,7 +205,18 @@ export class DatabaseStorage implements IStorage {
       // Fallback: usar inserción normal sin ID específico
       const [newAccount] = await db
         .insert(whatsappAccounts)
-        .values(account)
+        .values({
+          name: account.name,
+          description: account.description || null,
+          ownerName: account.ownerName || null,
+          ownerPhone: account.ownerPhone || null,
+          status: account.status || 'inactive',
+          autoResponseEnabled: account.autoResponseEnabled || false,
+          assignedExternalAgentId: account.assignedExternalAgentId || null,
+          responseDelay: account.responseDelay || 3,
+          createdAt: new Date(),
+          lastActiveAt: new Date()
+        })
         .returning();
       return newAccount;
     }
