@@ -22,7 +22,7 @@ interface WhatsAppMessage {
 export class ExternalAgentWhatsAppIntegrator {
   
   /**
-   * Procesa un mensaje entrante y genera respuesta con agente externo si está configurado
+   * Procesa un mensaje entrante y genera respuesta con configuración AI personalizada
    */
   async processIncomingMessage(message: WhatsAppMessage): Promise<{ success: boolean; response?: string; agentName?: string }> {
     try {
@@ -45,118 +45,67 @@ export class ExternalAgentWhatsAppIntegrator {
         return { success: false };
       }
 
-      // Verificar si tiene agente externo asignado y respuesta automática activada
-      if (!account.assignedExternalAgentId || !account.autoResponseEnabled) {
-        console.log(`⏭️ Cuenta ${message.accountId} no tiene agente externo activo`);
+      // Verificar si tiene respuesta automática activada (sin depender de agentes asignados)
+      if (!account.autoResponseEnabled) {
+        console.log(`⏭️ Cuenta ${message.accountId} no tiene respuestas automáticas activadas`);
         return { success: false };
       }
 
-      // Obtener el agente externo asignado
-      const [agent] = await db
-        .select()
-        .from(externalAgents)
-        .where(eq(externalAgents.id, parseInt(account.assignedExternalAgentId)))
-        .limit(1);
+      console.log(`🤖 Generando respuesta automática con configuración AI personalizada`);
 
-      if (!agent || agent.status !== 'active') {
-        console.log(`❌ Agente externo ${account.assignedExternalAgentId} no encontrado o inactivo`);
-        return { success: false };
-      }
-
-      console.log(`🤖 Generando respuesta con agente externo: ${agent.agentName}`);
-
-      // Generar respuesta usando OpenAI con el contexto del agente
-      const response = await this.generateResponseWithOpenAI(agent.agentName, message.body);
+      // Generar respuesta usando la configuración AI personalizada
+      const response = await this.generateResponseWithAI(message.body, message.accountId, message.chatId);
 
       if (response) {
         console.log(`✅ Respuesta generada exitosamente: "${response.substring(0, 50)}..."`);
         
-        // Actualizar contador de respuestas del agente
-        await db
-          .update(externalAgents)
-          .set({ 
-            responseCount: (agent.responseCount || 0) + 1,
-            lastUsed: new Date()
-          })
-          .where(eq(externalAgents.id, agent.id));
-
         return { 
           success: true, 
           response, 
-          agentName: agent.agentName 
+          agentName: "AI Assistant" 
         };
       }
 
       return { success: false };
 
     } catch (error) {
-      console.error('❌ Error procesando mensaje con agente externo:', error);
+      console.error('❌ Error procesando mensaje con configuración AI:', error);
       return { success: false };
     }
   }
 
   /**
-   * Genera respuesta usando la configuración AI personalizada guardada
+   * Genera respuesta usando exclusivamente la configuración AI personalizada
    */
-  private async generateResponseWithOpenAI(agentName: string, message: string): Promise<string | null> {
+  private async generateResponseWithAI(message: string, accountId: number, chatId: string): Promise<string | null> {
     try {
-      console.log(`🎯 Generando respuesta con configuración AI personalizada para ${agentName}`);
+      console.log(`🎯 Generando respuesta con configuración AI personalizada`);
 
-      // Intentar usar el servicio de respuestas inteligentes con configuración personalizada
+      // Usar exclusivamente el servicio de respuestas inteligentes con configuración AI personalizada
       try {
         const { intelligentResponseService } = await import('./intelligentResponseService');
         
         const intelligentResponse = await intelligentResponseService.generateResponse({
-          chatId: 'auto-response-chat',
-          accountId: 1, // Dinámicamente obtenible si es necesario
+          chatId: chatId,
+          accountId: accountId,
           userMessage: message,
-          customerName: agentName
+          customerName: "Cliente"
         });
 
         if (intelligentResponse && intelligentResponse.message) {
-          console.log(`✅ Respuesta generada con ${intelligentResponse.provider} usando prompt personalizado`);
+          console.log(`✅ Respuesta generada con ${intelligentResponse.provider} usando configuración AI personalizada`);
           return intelligentResponse.message;
         }
-      } catch (intelligentError) {
-        console.log('⚠️ Configuración AI personalizada no disponible, usando fallback:', intelligentError.message);
+      } catch (intelligentError: any) {
+        console.log('⚠️ Error en configuración AI personalizada:', intelligentError.message);
       }
 
-      // Fallback: OpenAI directo si no hay configuración personalizada
-      if (!process.env.OPENAI_API_KEY) {
-        console.error('❌ OPENAI_API_KEY no configurada');
-        return null;
-      }
-
-      const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI({ 
-        apiKey: process.env.OPENAI_API_KEY 
-      });
-
-      // Crear contexto específico según el agente (fallback)
-      const agentContext = this.getAgentContext(agentName);
-
-      console.log(`🎯 Enviando a OpenAI con contexto fallback de ${agentName}`);
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: agentContext
-          },
-          {
-            role: "user",
-            content: message
-          }
-        ],
-        max_tokens: 500,
-        temperature: 0.7
-      });
-
-      return completion.choices[0].message.content;
+      // Si no hay configuración AI personalizada, mostrar mensaje informativo
+      console.log('ℹ️ No se encontró configuración AI personalizada. Configure prompts en la página AI Settings.');
+      return null;
 
     } catch (error) {
-      console.error('❌ Error generando respuesta:', error);
+      console.error('❌ Error generando respuesta con configuración AI:', error);
       return null;
     }
   }
@@ -183,9 +132,9 @@ export class ExternalAgentWhatsAppIntegrator {
   }
 
   /**
-   * Verifica si una cuenta tiene agente externo activo
+   * Verifica si una cuenta tiene respuestas automáticas activadas
    */
-  async hasActiveExternalAgent(accountId: number): Promise<boolean> {
+  async hasActiveAutoResponse(accountId: number): Promise<boolean> {
     try {
       const [account] = await db
         .select()
@@ -193,17 +142,17 @@ export class ExternalAgentWhatsAppIntegrator {
         .where(eq(whatsappAccounts.id, accountId))
         .limit(1);
 
-      return !!(account?.assignedExternalAgentId && account.autoResponseEnabled);
+      return !!(account?.autoResponseEnabled);
     } catch (error) {
-      console.error('Error verificando agente externo activo:', error);
+      console.error('Error verificando respuestas automáticas:', error);
       return false;
     }
   }
 
   /**
-   * Obtiene información del agente externo activo para una cuenta
+   * Obtiene información de configuración AI para respuestas automáticas
    */
-  async getActiveExternalAgent(accountId: number): Promise<{ agentName: string; agentUrl: string } | null> {
+  async getAutoResponseConfig(accountId: number): Promise<{ enabled: boolean; accountName: string } | null> {
     try {
       const [account] = await db
         .select()
@@ -211,26 +160,16 @@ export class ExternalAgentWhatsAppIntegrator {
         .where(eq(whatsappAccounts.id, accountId))
         .limit(1);
 
-      if (!account?.assignedExternalAgentId || !account.autoResponseEnabled) {
-        return null;
-      }
-
-      const [agent] = await db
-        .select()
-        .from(externalAgents)
-        .where(eq(externalAgents.id, parseInt(account.assignedExternalAgentId)))
-        .limit(1);
-
-      if (!agent || agent.status !== 'active') {
+      if (!account) {
         return null;
       }
 
       return {
-        agentName: agent.agentName,
-        agentUrl: agent.agentUrl
+        enabled: !!account.autoResponseEnabled,
+        accountName: account.name || `Cuenta ${accountId}`
       };
     } catch (error) {
-      console.error('Error obteniendo agente externo activo:', error);
+      console.error('Error obteniendo configuración de respuestas automáticas:', error);
       return null;
     }
   }
