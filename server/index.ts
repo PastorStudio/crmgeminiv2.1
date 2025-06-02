@@ -1845,7 +1845,7 @@ app.use((req, res, next) => {
     const autoAgentService = AutoExternalAgentService.getInstance();
 
     // Iniciar monitoreo automático para cuentas activas
-    const accountsResult = await pool.query('SELECT id FROM whatsapp_accounts WHERE auto_response_enabled = true');
+    const accountsResult = await pool.query('SELECT id FROM whatsapp_accounts WHERE autoresponseenabled = true');
     for (const account of accountsResult.rows) {
       autoAgentService.startAutoMonitoring(account.id);
       console.log(`🤖 Monitoreo automático iniciado para cuenta ${account.id}`);

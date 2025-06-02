@@ -65,7 +65,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Edit, Trash2, Settings, Bot } from "lucide-react";
+import { Plus, Edit, Trash2, Settings, Bot, MessageSquare } from "lucide-react";
 
 // AI Integration settings schema
 const aiIntegrationSchema = z.object({
