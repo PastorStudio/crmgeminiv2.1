@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { PageContainer } from "@/components/ui/page-container";
 import DashboardStats from "@/components/dashboard/DashboardStats";
-import SalesPipeline from "@/components/dashboard/SalesPipeline";
+import AdminMetrics from "@/components/dashboard/AdminMetrics";
 import UpcomingActivities from "@/components/dashboard/UpcomingActivities";
 import RecentConversations from "@/components/dashboard/RecentConversations";
 import { Button } from "@/components/ui/button";
