@@ -52,6 +52,55 @@ export default function SalesPipelineKanban() {
     },
   });
 
+  // Mutation for deleting leads
+  const deleteLeadMutation = useMutation({
+    mutationFn: async (leadId: number) => {
+      return await apiRequest(`/api/leads/${leadId}`, {
+        method: "DELETE"
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      toast({
+        title: "Lead eliminado",
+        description: "El lead se ha eliminado correctamente.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el lead.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation for updating lead details
+  const updateLeadDetailsMutation = useMutation({
+    mutationFn: async ({ leadId, data }: { leadId: number; data: Partial<Lead> }) => {
+      return await apiRequest(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      setEditingLead(null);
+      toast({
+        title: "Lead actualizado",
+        description: "Los detalles del lead se han actualizado correctamente.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "No se pudieron actualizar los detalles del lead.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Organize leads into columns by status - 5-step pipeline
   useEffect(() => {
     if (allLeads) {
@@ -224,12 +273,36 @@ export default function SalesPipelineKanban() {
                                 </div>
                                 
                                 <div className="flex items-center justify-between pt-1">
-                                  <div className="flex items-center space-x-2">
+                                  <div className="flex items-center space-x-1">
                                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                                       <Eye className="h-3 w-3" />
                                     </Button>
                                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                                       <MessageSquare className="h-3 w-3" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingLead(lead);
+                                      }}
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-6 w-6 p-0 text-red-600 hover:text-red-800"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (confirm('¿Estás seguro de que quieres eliminar este lead?')) {
+                                          deleteLeadMutation.mutate(lead.id);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
                                     </Button>
                                   </div>
                                   <div className="text-xs text-gray-500">
