@@ -28,6 +28,7 @@ import multer from "multer";
 import { messageTemplateService } from "./services/messageTemplateService";
 import { analyticsService } from "./services/analyticsService";
 import { excelImportService } from "./services/excelImportService";
+import { getAdminMetrics, getAgentPerformance, getSystemHealth } from "./routes/adminMetrics";
 import webScrapingRouter from "./routes/webScrapingRoutes";
 import { massSenderService } from "./services/massSenderService";
 import { mediaGalleryRouter, mediaServeRouter } from "./services/mediaGalleryRoutes";
@@ -1139,6 +1140,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
     }
   });
+
+  // Admin metrics routes
+  app.get("/api/admin/metrics", getAdminMetrics);
+  app.get("/api/admin/agent-performance", getAgentPerformance);
+  app.get("/api/admin/system-health", getSystemHealth);
 
   app.patch("/api/dashboard-stats", async (req: Request, res: Response) => {
     try {
