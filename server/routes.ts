@@ -39,14 +39,7 @@ import ticketsRouter from "./routes/tickets";
 // Referencias de APIs corregidas removidas para optimización
 import { translateText, detectLanguage } from "./routes/translation";
 // Referencias de problemas corregidos removidas para optimización
-import { 
-  getAutonomousLeads, 
-  getAutonomousStats, 
-  forceProcessMessages, 
-  processSpecificMessage, 
-  getConversionMetrics, 
-  getRecentActivity 
-} from "./routes/autonomousApi";
+import autonomousApiRouter from "./routes/autonomousApi";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -83,6 +76,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   app.use("/api/tickets", ticketsRouter);
   app.use("/api/web-scraping", webScrapingRouter);
+  
+  // Registrar rutas del sistema autónomo
+  app.use("/api/autonomous", autonomousApiRouter);
   // ✅ ENDPOINTS DIRECTOS PARA ASIGNACIONES Y COMENTARIOS - POSTGRESQL REAL
   const { 
     createChatAssignment, 
