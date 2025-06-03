@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { RefreshCw, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 
 export function SystemRefreshButton() {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -19,16 +19,19 @@ export function SystemRefreshButton() {
 
       if (response.success) {
         setLastUpdate(new Date());
+        
+        // Invalidate all dashboard-related queries to force refresh
+        await queryClient.invalidateQueries({ queryKey: ['/api/dashboard-stats'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/dashboard-metrics'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/activities'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
+        
         toast({
           title: "Sistema actualizado",
           description: `${response.data.totalLeads} leads en total`,
           variant: "default"
         });
-        
-        // Refresh the page to show updated data
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
       }
     } catch (error) {
       toast({
