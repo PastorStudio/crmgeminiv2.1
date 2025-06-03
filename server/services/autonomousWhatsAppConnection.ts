@@ -3,7 +3,8 @@
  * Maintains WhatsApp connections independently of any frontend interface
  */
 
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
+import pkg from 'whatsapp-web.js';
+const { Client, LocalAuth, MessageMedia } = pkg;
 import { pool } from '../db';
 import OpenAI from 'openai';
 import fs from 'fs';
