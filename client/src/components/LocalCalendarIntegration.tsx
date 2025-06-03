@@ -100,6 +100,17 @@ export function LocalCalendarIntegration() {
     refetchInterval: 60000 // Refresh every minute
   });
 
+  // Get WhatsApp accounts
+  const { data: whatsappAccounts } = useQuery({
+    queryKey: ['/api/whatsapp/accounts'],
+    queryFn: async () => {
+      const response = await fetch('/api/whatsapp/accounts');
+      if (!response.ok) throw new Error('Failed to fetch WhatsApp accounts');
+      const data = await response.json();
+      return data.accounts || [];
+    }
+  });
+
   // Create event mutation
   const createEventMutation = useMutation({
     mutationFn: async (eventData: any) => {
@@ -159,7 +170,9 @@ export function LocalCalendarIntegration() {
         description: '',
         eventDate: '',
         reminderMinutes: 30,
-        eventType: 'reminder'
+        eventType: 'reminder',
+        contactPhone: '',
+        whatsappAccountId: undefined
       });
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/events/today'] });
@@ -179,7 +192,9 @@ export function LocalCalendarIntegration() {
       description: '',
       eventDate: '',
       reminderMinutes: 30,
-      eventType: 'reminder'
+      eventType: 'reminder',
+      contactPhone: '',
+      whatsappAccountId: undefined
     }
   });
 
@@ -333,8 +348,11 @@ export function LocalCalendarIntegration() {
                     <SelectValue placeholder="Seleccionar cuenta" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">Cuenta 1 - Ventas</SelectItem>
-                    <SelectItem value="2">Cuenta 2 - Soporte</SelectItem>
+                    {whatsappAccounts?.map((account: any) => (
+                      <SelectItem key={account.id} value={account.id.toString()}>
+                        {account.name} - {account.description || account.ownerName}
+                      </SelectItem>
+                    )) || <SelectItem value="">No hay cuentas disponibles</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>
