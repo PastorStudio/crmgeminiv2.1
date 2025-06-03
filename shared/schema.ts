@@ -143,6 +143,10 @@ export const conversations = pgTable("conversations", {
   aiAnalysis: jsonb("aiAnalysis"), // Análisis automático de la IA
   sentiment: text("sentiment"), // positive, negative, neutral
   intent: text("intent"), // sales, support, inquiry, complaint
+  messages: text("messages"), // JSON string de mensajes para análisis
+  analyzed: boolean("analyzed").default(false),
+  analysisData: jsonb("analysisData"),
+  analyzedAt: timestamp("analyzedAt"),
   urgency: text("urgency"), // low, medium, high
   topics: text("topics").array(),
   leadPotential: integer("leadPotential").default(0), // 0-100
@@ -286,6 +290,26 @@ export const chatComments = pgTable('chat_comments', {
   attachments: jsonb('attachments'),
   createdAt: timestamp('createdAt').defaultNow(),
   updatedAt: timestamp('updatedAt'),
+});
+
+// Conversations table already exists above (line 130), using the existing one
+
+// Analysis Reports - reportes de análisis de IA
+export const analysisReports = pgTable("analysis_reports", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversationId").notNull(),
+  chatId: text("chatId").notNull(),
+  accountId: integer("accountId").notNull(),
+  analysisType: text("analysisType").notNull(), // conversation_intent, lead_extraction, ticket_analysis
+  analysisData: jsonb("analysisData").notNull(),
+  leadPotential: integer("leadPotential"), // 0-100
+  urgency: text("urgency"), // low, medium, high
+  category: text("category"),
+  sentiment: text("sentiment"), // positive, neutral, negative
+  actionRequired: boolean("actionRequired").default(false),
+  leadGenerated: boolean("leadGenerated").default(false),
+  ticketGenerated: boolean("ticketGenerated").default(false),
+  createdAt: timestamp("createdAt").defaultNow(),
 });
 
 // Modern Tickets
