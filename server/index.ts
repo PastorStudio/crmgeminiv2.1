@@ -1883,37 +1883,19 @@ app.use((req, res, next) => {
       console.log("🔄 API users - Solicitando lista de usuarios...");
       const users = await storage.getAllUsers();
       
-      // Enhance users with activity statistics
-      const enhancedUsers = await Promise.all(users.map(async (user) => {
+      // Return users with login counts but without activity fetching to avoid schema errors
+      const safeUsers = users.map(user => {
         const { password, ...userWithoutPassword } = user;
-        
-        // Get recent activities for this user (last 7 days)
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        
-        try {
-          const activities = await storage.getActivitiesByUser(user.id, weekAgo);
-          const lastActivity = activities.length > 0 ? activities[0].timestamp : null;
-          
-          return {
-            ...userWithoutPassword,
-            totalLogins: user.totalLogins || 0,
-            lastActivity: lastActivity || user.lastLoginAt,
-            activityCount: activities.length
-          };
-        } catch (activityError) {
-          // If activity fetch fails, return user with basic data
-          return {
-            ...userWithoutPassword,
-            totalLogins: user.totalLogins || 0,
-            lastActivity: user.lastLoginAt,
-            activityCount: 0
-          };
-        }
-      }));
+        return {
+          ...userWithoutPassword,
+          totalLogins: user.totalLogins || 0,
+          lastActivity: user.lastLoginAt || user.createdAt,
+          activityCount: user.totalLogins || 0 // Use login count as activity indicator
+        };
+      });
       
-      console.log(`✅ API users - Enviando ${enhancedUsers.length} usuarios`);
-      res.json(enhancedUsers);
+      console.log(`✅ API users - Enviando ${safeUsers.length} usuarios`);
+      res.json(safeUsers);
     } catch (error) {
       console.error("❌ API users - Error:", error);
       res.status(500).json({ error: "Error interno del servidor" });
