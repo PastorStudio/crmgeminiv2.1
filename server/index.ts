@@ -3435,7 +3435,7 @@ app.use((req, res, next) => {
       };
       
       // Traducir actividades a descripciones legibles
-      const { ActivityTranslator } = await import('./utils/activityTranslator');
+      // Activity translator removed for now
       
       const translatedActivities = recentActivities.map(activity => {
         let parsedDetails = {};
@@ -3456,19 +3456,12 @@ app.use((req, res, next) => {
           parsedDetails = { description: activity.details || '' };
         }
         
-        const translated = ActivityTranslator.translateActivity(
-          activity.action,
-          parsedDetails.target,
-          activity.page,
-          parsedDetails
-        );
-        
         return {
           ...activity,
-          translatedAction: translated.action,
-          icon: translated.icon,
-          category: translated.category,
-          priority: translated.priority,
+          translatedAction: activity.action,
+          icon: '📊',
+          category: activity.category || 'general',
+          priority: 'medium',
           readableTime: new Date(activity.timestamp).toLocaleString('es-ES', {
             year: 'numeric',
             month: 'short',
@@ -3607,40 +3600,11 @@ app.use((req, res, next) => {
         return fullName && fullName.trim() ? fullName : username || `Usuario ${username}`;
       };
 
-      // Procesar actividades con nombres traducidos y aplicar el traductor de actividades
+      // Procesar actividades con nombres traducidos
       const translatedActivities = activities.map(activity => {
-        let parsedDetails = {};
-        try {
-          if (typeof activity.details === 'string') {
-            // Solo hacer parse si parece ser JSON válido (empieza con { o [)
-            if (activity.details.trim().startsWith('{') || activity.details.trim().startsWith('[')) {
-              parsedDetails = JSON.parse(activity.details);
-            } else {
-              // Si es texto plano, crear un objeto con la descripción
-              parsedDetails = { description: activity.details };
-            }
-          } else {
-            parsedDetails = activity.details || {};
-          }
-        } catch (e) {
-          // Si falla el parse, tratar como texto plano
-          parsedDetails = { description: activity.details || '' };
-        }
-        
-        const translated = ActivityTranslator.translateActivity(
-          activity.action,
-          parsedDetails.target,
-          activity.page,
-          parsedDetails
-        );
-        
         return {
           ...activity,
-          agentName: getAgentDisplayName(activity.username, activity.fullName),
-          translatedAction: translated.action,
-          icon: translated.icon,
-          category: translated.category,
-          priority: translated.priority,
+          agentName: getAgentDisplayName(activity.username || '', activity.fullName || ''),
           readableTime: new Date(activity.timestamp).toLocaleString('es-ES', {
             year: 'numeric',
             month: 'short',

@@ -119,19 +119,17 @@ export class DatabaseStorage implements IStorage {
       const { agentActivities } = await import("@shared/schema");
       let query = db.select().from(agentActivities);
       
-      // Add filters
-      const whereConditions = [];
-      
-      if (userId !== null) {
-        whereConditions.push(eq(agentActivities.agentId, userId));
-      }
-      
-      if (startDate) {
-        whereConditions.push(sql`${agentActivities.timestamp} >= ${startDate.toISOString()}`);
-      }
-      
-      if (whereConditions.length > 0) {
-        query = query.where(sql`${whereConditions.join(' AND ')}`);
+      // Add filters properly
+      if (userId !== null && startDate) {
+        query = query.where(
+          sql`${agentActivities.agentId} = ${userId} AND ${agentActivities.timestamp} >= ${startDate.toISOString()}`
+        );
+      } else if (userId !== null) {
+        query = query.where(eq(agentActivities.agentId, userId));
+      } else if (startDate) {
+        query = query.where(
+          sql`${agentActivities.timestamp} >= ${startDate.toISOString()}`
+        );
       }
       
       const activities = await query.orderBy(desc(agentActivities.timestamp));
