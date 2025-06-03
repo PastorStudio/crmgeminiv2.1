@@ -1744,7 +1744,9 @@ export default function UserManagement() {
                       {agentPreviewData.activities.slice(0, 10).map((activity: any, index: number) => (
                         <div key={index} className="flex items-start space-x-3 p-3 bg-white border rounded-lg">
                           <div className="flex-shrink-0">
-                            {activity.action === 'login' ? (
+                            {activity.icon ? (
+                              <span className="text-lg">{activity.icon}</span>
+                            ) : activity.action === 'login' ? (
                               <LogIn className="h-5 w-5 text-green-500" />
                             ) : activity.action === 'page_view' ? (
                               <Eye className="h-5 w-5 text-blue-500" />
@@ -1755,7 +1757,7 @@ export default function UserManagement() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
                               <p className="text-sm font-medium text-gray-900">
-                                {activity.details || activity.action}
+                                {activity.translatedAction || activity.details || activity.action}
                               </p>
                               <p className="text-sm text-gray-500">
                                 {formatDate(activity.timestamp)}
