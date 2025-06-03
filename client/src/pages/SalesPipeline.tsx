@@ -67,10 +67,13 @@ export default function SalesPipeline() {
   const { toast } = useToast();
 
   // Fetch leads data
-  const { data: leads = [], isLoading } = useQuery({
+  const { data: leadsResponse, isLoading, error } = useQuery({
     queryKey: ['/api/leads'],
     queryFn: () => apiRequest('/api/leads'),
   });
+
+  // Ensure leads is always an array
+  const leads = Array.isArray(leadsResponse) ? leadsResponse : [];
 
   // Group leads by status
   const leadsByStatus = PIPELINE_STAGES.reduce((acc, stage) => {
