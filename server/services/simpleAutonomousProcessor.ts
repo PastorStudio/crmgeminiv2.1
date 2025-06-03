@@ -29,10 +29,7 @@ export class SimpleAutonomousProcessor {
 
   constructor() {
     console.log('🚀 Sistema Autónomo Simplificado iniciado');
-    // Start monitoring immediately
-    setTimeout(() => this.checkAndProcess(), 5000);
-    // Then check every 30 seconds
-    setInterval(() => this.checkAndProcess(), 30000);
+    // Only process when explicitly called, no automatic intervals
   }
 
   public async forceProcessAllChats(): Promise<{ leadsCreated: number; messagesProcessed: number }> {
