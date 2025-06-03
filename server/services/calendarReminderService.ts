@@ -98,7 +98,7 @@ export class CalendarReminderService {
 
       // Obtener eventos de la próxima semana usando consulta SQL directa
       const result = await pool.query(`
-        SELECT * FROM calendar_events 
+        SELECT * FROM local_events 
         WHERE event_date >= $1 AND event_date <= $2
       `, [now, nextWeek]);
 
