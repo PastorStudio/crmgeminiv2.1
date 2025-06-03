@@ -166,7 +166,7 @@ export function LocalCalendarIntegration() {
     }
   });
 
-  const { register, handleSubmit, reset, setValue } = useForm({
+  const { register, handleSubmit, reset, setValue, formState: { isSubmitting } } = useForm({
     defaultValues: {
       title: '',
       description: '',
@@ -176,7 +176,20 @@ export function LocalCalendarIntegration() {
     }
   });
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: any, event: any) => {
+    event?.preventDefault();
+    if (createEventMutation.isPending || isSubmitting) return;
+    
+    // Validate required fields
+    if (!data.title || !data.eventDate) {
+      toast({
+        title: "Error de validación",
+        description: "El título y la fecha del evento son obligatorios",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     createEventMutation.mutate({
       ...data,
       eventDate: new Date(data.eventDate).toISOString()
@@ -320,7 +333,10 @@ export function LocalCalendarIntegration() {
               </div>
               
               <div className="flex gap-2">
-                <Button type="submit" disabled={createEventMutation.isPending}>
+                <Button 
+                  type="submit" 
+                  disabled={createEventMutation.isPending || isSubmitting}
+                >
                   {createEventMutation.isPending ? 'Creando...' : 'Crear Evento'}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
