@@ -116,34 +116,6 @@ const defaultValues: Partial<UserFormValues> = {
   department: "ventas",
 };
 
-// Función para obtener nombre público del agente
-const getAgentDisplayName = (user: any): string => {
-  // Si tiene fullName, usarlo
-  if (user.fullName && user.fullName.trim()) {
-    return user.fullName;
-  }
-  
-  // Si no, traducir el username técnico a un nombre más amigable
-  const usernameTranslations: Record<string, string> = {
-    'admin': 'Administrador',
-    'supervisor': 'Supervisor',
-    'maria.ventas': 'María - Ventas',
-    'juan.soporte': 'Juan - Soporte',
-    'ana.supervisor': 'Ana - Supervisora',
-    'carlos.manager': 'Carlos - Gerente',
-    'lucia.agent': 'Lucía - Agente',
-    'pedro.sales': 'Pedro - Ventas',
-    'sofia.support': 'Sofía - Soporte',
-    'diego.agent': 'Diego - Agente',
-    'valeria.supervisor': 'Valeria - Supervisora',
-    'miguel.sales': 'Miguel - Ventas',
-    'isabella.support': 'Isabella - Soporte',
-    'alejandro.manager': 'Alejandro - Gerente'
-  };
-  
-  return usernameTranslations[user.username] || user.username;
-};
-
 export default function UserManagement() {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
@@ -236,15 +208,49 @@ export default function UserManagement() {
         // La API devuelve directamente un array de usuarios, no un objeto con success
         if (Array.isArray(data)) {
           console.log('✅ Frontend: Usuarios reales cargados desde DB:', data.length);
-          return data.map((user: any) => ({
-            ...user,
-            status: 'active',
-            department: user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
-                       user.role === 'admin' ? 'administracion' : 
-                       user.role === 'supervisor' ? 'supervision' : 'atencion_cliente',
-            totalLogins: 0, // Se actualizará con datos reales de actividades
-            lastActivity: null
-          }));
+          
+          // Obtener estadísticas de actividad para cada usuario
+          const usersWithActivity = await Promise.all(
+            data.map(async (user: any) => {
+              try {
+                // Obtener actividades de cada usuario usando la API existente
+                const activityResponse = await fetch(`/api/agent-activity/${user.id}`);
+                let totalLogins = 0;
+                let lastActivity = null;
+                
+                if (activityResponse.ok) {
+                  const activityData = await activityResponse.json();
+                  if (activityData.success) {
+                    totalLogins = activityData.activities?.filter((a: any) => a.action === 'login').length || 0;
+                    lastActivity = activityData.activities?.[0]?.timestamp || null;
+                  }
+                }
+                
+                return {
+                  ...user,
+                  status: 'active',
+                  department: user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
+                             user.role === 'admin' ? 'administracion' : 
+                             user.role === 'supervisor' ? 'supervision' : 'atencion_cliente',
+                  totalLogins,
+                  lastActivity
+                };
+              } catch (error) {
+                console.warn('Error obteniendo actividades del usuario:', user.id, error);
+                return {
+                  ...user,
+                  status: 'active',
+                  department: user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
+                             user.role === 'admin' ? 'administracion' : 
+                             user.role === 'supervisor' ? 'supervision' : 'atencion_cliente',
+                  totalLogins: 0,
+                  lastActivity: null
+                };
+              }
+            })
+          );
+          
+          return usersWithActivity;
         } else if (data.success && Array.isArray(data.users)) {
           console.log('✅ Frontend: Usuarios reales cargados desde DB:', data.users.length);
           return data.users.map((user: any) => ({
@@ -264,26 +270,7 @@ export default function UserManagement() {
       }
     },
     enabled: true,
-    refetchInterval: 30000, // Actualizar cada 30 segundos
     retry: 1
-  });
-
-  // Obtener actividades de agentes en tiempo real
-  const { data: agentActivitiesData } = useQuery({
-    queryKey: ['/api/agent-activities'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/agent-activities?timeRange=24h');
-        if (!response.ok) return { activities: [], stats: {} };
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        console.log('Error obteniendo actividades de agentes');
-        return { activities: [], stats: {} };
-      }
-    },
-    refetchInterval: 15000, // Actualizar cada 15 segundos
-    enabled: true
   });
 
   // Mutación para crear usuario
@@ -672,19 +659,17 @@ export default function UserManagement() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-600">Actividades Totales</p>
-                <h3 className="text-2xl font-bold text-purple-700 mt-1">
-                  {agentActivitiesData?.totalActivities || 0}
-                </h3>
+                <p className="text-sm font-medium text-purple-600">Tiempo Promedio</p>
+                <h3 className="text-2xl font-bold text-purple-700 mt-1">12 min</h3>
               </div>
               <div className="p-2 bg-purple-200 rounded-full">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
             </div>
             <div className="mt-4 text-xs text-purple-600">
-              Actividades registradas en las últimas 24h
+              Tiempo de respuesta promedio
             </div>
           </CardContent>
         </Card>
@@ -693,19 +678,17 @@ export default function UserManagement() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-amber-600">Agentes En Línea</p>
-                <h3 className="text-2xl font-bold text-amber-700 mt-1">
-                  {activeAgents?.length || 0}
-                </h3>
+                <p className="text-sm font-medium text-amber-600">Satisfacción</p>
+                <h3 className="text-2xl font-bold text-amber-700 mt-1">94%</h3>
               </div>
               <div className="p-2 bg-amber-200 rounded-full">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
             </div>
             <div className="mt-4 text-xs text-amber-600">
-              Agentes conectados y activos ahora
+              Índice de satisfacción de clientes
             </div>
           </CardContent>
         </Card>
@@ -867,7 +850,7 @@ export default function UserManagement() {
                             ></div>
                           </div>
                           <div>
-                            <div className="font-medium">{getAgentDisplayName(user)}</div>
+                            <div className="font-medium">{user.username}</div>
                             <div className="text-sm text-gray-500">
                               {activeAgents.includes(user.id) ? 'En línea' : 'Desconectado'}
                             </div>
@@ -1770,13 +1753,8 @@ export default function UserManagement() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
                               <p className="text-sm font-medium text-gray-900">
-                                {activity.action} {activity.targetElement && `- ${activity.targetElement}`}
+                                {activity.translatedAction || activity.action}
                               </p>
-                              {activity.details && (
-                                <p className="text-xs text-gray-600 mt-1">
-                                  {typeof activity.details === 'string' ? activity.details : JSON.stringify(activity.details)}
-                                </p>
-                              )}
                               <p className="text-sm text-gray-500">
                                 {formatDate(activity.timestamp)}
                               </p>

@@ -1882,18 +1882,10 @@ app.use((req, res, next) => {
     try {
       console.log("🔄 API users - Solicitando lista de usuarios...");
       const users = await storage.getAllUsers();
-      
-      // Return users with login counts but without activity fetching to avoid schema errors
       const safeUsers = users.map(user => {
         const { password, ...userWithoutPassword } = user;
-        return {
-          ...userWithoutPassword,
-          totalLogins: user.totalLogins || 0,
-          lastActivity: user.lastLoginAt || user.createdAt,
-          activityCount: user.totalLogins || 0 // Use login count as activity indicator
-        };
+        return userWithoutPassword;
       });
-      
       console.log(`✅ API users - Enviando ${safeUsers.length} usuarios`);
       res.json(safeUsers);
     } catch (error) {
@@ -3443,7 +3435,7 @@ app.use((req, res, next) => {
       };
       
       // Traducir actividades a descripciones legibles
-      // Activity translator removed for now
+      const { ActivityTranslator } = await import('./utils/activityTranslator');
       
       const translatedActivities = recentActivities.map(activity => {
         let parsedDetails = {};
@@ -3464,12 +3456,19 @@ app.use((req, res, next) => {
           parsedDetails = { description: activity.details || '' };
         }
         
+        const translated = ActivityTranslator.translateActivity(
+          activity.action,
+          parsedDetails.target,
+          activity.page,
+          parsedDetails
+        );
+        
         return {
           ...activity,
-          translatedAction: activity.action,
-          icon: '📊',
-          category: activity.category || 'general',
-          priority: 'medium',
+          translatedAction: translated.action,
+          icon: translated.icon,
+          category: translated.category,
+          priority: translated.priority,
           readableTime: new Date(activity.timestamp).toLocaleString('es-ES', {
             year: 'numeric',
             month: 'short',
@@ -3495,35 +3494,6 @@ app.use((req, res, next) => {
         error: 'Error obteniendo actividades del agente',
         details: (error as Error).message
       });
-    }
-  });
-
-  // Track user login
-  app.post('/api/user-login', async (req: Request, res: Response) => {
-    try {
-      const { userId } = req.body;
-      
-      if (!userId) {
-        return res.status(400).json({ error: 'userId is required' });
-      }
-
-      // Increment login count for user
-      const updatedUser = await storage.incrementUserLogin(userId);
-      
-      if (!updatedUser) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      console.log(`🔑 Login registrado para usuario ${userId} - Total logins: ${updatedUser.totalLogins}`);
-      
-      res.json({ 
-        success: true, 
-        totalLogins: updatedUser.totalLogins,
-        lastLoginAt: updatedUser.lastLoginAt
-      });
-    } catch (error) {
-      console.error('Error tracking user login:', error);
-      res.status(500).json({ error: 'Failed to track login' });
     }
   });
 
@@ -3597,60 +3567,26 @@ app.use((req, res, next) => {
           since.setDate(now.getDate() - 1);
       }
 
-      // Usar SQL directo con JOIN para incluir información de usuarios
+      // Usar SQL directo para evitar problemas de ORM
       let query = `
-        SELECT 
-          apv.id, 
-          apv.agent_id, 
-          apv.page, 
-          apv.action, 
-          apv.details, 
-          apv.ip_address, 
-          apv.user_agent, 
-          apv.timestamp, 
-          apv.activity_type, 
-          apv.category,
-          u.username,
-          u."fullName"
-        FROM agent_page_visits apv
-        LEFT JOIN users u ON apv.agent_id = u.id
-        WHERE apv.timestamp >= $1
+        SELECT id, agent_id, page, action, details, ip_address, user_agent, timestamp, activity_type, category
+        FROM agent_page_visits 
+        WHERE timestamp >= $1
       `;
       
       let params = [since];
       
       if (agentId) {
-        query += ` AND apv.agent_id = $2`;
+        query += ` AND agent_id = $2`;
         params.push(parseInt(agentId as string));
       }
       
-      query += ` ORDER BY apv.timestamp DESC LIMIT 500`;
+      query += ` ORDER BY timestamp DESC LIMIT 500`;
       
       const result = await pool.query(query, params);
       const activities = result.rows;
 
       console.log(`📊 Encontradas ${activities.length} actividades históricas`);
-      
-      // Mantener nombres de usuario originales sin traducir
-      const getAgentDisplayName = (username: string, fullName: string): string => {
-        // Priorizar fullName si existe, si no usar username original
-        return fullName && fullName.trim() ? fullName : username || `Usuario ${username}`;
-      };
-
-      // Procesar actividades con nombres traducidos
-      const translatedActivities = activities.map(activity => {
-        return {
-          ...activity,
-          agentName: getAgentDisplayName(activity.username || '', activity.fullName || ''),
-          readableTime: new Date(activity.timestamp).toLocaleString('es-ES', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })
-        };
-      });
       
       // Obtener estadísticas simples
       const agentIds = [...new Set(activities.map((a: any) => a.agent_id))];
@@ -3668,8 +3604,8 @@ app.use((req, res, next) => {
 
       res.json({
         success: true,
-        activities: translatedActivities,
-        totalActivities: translatedActivities.length,
+        activities: activities,
+        totalActivities: activities.length,
         stats: totalStats,
         timeRange,
         since: since.toISOString()
