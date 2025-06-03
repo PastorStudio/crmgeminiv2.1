@@ -5,8 +5,7 @@ import DashboardStats from "@/components/dashboard/DashboardStats";
 import AdminMetrics from "@/components/dashboard/AdminMetrics";
 import UpcomingActivities from "@/components/dashboard/UpcomingActivities";
 import RecentConversations from "@/components/dashboard/RecentConversations";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
@@ -17,14 +16,7 @@ import { PageTranslationSelector, usePageTranslation } from "@/components/transl
 import { SystemRefreshButton } from "@/components/dashboard/SystemRefreshButton";
 
 export default function Dashboard() {
-  // Estados para el proceso de importación
-  const [isImporting, setIsImporting] = useState(false);
-  const [importResult, setImportResult] = useState<null | {
-    success: boolean;
-    message: string;
-    createdLeads: any[];
-    updatedLeads: any[];
-  }>(null);
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const { toast } = useToast();
   const { user } = useAuth();
@@ -281,30 +273,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Acción para importar contactos */}
+        {/* Panel de Control */}
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold text-gray-700">Panel de Control</h3>
-          <Button 
-            onClick={importWhatsAppContacts} 
-            disabled={isImporting}
-            className="gap-2"
-          >
-            {isImporting && <Loader2 className="h-4 w-4 animate-spin" />}
-            Importar contactos de WhatsApp como leads
-          </Button>
         </div>
-        
-        {/* Mostrar resultado de la importación si existe */}
-        {importResult && (
-          <Alert className="mb-6">
-            <AlertTitle>
-              {importResult.success ? '¡Importación exitosa!' : 'Importación completada con advertencias'}
-            </AlertTitle>
-            <AlertDescription>
-              {importResult.message}
-            </AlertDescription>
-          </Alert>
-        )}
         
         {/* Dashboard Stats */}
         <DashboardStats />
