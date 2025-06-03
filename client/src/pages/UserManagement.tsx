@@ -878,7 +878,7 @@ export default function UserManagement() {
                             ></div>
                           </div>
                           <div>
-                            <div className="font-medium">{user.username}</div>
+                            <div className="font-medium">{getAgentDisplayName(user)}</div>
                             <div className="text-sm text-gray-500">
                               {activeAgents.includes(user.id) ? 'En línea' : 'Desconectado'}
                             </div>
