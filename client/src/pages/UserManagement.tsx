@@ -1565,11 +1565,7 @@ export default function UserManagement() {
                             </p>
                           </div>
                           
-                          {activity.details && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              {activity.details}
-                            </p>
-                          )}
+
                           
                           {activity.ipAddress && (
                             <p className="text-xs text-gray-400 mt-1">
