@@ -565,9 +565,21 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       instance.status.authenticated = false;
       instance.status.ready = false;
       
-      // ✨ DETENER KEEP-ALIVE AUTOMÁTICAMENTE ✨
-      console.log(`💤 Deteniendo keep-alive para cuenta ${id} (${name}) - desconectada`);
-      this.stopKeepAlive(id);
+      // NO DETENER KEEP-ALIVE - mantener activo para reconexión automática
+      console.log(`🔄 Manteniendo keep-alive activo para cuenta ${id} (${name}) - intentando reconexión`);
+      
+      // Programar reconexión automática después de 30 segundos
+      setTimeout(async () => {
+        console.log(`🔄 Intentando reconectar cuenta ${id} (${name})...`);
+        try {
+          await client.initialize();
+          console.log(`✅ Reconexión iniciada para cuenta ${id} (${name})`);
+        } catch (error) {
+          console.error(`❌ Error en reconexión automática cuenta ${id}:`, error);
+          // Reintentar en 2 minutos
+          setTimeout(() => this.handleAutoReconnect(id), 120000);
+        }
+      }, 30000);
       
       this.deactivateConnectionTimers(instance);
     });
@@ -1082,6 +1094,31 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   isAccountConnected(accountId: number): boolean {
     const instance = this.instances.get(accountId);
     return instance ? instance.status.authenticated && instance.status.ready : false;
+  }
+
+  /**
+   * Maneja reconexión automática para una cuenta
+   */
+  private handleAutoReconnect(accountId: number): void {
+    const instance = this.instances.get(accountId);
+    if (!instance) return;
+
+    console.log(`🔄 Ejecutando reconexión automática para cuenta ${accountId}...`);
+    
+    try {
+      // Reinicializar cliente
+      instance.client.initialize().then(() => {
+        console.log(`✅ Reconexión automática exitosa para cuenta ${accountId}`);
+      }).catch((error) => {
+        console.error(`❌ Falló reconexión automática cuenta ${accountId}:`, error);
+        // Reintentar en 5 minutos
+        setTimeout(() => this.handleAutoReconnect(accountId), 300000);
+      });
+    } catch (error) {
+      console.error(`❌ Error iniciando reconexión cuenta ${accountId}:`, error);
+      // Reintentar en 5 minutos
+      setTimeout(() => this.handleAutoReconnect(accountId), 300000);
+    }
   }
 
   /**
