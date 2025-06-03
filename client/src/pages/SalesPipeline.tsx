@@ -475,7 +475,25 @@ export default function SalesPipeline() {
 
                                 <div className="flex items-center justify-between text-xs text-gray-500">
                                   <span>{new Date(lead.createdAt).toLocaleDateString()}</span>
-                                  <Progress value={lead.probability} className="w-12 h-1" />
+                                  <div className="flex items-center gap-2">
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                                          <Calendar className="h-3 w-3" />
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="max-w-md">
+                                        <DialogHeader>
+                                          <DialogTitle>Calendario - {lead.title}</DialogTitle>
+                                        </DialogHeader>
+                                        <CalendarIntegration 
+                                          leadId={lead.id}
+                                          leadName={lead.title}
+                                        />
+                                      </DialogContent>
+                                    </Dialog>
+                                    <Progress value={lead.probability} className="w-12 h-1" />
+                                  </div>
                                 </div>
                               </div>
                             </CardContent>

@@ -6,6 +6,7 @@
 import { db } from '../db';
 import { leads, activities, enhancedMessagesTable as messages, contacts } from '../../shared/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
+import { googleCalendarService } from './googleCalendarService';
 
 interface ChatAnalysis {
   sentiment: 'positive' | 'negative' | 'neutral';
@@ -362,6 +363,25 @@ export class SimpleAutonomousProcessor {
           status: 'completed',
           priority: analysis.urgency
         });
+
+      // Create automatic calendar follow-up event if calendar is connected
+      try {
+        if (googleCalendarService.isAuthenticated()) {
+          const leadData = {
+            name: contact.name,
+            phone: contact.phone,
+            interest: analysis.intent || 'Consulta general',
+            lastMessage: `Análisis: ${analysis.sentiment} - ${analysis.intent}`
+          };
+
+          const eventId = await googleCalendarService.createLeadFollowupEvent(leadData);
+          if (eventId) {
+            console.log(`📅 Seguimiento automático programado para lead ${newLead.id}: ${eventId}`);
+          }
+        }
+      } catch (calendarError) {
+        console.log('📅 No se pudo crear evento de calendario automático:', calendarError.message);
+      }
 
       return newLead;
     } catch (error) {
