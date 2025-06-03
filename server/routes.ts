@@ -3541,6 +3541,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Añadir a la lista simple de clientes (siempre activo)
     clients.add(ws);
     
+    // Register client with calendar service for notifications
+    localCalendarService.addWebSocketClient(ws);
+    
     // Enviar un mensaje de bienvenida
     ws.send(JSON.stringify({
       type: 'connection',
