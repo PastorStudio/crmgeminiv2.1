@@ -420,6 +420,21 @@ export const messageActivity = pgTable('message_activity', {
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
+// Calendar Events
+export const calendarEvents = pgTable('calendar_events', {
+  id: serial('id').primaryKey(),
+  leadId: integer('lead_id'),
+  title: text('title').notNull(),
+  description: text('description'),
+  eventDate: timestamp('event_date').notNull(),
+  reminderMinutes: integer('reminder_minutes').default(30),
+  eventType: text('event_type').default('reminder'),
+  contactPhone: text('contact_phone'),
+  status: text('status').default('pending'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
 // Relaciones
 export const usersRelations = relations(users, ({ one, many }) => ({
   supervisor: one(users, {
