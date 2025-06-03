@@ -3601,32 +3601,10 @@ app.use((req, res, next) => {
 
       console.log(`📊 Encontradas ${activities.length} actividades históricas`);
       
-      // Función para traducir nombres de agentes
+      // Mantener nombres de usuario originales sin traducir
       const getAgentDisplayName = (username: string, fullName: string): string => {
-        // Si tiene fullName, usarlo
-        if (fullName && fullName.trim()) {
-          return fullName;
-        }
-        
-        // Si no, traducir el username técnico a un nombre más amigable
-        const usernameTranslations: Record<string, string> = {
-          'admin': 'Administrador',
-          'supervisor': 'Supervisor',
-          'maria.ventas': 'María - Ventas',
-          'juan.soporte': 'Juan - Soporte',
-          'ana.supervisor': 'Ana - Supervisora',
-          'carlos.manager': 'Carlos - Gerente',
-          'lucia.agent': 'Lucía - Agente',
-          'pedro.sales': 'Pedro - Ventas',
-          'sofia.support': 'Sofía - Soporte',
-          'diego.agent': 'Diego - Agente',
-          'valeria.supervisor': 'Valeria - Supervisora',
-          'miguel.sales': 'Miguel - Ventas',
-          'isabella.support': 'Isabella - Soporte',
-          'alejandro.manager': 'Alejandro - Gerente'
-        };
-        
-        return usernameTranslations[username] || username || `Agente ${username}`;
+        // Priorizar fullName si existe, si no usar username original
+        return fullName && fullName.trim() ? fullName : username || `Usuario ${username}`;
       };
 
       // Procesar actividades con nombres traducidos y aplicar el traductor de actividades
