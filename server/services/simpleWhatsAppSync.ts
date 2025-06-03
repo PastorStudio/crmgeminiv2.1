@@ -60,11 +60,14 @@ export class SimpleWhatsAppSync {
     return { leadsCreated, leadsUpdated };
   }
 
-  private static extractPhone(chatId: string): string | null {
+  private static extractPhone(chatId: string | any): string | null {
     if (!chatId) return null;
     
+    // Handle different chat ID formats
+    const idString = typeof chatId === 'string' ? chatId : chatId.toString();
+    
     // Extract phone from WhatsApp chat ID (format: phone@c.us)
-    const match = chatId.match(/(\d+)@/);
+    const match = idString.match(/(\d+)@/);
     return match ? match[1] : null;
   }
 
