@@ -21,42 +21,194 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updatedat"),
 });
 
+// AI Prompts for WhatsApp accounts
+export const aiPrompts = pgTable("ai_prompts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  content: text("content").notNull(),
+  provider: text("provider").notNull().default("gemini"), // gemini, openai, qwen3
+  temperature: real("temperature").default(0.7),
+  maxTokens: integer("max_tokens").default(1000),
+  model: text("model").default("gpt-4o"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // WhatsApp Accounts
 export const whatsappAccounts = pgTable("whatsapp_accounts", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  ownerName: text("ownerName"),
-  ownerPhone: text("ownerPhone"),
-  sessionData: jsonb("sessionData"),
+  ownerName: text("ownername"),
+  ownerPhone: text("ownerphone"),
+  sessionData: jsonb("sessiondata"),
   status: text("status").default("inactive"),
-  adminId: integer("adminId"),
-  assignedExternalAgentId: text("assignedExternalAgentId"),
-  autoResponseEnabled: boolean("autoResponseEnabled").default(false),
-  responseDelay: integer("responseDelay").default(3),
-  createdAt: timestamp("createdAt").defaultNow(),
-  lastActiveAt: timestamp("lastActiveAt"),
+  adminId: integer("adminid"),
+  assignedExternalAgentId: text("assignedexternalagentid"),
+  autoResponseEnabled: boolean("autoresponseenabled").default(false),
+  responseDelay: integer("responsedelay").default(3),
+  customPrompt: text("customprompt"), // Custom AI prompt for this account
+  assignedPromptId: integer("assigned_prompt_id").references(() => aiPrompts.id), // Reference to AI prompt
+  keepAliveEnabled: boolean("keepaliveenabled").default(true), // Persistent connection
+  lastActivity: timestamp("lastactivity"),
+  connectionAttempts: integer("connectionattempts").default(0),
+  maxReconnectAttempts: integer("maxreconnectattempts").default(5),
+  createdAt: timestamp("createdat").defaultNow(),
+  lastActiveAt: timestamp("lastactiveat"),
 });
 
-// Leads
-export const leads = pgTable("leads", {
+// Contactos - información centralizada de contactos
+export const contacts = pgTable("contacts", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  email: text("email").notNull(),
-  phone: text("phone"),
+  phone: text("phone").notNull().unique(),
+  email: text("email"),
   company: text("company"),
-  source: text("source"),
-  status: text("status").default("new"),
-  notes: text("notes"),
-  assigneeId: integer("assigneeId"),
-  budget: doublePrecision("budget"),
-  priority: text("priority"),
+  position: text("position"),
+  whatsappProfile: jsonb("whatsappProfile"), // Foto, estado, etc.
+  location: text("location"),
   tags: text("tags").array(),
+  customFields: jsonb("customFields"),
+  lastSeen: timestamp("lastSeen"),
+  source: text("source").default("whatsapp"),
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Leads del Sales Pipeline
+export const leads = pgTable("leads", {
+  id: serial("id").primaryKey(),
+  contactId: integer("contactId").notNull(),
+  whatsappAccountId: integer("whatsappAccountId").notNull(),
+  title: text("title").notNull(),
+  status: text("status").default("new"), // new, contacted, qualified, proposal, negotiation, won, lost
+  stage: text("stage").default("lead"), // lead, opportunity, quote, deal
+  value: decimal("value", { precision: 10, scale: 2 }),
+  currency: text("currency").default("USD"),
+  probability: integer("probability").default(0), // 0-100
+  priority: text("priority").default("medium"), // low, medium, high, urgent
+  source: text("source").default("whatsapp"),
+  assignedTo: integer("assignedTo"), // Usuario asignado
+  expectedCloseDate: date("expectedCloseDate"),
+  actualCloseDate: date("actualCloseDate"),
+  lastContactDate: timestamp("lastContactDate"),
+  nextFollowUpDate: timestamp("nextFollowUpDate"),
+  notes: text("notes"),
+  tags: text("tags").array(),
+  customFields: jsonb("customFields"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
+});
+
+// Tickets de soporte/interés
+export const tickets = pgTable("tickets", {
+  id: serial("id").primaryKey(),
+  contactId: integer("contactId").notNull(),
+  leadId: integer("leadId"), // Opcional, si está relacionado a un lead
+  whatsappAccountId: integer("whatsappAccountId").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  type: text("type").default("inquiry"), // inquiry, support, complaint, follow_up
+  status: text("status").default("open"), // open, in_progress, pending, resolved, closed
+  priority: text("priority").default("medium"), // low, medium, high, urgent
+  category: text("category"),
+  assignedTo: integer("assignedTo"),
+  resolutionNotes: text("resolutionNotes"),
+  estimatedResolutionTime: integer("estimatedResolutionTime"), // en minutos
+  actualResolutionTime: integer("actualResolutionTime"),
+  tags: text("tags").array(),
+  customFields: jsonb("customFields"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
+  resolvedAt: timestamp("resolvedAt"),
+});
+
+// Conversaciones de WhatsApp con análisis automático
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  contactId: integer("contactId").notNull(),
+  whatsappAccountId: integer("whatsappAccountId").notNull(),
+  leadId: integer("leadId"), // Si la conversación genera un lead
+  ticketId: integer("ticketId"), // Si la conversación genera un ticket
+  chatId: text("chatId").notNull(), // ID único del chat de WhatsApp
+  title: text("title"),
+  status: text("status").default("active"), // active, archived, closed
+  lastMessageAt: timestamp("lastMessageAt"),
+  messageCount: integer("messageCount").default(0),
+  isGroup: boolean("isGroup").default(false),
+  participants: jsonb("participants"), // Para chats grupales
+  aiAnalysis: jsonb("aiAnalysis"), // Análisis automático de la IA
+  sentiment: text("sentiment"), // positive, negative, neutral
+  intent: text("intent"), // sales, support, inquiry, complaint
+  urgency: text("urgency"), // low, medium, high
+  topics: text("topics").array(),
+  leadPotential: integer("leadPotential").default(0), // 0-100
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
+});
+
+// Enhanced messages table with AI analysis
+export const enhancedMessages = pgTable("enhanced_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversationId"),
+  contactId: integer("contactId"),
+  whatsappAccountId: integer("whatsappAccountId").notNull(),
+  messageId: text("messageId").notNull().unique(),
+  fromNumber: text("fromNumber").notNull(),
+  toNumber: text("toNumber").notNull(),
+  content: text("content"),
+  messageType: text("messageType").default("text"),
+  direction: text("direction").notNull(),
+  isFromBot: boolean("isFromBot").default(false),
+  mediaUrl: text("mediaUrl"),
+  metadata: jsonb("metadata"),
+  aiAnalysis: jsonb("aiAnalysis"),
+  sentiment: text("sentiment"),
+  intent: text("intent"),
+  entities: jsonb("entities"),
+  isProcessed: boolean("isProcessed").default(false),
+  timestamp: timestamp("timestamp").notNull(),
   createdAt: timestamp("createdAt").defaultNow(),
 });
 
-// Activities
+// Pipeline de ventas - etapas personalizables
+export const salesPipeline = pgTable("sales_pipeline", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  stages: jsonb("stages"), // Array de etapas configurables
+  isDefault: boolean("isDefault").default(false),
+  isActive: boolean("isActive").default(true),
+  createdBy: integer("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
+});
+
+// Actividades y seguimientos automáticos
 export const activities = pgTable("activities", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull(), // call, email, whatsapp, meeting, note, task
+  contactId: integer("contactId"),
+  leadId: integer("leadId"),
+  ticketId: integer("ticketId"),
+  conversationId: integer("conversationId"),
+  userId: integer("userId"), // Usuario que realizó la actividad
+  title: text("title").notNull(),
+  description: text("description"),
+  outcome: text("outcome"), // completed, scheduled, cancelled, no_answer
+  duration: integer("duration"), // en minutos
+  scheduledAt: timestamp("scheduledAt"),
+  completedAt: timestamp("completedAt"),
+  metadata: jsonb("metadata"),
+  isAutomated: boolean("isAutomated").default(false),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+// Enhanced activities for autonomous system
+export const enhancedActivities = pgTable("enhanced_activities", {
   id: serial("id").primaryKey(),
   leadId: integer("leadId"),
   userId: integer("userId"),
@@ -69,8 +221,8 @@ export const activities = pgTable("activities", {
   createdAt: timestamp("createdAt").defaultNow(),
 });
 
-// Messages
-export const messages = pgTable("messages", {
+// Enhanced messages for autonomous system
+export const enhancedMessagesTable = pgTable("enhanced_messages_table", {
   id: serial("id").primaryKey(),
   leadId: integer("leadId"),
   content: text("content").notNull(),
@@ -78,6 +230,18 @@ export const messages = pgTable("messages", {
   channel: text("channel").notNull(),
   read: boolean("read").default(false),
   sentAt: timestamp("sentAt").defaultNow(),
+});
+
+// Agent page visits tracking
+export const agentPageVisits = pgTable("agent_page_visits", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").notNull(),
+  page: text("page").notNull(),
+  action: text("action").notNull().default("page_view"),
+  details: text("details"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  timestamp: timestamp("timestamp").defaultNow(),
 });
 
 // Dashboard Stats
@@ -350,33 +514,34 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
   assignee: one(users, {
-    fields: [leads.assigneeId],
+    fields: [leads.assignedTo],
     references: [users.id]
   }),
-  activities: many(activities),
-  messages: many(messages),
+  activities: many(enhancedActivities),
+  messages: many(enhancedMessagesTable),
 }));
 
-export const activitiesRelations = relations(activities, ({ one }) => ({
+export const activitiesRelations = relations(enhancedActivities, ({ one }) => ({
   lead: one(leads, {
-    fields: [activities.leadId],
+    fields: [enhancedActivities.leadId],
     references: [leads.id]
   }),
   user: one(users, {
-    fields: [activities.userId],
+    fields: [enhancedActivities.userId],
     references: [users.id],
     relationName: "userActivities"
   })
 }));
 
-export const messagesRelations = relations(messages, ({ one }) => ({
+export const enhancedMessagesRelations = relations(enhancedMessagesTable, ({ one }) => ({
   lead: one(leads, {
-    fields: [messages.leadId],
+    fields: [enhancedMessagesTable.leadId],
     references: [leads.id]
   })
 }));
 
 // Esquemas de inserción
+export const insertAiPromptSchema = createInsertSchema(aiPrompts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAiSettingsSchema = createInsertSchema(aiSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
 export const insertChatCommentSchema = createInsertSchema(chatComments).omit({ id: true, createdAt: true, updatedAt: true });
@@ -410,3 +575,5 @@ export type InsertLead = typeof insertLeadSchema._type;
 export type WhatsAppAccount = typeof whatsappAccounts.$inferSelect;
 export type InsertWhatsAppAccount = typeof insertWhatsAppAccountSchema._type;
 export type ExternalAgent = typeof externalAgents.$inferSelect;
+export type AiPrompt = typeof aiPrompts.$inferSelect;
+export type InsertAiPrompt = typeof insertAiPromptSchema._type;
