@@ -466,7 +466,23 @@ export function cleanupAutoFunctions() {
   disableAutoSend();
 }
 
-// Auto-inicializar al cargar la página
+// Auto-inicializar al cargar la página - solo limpiar en cierre real
 if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', cleanupAutoFunctions);
+  // Solo limpiar en cierre real de ventana, no en cambio de pestañas o blur
+  window.addEventListener('beforeunload', (event) => {
+    // Solo limpiar si realmente se está cerrando la ventana
+    if (event.returnValue === undefined) {
+      console.log('🧹 Limpieza enhanced solo por cierre real de ventana');
+      cleanupAutoFunctions();
+    }
+  });
+  
+  // Mantener activo en blur/focus para evitar desconexiones
+  window.addEventListener('blur', () => {
+    console.log('📍 Ventana perdió foco - manteniendo funciones activas');
+  });
+  
+  window.addEventListener('focus', () => {
+    console.log('📍 Ventana recuperó foco - funciones siguen activas');
+  });
 }

@@ -239,9 +239,16 @@ export function cleanupAutoFunctions() {
   disableAutoSend();
 }
 
-// Auto-limpiar al salir
+// Auto-limpiar solo al cerrar completamente la ventana (no en tabs/blur)
 if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', cleanupAutoFunctions);
+  // Solo limpiar en cierre real de ventana, no en cambio de pestañas
+  window.addEventListener('beforeunload', (event) => {
+    // Solo limpiar si realmente se está cerrando la ventana
+    if (event.returnValue === undefined) {
+      console.log('🧹 Limpieza solo por cierre real de ventana');
+      cleanupAutoFunctions();
+    }
+  });
   
   // Exponer funciones globalmente para evitar conflictos
   (window as any).getAutoFunctionsStatus = getAutoFunctionsStatus;
