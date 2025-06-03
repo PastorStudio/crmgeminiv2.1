@@ -34,6 +34,7 @@ import { simpleAutonomousProcessor } from './services/simpleAutonomousProcessor'
 import { CalendarReminderService } from './services/calendarReminderService';
 import { backendAutoResponseManager } from './services/backendAutoResponseManager';
 import { trulyIndependentAutoResponseSystem } from './services/trulyIndependentAutoResponse';
+import { autonomousWhatsAppConnectionManager } from './services/autonomousWhatsAppConnection';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -5727,6 +5728,11 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
         console.log('🤖 Iniciando sistema VERDADERAMENTE INDEPENDIENTE...');
         await trulyIndependentAutoResponseSystem.initialize();
         console.log('✅ Sistema VERDADERAMENTE INDEPENDIENTE iniciado - CERO dependencias del frontend');
+        
+        // Inicializar gestor autónomo de conexiones WhatsApp (comentado temporalmente)
+        // console.log('📱 Iniciando gestor autónomo de conexiones WhatsApp...');
+        // await autonomousWhatsAppConnectionManager.initialize();
+        // console.log('✅ Gestor autónomo de WhatsApp iniciado - Conexiones completamente independientes');
         
       } catch (error) {
         console.error('❌ Error inicializando sistemas de respuestas automáticas:', error);
