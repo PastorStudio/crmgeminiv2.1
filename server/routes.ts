@@ -6142,5 +6142,86 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
     }
   });
 
+  // Endpoint para obtener estadísticas de actividades de agentes
+  app.get('/api/agent-activities', async (req: Request, res: Response) => {
+    try {
+      const { timeRange = '24h' } = req.query;
+      
+      // Calcular fecha de inicio basada en el rango de tiempo
+      const now = new Date();
+      let startDate = new Date();
+      
+      switch (timeRange) {
+        case '1h':
+          startDate.setHours(now.getHours() - 1);
+          break;
+        case '24h':
+          startDate.setDate(now.getDate() - 1);
+          break;
+        case '7d':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case '30d':
+          startDate.setDate(now.getDate() - 30);
+          break;
+        default:
+          startDate.setDate(now.getDate() - 1);
+      }
+
+      // Obtener actividades desde la base de datos
+      const activities = await storage.getActivitiesByUser(null, startDate);
+      
+      // Calcular estadísticas
+      const totalActivities = activities.length;
+      const uniqueAgents = new Set(activities.map(a => a.agentId)).size;
+      
+      // Agrupar actividades por tipo
+      const activityTypes = activities.reduce((acc: any, activity) => {
+        const type = activity.activityType || 'interaction';
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      }, {});
+
+      // Páginas más visitadas
+      const pageVisits = activities.reduce((acc: any, activity) => {
+        if (activity.action === 'page_visit') {
+          acc[activity.page] = (acc[activity.page] || 0) + 1;
+        }
+        return acc;
+      }, {});
+
+      const mostVisitedPages = Object.entries(pageVisits)
+        .sort(([,a], [,b]) => (b as number) - (a as number))
+        .slice(0, 5)
+        .map(([page, count]) => ({ page, count }));
+
+      // Actividades por agente
+      const agentActivities = activities.reduce((acc: any, activity) => {
+        acc[activity.agentId] = (acc[activity.agentId] || 0) + 1;
+        return acc;
+      }, {});
+
+      res.json({
+        success: true,
+        totalActivities,
+        uniqueAgents,
+        activities: activities.slice(0, 100), // Limitar a las 100 más recientes
+        stats: {
+          activityTypes,
+          mostVisitedPages,
+          agentActivities,
+          timeRange: timeRange
+        }
+      });
+
+    } catch (error: any) {
+      console.error('❌ Error obteniendo actividades de agentes:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Error obteniendo actividades'
+      });
+    }
+  });
+
   return httpServer;
 }

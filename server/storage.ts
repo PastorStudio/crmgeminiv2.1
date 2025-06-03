@@ -36,7 +36,8 @@ export interface IStorage {
   deleteLead(id: number): Promise<boolean>;
   
   // Activity methods
-  getActivitiesByUser(userId: number): Promise<any[]>;
+  getActivitiesByUser(userId: number | null, startDate?: Date): Promise<any[]>;
+  createAgentActivity(activity: any): Promise<any>;
   
   // WhatsApp accounts methods
   getWhatsAppAccounts(): Promise<WhatsAppAccount[]>;
@@ -113,13 +114,60 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(leads).orderBy(desc(leads.createdAt));
   }
 
-  async getActivitiesByUser(userId: number): Promise<any[]> {
+  async getActivitiesByUser(userId: number | null, startDate?: Date): Promise<any[]> {
     try {
-      // Implementación básica - se puede expandir según el esquema de actividades
-      return [];
+      const { agentActivities } = await import("@shared/schema");
+      let query = db.select().from(agentActivities);
+      
+      // Add filters
+      const whereConditions = [];
+      
+      if (userId !== null) {
+        whereConditions.push(eq(agentActivities.agentId, userId));
+      }
+      
+      if (startDate) {
+        whereConditions.push(sql`${agentActivities.timestamp} >= ${startDate.toISOString()}`);
+      }
+      
+      if (whereConditions.length > 0) {
+        query = query.where(sql`${whereConditions.join(' AND ')}`);
+      }
+      
+      const activities = await query.orderBy(desc(agentActivities.timestamp));
+      return activities;
     } catch (error) {
-      console.error('Error getting activities by user:', error);
+      console.error('Error fetching activities:', error);
       return [];
+    }
+  }
+
+  async createAgentActivity(activity: any): Promise<any> {
+    try {
+      const { agentActivities } = await import("@shared/schema");
+      const [newActivity] = await db
+        .insert(agentActivities)
+        .values({
+          agentId: activity.agentId,
+          action: activity.action,
+          page: activity.page,
+          details: activity.details,
+          ipAddress: activity.ipAddress,
+          userAgent: activity.userAgent,
+          sessionToken: activity.sessionToken,
+          activityType: activity.activityType || 'interaction',
+          targetElement: activity.targetElement,
+          coordinates: activity.coordinates,
+          formData: activity.formData,
+          sessionDuration: activity.sessionDuration,
+          category: activity.category || 'general',
+          timestamp: new Date()
+        })
+        .returning();
+      return newActivity;
+    } catch (error) {
+      console.error('Error creating agent activity:', error);
+      throw error;
     }
   }
 
