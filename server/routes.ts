@@ -770,38 +770,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Leads endpoint using direct database connection like dashboard-stats
   app.get("/api/leads", async (req: Request, res: Response) => {
     try {
-      // Query the database directly using pool connection (same as dashboard-stats)
+      // Query the database directly using pool connection
       const queryText = 'SELECT * FROM leads ORDER BY "createdAt" DESC';
       const result = await pool.query(queryText);
       
-      // Transform for frontend with your real data structure
+      // Transform for frontend with proper Kanban structure
       const leadsData = result.rows.map((row: any) => ({
         id: row.id,
-        title: row.name,
-        name: row.name,
-        email: row.email,
-        phone: row.phone,
-        source: row.source,
-        status: row.status,
-        assignedTo: row.assigneeId,
-        company: row.company,
-        budget: parseFloat(row.budget) || 0,
-        notes: row.notes,
-        priority: row.priority,
-        tags: row.tags || [],
-        createdAt: row.createdAt,
-        stage: 'lead',
-        value: row.budget ? parseFloat(row.budget).toString() : '0',
-        currency: 'USD',
-        probability: 50,
-        updatedAt: row.createdAt
+        title: row.title || row.name || `Lead ${row.id}`,
+        value: row.value || (row.budget ? `$${parseFloat(row.budget)}` : '$0'),
+        status: row.status || 'new',
+        notes: row.notes || '',
+        tags: Array.isArray(row.tags) ? row.tags : (row.tags ? [row.tags] : []),
+        probability: row.probability || 50,
+        source: row.source || 'Manual',
+        createdAt: row.createdAt || new Date().toISOString(),
+        contactId: row.contactId || null,
+        assignedTo: row.assignedTo || row.assigneeId || null,
+        email: row.email || '',
+        phone: row.phone || '',
+        company: row.company || '',
+        priority: row.priority || 'medium'
       }));
       
       res.json(leadsData);
     } catch (error) {
-      console.error("Leads API error:", error);
-      // Return empty array instead of error to prevent frontend breaking
-      res.json([]);
+      console.error("Error al obtener leads:", error);
+      res.status(500).json({ error: "Error al obtener leads" });
     }
   });
 
