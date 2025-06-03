@@ -5816,6 +5816,15 @@ Responde de manera conversacional, profesional y útil según tu especializació
     }
   });
 
+  // ===== INICIALIZACIÓN DEL SERVICIO DE RECORDATORIOS DE CALENDARIO =====
+  console.log('🗓️ Iniciando servicio de recordatorios de calendario...');
+  try {
+    await CalendarReminderService.initialize();
+    console.log('✅ Servicio de recordatorios de calendario iniciado correctamente');
+  } catch (error) {
+    console.error('❌ Error iniciando servicio de recordatorios de calendario:', error);
+  }
+
 
 
 })();

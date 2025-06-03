@@ -111,14 +111,50 @@ export function LocalCalendarIntegration() {
       if (!response.ok) throw new Error('Failed to create event');
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async (data, variables) => {
+      // If WhatsApp contact and account are specified, configure reminder
+      if (variables.contactPhone && variables.whatsappAccountId && data.eventId) {
+        try {
+          const reminderResponse = await fetch('/api/calendar/reminders/configure', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              eventId: data.eventId,
+              chatId: variables.contactPhone.replace(/[^\d]/g, '') + '@c.us',
+              whatsappAccountId: variables.whatsappAccountId,
+              reminderMessage: `🗓️ Recordatorio: ${variables.title} programado para hoy. ${variables.description || ''}`,
+              reminderTimeMinutes: variables.reminderMinutes || 60,
+              autoActivateResponses: true
+            })
+          });
+          
+          if (reminderResponse.ok) {
+            toast({
+              title: "Evento y recordatorio creados",
+              description: "El evento se ha programado con recordatorio automático por WhatsApp"
+            });
+          } else {
+            toast({
+              title: "Evento creado",
+              description: "El evento se creó pero no se pudo configurar el recordatorio WhatsApp"
+            });
+          }
+        } catch (error) {
+          toast({
+            title: "Evento creado",
+            description: "El evento se creó pero no se pudo configurar el recordatorio WhatsApp"
+          });
+        }
+      } else {
+        toast({
+          title: "Evento creado",
+          description: "El evento se ha programado exitosamente"
+        });
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/events/today'] });
       setIsCreateDialogOpen(false);
-      toast({
-        title: "Evento creado",
-        description: "El evento se ha programado exitosamente"
-      });
     },
     onError: () => {
       toast({
@@ -256,6 +292,28 @@ export function LocalCalendarIntegration() {
                     <SelectItem value="meeting">Reunión</SelectItem>
                     <SelectItem value="call">Llamada</SelectItem>
                     <SelectItem value="task">Tarea</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="contactPhone">Teléfono de Contacto (para recordatorio WhatsApp)</Label>
+                <Input 
+                  id="contactPhone" 
+                  {...register('contactPhone')}
+                  placeholder="+507 1234-5678"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="whatsappAccountId">Cuenta WhatsApp para Recordatorio</Label>
+                <Select onValueChange={(value) => setValue('whatsappAccountId', parseInt(value))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar cuenta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Cuenta 1 - Ventas</SelectItem>
+                    <SelectItem value="2">Cuenta 2 - Soporte</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
