@@ -1558,14 +1558,15 @@ export default function UserManagement() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-medium text-gray-900">
-                              {activity.translatedAction || activity.details || activity.action}
+                              {activity.translatedAction || activity.action}
                             </p>
                             <p className="text-xs text-gray-500">
                               {formatDate(activity.timestamp)}
                             </p>
                           </div>
-                          
-
+                          <p className="text-sm text-gray-600 mt-1">
+                            Página: <span className="font-medium">{activity.page}</span>
+                          </p>
                           
                           {activity.ipAddress && (
                             <p className="text-xs text-gray-400 mt-1">
