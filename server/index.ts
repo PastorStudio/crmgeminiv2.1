@@ -3434,14 +3434,45 @@ app.use((req, res, next) => {
         averageSessionTime: 35 + Math.floor(Math.random() * 30)
       };
       
-      console.log(`✅ Enviando ${recentActivities.length} actividades reales para agente ${userId}`);
+      // Traducir actividades a descripciones legibles
+      const { ActivityTranslator } = await import('./utils/activityTranslator');
+      
+      const translatedActivities = recentActivities.map(activity => {
+        const parsedDetails = typeof activity.details === 'string' 
+          ? JSON.parse(activity.details || '{}') 
+          : activity.details || {};
+        
+        const translated = ActivityTranslator.translateActivity(
+          activity.action,
+          parsedDetails.target,
+          activity.page,
+          parsedDetails
+        );
+        
+        return {
+          ...activity,
+          translatedAction: translated.action,
+          icon: translated.icon,
+          category: translated.category,
+          priority: translated.priority,
+          readableTime: new Date(activity.timestamp).toLocaleString('es-ES', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        };
+      });
+      
+      console.log(`✅ Enviando ${translatedActivities.length} actividades traducidas para agente ${userId}`);
       console.log(`📊 Páginas más visitadas por agente ${userId}:`, activityStats.mostVisitedPages);
       
       res.json({
         success: true,
-        activities: recentActivities,
+        activities: translatedActivities,
         stats: activityStats,
-        totalActivities: recentActivities.length
+        totalActivities: translatedActivities.length
       });
     } catch (error) {
       console.error('❌ Error obteniendo actividades del agente:', error);
