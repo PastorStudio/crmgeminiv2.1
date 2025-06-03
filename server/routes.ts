@@ -825,21 +825,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint for WhatsApp auto-conversion demo
+  app.post("/api/whatsapp/demo-convert", async (req: Request, res: Response) => {
+    try {
+      console.log('🔄 Simulando conversión automática de chats WhatsApp...');
+      
+      // Simulate creating leads from WhatsApp chats with real-looking data
+      const simulatedLeads = [
+        {
+          name: "María González",
+          phone: "+52 55 1234 5678",
+          interest: "Desarrollo de aplicación móvil",
+          lastMessage: "Hola, necesito una app para mi negocio de repostería",
+          budget: 15000
+        },
+        {
+          name: "Carlos Rodríguez", 
+          phone: "+52 33 9876 5432",
+          interest: "Marketing digital",
+          lastMessage: "¿Cuánto cuesta una campaña de redes sociales?",
+          budget: 8500
+        },
+        {
+          name: "Ana López",
+          phone: "+52 81 5555 1234", 
+          interest: "Página web corporativa",
+          lastMessage: "Quiero renovar el sitio web de mi empresa",
+          budget: 12000
+        }
+      ];
+      
+      let created = 0;
+      for (const lead of simulatedLeads) {
+        try {
+          await pool.query(`
+            INSERT INTO leads (name, phone, source, status, notes, budget, priority, "createdAt")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+          `, [
+            lead.name,
+            lead.phone,
+            'WhatsApp',
+            'new',
+            `Interés detectado: ${lead.interest}. Último mensaje: ${lead.lastMessage}`,
+            lead.budget,
+            'medium'
+          ]);
+          created++;
+        } catch (insertError) {
+          console.log(`Lead ${lead.name} ya existe o error al insertar`);
+        }
+      }
+      
+      console.log(`✅ ${created} nuevos leads creados desde WhatsApp`);
+      
+      res.json({
+        success: true,
+        message: `${created} leads creados automáticamente desde WhatsApp`,
+        created,
+        leads: simulatedLeads
+      });
+    } catch (error) {
+      console.error("❌ Error en demo de conversión:", error);
+      res.status(500).json({ error: "Error en conversión automática" });
+    }
+  });
+
   // Leads endpoint using direct database connection like dashboard-stats
   app.get("/api/leads", async (req: Request, res: Response) => {
     try {
       console.log('📋 Obteniendo leads desde la base de datos...');
       
-      // Get leads count first to verify connection
-      const countResult = await pool.query('SELECT COUNT(*) as count FROM leads');
-      console.log(`🔍 Total leads en DB: ${countResult.rows[0].count}`);
-      
-      // Get actual leads data
+      // Direct query like working dashboard endpoint
       const result = await pool.query('SELECT * FROM leads ORDER BY "createdAt" DESC');
-      
       console.log(`✅ Encontrados ${result.rows.length} leads`);
       
-      // Transform for Kanban
+      // Transform for Kanban with phone support
       const leadsData = result.rows.map((row: any) => ({
         id: row.id,
         title: row.name || `Lead ${row.id}`,
@@ -861,7 +921,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(leadsData);
     } catch (error) {
       console.error("❌ Error obteniendo leads:", error);
-      console.error("Stack trace:", error.stack);
       res.status(500).json({ error: "Error al obtener leads" });
     }
   });
