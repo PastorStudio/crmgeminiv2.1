@@ -430,6 +430,23 @@ export const calendarEvents = pgTable('calendar_events', {
   reminderMinutes: integer('reminder_minutes').default(30),
   eventType: text('event_type').default('reminder'),
   contactPhone: text('contact_phone'),
+  whatsappAccountId: integer('whatsapp_account_id'),
+  status: text('status').default('pending'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
+// Local Events (compatible with existing database structure)
+export const localEvents = pgTable('local_events', {
+  id: serial('id').primaryKey(),
+  leadId: integer('lead_id'),
+  title: text('title').notNull(),
+  description: text('description'),
+  eventDate: timestamp('event_date').notNull(),
+  reminderMinutes: integer('reminder_minutes').default(30),
+  eventType: text('event_type').default('reminder'),
+  contactPhone: text('contact_phone'),
+  whatsappAccountId: integer('whatsapp_account_id'),
   status: text('status').default('pending'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow()
@@ -567,6 +584,8 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true });
 export const insertWhatsAppAccountSchema = createInsertSchema(whatsappAccounts).omit({ id: true, createdAt: true, lastActiveAt: true });
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLocalEventSchema = createInsertSchema(localEvents).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Tipos de TypeScript
 export type AiSettings = typeof aiSettings.$inferSelect;
@@ -592,3 +611,7 @@ export type InsertWhatsAppAccount = typeof insertWhatsAppAccountSchema._type;
 export type ExternalAgent = typeof externalAgents.$inferSelect;
 export type AiPrompt = typeof aiPrompts.$inferSelect;
 export type InsertAiPrompt = typeof insertAiPromptSchema._type;
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type InsertCalendarEvent = typeof insertCalendarEventSchema._type;
+export type LocalEvent = typeof localEvents.$inferSelect;
+export type InsertLocalEvent = typeof insertLocalEventSchema._type;
