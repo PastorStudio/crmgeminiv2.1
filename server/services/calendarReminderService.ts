@@ -5,7 +5,7 @@
 
 import { db } from '../db';
 import { calendarEvents, whatsappAccounts, leads, contacts } from '@shared/schema';
-import { eq, and, gte, lte, isNull } from 'drizzle-orm';
+import { eq, and, gte, lte, isNull, sql } from 'drizzle-orm';
 import cron from 'node-cron';
 
 interface CalendarReminderConfig {
@@ -96,13 +96,10 @@ export class CalendarReminderService {
       const now = new Date();
       const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-      // Obtener eventos de la próxima semana
+      // Obtener eventos de la próxima semana usando raw SQL para evitar problemas de sintaxis
       const upcomingEvents = await db.select()
         .from(calendarEvents)
-        .where(and(
-          gte(calendarEvents.startTime, now),
-          lte(calendarEvents.startTime, nextWeek)
-        ));
+        .where(sql`${calendarEvents.eventDate} >= ${now} AND ${calendarEvents.eventDate} <= ${nextWeek}`);
 
       for (const event of upcomingEvents) {
         const config = this.reminderConfigs.get(event.id);
