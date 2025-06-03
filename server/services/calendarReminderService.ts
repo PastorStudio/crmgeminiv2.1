@@ -3,7 +3,7 @@
  * Integra eventos del calendario con envío automático de mensajes WhatsApp
  */
 
-import { db } from '../db';
+import { db, pool } from '../db';
 import { calendarEvents, whatsappAccounts, leads, contacts } from '@shared/schema';
 import { eq, and, gte, lte, isNull, sql } from 'drizzle-orm';
 import cron from 'node-cron';
@@ -96,14 +96,13 @@ export class CalendarReminderService {
       const now = new Date();
       const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-      // Obtener eventos de la próxima semana
-      const upcomingEvents = await db.select()
-        .from(calendarEvents)
-        .where(and(
-          gte(calendarEvents.eventDate, now),
-          lte(calendarEvents.eventDate, nextWeek)
-        ));
+      // Obtener eventos de la próxima semana usando consulta SQL directa
+      const result = await pool.query(`
+        SELECT * FROM calendar_events 
+        WHERE event_date >= $1 AND event_date <= $2
+      `, [now, nextWeek]);
 
+      const upcomingEvents = result.rows || [];
       for (const event of upcomingEvents) {
         const config = this.reminderConfigs.get(event.id);
         if (config && config.isActive) {
