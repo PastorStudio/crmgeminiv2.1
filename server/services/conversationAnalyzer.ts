@@ -107,16 +107,19 @@ export class ConversationAnalyzer {
   private async getUnanalyzedConversations(): Promise<any[]> {
     try {
       // Buscar conversaciones recientes que no han sido analizadas
-      const conversations = await db.query.conversations.findMany({
-        where: and(
-          eq(conversations.analyzed, false),
-          // Solo conversaciones de las últimas 24 horas
-        ),
-        orderBy: desc(conversations.createdAt),
-        limit: 10
-      });
+      const unanalyzedConversations = await db
+        .select()
+        .from(conversations)
+        .where(
+          and(
+            eq(conversations.analyzed, false),
+            // Solo conversaciones de las últimas 24 horas
+          )
+        )
+        .orderBy(desc(conversations.createdAt))
+        .limit(10);
       
-      return conversations;
+      return unanalyzedConversations;
     } catch (error) {
       console.error('❌ Error obteniendo conversaciones:', error);
       return [];
@@ -341,14 +344,20 @@ Fecha: ${new Date(conversation.createdAt).toLocaleString()}
   private async saveAnalysisReport(conversation: any, analysis: ConversationAnalysis): Promise<void> {
     try {
       // Guardar en tabla de reportes de análisis
-      await db.insert(db.query.analysisReports || conversations).values({
+      await db.insert(analysisReports).values({
         conversationId: conversation.id,
         chatId: conversation.chatId,
-        accountId: conversation.accountId,
+        accountId: conversation.whatsappAccountId,
         analysisData: analysis,
-        createdAt: new Date(),
-        analysisType: 'conversation_intent'
-      }).onConflictDoNothing();
+        analysisType: 'conversation_intent',
+        leadPotential: analysis.leadPotential,
+        urgency: analysis.urgency,
+        category: analysis.category,
+        sentiment: analysis.sentiment,
+        actionRequired: analysis.actionRequired,
+        leadGenerated: analysis.leadPotential >= 70,
+        ticketGenerated: analysis.actionRequired
+      });
       
     } catch (error) {
       console.error('❌ Error guardando reporte de análisis:', error);
