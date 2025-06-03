@@ -105,11 +105,36 @@ export class WhatsAppAutoResponder {
         // Marcar mensaje como procesado ANTES de enviar para evitar duplicados
         config.lastProcessedMessageId = message.id;
         
-        // Enviar respuesta
+        // Enviar respuesta con el mismo formato que los mensajes normales
         if (whatsappInstance && whatsappInstance.sendMessage) {
+          // Crear objeto de mensaje con la estructura estándar
+          const autoResponseMessage = {
+            id: `auto_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            body: response,
+            fromMe: true,
+            timestamp: Math.floor(Date.now() / 1000),
+            chatId: message.chatId,
+            hasMedia: false,
+            type: 'auto_response'
+          };
+          
+          // Enviar usando el método estándar de WhatsApp
           await whatsappInstance.sendMessage(message.chatId, response);
           console.log(`📤 Respuesta A.E AI enviada a ${message.chatId}`);
           console.log(`💬 Respuesta: "${response.substring(0, 100)}..."`);
+          
+          // Notificar a través de WebSocket para actualización en tiempo real
+          try {
+            const { sendWSMessage } = await import('./messageInterceptorService');
+            sendWSMessage({
+              type: 'MESSAGE_RECEIVED',
+              chatId: message.chatId,
+              message: autoResponseMessage
+            });
+          } catch (wsError) {
+            console.log('No se pudo notificar vía WebSocket:', wsError.message);
+          }
+          
         } else {
           console.log(`📝 Respuesta A.E AI generada (simulación): "${response.substring(0, 100)}..."`);
         }
