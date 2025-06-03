@@ -76,6 +76,7 @@ export class SimpleAutonomousProcessor {
         const { SimpleWhatsAppSync } = await import('./simpleWhatsAppSync');
         const result = await SimpleWhatsAppSync.syncChatsToDatabase(chats);
         console.log(`🔄 Base de datos sincronizada: ${result.leadsCreated} leads creados, ${result.leadsUpdated} actualizados`);
+        return { leadsCreated: result.leadsCreated, messagesProcessed: 0 }; // Return early to avoid duplicate processing
       } catch (syncError) {
         console.log(`⚠️ Error en sincronización automática: ${syncError.message}`);
       }
