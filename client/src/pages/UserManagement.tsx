@@ -116,6 +116,34 @@ const defaultValues: Partial<UserFormValues> = {
   department: "ventas",
 };
 
+// Función para obtener nombre público del agente
+const getAgentDisplayName = (user: any): string => {
+  // Si tiene fullName, usarlo
+  if (user.fullName && user.fullName.trim()) {
+    return user.fullName;
+  }
+  
+  // Si no, traducir el username técnico a un nombre más amigable
+  const usernameTranslations: Record<string, string> = {
+    'admin': 'Administrador',
+    'supervisor': 'Supervisor',
+    'maria.ventas': 'María - Ventas',
+    'juan.soporte': 'Juan - Soporte',
+    'ana.supervisor': 'Ana - Supervisora',
+    'carlos.manager': 'Carlos - Gerente',
+    'lucia.agent': 'Lucía - Agente',
+    'pedro.sales': 'Pedro - Ventas',
+    'sofia.support': 'Sofía - Soporte',
+    'diego.agent': 'Diego - Agente',
+    'valeria.supervisor': 'Valeria - Supervisora',
+    'miguel.sales': 'Miguel - Ventas',
+    'isabella.support': 'Isabella - Soporte',
+    'alejandro.manager': 'Alejandro - Gerente'
+  };
+  
+  return usernameTranslations[user.username] || user.username;
+};
+
 export default function UserManagement() {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
