@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/authContext";
 import { Loader2, Sun, Moon, Coffee, Star } from "lucide-react";
 import { getRealNow, formatNYTime } from "@/lib/timeSync";
 import { PageTranslationSelector, usePageTranslation } from "@/components/translation/PageTranslator";
+import { SystemRefreshButton } from "@/components/dashboard/SystemRefreshButton";
 
 export default function Dashboard() {
   // Estados para el proceso de importación
@@ -316,6 +317,9 @@ export default function Dashboard() {
           <UpcomingActivities />
           <RecentConversations />
         </div>
+        
+        {/* Modern Floating System Refresh Button */}
+        <SystemRefreshButton />
       </PageContainer>
     </>
   );

@@ -1256,6 +1256,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // System refresh endpoint
+  app.post("/api/system/refresh", async (req: Request, res: Response) => {
+    try {
+      console.log("🔄 Iniciando actualización completa del sistema...");
+      
+      // Force WhatsApp data synchronization
+      const { simpleAutonomousProcessor } = await import('./services/simpleAutonomousProcessor');
+      const result = await simpleAutonomousProcessor.forceProcessAllChats();
+      
+      // Get updated dashboard stats
+      const leadsResult = await pool.query('SELECT COUNT(*) as count FROM leads');
+      const totalLeads = parseInt(leadsResult.rows[0].count) || 0;
+      
+      console.log(`✅ Sistema actualizado: ${result.leadsCreated} leads procesados, ${totalLeads} leads totales`);
+      
+      res.json({
+        success: true,
+        message: "Sistema actualizado exitosamente",
+        data: {
+          leadsProcessed: result.leadsCreated,
+          messagesProcessed: result.messagesProcessed,
+          totalLeads: totalLeads,
+          timestamp: new Date()
+        }
+      });
+    } catch (error) {
+      console.error("❌ Error actualizando sistema:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Error al actualizar el sistema" 
+      });
+    }
+  });
+
   // Admin metrics routes
   app.get("/api/admin/metrics", getAdminMetrics);
   app.get("/api/admin/agent-performance", getAgentPerformance);
