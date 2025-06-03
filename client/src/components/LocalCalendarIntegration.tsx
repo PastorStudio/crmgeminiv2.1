@@ -154,6 +154,7 @@ export function LocalCalendarIntegration() {
       
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/events/today'] });
+      reset(); // Reset form to default values
       setIsCreateDialogOpen(false);
     },
     onError: () => {
