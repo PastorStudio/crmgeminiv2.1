@@ -419,6 +419,13 @@ export default function SalesPipeline() {
                                     </span>
                                   </div>
                                 </div>
+
+                                {lead.phone && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs">📱</span>
+                                    <span className="text-xs font-mono text-gray-600">{lead.phone}</span>
+                                  </div>
+                                )}
                                 
                                 <div className="flex items-center justify-between">
                                   <span className="text-lg font-bold text-green-600">
@@ -428,6 +435,14 @@ export default function SalesPipeline() {
                                     {lead.source}
                                   </Badge>
                                 </div>
+
+                                {lead.notes && lead.notes.includes('Interés detectado:') && (
+                                  <div className="flex items-center">
+                                    <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700">
+                                      {lead.notes.split('Interés detectado: ')[1]?.split('.')[0] || 'Consulta general'}
+                                    </Badge>
+                                  </div>
+                                )}
 
                                 {lead.tags && lead.tags.length > 0 && (
                                   <div className="flex flex-wrap gap-1">

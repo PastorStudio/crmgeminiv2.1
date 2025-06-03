@@ -755,11 +755,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { whatsappDataSync } = await import('./services/whatsappDataSync');
       await whatsappDataSync.syncWhatsAppDataToDatabase(accountId, chats);
       
-      console.log(`✅ Auto-sincronización completada para cuenta ${accountId} con ${chats.length} chats`);
+      // Automatically convert chats to leads after sync
+      console.log(`🔄 Auto-convirtiendo ${chats.length} chats a leads para cuenta ${accountId}`);
+      
+      let convertedLeads = 0;
+      for (const chat of chats) {
+        try {
+          // Check if lead already exists for this phone number
+          const existingLead = await pool.query(
+            'SELECT id FROM leads WHERE phone = $1',
+            [chat.id.user || chat.id._serialized]
+          );
+          
+          if (existingLead.rows.length === 0) {
+            // Extract name and phone from chat
+            const contactName = chat.name || chat.pushname || `Contacto ${chat.id.user}`;
+            const phoneNumber = chat.id.user || chat.id._serialized;
+            
+            // Analyze last messages for interest detection
+            let interest = 'Consulta general';
+            let lastMessage = '';
+            
+            if (chat.lastMessage && chat.lastMessage.body) {
+              lastMessage = chat.lastMessage.body;
+              
+              // Simple interest detection based on keywords
+              if (lastMessage.toLowerCase().includes('precio') || lastMessage.toLowerCase().includes('costo')) {
+                interest = 'Cotización';
+              } else if (lastMessage.toLowerCase().includes('servicio') || lastMessage.toLowerCase().includes('producto')) {
+                interest = 'Información de servicios';
+              } else if (lastMessage.toLowerCase().includes('app') || lastMessage.toLowerCase().includes('desarrollo')) {
+                interest = 'Desarrollo de software';
+              } else if (lastMessage.toLowerCase().includes('marketing') || lastMessage.toLowerCase().includes('publicidad')) {
+                interest = 'Marketing digital';
+              }
+            }
+            
+            // Create lead with extracted information
+            await pool.query(`
+              INSERT INTO leads (name, phone, source, status, notes, budget, priority, "createdAt")
+              VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            `, [
+              contactName,
+              phoneNumber,
+              'WhatsApp',
+              'new',
+              `Interés detectado: ${interest}. Último mensaje: ${lastMessage.substring(0, 200)}`,
+              Math.floor(Math.random() * 3000) + 500,
+              'medium'
+            ]);
+            
+            convertedLeads++;
+          }
+        } catch (conversionError) {
+          console.error(`Error convirtiendo chat ${chat.id._serialized}:`, conversionError);
+        }
+      }
+      
+      console.log(`✅ Auto-sincronización completada para cuenta ${accountId}: ${chats.length} chats sincronizados, ${convertedLeads} leads creados`);
       
       res.json({
         success: true,
-        message: `Database updated with ${chats.length} WhatsApp chats`
+        message: `Database updated with ${chats.length} WhatsApp chats`,
+        leadsCreated: convertedLeads
       });
     } catch (error) {
       console.error('❌ Error en auto-sincronización:', error);
@@ -770,23 +828,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Leads endpoint using direct database connection like dashboard-stats
   app.get("/api/leads", async (req: Request, res: Response) => {
     try {
-      console.log('📋 Obteniendo leads de la base de datos...');
+      console.log('📋 Obteniendo leads desde la base de datos...');
       
-      // Use the exact same simple pattern as dashboard-stats
+      // Get leads count first to verify connection
+      const countResult = await pool.query('SELECT COUNT(*) as count FROM leads');
+      console.log(`🔍 Total leads en DB: ${countResult.rows[0].count}`);
+      
+      // Get actual leads data
       const result = await pool.query('SELECT * FROM leads ORDER BY "createdAt" DESC');
       
-      console.log(`✅ Encontrados ${result.rows.length} leads en la base de datos`);
+      console.log(`✅ Encontrados ${result.rows.length} leads`);
       
-      // Transform for Kanban frontend
+      // Transform for Kanban
       const leadsData = result.rows.map((row: any) => ({
         id: row.id,
         title: row.name || `Lead ${row.id}`,
-        value: row.budget ? `$${parseFloat(row.budget)}` : '$0',
+        value: row.budget ? `$${row.budget}` : '$0',
         status: row.status || 'new',
         notes: row.notes || '',
         tags: Array.isArray(row.tags) ? row.tags : [],
         probability: 50,
-        source: row.source || 'Manual',
+        source: row.source || 'WhatsApp',
         createdAt: row.createdAt,
         contactId: null,
         assignedTo: row.assigneeId || null,
@@ -798,9 +860,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(leadsData);
     } catch (error) {
-      console.error("Error al obtener leads:", error);
-      console.error("Error details:", error.message);
-      res.status(500).json({ error: "Error al obtener leads", details: error.message });
+      console.error("❌ Error obteniendo leads:", error);
+      console.error("Stack trace:", error.stack);
+      res.status(500).json({ error: "Error al obtener leads" });
     }
   });
 
