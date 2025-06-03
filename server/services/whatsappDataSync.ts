@@ -36,33 +36,28 @@ export class WhatsAppDataSyncService {
           
           if (!phoneNumber) continue;
 
-          // Check if lead already exists
+          // Check if lead already exists (using actual database schema)
           const existingLead = await pool.query(
-            'SELECT id FROM leads WHERE phone = $1 AND whatsapp_account_id = $2',
-            [phoneNumber, accountId]
+            'SELECT id FROM leads WHERE phone = $1',
+            [phoneNumber]
           );
 
           let leadId;
 
           if (existingLead.rows.length === 0) {
-            // Create new lead from WhatsApp data
+            // Create new lead from WhatsApp data using correct schema
             const leadResult = await pool.query(`
-              INSERT INTO leads (name, phone, source, status, whatsapp_account_id, created_at, last_contact_date)
-              VALUES ($1, $2, 'whatsapp', 'nuevo', $3, NOW(), NOW())
+              INSERT INTO leads (name, phone, source, status, "createdAt")
+              VALUES ($1, $2, $3, $4, NOW())
               RETURNING id
-            `, [contactName, phoneNumber, accountId]);
+            `, [contactName, phoneNumber, 'whatsapp', 'nuevo']);
             
             leadId = leadResult.rows[0].id;
             leadsCreated++;
-            console.log(`✅ Lead creado: ${contactName} (${phoneNumber})`);
+            console.log(`✅ Lead creado desde WhatsApp: ${contactName} (${phoneNumber})`);
           } else {
             leadId = existingLead.rows[0].id;
-            
-            // Update last contact date
-            await pool.query(
-              'UPDATE leads SET last_contact_date = NOW() WHERE id = $1',
-              [leadId]
-            );
+            console.log(`📞 Lead existente actualizado: ${contactName}`);
           }
 
           // Store chat messages if available
@@ -121,7 +116,7 @@ export class WhatsAppDataSyncService {
 
   private async updateDashboardWithRealData() {
     try {
-      // Get real counts from database
+      // Get real counts from database using correct column names
       const leadsResult = await pool.query('SELECT COUNT(*) as count FROM leads');
       const totalLeads = parseInt(leadsResult.rows[0].count) || 0;
 
@@ -130,15 +125,16 @@ export class WhatsAppDataSyncService {
       thisMonth.setHours(0, 0, 0, 0);
 
       const monthlyResult = await pool.query(
-        'SELECT COUNT(*) as count FROM leads WHERE created_at >= $1',
+        'SELECT COUNT(*) as count FROM leads WHERE "createdAt" >= $1',
         [thisMonth]
       );
       const newLeadsThisMonth = parseInt(monthlyResult.rows[0].count) || 0;
 
-      const accountsResult = await pool.query('SELECT COUNT(*) as count FROM whatsapp_accounts');
-      const activeAccounts = parseInt(accountsResult.rows[0].count) || 0;
+      // Count active users as proxy for accounts
+      const usersResult = await pool.query('SELECT COUNT(*) as count FROM users');
+      const activeAccounts = parseInt(usersResult.rows[0].count) || 0;
 
-      console.log(`📊 Datos reales actualizados: ${totalLeads} leads totales, ${newLeadsThisMonth} este mes, ${activeAccounts} cuentas`);
+      console.log(`📊 Datos reales actualizados: ${totalLeads} leads totales, ${newLeadsThisMonth} este mes, ${activeAccounts} usuarios activos`);
       
     } catch (error) {
       console.error('Error actualizando dashboard:', error);

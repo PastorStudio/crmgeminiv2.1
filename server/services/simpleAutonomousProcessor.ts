@@ -73,9 +73,9 @@ export class SimpleAutonomousProcessor {
 
       // Auto-sync WhatsApp data to database when chats are detected
       try {
-        const { whatsappDataSync } = await import('./whatsappDataSync');
-        await whatsappDataSync.syncWhatsAppDataToDatabase(1, chats); // Default account ID 1
-        console.log(`🔄 Base de datos sincronizada automáticamente con ${chats.length} chats de WhatsApp`);
+        const { SimpleWhatsAppSync } = await import('./simpleWhatsAppSync');
+        const result = await SimpleWhatsAppSync.syncChatsToDatabase(chats);
+        console.log(`🔄 Base de datos sincronizada: ${result.leadsCreated} leads creados, ${result.leadsUpdated} actualizados`);
       } catch (syncError) {
         console.log(`⚠️ Error en sincronización automática: ${syncError.message}`);
       }
