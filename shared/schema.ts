@@ -17,6 +17,7 @@ export const users = pgTable("users", {
   supervisorId: integer("supervisorId"),
   settings: jsonb("settings"),
   lastLoginAt: timestamp("lastLoginAt"),
+  totalLogins: integer("totalLogins").default(0),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedat"),
 });

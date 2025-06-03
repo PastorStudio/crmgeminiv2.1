@@ -3490,6 +3490,35 @@ app.use((req, res, next) => {
     }
   });
 
+  // Track user login
+  app.post('/api/user-login', async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ error: 'userId is required' });
+      }
+
+      // Increment login count for user
+      const updatedUser = await storage.incrementUserLogin(userId);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      console.log(`🔑 Login registrado para usuario ${userId} - Total logins: ${updatedUser.totalLogins}`);
+      
+      res.json({ 
+        success: true, 
+        totalLogins: updatedUser.totalLogins,
+        lastLoginAt: updatedUser.lastLoginAt
+      });
+    } catch (error) {
+      console.error('Error tracking user login:', error);
+      res.status(500).json({ error: 'Failed to track login' });
+    }
+  });
+
   // Registrar actividad de agente (login, page_view, etc.)
   app.post("/api/agent-activity", async (req: Request, res: Response) => {
     try {

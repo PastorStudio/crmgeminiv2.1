@@ -43,10 +43,30 @@ export const useIntensiveActivityTracker = () => {
     }
   };
 
+  // Track login when user accesses the system
+  const trackLogin = async () => {
+    if (!user?.id) return;
+    
+    try {
+      await fetch('/api/user-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id
+        }),
+      });
+    } catch (error) {
+      console.log('Error tracking login');
+    }
+  };
+
   useEffect(() => {
     if (!user?.id) return;
 
-    // Registrar inicio de sesión/aplicación
+    // Track login and session start
+    trackLogin();
     trackActivity('session_start', 'application', {
       userAgent: navigator.userAgent,
       screen: `${screen.width}x${screen.height}`,
