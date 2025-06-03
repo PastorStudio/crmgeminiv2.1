@@ -1878,8 +1878,15 @@ app.use((req, res, next) => {
     console.error("❌ Error al iniciar sistema de asignaciones invisible:", error);
   }
 
-  // Sistema limpio sin respuestas automáticas
-  console.log("✅ Sistema inicializado correctamente sin respuestas automáticas");
+  // Inicializar sistema completamente independiente de respuestas automáticas
+  try {
+    console.log("🤖 Iniciando sistema INDEPENDIENTE de respuestas automáticas...");
+    const { independentAutoResponseService } = await import('./services/independentAutoResponse');
+    await independentAutoResponseService.initialize();
+    console.log("✅ Sistema INDEPENDIENTE de respuestas automáticas iniciado correctamente");
+  } catch (error) {
+    console.error("❌ Error al iniciar sistema independiente de respuestas automáticas:", error);
+  }
 
   // Inicializar servicio automático de agentes externos
   try {
