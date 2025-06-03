@@ -157,15 +157,17 @@ export const conversations = pgTable("conversations", {
 // WhatsApp Messages table for independent auto-response
 export const whatsappMessages = pgTable("whatsapp_messages", {
   id: serial("id").primaryKey(),
-  accountId: integer("account_id").notNull(),
-  chatId: text("chat_id").notNull(),
-  messageId: text("message_id").notNull().unique(),
+  accountId: integer("accountId").notNull(),
+  chatId: text("chatId").notNull(),
+  messageId: text("messageId").notNull().unique(),
   content: text("content"),
-  fromMe: boolean("from_me").default(false),
+  from_me: boolean("from_me").default(false),
   timestamp: timestamp("timestamp").notNull(),
-  type: text("type").default("text"),
-  status: text("status").default("sent"),
-  createdAt: timestamp("created_at").defaultNow(),
+  hasMedia: boolean("hasMedia").default(false),
+  mediaType: text("mediaType"),
+  mediaUrl: text("mediaUrl"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("createdAt").defaultNow(),
 });
 
 // Enhanced messages table with AI analysis
