@@ -242,6 +242,12 @@ export const agentPageVisits = pgTable("agent_page_visits", {
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   timestamp: timestamp("timestamp").defaultNow(),
+  activityType: text("activity_type").default("general"),
+  targetElement: text("target_element"),
+  coordinates: text("coordinates"),
+  formData: text("form_data"),
+  sessionDuration: integer("session_duration"),
+  category: text("category").default("general"),
 });
 
 // Dashboard Stats
