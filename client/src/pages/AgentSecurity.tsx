@@ -336,10 +336,10 @@ export default function AgentSecurity() {
                           <span className="font-medium">ACTIVIDAD SOSPECHOSA</span>
                         </div>
                         <div className="mt-2 text-sm">
-                          <div><strong>Acción:</strong> {activity.action}</div>
+                          <div><strong>Acción:</strong> {activity.translatedAction || activity.action}</div>
                           <div><strong>Página:</strong> {activity.page}</div>
-                          <div><strong>Agente:</strong> {activity.agentId}</div>
-                          <div><strong>Tiempo:</strong> {new Date(activity.timestamp).toLocaleString()}</div>
+                          <div><strong>Agente:</strong> {activity.agentName || `Agente ${activity.agentId}`}</div>
+                          <div><strong>Tiempo:</strong> {activity.readableTime || new Date(activity.timestamp).toLocaleString()}</div>
                         </div>
                       </div>
                     ))}
