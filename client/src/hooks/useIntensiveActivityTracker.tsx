@@ -46,6 +46,63 @@ export const useIntensiveActivityTracker = () => {
   useEffect(() => {
     if (!user?.id) return;
 
+    // Registrar inicio de sesión/aplicación
+    trackActivity('session_start', 'application', {
+      userAgent: navigator.userAgent,
+      screen: `${screen.width}x${screen.height}`,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    }, 'security');
+
+    // Rastrear cambios de página/ruta
+    let currentPath = window.location.pathname;
+    const trackRouteChanges = () => {
+      const newPath = window.location.pathname;
+      if (newPath !== currentPath) {
+        trackActivity('page_navigation', `${currentPath} → ${newPath}`, {
+          from: currentPath,
+          to: newPath
+        }, 'navigation');
+        currentPath = newPath;
+      }
+    };
+
+    // Rastrear tiempo de inactividad
+    let inactiveTimer: NodeJS.Timeout;
+    let lastActivity = Date.now();
+    const resetInactiveTimer = () => {
+      lastActivity = Date.now();
+      clearTimeout(inactiveTimer);
+      inactiveTimer = setTimeout(() => {
+        trackActivity('user_inactive', '5_minutes', {
+          inactiveDuration: 300000 // 5 minutos
+        }, 'behavior');
+      }, 300000); // 5 minutos
+    };
+
+    // Rastrear antes de cerrar ventana/pestaña
+    const trackBeforeUnload = (event: BeforeUnloadEvent) => {
+      const sessionDuration = Date.now() - sessionStartTime.current.getTime();
+      trackActivity('session_end', 'application', {
+        sessionDurationMs: sessionDuration,
+        sessionDurationMinutes: Math.round(sessionDuration / 60000),
+        finalPage: window.location.pathname
+      }, 'security');
+    };
+
+    // Rastrear pérdida de foco de ventana
+    const trackWindowBlur = () => {
+      trackActivity('window_blur', 'focus_lost', {
+        page: window.location.pathname
+      }, 'behavior');
+    };
+
+    // Rastrear cuando vuelve el foco
+    const trackWindowFocus = () => {
+      trackActivity('window_focus', 'focus_gained', {
+        page: window.location.pathname
+      }, 'behavior');
+    };
+
     // Rastrear clics en botones
     const trackButtonClicks = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -157,6 +214,18 @@ export const useIntensiveActivityTracker = () => {
     document.addEventListener('keydown', trackKeyPresses);
     window.addEventListener('scroll', trackScrolling);
     window.addEventListener('beforeunload', trackPageDuration);
+    window.addEventListener('beforeunload', trackBeforeUnload);
+    window.addEventListener('blur', trackWindowBlur);
+    window.addEventListener('focus', trackWindowFocus);
+    
+    // Configurar observador de cambios de ruta para SPAs
+    setInterval(trackRouteChanges, 1000);
+    
+    // Inicializar timer de inactividad
+    resetInactiveTimer();
+    document.addEventListener('mousemove', resetInactiveTimer);
+    document.addEventListener('keypress', resetInactiveTimer);
+    document.addEventListener('click', resetInactiveTimer);
 
     // Cleanup
     return () => {
@@ -167,7 +236,14 @@ export const useIntensiveActivityTracker = () => {
       document.removeEventListener('keydown', trackKeyPresses);
       window.removeEventListener('scroll', trackScrolling);
       window.removeEventListener('beforeunload', trackPageDuration);
+      window.removeEventListener('beforeunload', trackBeforeUnload);
+      window.removeEventListener('blur', trackWindowBlur);
+      window.removeEventListener('focus', trackWindowFocus);
+      document.removeEventListener('mousemove', resetInactiveTimer);
+      document.removeEventListener('keypress', resetInactiveTimer);
+      document.removeEventListener('click', resetInactiveTimer);
       clearTimeout(scrollTimeout);
+      clearTimeout(inactiveTimer);
     };
   }, [user?.id]);
 
