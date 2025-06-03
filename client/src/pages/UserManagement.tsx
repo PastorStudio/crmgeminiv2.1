@@ -1536,7 +1536,9 @@ export default function UserManagement() {
                     {agentActivities.map((activity, index) => (
                       <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
                         <div className="flex-shrink-0">
-                          {activity.action === 'login' ? (
+                          {activity.icon ? (
+                            <span className="text-2xl">{activity.icon}</span>
+                          ) : activity.action === 'login' ? (
                             <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                               <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
@@ -1556,9 +1558,7 @@ export default function UserManagement() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-medium text-gray-900">
-                              {activity.action === 'login' ? 'Inicio de sesión' : 
-                               activity.action === 'page_view' ? `Visitó ${activity.page}` : 
-                               activity.action}
+                              {activity.translatedAction || activity.details || activity.action}
                             </p>
                             <p className="text-xs text-gray-500">
                               {formatDate(activity.timestamp)}
