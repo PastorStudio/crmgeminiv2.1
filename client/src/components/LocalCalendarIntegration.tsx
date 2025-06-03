@@ -107,7 +107,7 @@ export function LocalCalendarIntegration() {
       const response = await fetch('/api/whatsapp/accounts');
       if (!response.ok) throw new Error('Failed to fetch WhatsApp accounts');
       const data = await response.json();
-      return data.accounts || [];
+      return Array.isArray(data) ? data : [];
     }
   });
 
