@@ -770,15 +770,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Leads endpoint using direct database connection like dashboard-stats
   app.get("/api/leads", async (req: Request, res: Response) => {
     try {
-      // Use database connection from db.ts like other working endpoints
-      const { db } = await import('./db');
-      const { leads } = await import('@shared/schema');
-      const { desc } = await import('drizzle-orm');
+      console.log('📋 Obteniendo leads de la base de datos...');
       
-      const result = await db.select().from(leads).orderBy(desc(leads.createdAt));
+      // Use exact same pool query pattern as dashboard-stats
+      const result = await pool.query(`
+        SELECT 
+          id,
+          name,
+          email,
+          phone,
+          source,
+          status,
+          "assigneeId",
+          company,
+          budget,
+          notes,
+          priority,
+          tags,
+          "createdAt"
+        FROM leads 
+        ORDER BY "createdAt" DESC
+      `);
       
-      // Transform for frontend with proper Kanban structure
-      const leadsData = result.map((row: any) => ({
+      console.log(`✅ Encontrados ${result.rows.length} leads en la base de datos`);
+      
+      // Transform for Kanban frontend
+      const leadsData = result.rows.map((row: any) => ({
         id: row.id,
         title: row.name || `Lead ${row.id}`,
         value: row.budget ? `$${parseFloat(row.budget)}` : '$0',
@@ -787,7 +804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tags: Array.isArray(row.tags) ? row.tags : [],
         probability: 50,
         source: row.source || 'Manual',
-        createdAt: row.createdAt ? row.createdAt.toISOString() : new Date().toISOString(),
+        createdAt: row.createdAt,
         contactId: null,
         assignedTo: row.assigneeId || null,
         email: row.email || '',

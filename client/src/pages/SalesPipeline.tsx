@@ -375,7 +375,7 @@ export default function SalesPipeline() {
         <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 overflow-x-auto">
           {PIPELINE_STAGES.map((stage) => (
             <div key={stage.id} className="min-w-[280px]">
-              <div className="bg-blue-500 text-white p-3 rounded-t-lg pl-[6px] pr-[6px] pt-[0px] pb-[0px]">
+              <div className={`text-white p-3 rounded-t-lg ${stage.color}`}>
                 <h3 className="font-semibold">{stage.name}</h3>
                 <p className="text-sm opacity-90">
                   {leadsByStatus[stage.id]?.length || 0} leads
