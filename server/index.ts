@@ -3567,26 +3567,111 @@ app.use((req, res, next) => {
           since.setDate(now.getDate() - 1);
       }
 
-      // Usar SQL directo para evitar problemas de ORM
+      // Usar SQL directo con JOIN para incluir información de usuarios
       let query = `
-        SELECT id, agent_id, page, action, details, ip_address, user_agent, timestamp, activity_type, category
-        FROM agent_page_visits 
-        WHERE timestamp >= $1
+        SELECT 
+          apv.id, 
+          apv.agent_id, 
+          apv.page, 
+          apv.action, 
+          apv.details, 
+          apv.ip_address, 
+          apv.user_agent, 
+          apv.timestamp, 
+          apv.activity_type, 
+          apv.category,
+          u.username,
+          u."fullName"
+        FROM agent_page_visits apv
+        LEFT JOIN users u ON apv.agent_id = u.id
+        WHERE apv.timestamp >= $1
       `;
       
       let params = [since];
       
       if (agentId) {
-        query += ` AND agent_id = $2`;
+        query += ` AND apv.agent_id = $2`;
         params.push(parseInt(agentId as string));
       }
       
-      query += ` ORDER BY timestamp DESC LIMIT 500`;
+      query += ` ORDER BY apv.timestamp DESC LIMIT 500`;
       
       const result = await pool.query(query, params);
       const activities = result.rows;
 
       console.log(`📊 Encontradas ${activities.length} actividades históricas`);
+      
+      // Función para traducir nombres de agentes
+      const getAgentDisplayName = (username: string, fullName: string): string => {
+        // Si tiene fullName, usarlo
+        if (fullName && fullName.trim()) {
+          return fullName;
+        }
+        
+        // Si no, traducir el username técnico a un nombre más amigable
+        const usernameTranslations: Record<string, string> = {
+          'admin': 'Administrador',
+          'supervisor': 'Supervisor',
+          'maria.ventas': 'María - Ventas',
+          'juan.soporte': 'Juan - Soporte',
+          'ana.supervisor': 'Ana - Supervisora',
+          'carlos.manager': 'Carlos - Gerente',
+          'lucia.agent': 'Lucía - Agente',
+          'pedro.sales': 'Pedro - Ventas',
+          'sofia.support': 'Sofía - Soporte',
+          'diego.agent': 'Diego - Agente',
+          'valeria.supervisor': 'Valeria - Supervisora',
+          'miguel.sales': 'Miguel - Ventas',
+          'isabella.support': 'Isabella - Soporte',
+          'alejandro.manager': 'Alejandro - Gerente'
+        };
+        
+        return usernameTranslations[username] || username || `Agente ${username}`;
+      };
+
+      // Procesar actividades con nombres traducidos y aplicar el traductor de actividades
+      const translatedActivities = activities.map(activity => {
+        let parsedDetails = {};
+        try {
+          if (typeof activity.details === 'string') {
+            // Solo hacer parse si parece ser JSON válido (empieza con { o [)
+            if (activity.details.trim().startsWith('{') || activity.details.trim().startsWith('[')) {
+              parsedDetails = JSON.parse(activity.details);
+            } else {
+              // Si es texto plano, crear un objeto con la descripción
+              parsedDetails = { description: activity.details };
+            }
+          } else {
+            parsedDetails = activity.details || {};
+          }
+        } catch (e) {
+          // Si falla el parse, tratar como texto plano
+          parsedDetails = { description: activity.details || '' };
+        }
+        
+        const translated = ActivityTranslator.translateActivity(
+          activity.action,
+          parsedDetails.target,
+          activity.page,
+          parsedDetails
+        );
+        
+        return {
+          ...activity,
+          agentName: getAgentDisplayName(activity.username, activity.fullName),
+          translatedAction: translated.action,
+          icon: translated.icon,
+          category: translated.category,
+          priority: translated.priority,
+          readableTime: new Date(activity.timestamp).toLocaleString('es-ES', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        };
+      });
       
       // Obtener estadísticas simples
       const agentIds = [...new Set(activities.map((a: any) => a.agent_id))];
@@ -3604,8 +3689,8 @@ app.use((req, res, next) => {
 
       res.json({
         success: true,
-        activities: activities,
-        totalActivities: activities.length,
+        activities: translatedActivities,
+        totalActivities: translatedActivities.length,
         stats: totalStats,
         timeRange,
         since: since.toISOString()
