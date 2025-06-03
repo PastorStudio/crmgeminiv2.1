@@ -584,7 +584,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       this.deactivateConnectionTimers(instance);
     });
 
-    // Evento de mensajes entrantes para sistema de tickets
+    // Evento de mensajes entrantes para sistema de tickets y análisis AI
     client.on('message', async (message) => {
       try {
         console.log(`🔔 EVENTO MESSAGE ACTIVADO en cuenta ${id}`);
@@ -595,6 +595,9 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           body: message.body?.substring(0, 50) || '[Sin texto]',
           chatId: message.from
         });
+        
+        // Almacenar conversación para análisis AI
+        await this.storeConversationForAnalysis(id, message);
         
         // Solo procesar mensajes entrantes (no enviados por nosotros)
         // Validación estricta: debe ser fromMe=false Y el chat debe ser diferente al número de la cuenta
@@ -1094,6 +1097,83 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   isAccountConnected(accountId: number): boolean {
     const instance = this.instances.get(accountId);
     return instance ? instance.status.authenticated && instance.status.ready : false;
+  }
+
+  /**
+   * Almacena conversación para análisis AI
+   */
+  private async storeConversationForAnalysis(accountId: number, message: any): Promise<void> {
+    try {
+      const { db } = await import('../db');
+      const { conversations } = await import('@shared/schema');
+      const { eq, and } = await import('drizzle-orm');
+
+      const chatId = message.from;
+      const messageText = message.body || '';
+      const timestamp = new Date(message.timestamp * 1000);
+
+      // Buscar conversación existente
+      const existingConversation = await db
+        .select()
+        .from(conversations)
+        .where(
+          and(
+            eq(conversations.chatId, chatId),
+            eq(conversations.whatsappAccountId, accountId)
+          )
+        )
+        .limit(1);
+
+      if (existingConversation.length > 0) {
+        // Actualizar conversación existente
+        const conversation = existingConversation[0];
+        const currentMessages = conversation.messages ? JSON.parse(conversation.messages) : [];
+        
+        currentMessages.push({
+          id: message.id._serialized,
+          body: messageText,
+          fromMe: message.fromMe,
+          timestamp: timestamp.toISOString(),
+          type: message.type
+        });
+
+        await db
+          .update(conversations)
+          .set({
+            messages: JSON.stringify(currentMessages),
+            lastMessageAt: timestamp,
+            messageCount: currentMessages.length,
+            analyzed: false // Marcar para re-análisis
+          })
+          .where(eq(conversations.id, conversation.id));
+
+        console.log(`📝 Conversación actualizada para análisis AI: ${chatId}`);
+      } else {
+        // Crear nueva conversación
+        const newMessages = [{
+          id: message.id._serialized,
+          body: messageText,
+          fromMe: message.fromMe,
+          timestamp: timestamp.toISOString(),
+          type: message.type
+        }];
+
+        await db.insert(conversations).values({
+          chatId,
+          whatsappAccountId: accountId,
+          contactId: 1, // Default contact ID
+          messages: JSON.stringify(newMessages),
+          lastMessageAt: timestamp,
+          messageCount: 1,
+          analyzed: false,
+          status: 'active'
+        });
+
+        console.log(`📝 Nueva conversación creada para análisis AI: ${chatId}`);
+      }
+    } catch (error) {
+      console.error('❌ Error almacenando conversación para análisis:', error);
+    }
   }
 
   /**
