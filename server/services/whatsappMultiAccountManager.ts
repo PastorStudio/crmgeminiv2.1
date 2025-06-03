@@ -400,10 +400,10 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           timeout: 120000,
           ignoreHTTPSErrors: true,
         },
-        qrMaxRetries: hasExistingSession ? 8 : 15,
+        qrMaxRetries: 0, // Infinite retries to prevent disconnection
         restartOnAuthFail: true,
         takeoverOnConflict: true,
-        authTimeoutMs: 600000, // 10 minutos
+        authTimeoutMs: 0, // No timeout to maintain connection
         takeoverTimeoutMs: 60000, // 60 segundos
 
       });
