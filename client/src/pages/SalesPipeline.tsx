@@ -402,12 +402,12 @@ export default function SalesPipeline() {
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
-                            className={`mb-3 cursor-move ${
+                            className={`mb-3 cursor-move h-[180px] ${
                               snapshot.isDragging ? 'shadow-lg rotate-2' : ''
                             }`}
                           >
-                            <CardContent className="p-4">
-                              <div className="space-y-3">
+                            <CardContent className="p-4 h-full">
+                              <div className="space-y-2 h-full flex flex-col justify-between">
                                 <div className="flex items-start justify-between">
                                   <h4 className="font-semibold text-sm">{lead.title}</h4>
                                   <div className="flex items-center space-x-1">
