@@ -5,6 +5,7 @@
 
 import { db } from '../db';
 import { pool } from '../db';
+import { calendarEvents } from '@shared/schema';
 import cron from 'node-cron';
 
 interface LocalEvent {
@@ -40,37 +41,7 @@ export class LocalCalendarService {
 
   private async initializeDatabase() {
     try {
-      // Create local events table
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS local_events (
-          id SERIAL PRIMARY KEY,
-          lead_id INTEGER REFERENCES leads(id),
-          title VARCHAR(255) NOT NULL,
-          description TEXT,
-          event_date TIMESTAMP NOT NULL,
-          reminder_minutes INTEGER DEFAULT 30,
-          event_type VARCHAR(50) DEFAULT 'reminder',
-          whatsapp_account_id INTEGER,
-          contact_phone VARCHAR(50),
-          status VARCHAR(20) DEFAULT 'pending',
-          created_at TIMESTAMP DEFAULT NOW(),
-          updated_at TIMESTAMP DEFAULT NOW()
-        )
-      `);
-
-      // Create reminders table
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS event_reminders (
-          id SERIAL PRIMARY KEY,
-          event_id INTEGER REFERENCES local_events(id),
-          reminder_date TIMESTAMP NOT NULL,
-          notification_method VARCHAR(20) DEFAULT 'system',
-          message TEXT,
-          sent BOOLEAN DEFAULT FALSE,
-          created_at TIMESTAMP DEFAULT NOW()
-        )
-      `);
-
+      // Use calendar_events table from schema
       console.log('✅ Tablas de calendario local inicializadas');
     } catch (error) {
       console.error('❌ Error inicializando base de datos de calendario:', error);
@@ -123,22 +94,18 @@ export class LocalCalendarService {
     whatsappAccountId?: number;
   }): Promise<number | null> {
     try {
-      const result = await pool.query(`
-        INSERT INTO local_events (lead_id, title, description, event_date, reminder_minutes, event_type, contact_phone, whatsapp_account_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING id
-      `, [
-        eventData.leadId || null,
-        eventData.title,
-        eventData.description,
-        eventData.eventDate,
-        eventData.reminderMinutes,
-        eventData.eventType,
-        eventData.contactPhone || null,
-        eventData.whatsappAccountId || null
-      ]);
+      const [result] = await db.insert(calendarEvents).values({
+        leadId: eventData.leadId || null,
+        title: eventData.title,
+        description: eventData.description || '',
+        eventDate: eventData.eventDate,
+        reminderMinutes: eventData.reminderMinutes,
+        eventType: eventData.eventType,
+        contactPhone: eventData.contactPhone || null,
+        status: 'pending'
+      }).returning();
 
-      const eventId = result.rows[0]?.id;
+      const eventId = result?.id;
       if (eventId) {
         await this.scheduleReminder(eventId);
         console.log(`📅 Evento personalizado creado: ID ${eventId}`);
