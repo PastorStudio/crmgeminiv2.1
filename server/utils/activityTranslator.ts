@@ -67,6 +67,126 @@ export class ActivityTranslator {
     // Actividades de interacción
     if (action === 'button_click') {
       const buttonText = this.translateButtonText(target);
+      
+      // Detectar acciones específicas basadas en el texto del botón
+      if (buttonText.toLowerCase().includes('conectar') || buttonText.toLowerCase().includes('connect')) {
+        return {
+          action: `Conectó cuenta de WhatsApp`,
+          icon: '📱',
+          category: 'WhatsApp',
+          priority: 'high'
+        };
+      }
+      
+      if (buttonText.toLowerCase().includes('eliminar') || buttonText.toLowerCase().includes('delete') || buttonText.toLowerCase().includes('borrar')) {
+        return {
+          action: `Eliminó elemento: ${buttonText}`,
+          icon: '🗑️',
+          category: 'Gestión de Datos',
+          priority: 'high'
+        };
+      }
+      
+      if (buttonText.toLowerCase().includes('guardar') || buttonText.toLowerCase().includes('save')) {
+        return {
+          action: `Guardó cambios: ${buttonText}`,
+          icon: '💾',
+          category: 'Gestión de Datos',
+          priority: 'medium'
+        };
+      }
+      
+      if (buttonText.toLowerCase().includes('enviar') || buttonText.toLowerCase().includes('send')) {
+        return {
+          action: `Envió datos: ${buttonText}`,
+          icon: '📤',
+          category: 'Comunicación',
+          priority: 'medium'
+        };
+      }
+      
+      if (buttonText.toLowerCase().includes('activar') || buttonText.toLowerCase().includes('enable')) {
+        return {
+          action: `Activó función: ${buttonText}`,
+          icon: '✅',
+          category: 'Configuración',
+          priority: 'medium'
+        };
+      }
+      
+      if (buttonText.toLowerCase().includes('desactivar') || buttonText.toLowerCase().includes('disable')) {
+        return {
+          action: `Desactivó función: ${buttonText}`,
+          icon: '❌',
+          category: 'Configuración',
+          priority: 'medium'
+        };
+      }
+      
+      if (buttonText.toLowerCase().includes('crear') || buttonText.toLowerCase().includes('add') || buttonText.toLowerCase().includes('nuevo')) {
+        return {
+          action: `Creó nuevo elemento: ${buttonText}`,
+          icon: '➕',
+          category: 'Gestión de Datos',
+          priority: 'medium'
+        };
+      }
+      
+      if (buttonText.toLowerCase().includes('editar') || buttonText.toLowerCase().includes('edit') || buttonText.toLowerCase().includes('modificar')) {
+        return {
+          action: `Editó elemento: ${buttonText}`,
+          icon: '✏️',
+          category: 'Gestión de Datos',
+          priority: 'medium'
+        };
+      }
+      
+      if (buttonText.toLowerCase().includes('descargar') || buttonText.toLowerCase().includes('download')) {
+        return {
+          action: `Descargó archivo: ${buttonText}`,
+          icon: '⬇️',
+          category: 'Archivos',
+          priority: 'low'
+        };
+      }
+      
+      if (buttonText.toLowerCase().includes('subir') || buttonText.toLowerCase().includes('upload')) {
+        return {
+          action: `Subió archivo: ${buttonText}`,
+          icon: '⬆️',
+          category: 'Archivos',
+          priority: 'medium'
+        };
+      }
+      
+      if (buttonText.toLowerCase().includes('ver') || buttonText.toLowerCase().includes('mostrar') || buttonText.toLowerCase().includes('show')) {
+        return {
+          action: `Visualizó: ${buttonText}`,
+          icon: '👁️',
+          category: 'Visualización',
+          priority: 'low'
+        };
+      }
+      
+      if (buttonText.toLowerCase().includes('filtrar') || buttonText.toLowerCase().includes('filter')) {
+        return {
+          action: `Aplicó filtro: ${buttonText}`,
+          icon: '🔍',
+          category: 'Búsqueda',
+          priority: 'low'
+        };
+      }
+      
+      if (buttonText.toLowerCase().includes('exportar') || buttonText.toLowerCase().includes('export')) {
+        return {
+          action: `Exportó datos: ${buttonText}`,
+          icon: '📊',
+          category: 'Archivos',
+          priority: 'medium'
+        };
+      }
+      
+      // Acción genérica para otros botones
       return {
         action: `Presionó el botón "${buttonText}" en ${pageName}`,
         icon: '👆',

@@ -3438,9 +3438,23 @@ app.use((req, res, next) => {
       const { ActivityTranslator } = await import('./utils/activityTranslator');
       
       const translatedActivities = recentActivities.map(activity => {
-        const parsedDetails = typeof activity.details === 'string' 
-          ? JSON.parse(activity.details || '{}') 
-          : activity.details || {};
+        let parsedDetails = {};
+        try {
+          if (typeof activity.details === 'string') {
+            // Solo hacer parse si parece ser JSON válido (empieza con { o [)
+            if (activity.details.trim().startsWith('{') || activity.details.trim().startsWith('[')) {
+              parsedDetails = JSON.parse(activity.details);
+            } else {
+              // Si es texto plano, crear un objeto con la descripción
+              parsedDetails = { description: activity.details };
+            }
+          } else {
+            parsedDetails = activity.details || {};
+          }
+        } catch (e) {
+          // Si falla el parse, tratar como texto plano
+          parsedDetails = { description: activity.details || '' };
+        }
         
         const translated = ActivityTranslator.translateActivity(
           activity.action,
