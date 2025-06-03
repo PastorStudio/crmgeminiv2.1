@@ -44,12 +44,86 @@ export class ActivityTranslator {
     
     const pageName = this.pageNames[page || '/'] || page || 'Página desconocida';
     
-    // Actividades de navegación
-    if (action === 'page_visit' || action === 'session_start') {
+    // Actividades de navegación y sesión
+    if (action === 'page_visit') {
       return {
         action: `Visitó ${pageName}`,
         icon: '🌐',
         category: 'Navegación',
+        priority: 'low'
+      };
+    }
+
+    if (action === 'session_start') {
+      return {
+        action: `Inició sesión en la aplicación`,
+        icon: '🔓',
+        category: 'Seguridad',
+        priority: 'high'
+      };
+    }
+
+    if (action === 'session_end') {
+      const duration = details?.sessionDurationMinutes || 0;
+      return {
+        action: `Cerró sesión (duración: ${duration} minutos)`,
+        icon: '🔒',
+        category: 'Seguridad',
+        priority: 'high'
+      };
+    }
+
+    if (action === 'page_navigation') {
+      return {
+        action: `Navegó entre páginas: ${target}`,
+        icon: '🧭',
+        category: 'Navegación',
+        priority: 'medium'
+      };
+    }
+
+    if (action === 'user_inactive') {
+      return {
+        action: `Usuario inactivo por 5 minutos`,
+        icon: '⏱️',
+        category: 'Comportamiento',
+        priority: 'medium'
+      };
+    }
+
+    if (action === 'window_blur') {
+      return {
+        action: `Perdió el foco de la ventana`,
+        icon: '👁️',
+        category: 'Comportamiento',
+        priority: 'low'
+      };
+    }
+
+    if (action === 'window_focus') {
+      return {
+        action: `Regresó el foco a la ventana`,
+        icon: '👀',
+        category: 'Comportamiento',
+        priority: 'low'
+      };
+    }
+
+    if (action === 'page_duration') {
+      const seconds = details?.durationSeconds || 0;
+      return {
+        action: `Permaneció ${seconds} segundos en ${pageName}`,
+        icon: '⏰',
+        category: 'Tiempo',
+        priority: 'low'
+      };
+    }
+
+    if (action === 'page_scroll') {
+      return {
+        action: `Hizo scroll hasta ${target} de la página`,
+        icon: '📜',
+        category: 'Interacción',
         priority: 'low'
       };
     }
