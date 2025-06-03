@@ -129,23 +129,23 @@ export class DatabaseStorage implements IStorage {
 
   async getActivitiesByUser(userId: number | null, startDate?: Date): Promise<any[]> {
     try {
-      const { agentActivities } = await import("@shared/schema");
-      let query = db.select().from(agentActivities);
+      const { agentPageVisits } = await import("@shared/schema");
+      let query = db.select().from(agentPageVisits);
       
       // Add filters properly
       if (userId !== null && startDate) {
         query = query.where(
-          sql`${agentActivities.agentId} = ${userId} AND ${agentActivities.timestamp} >= ${startDate.toISOString()}`
+          sql`${agentPageVisits.agentId} = ${userId} AND ${agentPageVisits.timestamp} >= ${startDate.toISOString()}`
         );
       } else if (userId !== null) {
-        query = query.where(eq(agentActivities.agentId, userId));
+        query = query.where(eq(agentPageVisits.agentId, userId));
       } else if (startDate) {
         query = query.where(
-          sql`${agentActivities.timestamp} >= ${startDate.toISOString()}`
+          sql`${agentPageVisits.timestamp} >= ${startDate.toISOString()}`
         );
       }
       
-      const activities = await query.orderBy(desc(agentActivities.timestamp));
+      const activities = await query.orderBy(desc(agentPageVisits.timestamp));
       return activities;
     } catch (error) {
       console.error('Error fetching activities:', error);
