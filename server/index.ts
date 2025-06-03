@@ -2554,6 +2554,156 @@ app.use((req, res, next) => {
     }
   });
 
+  // ===== ENDPOINTS DEL SISTEMA INDEPENDIENTE DE RESPUESTAS AUTOMÁTICAS =====
+  
+  // Activar respuestas automáticas independientes
+  app.post('/api/independent-auto-response/activate/:accountId', async (req, res) => {
+    try {
+      const { accountId } = req.params;
+      const { agentName = 'AI Assistant' } = req.body;
+      
+      console.log(`🟢 Activando sistema independiente para cuenta ${accountId}`);
+      
+      const { independentAutoResponseService } = await import('./services/independentAutoResponse');
+      await independentAutoResponseService.enableForAccount(parseInt(accountId), agentName);
+      
+      res.json({
+        success: true,
+        message: `Sistema independiente activado para cuenta ${accountId}`,
+        accountId: parseInt(accountId),
+        agentName
+      });
+    } catch (error) {
+      console.error('❌ Error activando sistema independiente:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error activando sistema independiente'
+      });
+    }
+  });
+
+  // Desactivar respuestas automáticas independientes
+  app.post('/api/independent-auto-response/deactivate/:accountId', async (req, res) => {
+    try {
+      const { accountId } = req.params;
+      
+      console.log(`🔴 Desactivando sistema independiente para cuenta ${accountId}`);
+      
+      const { independentAutoResponseService } = await import('./services/independentAutoResponse');
+      await independentAutoResponseService.disableForAccount(parseInt(accountId));
+      
+      res.json({
+        success: true,
+        message: `Sistema independiente desactivado para cuenta ${accountId}`,
+        accountId: parseInt(accountId)
+      });
+    } catch (error) {
+      console.error('❌ Error desactivando sistema independiente:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error desactivando sistema independiente'
+      });
+    }
+  });
+
+  // Obtener estado del sistema independiente
+  app.get('/api/independent-auto-response/status', async (req, res) => {
+    try {
+      const { independentAutoResponseService } = await import('./services/independentAutoResponse');
+      const status = independentAutoResponseService.getStatus();
+      
+      res.json({
+        success: true,
+        status
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo estado independiente:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error obteniendo estado del sistema independiente'
+      });
+    }
+  });
+
+  // ===== RUTAS DIRECTAS DEL SISTEMA INDEPENDIENTE (sin interceptación de Vite) =====
+  
+  // Activar sistema independiente (ruta directa)
+  app.post('/api/direct/independent-auto-response/activate/:accountId', async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      const { accountId } = req.params;
+      const { agentName = 'Independent AI Assistant' } = req.body;
+      
+      console.log(`🟢 [DIRECTO] Activando sistema independiente para cuenta ${accountId}`);
+      
+      const { independentAutoResponseService } = await import('./services/independentAutoResponse');
+      await independentAutoResponseService.enableForAccount(parseInt(accountId), agentName);
+      
+      res.json({
+        success: true,
+        message: `Sistema independiente activado para cuenta ${accountId}`,
+        accountId: parseInt(accountId),
+        agentName,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error activando sistema independiente:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error activando sistema independiente'
+      });
+    }
+  });
+
+  // Desactivar sistema independiente (ruta directa)
+  app.post('/api/direct/independent-auto-response/deactivate/:accountId', async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      const { accountId } = req.params;
+      
+      console.log(`🔴 [DIRECTO] Desactivando sistema independiente para cuenta ${accountId}`);
+      
+      const { independentAutoResponseService } = await import('./services/independentAutoResponse');
+      await independentAutoResponseService.disableForAccount(parseInt(accountId));
+      
+      res.json({
+        success: true,
+        message: `Sistema independiente desactivado para cuenta ${accountId}`,
+        accountId: parseInt(accountId),
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error desactivando sistema independiente:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error desactivando sistema independiente'
+      });
+    }
+  });
+
+  // Obtener estado del sistema independiente (ruta directa)
+  app.get('/api/direct/independent-auto-response/status', async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      console.log('🔍 [DIRECTO] Obteniendo estado del sistema independiente');
+      
+      const { independentAutoResponseService } = await import('./services/independentAutoResponse');
+      const status = independentAutoResponseService.getStatus();
+      
+      res.json({
+        success: true,
+        status,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo estado independiente:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error obteniendo estado del sistema independiente'
+      });
+    }
+  });
+
   // ENDPOINT REAL QUE USA EL BOTÓN - CON RESPUESTA AUTOMÁTICA
   app.post('/api/external-agents/toggle', async (req, res) => {
     console.log('🚀 BOTÓN A.E AI REAL PRESIONADO - DATOS:', req.body);
