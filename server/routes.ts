@@ -28,6 +28,7 @@ import multer from "multer";
 import { messageTemplateService } from "./services/messageTemplateService";
 import { analyticsService } from "./services/analyticsService";
 import { excelImportService } from "./services/excelImportService";
+import { CalendarReminderService } from "./services/calendarReminderService";
 import { localCalendarService } from "./services/localCalendarService";
 import { getAdminMetrics, getAgentPerformance, getSystemHealth } from "./routes/adminMetrics";
 import webScrapingRouter from "./routes/webScrapingRoutes";
@@ -6139,6 +6140,110 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
     } catch (error) {
       console.error("Error creating auto-followup:", error);
       res.status(500).json({ error: "Error creating auto-followup" });
+    }
+  });
+
+  // === CALENDAR REMINDER SERVICE ROUTES ===
+  
+  // Configure reminder for a specific event
+  app.post("/api/calendar/reminders/configure", async (req: Request, res: Response) => {
+    try {
+      const { eventId, chatId, whatsappAccountId, reminderMessage, reminderTimeMinutes, autoActivateResponses } = req.body;
+      
+      if (!eventId || !chatId || !whatsappAccountId || !reminderMessage) {
+        return res.status(400).json({ 
+          error: "eventId, chatId, whatsappAccountId y reminderMessage son requeridos" 
+        });
+      }
+
+      const success = await CalendarReminderService.configureReminder({
+        eventId: parseInt(eventId),
+        chatId,
+        whatsappAccountId: parseInt(whatsappAccountId),
+        reminderMessage,
+        reminderTimeMinutes: reminderTimeMinutes || 60, // 1 hora por defecto
+        isActive: true,
+        autoActivateResponses: autoActivateResponses || false
+      });
+
+      if (success) {
+        res.json({ 
+          success: true, 
+          message: "Recordatorio configurado exitosamente" 
+        });
+      } else {
+        res.status(500).json({ 
+          error: "Error configurando recordatorio" 
+        });
+      }
+    } catch (error) {
+      console.error("Error configurando recordatorio:", error);
+      res.status(500).json({ error: "Error configurando recordatorio" });
+    }
+  });
+
+  // Get scheduled reminders
+  app.get("/api/calendar/reminders/scheduled", async (req: Request, res: Response) => {
+    try {
+      const reminders = CalendarReminderService.getScheduledReminders();
+      res.json({ reminders });
+    } catch (error) {
+      console.error("Error obteniendo recordatorios programados:", error);
+      res.status(500).json({ error: "Error obteniendo recordatorios programados" });
+    }
+  });
+
+  // Get reminder configurations
+  app.get("/api/calendar/reminders/configs", async (req: Request, res: Response) => {
+    try {
+      const configs = CalendarReminderService.getReminderConfigs();
+      res.json({ configs });
+    } catch (error) {
+      console.error("Error obteniendo configuraciones:", error);
+      res.status(500).json({ error: "Error obteniendo configuraciones" });
+    }
+  });
+
+  // Cancel reminder for an event
+  app.delete("/api/calendar/reminders/:eventId", async (req: Request, res: Response) => {
+    try {
+      const eventId = parseInt(req.params.eventId);
+      CalendarReminderService.cancelReminder(eventId);
+      
+      res.json({ 
+        success: true, 
+        message: "Recordatorio cancelado exitosamente" 
+      });
+    } catch (error) {
+      console.error("Error cancelando recordatorio:", error);
+      res.status(500).json({ error: "Error cancelando recordatorio" });
+    }
+  });
+
+  // Send immediate test reminder
+  app.post("/api/calendar/reminders/test", async (req: Request, res: Response) => {
+    try {
+      const { chatId, message, accountId } = req.body;
+      
+      if (!chatId || !message) {
+        return res.status(400).json({ 
+          error: "chatId y message son requeridos" 
+        });
+      }
+
+      await CalendarReminderService.scheduleImmediateReminder(
+        chatId, 
+        message, 
+        accountId || 1
+      );
+      
+      res.json({ 
+        success: true, 
+        message: "Recordatorio de prueba programado para 30 segundos" 
+      });
+    } catch (error) {
+      console.error("Error programando recordatorio de prueba:", error);
+      res.status(500).json({ error: "Error programando recordatorio de prueba" });
     }
   });
 
