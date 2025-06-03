@@ -152,10 +152,17 @@ export function LocalCalendarIntegration() {
         });
       }
       
+      // Force dialog closure and form reset
+      setIsCreateDialogOpen(false);
+      reset({
+        title: '',
+        description: '',
+        eventDate: '',
+        reminderMinutes: 30,
+        eventType: 'reminder'
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/events/today'] });
-      reset(); // Reset form to default values
-      setIsCreateDialogOpen(false);
     },
     onError: () => {
       toast({
