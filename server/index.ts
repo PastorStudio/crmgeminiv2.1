@@ -5729,14 +5729,14 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
         await trulyIndependentAutoResponseSystem.initialize();
         console.log('✅ Sistema VERDADERAMENTE INDEPENDIENTE iniciado - CERO dependencias del frontend');
         
-        // Inicializar gestor autónomo de conexiones WhatsApp
-        console.log('📱 Iniciando gestor autónomo de conexiones WhatsApp...');
-        try {
-          await autonomousWhatsAppConnectionManager.initialize();
-          console.log('✅ Gestor autónomo de WhatsApp iniciado - Conexiones completamente independientes');
-        } catch (error) {
-          console.log('⚠️ Error en gestor autónomo de WhatsApp:', error.message);
-        }
+        // Inicializar gestor autónomo de conexiones WhatsApp (temporalmente deshabilitado)
+        console.log('📱 Gestor autónomo de WhatsApp disponible pero deshabilitado temporalmente');
+        // try {
+        //   await autonomousWhatsAppConnectionManager.initialize();
+        //   console.log('✅ Gestor autónomo de WhatsApp iniciado - Conexiones completamente independientes');
+        // } catch (error) {
+        //   console.log('⚠️ Error en gestor autónomo de WhatsApp:', error.message);
+        // }
         
       } catch (error) {
         console.error('❌ Error inicializando sistemas de respuestas automáticas:', error);
@@ -5748,15 +5748,30 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
       try {
         console.log('🔄 Auto-activación adicional para deployment...');
         
-        // Verificar que todos los sistemas estén activos
-        const systemStatus = await fetch(`http://localhost:${port}/api/force-autonomous-activation`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        }).catch(() => null);
+        // Activar directamente todos los sistemas autónomos
+        console.log('🔧 Forzando activación autónoma directa...');
         
-        if (systemStatus) {
-          console.log('✅ Auto-activación completada exitosamente');
+        // Forzar re-inicialización de todos los sistemas autónomos
+        await stableAutoResponseManager.initialize();
+        await trulyIndependentAutoResponseSystem.initialize();
+        
+        // Gestor autónomo de WhatsApp deshabilitado temporalmente
+        console.log('⚠️ Gestor autónomo de WhatsApp deshabilitado, continuando con otros sistemas');
+        
+        // Activar respuestas automáticas para todas las cuentas
+        const accounts = await db.select().from(whatsappAccounts);
+        
+        for (const account of accounts) {
+          try {
+            // Activar sistema de respuestas automáticas
+            await stableAutoResponseManager.activateAutoResponse(account.id);
+            console.log(`✅ Respuestas automáticas re-activadas para cuenta ${account.id}`);
+          } catch (error) {
+            console.log(`⚠️ Error re-activando cuenta ${account.id}:`, error.message);
+          }
         }
+        
+        console.log('✅ Auto-activación directa completada exitosamente');
       } catch (error) {
         console.log('⚠️ Error en auto-activación, pero sistemas pueden estar funcionando');
       }
