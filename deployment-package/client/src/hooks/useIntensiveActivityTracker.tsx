@@ -1,252 +1,325 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/authContext';
 
-/**
- * Hook para rastreo intensivo de actividades del agente
- * Captura todos los clics, botones, formularios y funciones que use el agente
- */
-export const useIntensiveActivityTracker = () => {
+interface ActivityData {
+  action: string;
+  target?: string;
+  page?: string;
+  category: string;
+  details?: any;
+}
+
+export function useIntensiveActivityTracker() {
   const { user } = useAuth();
-  const sessionStartTime = useRef<Date>(new Date());
+  const [isTracking, setIsTracking] = useState(false);
+  const lastActivityRef = useRef<number>(Date.now());
+  const pageStartTimeRef = useRef<number>(Date.now());
+  const inactivityTimerRef = useRef<NodeJS.Timeout>();
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout>();
+  const sessionStartTimeRef = useRef<number>(Date.now());
+  const currentPageRef = useRef<string>(window.location.pathname);
 
-  const trackActivity = async (
-    action: string,
-    target?: string,
-    details?: any,
-    category: string = 'general'
-  ) => {
-    if (!user?.id) return;
-
-    try {
-      await fetch('/api/agent-activity', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          agentId: user.id,
-          activity: action,
-          page: window.location.pathname,
-          details: JSON.stringify({
-            target,
-            timestamp: new Date().toISOString(),
-            url: window.location.href,
-            category,
-            sessionDuration: Date.now() - sessionStartTime.current.getTime(),
-            ...details
-          })
-        }),
-      });
-      console.log(`🎯 Actividad intensiva: ${action} - ${target || 'N/A'} - Categoría: ${category}`);
-    } catch (error) {
-      console.log('⚫ Error registrando actividad intensiva');
+  // Función para enviar heartbeat periódico
+  const sendHeartbeat = async () => {
+    if (user?.id) {
+      try {
+        console.log(`💚 Heartbeat global enviado para agente ${user.id}`);
+        await fetch('/api/agent-heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agentId: user.id })
+        });
+      } catch (error) {
+        console.error('Error enviando heartbeat:', error);
+      }
     }
   };
 
-  useEffect(() => {
+  // Función principal para registrar actividades
+  const trackActivity = async (data: ActivityData) => {
     if (!user?.id) return;
 
-    // Registrar inicio de sesión/aplicación
-    trackActivity('session_start', 'application', {
-      userAgent: navigator.userAgent,
-      screen: `${screen.width}x${screen.height}`,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-    }, 'security');
+    try {
+      const activityPayload = {
+        agentId: user.id,
+        action: data.action,
+        target: data.target || '',
+        page: data.page || window.location.pathname,
+        category: data.category,
+        details: data.details || {},
+        timestamp: new Date().toISOString()
+      };
 
-    // Rastrear cambios de página/ruta
-    let currentPath = window.location.pathname;
-    const trackRouteChanges = () => {
-      const newPath = window.location.pathname;
-      if (newPath !== currentPath) {
-        trackActivity('page_navigation', `${currentPath} → ${newPath}`, {
-          from: currentPath,
-          to: newPath
-        }, 'navigation');
-        currentPath = newPath;
+      console.log(`🎯 Actividad intensiva: ${data.action} - ${data.target || 'N/A'} - Categoría: ${data.category}`);
+
+      const response = await fetch('/api/agent-activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(activityPayload)
+      });
+
+      if (!response.ok) {
+        console.error('Error registrando actividad:', response.statusText);
       }
-    };
 
-    // Rastrear tiempo de inactividad
-    let inactiveTimer: NodeJS.Timeout;
-    let lastActivity = Date.now();
-    const resetInactiveTimer = () => {
-      lastActivity = Date.now();
-      clearTimeout(inactiveTimer);
-      inactiveTimer = setTimeout(() => {
-        trackActivity('user_inactive', '5_minutes', {
-          inactiveDuration: 300000 // 5 minutos
-        }, 'behavior');
-      }, 300000); // 5 minutos
-    };
+      lastActivityRef.current = Date.now();
+      resetInactivityTimer();
+    } catch (error) {
+      console.error('Error al rastrear actividad:', error);
+    }
+  };
 
-    // Rastrear antes de cerrar ventana/pestaña
-    const trackBeforeUnload = (event: BeforeUnloadEvent) => {
-      const sessionDuration = Date.now() - sessionStartTime.current.getTime();
-      trackActivity('session_end', 'application', {
-        sessionDurationMs: sessionDuration,
-        sessionDurationMinutes: Math.round(sessionDuration / 60000),
-        finalPage: window.location.pathname
-      }, 'security');
-    };
+  // Registrar página visitada
+  const trackPageVisit = (path: string) => {
+    const pageName = getPageName(path);
+    console.log(`📄 Nueva página registrada: ${path} para agente ${user?.id}`);
+    
+    trackActivity({
+      action: 'page_visit',
+      target: pageName,
+      page: path,
+      category: 'general'
+    });
 
-    // Rastrear pérdida de foco de ventana
-    const trackWindowBlur = () => {
-      trackActivity('window_blur', 'focus_lost', {
-        page: window.location.pathname
-      }, 'behavior');
-    };
-
-    // Rastrear cuando vuelve el foco
-    const trackWindowFocus = () => {
-      trackActivity('window_focus', 'focus_gained', {
-        page: window.location.pathname
-      }, 'behavior');
-    };
-
-    // Rastrear clics en botones
-    const trackButtonClicks = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (target.tagName === 'BUTTON' || target.closest('button')) {
-        const button = target.tagName === 'BUTTON' ? target : target.closest('button');
-        const buttonText = button?.textContent?.trim() || 'Sin texto';
-        const buttonId = button?.id || '';
-        const buttonClass = button?.className || '';
-        
-        trackActivity('button_click', buttonText, {
-          buttonId,
-          buttonClass,
-          x: event.clientX,
-          y: event.clientY
-        }, 'interaction');
+    // Registrar duración en la página anterior si cambió
+    if (currentPageRef.current !== path) {
+      const duration = Math.round((Date.now() - pageStartTimeRef.current) / 1000);
+      if (duration > 1) { // Solo registrar si estuvo más de 1 segundo
+        trackActivity({
+          action: 'page_duration',
+          target: getPageName(currentPageRef.current),
+          page: currentPageRef.current,
+          category: 'time',
+          details: { durationSeconds: duration }
+        });
       }
-    };
-
-    // Rastrear clics en enlaces
-    const trackLinkClicks = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (target.tagName === 'A' || target.closest('a')) {
-        const link = target.tagName === 'A' ? target as HTMLAnchorElement : target.closest('a');
-        const linkText = link?.textContent?.trim() || 'Sin texto';
-        const href = link?.href || '';
-        
-        trackActivity('link_click', linkText, {
-          href,
-          x: event.clientX,
-          y: event.clientY
-        }, 'navigation');
-      }
-    };
-
-    // Rastrear envío de formularios
-    const trackFormSubmissions = (event: SubmitEvent) => {
-      const form = event.target as HTMLFormElement;
-      const formId = form.id || 'sin-id';
-      const formClass = form.className || '';
-      const formData = new FormData(form);
-      const fields = Array.from(formData.keys());
       
-      trackActivity('form_submit', formId, {
-        formClass,
-        fieldCount: fields.length,
-        fields: fields
-      }, 'form');
+      pageStartTimeRef.current = Date.now();
+      currentPageRef.current = path;
+    }
+  };
+
+  // Helper para obtener nombre legible de la página
+  const getPageName = (path: string): string => {
+    const pageNames: Record<string, string> = {
+      '/': 'Panel Principal',
+      '/dashboard': 'Panel de Control',
+      '/whatsapp': 'WhatsApp Business',
+      '/leads': 'Gestión de Leads',
+      '/users': 'Gestión de Usuarios',
+      '/calendar': 'Calendario',
+      '/agents': 'Agentes Externos',
+      '/security': 'Centro de Seguridad',
+      '/settings': 'Configuración',
+      '/external-agents': 'Configuración de Agentes',
+      '/agent-security': 'Monitoreo de Seguridad'
+    };
+    return pageNames[path] || path;
+  };
+
+  // Timer de inactividad
+  const resetInactivityTimer = () => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+
+    inactivityTimerRef.current = setTimeout(() => {
+      trackActivity({
+        action: 'user_inactive',
+        target: '5_minutes',
+        category: 'behavior',
+        details: { inactiveMinutes: 5 }
+      });
+    }, 5 * 60 * 1000); // 5 minutos
+  };
+
+  // Inicializar tracking
+  const startTracking = () => {
+    if (!user?.id || isTracking) return;
+
+    setIsTracking(true);
+    sessionStartTimeRef.current = Date.now();
+    
+    // Registrar inicio de sesión
+    trackActivity({
+      action: 'session_start',
+      target: 'application',
+      category: 'security'
+    });
+
+    // Registrar página actual
+    trackPageVisit(window.location.pathname);
+
+    // Configurar heartbeat cada 15 segundos
+    heartbeatIntervalRef.current = setInterval(sendHeartbeat, 15000);
+
+    // Event listeners para interacciones
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      
+      if (target.tagName === 'BUTTON') {
+        const buttonText = target.textContent?.trim() || target.getAttribute('aria-label') || 'Botón sin texto';
+        trackActivity({
+          action: 'button_click',
+          target: buttonText,
+          category: 'interaction'
+        });
+      } else if (target.tagName === 'A') {
+        const linkText = target.textContent?.trim() || target.getAttribute('href') || 'Enlace';
+        trackActivity({
+          action: 'link_click',
+          target: linkText,
+          category: 'navigation'
+        });
+      }
+      
+      resetInactivityTimer();
     };
 
-    // Rastrear cambios en inputs
-    const trackInputChanges = (event: Event) => {
-      const input = event.target as HTMLInputElement;
-      if (input.tagName === 'INPUT' || input.tagName === 'SELECT' || input.tagName === 'TEXTAREA') {
-        const inputType = input.type || input.tagName.toLowerCase();
-        const inputName = input.name || input.id || 'sin-nombre';
-        
-        trackActivity('input_change', inputName, {
-          inputType,
-          valueLength: input.value?.length || 0,
-          placeholder: input.placeholder
-        }, 'form');
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Solo registrar teclas especiales importantes
+      const specialKeys = ['Enter', 'Escape', 'F1', 'F2', 'F3', 'F4', 'F5'];
+      if (specialKeys.includes(e.key)) {
+        trackActivity({
+          action: 'key_press',
+          target: e.key,
+          category: 'keyboard'
+        });
+      }
+      resetInactivityTimer();
+    };
+
+    const handleScroll = () => {
+      const scrollPercent = Math.round((window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100);
+      if (scrollPercent > 0 && scrollPercent % 25 === 0) { // Cada 25% de scroll
+        trackActivity({
+          action: 'page_scroll',
+          target: `${scrollPercent}%`,
+          category: 'interaction'
+        });
+      }
+      resetInactivityTimer();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        trackActivity({
+          action: 'window_blur',
+          target: 'focus_lost',
+          category: 'behavior'
+        });
+      } else {
+        trackActivity({
+          action: 'window_focus',
+          target: 'focus_gained',
+          category: 'behavior'
+        });
       }
     };
 
-    // Rastrear teclas especiales
-    const trackKeyPresses = (event: KeyboardEvent) => {
-      // Solo rastrear teclas especiales, no todas las teclas para privacidad
-      const specialKeys = ['Enter', 'Escape', 'Tab', 'F1', 'F2', 'F3', 'F4', 'F5'];
-      if (specialKeys.includes(event.key)) {
-        trackActivity('key_press', event.key, {
-          ctrlKey: event.ctrlKey,
-          altKey: event.altKey,
-          shiftKey: event.shiftKey
-        }, 'keyboard');
-      }
+    const handleFormSubmit = (e: SubmitEvent) => {
+      const form = e.target as HTMLFormElement;
+      const formName = form.getAttribute('name') || form.className || 'formulario';
+      trackActivity({
+        action: 'form_submit',
+        target: formName,
+        category: 'forms'
+      });
     };
 
-    // Rastrear scroll
-    let scrollTimeout: NodeJS.Timeout;
-    const trackScrolling = () => {
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        const scrollPercentage = Math.round(
-          (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100
-        );
-        
-        trackActivity('page_scroll', `${scrollPercentage}%`, {
-          scrollY: window.scrollY,
-          pageHeight: document.documentElement.scrollHeight,
-          viewportHeight: window.innerHeight
-        }, 'interaction');
-      }, 1000);
-    };
-
-    // Rastrear tiempo en página
-    const startTime = Date.now();
-    const trackPageDuration = () => {
-      const duration = Date.now() - startTime;
-      trackActivity('page_duration', window.location.pathname, {
-        durationMs: duration,
-        durationSeconds: Math.round(duration / 1000)
-      }, 'time');
+    const handlePopState = () => {
+      trackActivity({
+        action: 'page_navigation',
+        target: window.location.pathname,
+        category: 'navigation'
+      });
+      trackPageVisit(window.location.pathname);
     };
 
     // Agregar event listeners
-    document.addEventListener('click', trackButtonClicks);
-    document.addEventListener('click', trackLinkClicks);
-    document.addEventListener('submit', trackFormSubmissions);
-    document.addEventListener('change', trackInputChanges);
-    document.addEventListener('keydown', trackKeyPresses);
-    window.addEventListener('scroll', trackScrolling);
-    window.addEventListener('beforeunload', trackPageDuration);
-    window.addEventListener('beforeunload', trackBeforeUnload);
-    window.addEventListener('blur', trackWindowBlur);
-    window.addEventListener('focus', trackWindowFocus);
-    
-    // Configurar observador de cambios de ruta para SPAs
-    setInterval(trackRouteChanges, 1000);
-    
-    // Inicializar timer de inactividad
-    resetInactiveTimer();
-    document.addEventListener('mousemove', resetInactiveTimer);
-    document.addEventListener('keypress', resetInactiveTimer);
-    document.addEventListener('click', resetInactiveTimer);
+    document.addEventListener('click', handleClick);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleScroll);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('submit', handleFormSubmit);
+    window.addEventListener('popstate', handlePopState);
 
-    // Cleanup
+    // Iniciar timer de inactividad
+    resetInactivityTimer();
+
+    // Cleanup function
     return () => {
-      document.removeEventListener('click', trackButtonClicks);
-      document.removeEventListener('click', trackLinkClicks);
-      document.removeEventListener('submit', trackFormSubmissions);
-      document.removeEventListener('change', trackInputChanges);
-      document.removeEventListener('keydown', trackKeyPresses);
-      window.removeEventListener('scroll', trackScrolling);
-      window.removeEventListener('beforeunload', trackPageDuration);
-      window.removeEventListener('beforeunload', trackBeforeUnload);
-      window.removeEventListener('blur', trackWindowBlur);
-      window.removeEventListener('focus', trackWindowFocus);
-      document.removeEventListener('mousemove', resetInactiveTimer);
-      document.removeEventListener('keypress', resetInactiveTimer);
-      document.removeEventListener('click', resetInactiveTimer);
-      clearTimeout(scrollTimeout);
-      clearTimeout(inactiveTimer);
+      document.removeEventListener('click', handleClick);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('submit', handleFormSubmit);
+      window.removeEventListener('popstate', handlePopState);
+      
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+      }
     };
+  };
+
+  // Detener tracking y registrar fin de sesión
+  const stopTracking = () => {
+    if (!isTracking) return;
+
+    const sessionDuration = Math.round((Date.now() - sessionStartTimeRef.current) / 60000); // en minutos
+    
+    trackActivity({
+      action: 'session_end',
+      target: 'application',
+      category: 'security',
+      details: { sessionDurationMinutes: sessionDuration }
+    });
+
+    setIsTracking(false);
+    
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+    }
+  };
+
+  // Effect para gestionar el ciclo de vida del tracking
+  useEffect(() => {
+    if (user?.id) {
+      const cleanup = startTracking();
+      
+      // Registrar fin de sesión cuando se cierre la ventana
+      const handleBeforeUnload = () => {
+        stopTracking();
+      };
+      
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      
+      return () => {
+        if (cleanup) cleanup();
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        stopTracking();
+      };
+    }
   }, [user?.id]);
 
-  return { trackActivity };
-};
+  // Effect para tracking de cambios de ruta
+  useEffect(() => {
+    console.log(`📄 Página registrada: ${window.location.pathname} para agente ${user?.id}`);
+    if (isTracking) {
+      trackPageVisit(window.location.pathname);
+    }
+  }, [window.location.pathname, isTracking]);
+
+  return {
+    isTracking,
+    trackActivity,
+    startTracking,
+    stopTracking
+  };
+}
