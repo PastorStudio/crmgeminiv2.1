@@ -1770,8 +1770,13 @@ export default function UserManagement() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
                               <p className="text-sm font-medium text-gray-900">
-                                {activity.translatedAction || activity.action}
+                                {activity.action} {activity.targetElement && `- ${activity.targetElement}`}
                               </p>
+                              {activity.details && (
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {typeof activity.details === 'string' ? activity.details : JSON.stringify(activity.details)}
+                                </p>
+                              )}
                               <p className="text-sm text-gray-500">
                                 {formatDate(activity.timestamp)}
                               </p>
