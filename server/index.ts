@@ -33,6 +33,7 @@ import { autonomousProcessor } from './services/autonomousProcessor';
 import { simpleAutonomousProcessor } from './services/simpleAutonomousProcessor';
 import { CalendarReminderService } from './services/calendarReminderService';
 import { backendAutoResponseManager } from './services/backendAutoResponseManager';
+import { trulyIndependentAutoResponseSystem } from './services/trulyIndependentAutoResponse';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -2625,6 +2626,85 @@ app.use((req, res, next) => {
     }
   });
 
+  // ===== RUTAS DIRECTAS DEL SISTEMA VERDADERAMENTE INDEPENDIENTE =====
+  
+  // Activar sistema verdaderamente independiente
+  app.post('/api/direct/truly-independent/activate/:accountId', async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      const { accountId } = req.params;
+      const { agentName = 'Truly Independent AI' } = req.body;
+      
+      console.log(`🟢 [VERDADERAMENTE INDEPENDIENTE] Activando para cuenta ${accountId}`);
+      
+      await trulyIndependentAutoResponseSystem.enableForAccountIndependently(parseInt(accountId), agentName);
+      
+      res.json({
+        success: true,
+        message: `Sistema verdaderamente independiente activado para cuenta ${accountId}`,
+        accountId: parseInt(accountId),
+        agentName,
+        systemType: 'TRULY_INDEPENDENT',
+        dependencies: 'NONE',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error activando sistema verdaderamente independiente:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error activando sistema verdaderamente independiente'
+      });
+    }
+  });
+
+  // Desactivar sistema verdaderamente independiente
+  app.post('/api/direct/truly-independent/deactivate/:accountId', async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      const { accountId } = req.params;
+      
+      console.log(`🔴 [VERDADERAMENTE INDEPENDIENTE] Desactivando para cuenta ${accountId}`);
+      
+      await trulyIndependentAutoResponseSystem.disableForAccountIndependently(parseInt(accountId));
+      
+      res.json({
+        success: true,
+        message: `Sistema verdaderamente independiente desactivado para cuenta ${accountId}`,
+        accountId: parseInt(accountId),
+        systemType: 'TRULY_INDEPENDENT',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error desactivando sistema verdaderamente independiente:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error desactivando sistema verdaderamente independiente'
+      });
+    }
+  });
+
+  // Obtener estado del sistema verdaderamente independiente
+  app.get('/api/direct/truly-independent/status', async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      console.log('🔍 [VERDADERAMENTE INDEPENDIENTE] Obteniendo estado del sistema');
+      
+      const status = trulyIndependentAutoResponseSystem.getStatusIndependently();
+      
+      res.json({
+        success: true,
+        status,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo estado verdaderamente independiente:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error obteniendo estado del sistema verdaderamente independiente'
+      });
+    }
+  });
+
   // ===== RUTAS DIRECTAS DEL SISTEMA INDEPENDIENTE (sin interceptación de Vite) =====
   
   // Activar sistema independiente (ruta directa)
@@ -2690,9 +2770,13 @@ app.use((req, res, next) => {
       const { independentAutoResponseService } = await import('./services/independentAutoResponse');
       const status = independentAutoResponseService.getStatus();
       
+      // También obtener estado del sistema verdaderamente independiente
+      const trulyIndependentStatus = trulyIndependentAutoResponseSystem.getStatusIndependently();
+      
       res.json({
         success: true,
         status,
+        trulyIndependentStatus,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
@@ -5638,8 +5722,14 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
       try {
         await stableAutoResponseManager.initialize();
         console.log('🚀 Sistema de respuestas automáticas inicializado correctamente');
+        
+        // Inicializar sistema VERDADERAMENTE INDEPENDIENTE
+        console.log('🤖 Iniciando sistema VERDADERAMENTE INDEPENDIENTE...');
+        await trulyIndependentAutoResponseSystem.initialize();
+        console.log('✅ Sistema VERDADERAMENTE INDEPENDIENTE iniciado - CERO dependencias del frontend');
+        
       } catch (error) {
-        console.error('❌ Error inicializando sistema de respuestas automáticas:', error);
+        console.error('❌ Error inicializando sistemas de respuestas automáticas:', error);
       }
     }, 2000); // Esperar 2 segundos para que el servidor esté completamente listo
   });
