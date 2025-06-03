@@ -250,35 +250,28 @@ export default function AgentSecurity() {
               <TabsContent value="all" className="mt-4">
                 <ScrollArea className="h-96">
                   <div className="space-y-2">
-                    {activities?.activities?.map((activity: AgentActivity) => {
-                      const details = formatDetails(activity.details);
+                    {activities?.activities?.map((activity: any) => {
                       return (
                         <div key={activity.id} className="border rounded-lg p-3">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center space-x-2">
-                              {getActivityIcon(activity.category)}
+                              <span className="text-lg">{activity.icon}</span>
                               <Badge className={getActivityColor(activity.category)}>
                                 {activity.category}
                               </Badge>
-                              <span className="font-medium">{activity.action}</span>
+                              <span className="font-medium">{activity.translatedAction}</span>
                             </div>
                             <div className="text-xs text-gray-500">
-                              {new Date(activity.timestamp).toLocaleTimeString()}
+                              {activity.readableTime}
                             </div>
                           </div>
                           
-                          <div className="mt-2 text-sm text-gray-600">
-                            <div><strong>Página:</strong> {activity.page}</div>
-                            {activity.targetElement && (
-                              <div><strong>Elemento:</strong> {activity.targetElement}</div>
-                            )}
-                            {details.coordinates && (
-                              <div><strong>Coordenadas:</strong> {JSON.stringify(details.coordinates)}</div>
-                            )}
-                            {activity.sessionDuration && (
-                              <div><strong>Duración sesión:</strong> {Math.round(activity.sessionDuration / 1000)}s</div>
-                            )}
-                          </div>
+                          {activity.priority === 'high' && (
+                            <div className="mt-2 flex items-center space-x-1 text-amber-600">
+                              <AlertTriangle className="h-3 w-3" />
+                              <span className="text-xs font-medium">Actividad importante</span>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
