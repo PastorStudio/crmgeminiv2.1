@@ -772,25 +772,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('📋 Obteniendo leads de la base de datos...');
       
-      // Use exact same pool query pattern as dashboard-stats
-      const result = await pool.query(`
-        SELECT 
-          id,
-          name,
-          email,
-          phone,
-          source,
-          status,
-          "assigneeId",
-          company,
-          budget,
-          notes,
-          priority,
-          tags,
-          "createdAt"
-        FROM leads 
-        ORDER BY "createdAt" DESC
-      `);
+      // Use the exact same simple pattern as dashboard-stats
+      const result = await pool.query('SELECT * FROM leads ORDER BY "createdAt" DESC');
       
       console.log(`✅ Encontrados ${result.rows.length} leads en la base de datos`);
       
@@ -816,7 +799,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(leadsData);
     } catch (error) {
       console.error("Error al obtener leads:", error);
-      res.status(500).json({ error: "Error al obtener leads" });
+      console.error("Error details:", error.message);
+      res.status(500).json({ error: "Error al obtener leads", details: error.message });
     }
   });
 
