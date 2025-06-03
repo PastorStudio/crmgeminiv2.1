@@ -255,13 +255,12 @@ export class LocalCalendarService {
   // Enviar recordatorio por WhatsApp
   private async sendWhatsAppReminder(event: any) {
     try {
-      // Importar dinámicamente para evitar dependencias circulares
-      const { WhatsAppMultiAccountManager } = await import('./whatsappMultiAccountManager');
-      const manager = WhatsAppMultiAccountManager.getInstance();
-
+      // Usar el servicio de WhatsApp simplificado
+      const whatsappService = require('./simplifiedWhatsAppService');
+      
       const message = `🔔 *Recordatorio de CRM*\n\n📅 *${event.title}*\n⏰ Programado: ${new Date(event.event_date).toLocaleString()}\n\n📝 ${event.description}`;
 
-      const success = await manager.sendMessage(
+      const success = await whatsappService.sendMessage(
         event.whatsapp_account_id,
         event.contact_phone,
         message

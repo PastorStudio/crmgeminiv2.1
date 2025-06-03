@@ -6,7 +6,7 @@
 import { db } from '../db';
 import { leads, activities, enhancedMessagesTable as messages, contacts } from '../../shared/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
-import { googleCalendarService } from './googleCalendarService';
+import { localCalendarService } from './localCalendarService';
 
 interface ChatAnalysis {
   sentiment: 'positive' | 'negative' | 'neutral';
@@ -364,20 +364,20 @@ export class SimpleAutonomousProcessor {
           priority: analysis.urgency
         });
 
-      // Create automatic calendar follow-up event if calendar is connected
+      // Create automatic calendar follow-up event with local calendar
       try {
-        if (googleCalendarService.isAuthenticated()) {
-          const leadData = {
-            name: contact.name,
-            phone: contact.phone,
-            interest: analysis.intent || 'Consulta general',
-            lastMessage: `Análisis: ${analysis.sentiment} - ${analysis.intent}`
-          };
+        const leadData = {
+          leadId: newLead.id,
+          name: contact.name,
+          phone: contact.phone,
+          interest: analysis.intent || 'Consulta general',
+          lastMessage: `Análisis: ${analysis.sentiment} - ${analysis.intent}`,
+          whatsappAccountId: newLead.whatsappAccountId
+        };
 
-          const eventId = await googleCalendarService.createLeadFollowupEvent(leadData);
-          if (eventId) {
-            console.log(`📅 Seguimiento automático programado para lead ${newLead.id}: ${eventId}`);
-          }
+        const eventId = await localCalendarService.createLeadFollowupEvent(leadData);
+        if (eventId) {
+          console.log(`📅 Seguimiento automático programado para lead ${newLead.id}: evento ${eventId}`);
         }
       } catch (calendarError) {
         console.log('📅 No se pudo crear evento de calendario automático:', calendarError.message);
