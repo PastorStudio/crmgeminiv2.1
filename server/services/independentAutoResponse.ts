@@ -111,7 +111,7 @@ class IndependentAutoResponseService {
           .where(
             and(
               eq(whatsappMessages.accountId, accountId),
-              eq(whatsappMessages.fromMe, false)
+              eq(whatsappMessages.from_me, false)
             )
           )
           .orderBy(desc(whatsappMessages.timestamp))
