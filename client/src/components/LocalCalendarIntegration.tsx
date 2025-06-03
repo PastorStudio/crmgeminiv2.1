@@ -123,7 +123,27 @@ export function LocalCalendarIntegration() {
       return response.json();
     },
     onSuccess: async (data, variables) => {
-      // If WhatsApp contact and account are specified, configure reminder
+      console.log('Event creation successful:', data);
+      
+      // Force dialog closure FIRST
+      setIsCreateDialogOpen(false);
+      
+      // Reset form
+      reset({
+        title: '',
+        description: '',
+        eventDate: '',
+        reminderMinutes: 30,
+        eventType: 'reminder',
+        contactPhone: '',
+        whatsappAccountId: undefined
+      });
+      
+      // Refresh calendar data
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/events/today'] });
+      
+      // Handle WhatsApp reminder configuration
       if (variables.contactPhone && variables.whatsappAccountId && data.eventId) {
         try {
           const reminderResponse = await fetch('/api/calendar/reminders/configure', {
@@ -162,20 +182,6 @@ export function LocalCalendarIntegration() {
           description: "El evento se ha programado exitosamente"
         });
       }
-      
-      // Force dialog closure and form reset
-      setIsCreateDialogOpen(false);
-      reset({
-        title: '',
-        description: '',
-        eventDate: '',
-        reminderMinutes: 30,
-        eventType: 'reminder',
-        contactPhone: '',
-        whatsappAccountId: undefined
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/calendar/events/today'] });
     },
     onError: () => {
       toast({
