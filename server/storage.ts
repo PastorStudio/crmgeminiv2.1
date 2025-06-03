@@ -26,6 +26,7 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   createUser(insertUser: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
+  incrementUserLogin(id: number): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
   
   // Lead methods
@@ -94,6 +95,18 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .update(users)
       .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return user || undefined;
+  }
+
+  async incrementUserLogin(id: number): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({
+        totalLogins: sql`COALESCE("totalLogins", 0) + 1`,
+        lastLoginAt: new Date()
+      })
       .where(eq(users.id, id))
       .returning();
     return user || undefined;
