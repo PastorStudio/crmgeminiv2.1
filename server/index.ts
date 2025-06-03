@@ -32,6 +32,7 @@ import OpenAI from 'openai';
 import { autonomousProcessor } from './services/autonomousProcessor';
 import { simpleAutonomousProcessor } from './services/simpleAutonomousProcessor';
 import { CalendarReminderService } from './services/calendarReminderService';
+import { backendAutoResponseManager } from './services/backendAutoResponseManager';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
