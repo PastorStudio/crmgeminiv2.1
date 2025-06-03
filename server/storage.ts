@@ -26,7 +26,6 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   createUser(insertUser: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
-  incrementUserLogin(id: number): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
   
   // Lead methods
@@ -37,8 +36,7 @@ export interface IStorage {
   deleteLead(id: number): Promise<boolean>;
   
   // Activity methods
-  getActivitiesByUser(userId: number | null, startDate?: Date): Promise<any[]>;
-  createAgentActivity(activity: any): Promise<any>;
+  getActivitiesByUser(userId: number): Promise<any[]>;
   
   // WhatsApp accounts methods
   getWhatsAppAccounts(): Promise<WhatsAppAccount[]>;
@@ -100,18 +98,6 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
-  async incrementUserLogin(id: number): Promise<User | undefined> {
-    const [user] = await db
-      .update(users)
-      .set({
-        totalLogins: sql`COALESCE("totalLogins", 0) + 1`,
-        lastLoginAt: new Date()
-      })
-      .where(eq(users.id, id))
-      .returning();
-    return user || undefined;
-  }
-
   async deleteUser(id: number): Promise<boolean> {
     const result = await db
       .delete(users)
@@ -127,58 +113,13 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(leads).orderBy(desc(leads.createdAt));
   }
 
-  async getActivitiesByUser(userId: number | null, startDate?: Date): Promise<any[]> {
+  async getActivitiesByUser(userId: number): Promise<any[]> {
     try {
-      const { agentPageVisits } = await import("@shared/schema");
-      let query = db.select().from(agentPageVisits);
-      
-      // Add filters properly
-      if (userId !== null && startDate) {
-        query = query.where(
-          sql`${agentPageVisits.agentId} = ${userId} AND ${agentPageVisits.timestamp} >= ${startDate.toISOString()}`
-        );
-      } else if (userId !== null) {
-        query = query.where(eq(agentPageVisits.agentId, userId));
-      } else if (startDate) {
-        query = query.where(
-          sql`${agentPageVisits.timestamp} >= ${startDate.toISOString()}`
-        );
-      }
-      
-      const activities = await query.orderBy(desc(agentPageVisits.timestamp));
-      return activities;
-    } catch (error) {
-      console.error('Error fetching activities:', error);
+      // Implementación básica - se puede expandir según el esquema de actividades
       return [];
-    }
-  }
-
-  async createAgentActivity(activity: any): Promise<any> {
-    try {
-      const { agentActivities } = await import("@shared/schema");
-      const [newActivity] = await db
-        .insert(agentActivities)
-        .values({
-          agentId: activity.agentId,
-          action: activity.action,
-          page: activity.page,
-          details: activity.details,
-          ipAddress: activity.ipAddress,
-          userAgent: activity.userAgent,
-          sessionToken: activity.sessionToken,
-          activityType: activity.activityType || 'interaction',
-          targetElement: activity.targetElement,
-          coordinates: activity.coordinates,
-          formData: activity.formData,
-          sessionDuration: activity.sessionDuration,
-          category: activity.category || 'general',
-          timestamp: new Date()
-        })
-        .returning();
-      return newActivity;
     } catch (error) {
-      console.error('Error creating agent activity:', error);
-      throw error;
+      console.error('Error getting activities by user:', error);
+      return [];
     }
   }
 

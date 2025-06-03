@@ -31,53 +31,6 @@ interface Agent {
   lastActivity: string;
 }
 
-// Función para traducir categorías técnicas a español
-const translateCategory = (category: string): string => {
-  const translations: Record<string, string> = {
-    'security': 'Seguridad',
-    'navigation': 'Navegación', 
-    'behavior': 'Comportamiento',
-    'interaction': 'Interacción',
-    'form': 'Formularios',
-    'keyboard': 'Teclado',
-    'time': 'Tiempo',
-    'whatsapp': 'WhatsApp',
-    'general': 'General',
-    'click': 'Clics',
-    'scroll': 'Navegación'
-  };
-  
-  return translations[category.toLowerCase()] || category;
-};
-
-// Función para obtener nombre público del agente
-const getAgentDisplayName = (agent: any): string => {
-  // Si tiene fullName, usarlo
-  if (agent.fullName && agent.fullName.trim()) {
-    return agent.fullName;
-  }
-  
-  // Si no, traducir el username técnico a un nombre más amigable
-  const usernameTranslations: Record<string, string> = {
-    'admin': 'Administrador',
-    'supervisor': 'Supervisor',
-    'maria.ventas': 'María - Ventas',
-    'juan.soporte': 'Juan - Soporte',
-    'ana.supervisor': 'Ana - Supervisora',
-    'carlos.manager': 'Carlos - Gerente',
-    'lucia.agent': 'Lucía - Agente',
-    'pedro.sales': 'Pedro - Ventas',
-    'sofia.support': 'Sofía - Soporte',
-    'diego.agent': 'Diego - Agente',
-    'valeria.supervisor': 'Valeria - Supervisora',
-    'miguel.sales': 'Miguel - Ventas',
-    'isabella.support': 'Isabella - Soporte',
-    'alejandro.manager': 'Alejandro - Gerente'
-  };
-  
-  return usernameTranslations[agent.username] || agent.username;
-};
-
 export default function AgentSecurity() {
   const [selectedAgent, setSelectedAgent] = useState<number | null>(null);
   const [timeRange, setTimeRange] = useState('24h');
@@ -237,7 +190,7 @@ export default function AgentSecurity() {
                     onClick={() => setSelectedAgent(agent.id)}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">{getAgentDisplayName(agent)}</span>
+                      <span className="font-medium">{agent.username}</span>
                       <Badge variant={agent.isActive ? 'default' : 'secondary'}>
                         {agent.isActive ? 'Activo' : 'Inactivo'}
                       </Badge>
@@ -304,7 +257,7 @@ export default function AgentSecurity() {
                             <div className="flex items-center space-x-2">
                               <span className="text-lg">{activity.icon}</span>
                               <Badge className={getActivityColor(activity.category)}>
-                                {translateCategory(activity.category)}
+                                {activity.category}
                               </Badge>
                               <span className="font-medium">{activity.translatedAction}</span>
                             </div>
@@ -336,10 +289,10 @@ export default function AgentSecurity() {
                           <span className="font-medium">ACTIVIDAD SOSPECHOSA</span>
                         </div>
                         <div className="mt-2 text-sm">
-                          <div><strong>Acción:</strong> {activity.translatedAction || activity.action}</div>
+                          <div><strong>Acción:</strong> {activity.action}</div>
                           <div><strong>Página:</strong> {activity.page}</div>
-                          <div><strong>Agente:</strong> {activity.agentName || `Agente ${activity.agentId}`}</div>
-                          <div><strong>Tiempo:</strong> {activity.readableTime || new Date(activity.timestamp).toLocaleString()}</div>
+                          <div><strong>Agente:</strong> {activity.agentId}</div>
+                          <div><strong>Tiempo:</strong> {new Date(activity.timestamp).toLocaleString()}</div>
                         </div>
                       </div>
                     ))}
