@@ -104,6 +104,47 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// ===== CALENDAR API ROUTES (BYPASS VITE) =====
+// Create calendar event
+app.post('/api/calendar/create-event', async (req: Request, res: Response) => {
+  try {
+    console.log('📅 POST /api/calendar/create-event - Creating calendar event');
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    const { leadId, title, description, eventDate, reminderMinutes = 30, eventType = 'meeting', contactPhone, whatsappAccountId } = req.body;
+    
+    if (!title || !eventDate) {
+      return res.status(400).json({ error: "title and eventDate are required" });
+    }
+
+    // Import localCalendarService
+    const { localCalendarService } = await import('./services/localCalendarService');
+    
+    const eventId = await localCalendarService.createCustomEvent({
+      leadId,
+      title,
+      description: description || '',
+      eventDate: new Date(eventDate),
+      reminderMinutes,
+      eventType,
+      contactPhone,
+      whatsappAccountId
+    });
+
+    if (eventId) {
+      console.log('✅ Calendar event created successfully:', eventId);
+      res.json({ success: true, eventId, message: "Evento creado exitosamente" });
+    } else {
+      console.error('❌ Failed to create calendar event');
+      res.status(500).json({ error: "Failed to create calendar event" });
+    }
+  } catch (error) {
+    console.error("❌ Error creating calendar event:", error);
+    res.status(500).json({ error: "Error creating calendar event" });
+  }
+});
+
 // ===== CONFIGURACIONES AI (BYPASS VITE) =====
 // Obtener configuraciones de AI
 app.get('/api/ai-settings', async (req: Request, res: Response) => {
