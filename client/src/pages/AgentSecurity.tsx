@@ -31,6 +31,53 @@ interface Agent {
   lastActivity: string;
 }
 
+// Función para traducir categorías técnicas a español
+const translateCategory = (category: string): string => {
+  const translations: Record<string, string> = {
+    'security': 'Seguridad',
+    'navigation': 'Navegación', 
+    'behavior': 'Comportamiento',
+    'interaction': 'Interacción',
+    'form': 'Formularios',
+    'keyboard': 'Teclado',
+    'time': 'Tiempo',
+    'whatsapp': 'WhatsApp',
+    'general': 'General',
+    'click': 'Clics',
+    'scroll': 'Navegación'
+  };
+  
+  return translations[category.toLowerCase()] || category;
+};
+
+// Función para obtener nombre público del agente
+const getAgentDisplayName = (agent: any): string => {
+  // Si tiene fullName, usarlo
+  if (agent.fullName && agent.fullName.trim()) {
+    return agent.fullName;
+  }
+  
+  // Si no, traducir el username técnico a un nombre más amigable
+  const usernameTranslations: Record<string, string> = {
+    'admin': 'Administrador',
+    'supervisor': 'Supervisor',
+    'maria.ventas': 'María - Ventas',
+    'juan.soporte': 'Juan - Soporte',
+    'ana.supervisor': 'Ana - Supervisora',
+    'carlos.manager': 'Carlos - Gerente',
+    'lucia.agent': 'Lucía - Agente',
+    'pedro.sales': 'Pedro - Ventas',
+    'sofia.support': 'Sofía - Soporte',
+    'diego.agent': 'Diego - Agente',
+    'valeria.supervisor': 'Valeria - Supervisora',
+    'miguel.sales': 'Miguel - Ventas',
+    'isabella.support': 'Isabella - Soporte',
+    'alejandro.manager': 'Alejandro - Gerente'
+  };
+  
+  return usernameTranslations[agent.username] || agent.username;
+};
+
 export default function AgentSecurity() {
   const [selectedAgent, setSelectedAgent] = useState<number | null>(null);
   const [timeRange, setTimeRange] = useState('24h');
@@ -190,7 +237,7 @@ export default function AgentSecurity() {
                     onClick={() => setSelectedAgent(agent.id)}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">{agent.username}</span>
+                      <span className="font-medium">{getAgentDisplayName(agent)}</span>
                       <Badge variant={agent.isActive ? 'default' : 'secondary'}>
                         {agent.isActive ? 'Activo' : 'Inactivo'}
                       </Badge>
@@ -257,7 +304,7 @@ export default function AgentSecurity() {
                             <div className="flex items-center space-x-2">
                               <span className="text-lg">{activity.icon}</span>
                               <Badge className={getActivityColor(activity.category)}>
-                                {activity.category}
+                                {translateCategory(activity.category)}
                               </Badge>
                               <span className="font-medium">{activity.translatedAction}</span>
                             </div>
