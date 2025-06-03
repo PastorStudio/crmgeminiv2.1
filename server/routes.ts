@@ -28,6 +28,7 @@ import multer from "multer";
 import { messageTemplateService } from "./services/messageTemplateService";
 import { analyticsService } from "./services/analyticsService";
 import { excelImportService } from "./services/excelImportService";
+import { googleCalendarService } from "./services/googleCalendarService";
 import { getAdminMetrics, getAgentPerformance, getSystemHealth } from "./routes/adminMetrics";
 import webScrapingRouter from "./routes/webScrapingRoutes";
 import { massSenderService } from "./services/massSenderService";
@@ -6045,6 +6046,151 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
     } catch (error) {
       console.error('Error assigning prompt to account:', error);
       res.status(500).json({ success: false, error: 'Error al asignar prompt a la cuenta' });
+    }
+  });
+
+  // === GOOGLE CALENDAR INTEGRATION ROUTES ===
+
+  // Get calendar authentication status
+  app.get("/api/calendar/status", (req: Request, res: Response) => {
+    const status = googleCalendarService.getCredentialsStatus();
+    res.json(status);
+  });
+
+  // Get Google Calendar authentication URL
+  app.get("/api/calendar/auth-url", (req: Request, res: Response) => {
+    try {
+      const authUrl = googleCalendarService.getAuthUrl();
+      res.json({ authUrl });
+    } catch (error) {
+      console.error("Error generating auth URL:", error);
+      res.status(500).json({ error: "Error generating authentication URL" });
+    }
+  });
+
+  // Handle Google Calendar OAuth callback
+  app.get("/auth/google/callback", async (req: Request, res: Response) => {
+    try {
+      const { code } = req.query;
+      if (!code || typeof code !== 'string') {
+        return res.status(400).send('Authorization code is required');
+      }
+
+      const success = await googleCalendarService.authenticate(code);
+      if (success) {
+        res.send(`
+          <html>
+            <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
+              <h2>✅ Google Calendar conectado exitosamente</h2>
+              <p>Ya puedes cerrar esta ventana y regresar al CRM.</p>
+              <script>setTimeout(() => window.close(), 3000);</script>
+            </body>
+          </html>
+        `);
+      } else {
+        res.status(500).send('Authentication failed');
+      }
+    } catch (error) {
+      console.error("Calendar auth callback error:", error);
+      res.status(500).send('Authentication error');
+    }
+  });
+
+  // Create calendar event for lead
+  app.post("/api/calendar/create-event", async (req: Request, res: Response) => {
+    try {
+      const { leadId, title, dateTime, duration } = req.body;
+      
+      if (!leadId || !title || !dateTime) {
+        return res.status(400).json({ error: "leadId, title, and dateTime are required" });
+      }
+
+      const eventId = await googleCalendarService.createMeetingEvent(
+        leadId, 
+        title, 
+        new Date(dateTime), 
+        duration || 60
+      );
+
+      if (eventId) {
+        // Store event in database
+        await pool.query(`
+          INSERT INTO calendar_events (lead_id, event_id, title, start_time, end_time, event_type)
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `, [
+          leadId,
+          eventId,
+          title,
+          new Date(dateTime),
+          new Date(new Date(dateTime).getTime() + (duration || 60) * 60000),
+          'meeting'
+        ]);
+
+        res.json({ success: true, eventId });
+      } else {
+        res.status(500).json({ error: "Failed to create calendar event" });
+      }
+    } catch (error) {
+      console.error("Error creating calendar event:", error);
+      res.status(500).json({ error: "Error creating calendar event" });
+    }
+  });
+
+  // Get upcoming calendar events
+  app.get("/api/calendar/events", async (req: Request, res: Response) => {
+    try {
+      const events = await googleCalendarService.getUpcomingEvents(20);
+      res.json({ events });
+    } catch (error) {
+      console.error("Error getting calendar events:", error);
+      res.status(500).json({ error: "Error getting calendar events" });
+    }
+  });
+
+  // Auto-create followup events for new leads
+  app.post("/api/calendar/auto-followup/:leadId", async (req: Request, res: Response) => {
+    try {
+      const { leadId } = req.params;
+      
+      // Get lead data
+      const leadResult = await pool.query('SELECT * FROM leads WHERE id = $1', [leadId]);
+      if (leadResult.rows.length === 0) {
+        return res.status(404).json({ error: "Lead not found" });
+      }
+
+      const lead = leadResult.rows[0];
+      const leadData = {
+        name: lead.name,
+        phone: lead.phone,
+        interest: lead.notes?.split('Interés detectado: ')[1]?.split('.')[0] || 'Consulta general',
+        lastMessage: lead.notes?.split('Último mensaje: ')[1] || 'Sin mensaje'
+      };
+
+      const eventId = await googleCalendarService.createLeadFollowupEvent(leadData);
+      
+      if (eventId) {
+        const followupTime = new Date();
+        followupTime.setHours(followupTime.getHours() + 24);
+
+        await pool.query(`
+          INSERT INTO calendar_events (lead_id, event_id, title, start_time, end_time, event_type)
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `, [
+          leadId,
+          eventId,
+          `Seguimiento: ${lead.name}`,
+          followupTime,
+          new Date(followupTime.getTime() + 30 * 60000),
+          'followup'
+        ]);
+
+        res.json({ success: true, eventId, message: "Seguimiento automático programado" });
+      } else {
+        res.json({ success: false, message: "Calendar not connected" });
+      }
+    } catch (error) {
+      console.error("Error creating auto-followup:", error);
+      res.status(500).json({ error: "Error creating auto-followup" });
     }
   });
 
