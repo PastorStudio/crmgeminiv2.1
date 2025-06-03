@@ -8,7 +8,7 @@ import { PersistentMenu, useMenuLoading } from '@/components/ui/persistent-menu'
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import Messages from './pages/Messages';
-import Calendar from './pages/CalendarFixed';
+import Calendar from './pages/Calendar';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import AISettings from './pages/AISettings';
