@@ -10,7 +10,8 @@ import {
   Ticket,
   Menu,
   X,
-  Zap
+  Zap,
+  GitBranch
 } from 'lucide-react';
 
 interface PersistentMenuProps {
@@ -24,6 +25,7 @@ export function PersistentMenu({ isLoading = false }: PersistentMenuProps) {
   const menuItems = [
     { path: '/messages', icon: MessageSquare, label: 'Mensajes', color: 'text-blue-400' },
     { path: '/leads', icon: Users, label: 'Leads', color: 'text-green-400' },
+    { path: '/sales-flow-designer', icon: GitBranch, label: 'Flujos de Ventas', color: 'text-indigo-400' },
     { path: '/tickets', icon: Ticket, label: 'Tickets', color: 'text-purple-400' },
     { path: '/calendar', icon: Calendar, label: 'Calendario', color: 'text-orange-400' },
     { path: '/dashboard', icon: BarChart3, label: 'Dashboard', color: 'text-cyan-400' },
