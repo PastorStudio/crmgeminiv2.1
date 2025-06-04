@@ -538,8 +538,8 @@ export default function SalesFlowDesigner() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      <div className="bg-white border-b px-6 py-4">
+    <div className="h-full min-h-screen flex flex-col bg-gray-50">
+      <div className="bg-white border-b px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Diseñador de Flujos de Ventas</h1>
@@ -577,8 +577,8 @@ export default function SalesFlowDesigner() {
         </div>
       </div>
 
-      <div className="flex flex-1">
-        <div className="w-64 bg-white border-r p-4 overflow-y-auto">
+      <div className="flex flex-1 min-h-0">
+        <div className="w-64 bg-white border-r p-4 overflow-y-auto flex-shrink-0">
           <h3 className="font-semibold text-gray-900 mb-4">Agregar Nodos</h3>
           
           <div className="space-y-2">
@@ -622,23 +622,25 @@ export default function SalesFlowDesigner() {
           </div>
         </div>
 
-        <div className="flex-1 relative">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={onNodeClick}
-            onNodeContextMenu={onNodeContextMenu}
-            onEdgeClick={onEdgeClick}
-            nodeTypes={nodeTypes}
-            fitView
-            className="bg-gray-50"
-          >
-            <Controls />
-            <Background />
-          </ReactFlow>
+        <div className="flex-1 min-h-0">
+          <div className="h-full w-full">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onNodeClick={onNodeClick}
+              onNodeContextMenu={onNodeContextMenu}
+              onEdgeClick={onEdgeClick}
+              nodeTypes={nodeTypes}
+              fitView
+              className="bg-gray-50 h-full w-full"
+            >
+              <Controls />
+              <Background />
+            </ReactFlow>
+          </div>
         </div>
       </div>
 
