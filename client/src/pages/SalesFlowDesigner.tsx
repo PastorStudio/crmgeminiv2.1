@@ -40,7 +40,9 @@ import {
   Target
 } from 'lucide-react';
 
-// Custom node types
+import { Handle, Position } from 'reactflow';
+
+// Custom node types with connection handles
 const nodeTypes = {
   trigger: ({ data }: any) => (
     <div className="px-4 py-2 shadow-md rounded-md bg-green-100 border-2 border-green-500">
@@ -51,10 +53,20 @@ const nodeTypes = {
           <div className="text-xs text-green-600">{data.description}</div>
         </div>
       </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{ bottom: -8, backgroundColor: '#10B981' }}
+      />
     </div>
   ),
   condition: ({ data }: any) => (
     <div className="px-4 py-2 shadow-md rounded-md bg-blue-100 border-2 border-blue-500">
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ top: -8, backgroundColor: '#3B82F6' }}
+      />
       <div className="flex items-center">
         <GitBranch className="w-4 h-4 mr-2 text-blue-600" />
         <div>
@@ -62,10 +74,27 @@ const nodeTypes = {
           <div className="text-xs text-blue-600">{data.description}</div>
         </div>
       </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="yes"
+        style={{ bottom: -8, left: '25%', backgroundColor: '#10B981' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="no"
+        style={{ bottom: -8, right: '25%', backgroundColor: '#EF4444' }}
+      />
     </div>
   ),
   action: ({ data }: any) => (
     <div className="px-4 py-2 shadow-md rounded-md bg-orange-100 border-2 border-orange-500">
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ top: -8, backgroundColor: '#F59E0B' }}
+      />
       <div className="flex items-center">
         <Target className="w-4 h-4 mr-2 text-orange-600" />
         <div>
@@ -73,10 +102,20 @@ const nodeTypes = {
           <div className="text-xs text-orange-600">{data.description}</div>
         </div>
       </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{ bottom: -8, backgroundColor: '#F59E0B' }}
+      />
     </div>
   ),
   response: ({ data }: any) => (
     <div className="px-4 py-2 shadow-md rounded-md bg-purple-100 border-2 border-purple-500">
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ top: -8, backgroundColor: '#8B5CF6' }}
+      />
       <div className="flex items-center">
         <MessageCircle className="w-4 h-4 mr-2 text-purple-600" />
         <div>
@@ -84,6 +123,11 @@ const nodeTypes = {
           <div className="text-xs text-purple-600">{data.description}</div>
         </div>
       </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{ bottom: -8, backgroundColor: '#8B5CF6' }}
+      />
     </div>
   )
 };
@@ -149,9 +193,31 @@ const initialNodes: Node[] = [
 ];
 
 const initialEdges: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', markerEnd: { type: MarkerType.ArrowClosed } },
-  { id: 'e2-3', source: '2', target: '3', label: 'Interesado', markerEnd: { type: MarkerType.ArrowClosed } },
-  { id: 'e2-4', source: '2', target: '4', label: 'Precio', markerEnd: { type: MarkerType.ArrowClosed } }
+  { 
+    id: 'e1-2', 
+    source: '1', 
+    target: '2', 
+    markerEnd: { type: MarkerType.ArrowClosed },
+    style: { stroke: '#10B981', strokeWidth: 2 }
+  },
+  { 
+    id: 'e2-3', 
+    source: '2', 
+    sourceHandle: 'yes',
+    target: '3', 
+    label: 'Interesado', 
+    markerEnd: { type: MarkerType.ArrowClosed },
+    style: { stroke: '#10B981', strokeWidth: 2 }
+  },
+  { 
+    id: 'e2-4', 
+    source: '2', 
+    sourceHandle: 'no',
+    target: '4', 
+    label: 'Precio', 
+    markerEnd: { type: MarkerType.ArrowClosed },
+    style: { stroke: '#EF4444', strokeWidth: 2 }
+  }
 ];
 
 export default function SalesFlowDesigner() {
@@ -203,7 +269,16 @@ export default function SalesFlowDesigner() {
   });
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
+    (params: Connection) => {
+      const newEdge = {
+        ...params,
+        id: `${params.source}-${params.target}`,
+        markerEnd: { type: MarkerType.ArrowClosed },
+        style: { stroke: '#6B7280', strokeWidth: 2 },
+        animated: true
+      };
+      setEdges((eds) => addEdge(newEdge, eds));
+    },
     [setEdges]
   );
 
@@ -213,13 +288,20 @@ export default function SalesFlowDesigner() {
   }, []);
 
   const addNewNode = (type: string) => {
+    const nodeLabels = {
+      trigger: 'Disparador',
+      condition: 'Condición',
+      action: 'Acción',
+      response: 'Respuesta'
+    };
+
     const newNode: Node = {
-      id: `${nodes.length + 1}`,
+      id: `${Date.now()}`, // Use timestamp for unique IDs
       type,
-      position: { x: 250, y: nodes.length * 100 + 50 },
+      position: { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
       data: {
-        label: `Nuevo ${type}`,
-        description: 'Configura este nodo',
+        label: `Nuevo ${nodeLabels[type as keyof typeof nodeLabels]}`,
+        description: 'Haz clic para configurar',
         config: {}
       }
     };
@@ -347,10 +429,15 @@ export default function SalesFlowDesigner() {
             onConnect={onConnect}
             onNodeClick={onNodeClick}
             nodeTypes={nodeTypes}
+            connectionMode="loose"
+            snapToGrid={true}
+            snapGrid={[15, 15]}
+            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
             fitView
+            attributionPosition="bottom-left"
           >
             <Controls />
-            <Background />
+            <Background color="#aaa" gap={16} />
           </ReactFlow>
         </div>
       </div>
