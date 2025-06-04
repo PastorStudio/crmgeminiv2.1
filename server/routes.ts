@@ -45,6 +45,7 @@ import { translateText, detectLanguage } from "./routes/translation";
 import autonomousApiRouter from "./routes/autonomousApi";
 import { getLeadsSimpleAPI, getLeadStatsSimpleAPI } from "./routes/leads-simple";
 import salesFlowRouter from "./routes/salesFlowRoutes";
+import flowExecutionRouter from "./routes/flowExecutionRoutes";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
