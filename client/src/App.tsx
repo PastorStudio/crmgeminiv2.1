@@ -44,6 +44,7 @@ import DeepSeekSettings from './pages/DeepSeekSettings';
 import ModernMessaging from './pages/ModernMessaging';
 import SalesPipeline from './pages/SalesPipeline';
 import AgentSecurity from './pages/AgentSecurity';
+import SalesFlowDesigner from './pages/SalesFlowDesigner';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
@@ -616,6 +617,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/whatsapp-connection" component={() => <PrivateRoute component={WhatsAppConnection} path="/whatsapp-connection" />} />
                 <Route path="/agent-monitoring" component={() => <PrivateRoute component={AgentMonitoring} path="/agent-monitoring" />} />
                 <Route path="/agent-security" component={() => <PrivateRoute component={AgentSecurity} path="/agent-security" />} />
+                <Route path="/sales-flow-designer" component={() => <PrivateRoute component={SalesFlowDesigner} path="/sales-flow-designer" />} />
                 <Route path="/chat-assignments" component={() => <PrivateRoute component={ChatAssignments} path="/chat-assignments" />} />
                 <Route path="/profile" component={() => <PrivateRoute component={Profile} path="/profile" />} />
                 <Route component={() => <PrivateRoute component={NotFound} path="*" />} />
