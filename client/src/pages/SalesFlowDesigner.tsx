@@ -609,7 +609,11 @@ export default function SalesFlowDesigner() {
 
         {/* Floating Add Button */}
         <Button
-          onClick={() => setIsFloatingPanelOpen(!isFloatingPanelOpen)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsFloatingPanelOpen(!isFloatingPanelOpen);
+          }}
           className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 z-50"
           size="icon"
         >
@@ -618,13 +622,20 @@ export default function SalesFlowDesigner() {
 
         {/* Floating Panel */}
         {isFloatingPanelOpen && (
-          <div className="fixed bottom-24 right-6 w-64 bg-white rounded-lg shadow-2xl border p-4 z-40 max-h-96 overflow-y-auto">
+          <div 
+            className="fixed bottom-24 right-6 w-64 bg-white rounded-lg shadow-2xl border p-4 z-40 max-h-96 overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-gray-900" style={{ fontSize: '12px' }}>Agregar Nodos</h3>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsFloatingPanelOpen(false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsFloatingPanelOpen(false);
+                }}
                 className="h-6 w-6"
               >
                 <X className="h-4 w-4" />
