@@ -29,7 +29,7 @@ import { useForm } from "react-hook-form";
 import {
   Zap, GitBranch, Target, MessageCircle, Settings, Users, Clock,
   Webhook, CheckCircle, Radio, Calendar, Save, BarChart3,
-  X, Link, Unlink, MousePointer
+  X, Link, Unlink, MousePointer, Plus
 } from "lucide-react";
 
 // Enhanced Node Component
@@ -150,6 +150,9 @@ export default function SalesFlowDesigner() {
   // Manual connection state
   const [connectionMode, setConnectionMode] = useState(false);
   const [selectedSourceNode, setSelectedSourceNode] = useState<string | null>(null);
+  
+  // Floating panel state
+  const [isFloatingPanelOpen, setIsFloatingPanelOpen] = useState(false);
 
   // Delete node function
   const deleteNode = useCallback((nodeId: string) => {
@@ -577,71 +580,96 @@ export default function SalesFlowDesigner() {
         </div>
       </div>
 
-      <div className="flex flex-1 min-h-0">
-        <div className="w-64 bg-white border-r p-4 overflow-y-auto flex-shrink-0">
-          <h3 className="font-semibold text-gray-900 mb-4">Agregar Nodos</h3>
-          
-          <div className="space-y-2">
-            {[
-              { type: 'trigger', label: 'Disparador', icon: Zap, color: 'bg-green-100 text-green-800' },
-              { type: 'condition', label: 'Condición', icon: GitBranch, color: 'bg-blue-100 text-blue-800' },
-              { type: 'action', label: 'Acción', icon: Target, color: 'bg-orange-100 text-orange-800' },
-              { type: 'response', label: 'Respuesta', icon: MessageCircle, color: 'bg-purple-100 text-purple-800' },
-              { type: 'automation', label: 'Automatización', icon: Settings, color: 'bg-yellow-100 text-yellow-800' },
-              { type: 'handoff', label: 'Transferir Agente', icon: Users, color: 'bg-red-100 text-red-800' },
-              { type: 'delay', label: 'Esperar/Delay', icon: Clock, color: 'bg-gray-100 text-gray-800' },
-              { type: 'webhook', label: 'Webhook/API', icon: Webhook, color: 'bg-indigo-100 text-indigo-800' },
-              { type: 'validation', label: 'Validación', icon: CheckCircle, color: 'bg-teal-100 text-teal-800' },
-              { type: 'broadcast', label: 'Difusión', icon: Radio, color: 'bg-pink-100 text-pink-800' },
-              { type: 'schedule', label: 'Programar', icon: Calendar, color: 'bg-cyan-100 text-cyan-800' }
-            ].map((nodeType) => (
+      <div className="flex-1 min-h-0 relative">
+        <div className="h-full w-full">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            onNodeContextMenu={onNodeContextMenu}
+            onEdgeClick={onEdgeClick}
+            nodeTypes={nodeTypes}
+            fitView
+            className="bg-gray-50 h-full w-full"
+          >
+            <Controls />
+            <Background />
+          </ReactFlow>
+        </div>
+
+        {/* Floating Add Button */}
+        <Button
+          onClick={() => setIsFloatingPanelOpen(!isFloatingPanelOpen)}
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 z-50"
+          size="icon"
+        >
+          <Plus className="h-6 w-6 text-white" />
+        </Button>
+
+        {/* Floating Panel */}
+        {isFloatingPanelOpen && (
+          <div className="fixed bottom-24 right-6 w-80 bg-white rounded-lg shadow-2xl border p-4 z-40 max-h-96 overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-gray-900" style={{ fontSize: '12px' }}>Agregar Nodos</h3>
               <Button
-                key={nodeType.type}
                 variant="ghost"
-                className="w-full justify-start p-3 h-auto"
-                onClick={() => addNewNode(nodeType.type)}
+                size="icon"
+                onClick={() => setIsFloatingPanelOpen(false)}
+                className="h-6 w-6"
               >
-                <div className={`p-2 rounded-md ${nodeType.color} mr-3`}>
-                  <nodeType.icon className="w-4 h-4" />
-                </div>
-                <span style={{ fontSize: '10px' }}>{nodeType.label}</span>
+                <X className="h-4 w-4" />
               </Button>
-            ))}
-          </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { type: 'trigger', label: 'Disparador', icon: Zap, color: 'bg-green-100 text-green-800' },
+                { type: 'condition', label: 'Condición', icon: GitBranch, color: 'bg-blue-100 text-blue-800' },
+                { type: 'action', label: 'Acción', icon: Target, color: 'bg-orange-100 text-orange-800' },
+                { type: 'response', label: 'Respuesta', icon: MessageCircle, color: 'bg-purple-100 text-purple-800' },
+                { type: 'automation', label: 'Automatización', icon: Settings, color: 'bg-yellow-100 text-yellow-800' },
+                { type: 'handoff', label: 'Transferir Agente', icon: Users, color: 'bg-red-100 text-red-800' },
+                { type: 'delay', label: 'Esperar/Delay', icon: Clock, color: 'bg-gray-100 text-gray-800' },
+                { type: 'webhook', label: 'Webhook/API', icon: Webhook, color: 'bg-indigo-100 text-indigo-800' },
+                { type: 'validation', label: 'Validación', icon: CheckCircle, color: 'bg-teal-100 text-teal-800' },
+                { type: 'broadcast', label: 'Difusión', icon: Radio, color: 'bg-pink-100 text-pink-800' },
+                { type: 'schedule', label: 'Programar', icon: Calendar, color: 'bg-cyan-100 text-cyan-800' }
+              ].map((nodeType) => (
+                <Button
+                  key={nodeType.type}
+                  variant="ghost"
+                  className="h-16 flex-col p-2 justify-center items-center text-center"
+                  onClick={() => {
+                    addNewNode(nodeType.type);
+                    setIsFloatingPanelOpen(false);
+                  }}
+                >
+                  <div className={`p-1 rounded-md ${nodeType.color} mb-1`}>
+                    <nodeType.icon className="w-3 h-3" />
+                  </div>
+                  <span style={{ fontSize: '10px' }} className="leading-tight">
+                    {nodeType.label}
+                  </span>
+                </Button>
+              ))}
+            </div>
 
-          <Separator className="my-6" />
-          
-          <div className="space-y-3">
-            <h4 className="font-medium text-gray-900" style={{ fontSize: '10px' }}>Controles</h4>
-            <p style={{ fontSize: '10px' }} className="text-gray-600">
-              • Clic en X rojo para eliminar nodo<br/>
-              • Clic en ícono azul para conectar<br/>
-              • Delete/Backspace para eliminar seleccionados<br/>
-              • Clic derecho para configurar
-            </p>
+            <Separator className="my-4" />
+            
+            <div className="space-y-2">
+              <h4 className="font-medium text-gray-900" style={{ fontSize: '10px' }}>Controles</h4>
+              <p style={{ fontSize: '10px' }} className="text-gray-600 leading-tight">
+                • Clic en X rojo para eliminar nodo<br/>
+                • Clic en ícono azul para conectar<br/>
+                • Delete/Backspace para eliminar seleccionados<br/>
+                • Clic derecho para configurar
+              </p>
+            </div>
           </div>
-        </div>
-
-        <div className="flex-1 min-h-0">
-          <div className="h-full w-full">
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onNodeClick={onNodeClick}
-              onNodeContextMenu={onNodeContextMenu}
-              onEdgeClick={onEdgeClick}
-              nodeTypes={nodeTypes}
-              fitView
-              className="bg-gray-50 h-full w-full"
-            >
-              <Controls />
-              <Background />
-            </ReactFlow>
-          </div>
-        </div>
+        )}
       </div>
 
       {selectedNode && (
