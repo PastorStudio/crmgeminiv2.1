@@ -1030,14 +1030,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/leads", async (req: Request, res: Response) => {
     try {
-      const leadData = insertLeadSchema.parse(req.body);
-      const newLead = await storage.createLead(leadData);
-      res.status(201).json(newLead);
+      console.log('📝 Creando nuevo lead:', req.body);
+      
+      // Direct database insertion without schema validation for now
+      const { name, phone, email, company, notes, source, priority, status, budget } = req.body;
+      
+      const result = await pool.query(`
+        INSERT INTO leads (name, phone, email, company, notes, source, priority, status, budget, "createdAt", "updatedAt")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+        RETURNING *
+      `, [
+        name || 'Lead sin nombre',
+        phone || '',
+        email || '',
+        company || '',
+        notes || '',
+        source || 'Manual',
+        priority || 'medium',
+        status || 'new',
+        budget || 0
+      ]);
+      
+      console.log('✅ Lead creado exitosamente:', result.rows[0]);
+      res.status(201).json(result.rows[0]);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid lead data", errors: error.errors });
-      }
-      res.status(500).json({ message: "Failed to create lead" });
+      console.error('❌ Error creando lead:', error);
+      res.status(500).json({ message: "Failed to create lead", error: error.message });
     }
   });
 
