@@ -5,7 +5,8 @@
 
 import { conversationHistory } from './conversationHistory';
 import { db } from '../db';
-import { aiSettings } from '@shared/schema';
+import { aiSettings, whatsappAccounts, aiPrompts } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 interface ResponseContext {
   chatId: string;
@@ -24,6 +25,44 @@ interface AIResponse {
 
 class IntelligentResponseService {
   
+  /**
+   * Obtiene el prompt asignado para una cuenta específica
+   */
+  private async getAccountPrompt(accountId: number): Promise<string | null> {
+    try {
+      // Buscar cuenta con prompt asignado
+      const accountResult = await db.select({
+        assignedPromptId: whatsappAccounts.assignedPromptId
+      })
+      .from(whatsappAccounts)
+      .where(eq(whatsappAccounts.id, accountId))
+      .limit(1);
+
+      if (accountResult.length === 0 || !accountResult[0].assignedPromptId) {
+        return null;
+      }
+
+      // Obtener el prompt completo
+      const promptResult = await db.select({
+        content: aiPrompts.content,
+        name: aiPrompts.name
+      })
+      .from(aiPrompts)
+      .where(eq(aiPrompts.id, accountResult[0].assignedPromptId))
+      .limit(1);
+
+      if (promptResult.length > 0) {
+        console.log(`🎯 Usando prompt asignado: "${promptResult[0].name}" para cuenta ${accountId}`);
+        return promptResult[0].content;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`❌ Error obteniendo prompt asignado:`, error);
+      return null;
+    }
+  }
+
   /**
    * Genera una respuesta inteligente basada en la configuración AI y el historial
    */
@@ -52,7 +91,7 @@ class IntelligentResponseService {
       conversationHistory.addUserMessage(context.chatId, 'ai-agent', context.userMessage);
 
       // Construir contexto completo para el AI
-      const fullContext = this.buildAIContext(aiConfig, history, context);
+      const fullContext = await this.buildAIContext(aiConfig, history, context);
       
       // Generar respuesta según el proveedor configurado
       let response: AIResponse;
@@ -93,9 +132,29 @@ class IntelligentResponseService {
   }
 
   /**
-   * Construye el contexto completo para el AI
+   * Construye el contexto completo para el AI con prompt prioritario
    */
-  private buildAIContext(aiConfig: any, history: any[], context: ResponseContext): string {
+  private async buildAIContext(aiConfig: any, history: any[], context: ResponseContext): Promise<string> {
+    // PRIORIDAD 1: Usar prompt asignado a la cuenta específica
+    let systemPrompt = await this.getAccountPrompt(context.accountId);
+    let agentName = 'Asistente';
+    
+    // PRIORIDAD 2: Usar prompt genérico si no hay asignado
+    if (!systemPrompt) {
+      systemPrompt = `INSTRUCCIONES:
+1. Responde como Martín, el asesor de ventas de Telca
+2. Mantén el contexto de toda la conversación anterior
+3. Sé persuasivo pero natural y amigable
+4. Identifica las necesidades específicas del cliente
+5. Guía la conversación hacia una venta concreta
+6. Si es apropiado, solicita información adicional (ubicación, servicio actual, etc.)
+7. Ofrece soluciones específicas de Telca que resuelvan sus problemas
+8. Usa un tono conversacional y cercano
+9. Responde ÚNICAMENTE con el mensaje que enviarías al cliente, sin explicaciones adicionales`;
+      agentName = 'Martín';
+      console.log(`⚠️ Usando prompt genérico para cuenta ${context.accountId} - no hay prompt asignado`);
+    }
+
     let aiContext = `${aiConfig.customPrompt}\n\n`;
     
     // Agregar información del contexto
@@ -112,7 +171,7 @@ class IntelligentResponseService {
     if (history.length > 0) {
       aiContext += `\nHISTORIAL DE CONVERSACIÓN:\n`;
       history.forEach((msg, index) => {
-        const role = msg.role === 'user' ? 'Cliente' : 'Martín';
+        const role = msg.role === 'user' ? 'Cliente' : agentName;
         aiContext += `${role}: ${msg.content}\n`;
       });
     }
@@ -120,17 +179,8 @@ class IntelligentResponseService {
     // Agregar mensaje actual
     aiContext += `\nMENSAJE ACTUAL DEL CLIENTE: ${context.userMessage}\n\n`;
     
-    // Instrucciones específicas
-    aiContext += `INSTRUCCIONES:
-1. Responde como Martín, el asesor de ventas de Telca
-2. Mantén el contexto de toda la conversación anterior
-3. Sé persuasivo pero natural y amigable
-4. Identifica las necesidades específicas del cliente
-5. Guía la conversación hacia una venta concreta
-6. Si es apropiado, solicita información adicional (ubicación, servicio actual, etc.)
-7. Ofrece soluciones específicas de Telca que resuelvan sus problemas
-8. Usa un tono conversacional y cercano
-9. Responde ÚNICAMENTE con el mensaje que enviarías al cliente, sin explicaciones adicionales\n\n`;
+    // Usar el prompt asignado o el genérico
+    aiContext += systemPrompt + '\n\n';
 
     return aiContext;
   }

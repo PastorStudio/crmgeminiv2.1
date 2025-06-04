@@ -1,0 +1,34 @@
+{
+  "name": "whatsapp-ai-crm-deployment",
+  "version": "2.0.0",
+  "description": "Autonomous WhatsApp AI CRM System - Production Deployment",
+  "main": "backend/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node backend/index.js",
+    "dev": "node backend/index.js",
+    "build": "echo 'Production build ready'",
+    "deploy": "node backend/index.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "ai",
+    "crm",
+    "autonomous",
+    "chatbot",
+    "lead-generation"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "express": "^4.21.1",
+    "cors": "^2.8.5",
+    "@neondatabase/serverless": "^0.10.4",
+    "drizzle-orm": "^0.36.4",
+    "openai": "^4.73.0",
+    "whatsapp-web.js": "^1.26.0",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8"
+  }
+}

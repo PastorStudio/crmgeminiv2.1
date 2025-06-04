@@ -400,10 +400,10 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           timeout: 120000,
           ignoreHTTPSErrors: true,
         },
-        qrMaxRetries: hasExistingSession ? 8 : 15,
+        qrMaxRetries: 0, // Infinite retries to prevent disconnection
         restartOnAuthFail: true,
         takeoverOnConflict: true,
-        authTimeoutMs: 600000, // 10 minutos
+        authTimeoutMs: 0, // No timeout to maintain connection
         takeoverTimeoutMs: 60000, // 60 segundos
 
       });
@@ -565,14 +565,26 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       instance.status.authenticated = false;
       instance.status.ready = false;
       
-      // ✨ DETENER KEEP-ALIVE AUTOMÁTICAMENTE ✨
-      console.log(`💤 Deteniendo keep-alive para cuenta ${id} (${name}) - desconectada`);
-      this.stopKeepAlive(id);
+      // NO DETENER KEEP-ALIVE - mantener activo para reconexión automática
+      console.log(`🔄 Manteniendo keep-alive activo para cuenta ${id} (${name}) - intentando reconexión`);
+      
+      // Programar reconexión automática después de 30 segundos
+      setTimeout(async () => {
+        console.log(`🔄 Intentando reconectar cuenta ${id} (${name})...`);
+        try {
+          await client.initialize();
+          console.log(`✅ Reconexión iniciada para cuenta ${id} (${name})`);
+        } catch (error) {
+          console.error(`❌ Error en reconexión automática cuenta ${id}:`, error);
+          // Reintentar en 2 minutos
+          setTimeout(() => this.handleAutoReconnect(id), 120000);
+        }
+      }, 30000);
       
       this.deactivateConnectionTimers(instance);
     });
 
-    // Evento de mensajes entrantes para sistema de tickets
+    // Evento de mensajes entrantes para sistema de tickets y análisis AI
     client.on('message', async (message) => {
       try {
         console.log(`🔔 EVENTO MESSAGE ACTIVADO en cuenta ${id}`);
@@ -583,6 +595,9 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           body: message.body?.substring(0, 50) || '[Sin texto]',
           chatId: message.from
         });
+        
+        // Almacenar conversación para análisis AI
+        await this.storeConversationForAnalysis(id, message);
         
         // Solo procesar mensajes entrantes (no enviados por nosotros)
         // Validación estricta: debe ser fromMe=false Y el chat debe ser diferente al número de la cuenta
@@ -1082,6 +1097,108 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   isAccountConnected(accountId: number): boolean {
     const instance = this.instances.get(accountId);
     return instance ? instance.status.authenticated && instance.status.ready : false;
+  }
+
+  /**
+   * Almacena conversación para análisis AI
+   */
+  private async storeConversationForAnalysis(accountId: number, message: any): Promise<void> {
+    try {
+      const { db } = await import('../db');
+      const { conversations } = await import('@shared/schema');
+      const { eq, and } = await import('drizzle-orm');
+
+      const chatId = message.from;
+      const messageText = message.body || '';
+      const timestamp = new Date(message.timestamp * 1000);
+
+      // Buscar conversación existente
+      const existingConversation = await db
+        .select()
+        .from(conversations)
+        .where(
+          and(
+            eq(conversations.chatId, chatId),
+            eq(conversations.whatsappAccountId, accountId)
+          )
+        )
+        .limit(1);
+
+      if (existingConversation.length > 0) {
+        // Actualizar conversación existente
+        const conversation = existingConversation[0];
+        const currentMessages = conversation.messages ? JSON.parse(conversation.messages) : [];
+        
+        currentMessages.push({
+          id: message.id._serialized,
+          body: messageText,
+          fromMe: message.fromMe,
+          timestamp: timestamp.toISOString(),
+          type: message.type
+        });
+
+        await db
+          .update(conversations)
+          .set({
+            messages: JSON.stringify(currentMessages),
+            lastMessageAt: timestamp,
+            messageCount: currentMessages.length,
+            analyzed: false // Marcar para re-análisis
+          })
+          .where(eq(conversations.id, conversation.id));
+
+        console.log(`📝 Conversación actualizada para análisis AI: ${chatId}`);
+      } else {
+        // Crear nueva conversación
+        const newMessages = [{
+          id: message.id._serialized,
+          body: messageText,
+          fromMe: message.fromMe,
+          timestamp: timestamp.toISOString(),
+          type: message.type
+        }];
+
+        await db.insert(conversations).values({
+          chatId,
+          whatsappAccountId: accountId,
+          contactId: 1, // Default contact ID
+          messages: JSON.stringify(newMessages),
+          lastMessageAt: timestamp,
+          messageCount: 1,
+          analyzed: false,
+          status: 'active'
+        });
+
+        console.log(`📝 Nueva conversación creada para análisis AI: ${chatId}`);
+      }
+    } catch (error) {
+      console.error('❌ Error almacenando conversación para análisis:', error);
+    }
+  }
+
+  /**
+   * Maneja reconexión automática para una cuenta
+   */
+  private handleAutoReconnect(accountId: number): void {
+    const instance = this.instances.get(accountId);
+    if (!instance) return;
+
+    console.log(`🔄 Ejecutando reconexión automática para cuenta ${accountId}...`);
+    
+    try {
+      // Reinicializar cliente
+      instance.client.initialize().then(() => {
+        console.log(`✅ Reconexión automática exitosa para cuenta ${accountId}`);
+      }).catch((error) => {
+        console.error(`❌ Falló reconexión automática cuenta ${accountId}:`, error);
+        // Reintentar en 5 minutos
+        setTimeout(() => this.handleAutoReconnect(accountId), 300000);
+      });
+    } catch (error) {
+      console.error(`❌ Error iniciando reconexión cuenta ${accountId}:`, error);
+      // Reintentar en 5 minutos
+      setTimeout(() => this.handleAutoReconnect(accountId), 300000);
+    }
   }
 
   /**

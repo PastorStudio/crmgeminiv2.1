@@ -179,18 +179,66 @@ class StableAutoResponseManager {
   }
 
   /**
-   * Genera una respuesta usando OpenAI
+   * Obtiene el prompt asignado para una cuenta específica
    */
-  private async generateStableResponse(message: string, agentName: string): Promise<string | null> {
+  private async getAccountPrompt(accountId: number): Promise<string | null> {
     try {
-      console.log(`🤖 Generando respuesta estable con ${agentName} para: "${message.substring(0, 50)}..."`);
+      // Buscar cuenta con prompt asignado
+      const accountResult = await db.select({
+        assignedPromptId: whatsappAccounts.assignedPromptId
+      })
+      .from(whatsappAccounts)
+      .where(eq(whatsappAccounts.id, accountId))
+      .limit(1);
+
+      if (accountResult.length === 0 || !accountResult[0].assignedPromptId) {
+        return null;
+      }
+
+      // Obtener el prompt completo
+      const { aiPrompts } = await import('@shared/schema');
+      const promptResult = await db.select({
+        content: aiPrompts.content,
+        name: aiPrompts.name
+      })
+      .from(aiPrompts)
+      .where(eq(aiPrompts.id, accountResult[0].assignedPromptId))
+      .limit(1);
+
+      if (promptResult.length > 0) {
+        console.log(`🎯 Usando prompt asignado: "${promptResult[0].name}" para cuenta ${accountId}`);
+        return promptResult[0].content;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`❌ Error obteniendo prompt asignado:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Genera una respuesta usando OpenAI con prompt prioritario
+   */
+  private async generateStableResponse(message: string, agentName: string, accountId: number): Promise<string | null> {
+    try {
+      console.log(`🤖 Generando respuesta estable para cuenta ${accountId} con ${agentName}: "${message.substring(0, 50)}..."`);
+
+      // PRIORIDAD 1: Usar prompt asignado a la cuenta específica
+      let systemPrompt = await this.getAccountPrompt(accountId);
+      
+      // PRIORIDAD 2: Usar prompt genérico si no hay asignado
+      if (!systemPrompt) {
+        systemPrompt = `Eres ${agentName}, un asistente profesional y útil. Responde de manera concisa, amigable y profesional. Mantén un tono cálido pero profesional.`;
+        console.log(`⚠️ Usando prompt genérico para cuenta ${accountId} - no hay prompt asignado`);
+      }
 
       const response = await openai.chat.completions.create({
         model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages: [
           {
             role: "system",
-            content: `Eres ${agentName}, un asistente profesional y útil. Responde de manera concisa, amigable y profesional. Mantén un tono cálido pero profesional.`
+            content: systemPrompt
           },
           {
             role: "user",

@@ -183,13 +183,14 @@ export class DatabaseStorage implements IStorage {
         id: nextAvailableId,
         name: account.name,
         description: account.description || null,
-        status: account.status || 'disconnected',
-        phone: account.phone || null,
+        ownerName: account.ownerName || null,
+        ownerPhone: account.ownerPhone || null,
+        status: account.status || 'inactive',
         autoResponseEnabled: account.autoResponseEnabled || false,
         assignedExternalAgentId: account.assignedExternalAgentId || null,
         responseDelay: account.responseDelay || 3,
         createdAt: new Date(),
-        updatedAt: new Date()
+        lastActiveAt: new Date()
       }).returning();
       
       console.log(`✅ Cuenta de WhatsApp creada con ID reutilizado: ${nextAvailableId}`);
@@ -204,7 +205,18 @@ export class DatabaseStorage implements IStorage {
       // Fallback: usar inserción normal sin ID específico
       const [newAccount] = await db
         .insert(whatsappAccounts)
-        .values(account)
+        .values({
+          name: account.name,
+          description: account.description || null,
+          ownerName: account.ownerName || null,
+          ownerPhone: account.ownerPhone || null,
+          status: account.status || 'inactive',
+          autoResponseEnabled: account.autoResponseEnabled || false,
+          assignedExternalAgentId: account.assignedExternalAgentId || null,
+          responseDelay: account.responseDelay || 3,
+          createdAt: new Date(),
+          lastActiveAt: new Date()
+        })
         .returning();
       return newAccount;
     }
@@ -426,6 +438,77 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (error) {
       console.error('Error initializing data:', error);
+    }
+  }
+
+  // AI Prompts management
+  async getAiPrompts(): Promise<AiPrompt[]> {
+    try {
+      return await db.select().from(aiPrompts);
+    } catch (error) {
+      console.error('Error getting AI prompts:', error);
+      return [];
+    }
+  }
+
+  async getAiPrompt(id: number): Promise<AiPrompt | undefined> {
+    try {
+      const [prompt] = await db.select().from(aiPrompts).where(eq(aiPrompts.id, id));
+      return prompt || undefined;
+    } catch (error) {
+      console.error('Error getting AI prompt:', error);
+      return undefined;
+    }
+  }
+
+  async createAiPrompt(insertPrompt: InsertAiPrompt): Promise<AiPrompt> {
+    try {
+      const [prompt] = await db
+        .insert(aiPrompts)
+        .values(insertPrompt)
+        .returning();
+      return prompt;
+    } catch (error) {
+      console.error('Error creating AI prompt:', error);
+      throw error;
+    }
+  }
+
+  async updateAiPrompt(id: number, updates: Partial<InsertAiPrompt>): Promise<AiPrompt | null> {
+    try {
+      const [prompt] = await db
+        .update(aiPrompts)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(aiPrompts.id, id))
+        .returning();
+      return prompt || null;
+    } catch (error) {
+      console.error('Error updating AI prompt:', error);
+      return null;
+    }
+  }
+
+  async deleteAiPrompt(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(aiPrompts).where(eq(aiPrompts.id, id));
+      return result.count > 0;
+    } catch (error) {
+      console.error('Error deleting AI prompt:', error);
+      return false;
+    }
+  }
+
+  async assignPromptToAccount(accountId: number, promptId: number): Promise<boolean> {
+    try {
+      const result = await db
+        .update(whatsappAccounts)
+        .set({ assignedPromptId: promptId })
+        .where(eq(whatsappAccounts.id, accountId))
+        .returning();
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error assigning prompt to account:', error);
+      return false;
     }
   }
 }

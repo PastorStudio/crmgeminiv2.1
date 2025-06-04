@@ -178,7 +178,7 @@ class RealAutoResponseManager {
       console.log(`📨 Nuevo mensaje detectado en chat ${chatId}: "${lastIncomingMessage.body}"`);
 
       // Generar respuesta automática
-      const response = await this.generateResponse(lastIncomingMessage.body, config.agentName);
+      const response = await this.generateResponse(lastIncomingMessage.body, config.agentName, accountId);
 
       if (response) {
         // Enviar respuesta
@@ -195,18 +195,66 @@ class RealAutoResponseManager {
   }
 
   /**
-   * Genera una respuesta usando OpenAI
+   * Obtiene el prompt asignado para una cuenta específica
    */
-  private async generateResponse(message: string, agentName: string): Promise<string | null> {
+  private async getAccountPrompt(accountId: number): Promise<string | null> {
     try {
-      console.log(`🤖 Generando respuesta con ${agentName} para: "${message}"`);
+      // Buscar cuenta con prompt asignado
+      const accountResult = await db.select({
+        assignedPromptId: whatsappAccounts.assignedPromptId
+      })
+      .from(whatsappAccounts)
+      .where(eq(whatsappAccounts.id, accountId))
+      .limit(1);
+
+      if (accountResult.length === 0 || !accountResult[0].assignedPromptId) {
+        return null;
+      }
+
+      // Obtener el prompt completo
+      const { aiPrompts } = await import('@shared/schema');
+      const promptResult = await db.select({
+        content: aiPrompts.content,
+        name: aiPrompts.name
+      })
+      .from(aiPrompts)
+      .where(eq(aiPrompts.id, accountResult[0].assignedPromptId))
+      .limit(1);
+
+      if (promptResult.length > 0) {
+        console.log(`🎯 Usando prompt asignado: "${promptResult[0].name}" para cuenta ${accountId}`);
+        return promptResult[0].content;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`❌ Error obteniendo prompt asignado:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Genera una respuesta usando OpenAI con prompt prioritario
+   */
+  private async generateResponse(message: string, agentName: string, accountId: number): Promise<string | null> {
+    try {
+      console.log(`🤖 Generando respuesta para cuenta ${accountId} con ${agentName}: "${message}"`);
+
+      // PRIORIDAD 1: Usar prompt asignado a la cuenta específica
+      let systemPrompt = await this.getAccountPrompt(accountId);
+      
+      // PRIORIDAD 2: Usar prompt genérico si no hay asignado
+      if (!systemPrompt) {
+        systemPrompt = `Eres ${agentName}, un asistente útil y amigable. Responde de manera concisa y profesional. Siempre en español y con un tono cálido.`;
+        console.log(`⚠️ Usando prompt genérico para cuenta ${accountId} - no hay prompt asignado`);
+      }
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o", // El modelo más reciente de OpenAI
         messages: [
           {
             role: "system",
-            content: `Eres ${agentName}, un asistente útil y amigable. Responde de manera concisa y profesional. Siempre en español y con un tono cálido.`
+            content: systemPrompt
           },
           {
             role: "user",
