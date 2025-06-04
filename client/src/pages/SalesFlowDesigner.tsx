@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ReactFlow, { 
   Node, 
@@ -434,6 +434,51 @@ export default function SalesFlowDesigner() {
     setIsConfigOpen(true);
   }, []);
 
+  // Node deletion functionality
+  const onNodesDelete = useCallback((nodesToDelete: Node[]) => {
+    const nodeIdsToDelete = nodesToDelete.map(node => node.id);
+    
+    // Remove nodes
+    setNodes(nodes => nodes.filter(node => !nodeIdsToDelete.includes(node.id)));
+    
+    // Remove edges connected to deleted nodes
+    setEdges(edges => edges.filter(edge => 
+      !nodeIdsToDelete.includes(edge.source) && 
+      !nodeIdsToDelete.includes(edge.target)
+    ));
+  }, [setNodes, setEdges]);
+
+  // Handle key press for deletion
+  const onKeyDown = useCallback((event: KeyboardEvent) => {
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      const selectedNodes = nodes.filter(node => node.selected);
+      if (selectedNodes.length > 0) {
+        onNodesDelete(selectedNodes);
+      }
+    }
+  }, [nodes, onNodesDelete]);
+
+  // Add event listener for key presses
+  React.useEffect(() => {
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [onKeyDown]);
+
+  // Context menu for right-click options
+  const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault();
+    setSelectedNode(node);
+    // You can add a context menu here for delete/edit options
+  }, []);
+
+  // Edge deletion functionality
+  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
+    // Allow clicking on edges to select and delete them
+    setEdges((edges) => edges.filter((e) => e.id !== edge.id));
+  }, [setEdges]);
+
   const addNewNode = (type: string) => {
     const nodeLabels = {
       trigger: 'Disparador',
@@ -638,13 +683,19 @@ export default function SalesFlowDesigner() {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onNodeClick={onNodeClick}
+            onNodeContextMenu={onNodeContextMenu}
+            onEdgeClick={onEdgeClick}
+            onNodesDelete={onNodesDelete}
             nodeTypes={nodeTypes}
-            connectionMode="loose"
+            connectionMode={'loose' as any}
             snapToGrid={true}
             snapGrid={[15, 15]}
             defaultViewport={{ x: 0, y: 0, zoom: 1 }}
             fitView
             attributionPosition="bottom-left"
+            selectNodesOnDrag={true}
+            multiSelectionKeyCode="Shift"
+            deleteKeyCode="Delete"
           >
             <Controls />
             <Background color="#aaa" gap={16} />
