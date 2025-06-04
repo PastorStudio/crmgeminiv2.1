@@ -604,7 +604,7 @@ export default function SalesFlowDesigner() {
                 <div className={`p-2 rounded-md ${nodeType.color} mr-3`}>
                   <nodeType.icon className="w-4 h-4" />
                 </div>
-                <span className="text-sm">{nodeType.label}</span>
+                <span style={{ fontSize: '10px' }}>{nodeType.label}</span>
               </Button>
             ))}
           </div>
@@ -612,8 +612,8 @@ export default function SalesFlowDesigner() {
           <Separator className="my-6" />
           
           <div className="space-y-3">
-            <h4 className="font-medium text-gray-900">Controles</h4>
-            <p className="text-xs text-gray-600">
+            <h4 className="font-medium text-gray-900" style={{ fontSize: '10px' }}>Controles</h4>
+            <p style={{ fontSize: '10px' }} className="text-gray-600">
               • Clic en X rojo para eliminar nodo<br/>
               • Clic en ícono azul para conectar<br/>
               • Delete/Backspace para eliminar seleccionados<br/>
