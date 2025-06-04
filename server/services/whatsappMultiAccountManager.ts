@@ -676,7 +676,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     try {
       console.log(`🔄 Forzando actualización de QR para cuenta ${accountId}`);
       
-      // Limpiar cache
+      // Limpiar cache completamente
       this.qrCodeCache.delete(accountId);
       
       const instance = this.instances.get(accountId);
@@ -685,20 +685,17 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         return false;
       }
 
-      // Reinicializar cliente para generar nuevo QR
+      // Reinicializar cliente para generar nuevo QR - SINCRONO
       try {
         await instance.client.destroy();
         console.log(`🔄 Cliente destruido para cuenta ${accountId}`);
         
-        // Pequeña pausa antes de reinicializar
-        setTimeout(async () => {
-          try {
-            await this.initializeAccount(accountId);
-            console.log(`✅ QR forzado para cuenta ${accountId}`);
-          } catch (error) {
-            console.error(`❌ Error reinicializando cuenta ${accountId}:`, error);
-          }
-        }, 2000);
+        // Esperar un momento y luego reinicializar sincrónicamente
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Reinicializar inmediatamente de forma síncrona
+        await this.initializeAccount(accountId);
+        console.log(`✅ QR forzado para cuenta ${accountId}`);
         
         return true;
       } catch (error) {
