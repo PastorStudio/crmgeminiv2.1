@@ -438,6 +438,9 @@ const WhatsAppAccounts = () => {
       });
       
       if (response.success) {
+        // Esperar 2 segundos para que el nuevo QR se genere completamente
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
         // Refrescar el QR después del force refresh
         refetchQr();
         toast({
