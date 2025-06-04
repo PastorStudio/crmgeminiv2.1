@@ -1036,8 +1036,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { name, phone, email, company, notes, source, priority, status, budget } = req.body;
       
       const result = await pool.query(`
-        INSERT INTO leads (name, phone, email, company, notes, source, priority, status, budget, "createdAt", "updatedAt")
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+        INSERT INTO leads (name, phone, email, company, notes, source, priority, status, budget, "createdAt")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
         RETURNING *
       `, [
         name || 'Lead sin nombre',
