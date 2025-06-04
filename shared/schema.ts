@@ -655,3 +655,99 @@ export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = typeof insertCalendarEventSchema._type;
 export type LocalEvent = typeof localEvents.$inferSelect;
 export type InsertLocalEvent = typeof insertLocalEventSchema._type;
+
+// Sales Flow Tables
+export const salesFlowStages = pgTable("sales_flow_stages", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  order: integer("order").notNull(),
+  color: text("color").default("#3B82F6"),
+  icon: text("icon").default("circle"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const flowNodes = pgTable("flow_nodes", {
+  id: serial("id").primaryKey(),
+  stageId: integer("stage_id").references(() => salesFlowStages.id),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  position: jsonb("position"),
+  config: jsonb("config"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const flowConnections = pgTable("flow_connections", {
+  id: serial("id").primaryKey(),
+  sourceNodeId: integer("source_node_id").references(() => flowNodes.id),
+  targetNodeId: integer("target_node_id").references(() => flowNodes.id),
+  condition: text("condition"),
+  label: text("label"),
+  style: jsonb("style"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const conversationFlowSessions = pgTable("conversation_flow_sessions", {
+  id: serial("id").primaryKey(),
+  chatId: text("chat_id").notNull(),
+  accountId: integer("account_id").notNull(),
+  currentNodeId: integer("current_node_id").references(() => flowNodes.id),
+  currentStageId: integer("current_stage_id").references(() => salesFlowStages.id),
+  sessionData: jsonb("session_data"),
+  isActive: boolean("is_active").default(true),
+  startedAt: timestamp("started_at").defaultNow(),
+  lastActivityAt: timestamp("last_activity_at").defaultNow(),
+  completedAt: timestamp("completed_at")
+});
+
+export const flowExecutionLog = pgTable("flow_execution_log", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").references(() => conversationFlowSessions.id),
+  nodeId: integer("node_id").references(() => flowNodes.id),
+  stageId: integer("stage_id").references(() => salesFlowStages.id),
+  action: text("action").notNull(),
+  messageText: text("message_text"),
+  aiResponse: text("ai_response"),
+  executionTime: integer("execution_time"),
+  success: boolean("success").default(true),
+  errorMessage: text("error_message"),
+  executedAt: timestamp("executed_at").defaultNow()
+});
+
+export const salesMetrics = pgTable("sales_metrics", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id").notNull(),
+  stageId: integer("stage_id").references(() => salesFlowStages.id),
+  date: timestamp("date").defaultNow(),
+  conversationsStarted: integer("conversations_started").default(0),
+  conversationsCompleted: integer("conversations_completed").default(0),
+  conversionRate: integer("conversion_rate").default(0),
+  averageTime: integer("average_time").default(0),
+  revenue: integer("revenue").default(0),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Sales flow schema exports
+export const insertSalesFlowStageSchema = createInsertSchema(salesFlowStages).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertFlowNodeSchema = createInsertSchema(flowNodes).omit({ id: true, createdAt: true });
+export const insertFlowConnectionSchema = createInsertSchema(flowConnections).omit({ id: true, createdAt: true });
+export const insertConversationFlowSessionSchema = createInsertSchema(conversationFlowSessions).omit({ id: true, startedAt: true, lastActivityAt: true });
+export const insertFlowExecutionLogSchema = createInsertSchema(flowExecutionLog).omit({ id: true, executedAt: true });
+export const insertSalesMetricsSchema = createInsertSchema(salesMetrics).omit({ id: true, date: true, createdAt: true });
+
+// Sales flow types
+export type SalesFlowStage = typeof salesFlowStages.$inferSelect;
+export type FlowNode = typeof flowNodes.$inferSelect;
+export type FlowConnection = typeof flowConnections.$inferSelect;
+export type ConversationFlowSession = typeof conversationFlowSessions.$inferSelect;
+export type FlowExecutionLog = typeof flowExecutionLog.$inferSelect;
+export type SalesMetrics = typeof salesMetrics.$inferSelect;
+export type InsertSalesFlowStage = typeof insertSalesFlowStageSchema._type;
+export type InsertFlowNode = typeof insertFlowNodeSchema._type;
+export type InsertFlowConnection = typeof insertFlowConnectionSchema._type;
+export type InsertConversationFlowSession = typeof insertConversationFlowSessionSchema._type;
+export type InsertFlowExecutionLog = typeof insertFlowExecutionLogSchema._type;
+export type InsertSalesMetrics = typeof insertSalesMetricsSchema._type;
