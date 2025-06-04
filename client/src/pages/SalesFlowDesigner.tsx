@@ -92,10 +92,10 @@ const EnhancedNode = ({
     <div className="flex items-center">
       <Icon className={`w-4 h-4 mr-2 ${textColor}`} />
       <div>
-        <div className={`text-sm font-bold ${textColor.replace('text-', 'text-').replace('-600', '-800')}`}>
+        <div className={`font-bold ${textColor.replace('text-', 'text-').replace('-600', '-800')}`} style={{ fontSize: '10px' }}>
           {data.label}
         </div>
-        <div className={`text-xs ${textColor}`}>{data.description}</div>
+        <div className={`${textColor}`} style={{ fontSize: '10px' }}>{data.description}</div>
       </div>
     </div>
     
@@ -349,8 +349,8 @@ export default function SalesFlowDesigner() {
         <div className="flex items-center">
           <GitBranch className="w-4 h-4 mr-2 text-blue-600" />
           <div>
-            <div className="text-sm font-bold text-blue-800">{props.data.label}</div>
-            <div className="text-xs text-blue-600">{props.data.description}</div>
+            <div className="font-bold text-blue-800" style={{ fontSize: '10px' }}>{props.data.label}</div>
+            <div className="text-blue-600" style={{ fontSize: '10px' }}>{props.data.description}</div>
           </div>
         </div>
         <Handle
