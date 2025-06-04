@@ -129,6 +129,43 @@ const nodeTypes = {
         style={{ bottom: -8, backgroundColor: '#8B5CF6' }}
       />
     </div>
+  ),
+  automation: ({ data }: any) => (
+    <div className="px-4 py-2 shadow-md rounded-md bg-cyan-100 border-2 border-cyan-500">
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ top: -8, backgroundColor: '#06B6D4' }}
+      />
+      <div className="flex items-center">
+        <Settings className="w-4 h-4 mr-2 text-cyan-600" />
+        <div>
+          <div className="text-sm font-bold text-cyan-800">{data.label}</div>
+          <div className="text-xs text-cyan-600">{data.description}</div>
+        </div>
+      </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{ bottom: -8, backgroundColor: '#06B6D4' }}
+      />
+    </div>
+  ),
+  handoff: ({ data }: any) => (
+    <div className="px-4 py-2 shadow-md rounded-md bg-rose-100 border-2 border-rose-500">
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ top: -8, backgroundColor: '#F43F5E' }}
+      />
+      <div className="flex items-center">
+        <Users className="w-4 h-4 mr-2 text-rose-600" />
+        <div>
+          <div className="text-sm font-bold text-rose-800">{data.label}</div>
+          <div className="text-xs text-rose-600">{data.description}</div>
+        </div>
+      </div>
+    </div>
   )
 };
 
@@ -292,7 +329,9 @@ export default function SalesFlowDesigner() {
       trigger: 'Disparador',
       condition: 'Condición',
       action: 'Acción',
-      response: 'Respuesta'
+      response: 'Respuesta',
+      automation: 'Automatización',
+      handoff: 'Transferir Agente'
     };
 
     const newNode: Node = {
@@ -382,6 +421,22 @@ export default function SalesFlowDesigner() {
                 >
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Respuesta
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => addNewNode('automation')}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Automatización
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => addNewNode('handoff')}
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Transferir Agente
                 </Button>
               </div>
             </div>
@@ -537,6 +592,171 @@ function NodeConfigForm({ node, onSave, onCancel }: {
             })}
             placeholder="Respuesta que se enviará al cliente..."
           />
+        </div>
+      )}
+
+      {node.type === 'automation' && (
+        <div className="space-y-4">
+          <div>
+            <Label>Tipo de Automatización</Label>
+            <Select 
+              value={config.config?.automationType || ''} 
+              onValueChange={(value) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  automationType: value 
+                }
+              })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar automatización" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="enable_auto_response">Activar Respuestas Automáticas</SelectItem>
+                <SelectItem value="disable_auto_response">Desactivar Respuestas Automáticas</SelectItem>
+                <SelectItem value="change_agent">Cambiar Agente de IA</SelectItem>
+                <SelectItem value="create_ticket">Crear Ticket</SelectItem>
+                <SelectItem value="update_lead_score">Actualizar Puntuación de Lead</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {config.config?.automationType === 'change_agent' && (
+            <div>
+              <Label>Nuevo Agente de IA</Label>
+              <Select 
+                value={config.config?.newAgentId || ''} 
+                onValueChange={(value) => setConfig({ 
+                  ...config, 
+                  config: { 
+                    ...config.config, 
+                    newAgentId: value 
+                  }
+                })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar agente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Smart Assistant">Smart Assistant</SelectItem>
+                  <SelectItem value="Smartplanner IA">Smartplanner IA</SelectItem>
+                  <SelectItem value="Agente de Ventas">Agente de Ventas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {config.config?.automationType === 'update_lead_score' && (
+            <div>
+              <Label>Puntuación a Añadir</Label>
+              <Input 
+                type="number"
+                value={config.config?.scoreValue || 0} 
+                onChange={(e) => setConfig({ 
+                  ...config, 
+                  config: { 
+                    ...config.config, 
+                    scoreValue: parseInt(e.target.value) 
+                  }
+                })}
+                placeholder="10"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {node.type === 'handoff' && (
+        <div className="space-y-4">
+          <div>
+            <Label>Tipo de Transferencia</Label>
+            <Select 
+              value={config.config?.handoffType || ''} 
+              onValueChange={(value) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  handoffType: value 
+                }
+              })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar tipo de transferencia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="assign_to_agent">Asignar a Agente Específico</SelectItem>
+                <SelectItem value="assign_by_department">Asignar por Departamento</SelectItem>
+                <SelectItem value="assign_next_available">Siguiente Agente Disponible</SelectItem>
+                <SelectItem value="create_ticket_assign">Crear Ticket y Asignar</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {config.config?.handoffType === 'assign_to_agent' && (
+            <div>
+              <Label>Agente Específico</Label>
+              <Select 
+                value={config.config?.assignedAgentId || ''} 
+                onValueChange={(value) => setConfig({ 
+                  ...config, 
+                  config: { 
+                    ...config.config, 
+                    assignedAgentId: value 
+                  }
+                })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar agente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="maria.ventas">María González (Ventas)</SelectItem>
+                  <SelectItem value="carlos.soporte">Carlos Rodríguez (Soporte)</SelectItem>
+                  <SelectItem value="ana.supervisor">Ana Martínez (Supervisor)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {config.config?.handoffType === 'assign_by_department' && (
+            <div>
+              <Label>Departamento</Label>
+              <Select 
+                value={config.config?.department || ''} 
+                onValueChange={(value) => setConfig({ 
+                  ...config, 
+                  config: { 
+                    ...config.config, 
+                    department: value 
+                  }
+                })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar departamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ventas">Ventas</SelectItem>
+                  <SelectItem value="soporte">Soporte Técnico</SelectItem>
+                  <SelectItem value="administracion">Administración</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div>
+            <Label>Mensaje de Transferencia</Label>
+            <Textarea 
+              value={config.config?.handoffMessage || ''} 
+              onChange={(e) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  handoffMessage: e.target.value 
+                }
+              })}
+              placeholder="Perfecto, te voy a conectar con uno de nuestros especialistas que podrá ayudarte mejor..."
+            />
+          </div>
         </div>
       )}
 

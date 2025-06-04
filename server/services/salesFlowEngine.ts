@@ -166,6 +166,12 @@ export class SalesFlowEngine {
       case 'response':
         return this.executeResponseNode(node, messageText, session, config);
       
+      case 'automation':
+        return this.executeAutomationNode(node, messageText, session, config);
+      
+      case 'handoff':
+        return this.executeHandoffNode(node, messageText, session, config);
+      
       default:
         return {
           success: false,
@@ -455,6 +461,272 @@ Responde de manera profesional y personalizada:`;
     } catch (error) {
       console.error('Error logging flow execution:', error);
     }
+  }
+
+  /**
+   * Execute automation node (system integrations)
+   */
+  private async executeAutomationNode(node: any, messageText: string, session: any, config: any): Promise<FlowExecutionResult> {
+    const automationType = config.automationType;
+    
+    try {
+      switch (automationType) {
+        case 'enable_auto_response':
+          await this.enableAutoResponse(session.accountId);
+          break;
+        
+        case 'disable_auto_response':
+          await this.disableAutoResponse(session.accountId);
+          break;
+        
+        case 'change_agent':
+          await this.changeAIAgent(session.accountId, config.newAgentId);
+          break;
+        
+        case 'create_ticket':
+          await this.createTicket(session.chatId, session.accountId, messageText);
+          break;
+        
+        case 'update_lead_score':
+          session.sessionData.leadScore = (session.sessionData.leadScore || 0) + (config.scoreValue || 10);
+          break;
+      }
+
+      const nextNode = await this.getNextNode(node.id);
+      return {
+        success: true,
+        nextNodeId: nextNode?.id,
+        sessionData: session.sessionData,
+        response: `Automatización "${automationType}" ejecutada correctamente.`
+      };
+    } catch (error) {
+      console.error('Error executing automation node:', error);
+      return {
+        success: false,
+        response: 'Error ejecutando automatización.'
+      };
+    }
+  }
+
+  /**
+   * Execute handoff node (transfer to human agents)
+   */
+  private async executeHandoffNode(node: any, messageText: string, session: any, config: any): Promise<FlowExecutionResult> {
+    const handoffType = config.handoffType;
+    const handoffMessage = config.handoffMessage || 'Te estoy conectando con un agente especializado.';
+    
+    try {
+      let assignedAgentId;
+      
+      switch (handoffType) {
+        case 'assign_to_agent':
+          assignedAgentId = await this.assignToSpecificAgent(session.chatId, session.accountId, config.assignedAgentId);
+          break;
+        
+        case 'assign_by_department':
+          assignedAgentId = await this.assignByDepartment(session.chatId, session.accountId, config.department);
+          break;
+        
+        case 'assign_next_available':
+          assignedAgentId = await this.assignToNextAvailable(session.chatId, session.accountId);
+          break;
+        
+        case 'create_ticket_assign':
+          const ticketId = await this.createTicketAndAssign(session.chatId, session.accountId, messageText);
+          assignedAgentId = ticketId;
+          break;
+      }
+
+      // Disable auto responses when transferring to human agent
+      await this.disableAutoResponse(session.accountId);
+      
+      // Mark session as completed (transferred to human)
+      await db
+        .update(conversationFlowSessions)
+        .set({
+          isActive: false,
+          completedAt: new Date()
+        })
+        .where(eq(conversationFlowSessions.id, session.id));
+
+      return {
+        success: true,
+        response: handoffMessage,
+        sessionData: {
+          ...session.sessionData,
+          assignedAgent: assignedAgentId,
+          transferredAt: new Date()
+        }
+      };
+    } catch (error) {
+      console.error('Error executing handoff node:', error);
+      return {
+        success: false,
+        response: 'Error realizando transferencia. Un agente se pondrá en contacto contigo pronto.'
+      };
+    }
+  }
+
+  /**
+   * Enable automatic responses for account
+   */
+  private async enableAutoResponse(accountId: number) {
+    await db
+      .update(whatsappAccounts)
+      .set({ autoResponseEnabled: true })
+      .where(eq(whatsappAccounts.id, accountId));
+  }
+
+  /**
+   * Disable automatic responses for account
+   */
+  private async disableAutoResponse(accountId: number) {
+    await db
+      .update(whatsappAccounts)
+      .set({ autoResponseEnabled: false })
+      .where(eq(whatsappAccounts.id, accountId));
+  }
+
+  /**
+   * Change AI agent for account
+   */
+  private async changeAIAgent(accountId: number, newAgentId: string) {
+    await db
+      .update(whatsappAccounts)
+      .set({ assignedExternalAgentId: newAgentId })
+      .where(eq(whatsappAccounts.id, accountId));
+  }
+
+  /**
+   * Create ticket from conversation
+   */
+  private async createTicket(chatId: string, accountId: number, messageText: string) {
+    // This would integrate with your existing ticket system
+    // Implementation depends on your ticket schema
+    return `ticket_${Date.now()}`;
+  }
+
+  /**
+   * Assign chat to specific agent
+   */
+  private async assignToSpecificAgent(chatId: string, accountId: number, agentUsername: string) {
+    const agent = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, agentUsername))
+      .limit(1);
+
+    if (agent.length > 0) {
+      await db
+        .insert(chatAssignments)
+        .values({
+          chatId,
+          accountId,
+          assignedToId: agent[0].id,
+          status: 'active',
+          category: 'sales'
+        })
+        .onConflictDoUpdate({
+          target: chatAssignments.chatId,
+          set: {
+            assignedToId: agent[0].id,
+            assignedAt: new Date()
+          }
+        });
+      
+      return agent[0].id;
+    }
+    return null;
+  }
+
+  /**
+   * Assign chat by department
+   */
+  private async assignByDepartment(chatId: string, accountId: number, department: string) {
+    const agents = await db
+      .select()
+      .from(users)
+      .where(and(
+        eq(users.department, department),
+        eq(users.status, 'active'),
+        eq(users.role, 'agent')
+      ));
+
+    if (agents.length > 0) {
+      // Assign to first available agent in department
+      const selectedAgent = agents[0];
+      
+      await db
+        .insert(chatAssignments)
+        .values({
+          chatId,
+          accountId,
+          assignedToId: selectedAgent.id,
+          status: 'active',
+          category: department
+        })
+        .onConflictDoUpdate({
+          target: chatAssignments.chatId,
+          set: {
+            assignedToId: selectedAgent.id,
+            assignedAt: new Date()
+          }
+        });
+      
+      return selectedAgent.id;
+    }
+    return null;
+  }
+
+  /**
+   * Assign to next available agent
+   */
+  private async assignToNextAvailable(chatId: string, accountId: number) {
+    const availableAgents = await db
+      .select()
+      .from(users)
+      .where(and(
+        eq(users.status, 'active'),
+        eq(users.role, 'agent')
+      ));
+
+    if (availableAgents.length > 0) {
+      // Simple round-robin assignment
+      const selectedAgent = availableAgents[Math.floor(Math.random() * availableAgents.length)];
+      
+      await db
+        .insert(chatAssignments)
+        .values({
+          chatId,
+          accountId,
+          assignedToId: selectedAgent.id,
+          status: 'active',
+          category: 'general'
+        })
+        .onConflictDoUpdate({
+          target: chatAssignments.chatId,
+          set: {
+            assignedToId: selectedAgent.id,
+            assignedAt: new Date()
+          }
+        });
+      
+      return selectedAgent.id;
+    }
+    return null;
+  }
+
+  /**
+   * Create ticket and assign
+   */
+  private async createTicketAndAssign(chatId: string, accountId: number, messageText: string) {
+    // Create ticket first
+    const ticketId = await this.createTicket(chatId, accountId, messageText);
+    
+    // Then assign to next available agent
+    await this.assignToNextAvailable(chatId, accountId);
+    
+    return ticketId;
   }
 
   /**
