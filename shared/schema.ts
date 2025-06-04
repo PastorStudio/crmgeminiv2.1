@@ -773,3 +773,34 @@ export type InsertFlowConnection = typeof insertFlowConnectionSchema._type;
 export type InsertConversationFlowSession = typeof insertConversationFlowSessionSchema._type;
 export type InsertFlowExecutionLog = typeof insertFlowExecutionLogSchema._type;
 export type InsertSalesMetrics = typeof insertSalesMetricsSchema._type;
+
+// Core types and schemas
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+export type Lead = typeof leads.$inferSelect;
+export type InsertLead = typeof leads.$inferInsert;
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = typeof contacts.$inferInsert;
+export type WhatsAppAccount = typeof whatsappAccounts.$inferSelect;
+export type InsertWhatsAppAccount = typeof whatsappAccounts.$inferInsert;
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = typeof conversations.$inferInsert;
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
+export type Activity = typeof activities.$inferSelect;
+export type InsertActivity = typeof activities.$inferInsert;
+export type Ticket = typeof tickets.$inferSelect;
+export type InsertTicket = typeof tickets.$inferInsert;
+export type ChatAssignment = typeof chatAssignments.$inferSelect;
+export type InsertChatAssignment = typeof chatAssignments.$inferInsert;
+export type AiPrompt = typeof aiPrompts.$inferSelect;
+export type InsertAiPrompt = typeof aiPrompts.$inferInsert;
+export type DashboardStats = typeof dashboardStats.$inferSelect;
+export type InsertDashboardStats = typeof dashboardStats.$inferInsert;
+export type AgentActivity = typeof agentActivity.$inferSelect;
+export type InsertAgentActivity = typeof agentActivity.$inferInsert;
+
+// Additional validation schemas (avoiding duplicates)
+export const insertContactSchema = createInsertSchema(contacts);
+export const insertConversationSchema = createInsertSchema(conversations);
+export const insertTicketSchema = createInsertSchema(tickets);

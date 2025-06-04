@@ -511,6 +511,83 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
   }
+
+  // Lead management methods
+  async getLeads(): Promise<Lead[]> {
+    try {
+      return await db.select().from(leads).orderBy(desc(leads.createdAt));
+    } catch (error) {
+      console.error('Error getting leads:', error);
+      return [];
+    }
+  }
+
+  async createLead(insertLead: InsertLead): Promise<Lead> {
+    try {
+      console.log('Creating lead with data:', insertLead);
+      const [lead] = await db
+        .insert(leads)
+        .values({
+          ...insertLead,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+      console.log('Lead created successfully:', lead);
+      return lead;
+    } catch (error) {
+      console.error('Error creating lead:', error);
+      throw error;
+    }
+  }
+
+  async getLead(id: number): Promise<Lead | undefined> {
+    try {
+      const [lead] = await db.select().from(leads).where(eq(leads.id, id));
+      return lead || undefined;
+    } catch (error) {
+      console.error('Error getting lead:', error);
+      return undefined;
+    }
+  }
+
+  async updateLead(id: number, updates: Partial<InsertLead>): Promise<Lead | undefined> {
+    try {
+      const [lead] = await db
+        .update(leads)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(leads.id, id))
+        .returning();
+      return lead || undefined;
+    } catch (error) {
+      console.error('Error updating lead:', error);
+      return undefined;
+    }
+  }
+
+  async deleteLead(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(leads).where(eq(leads.id, id));
+      return result.count > 0;
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+      return false;
+    }
+  }
+
+  async updateLeadStatus(id: number, status: string): Promise<Lead | undefined> {
+    try {
+      const [lead] = await db
+        .update(leads)
+        .set({ status, updatedAt: new Date() })
+        .where(eq(leads.id, id))
+        .returning();
+      return lead || undefined;
+    } catch (error) {
+      console.error('Error updating lead status:', error);
+      return undefined;
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();
