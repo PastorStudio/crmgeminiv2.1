@@ -611,7 +611,7 @@ export default function SalesFlowDesigner() {
 
         {/* Floating Panel */}
         {isFloatingPanelOpen && (
-          <div className="fixed bottom-24 right-6 w-80 bg-white rounded-lg shadow-2xl border p-4 z-40 max-h-96 overflow-y-auto">
+          <div className="fixed bottom-24 right-6 w-64 bg-white rounded-lg shadow-2xl border p-4 z-40 max-h-96 overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-gray-900" style={{ fontSize: '12px' }}>Agregar Nodos</h3>
               <Button
@@ -624,7 +624,7 @@ export default function SalesFlowDesigner() {
               </Button>
             </div>
             
-            <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
               {[
                 { type: 'trigger', label: 'Disparador', icon: Zap, color: 'bg-green-100 text-green-800' },
                 { type: 'condition', label: 'Condición', icon: GitBranch, color: 'bg-blue-100 text-blue-800' },
@@ -641,25 +641,25 @@ export default function SalesFlowDesigner() {
                 <Button
                   key={nodeType.type}
                   variant="ghost"
-                  className="h-16 flex-col p-2 justify-center items-center text-center"
+                  className="w-full h-10 justify-start p-2"
                   onClick={() => {
                     addNewNode(nodeType.type);
                     setIsFloatingPanelOpen(false);
                   }}
                 >
-                  <div className={`p-1 rounded-md ${nodeType.color} mb-1`}>
+                  <div className={`p-1 rounded-md ${nodeType.color} mr-2`}>
                     <nodeType.icon className="w-3 h-3" />
                   </div>
-                  <span style={{ fontSize: '10px' }} className="leading-tight">
+                  <span style={{ fontSize: '10px' }}>
                     {nodeType.label}
                   </span>
                 </Button>
               ))}
             </div>
 
-            <Separator className="my-4" />
+            <Separator className="my-3" />
             
-            <div className="space-y-2">
+            <div className="space-y-1">
               <h4 className="font-medium text-gray-900" style={{ fontSize: '10px' }}>Controles</h4>
               <p style={{ fontSize: '10px' }} className="text-gray-600 leading-tight">
                 • Clic en X rojo para eliminar nodo<br/>
