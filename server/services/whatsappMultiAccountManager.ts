@@ -491,57 +491,6 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         console.error(`❌ Error procesando código QR para cuenta ${id}:`, error);
       }
     });
-    client.on('qr', async (qrText) => {
-      console.log(`Nuevo código QR recibido para cuenta ID ${id} (${name})`);
-      
-      try {
-        // Validar QR
-        if (!this.isValidQRCode(qrText)) {
-          console.error(`Código QR inválido para cuenta ${id}: ${qrText}`);
-          return;
-        }
-
-        // Guardar en archivo de manera segura
-        this.saveQRToFile(qrText, qrCodePath);
-        
-        // Generar imagen optimizada para producción
-        const qrDataUrl = await this.generateQRImage(qrText);
-        
-        // Actualizar estado
-        instance.status.qrCode = qrText;
-        instance.status.qrDataUrl = qrDataUrl;
-        instance.status.ready = true;
-        
-        // Almacenar en cache optimizado
-        this.cacheQRCode(id, qrText, qrDataUrl);
-        
-        // Actualizar en base de datos
-        try {
-          await storage.updateWhatsappAccount(id, { 
-            status: 'pending_auth',
-            sessionData: {
-              qrCode: qrText,
-              qrDataUrl: qrDataUrl,
-              lastQrGenerated: new Date().toISOString()
-            }
-          });
-        } catch (dbError) {
-          console.warn(`No se pudo actualizar estado en BD para cuenta ${id}:`, dbError);
-        }
-        
-        // Emitir evento
-        this.emit('qr', { 
-          accountId: id, 
-          accountName: name, 
-          qrText, 
-          qrDataUrl 
-        });
-      
-      } catch (qrError) {
-        console.error(`Error procesando código QR para cuenta ${id}:`, qrError);
-        instance.status.error = 'Error generando código QR';
-      }
-    });
 
     // Evento de autenticación exitosa
     client.on('authenticated', () => {
@@ -718,6 +667,48 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         console.error(`❌ Error procesando mensaje para tickets automáticos:`, error);
       }
     });
+  }
+
+  /**
+   * Fuerza la generación de un nuevo código QR limpiando el cache
+   */
+  async forceRefreshQR(accountId: number): Promise<boolean> {
+    try {
+      console.log(`🔄 Forzando actualización de QR para cuenta ${accountId}`);
+      
+      // Limpiar cache
+      this.qrCodeCache.delete(accountId);
+      
+      const instance = this.instances.get(accountId);
+      if (!instance || !instance.client) {
+        console.log(`❌ Instancia no encontrada para cuenta ${accountId}`);
+        return false;
+      }
+
+      // Reinicializar cliente para generar nuevo QR
+      try {
+        await instance.client.destroy();
+        console.log(`🔄 Cliente destruido para cuenta ${accountId}`);
+        
+        // Pequeña pausa antes de reinicializar
+        setTimeout(async () => {
+          try {
+            await this.initializeAccount(accountId);
+            console.log(`✅ QR forzado para cuenta ${accountId}`);
+          } catch (error) {
+            console.error(`❌ Error reinicializando cuenta ${accountId}:`, error);
+          }
+        }, 2000);
+        
+        return true;
+      } catch (error) {
+        console.error(`❌ Error forzando refresh QR:`, error);
+        return false;
+      }
+    } catch (error) {
+      console.error(`❌ Error en forceRefreshQR:`, error);
+      return false;
+    }
   }
 
   /**

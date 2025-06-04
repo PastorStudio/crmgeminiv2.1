@@ -3470,37 +3470,69 @@ app.use((req, res, next) => {
         console.log(`❌ Cuenta ${accountId} no existe en el sistema`);
         return res.status(404).json({
           success: false,
-          message: `Cuenta ${accountId} no encontrada en el sistema`
+          error: 'Cuenta no encontrada'
         });
       }
+
+      const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
       
-      // Leer el código QR del archivo
-      const fs = await import('fs');
-      const path = await import('path');
+      // Verificar si la cuenta está inicializada
+      if (!whatsappMultiAccountManager.accountExists(parseInt(accountId))) {
+        await whatsappMultiAccountManager.initializeAccount(parseInt(accountId));
+      }
+
+      const qrWithImage = await whatsappMultiAccountManager.getQRWithImage(parseInt(accountId));
       
-      const qrPath = path.join(process.cwd(), 'temp', 'whatsapp-accounts', `account_${accountId}`, 'qr.txt');
-      
-      if (fs.existsSync(qrPath)) {
-        const qrCode = fs.readFileSync(qrPath, 'utf8').trim();
-        console.log(`✅ Código QR encontrado para cuenta existente ${account.name} (ID: ${accountId})`);
-        
+      if (qrWithImage && qrWithImage.qrcode) {
+        console.log(`✅ QR encontrado para cuenta ${accountId}`);
         res.json({
           success: true,
-          qrCode: qrCode,
-          accountId: parseInt(accountId),
-          accountName: account.name,
-          message: `Código QR disponible para cuenta ${account.name}`
+          qrcode: qrWithImage.qrcode,
+          qrDataUrl: qrWithImage.qrDataUrl
         });
       } else {
-        console.log(`❌ No hay código QR disponible para cuenta ${account.name} (ID: ${accountId})`);
-        res.json({
+        console.log(`⏳ QR no disponible para cuenta ${accountId}`);
+        res.status(202).json({
           success: false,
-          message: `Código QR no disponible para ${account.name}. Espera a que se genere.`
+          message: 'QR code no disponible aún, intente nuevamente en unos segundos'
         });
       }
     } catch (error) {
-      console.error('Error al obtener código QR:', error);
-      res.status(500).json({ error: 'Error al obtener código QR' });
+      console.error('❌ Error obteniendo QR:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error obteniendo código QR'
+      });
+    }
+  });
+
+  // NUEVO ENDPOINT PARA FORZAR ACTUALIZACIÓN DE QR
+  app.post('/api/whatsapp/qr/:accountId/refresh', async (req, res) => {
+    try {
+      const { accountId } = req.params;
+      console.log(`🔄 Forzando actualización de QR para cuenta ${accountId}`);
+      
+      const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
+      
+      const success = await whatsappMultiAccountManager.forceRefreshQR(parseInt(accountId));
+      
+      if (success) {
+        res.json({
+          success: true,
+          message: 'QR refresh iniciado, el nuevo código estará disponible en unos segundos'
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Error forzando actualización de QR'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error forzando refresh QR:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+      });
     }
   });
 
