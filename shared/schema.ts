@@ -730,6 +730,28 @@ export const salesMetrics = pgTable("sales_metrics", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
+
+
+// User WhatsApp accounts association
+export const userWhatsappAccounts = pgTable("user_whatsapp_accounts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  accountId: integer("account_id").references(() => whatsappAccounts.id),
+  role: text("role").default("agent"),
+  permissions: jsonb("permissions"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Chat categories
+export const chatCategories = pgTable("chat_categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  color: text("color").default("#3b82f6"),
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
 // Sales flow schema exports
 export const insertSalesFlowStageSchema = createInsertSchema(salesFlowStages).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertFlowNodeSchema = createInsertSchema(flowNodes).omit({ id: true, createdAt: true });

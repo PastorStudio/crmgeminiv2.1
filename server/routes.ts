@@ -6252,5 +6252,8 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
     }
   });
 
+  // Use flow execution router
+  app.use('/api/flow-execution', flowExecutionRouter);
+
   return httpServer;
 }
