@@ -298,6 +298,12 @@ export default function SalesFlowDesigner() {
     setIsConfigOpen(true);
   }, []);
 
+  const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault();
+    setSelectedNode(node);
+    setIsConfigOpen(true);
+  }, []);
+
   // Edge click handler
   const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
     setEdges(edges => edges.filter(e => e.id !== edge.id));
@@ -590,6 +596,7 @@ export default function SalesFlowDesigner() {
             onConnect={onConnect}
             onNodeClick={onNodeClick}
             onNodeContextMenu={onNodeContextMenu}
+            onNodeDoubleClick={onNodeDoubleClick}
             onEdgeClick={onEdgeClick}
             nodeTypes={nodeTypes}
             fitView
@@ -662,17 +669,18 @@ export default function SalesFlowDesigner() {
             <div className="space-y-1">
               <h4 className="font-medium text-gray-900" style={{ fontSize: '10px' }}>Controles</h4>
               <p style={{ fontSize: '10px' }} className="text-gray-600 leading-tight">
+                • Doble clic en nodo para configurar<br/>
+                • Clic derecho para configurar<br/>
                 • Clic en X rojo para eliminar nodo<br/>
                 • Clic en ícono azul para conectar<br/>
-                • Delete/Backspace para eliminar seleccionados<br/>
-                • Clic derecho para configurar
+                • Delete/Backspace para eliminar seleccionados
               </p>
             </div>
           </div>
         )}
       </div>
 
-      {selectedNode && (
+      {selectedNode && isConfigOpen && (
         <NodeConfigForm 
           node={selectedNode} 
           onSave={(updatedNode) => {
@@ -708,6 +716,12 @@ function NodeConfigForm({ node, onSave, onCancel }: {
     defaultValues: {
       label: node.data.label || '',
       description: node.data.description || '',
+      message: node.data.message || '',
+      condition: node.data.condition || '',
+      action: node.data.action || '',
+      webhook_url: node.data.webhook_url || '',
+      delay_time: node.data.delay_time || '',
+      schedule_time: node.data.schedule_time || '',
       config: node.data.config || {}
     }
   });
@@ -717,17 +731,125 @@ function NodeConfigForm({ node, onSave, onCancel }: {
       ...node,
       data: {
         ...node.data,
-        ...values
+        ...values,
+        label: values.label || node.data.label
       }
     };
     onSave(updatedNode);
   };
 
+  const getNodeTypeFields = () => {
+    const nodeType = node.type;
+    
+    switch (nodeType) {
+      case 'response':
+        return (
+          <FormField
+            control={form.control}
+            name="message"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Mensaje de Respuesta</FormLabel>
+                <FormControl>
+                  <Textarea {...field} placeholder="Escribe el mensaje que se enviará..." />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        );
+      
+      case 'condition':
+        return (
+          <FormField
+            control={form.control}
+            name="condition"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Condición</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="ej: usuario.edad > 18" />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        );
+      
+      case 'action':
+        return (
+          <FormField
+            control={form.control}
+            name="action"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Acción a Realizar</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="ej: crear_lead, enviar_email" />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        );
+      
+      case 'webhook':
+        return (
+          <FormField
+            control={form.control}
+            name="webhook_url"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>URL del Webhook</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="https://mi-api.com/webhook" />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        );
+      
+      case 'delay':
+        return (
+          <FormField
+            control={form.control}
+            name="delay_time"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tiempo de Espera</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="ej: 5 minutos, 1 hora" />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        );
+      
+      case 'schedule':
+        return (
+          <FormField
+            control={form.control}
+            name="schedule_time"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Programar Para</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="ej: 2024-12-25 09:00" />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        );
+      
+      default:
+        return null;
+    }
+  };
+
   return (
     <Dialog open={true} onOpenChange={() => onCancel()}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Configurar Nodo: {node.data.label}</DialogTitle>
+          <DialogTitle style={{ fontSize: '14px' }}>
+            Configurar: {node.data.label}
+          </DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
@@ -737,9 +859,9 @@ function NodeConfigForm({ node, onSave, onCancel }: {
               name="label"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Etiqueta</FormLabel>
+                  <FormLabel style={{ fontSize: '12px' }}>Nombre del Nodo</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} style={{ fontSize: '12px' }} />
                   </FormControl>
                 </FormItem>
               )}
@@ -750,19 +872,21 @@ function NodeConfigForm({ node, onSave, onCancel }: {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descripción</FormLabel>
+                  <FormLabel style={{ fontSize: '12px' }}>Descripción</FormLabel>
                   <FormControl>
-                    <Textarea {...field} />
+                    <Textarea {...field} style={{ fontSize: '12px' }} className="min-h-[60px]" />
                   </FormControl>
                 </FormItem>
               )}
             />
             
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={onCancel}>
+            {getNodeTypeFields()}
+            
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={onCancel} style={{ fontSize: '12px' }}>
                 Cancelar
               </Button>
-              <Button type="submit">
+              <Button type="submit" style={{ fontSize: '12px' }}>
                 Guardar
               </Button>
             </div>
