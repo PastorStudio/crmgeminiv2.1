@@ -186,6 +186,17 @@ const AppRoutes: React.FC = () => {
                 Pipeline Ventas
               </a>
               
+              <a href="/sales-flow-designer" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/sales-flow-designer' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <path d="M6 3v12M18 9v12M12 3v6M12 15v6" stroke="#6366F1" strokeWidth="2" strokeLinecap="round"/>
+                  <circle cx="6" cy="9" r="2" fill="#6366F1"/>
+                  <circle cx="12" cy="9" r="2" fill="#10B981"/>
+                  <circle cx="18" cy="15" r="2" fill="#F59E0B"/>
+                  <path d="M8 9h2M14 9h2" stroke="#6366F1" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                Flujos de Ventas
+              </a>
+              
               {/* Comunicación */}
               <div className="px-3 pt-3 pb-1">
                 <span className="text-xs uppercase font-semibold text-white/70">Comunicación</span>
