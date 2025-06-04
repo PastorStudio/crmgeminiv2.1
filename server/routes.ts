@@ -44,6 +44,7 @@ import { translateText, detectLanguage } from "./routes/translation";
 // Referencias de problemas corregidos removidas para optimización
 import autonomousApiRouter from "./routes/autonomousApi";
 import { getLeadsSimpleAPI, getLeadStatsSimpleAPI } from "./routes/leads-simple";
+import salesFlowRouter from "./routes/salesFlowRoutes";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -88,6 +89,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Registrar rutas del sistema autónomo
   app.use("/api/autonomous", autonomousApiRouter);
+  
+  // Sales flow designer routes
+  app.use("/api/sales-flow", salesFlowRouter);
   // ✅ ENDPOINTS DIRECTOS PARA ASIGNACIONES Y COMENTARIOS - POSTGRESQL REAL
   const { 
     createChatAssignment, 
