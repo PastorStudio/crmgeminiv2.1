@@ -155,8 +155,8 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         return null;
       }
 
-      // Verificar si no es muy antiguo (máximo 5 minutos)
-      const maxAge = 5 * 60 * 1000; // 5 minutos
+      // Verificar si no es muy antiguo (máximo 20 minutos para reducir frecuencia)
+      const maxAge = 20 * 60 * 1000; // 20 minutos
       if (Date.now() - cached.generatedAt > maxAge) {
         this.qrCodeCache.delete(accountId);
         console.log(`Cache QR expirado para cuenta ${accountId}, eliminando`);
@@ -458,9 +458,16 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   private setupClientEvents(instance: WhatsAppInstance): void {
     const { client, id, name, qrCodePath } = instance;
 
-    // Evento QR mejorado para producción
+    // Evento QR mejorado con control de timing
     client.on('qr', async (qr) => {
       try {
+        // Verificar si ya tenemos un QR válido reciente (evitar regeneración frecuente)
+        const cached = this.getCachedQR(id);
+        if (cached && Date.now() - cached.generatedAt < 15 * 60 * 1000) { // 15 minutos
+          console.log(`⏭️ QR reciente ya disponible para cuenta ${id}, omitiendo regeneración`);
+          return;
+        }
+
         console.log(`📱 Código QR recibido para cuenta ${id}: ${qr.substring(0, 50)}...`);
         
         // Validar formato del código QR
@@ -471,7 +478,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           const remainingMinutes = improvedQRManager.getRemainingValidityMinutes(id);
           console.log(`✅ Código QR generado para cuenta ${id} (válido por ${remainingMinutes} minutos)`);
           
-          // También mantener compatibilidad con el cache actual
+          // Mantener compatibilidad con el cache actual con timestamp actualizado
           this.qrCodeCache.set(id, {
             text: qr,
             dataUrl: await this.generateQRImage(qr),
