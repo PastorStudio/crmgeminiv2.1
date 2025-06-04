@@ -37,7 +37,12 @@ import {
   Settings,
   BarChart3,
   Users,
-  Target
+  Target,
+  Clock,
+  Link,
+  CheckCircle,
+  Send,
+  Calendar
 } from 'lucide-react';
 
 import { Handle, Position } from 'reactflow';
@@ -165,6 +170,111 @@ const nodeTypes = {
           <div className="text-xs text-rose-600">{data.description}</div>
         </div>
       </div>
+    </div>
+  ),
+  delay: ({ data }: any) => (
+    <div className="px-4 py-2 shadow-md rounded-md bg-orange-100 border-2 border-orange-500">
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ top: -8, backgroundColor: '#F97316' }}
+      />
+      <div className="flex items-center">
+        <MessageSquare className="w-4 h-4 mr-2 text-orange-600" />
+        <div>
+          <div className="text-sm font-bold text-orange-800">{data.label}</div>
+          <div className="text-xs text-orange-600">{data.description}</div>
+        </div>
+      </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{ bottom: -8, backgroundColor: '#F97316' }}
+      />
+    </div>
+  ),
+  webhook: ({ data }: any) => (
+    <div className="px-4 py-2 shadow-md rounded-md bg-indigo-100 border-2 border-indigo-500">
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ top: -8, backgroundColor: '#6366F1' }}
+      />
+      <div className="flex items-center">
+        <MessageSquare className="w-4 h-4 mr-2 text-indigo-600" />
+        <div>
+          <div className="text-sm font-bold text-indigo-800">{data.label}</div>
+          <div className="text-xs text-indigo-600">{data.description}</div>
+        </div>
+      </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{ bottom: -8, backgroundColor: '#6366F1' }}
+      />
+    </div>
+  ),
+  validation: ({ data }: any) => (
+    <div className="px-4 py-2 shadow-md rounded-md bg-emerald-100 border-2 border-emerald-500">
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ top: -8, backgroundColor: '#10B981' }}
+      />
+      <div className="flex items-center">
+        <MessageSquare className="w-4 h-4 mr-2 text-emerald-600" />
+        <div>
+          <div className="text-sm font-bold text-emerald-800">{data.label}</div>
+          <div className="text-xs text-emerald-600">{data.description}</div>
+        </div>
+      </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{ bottom: -8, backgroundColor: '#10B981' }}
+      />
+    </div>
+  ),
+  broadcast: ({ data }: any) => (
+    <div className="px-4 py-2 shadow-md rounded-md bg-pink-100 border-2 border-pink-500">
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ top: -8, backgroundColor: '#EC4899' }}
+      />
+      <div className="flex items-center">
+        <MessageSquare className="w-4 h-4 mr-2 text-pink-600" />
+        <div>
+          <div className="text-sm font-bold text-pink-800">{data.label}</div>
+          <div className="text-xs text-pink-600">{data.description}</div>
+        </div>
+      </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{ bottom: -8, backgroundColor: '#EC4899' }}
+      />
+    </div>
+  ),
+  schedule: ({ data }: any) => (
+    <div className="px-4 py-2 shadow-md rounded-md bg-teal-100 border-2 border-teal-500">
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ top: -8, backgroundColor: '#14B8A6' }}
+      />
+      <div className="flex items-center">
+        <MessageSquare className="w-4 h-4 mr-2 text-teal-600" />
+        <div>
+          <div className="text-sm font-bold text-teal-800">{data.label}</div>
+          <div className="text-xs text-teal-600">{data.description}</div>
+        </div>
+      </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{ bottom: -8, backgroundColor: '#14B8A6' }}
+      />
     </div>
   )
 };
@@ -331,7 +441,12 @@ export default function SalesFlowDesigner() {
       action: 'Acción',
       response: 'Respuesta',
       automation: 'Automatización',
-      handoff: 'Transferir Agente'
+      handoff: 'Transferir Agente',
+      delay: 'Esperar/Delay',
+      webhook: 'Webhook/API',
+      validation: 'Validación',
+      broadcast: 'Difusión',
+      schedule: 'Programar'
     };
 
     const newNode: Node = {
@@ -437,6 +552,46 @@ export default function SalesFlowDesigner() {
                 >
                   <Users className="w-4 h-4 mr-2" />
                   Transferir Agente
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => addNewNode('delay')}
+                >
+                  <Clock className="w-4 h-4 mr-2" />
+                  Esperar/Delay
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => addNewNode('webhook')}
+                >
+                  <Link className="w-4 h-4 mr-2" />
+                  Webhook/API
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => addNewNode('validation')}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Validación
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => addNewNode('broadcast')}
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Difusión
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => addNewNode('schedule')}
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Programar
                 </Button>
               </div>
             </div>
@@ -755,6 +910,346 @@ function NodeConfigForm({ node, onSave, onCancel }: {
                 }
               })}
               placeholder="Perfecto, te voy a conectar con uno de nuestros especialistas que podrá ayudarte mejor..."
+            />
+          </div>
+        </div>
+      )}
+
+      {node.type === 'delay' && (
+        <div className="space-y-4">
+          <div>
+            <Label>Tiempo de Espera</Label>
+            <Input 
+              type="number"
+              value={config.config?.delayMinutes || 5} 
+              onChange={(e) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  delayMinutes: parseInt(e.target.value) 
+                }
+              })}
+              placeholder="5"
+            />
+            <p className="text-xs text-gray-500 mt-1">Tiempo en minutos antes de continuar al siguiente nodo</p>
+          </div>
+          
+          <div>
+            <Label>Mensaje Durante la Espera (Opcional)</Label>
+            <Textarea 
+              value={config.config?.waitMessage || ''} 
+              onChange={(e) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  waitMessage: e.target.value 
+                }
+              })}
+              placeholder="Te contacto en unos minutos..."
+            />
+          </div>
+        </div>
+      )}
+
+      {node.type === 'webhook' && (
+        <div className="space-y-4">
+          <div>
+            <Label>URL del Webhook</Label>
+            <Input 
+              value={config.config?.webhookUrl || ''} 
+              onChange={(e) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  webhookUrl: e.target.value 
+                }
+              })}
+              placeholder="https://api.ejemplo.com/webhook"
+            />
+          </div>
+          
+          <div>
+            <Label>Método HTTP</Label>
+            <Select 
+              value={config.config?.httpMethod || 'POST'} 
+              onValueChange={(value) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  httpMethod: value 
+                }
+              })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Método" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="POST">POST</SelectItem>
+                <SelectItem value="GET">GET</SelectItem>
+                <SelectItem value="PUT">PUT</SelectItem>
+                <SelectItem value="PATCH">PATCH</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Headers (JSON)</Label>
+            <Textarea 
+              value={config.config?.headers || '{"Content-Type": "application/json"}'} 
+              onChange={(e) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  headers: e.target.value 
+                }
+              })}
+              placeholder='{"Authorization": "Bearer token", "Content-Type": "application/json"}'
+            />
+          </div>
+
+          <div>
+            <Label>Datos a Enviar</Label>
+            <Textarea 
+              value={config.config?.requestBody || ''} 
+              onChange={(e) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  requestBody: e.target.value 
+                }
+              })}
+              placeholder='{"customer_name": "{{customerName}}", "phone": "{{customerPhone}}"}'
+            />
+            <p className="text-xs text-gray-500 mt-1">Usa variables como {{customerName}}, {{customerPhone}}, etc.</p>
+          </div>
+        </div>
+      )}
+
+      {node.type === 'validation' && (
+        <div className="space-y-4">
+          <div>
+            <Label>Tipo de Validación</Label>
+            <Select 
+              value={config.config?.validationType || ''} 
+              onValueChange={(value) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  validationType: value 
+                }
+              })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar validación" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="email">Validar Email</SelectItem>
+                <SelectItem value="phone">Validar Teléfono</SelectItem>
+                <SelectItem value="text_length">Validar Longitud de Texto</SelectItem>
+                <SelectItem value="contains_keyword">Contiene Palabra Clave</SelectItem>
+                <SelectItem value="regex">Expresión Regular</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {config.config?.validationType === 'text_length' && (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Mínimo</Label>
+                <Input 
+                  type="number"
+                  value={config.config?.minLength || 1} 
+                  onChange={(e) => setConfig({ 
+                    ...config, 
+                    config: { 
+                      ...config.config, 
+                      minLength: parseInt(e.target.value) 
+                    }
+                  })}
+                />
+              </div>
+              <div>
+                <Label>Máximo</Label>
+                <Input 
+                  type="number"
+                  value={config.config?.maxLength || 100} 
+                  onChange={(e) => setConfig({ 
+                    ...config, 
+                    config: { 
+                      ...config.config, 
+                      maxLength: parseInt(e.target.value) 
+                    }
+                  })}
+                />
+              </div>
+            </div>
+          )}
+
+          {(config.config?.validationType === 'contains_keyword' || config.config?.validationType === 'regex') && (
+            <div>
+              <Label>{config.config?.validationType === 'regex' ? 'Expresión Regular' : 'Palabra Clave'}</Label>
+              <Input 
+                value={config.config?.pattern || ''} 
+                onChange={(e) => setConfig({ 
+                  ...config, 
+                  config: { 
+                    ...config.config, 
+                    pattern: e.target.value 
+                  }
+                })}
+                placeholder={config.config?.validationType === 'regex' ? '^[a-zA-Z0-9]+$' : 'palabra clave'}
+              />
+            </div>
+          )}
+
+          <div>
+            <Label>Mensaje de Error</Label>
+            <Textarea 
+              value={config.config?.errorMessage || ''} 
+              onChange={(e) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  errorMessage: e.target.value 
+                }
+              })}
+              placeholder="Por favor, proporciona un formato válido..."
+            />
+          </div>
+        </div>
+      )}
+
+      {node.type === 'broadcast' && (
+        <div className="space-y-4">
+          <div>
+            <Label>Mensaje de Difusión</Label>
+            <Textarea 
+              value={config.config?.broadcastMessage || ''} 
+              onChange={(e) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  broadcastMessage: e.target.value 
+                }
+              })}
+              placeholder="¡Oferta especial! Solo por hoy..."
+            />
+          </div>
+
+          <div>
+            <Label>Audiencia Objetivo</Label>
+            <Select 
+              value={config.config?.targetAudience || ''} 
+              onValueChange={(value) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  targetAudience: value 
+                }
+              })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar audiencia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_contacts">Todos los Contactos</SelectItem>
+                <SelectItem value="active_leads">Leads Activos</SelectItem>
+                <SelectItem value="recent_contacts">Contactos Recientes (30 días)</SelectItem>
+                <SelectItem value="high_value_leads">Leads de Alto Valor</SelectItem>
+                <SelectItem value="custom_segment">Segmento Personalizado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {config.config?.targetAudience === 'custom_segment' && (
+            <div>
+              <Label>Criterios del Segmento</Label>
+              <Textarea 
+                value={config.config?.segmentCriteria || ''} 
+                onChange={(e) => setConfig({ 
+                  ...config, 
+                  config: { 
+                    ...config.config, 
+                    segmentCriteria: e.target.value 
+                  }
+                })}
+                placeholder="Ejemplo: leads con etiqueta 'interesado' y última actividad < 7 días"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {node.type === 'schedule' && (
+        <div className="space-y-4">
+          <div>
+            <Label>Tipo de Programación</Label>
+            <Select 
+              value={config.config?.scheduleType || ''} 
+              onValueChange={(value) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  scheduleType: value 
+                }
+              })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="follow_up">Seguimiento Automático</SelectItem>
+                <SelectItem value="reminder">Recordatorio</SelectItem>
+                <SelectItem value="appointment">Cita/Reunión</SelectItem>
+                <SelectItem value="callback">Llamada de Retorno</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label>Días a Futuro</Label>
+              <Input 
+                type="number"
+                value={config.config?.daysAhead || 1} 
+                onChange={(e) => setConfig({ 
+                  ...config, 
+                  config: { 
+                    ...config.config, 
+                    daysAhead: parseInt(e.target.value) 
+                  }
+                })}
+                placeholder="1"
+              />
+            </div>
+            <div>
+              <Label>Hora (24h)</Label>
+              <Input 
+                type="time"
+                value={config.config?.timeOfDay || '09:00'} 
+                onChange={(e) => setConfig({ 
+                  ...config, 
+                  config: { 
+                    ...config.config, 
+                    timeOfDay: e.target.value 
+                  }
+                })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label>Mensaje Programado</Label>
+            <Textarea 
+              value={config.config?.scheduledMessage || ''} 
+              onChange={(e) => setConfig({ 
+                ...config, 
+                config: { 
+                  ...config.config, 
+                  scheduledMessage: e.target.value 
+                }
+              })}
+              placeholder="Hola {{customerName}}, quería hacer seguimiento a nuestra conversación..."
             />
           </div>
         </div>
