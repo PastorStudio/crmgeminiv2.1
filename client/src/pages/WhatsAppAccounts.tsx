@@ -422,9 +422,39 @@ const WhatsAppAccounts = () => {
     }
   };
   
-  // Actualizar QR code
-  const handleRefreshQR = () => {
-    refetchQr();
+  // Actualizar QR code - usar endpoint de force refresh
+  const handleRefreshQR = async () => {
+    if (!selectedAccount) return;
+    
+    try {
+      toast({
+        title: "Generando nuevo QR",
+        description: "Solicitando un código QR completamente nuevo...",
+      });
+      
+      // Llamar al endpoint de force refresh que creé
+      const response = await apiRequest(`/api/whatsapp/qr/${selectedAccount.id}/refresh`, {
+        method: 'POST'
+      });
+      
+      if (response.success) {
+        // Refrescar el QR después del force refresh
+        refetchQr();
+        toast({
+          title: "QR actualizado",
+          description: "Se ha generado un nuevo código QR",
+        });
+      } else {
+        throw new Error(response.message || 'Error al actualizar QR');
+      }
+    } catch (error) {
+      console.error('Error al forzar refresh del QR:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo generar un nuevo código QR",
+        variant: "destructive",
+      });
+    }
   };
   
   // Desconectar cuenta
