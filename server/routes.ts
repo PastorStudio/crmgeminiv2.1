@@ -2231,6 +2231,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('🔑 Verificando estado de clave Gemini...');
       const hasKey = process.env.GEMINI_API_KEY !== undefined && process.env.GEMINI_API_KEY !== '';
       const status = {
+        success: true,
+        hasKey: hasKey,
         hasValidKey: hasKey,
         isTemporary: false,
         message: hasKey ? "Clave API configurada" : "No hay clave API configurada"
@@ -2273,8 +2275,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint para obtener la clave API de Gemini para el cliente
   app.get("/api/settings/gemini-client-key", async (req: Request, res: Response) => {
     try {
-      // Obtener la clave API de Gemini del entorno
-      const apiKey = process.env.GOOGLE_AI_API_KEY;
+      // Obtener la clave API de Gemini del entorno (verificar ambos nombres)
+      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
       
       if (!apiKey) {
         return res.status(404).json({
