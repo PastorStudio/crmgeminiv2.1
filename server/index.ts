@@ -35,6 +35,7 @@ import { CalendarReminderService } from './services/calendarReminderService';
 import { backendAutoResponseManager } from './services/backendAutoResponseManager';
 import { trulyIndependentAutoResponseSystem } from './services/trulyIndependentAutoResponse';
 import { autonomousWhatsAppConnectionManager } from './services/autonomousWhatsAppConnection';
+import { fullSystemActivator } from './services/fullSystemActivator';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
