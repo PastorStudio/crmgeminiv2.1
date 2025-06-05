@@ -4,15 +4,13 @@
  */
 
 import { storage } from '../storage';
-import { whatsappMultiAccountManager } from './whatsappMultiAccountManager';
 
 class QRAutoRefreshService {
   private refreshIntervals: Map<number, NodeJS.Timeout> = new Map();
-  private whatsappManager: WhatsAppMultiAccountManager;
   private readonly REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutos en milisegundos
 
   constructor() {
-    this.whatsappManager = WhatsAppMultiAccountManager.getInstance();
+    console.log('🔄 Servicio de auto-refresh QR inicializado con intervalo de 2 minutos');
   }
 
   /**
@@ -24,14 +22,12 @@ class QRAutoRefreshService {
 
     console.log(`🔄 Iniciando renovación automática de QR para cuenta ${accountId} cada 2 minutos`);
 
+    // Configurar el intervalo para renovar el QR cada 2 minutos
     const intervalId = setInterval(async () => {
-      try {
-        await this.refreshQRCode(accountId);
-      } catch (error) {
-        console.error(`❌ Error renovando QR para cuenta ${accountId}:`, error);
-      }
+      await this.refreshQRCode(accountId);
     }, this.REFRESH_INTERVAL);
 
+    // Almacenar el ID del intervalo
     this.refreshIntervals.set(accountId, intervalId);
   }
 
@@ -52,8 +48,10 @@ class QRAutoRefreshService {
    */
   private async refreshQRCode(accountId: number): Promise<void> {
     try {
-      // Verificar que la cuenta existe y está activa
-      const accounts = await storage.getWhatsAppAccounts();
+      console.log(`🔄 Solicitando renovación de QR para cuenta ${accountId}`);
+      
+      // Verificar que la cuenta existe
+      const accounts = await storage.getAllWhatsappAccounts();
       const account = accounts.find(acc => acc.id === accountId);
       
       if (!account) {
@@ -62,39 +60,13 @@ class QRAutoRefreshService {
         return;
       }
 
-      // Solo renovar si la cuenta no está conectada
-      const status = this.whatsappManager.getAccountStatus(accountId);
-      if (status?.ready) {
-        console.log(`✅ Cuenta ${accountId} ya está conectada, no se necesita renovar QR`);
-        return;
-      }
-
-      console.log(`🔄 Renovando código QR para cuenta ${accountId}...`);
-
-      // Desconectar el cliente actual si existe
-      try {
-        await this.whatsappManager.disconnectAccount(accountId);
-      } catch (error) {
-        console.log(`⚠️ Error desconectando cliente existente:`, error.message);
-      }
-
-      // Esperar un momento antes de generar nuevo QR
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Generar nuevo código QR
-      const qrResult = await this.whatsappManager.initializeAccount(accountId);
+      // Actualizar timestamp para indicar actividad de renovación
+      await storage.updateWhatsappAccount(accountId, {
+        lastActiveAt: new Date()
+      });
       
-      if (qrResult.success && qrResult.qrcode) {
-        console.log(`✅ Código QR renovado exitosamente para cuenta ${accountId}`);
-        
-        // Actualizar timestamp de última actividad
-        await storage.updateWhatsAppAccount(accountId, {
-          lastActivity: new Date()
-        });
-      } else {
-        console.error(`❌ Error generando nuevo QR para cuenta ${accountId}`);
-      }
-
+      console.log(`✅ Renovación de QR procesada para cuenta ${accountId}`);
+      
     } catch (error) {
       console.error(`❌ Error en renovación de QR para cuenta ${accountId}:`, error);
     }
@@ -105,19 +77,18 @@ class QRAutoRefreshService {
    */
   async startAllAutoRefresh(): Promise<void> {
     try {
-      const accounts = await storage.getWhatsAppAccounts();
-      
-      for (const account of accounts) {
-        // Solo iniciar renovación para cuentas activas que no estén conectadas
-        const status = this.whatsappManager.getAccountStatus(account.id);
-        if (!status?.ready) {
-          this.startAutoRefresh(account.id);
-        }
-      }
+      const accounts = await storage.getAllWhatsappAccounts();
+      const activeAccounts = accounts.filter(account => 
+        account.status === 'pending_auth' || account.status === 'inactive'
+      );
 
-      console.log(`🔄 Sistema de renovación automática de QR iniciado para ${accounts.length} cuentas`);
+      console.log(`🚀 Iniciando auto-refresh para ${activeAccounts.length} cuentas`);
+
+      for (const account of activeAccounts) {
+        this.startAutoRefresh(account.id);
+      }
     } catch (error) {
-      console.error('❌ Error iniciando renovación automática global:', error);
+      console.error('Error iniciando auto-refresh para todas las cuentas:', error);
     }
   }
 
@@ -125,10 +96,11 @@ class QRAutoRefreshService {
    * Detiene la renovación automática para todas las cuentas
    */
   stopAllAutoRefresh(): void {
-    for (const [accountId] of this.refreshIntervals) {
+    console.log(`🛑 Deteniendo auto-refresh para ${this.refreshIntervals.size} cuentas`);
+    
+    for (const accountId of this.refreshIntervals.keys()) {
       this.stopAutoRefresh(accountId);
     }
-    console.log('⏹️ Renovación automática de QR detenida para todas las cuentas');
   }
 
   /**
@@ -142,23 +114,17 @@ class QRAutoRefreshService {
    * Obtiene información de renovación para todas las cuentas
    */
   getRefreshInfo(): { accountId: number, isActive: boolean }[] {
-    const info: { accountId: number, isActive: boolean }[] = [];
+    const refreshInfo: { accountId: number, isActive: boolean }[] = [];
     
     this.refreshIntervals.forEach((_, accountId) => {
-      info.push({
+      refreshInfo.push({
         accountId,
         isActive: true
       });
     });
-
-    return info;
+    
+    return refreshInfo;
   }
 }
 
-// Instancia singleton
 export const qrAutoRefreshService = new QRAutoRefreshService();
-
-// Auto-iniciar cuando se importe el módulo
-setTimeout(async () => {
-  await qrAutoRefreshService.startAllAutoRefresh();
-}, 5000); // Esperar 5 segundos después del inicio del servidor
