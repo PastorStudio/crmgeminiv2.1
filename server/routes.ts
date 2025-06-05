@@ -1061,8 +1061,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Variable global para almacenar el flujo actual
   let currentSalesFlow = {
-    nodes: [],
-    edges: [],
+    nodes: [
+      {
+        id: '1',
+        type: 'trigger',
+        position: { x: 250, y: 50 },
+        data: { 
+          label: 'Mensaje de Bienvenida', 
+          description: 'Cliente inicia conversación',
+          nodeId: '1'
+        }
+      },
+      {
+        id: '2',
+        type: 'condition',
+        position: { x: 250, y: 200 },
+        data: { 
+          label: '¿Es cliente nuevo?', 
+          description: 'Verificar historial del cliente',
+          nodeId: '2'
+        }
+      }
+    ],
+    edges: [
+      {
+        id: 'e1-2',
+        source: '1',
+        target: '2',
+        markerEnd: { type: 'ArrowClosed' },
+        style: { stroke: '#6B7280', strokeWidth: 2 },
+        animated: true
+      }
+    ],
     templateId: null
   };
 
