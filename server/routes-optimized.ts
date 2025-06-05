@@ -124,6 +124,25 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  app.delete("/api/users/:id", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const deleted = await storage.deleteUser(userId);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: "Usuario eliminado exitosamente" 
+      });
+    } catch (error) {
+      console.error("Error al eliminar usuario:", error);
+      res.status(500).json({ error: "Error al eliminar usuario" });
+    }
+  });
+
   // ***** RUTAS DE LEADS OPTIMIZADAS *****
   app.get("/api/leads", async (_req: Request, res: Response) => {
     try {

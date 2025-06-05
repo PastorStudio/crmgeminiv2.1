@@ -647,11 +647,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Eliminar el usuario - Esta función aún no existe en el storage
-      // Por ahora, podemos marcar el usuario como inactivo
-      const updatedUser = await storage.updateUser(userId, { status: 'inactive' });
+      // Eliminar el usuario permanentemente de la base de datos
+      const deleted = await storage.deleteUser(userId);
       
-      if (!updatedUser) {
+      if (!deleted) {
         return res.status(500).json({
           success: false,
           message: "Error al eliminar el usuario"
