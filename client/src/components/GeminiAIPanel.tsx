@@ -292,6 +292,17 @@ export function GeminiAIPanel() {
     if (isQuotaExceeded) return;
     
     setIsProcessing(true);
+    setCurrentTask("Verificando estado de WhatsApp...");
+    setProgress(5);
+    
+    // Verificar estado de WhatsApp antes de la conversión
+    const whatsappConnected = await checkWhatsAppStatus();
+    if (whatsappConnected) {
+      setCurrentTask("WhatsApp conectado - Conversión segura iniciada...");
+    } else {
+      setCurrentTask("WhatsApp desconectado - Continuando con conversión...");
+    }
+    
     setCurrentTask("Convirtiendo chats de WhatsApp en leads...");
     setProgress(10);
     
@@ -312,6 +323,10 @@ export function GeminiAIPanel() {
         
         const response = await fetch(`/api/whatsapp/${accountId}/convert-chats-to-leads`, {
           method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-WhatsApp-Safe': whatsappConnected ? 'true' : 'false'
+          },
         });
         
         const data = await response.json();
