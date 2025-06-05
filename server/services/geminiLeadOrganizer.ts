@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { storage } from '../storage';
+import { databaseAdapter } from '../databaseAdapter';
 import type { Lead, Activity, Message } from '@shared/schema';
 
 interface LeadAnalysis {
