@@ -46,6 +46,7 @@ import SalesPipeline from './pages/SalesPipeline';
 import AgentSecurity from './pages/AgentSecurity';
 import SalesFlowDesigner from './pages/SalesFlowDesigner';
 import FlowTemplates from './pages/FlowTemplates';
+import SystemStatus from './pages/SystemStatus';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
@@ -196,6 +197,18 @@ const AppRoutes: React.FC = () => {
                   <rect x="8" y="16" width="8" height="5" rx="1" fill="#EF4444"/>
                 </svg>
                 Plantillas de Flujos
+              </a>
+
+              <a href="/system-status" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/system-status' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="8" stroke="#10B981" strokeWidth="2" fill="none"/>
+                  <circle cx="12" cy="12" r="4" fill="#10B981"/>
+                  <circle cx="8" cy="8" r="1" fill="#F59E0B"/>
+                  <circle cx="16" cy="8" r="1" fill="#EF4444"/>
+                  <circle cx="8" cy="16" r="1" fill="#3B82F6"/>
+                  <circle cx="16" cy="16" r="1" fill="#8B5CF6"/>
+                </svg>
+                Estado del Sistema
               </a>
 
               <a href="/sales-flow-designer" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/sales-flow-designer' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>

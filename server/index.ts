@@ -6008,6 +6008,9 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
     try {
       console.log('🚀 ACTIVANDO SISTEMA COMPLETO DE ASIGNACIONES AUTOMÁTICAS...');
       
+      // Forzar inicialización del sistema completo
+      const { fullSystemActivator } = await import('./services/fullSystemActivator');
+      
       // Verificar que el sistema ya está activado
       console.log('✅ Sistema de asignaciones automáticas activo con procesamiento cada 5 segundos');
       console.log('✅ Gemini AI integrado para análisis inteligente de mensajes');
@@ -6033,6 +6036,69 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
     } catch (error) {
       console.error('Error activando sistema completo:', error);
       res.status(500).json({ success: false, error: 'Error activando sistema' });
+    }
+  });
+
+  // Test Gemini AI Integration
+  app.post('/api/test-gemini-integration', async (req: Request, res: Response) => {
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const apiKey = process.env.GOOGLE_AI_API_KEY;
+      
+      if (!apiKey || apiKey.length < 10) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Gemini API key not configured properly' 
+        });
+      }
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+      
+      const testMessage = "Hola, estoy interesado en comprar un producto. ¿Pueden ayudarme?";
+      
+      const prompt = `
+Analiza este mensaje de WhatsApp para CRM y responde SOLO con JSON válido:
+
+Mensaje: "${testMessage}"
+
+Responde con:
+{
+  "sentiment": "positive|negative|neutral",
+  "intent": "sales|support|inquiry|complaint",
+  "urgency": "low|medium|high",
+  "leadPotential": 0-100,
+  "shouldCreateLead": true/false,
+  "extractedInfo": {
+    "name": "nombre o null",
+    "company": "empresa o null",
+    "products": ["productos mencionados"],
+    "budget": "presupuesto o null"
+  }
+}`;
+
+      const result = await model.generateContent(prompt);
+      const response = result.response.text();
+      const cleanResponse = response.replace(/```json|```/g, '').trim();
+      const analysis = JSON.parse(cleanResponse);
+      
+      console.log('🤖 GEMINI AI TEST SUCCESSFUL:', analysis);
+      
+      res.json({
+        success: true,
+        message: 'Gemini AI integration working perfectly',
+        testMessage,
+        analysis,
+        aiStatus: 'ACTIVE'
+      });
+      
+    } catch (error) {
+      console.error('Error testing Gemini AI:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Gemini AI test failed', 
+        details: error.message 
+      });
     }
   });
 

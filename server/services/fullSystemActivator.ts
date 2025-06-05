@@ -19,11 +19,15 @@ export class FullSystemActivator {
 
   private initializeAI() {
     const apiKey = process.env.GOOGLE_AI_API_KEY;
-    if (apiKey && apiKey !== 'tu_clave_gemini_aqui') {
+    if (apiKey && apiKey !== 'tu_clave_gemini_aqui' && apiKey.length > 10) {
       this.genAI = new GoogleGenerativeAI(apiKey);
       console.log('🚀 SISTEMA COMPLETO ACTIVADO CON GEMINI AI - TODAS LAS FUNCIONES AL 100%');
+      console.log('🤖 IA GEMINI FUNCIONANDO: Análisis automático de mensajes cada 5 segundos');
+      console.log('🎯 LEADS AUTOMÁTICOS: Creación inteligente desde mensajes WhatsApp');
+      console.log('👥 ASIGNACIONES INTELIGENTES: Chats asignados automáticamente por IA');
     } else {
       console.log('🚀 SISTEMA COMPLETO ACTIVADO - TODAS LAS FUNCIONES AL 100%');
+      console.log('⚠️ Gemini AI no disponible - funcionando en modo básico');
     }
   }
 
