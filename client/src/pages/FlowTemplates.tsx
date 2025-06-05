@@ -1106,9 +1106,9 @@ export default function FlowTemplates() {
           </DialogHeader>
           
           <div className="space-y-4">
-            {savedFlows?.flows?.length > 0 ? (
+            {(savedFlows as any)?.flows?.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {savedFlows.flows.map((flow: any) => (
+                {(savedFlows as any).flows.map((flow: any) => (
                   <Card key={flow.id} className="cursor-pointer hover:shadow-md transition-shadow">
                     <CardHeader>
                       <CardTitle className="text-lg">{flow.name || `Flujo ${flow.id}`}</CardTitle>
