@@ -2482,6 +2482,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Sistema de Reinicio Completo
+  app.post("/api/system/reset", async (req: Request, res: Response) => {
+    try {
+      console.log('🔄 Iniciando reinicio completo del sistema...');
+      
+      // Import reset functions
+      const { resetSystemData } = await import('./scripts/resetSystem');
+      
+      // Ejecutar reinicio
+      const result = await resetSystemData();
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          message: 'Sistema reiniciado correctamente',
+          preserved_users: result.preserved_users,
+          djp_hidden: result.djp_hidden
+        });
+        console.log('✅ Sistema reiniciado exitosamente');
+      } else {
+        res.status(500).json({
+          success: false,
+          message: result.message,
+          error: result.error
+        });
+      }
+    } catch (error: any) {
+      console.error('❌ Error en reinicio del sistema:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno durante el reinicio del sistema',
+        error: error.message
+      });
+    }
+  });
+
+  app.post("/api/system/hide-djp", async (req: Request, res: Response) => {
+    try {
+      console.log('🔒 Configurando usuario DJP como oculto...');
+      
+      // Import hide function
+      const { ensureDJPHidden } = await import('./scripts/resetSystem');
+      
+      // Ejecutar configuración
+      const result = await ensureDJPHidden();
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          message: 'Usuario DJP configurado como oculto',
+          hidden_users: result.hidden_users
+        });
+        console.log('✅ DJP configurado como oculto');
+      } else {
+        res.status(500).json({
+          success: false,
+          message: 'Error configurando DJP como oculto',
+          error: result.error
+        });
+      }
+    } catch (error: any) {
+      console.error('❌ Error configurando DJP:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno configurando DJP',
+        error: error.message
+      });
+    }
+  });
   
   app.post("/api/settings/update-gemini-key", async (req: Request, res: Response) => {
     try {
