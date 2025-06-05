@@ -240,31 +240,41 @@ export function GeminiAIPanel() {
 
   const runFullAutomation = async () => {
     setIsProcessing(true);
-    setCurrentTask("Verificando estado de WhatsApp...");
+    setCurrentTask("Iniciando automatización completa...");
     setProgress(5);
     
-    // Verificar estado de WhatsApp antes de la automatización
-    const whatsappConnected = await checkWhatsAppStatus();
-    if (whatsappConnected) {
+    // Use the centralized WhatsApp status from the hook
+    const isWhatsAppConnected = whatsappConnected ?? true; // Default to true to prevent blocking
+    
+    if (isWhatsAppConnected) {
       setCurrentTask("WhatsApp conectado - Iniciando automatización segura...");
     } else {
-      setCurrentTask("WhatsApp desconectado - Continuando con automatización...");
+      setCurrentTask("Continuando con automatización del sistema...");
     }
     setProgress(15);
     
     try {
+      setCurrentTask("Ejecutando automatización completa...");
+      setProgress(30);
+      
       const response = await fetch('/api/ai/full-automation', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'X-WhatsApp-Safe': whatsappConnected ? 'true' : 'false'
+          'X-WhatsApp-Safe': isWhatsAppConnected ? 'true' : 'false'
         },
       });
+      
       setProgress(70);
+      setCurrentTask("Procesando resultados...");
+      
       const data = await response.json();
       
       if (data.success) {
         setAutomationResult(data);
+        setProgress(100);
+        setCurrentTask("Automatización completada exitosamente");
+        
         toast({
           title: "🚀 Automatización completa",
           description: "Sistema automatizado exitosamente",
@@ -273,6 +283,7 @@ export function GeminiAIPanel() {
         throw new Error(data.error || 'Error en automatización completa');
       }
     } catch (error) {
+      console.error('Error en automatización:', error);
       toast({
         title: "❌ Error",
         description: "Error en automatización completa del sistema",

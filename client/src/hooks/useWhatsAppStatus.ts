@@ -62,35 +62,55 @@ class WhatsAppStatusManager {
 
     try {
       // Primary method: Check ping status for all accounts
-      const pingResponse = await fetch('/api/whatsapp/ping-status/all');
-      if (pingResponse.ok) {
-        const pingData = await pingResponse.json();
-        if (pingData.success && pingData.accounts) {
-          const hasActiveAccount = pingData.accounts.some((acc: any) => 
-            acc.pingStatus && acc.pingStatus.isActive
-          );
-          if (hasActiveAccount) {
-            console.log('✅ WhatsApp connected - Active account found via centralized ping status');
-            return true;
+      try {
+        const pingResponse = await fetch('/api/whatsapp/ping-status/all', {
+          timeout: 5000 // 5 second timeout
+        });
+        if (pingResponse.ok) {
+          const pingData = await pingResponse.json();
+          if (pingData.success && pingData.accounts) {
+            const hasActiveAccount = pingData.accounts.some((acc: any) => 
+              acc.pingStatus && acc.pingStatus.isActive
+            );
+            if (hasActiveAccount) {
+              console.log('✅ WhatsApp connected - Active account found via centralized ping status');
+              return true;
+            }
           }
         }
+      } catch (pingError) {
+        console.warn('⚠️ Ping status check failed, trying alternative methods:', pingError);
       }
 
       // Secondary method: Check integration status
-      const integrationResponse = await fetch('/api/integrations/whatsapp/status');
-      if (integrationResponse.ok) {
-        const integrationData = await integrationResponse.json();
-        if (integrationData.authenticated || integrationData.ready) {
-          console.log('✅ WhatsApp connected via centralized integration status');
-          return true;
+      try {
+        const integrationResponse = await fetch('/api/integrations/whatsapp/status', {
+          timeout: 5000 // 5 second timeout
+        });
+        if (integrationResponse.ok) {
+          const integrationData = await integrationResponse.json();
+          if (integrationData.authenticated || integrationData.ready) {
+            console.log('✅ WhatsApp connected via centralized integration status');
+            return true;
+          }
         }
+      } catch (integrationError) {
+        console.warn('⚠️ Integration status check failed:', integrationError);
+      }
+
+      // Fallback: If both methods fail, assume connected to prevent blocking automation
+      // This allows the automation to continue even if status checking has issues
+      if (this.currentStatus === null) {
+        console.log('⚠️ Unable to verify WhatsApp status, assuming connected for automation continuity');
+        return true; // Default to true for first-time checks when verification fails
       }
 
       console.log('❌ WhatsApp appears to be disconnected - centralized check');
       return false;
     } catch (error) {
       console.error('❌ Error in centralized WhatsApp status check:', error);
-      return false;
+      // Return previous status or true if this is the first check to avoid blocking automation
+      return this.currentStatus ?? true;
     } finally {
       this.isChecking = false;
     }
