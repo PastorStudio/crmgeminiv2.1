@@ -144,17 +144,22 @@ export default function SalesFlowDesigner() {
   
   // Check localStorage immediately for template data
   const getTemplateFromStorage = () => {
+    console.log('🔍 Verificando localStorage para salesFlowTemplate...');
     const savedTemplate = localStorage.getItem('salesFlowTemplate');
+    console.log('🔍 Raw localStorage data:', savedTemplate);
+    
     if (savedTemplate) {
       try {
         const templateData = JSON.parse(savedTemplate);
         console.log('🗂️ Encontrados datos de template en localStorage:', templateData.templateId);
-        console.log(`📊 Cargando ${templateData.nodes.length} nodos y ${templateData.edges.length} edges desde localStorage`);
+        console.log(`📊 Cargando ${templateData.nodes?.length || 0} nodos y ${templateData.edges?.length || 0} edges desde localStorage`);
         localStorage.removeItem('salesFlowTemplate');
         return templateData;
       } catch (error) {
         console.error('Error parsing template from localStorage:', error);
       }
+    } else {
+      console.log('❌ No se encontraron datos de template en localStorage');
     }
     return null;
   };
