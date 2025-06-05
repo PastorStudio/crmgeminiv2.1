@@ -148,6 +148,39 @@ export default function SalesFlowDesigner() {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
 
+  // Load template data from localStorage on component mount
+  useEffect(() => {
+    console.log('🔍 Verificando localStorage para salesFlowTemplate...');
+    const savedTemplate = localStorage.getItem('salesFlowTemplate');
+    console.log('🔍 Raw localStorage data:', savedTemplate);
+    
+    if (savedTemplate) {
+      try {
+        const templateData = JSON.parse(savedTemplate);
+        console.log('🗂️ Encontrados datos de template en localStorage:', templateData.templateId);
+        console.log(`📊 Cargando ${templateData.nodes?.length || 0} nodos y ${templateData.edges?.length || 0} edges desde localStorage`);
+        
+        if (templateData.nodes && templateData.nodes.length > 0) {
+          setNodes(templateData.nodes);
+          console.log('✅ Nodos aplicados al diseñador');
+        }
+        
+        if (templateData.edges && templateData.edges.length > 0) {
+          setEdges(templateData.edges);
+          console.log('✅ Edges aplicados al diseñador');
+        }
+        
+        // Clear localStorage after loading
+        localStorage.removeItem('salesFlowTemplate');
+        console.log('🧹 localStorage limpiado después de cargar template');
+      } catch (error) {
+        console.error('Error parsing template from localStorage:', error);
+      }
+    } else {
+      console.log('❌ No se encontraron datos de template en localStorage');
+    }
+  }, [setNodes, setEdges]);
+
   // Manual connection state
   const [connectionMode, setConnectionMode] = useState(false);
   const [selectedSourceNode, setSelectedSourceNode] = useState<string | null>(null);
