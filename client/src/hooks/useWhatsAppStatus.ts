@@ -98,19 +98,13 @@ class WhatsAppStatusManager {
         console.warn('⚠️ Integration status check failed:', integrationError);
       }
 
-      // Fallback: If both methods fail, assume connected to prevent blocking automation
-      // This allows the automation to continue even if status checking has issues
-      if (this.currentStatus === null) {
-        console.log('⚠️ Unable to verify WhatsApp status, assuming connected for automation continuity');
-        return true; // Default to true for first-time checks when verification fails
-      }
-
+      // If we reach here, WhatsApp appears to be disconnected
       console.log('❌ WhatsApp appears to be disconnected - centralized check');
       return false;
     } catch (error) {
       console.error('❌ Error in centralized WhatsApp status check:', error);
-      // Return previous status or true if this is the first check to avoid blocking automation
-      return this.currentStatus ?? true;
+      // Return previous status if available, otherwise false for accurate reporting
+      return this.currentStatus ?? false;
     } finally {
       this.isChecking = false;
     }

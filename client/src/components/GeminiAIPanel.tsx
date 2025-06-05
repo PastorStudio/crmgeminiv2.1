@@ -243,18 +243,18 @@ export function GeminiAIPanel() {
     setCurrentTask("Iniciando automatización completa...");
     setProgress(5);
     
-    // Use the centralized WhatsApp status from the hook
-    const isWhatsAppConnected = whatsappConnected ?? true; // Default to true to prevent blocking
+    // Check WhatsApp status but don't let it block automation
+    const isWhatsAppConnected = whatsappConnected === true;
     
     if (isWhatsAppConnected) {
       setCurrentTask("WhatsApp conectado - Iniciando automatización segura...");
     } else {
-      setCurrentTask("Continuando con automatización del sistema...");
+      setCurrentTask("Iniciando automatización (sin dependencia de WhatsApp)...");
     }
     setProgress(15);
     
     try {
-      setCurrentTask("Ejecutando automatización completa...");
+      setCurrentTask("Ejecutando automatización de leads y tickets...");
       setProgress(30);
       
       const response = await fetch('/api/ai/full-automation', {
@@ -266,7 +266,11 @@ export function GeminiAIPanel() {
       });
       
       setProgress(70);
-      setCurrentTask("Procesando resultados...");
+      setCurrentTask("Procesando resultados de automatización...");
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
       const data = await response.json();
       
@@ -276,7 +280,7 @@ export function GeminiAIPanel() {
         setCurrentTask("Automatización completada exitosamente");
         
         toast({
-          title: "🚀 Automatización completa",
+          title: "Automatización completa",
           description: "Sistema automatizado exitosamente",
         });
       } else {
@@ -285,7 +289,7 @@ export function GeminiAIPanel() {
     } catch (error) {
       console.error('Error en automatización:', error);
       toast({
-        title: "❌ Error",
+        title: "Error",
         description: "Error en automatización completa del sistema",
         variant: "destructive",
       });
