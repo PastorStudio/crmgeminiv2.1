@@ -337,10 +337,15 @@ export function registerOptimizedRoutes(app: Express): Server {
   });
 
   // Automatización completa del sistema
-  app.post("/api/ai/full-automation", async (_req: Request, res: Response) => {
+  app.post("/api/ai/full-automation", async (req: Request, res: Response) => {
     try {
       console.log('🚀 Ejecutando automatización completa del sistema...');
-      const result = await geminiLeadOrganizer.runFullAutomation();
+      
+      // Verificar si WhatsApp está conectado antes de proceder
+      const whatsappSafe = req.headers['x-whatsapp-safe'] === 'true';
+      console.log(`🔗 Estado WhatsApp: ${whatsappSafe ? 'Conectado - Modo seguro' : 'Desconectado - Modo normal'}`);
+      
+      const result = await geminiLeadOrganizer.runFullAutomation(whatsappSafe);
       
       res.json({
         success: true,
