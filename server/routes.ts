@@ -2340,28 +2340,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Ruta para crear leads a partir de contactos de WhatsApp
   app.post("/api/direct/whatsapp/create-leads-from-contacts", async (req: Request, res: Response) => {
     try {
-      // Importar el servicio de WhatsApp e importar storage
-      const { whatsappService } = await import('./services/whatsappServiceImpl');
+      // Usar el convertidor de chats mejorado
+      const { WhatsAppChatConverter } = await import('./services/whatsappChatConverter');
       
-      // Verificar que el servicio esté activo
-      const status = whatsappService.getStatus();
-      if (!status.authenticated) {
-        return res.status(403).json({ 
-          success: false, 
-          message: "WhatsApp no está autenticado. Escanee el código QR primero." 
-        });
-      }
+      // Convertir chats a leads para la cuenta especificada o usar cuenta por defecto
+      const accountId = req.body.accountId || 1;
+      const result = await WhatsAppChatConverter.convertChatsToLeads(accountId);
       
-      // Obtener lista de contactos y chats
-      const contacts = await whatsappService.getContacts();
-      const chats = await whatsappService.getChats();
-      
-      if (!contacts || contacts.length === 0) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "No se encontraron contactos de WhatsApp" 
-        });
-      }
+      return res.json({
+        success: true,
+        message: `Conversión completada: ${result.created} leads creados, ${result.updated} actualizados`,
+        data: result
+      });
+    } catch (error) {
+      console.error('Error convirtiendo chats a leads:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno al convertir chats a leads"
+      });
+    }
+  });
       
       // Definir el período de actividad reciente (1 día)
       const oneDayAgo = new Date();
@@ -5048,38 +5046,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('🔄 Convirtiendo chats de WhatsApp a leads...');
       
-      // Get WhatsApp chats
-      let chats = [];
-      try {
-        const response = await fetch('http://localhost:5000/api/direct/whatsapp/chats');
-        if (response.ok) {
-          chats = await response.json();
-        }
-      } catch (error) {
-        console.log('⚠️ WhatsApp no conectado, usando datos de ejemplo');
-        // Demo chats for when WhatsApp is not connected
-        chats = [
-          {
-            id: 'demo_chat_1',
-            name: 'Cliente Potencial 1',
-            lastMessage: 'Hola, estoy interesado en sus servicios',
-            timestamp: new Date().toISOString(),
-            unreadCount: 1
-          },
-          {
-            id: 'demo_chat_2', 
-            name: 'Cliente Potencial 2',
-            lastMessage: 'Necesito información sobre precios',
-            timestamp: new Date().toISOString(),
-            unreadCount: 2
-          }
-        ];
-      }
+      // Use the improved chat converter service
+      const { WhatsAppChatConverter } = await import('./services/whatsappChatConverter');
       
-      let convertedCount = 0;
+      // Convert chats to leads for account 1 (default account)
+      const result = await WhatsAppChatConverter.convertChatsToLeads(1);
       
-      // Convert each chat to a lead
-      for (const chat of chats) {
+      console.log(`✅ Conversión completada: ${result.created} leads creados, ${result.updated} actualizados`);
+      
+      res.json({
+        success: true,
+        message: `Conversión completada: ${result.created} leads creados, ${result.updated} actualizados`,
+        converted: result.created + result.updated,
+        details: result
+      });
         try {
           const existingLeads = await storage.getAllLeads();
           const chatExists = existingLeads.some(lead => 

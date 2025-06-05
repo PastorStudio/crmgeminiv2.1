@@ -574,6 +574,13 @@ router.get('/:id/chats', async (req, res) => {
     }
 
     try {
+      // Verificar que el cliente está listo antes de obtener chats
+      if (!instance.client || instance.client.info?.wid === undefined) {
+        console.log(`⚠️ Cliente WhatsApp no está listo para cuenta ${id}`);
+        res.json([]);
+        return;
+      }
+
       // Obtener chats directamente del cliente de WhatsApp
       const chats = await instance.client.getChats();
       if (!Array.isArray(chats)) {
