@@ -655,6 +655,8 @@ export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = typeof insertCalendarEventSchema._type;
 export type LocalEvent = typeof localEvents.$inferSelect;
 export type InsertLocalEvent = typeof insertLocalEventSchema._type;
+export type SalesFlow = typeof salesFlows.$inferSelect;
+export type InsertSalesFlow = typeof insertSalesFlowSchema._type;
 
 // Sales Flow Tables
 export const salesFlowStages = pgTable("sales_flow_stages", {
@@ -690,6 +692,21 @@ export const flowConnections = pgTable("flow_connections", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
+// Tabla para flujos completos (desde plantillas)
+export const salesFlows = pgTable("sales_flows", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  templateId: text("template_id"),
+  nodes: jsonb("nodes").notNull(),
+  edges: jsonb("edges").notNull(),
+  config: jsonb("config"),
+  isActive: boolean("is_active").default(true),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 export const conversationFlowSessions = pgTable("conversation_flow_sessions", {
   id: serial("id").primaryKey(),
   chatId: text("chat_id").notNull(),
@@ -702,6 +719,9 @@ export const conversationFlowSessions = pgTable("conversation_flow_sessions", {
   lastActivityAt: timestamp("last_activity_at").defaultNow(),
   completedAt: timestamp("completed_at")
 });
+
+// Agregar schema para salesFlows después de las tablas
+export const insertSalesFlowSchema = createInsertSchema(salesFlows).omit({ id: true, createdAt: true, updatedAt: true });
 
 export const flowExecutionLog = pgTable("flow_execution_log", {
   id: serial("id").primaryKey(),
