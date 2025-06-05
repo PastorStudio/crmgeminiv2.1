@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+import { databaseAdapter } from "./databaseAdapter";
 import { 
   insertUserSchema, 
   insertLeadSchema, 
@@ -204,18 +205,20 @@ export function registerOptimizedRoutes(app: Express): Server {
 
   // ***** RUTAS DE GEMINI AI PARA ORGANIZACIÓN INTELIGENTE *****
 
+  // Ensure test data exists on server start
+  databaseAdapter.ensureTestData();
+
   // Analizar lead específico con Gemini AI
   app.get("/api/ai/analyze-lead/:id", async (req: Request, res: Response) => {
     try {
       const leadId = parseInt(req.params.id);
-      const lead = await storage.getLead(leadId);
+      const lead = await databaseAdapter.getLead(leadId);
       
       if (!lead) {
         return res.status(404).json({ error: "Lead no encontrado" });
       }
 
-      const messages = await storage.getMessagesByLead(leadId);
-      const analysis = await geminiLeadOrganizer.analyzeLeadPriority(lead, messages);
+      const analysis = await geminiLeadOrganizer.analyzeLeadPriority(lead, []);
       
       res.json({
         success: true,
