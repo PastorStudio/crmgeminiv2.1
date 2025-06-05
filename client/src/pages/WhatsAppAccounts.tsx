@@ -46,6 +46,9 @@ import {
   Heart,
   Square,
   Activity,
+  Trash2,
+  AlertTriangle,
+  Zap,
 } from 'lucide-react';
 import { AgentConfigSection } from '@/components/AgentConfigSection';
 import { AutoResponseConfig } from '@/components/AutoResponseConfig';
@@ -146,6 +149,16 @@ const WhatsAppAccounts = () => {
   const [agentConfigDialogOpen, setAgentConfigDialogOpen] = useState(false);
   const [selectedAccountForAgent, setSelectedAccountForAgent] = useState<WhatsAppAccount | null>(null);
   const [qrAutoRefreshStatus, setQrAutoRefreshStatus] = useState<{[key: number]: boolean}>({});
+  const [isCleanupLoading, setIsCleanupLoading] = useState(false);
+  const [cleanupResults, setCleanupResults] = useState<{
+    show: boolean;
+    type: 'quick' | 'complete';
+    success: boolean;
+    message: string;
+    cleanedItems?: string[];
+    totalCleaned?: number;
+    errors?: string[];
+  }>({ show: false, type: 'quick', success: false, message: '' });
   
   // Effect to automatically close QR dialog when connection becomes authenticated
   useEffect(() => {
@@ -584,6 +597,93 @@ const WhatsAppAccounts = () => {
     const hours = Math.floor(minutes / 60);
     return `${hours}h`;
   };
+
+  // System Cleanup Handlers
+  const handleQuickCleanup = async () => {
+    setIsCleanupLoading(true);
+    try {
+      const response = await apiRequest('/api/system/quick-cleanup', {
+        method: 'POST'
+      });
+      
+      setCleanupResults({
+        show: true,
+        type: 'quick',
+        success: response.success,
+        message: response.message,
+        totalCleaned: 1
+      });
+      
+      if (response.success) {
+        toast({
+          title: "Limpieza rápida completada",
+          description: response.message,
+        });
+        refetch(); // Refresh accounts after cleanup
+      }
+    } catch (error) {
+      setCleanupResults({
+        show: true,
+        type: 'quick',
+        success: false,
+        message: `Error en limpieza rápida: ${error.message}`
+      });
+      toast({
+        title: "Error en limpieza rápida",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsCleanupLoading(false);
+    }
+  };
+
+  const handleCompleteCleanup = async () => {
+    setIsCleanupLoading(true);
+    try {
+      const response = await apiRequest('/api/system/complete-cleanup', {
+        method: 'POST'
+      });
+      
+      setCleanupResults({
+        show: true,
+        type: 'complete',
+        success: response.success,
+        message: response.message,
+        cleanedItems: response.cleanedItems || [],
+        totalCleaned: response.totalCleaned || 0,
+        errors: response.errors || []
+      });
+      
+      if (response.success) {
+        toast({
+          title: "Limpieza completa realizada",
+          description: `${response.totalCleaned} elementos limpiados exitosamente`,
+        });
+        refetch(); // Refresh accounts after cleanup
+      } else {
+        toast({
+          title: "Limpieza con advertencias",
+          description: `${response.totalCleaned} elementos limpiados, ${response.errors?.length || 0} errores`,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      setCleanupResults({
+        show: true,
+        type: 'complete',
+        success: false,
+        message: `Error en limpieza completa: ${error.message}`
+      });
+      toast({
+        title: "Error en limpieza completa",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsCleanupLoading(false);
+    }
+  };
   
   // Renderizar badge de estado
   const renderStatusBadge = (status: string, isAuthenticated?: boolean) => {
@@ -731,6 +831,105 @@ const WhatsAppAccounts = () => {
           <Button onClick={() => refetch()} size="sm" variant="outline">
             <RefreshCw className="mr-2 h-4 w-4" /> Actualizar
           </Button>
+          
+          {/* System Cleanup Controls */}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="border-orange-300 text-orange-700 hover:bg-orange-50">
+                <Zap className="mr-2 h-4 w-4" /> Limpieza Rápida
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-orange-500" />
+                  Limpieza Rápida del Sistema
+                </DialogTitle>
+                <DialogDescription>
+                  Elimina sesiones activas y resetea conexiones WhatsApp para resolver problemas de conectividad.
+                  Esta operación es segura y no afecta los datos permanentes.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-end gap-2 pt-4">
+                <DialogClose asChild>
+                  <Button variant="outline">Cancelar</Button>
+                </DialogClose>
+                <Button 
+                  onClick={handleQuickCleanup}
+                  disabled={isCleanupLoading}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  {isCleanupLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Limpiando...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="mr-2 h-4 w-4" />
+                      Ejecutar Limpieza Rápida
+                    </>
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="border-red-300 text-red-700 hover:bg-red-50">
+                <Trash2 className="mr-2 h-4 w-4" /> Limpieza Completa
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                  Limpieza Completa del Sistema
+                </DialogTitle>
+                <DialogDescription>
+                  Elimina todas las cachés, archivos temporales, sesiones de navegador y residuos de conexiones.
+                  Esta operación garantiza un sistema completamente limpio para nuevas conexiones WhatsApp.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 my-4">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5" />
+                  <div className="text-sm text-red-700">
+                    <p className="font-medium">Advertencia:</p>
+                    <ul className="mt-1 list-disc list-inside text-xs">
+                      <li>Se cerrarán todas las conexiones activas</li>
+                      <li>Se eliminarán archivos temporales y cachés</li>
+                      <li>Será necesario reconectar las cuentas</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <DialogClose asChild>
+                  <Button variant="outline">Cancelar</Button>
+                </DialogClose>
+                <Button 
+                  onClick={handleCompleteCleanup}
+                  disabled={isCleanupLoading}
+                  variant="destructive"
+                >
+                  {isCleanupLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Limpiando...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Ejecutar Limpieza Completa
+                    </>
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          
           <Button 
             onClick={handleDeleteAll} 
             size="sm" 
