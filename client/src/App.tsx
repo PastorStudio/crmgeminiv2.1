@@ -187,6 +187,17 @@ const AppRoutes: React.FC = () => {
                 Pipeline Ventas
               </a>
               
+              <a href="/flow-templates" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/flow-templates' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="7" height="5" rx="1" fill="#8B5CF6"/>
+                  <rect x="14" y="3" width="7" height="5" rx="1" fill="#06B6D4"/>
+                  <rect x="3" y="10" width="7" height="5" rx="1" fill="#10B981"/>
+                  <rect x="14" y="10" width="7" height="5" rx="1" fill="#F59E0B"/>
+                  <rect x="8" y="16" width="8" height="5" rx="1" fill="#EF4444"/>
+                </svg>
+                Plantillas de Flujos
+              </a>
+
               <a href="/sales-flow-designer" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/sales-flow-designer' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <path d="M6 3v12M18 9v12M12 3v6M12 15v6" stroke="#6366F1" strokeWidth="2" strokeLinecap="round"/>
