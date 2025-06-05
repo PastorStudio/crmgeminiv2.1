@@ -1086,6 +1086,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/sales-flow", async (req: Request, res: Response) => {
+    try {
+      const { nodes, edges, templateId } = req.body;
+      
+      console.log(`🚀 Creando flujo desde plantilla: ${templateId}`);
+      console.log(`📊 Recibidos ${nodes?.length || 0} nodos y ${edges?.length || 0} conexiones`);
+      
+      if (!nodes || !edges) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Nodes and edges are required" 
+        });
+      }
+      
+      // Actualizar el flujo actual con los datos de la plantilla
+      currentSalesFlow = {
+        nodes: nodes,
+        edges: edges,
+        templateId: templateId
+      };
+      
+      console.log(`✅ Flujo actualizado exitosamente con ${currentSalesFlow.nodes.length} nodos`);
+      
+      res.json({
+        success: true,
+        message: "Flujo creado exitosamente desde plantilla",
+        templateId: templateId,
+        nodesCount: nodes.length,
+        edgesCount: edges.length
+      });
+    } catch (error) {
+      console.error("Error creating sales flow:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Error al crear flujo de ventas" 
+      });
+    }
+  });
+
   app.get("/api/sales-flow/analytics", async (req: Request, res: Response) => {
     try {
       res.json({
