@@ -142,40 +142,8 @@ export default function SalesFlowDesigner() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Check localStorage immediately for template data
-  const getTemplateFromStorage = () => {
-    console.log('🔍 Verificando localStorage para salesFlowTemplate...');
-    const savedTemplate = localStorage.getItem('salesFlowTemplate');
-    console.log('🔍 Raw localStorage data:', savedTemplate);
-    
-    if (savedTemplate) {
-      try {
-        const templateData = JSON.parse(savedTemplate);
-        console.log('🗂️ Encontrados datos de template en localStorage:', templateData.templateId);
-        console.log(`📊 Cargando ${templateData.nodes?.length || 0} nodos y ${templateData.edges?.length || 0} edges desde localStorage`);
-        localStorage.removeItem('salesFlowTemplate');
-        return templateData;
-      } catch (error) {
-        console.error('Error parsing template from localStorage:', error);
-      }
-    } else {
-      console.log('❌ No se encontraron datos de template en localStorage');
-    }
-    return null;
-  };
-  
-  const templateData = getTemplateFromStorage();
-  
-  const getInitialNodes = () => {
-    return templateData?.nodes || initialNodes;
-  };
-  
-  const getInitialEdges = () => {
-    return templateData?.edges || initialEdges;
-  };
-  
-  const [nodes, setNodes, onNodesChange] = useNodesState(getInitialNodes());
-  const [edges, setEdges, onEdgesChange] = useEdgesState(getInitialEdges());
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
