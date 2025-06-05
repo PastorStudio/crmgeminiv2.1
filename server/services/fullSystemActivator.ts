@@ -148,7 +148,7 @@ export class FullSystemActivator {
     if (!this.genAI) return;
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
       const prompt = `
 Analiza este mensaje de WhatsApp para CRM:
