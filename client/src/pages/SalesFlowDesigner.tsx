@@ -847,6 +847,27 @@ export default function SalesFlowDesigner() {
           <FlowAnalytics analytics={analytics} />
         </DialogContent>
       </Dialog>
+
+      {/* Template Loading Dialog */}
+      <TemplateDialog
+        isOpen={isTemplateDialogOpen}
+        onClose={() => setIsTemplateDialogOpen(false)}
+        templates={templates}
+        onLoadTemplate={(template) => {
+          // Load template data
+          if (template.flowData) {
+            const flowData = JSON.parse(template.flowData);
+            if (flowData.nodes) setNodes(flowData.nodes);
+            if (flowData.edges) setEdges(flowData.edges);
+            
+            toast({
+              title: "Plantilla cargada",
+              description: `Se cargó la plantilla "${template.name}" correctamente.`,
+            });
+          }
+          setIsTemplateDialogOpen(false);
+        }}
+      />
     </div>
   );
 }
