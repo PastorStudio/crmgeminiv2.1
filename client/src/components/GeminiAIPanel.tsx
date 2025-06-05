@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Brain, Zap, Target, TrendingUp, FileText, Activity, Ticket, KanbanSquare, Loader2, Clock, AlertTriangle, Trash2 } from "lucide-react";
+import { Brain, Zap, Target, TrendingUp, FileText, Activity, Ticket, KanbanSquare, Loader2, Clock, AlertTriangle, Trash2, Wifi, WifiOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface LeadAnalysis {
@@ -38,6 +38,7 @@ export function GeminiAIPanel() {
   const [progress, setProgress] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
+  const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(null);
   const { toast } = useToast();
 
   // Timer para tiempo restante
@@ -57,6 +58,22 @@ export function GeminiAIPanel() {
     return () => clearInterval(interval);
   }, [timeRemaining]);
 
+  // Check WhatsApp status periodically
+  useEffect(() => {
+    const checkStatus = async () => {
+      const connected = await checkWhatsAppStatus();
+      setWhatsappConnected(connected);
+    };
+
+    // Check immediately
+    checkStatus();
+
+    // Check every 30 seconds
+    const interval = setInterval(checkStatus, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -75,10 +92,28 @@ export function GeminiAIPanel() {
 
   const checkWhatsAppStatus = async () => {
     try {
-      const response = await fetch('/api/whatsapp/ping-status/all');
+      // Check if we can actually get chat data - this is a more reliable indicator
+      const response = await fetch('/api/direct/whatsapp/chats');
       const data = await response.json();
-      return data.success && data.accounts?.some((acc: any) => acc.connected);
+      
+      // If we can retrieve chats, WhatsApp is connected
+      if (Array.isArray(data) && data.length > 0) {
+        return true;
+      }
+      
+      // Fallback to checking accounts status
+      const statusResponse = await fetch('/api/whatsapp-accounts');
+      const statusData = await statusResponse.json();
+      
+      if (statusData.success && statusData.accounts) {
+        return statusData.accounts.some((acc: any) => 
+          acc.status === 'connected' || acc.status === 'active'
+        );
+      }
+      
+      return false;
     } catch (error) {
+      console.error('Error checking WhatsApp status:', error);
       return false;
     }
   };
@@ -435,9 +470,29 @@ export function GeminiAIPanel() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-purple-600" />
-            Panel de Gemini AI
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-purple-600" />
+              Panel de Gemini AI
+            </div>
+            <div className="flex items-center gap-2">
+              {whatsappConnected === null ? (
+                <Badge variant="secondary" className="text-xs">
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  Verificando...
+                </Badge>
+              ) : whatsappConnected ? (
+                <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-xs">
+                  <Wifi className="h-3 w-3 mr-1" />
+                  WhatsApp Conectado
+                </Badge>
+              ) : (
+                <Badge variant="destructive" className="text-xs">
+                  <WifiOff className="h-3 w-3 mr-1" />
+                  WhatsApp Desconectado
+                </Badge>
+              )}
+            </div>
           </CardTitle>
           <CardDescription>
             Organización inteligente de leads, tickets y pipeline de ventas
