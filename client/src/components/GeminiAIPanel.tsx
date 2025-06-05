@@ -92,28 +92,47 @@ export function GeminiAIPanel() {
 
   const checkWhatsAppStatus = async () => {
     try {
-      // Check if we can actually get chat data - this is a more reliable indicator
-      const response = await fetch('/api/direct/whatsapp/chats');
-      const data = await response.json();
-      
-      // If we can retrieve chats, WhatsApp is connected
-      if (Array.isArray(data) && data.length > 0) {
-        return true;
+      // Use the new enhanced status endpoint for more accurate detection
+      const statusResponse = await fetch('/api/whatsapp/real-status');
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        if (statusData.success && statusData.isConnected) {
+          console.log('✅ WhatsApp connected via real-status:', statusData.connectionMethod, statusData.details);
+          return true;
+        }
       }
       
-      // Fallback to checking accounts status
-      const statusResponse = await fetch('/api/whatsapp-accounts');
-      const statusData = await statusResponse.json();
-      
-      if (statusData.success && statusData.accounts) {
-        return statusData.accounts.some((acc: any) => 
-          acc.status === 'connected' || acc.status === 'active'
-        );
+      // Fallback: Check ping status for all accounts
+      const pingResponse = await fetch('/api/whatsapp/ping-status/all');
+      if (pingResponse.ok) {
+        const pingData = await pingResponse.json();
+        if (pingData.success && pingData.accounts) {
+          const hasConnectedAccount = pingData.accounts.some((acc: any) => 
+            acc.connectionStatus === 'connected' || 
+            acc.connectionStatus === 'active' ||
+            (acc.pingStatus && acc.pingStatus.isActive)
+          );
+          if (hasConnectedAccount) {
+            console.log('✅ WhatsApp connected via ping status fallback');
+            return true;
+          }
+        }
       }
       
+      // Final fallback - check integration status
+      const integrationResponse = await fetch('/api/integrations/whatsapp/status');
+      if (integrationResponse.ok) {
+        const integrationData = await integrationResponse.json();
+        if (integrationData.authenticated || integrationData.ready) {
+          console.log('✅ WhatsApp connected via integration status');
+          return true;
+        }
+      }
+      
+      console.log('❌ WhatsApp appears to be disconnected - no valid connection found');
       return false;
     } catch (error) {
-      console.error('Error checking WhatsApp status:', error);
+      console.error('❌ Error checking WhatsApp status:', error);
       return false;
     }
   };

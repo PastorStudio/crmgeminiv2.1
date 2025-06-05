@@ -6465,6 +6465,72 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
     }
   });
 
+  // Endpoint mejorado para verificar estado real de WhatsApp
+  app.get("/api/whatsapp/real-status", async (req: Request, res: Response) => {
+    try {
+      let isConnected = false;
+      let connectionMethod = 'none';
+      let details = {};
+
+      // Método 1: Verificar mediante ping de cuentas
+      try {
+        const pingResults = await whatsappMultiAccountManager.pingAllAccounts();
+        const activePing = pingResults.find(result => result.isActive || result.status === 'connected');
+        if (activePing) {
+          isConnected = true;
+          connectionMethod = 'ping_status';
+          details = { pingResult: activePing };
+        }
+      } catch (error) {
+        console.log('Ping check failed:', error.message);
+      }
+
+      // Método 2: Verificar mediante cuentas disponibles
+      if (!isConnected) {
+        try {
+          const accounts = await whatsappMultiAccountManager.getAllAccounts();
+          const activeAccount = accounts.find(acc => acc.status === 'connected' || acc.status === 'active');
+          if (activeAccount) {
+            isConnected = true;
+            connectionMethod = 'account_status';
+            details = { accountId: activeAccount.id, status: activeAccount.status };
+          }
+        } catch (error) {
+          console.log('Account check failed:', error.message);
+        }
+      }
+
+      // Método 3: Verificar mediante chats disponibles
+      if (!isConnected) {
+        try {
+          const chats = await whatsappMultiAccountManager.getAllChats();
+          if (Array.isArray(chats) && chats.length > 0) {
+            isConnected = true;
+            connectionMethod = 'has_chats';
+            details = { chatCount: chats.length };
+          }
+        } catch (error) {
+          console.log('Chat check failed:', error.message);
+        }
+      }
+
+      res.json({
+        success: true,
+        isConnected,
+        connectionMethod,
+        details,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error checking real WhatsApp status:', error);
+      res.status(500).json({
+        success: false,
+        error: "Error al verificar estado real de WhatsApp",
+        isConnected: false
+      });
+    }
+  });
+
   // Use flow execution router
   app.use('/api/flow-execution', flowExecutionRouter);
 
