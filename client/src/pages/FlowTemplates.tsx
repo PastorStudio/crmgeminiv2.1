@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Zap, MessageSquare, Target, Users, ShoppingCart, Phone, Mail, Calendar, TrendingUp } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Plus, Zap, MessageSquare, Target, Users, ShoppingCart, Phone, Mail, Calendar, TrendingUp, FolderOpen } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useQuery } from '@tanstack/react-query';
 
 // Componente para vista previa del flujo
 const FlowPreview = ({ templateId }: { templateId: string }) => {
@@ -866,6 +868,13 @@ export default function FlowTemplates() {
   const [, setLocation] = useLocation();
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [selectedDifficulty, setSelectedDifficulty] = useState('Todos');
+  const [isLoadDialogOpen, setIsLoadDialogOpen] = useState(false);
+
+  // Query para obtener flujos guardados
+  const { data: savedFlows } = useQuery({
+    queryKey: ['/api/sales-flow'],
+    staleTime: 30000
+  });
 
   const filteredTemplates = flowTemplates.filter(template => {
     const categoryMatch = selectedCategory === 'Todos' || template.category === selectedCategory;
@@ -931,6 +940,21 @@ export default function FlowTemplates() {
     setLocation('/sales-flow-designer');
   };
 
+  const loadSavedFlow = (flowData: any) => {
+    // Guardar el flujo en localStorage para cargarlo en el diseñador
+    const flowDataForStorage = {
+      nodes: flowData.nodes || [],
+      edges: flowData.edges || [],
+      templateId: `saved-${flowData.id}`,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('salesFlowTemplate', JSON.stringify(flowDataForStorage));
+    console.log('✅ Flujo guardado cargado en localStorage con', flowData.nodes?.length || 0, 'nodos');
+    
+    // Navegar al diseñador
+    setLocation('/sales-flow-designer');
+  };
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'Principiante': return 'bg-green-100 text-green-800';
@@ -950,10 +974,20 @@ export default function FlowTemplates() {
               <h1 className="text-2xl font-bold text-gray-900">Plantillas de Flujos</h1>
               <p className="text-sm text-gray-600">Selecciona una plantilla o crea un flujo desde cero</p>
             </div>
-            <Button onClick={createBlankFlow} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Crear Flujo en Blanco
-            </Button>
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => setIsLoadDialogOpen(true)} 
+                variant="outline"
+                className="border-green-600 text-green-600 hover:bg-green-50"
+              >
+                <FolderOpen className="h-4 w-4 mr-2" />
+                Cargar Plantillas Guardadas
+              </Button>
+              <Button onClick={createBlankFlow} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-2" />
+                Crear Flujo en Blanco
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -1063,6 +1097,51 @@ export default function FlowTemplates() {
           </div>
         )}
       </div>
+
+      {/* Dialog para cargar plantillas guardadas */}
+      <Dialog open={isLoadDialogOpen} onOpenChange={setIsLoadDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Cargar Plantillas Guardadas</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {savedFlows?.flows?.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {savedFlows.flows.map((flow: any) => (
+                  <Card key={flow.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                    <CardHeader>
+                      <CardTitle className="text-lg">{flow.name || `Flujo ${flow.id}`}</CardTitle>
+                      <CardDescription>
+                        {flow.nodes?.length || 0} nodos • {flow.edges?.length || 0} conexiones
+                        <br />
+                        Creado: {new Date(flow.createdAt).toLocaleDateString()}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button 
+                        className="w-full"
+                        onClick={() => {
+                          loadSavedFlow(flow);
+                          setIsLoadDialogOpen(false);
+                        }}
+                      >
+                        Cargar este Flujo
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No hay flujos guardados</h3>
+                <p className="text-gray-600">Aún no has guardado ningún flujo. Crea uno nuevo usando las plantillas.</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
