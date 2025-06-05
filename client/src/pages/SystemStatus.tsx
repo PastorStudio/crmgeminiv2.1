@@ -49,15 +49,29 @@ export default function SystemStatus() {
     try {
       const response = await fetch('/api/test-gemini-integration', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Expected JSON response but received HTML. API endpoint may not be available.');
+      }
+      
       const data = await response.json();
       setGeminiTest(data);
     } catch (error) {
       console.error('Error testing Gemini:', error);
       setGeminiTest({
         success: false,
-        message: 'Error testing Gemini AI integration'
+        message: error.message.includes('HTML') 
+          ? 'API endpoint not accessible. Please check server configuration.'
+          : 'Error testing Gemini AI integration',
+        details: error.message
       });
     } finally {
       setTesting(false);

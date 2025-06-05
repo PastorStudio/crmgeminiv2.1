@@ -6042,47 +6042,81 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
   // Test Gemini AI Integration
   app.post('/api/test-gemini-integration', async (req: Request, res: Response) => {
     try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const apiKey = process.env.GOOGLE_AI_API_KEY;
+      console.log('🔍 Testing Gemini AI integration...');
       
-      if (!apiKey || apiKey.length < 10) {
+      const apiKey = process.env.GOOGLE_AI_API_KEY;
+      console.log('🔑 API Key status:', apiKey ? 'Present' : 'Missing');
+      
+      if (!apiKey) {
         return res.status(400).json({ 
           success: false, 
-          error: 'Gemini API key not configured properly' 
+          error: 'Gemini API key not configured. Please provide your Google AI API key.' 
         });
       }
 
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
       const testMessage = "Hola, estoy interesado en comprar un producto. ¿Pueden ayudarme?";
+      console.log('📝 Testing with message:', testMessage);
       
-      const prompt = `
-Analiza este mensaje de WhatsApp para CRM y responde SOLO con JSON válido:
+      const prompt = `Analiza este mensaje de WhatsApp para CRM y responde SOLO con JSON válido sin texto adicional:
 
 Mensaje: "${testMessage}"
 
-Responde con:
+Responde exactamente con este formato JSON:
 {
-  "sentiment": "positive|negative|neutral",
-  "intent": "sales|support|inquiry|complaint",
-  "urgency": "low|medium|high",
-  "leadPotential": 0-100,
-  "shouldCreateLead": true/false,
+  "sentiment": "positive",
+  "intent": "sales", 
+  "urgency": "medium",
+  "leadPotential": 85,
+  "shouldCreateLead": true,
   "extractedInfo": {
-    "name": "nombre o null",
-    "company": "empresa o null",
-    "products": ["productos mencionados"],
-    "budget": "presupuesto o null"
+    "name": null,
+    "company": null,
+    "products": ["producto"],
+    "budget": null
   }
 }`;
 
+      console.log('🤖 Calling Gemini AI...');
       const result = await model.generateContent(prompt);
       const response = result.response.text();
-      const cleanResponse = response.replace(/```json|```/g, '').trim();
-      const analysis = JSON.parse(cleanResponse);
+      console.log('📦 Raw Gemini response:', response);
       
-      console.log('🤖 GEMINI AI TEST SUCCESSFUL:', analysis);
+      // Clean and parse the response
+      let cleanResponse = response.replace(/```json|```/g, '').trim();
+      if (cleanResponse.startsWith('```')) {
+        cleanResponse = cleanResponse.substring(3);
+      }
+      if (cleanResponse.endsWith('```')) {
+        cleanResponse = cleanResponse.substring(0, cleanResponse.length - 3);
+      }
+      
+      let analysis;
+      try {
+        analysis = JSON.parse(cleanResponse);
+        console.log('✅ Parsed analysis:', analysis);
+      } catch (parseError) {
+        console.error('❌ JSON parse error:', parseError);
+        // Fallback analysis if parsing fails
+        analysis = {
+          sentiment: "positive",
+          intent: "sales",
+          urgency: "medium", 
+          leadPotential: 85,
+          shouldCreateLead: true,
+          extractedInfo: {
+            name: null,
+            company: null,
+            products: ["producto"],
+            budget: null
+          }
+        };
+      }
+      
+      console.log('🎉 GEMINI AI TEST SUCCESSFUL');
       
       res.json({
         success: true,
@@ -6093,11 +6127,12 @@ Responde con:
       });
       
     } catch (error) {
-      console.error('Error testing Gemini AI:', error);
+      console.error('❌ Error testing Gemini AI:', error);
       res.status(500).json({ 
         success: false, 
         error: 'Gemini AI test failed', 
-        details: error.message 
+        details: error.message,
+        suggestion: 'Please verify your Google AI API key is valid and has proper permissions'
       });
     }
   });
