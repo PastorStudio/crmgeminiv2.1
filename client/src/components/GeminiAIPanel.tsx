@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Brain, Zap, Target, TrendingUp, FileText, Activity, Ticket, KanbanSquare, Loader2, Clock, AlertTriangle, Trash2, Wifi, WifiOff } from "lucide-react";
+import { Brain, Zap, Target, TrendingUp, FileText, Activity, Ticket, KanbanSquare, Loader2, Clock, AlertTriangle, Trash2, Wifi, WifiOff, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWhatsAppStatus } from "@/hooks/useWhatsAppStatus";
 
@@ -23,26 +23,46 @@ interface LeadAnalysis {
   timeline: string;
 }
 
+interface AutomationResult {
+  success: boolean;
+  leadsOrganized: number;
+  ticketsProcessed: number;
+  kanbanOrganized: number;
+  summary: string[];
+}
+
+interface ChatConversionResult {
+  processed: number;
+  created: number;
+  updated: number;
+  analyzed: number;
+}
+
 export function GeminiAIPanel() {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentTask, setCurrentTask] = useState("");
+  const [progress, setProgress] = useState(0);
   const [analysis, setAnalysis] = useState<LeadAnalysis | null>(null);
+  const [automationResult, setAutomationResult] = useState<AutomationResult | null>(null);
+  const [chatConversionResult, setChatConversionResult] = useState<ChatConversionResult | null>(null);
   const [organizeResult, setOrganizeResult] = useState<any>(null);
-  const [smartReport, setSmartReport] = useState<string | null>(null);
-  const [ticketsResult, setTicketsResult] = useState<any>(null);
-  const [kanbanResult, setKanbanResult] = useState<any>(null);
-  const [automationResult, setAutomationResult] = useState<any>(null);
-  const [chatConversionResult, setChatConversionResult] = useState<any>(null);
+  const [smartReport, setSmartReport] = useState<string>("");
   const [systemResetResult, setSystemResetResult] = useState<any>(null);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
-  const [currentTask, setCurrentTask] = useState<string>("");
-  const [progress, setProgress] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(0);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [geminiKeyStatus, setGeminiKeyStatus] = useState<boolean | null>(null);
+  
   const { toast } = useToast();
   const { status: whatsappConnected } = useWhatsAppStatus();
 
-  // Timer para tiempo restante
+  // Check Gemini API key status on component mount
+  useEffect(() => {
+    checkGeminiKeyStatus();
+  }, []);
+
+  // Timer for quota cooldown
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (timeRemaining > 0) {
@@ -59,6 +79,17 @@ export function GeminiAIPanel() {
     return () => clearInterval(interval);
   }, [timeRemaining]);
 
+  const checkGeminiKeyStatus = async () => {
+    try {
+      const response = await fetch('/api/settings/gemini-key-status');
+      const data = await response.json();
+      setGeminiKeyStatus(data.hasValidKey || false);
+    } catch (error) {
+      console.error('Error checking Gemini key status:', error);
+      setGeminiKeyStatus(false);
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -67,201 +98,44 @@ export function GeminiAIPanel() {
 
   const handleQuotaError = () => {
     setIsQuotaExceeded(true);
-    setTimeRemaining(60); // 1 minuto de espera
+    setTimeRemaining(300); // 5 minutes cooldown
     toast({
-      title: "⏳ Cuota de Gemini AI excedida",
-      description: "Esperando 1 minuto antes del próximo intento...",
+      title: "Cuota API excedida",
+      description: "Esperando 5 minutos antes del próximo intento",
       variant: "destructive",
     });
   };
 
-
-
-  const analyzeFirstLead = async () => {
-    if (isQuotaExceeded) return;
-    
-    setIsProcessing(true);
-    setCurrentTask("Verificando conexiones...");
-    setProgress(10);
-    
-    // Verificar estado de WhatsApp antes de proceder
-    const whatsappConnected = await checkWhatsAppStatus();
-    if (whatsappConnected) {
-      setCurrentTask("WhatsApp conectado - Procediendo con análisis...");
-    } else {
-      setCurrentTask("WhatsApp desconectado - Continuando con análisis...");
-    }
-    
-    setCurrentTask("Analizando lead con Gemini AI...");
-    setProgress(20);
-    
-    try {
-      const response = await fetch('/api/ai/analyze-lead/1');
-      setProgress(60);
-      const data = await response.json();
-      setProgress(80);
-      
-      if (response.status === 429) {
-        handleQuotaError();
-        return;
-      }
-      
-      if (data.success) {
-        setAnalysis(data.analysis);
-        setProgress(100);
-        toast({
-          title: "✅ Análisis completado",
-          description: `Lead analizado con score ${data.analysis.score}/100`,
-        });
-      } else {
-        throw new Error(data.error || 'Error en análisis');
-      }
-    } catch (error: any) {
-      if (error.message?.includes('429') || error.message?.includes('quota')) {
-        handleQuotaError();
-      } else {
-        toast({
-          title: "❌ Error",
-          description: "Error al analizar lead con Gemini AI",
-          variant: "destructive",
-        });
-      }
-    }
-    setIsProcessing(false);
-    setProgress(0);
-    setCurrentTask("");
-  };
-
-  const organizeAllLeads = async () => {
-    setIsProcessing(true);
-    try {
-      const response = await fetch('/api/ai/organize-leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        setOrganizeResult(data);
-        toast({
-          title: "🤖 Organización exitosa",
-          description: `${data.organized} leads organizados con IA`,
-        });
-      } else {
-        throw new Error(data.error || 'Error en organización');
-      }
-    } catch (error) {
-      toast({
-        title: "❌ Error",
-        description: "Error al organizar leads automáticamente",
-        variant: "destructive",
-      });
-    }
-    setIsProcessing(false);
-  };
-
-  const generateSmartReport = async () => {
-    setIsProcessing(true);
-    try {
-      const response = await fetch('/api/ai/smart-report');
-      const data = await response.json();
-      
-      if (data.success) {
-        setSmartReport(data.report);
-        toast({
-          title: "📊 Reporte generado",
-          description: `Analizados ${data.leadsAnalyzed} leads`,
-        });
-      } else {
-        throw new Error(data.error || 'Error en reporte');
-      }
-    } catch (error) {
-      toast({
-        title: "❌ Error",
-        description: "Error al generar reporte inteligente",
-        variant: "destructive",
-      });
-    }
-    setIsProcessing(false);
-  };
-
-  const manageTickets = async () => {
-    setIsProcessing(true);
-    try {
-      const response = await fetch('/api/ai/manage-tickets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        setTicketsResult(data);
-        toast({
-          title: "🎫 Tickets gestionados",
-          description: `${data.processed} mensajes procesados, ${data.created} tickets creados`,
-        });
-      } else {
-        throw new Error(data.error || 'Error en gestión de tickets');
-      }
-    } catch (error) {
-      toast({
-        title: "❌ Error",
-        description: "Error al gestionar tickets automáticamente",
-        variant: "destructive",
-      });
-    }
-    setIsProcessing(false);
-  };
-
-  const organizeKanban = async () => {
-    setIsProcessing(true);
-    try {
-      const response = await fetch('/api/ai/kanban-organize');
-      const data = await response.json();
-      
-      if (data.success) {
-        setKanbanResult(data);
-        toast({
-          title: "📋 Kanban organizado",
-          description: `${data.organized} tarjetas organizadas en tablero`,
-        });
-      } else {
-        throw new Error(data.error || 'Error en organización Kanban');
-      }
-    } catch (error) {
-      toast({
-        title: "❌ Error",
-        description: "Error al organizar tablero Kanban",
-        variant: "destructive",
-      });
-    }
-    setIsProcessing(false);
+  const handleResetClick = () => {
+    setShowResetDialog(true);
   };
 
   const runFullAutomation = async () => {
+    if (isQuotaExceeded) return;
+    
     setIsProcessing(true);
     setCurrentTask("Iniciando automatización completa...");
     setProgress(5);
     
-    // Check WhatsApp status but don't let it block automation
-    const isWhatsAppConnected = whatsappConnected === true;
-    
-    if (isWhatsAppConnected) {
-      setCurrentTask("WhatsApp conectado - Iniciando automatización segura...");
-    } else {
-      setCurrentTask("Iniciando automatización (sin dependencia de WhatsApp)...");
-    }
-    setProgress(15);
-    
     try {
+      // Check if Gemini API is available
+      if (!geminiKeyStatus) {
+        toast({
+          title: "Configuración requerida",
+          description: "Se requiere configurar la clave API de Gemini para continuar",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
       setCurrentTask("Ejecutando automatización de leads y tickets...");
       setProgress(30);
       
       const response = await fetch('/api/ai/full-automation', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'X-WhatsApp-Safe': isWhatsAppConnected ? 'true' : 'false'
+          'Content-Type': 'application/json'
         },
       });
       
@@ -286,13 +160,17 @@ export function GeminiAIPanel() {
       } else {
         throw new Error(data.error || 'Error en automatización completa');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error en automatización:', error);
-      toast({
-        title: "Error",
-        description: "Error en automatización completa del sistema",
-        variant: "destructive",
-      });
+      if (error.message.includes('quota') || error.message.includes('rate limit')) {
+        handleQuotaError();
+      } else {
+        toast({
+          title: "Error",
+          description: "Error en automatización completa del sistema",
+          variant: "destructive",
+        });
+      }
     }
     setIsProcessing(false);
   };
@@ -301,71 +179,291 @@ export function GeminiAIPanel() {
     if (isQuotaExceeded) return;
     
     setIsProcessing(true);
-    setCurrentTask("Verificando estado de WhatsApp...");
-    setProgress(5);
-    
-    // Verificar estado de WhatsApp antes de la conversión
-    const whatsappConnected = await checkWhatsAppStatus();
-    if (whatsappConnected) {
-      setCurrentTask("WhatsApp conectado - Conversión segura iniciada...");
-    } else {
-      setCurrentTask("WhatsApp desconectado - Continuando con conversión...");
-    }
-    
-    setCurrentTask("Convirtiendo chats de WhatsApp en leads...");
+    setCurrentTask("Obteniendo chats de WhatsApp...");
     setProgress(10);
     
     try {
-      // Convertir chats de ambas cuentas
-      const accounts = [1, 2];
-      let totalResults = {
-        processed: 0,
-        created: 0,
-        updated: 0,
-        analyzed: 0
-      };
-      
-      for (let i = 0; i < accounts.length; i++) {
-        const accountId = accounts[i];
-        setCurrentTask(`Procesando cuenta WhatsApp ${accountId}...`);
-        setProgress(20 + (i * 30));
-        
-        const response = await fetch(`/api/whatsapp/${accountId}/convert-chats-to-leads`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-WhatsApp-Safe': whatsappConnected ? 'true' : 'false'
-          },
+      if (!geminiKeyStatus) {
+        toast({
+          title: "Configuración requerida",
+          description: "Se requiere configurar la clave API de Gemini para el análisis con IA",
+          variant: "destructive",
         });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          totalResults.processed += data.data.processed;
-          totalResults.created += data.data.created;
-          totalResults.updated += data.data.updated;
-          totalResults.analyzed += data.data.analyzed;
-        }
+        setIsProcessing(false);
+        return;
       }
+
+      setCurrentTask("Convirtiendo chats a leads...");
+      setProgress(30);
       
-      setProgress(90);
-      setCurrentTask("Finalizando conversión...");
-      
-      setChatConversionResult(totalResults);
-      setProgress(100);
-      
-      toast({
-        title: "✅ Conversión completada",
-        description: `${totalResults.created} nuevos leads creados, ${totalResults.updated} actualizados, ${totalResults.analyzed} analizados con IA`,
+      const response = await fetch('/api/ai/convert-chats-to-leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
+      
+      setProgress(70);
+      setCurrentTask("Analizando leads con IA...");
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setChatConversionResult(data.data);
+        setProgress(100);
+        
+        toast({
+          title: "Conversión completada",
+          description: `${data.data.created} nuevos leads creados, ${data.data.analyzed} analizados con IA`,
+        });
+      } else {
+        throw new Error(data.error || 'Error convirtiendo chats');
+      }
       
     } catch (error: any) {
       if (error.message.includes('quota') || error.message.includes('rate limit')) {
         handleQuotaError();
       } else {
         toast({
-          title: "❌ Error",
+          title: "Error",
           description: "Error convirtiendo chats a leads",
+          variant: "destructive",
+        });
+      }
+    }
+    setIsProcessing(false);
+  };
+
+  const analyzeFirstLead = async () => {
+    if (isQuotaExceeded) return;
+    
+    setIsProcessing(true);
+    setCurrentTask("Obteniendo primer lead...");
+    setProgress(20);
+    
+    try {
+      if (!geminiKeyStatus) {
+        toast({
+          title: "Configuración requerida",
+          description: "Se requiere configurar la clave API de Gemini para el análisis",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      setCurrentTask("Analizando lead con IA...");
+      setProgress(60);
+      
+      const response = await fetch('/api/ai/analyze-lead/1', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setAnalysis(data.analysis);
+        setProgress(100);
+        
+        toast({
+          title: "Análisis completado",
+          description: "Lead analizado exitosamente con IA",
+        });
+      } else {
+        throw new Error(data.error || 'Error analizando lead');
+      }
+      
+    } catch (error: any) {
+      if (error.message.includes('quota') || error.message.includes('rate limit')) {
+        handleQuotaError();
+      } else {
+        toast({
+          title: "Error",
+          description: "Error analizando lead",
+          variant: "destructive",
+        });
+      }
+    }
+    setIsProcessing(false);
+  };
+
+  const organizeAllLeads = async () => {
+    if (isQuotaExceeded) return;
+    
+    setIsProcessing(true);
+    setCurrentTask("Organizando todos los leads...");
+    setProgress(30);
+    
+    try {
+      if (!geminiKeyStatus) {
+        toast({
+          title: "Configuración requerida", 
+          description: "Se requiere configurar la clave API de Gemini para la organización inteligente",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      const response = await fetch('/api/ai/organize-leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      setProgress(80);
+      const data = await response.json();
+      
+      if (data.success) {
+        setOrganizeResult(data);
+        setProgress(100);
+        
+        toast({
+          title: "Organización completada",
+          description: `${data.organized} leads organizados exitosamente`,
+        });
+      } else {
+        throw new Error(data.error || 'Error organizando leads');
+      }
+      
+    } catch (error: any) {
+      if (error.message.includes('quota') || error.message.includes('rate limit')) {
+        handleQuotaError();
+      } else {
+        toast({
+          title: "Error",
+          description: "Error organizando leads",
+          variant: "destructive",
+        });
+      }
+    }
+    setIsProcessing(false);
+  };
+
+  const manageTickets = async () => {
+    if (isQuotaExceeded) return;
+    
+    setIsProcessing(true);
+    setCurrentTask("Gestionando tickets...");
+    setProgress(40);
+    
+    try {
+      const response = await fetch('/api/ai/manage-tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setProgress(100);
+        toast({
+          title: "Tickets gestionados",
+          description: `${data.processed} tickets procesados exitosamente`,
+        });
+      } else {
+        throw new Error(data.error || 'Error gestionando tickets');
+      }
+      
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Error gestionando tickets",
+        variant: "destructive",
+      });
+    }
+    setIsProcessing(false);
+  };
+
+  const organizeKanban = async () => {
+    if (isQuotaExceeded) return;
+    
+    setIsProcessing(true);
+    setCurrentTask("Organizando tablero Kanban...");
+    setProgress(50);
+    
+    try {
+      const response = await fetch('/api/ai/organize-kanban', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setProgress(100);
+        toast({
+          title: "Kanban organizado",
+          description: `${data.organized} tarjetas organizadas exitosamente`,
+        });
+      } else {
+        throw new Error(data.error || 'Error organizando Kanban');
+      }
+      
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Error organizando Kanban",
+        variant: "destructive",
+      });
+    }
+    setIsProcessing(false);
+  };
+
+  const generateSmartReport = async () => {
+    if (isQuotaExceeded) return;
+    
+    setIsProcessing(true);
+    setCurrentTask("Generando reporte inteligente...");
+    setProgress(40);
+    
+    try {
+      if (!geminiKeyStatus) {
+        toast({
+          title: "Configuración requerida",
+          description: "Se requiere configurar la clave API de Gemini para generar reportes inteligentes",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      const response = await fetch('/api/ai/generate-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setSmartReport(data.report);
+        setProgress(100);
+        
+        toast({
+          title: "Reporte generado",
+          description: "Reporte inteligente generado exitosamente",
+        });
+      } else {
+        throw new Error(data.error || 'Error generando reporte');
+      }
+      
+    } catch (error: any) {
+      if (error.message.includes('quota') || error.message.includes('rate limit')) {
+        handleQuotaError();
+      } else {
+        toast({
+          title: "Error",
+          description: "Error generando reporte",
           variant: "destructive",
         });
       }
@@ -388,68 +486,82 @@ export function GeminiAIPanel() {
         },
         body: JSON.stringify({ adminPassword })
       });
-      
-      setProgress(50);
+
+      if (!response.ok) {
+        throw new Error('Error en la respuesta del servidor');
+      }
+
       const data = await response.json();
-      setProgress(80);
       
       if (data.success) {
-        setSystemResetResult(data.data);
+        setSystemResetResult(data);
         setProgress(100);
         setShowResetDialog(false);
         setAdminPassword("");
         
         toast({
-          title: "✅ Sistema resetado completamente",
-          description: `${data.data.deletedLeads} leads, ${data.data.deletedTickets} tickets, ${data.data.deletedActivities} actividades eliminados`,
+          title: "Reset completado",
+          description: "Todos los datos del sistema han sido eliminados",
         });
       } else {
-        throw new Error(data.error || 'Error en el reseteo del sistema');
+        throw new Error(data.error || 'Error en reset del sistema');
       }
       
     } catch (error: any) {
       toast({
-        title: "❌ Error en reseteo",
-        description: error.message || "Error al resetear el sistema",
+        title: "Error",
+        description: "Error eliminando datos del sistema",
         variant: "destructive",
       });
     }
     setIsProcessing(false);
   };
 
-  const handleResetClick = () => {
-    setShowResetDialog(true);
-    setAdminPassword("");
-  };
-
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'low': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'high': return 'bg-red-500 hover:bg-red-600';
+      case 'medium': return 'bg-yellow-500 hover:bg-yellow-600';
+      case 'low': return 'bg-green-500 hover:bg-green-600';
+      default: return 'bg-gray-500 hover:bg-gray-600';
     }
   };
 
   const getSentimentColor = (sentiment: string) => {
     switch (sentiment) {
-      case 'positive': return 'bg-green-100 text-green-800';
-      case 'neutral': return 'bg-blue-100 text-blue-800';
-      case 'negative': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'positive': return 'bg-green-500 hover:bg-green-600';
+      case 'neutral': return 'bg-gray-500 hover:bg-gray-600';
+      case 'negative': return 'bg-red-500 hover:bg-red-600';
+      default: return 'bg-gray-500 hover:bg-gray-600';
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 max-w-7xl">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-purple-600" />
-              Panel de Gemini AI
+            <div className="flex items-center gap-3">
+              <Brain className="h-6 w-6 text-purple-600" />
+              <span>Panel de Automatización con IA</span>
             </div>
             <div className="flex items-center gap-2">
+              {geminiKeyStatus === null ? (
+                <Badge variant="secondary" className="text-xs">
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  Verificando Gemini...
+                </Badge>
+              ) : geminiKeyStatus ? (
+                <Badge variant="default" className="bg-blue-500 hover:bg-blue-600 text-xs">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Gemini AI Listo
+                </Badge>
+              ) : (
+                <Badge variant="destructive" className="text-xs">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Gemini No Configurado
+                </Badge>
+              )}
+              
               {whatsappConnected === null ? (
                 <Badge variant="secondary" className="text-xs">
                   <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -469,11 +581,11 @@ export function GeminiAIPanel() {
             </div>
           </CardTitle>
           <CardDescription>
-            Organización inteligente de leads, tickets y pipeline de ventas
+            Organización inteligente de leads, tickets y pipeline de ventas con Gemini AI
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Barra de progreso y estado */}
+          {/* Progress and status bar */}
           {(isProcessing || isQuotaExceeded) && (
             <div className="space-y-3 p-4 bg-gray-50 rounded-lg border">
               <div className="flex items-center justify-between">
@@ -525,16 +637,16 @@ export function GeminiAIPanel() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Button
               onClick={convertChatsToLeads}
-              disabled={isProcessing}
+              disabled={isProcessing || !geminiKeyStatus}
               className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
             >
               <Activity className="h-4 w-4" />
-              {isProcessing ? "Convirtiendo..." : "🚀 Chats → Leads con IA"}
+              {isProcessing ? "Convirtiendo..." : "Chats → Leads con IA"}
             </Button>
 
             <Button
               onClick={analyzeFirstLead}
-              disabled={isProcessing}
+              disabled={isProcessing || !geminiKeyStatus}
               className="flex items-center gap-2"
             >
               <Target className="h-4 w-4" />
@@ -543,7 +655,7 @@ export function GeminiAIPanel() {
             
             <Button
               onClick={organizeAllLeads}
-              disabled={isProcessing}
+              disabled={isProcessing || !geminiKeyStatus}
               variant="secondary"
               className="flex items-center gap-2"
             >
@@ -571,7 +683,7 @@ export function GeminiAIPanel() {
             
             <Button
               onClick={generateSmartReport}
-              disabled={isProcessing}
+              disabled={isProcessing || !geminiKeyStatus}
               variant="outline"
               className="flex items-center gap-2"
             >
@@ -581,7 +693,7 @@ export function GeminiAIPanel() {
             
             <Button
               onClick={runFullAutomation}
-              disabled={isProcessing}
+              disabled={isProcessing || !geminiKeyStatus}
               className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold col-span-full"
             >
               {isProcessing ? (
@@ -592,7 +704,7 @@ export function GeminiAIPanel() {
               ) : (
                 <>
                   <Zap className="h-4 w-4" />
-                  🚀 AUTOMATIZACIÓN COMPLETA DEL SISTEMA
+                  AUTOMATIZACIÓN COMPLETA DEL SISTEMA
                 </>
               )}
             </Button>
@@ -604,11 +716,11 @@ export function GeminiAIPanel() {
               className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold col-span-full"
             >
               <Trash2 className="h-4 w-4" />
-              {isProcessing ? "Eliminando..." : "🗑️ RESET TOTAL DEL SISTEMA"}
+              {isProcessing ? "Eliminando..." : "RESET TOTAL DEL SISTEMA"}
             </Button>
           </div>
 
-          {/* Dialog de confirmación para reset del sistema */}
+          {/* Reset confirmation dialog */}
           <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
@@ -673,6 +785,7 @@ export function GeminiAIPanel() {
             </DialogContent>
           </Dialog>
 
+          {/* Results display */}
           {analysis && (
             <Card className="mt-6">
               <CardHeader>
@@ -732,32 +845,40 @@ export function GeminiAIPanel() {
             </Card>
           )}
 
-          {organizeResult && (
+          {automationResult && (
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-green-600" />
-                  Resultado de Organización
+                  <Zap className="h-5 w-5 text-purple-600" />
+                  Resultado de Automatización Completa
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-green-600">{organizeResult.organized}</span>
-                    <span className="text-sm text-gray-600">leads organizados exitosamente</span>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">{automationResult.leadsOrganized}</div>
+                    <div className="text-sm text-blue-700">Leads Organizados</div>
                   </div>
-                  
-                  {organizeResult.insights && organizeResult.insights.length > 0 && (
-                    <div>
-                      <h4 className="font-medium text-sm text-gray-700 mb-2">Insights generados:</h4>
-                      <ul className="space-y-1">
-                        {organizeResult.insights.slice(0, 3).map((insight: string, index: number) => (
-                          <li key={index} className="text-sm text-gray-600">• {insight}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">{automationResult.ticketsProcessed}</div>
+                    <div className="text-sm text-green-700">Tickets Procesados</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">{automationResult.kanbanOrganized}</div>
+                    <div className="text-sm text-purple-700">Kanban Organizado</div>
+                  </div>
                 </div>
+                
+                {automationResult.summary && automationResult.summary.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="font-medium text-sm text-gray-700 mb-2">Resumen de automatización:</h4>
+                    <ul className="space-y-1">
+                      {automationResult.summary.map((item: string, index: number) => (
+                        <li key={index} className="text-sm text-gray-600">• {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -792,13 +913,35 @@ export function GeminiAIPanel() {
                     <div className="text-sm text-purple-700">Analizados con IA</div>
                   </div>
                 </div>
-                <div className="mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                  <div className="text-sm text-green-800 font-medium">
-                    ✅ Sistema completamente actualizado con conversaciones reales de WhatsApp
+              </CardContent>
+            </Card>
+          )}
+
+          {organizeResult && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-green-600" />
+                  Resultado de Organización
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold text-green-600">{organizeResult.organized}</span>
+                    <span className="text-sm text-gray-600">leads organizados exitosamente</span>
                   </div>
-                  <div className="text-xs text-green-700 mt-1">
-                    Cada chat ha sido convertido en un lead con análisis de sentimiento, probabilidad de conversión y próximas acciones sugeridas
-                  </div>
+                  
+                  {organizeResult.insights && organizeResult.insights.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-sm text-gray-700 mb-2">Insights generados:</h4>
+                      <ul className="space-y-1">
+                        {organizeResult.insights.slice(0, 3).map((insight: string, index: number) => (
+                          <li key={index} className="text-sm text-gray-600">• {insight}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -832,14 +975,6 @@ export function GeminiAIPanel() {
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <div className="text-2xl font-bold text-gray-600">{systemResetResult.deletedMessages}</div>
                     <div className="text-sm text-gray-700">Mensajes Eliminados</div>
-                  </div>
-                </div>
-                <div className="mt-4 p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border border-red-200">
-                  <div className="text-sm text-red-800 font-medium">
-                    ✅ Sistema completamente limpio y listo para nuevos datos
-                  </div>
-                  <div className="text-xs text-red-700 mt-1">
-                    Todos los datos anteriores han sido eliminados de forma permanente. El sistema está listo para comenzar con datos frescos.
                   </div>
                 </div>
               </CardContent>
