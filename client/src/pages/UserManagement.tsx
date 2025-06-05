@@ -356,16 +356,33 @@ export default function UserManagement() {
       const response = await fetch(`/api/users/${userId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
+          'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`,
+          'Content-Type': 'application/json'
         }
       });
       
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al eliminar usuario');
+        if (isJson) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Error al eliminar usuario');
+        } else {
+          // If not JSON, likely an HTML error page
+          const errorText = await response.text();
+          console.error('HTML Error Response:', errorText);
+          throw new Error(`Error ${response.status}: No se pudo eliminar el usuario`);
+        }
       }
       
-      return response.json();
+      if (isJson) {
+        return response.json();
+      } else {
+        // If successful but not JSON, return a default response
+        return { success: true, message: "Usuario eliminado exitosamente" };
+      }
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
