@@ -28,6 +28,7 @@ import { AutomaticLeadGenerator } from "./services/automaticLeadGenerator";
 import { conversationHistory } from './services/conversationHistory';
 import { MessageInterceptorService } from './services/messageInterceptorService';
 import { AutoWebScrapingHandler } from './services/autoWebScrapingHandler';
+import { qrAutoRefreshService } from './services/qrAutoRefresh';
 import OpenAI from 'openai';
 import { autonomousProcessor } from './services/autonomousProcessor';
 import { simpleAutonomousProcessor } from './services/simpleAutonomousProcessor';
@@ -6075,6 +6076,62 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
     } catch (error) {
       console.error('Error activando sistema completo:', error);
       res.status(500).json({ success: false, error: 'Error activando sistema' });
+    }
+  });
+
+  // QR Code automatic refresh API endpoints
+  app.post('/api/qr-auto-refresh/start/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      qrAutoRefreshService.startAutoRefresh(accountId);
+      console.log(`🔄 Auto-refresh de QR iniciado para cuenta ${accountId}`);
+      res.json({ 
+        success: true, 
+        message: `Auto-refresh iniciado para cuenta ${accountId}`,
+        interval: '2 minutos'
+      });
+    } catch (error) {
+      console.error('Error iniciando auto-refresh:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Error iniciando auto-refresh de QR' 
+      });
+    }
+  });
+
+  app.post('/api/qr-auto-refresh/stop/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      qrAutoRefreshService.stopAutoRefresh(accountId);
+      console.log(`⏹️ Auto-refresh de QR detenido para cuenta ${accountId}`);
+      res.json({ 
+        success: true, 
+        message: `Auto-refresh detenido para cuenta ${accountId}` 
+      });
+    } catch (error) {
+      console.error('Error deteniendo auto-refresh:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Error deteniendo auto-refresh de QR' 
+      });
+    }
+  });
+
+  app.get('/api/qr-auto-refresh/status', async (req: Request, res: Response) => {
+    try {
+      const refreshInfo = qrAutoRefreshService.getRefreshInfo();
+      res.json({ 
+        success: true, 
+        refreshInfo,
+        interval: '2 minutos',
+        totalActive: refreshInfo.length
+      });
+    } catch (error) {
+      console.error('Error obteniendo estado de auto-refresh:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Error obteniendo estado de auto-refresh' 
+      });
     }
   });
 
