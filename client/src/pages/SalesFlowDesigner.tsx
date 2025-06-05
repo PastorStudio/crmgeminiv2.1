@@ -256,23 +256,29 @@ export default function SalesFlowDesigner() {
 
   // Load template data when available
   useEffect(() => {
-    if (flowData && flowData.nodes && flowData.edges) {
+    if (flowData) {
       console.log('📊 Cargando datos del flujo:', flowData);
-      console.log(`🔥 Aplicando ${flowData.nodes.length} nodos y ${flowData.edges.length} conexiones`);
       
-      if (flowData.nodes.length > 0) {
+      if (flowData.nodes && flowData.nodes.length > 0) {
+        console.log(`🔥 Aplicando ${flowData.nodes.length} nodos reales del template`);
         setNodes(flowData.nodes);
       } else {
-        // Solo usar nodos iniciales si no hay datos de template
+        console.log('📋 Usando nodos iniciales por defecto');
         setNodes(initialNodes);
       }
       
-      if (flowData.edges.length > 0) {
+      if (flowData.edges && flowData.edges.length > 0) {
+        console.log(`🔗 Aplicando ${flowData.edges.length} conexiones reales del template`);
         setEdges(flowData.edges);
       } else {
-        // Solo usar edges iniciales si no hay datos de template
+        console.log('🔗 Usando conexiones iniciales por defecto');
         setEdges(initialEdges);
       }
+    } else {
+      // Si no hay datos del flow, usar los iniciales
+      console.log('⚡ No hay datos de flujo, usando valores iniciales');
+      setNodes(initialNodes);
+      setEdges(initialEdges);
     }
   }, [flowData, setNodes, setEdges]);
 
