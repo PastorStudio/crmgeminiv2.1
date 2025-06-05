@@ -6078,7 +6078,99 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
     }
   });
 
-  // Test Gemini AI Integration
+  // Test Gemini AI Integration - DIRECT ROUTE
+  app.post('/api/direct/test-gemini-integration', async (req: Request, res: Response) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'no-cache');
+      
+      console.log('🔍 [DIRECT] Testing Gemini AI integration...');
+      
+      const apiKey = process.env.GOOGLE_AI_API_KEY;
+      console.log('🔑 API Key status:', apiKey ? 'Present' : 'Missing');
+      
+      if (!apiKey) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Gemini API key not configured. Please provide your Google AI API key.' 
+        });
+      }
+
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      
+      const testMessage = "Hola, estoy interesado en comprar un producto. ¿Pueden ayudarme?";
+      console.log('📝 Testing with message:', testMessage);
+      
+      const prompt = `Analiza este mensaje de WhatsApp para CRM y responde SOLO con JSON válido sin texto adicional:
+
+Mensaje: "${testMessage}"
+
+Responde exactamente con este formato JSON:
+{
+  "sentiment": "positive",
+  "intent": "sales", 
+  "urgency": "medium",
+  "leadPotential": 85,
+  "shouldCreateLead": true,
+  "extractedInfo": {
+    "name": null,
+    "company": null,
+    "products": ["producto"],
+    "budget": null
+  }
+}`;
+
+      console.log('🤖 Calling Gemini AI...');
+      const result = await model.generateContent(prompt);
+      const response = result.response.text();
+      console.log('📦 Raw Gemini response:', response);
+      
+      // Clean and parse the response
+      let cleanResponse = response.replace(/```json|```/g, '').trim();
+      if (cleanResponse.startsWith('```')) {
+        cleanResponse = cleanResponse.substring(3);
+      }
+      if (cleanResponse.endsWith('```')) {
+        cleanResponse = cleanResponse.substring(0, cleanResponse.length - 3);
+      }
+      
+      let analysis;
+      try {
+        analysis = JSON.parse(cleanResponse);
+        console.log('✅ Parsed analysis:', analysis);
+        
+        res.json({
+          success: true,
+          message: 'Gemini AI test completed successfully',
+          testMessage,
+          analysis,
+          aiStatus: 'WORKING',
+          modelUsed: 'gemini-1.5-flash'
+        });
+      } catch (parseError) {
+        console.error('❌ JSON parsing error:', parseError);
+        res.json({
+          success: false,
+          message: 'Gemini AI responded but JSON parsing failed',
+          testMessage,
+          rawResponse: cleanResponse,
+          error: parseError.message,
+          details: 'AI response format issue'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Gemini AI test error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Gemini AI test failed',
+        details: error.message
+      });
+    }
+  });
+
+  // Original route for compatibility
   app.post('/api/test-gemini-integration', async (req: Request, res: Response) => {
     try {
       console.log('🔍 Testing Gemini AI integration...');
