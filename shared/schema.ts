@@ -720,8 +720,7 @@ export const conversationFlowSessions = pgTable("conversation_flow_sessions", {
   completedAt: timestamp("completed_at")
 });
 
-// Agregar schema para salesFlows después de las tablas
-export const insertSalesFlowSchema = createInsertSchema(salesFlows).omit({ id: true, createdAt: true, updatedAt: true });
+// Schema para salesFlows - moverlo al final después de todas las tablas
 
 export const flowExecutionLog = pgTable("flow_execution_log", {
   id: serial("id").primaryKey(),
