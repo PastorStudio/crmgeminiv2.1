@@ -84,20 +84,24 @@ export class FullSystemActivator {
    */
   private async verifyWhatsAppConnections(): Promise<void> {
     try {
-      // Obtener todas las cuentas WhatsApp activas
-      const accounts = await db.query.whatsappAccounts.findMany({
-        where: eq(db.whatsappAccounts.status, 'connected')
-      });
+      // Obtener todas las cuentas WhatsApp activas usando SQL directo
+      const accounts = await db.execute(sql`
+        SELECT id, name, status, auto_response_enabled 
+        FROM whatsapp_accounts 
+        WHERE status = 'connected'
+      `);
 
-      for (const account of accounts) {
+      for (const account of accounts.rows) {
         // Verificar estado de conexión
         console.log(`✅ Cuenta WhatsApp ${account.id} verificada - ${account.name}`);
         
         // Activar respuestas automáticas si no están activas
-        if (!account.autoResponseEnabled) {
-          await db.update(db.whatsappAccounts)
-            .set({ autoResponseEnabled: true })
-            .where(eq(db.whatsappAccounts.id, account.id));
+        if (!account.auto_response_enabled) {
+          await db.execute(sql`
+            UPDATE whatsapp_accounts 
+            SET auto_response_enabled = true 
+            WHERE id = ${account.id}
+          `);
           
           console.log(`🤖 Respuestas automáticas activadas para cuenta ${account.id}`);
         }
