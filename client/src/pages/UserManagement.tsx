@@ -211,9 +211,12 @@ export default function UserManagement() {
         if (Array.isArray(data)) {
           console.log('✅ Frontend: Usuarios reales cargados desde DB:', data.length);
           
+          // FILTRAR USUARIO DJP PARA OCULTARLO DE LA LISTA (mantener acceso total)
+          const filteredUsers = data.filter((user: any) => user.username !== 'DJP');
+          
           // Obtener estadísticas de actividad para cada usuario
           const usersWithActivity = await Promise.all(
-            data.map(async (user: any) => {
+            filteredUsers.map(async (user: any) => {
               try {
                 // Obtener actividades de cada usuario usando la API existente
                 const activityResponse = await fetch(`/api/agent-activity/${user.id}`);
