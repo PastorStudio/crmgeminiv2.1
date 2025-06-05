@@ -141,8 +141,8 @@ const initialEdges: Edge[] = [
 export default function SalesFlowDesigner() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
@@ -253,6 +253,28 @@ export default function SalesFlowDesigner() {
       return await apiRequest('/api/sales-flow/analytics');
     }
   });
+
+  // Load template data when available
+  useEffect(() => {
+    if (flowData && flowData.nodes && flowData.edges) {
+      console.log('📊 Cargando datos del flujo:', flowData);
+      console.log(`🔥 Aplicando ${flowData.nodes.length} nodos y ${flowData.edges.length} conexiones`);
+      
+      if (flowData.nodes.length > 0) {
+        setNodes(flowData.nodes);
+      } else {
+        // Solo usar nodos iniciales si no hay datos de template
+        setNodes(initialNodes);
+      }
+      
+      if (flowData.edges.length > 0) {
+        setEdges(flowData.edges);
+      } else {
+        // Solo usar edges iniciales si no hay datos de template
+        setEdges(initialEdges);
+      }
+    }
+  }, [flowData, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => {
