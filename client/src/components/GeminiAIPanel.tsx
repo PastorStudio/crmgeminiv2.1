@@ -73,10 +73,31 @@ export function GeminiAIPanel() {
     });
   };
 
+  const checkWhatsAppStatus = async () => {
+    try {
+      const response = await fetch('/api/whatsapp/ping-status/all');
+      const data = await response.json();
+      return data.success && data.accounts?.some((acc: any) => acc.connected);
+    } catch (error) {
+      return false;
+    }
+  };
+
   const analyzeFirstLead = async () => {
     if (isQuotaExceeded) return;
     
     setIsProcessing(true);
+    setCurrentTask("Verificando conexiones...");
+    setProgress(10);
+    
+    // Verificar estado de WhatsApp antes de proceder
+    const whatsappConnected = await checkWhatsAppStatus();
+    if (whatsappConnected) {
+      setCurrentTask("WhatsApp conectado - Procediendo con análisis...");
+    } else {
+      setCurrentTask("WhatsApp desconectado - Continuando con análisis...");
+    }
+    
     setCurrentTask("Analizando lead con Gemini AI...");
     setProgress(20);
     
@@ -225,11 +246,27 @@ export function GeminiAIPanel() {
 
   const runFullAutomation = async () => {
     setIsProcessing(true);
+    setCurrentTask("Verificando estado de WhatsApp...");
+    setProgress(5);
+    
+    // Verificar estado de WhatsApp antes de la automatización
+    const whatsappConnected = await checkWhatsAppStatus();
+    if (whatsappConnected) {
+      setCurrentTask("WhatsApp conectado - Iniciando automatización segura...");
+    } else {
+      setCurrentTask("WhatsApp desconectado - Continuando con automatización...");
+    }
+    setProgress(15);
+    
     try {
       const response = await fetch('/api/ai/full-automation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-WhatsApp-Safe': whatsappConnected ? 'true' : 'false'
+        },
       });
+      setProgress(70);
       const data = await response.json();
       
       if (data.success) {

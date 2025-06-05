@@ -84,6 +84,10 @@ export const leads = pgTable("leads", {
   contactId: integer("contactId").notNull(),
   whatsappAccountId: integer("whatsappAccountId").notNull(),
   title: text("title").notNull(),
+  name: text("name"), // Agregado para compatibilidad
+  fullName: text("fullName"), // Agregado para compatibilidad
+  email: text("email"), // Agregado para compatibilidad
+  company: text("company"), // Agregado para compatibilidad
   status: text("status").default("new"), // new, contacted, qualified, proposal, negotiation, won, lost
   stage: text("stage").default("lead"), // lead, opportunity, quote, deal
   value: decimal("value", { precision: 10, scale: 2 }),
@@ -99,6 +103,7 @@ export const leads = pgTable("leads", {
   notes: text("notes"),
   tags: text("tags").array(),
   customFields: jsonb("customFields"),
+  matchPercentage: integer("matchPercentage").default(0), // Agregado para compatibilidad
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").defaultNow(),
 });
