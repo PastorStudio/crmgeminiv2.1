@@ -16,7 +16,6 @@ export const users = pgTable("users", {
   department: text("department"),
   supervisorId: integer("supervisorId"),
   settings: jsonb("settings"),
-  isHidden: boolean("is_hidden").default(false),
   lastLoginAt: timestamp("lastLoginAt"),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedat"),
