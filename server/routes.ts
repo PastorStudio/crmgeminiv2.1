@@ -916,23 +916,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await pool.query('SELECT * FROM leads ORDER BY "createdAt" DESC');
       console.log(`✅ Encontrados ${result.rows.length} leads`);
       
-      // Transform for Kanban with phone support
+      // Transform for Kanban with phone support and fixed schema
       const leadsData = result.rows.map((row: any) => ({
         id: row.id,
         title: row.name || `Lead ${row.id}`,
+        name: row.name || `Lead ${row.id}`,
+        fullName: row.fullName || row.name || `Lead ${row.id}`,
         value: row.budget ? `$${row.budget}` : '$0',
         status: row.status || 'new',
         notes: row.notes || '',
         tags: Array.isArray(row.tags) ? row.tags : [],
-        probability: 50,
+        probability: row.probability || 50,
         source: row.source || 'WhatsApp',
         createdAt: row.createdAt,
-        contactId: null,
-        assignedTo: row.assigneeId || null,
+        updatedAt: row.updatedAt || row.createdAt,
+        contactId: row.contactId || null,
+        assignedTo: row.assignedTo || row.assigneeId || null,
         email: row.email || '',
         phone: row.phone || '',
         company: row.company || '',
-        priority: row.priority || 'medium'
+        priority: row.priority || 'medium',
+        stage: row.stage || 'new',
+        currency: row.currency || 'USD',
+        expectedCloseDate: row.expectedCloseDate,
+        actualCloseDate: row.actualCloseDate,
+        lastContactDate: row.lastContactDate,
+        nextFollowUpDate: row.nextFollowUpDate,
+        customFields: row.customFields || {},
+        whatsappAccountId: row.whatsappAccountId,
+        matchPercentage: row.matchPercentage || null
       }));
       
       res.json(leadsData);
@@ -1362,16 +1374,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       
       if (leadId) {
-        const messages = await storage.getMessagesByLead(leadId);
-        return res.json(messages);
+        const result = await pool.query(
+          'SELECT * FROM messages WHERE "leadId" = $1 ORDER BY "createdAt" DESC',
+          [leadId]
+        );
+        return res.json(result.rows);
       } else if (recent) {
-        const messages = await storage.getRecentMessages(limit);
-        return res.json(messages);
+        const limitClause = limit ? `LIMIT ${limit}` : 'LIMIT 50';
+        const result = await pool.query(
+          `SELECT * FROM messages ORDER BY "createdAt" DESC ${limitClause}`
+        );
+        return res.json(result.rows);
       } else {
-        return res.status(400).json({ message: "Missing required parameters" });
+        // Return empty array instead of error for missing parameters
+        const result = await pool.query(
+          'SELECT * FROM messages ORDER BY "createdAt" DESC LIMIT 10'
+        );
+        return res.json(result.rows);
       }
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch messages" });
+      console.error("❌ Error obteniendo mensajes:", error);
+      res.status(500).json({ error: "Error al obtener mensajes" });
     }
   });
 
