@@ -505,7 +505,7 @@ Formato: Reporte profesional en español`;
     try {
       console.log('📋 Organizando tarjetas Kanban con Gemini AI...');
       
-      const leads = await storage.getAllLeads();
+      const leads = await databaseAdapter.getAllLeads();
       const columns: { [key: string]: { leads: any[], count: number } } = {
         'nuevos': { leads: [], count: 0 },
         'contactados': { leads: [], count: 0 },
