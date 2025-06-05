@@ -47,12 +47,12 @@ export class AutonomousProcessor {
   }
 
   private startProcessing() {
-    // Procesar mensajes cada 10 segundos
+    // Procesar mensajes cada 5 segundos para máximo rendimiento
     setInterval(async () => {
       if (!this.isProcessing) {
         await this.processNewMessages();
       }
-    }, 10000);
+    }, 5000);
 
     console.log('🔄 Procesamiento autónomo iniciado');
   }
