@@ -147,6 +147,7 @@ export default function SalesFlowDesigner() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
 
   // Load template data from localStorage on component mount
   useEffect(() => {
@@ -285,6 +286,14 @@ export default function SalesFlowDesigner() {
     queryKey: ['/api/sales-flow/analytics'],
     queryFn: async () => {
       return await apiRequest('/api/sales-flow/analytics');
+    }
+  });
+
+  // Get flow templates
+  const { data: templates } = useQuery({
+    queryKey: ['/api/flow-templates'],
+    queryFn: async () => {
+      return await apiRequest('/api/flow-templates');
     }
   });
 
@@ -687,6 +696,14 @@ export default function SalesFlowDesigner() {
             </Button>
             
             <Button
+              variant="outline"
+              onClick={() => setIsTemplateDialogOpen(true)}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Cargar Plantilla
+            </Button>
+            
+            <Button
               onClick={saveFlow}
               disabled={saveFlowMutation.isPending}
             >
@@ -1057,5 +1074,53 @@ function FlowAnalytics({ analytics }: { analytics: any }) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// Template Loading Dialog Component
+function TemplateDialog({ 
+  isOpen, 
+  onClose, 
+  templates, 
+  onLoadTemplate 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  templates: any; 
+  onLoadTemplate: (template: any) => void; 
+}) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Cargar Plantilla de Flujo</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Selecciona una plantilla predeterminada para cargar en el diseñador:
+          </p>
+          
+          {templates?.templates?.map((template: any) => (
+            <Button
+              key={template.id}
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => onLoadTemplate(template)}
+            >
+              <div className="text-left">
+                <div className="font-medium">{template.name}</div>
+                <div className="text-sm text-gray-500">{template.description}</div>
+              </div>
+            </Button>
+          ))}
+          
+          {(!templates?.templates || templates.templates.length === 0) && (
+            <div className="text-center py-4 text-gray-500">
+              No hay plantillas disponibles
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
