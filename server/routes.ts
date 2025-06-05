@@ -2360,51 +2360,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-      
-      // Definir el período de actividad reciente (1 día)
-      const oneDayAgo = new Date();
-      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-      
-      // Convertir contactos en leads
-      const createdLeads = [];
-      const updatedLeads = [];
-      
-      for (const contact of contacts) {
-        // Omitir contactos sin nombre o con formato incorrecto
-        if (!contact.name || !contact.id || !contact.id.includes('@c.us')) continue;
-        
-        // Verificar si es un chat individual (no grupo)
-        const chatId = contact.id;
-        const isGroup = chatId.includes('@g.us');
-        if (isGroup) continue; // Omitir grupos
-        
-        // Buscar el chat correspondiente al contacto
-        const chat = chats.find((c: any) => c.id === chatId);
-        
-        // Verificar si hay mensajes recientes
-        let hasRecentMessages = false;
-        let lastMessage = '';
-        let lastActivity = new Date();
-        
-        if (chat) {
-          // Usar la timestamp del chat como indicador de actividad
-          if (chat.timestamp) {
-            lastActivity = new Date(chat.timestamp * 1000); // Convertir timestamp a milisegundos
-            hasRecentMessages = lastActivity >= oneDayAgo;
-          }
-          
-          // Intentar obtener el último mensaje si está disponible
-          if (chat.messages && chat.messages.length > 0) {
-            const message = chat.messages[chat.messages.length - 1];
-            lastMessage = message.body || '';
-          } else if (chat.lastMessage) {
-            // Usar lastMessage si está disponible directamente en el chat
-            lastMessage = chat.lastMessage;
-          }
-          
-          // Si no se pudo determinar por timestamp pero hay mensaje, considerar activo
-          if (!hasRecentMessages && lastMessage) {
-            hasRecentMessages = true;
           }
         }
         
@@ -5060,55 +5015,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         converted: result.created + result.updated,
         details: result
       });
-        try {
-          const existingLeads = await storage.getAllLeads();
-          const chatExists = existingLeads.some(lead => 
-            lead.source === 'whatsapp' && lead.notes?.includes(chat.id)
-          );
-          
-          if (!chatExists) {
-            const newLead = await storage.createLead({
-              title: `Lead from WhatsApp - ${chat.name || chat.id}`,
-              status: 'new',
-              stage: 'prospecting',
-              value: '0',
-              currency: 'USD',
-              probability: 50,
-              priority: 'medium',
-              source: 'whatsapp',
-              assignedTo: 1,
-              contactId: 1,
-              whatsappAccountId: 1,
-              notes: `Convertido desde chat WhatsApp: ${chat.id}\nÚltimo mensaje: ${chat.lastMessage || 'Sin mensajes'}`,
-              tags: ['whatsapp', 'converted'],
-              lastContactDate: new Date(),
-              expectedCloseDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-              customFields: {
-                chatId: chat.id,
-                unreadCount: chat.unreadCount || 0
-              }
-            });
-            
-            convertedCount++;
-            console.log(`✅ Chat ${chat.id} convertido a lead ${newLead.id}`);
-          }
-        } catch (error) {
-          console.error(`❌ Error convirtiendo chat ${chat.id}:`, error);
-        }
-      }
-      
-      res.json({
-        success: true,
-        message: `${convertedCount} chats convertidos a leads`,
-        convertedCount,
-        totalChats: chats.length
-      });
-      
     } catch (error) {
-      console.error('❌ Error convirtiendo chats a leads:', error);
+      console.error('Error convirtiendo chats a leads:', error);
       res.status(500).json({
         success: false,
-        error: 'Error al convertir chats a leads'
+        message: 'Error interno al convertir chats a leads'
       });
     }
   });
