@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Brain, Zap, Target, TrendingUp, FileText, Activity, Ticket, KanbanSquare, Loader2, Clock, AlertTriangle, Trash2, Wifi, WifiOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useWhatsAppStatus } from "@/hooks/useWhatsAppStatus";
 
 interface LeadAnalysis {
   priority: 'high' | 'medium' | 'low';
@@ -38,8 +39,8 @@ export function GeminiAIPanel() {
   const [progress, setProgress] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
-  const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(null);
   const { toast } = useToast();
+  const { status: whatsappConnected } = useWhatsAppStatus();
 
   // Timer para tiempo restante
   useEffect(() => {
@@ -57,22 +58,6 @@ export function GeminiAIPanel() {
     }
     return () => clearInterval(interval);
   }, [timeRemaining]);
-
-  // Check WhatsApp status periodically
-  useEffect(() => {
-    const checkStatus = async () => {
-      const connected = await checkWhatsAppStatus();
-      setWhatsappConnected(connected);
-    };
-
-    // Check immediately
-    checkStatus();
-
-    // Check every 30 seconds
-    const interval = setInterval(checkStatus, 30000);
-    
-    return () => clearInterval(interval);
-  }, []);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

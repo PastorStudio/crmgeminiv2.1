@@ -214,7 +214,7 @@ const WhatsAppAccounts = () => {
         return { success: false, accounts: [] };
       }
     },
-    refetchInterval: 5000, // Actualizar cada 5 segundos
+    refetchInterval: 15000, // Reduced from 5 to 15 seconds to prevent conflicts
   });
   
   // Consulta para obtener código QR
