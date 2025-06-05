@@ -137,6 +137,146 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getActivitiesByLead(leadId: number): Promise<any[]> {
+    try {
+      // Return empty array for now - would implement with actual activity table
+      return [];
+    } catch (error) {
+      console.error('Error getting activities by lead:', error);
+      return [];
+    }
+  }
+
+  async getUpcomingActivities(userId: number, limit?: number): Promise<any[]> {
+    try {
+      // Return empty array for now - would implement with actual activity table
+      return [];
+    } catch (error) {
+      console.error('Error getting upcoming activities:', error);
+      return [];
+    }
+  }
+
+  async getActivity(id: number): Promise<any | undefined> {
+    try {
+      // Return undefined for now - would implement with actual activity table
+      return undefined;
+    } catch (error) {
+      console.error('Error getting activity:', error);
+      return undefined;
+    }
+  }
+
+  async createActivity(activity: any): Promise<any> {
+    try {
+      // Return created activity for now - would implement with actual activity table
+      return { id: Date.now(), ...activity };
+    } catch (error) {
+      console.error('Error creating activity:', error);
+      throw error;
+    }
+  }
+
+  async updateActivity(id: number, updates: any): Promise<any | undefined> {
+    try {
+      // Return updated activity for now - would implement with actual activity table
+      return { id, ...updates };
+    } catch (error) {
+      console.error('Error updating activity:', error);
+      return undefined;
+    }
+  }
+
+  async completeActivity(id: number): Promise<any | undefined> {
+    try {
+      // Return completed activity for now - would implement with actual activity table
+      return { id, completed: true };
+    } catch (error) {
+      console.error('Error completing activity:', error);
+      return undefined;
+    }
+  }
+
+  async getMessage(id: number): Promise<any | undefined> {
+    try {
+      // Return undefined for now - would implement with actual message table
+      return undefined;
+    } catch (error) {
+      console.error('Error getting message:', error);
+      return undefined;
+    }
+  }
+
+  async createMessage(message: any): Promise<any> {
+    try {
+      // Return created message for now - would implement with actual message table
+      return { id: Date.now(), ...message };
+    } catch (error) {
+      console.error('Error creating message:', error);
+      throw error;
+    }
+  }
+
+  async markMessageAsRead(id: number): Promise<any | undefined> {
+    try {
+      // Return marked message for now - would implement with actual message table
+      return { id, read: true };
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+      return undefined;
+    }
+  }
+
+  async getSurveysByLead(leadId: number): Promise<any[]> {
+    try {
+      // Return empty array for now - would implement with actual survey table
+      return [];
+    } catch (error) {
+      console.error('Error getting surveys by lead:', error);
+      return [];
+    }
+  }
+
+  async getSurvey(id: number): Promise<any | undefined> {
+    try {
+      // Return undefined for now - would implement with actual survey table
+      return undefined;
+    } catch (error) {
+      console.error('Error getting survey:', error);
+      return undefined;
+    }
+  }
+
+  async createSurvey(survey: any): Promise<any> {
+    try {
+      // Return created survey for now - would implement with actual survey table
+      return { id: Date.now(), ...survey };
+    } catch (error) {
+      console.error('Error creating survey:', error);
+      throw error;
+    }
+  }
+
+  async updateSurveyResponses(id: number, responses: any): Promise<any | undefined> {
+    try {
+      // Return updated survey for now - would implement with actual survey table
+      return { id, responses };
+    } catch (error) {
+      console.error('Error updating survey responses:', error);
+      return undefined;
+    }
+  }
+
+  async getRecentMessages(limit?: number): Promise<any[]> {
+    try {
+      // Return empty array for now - would implement with actual message table
+      return [];
+    } catch (error) {
+      console.error('Error getting recent messages:', error);
+      return [];
+    }
+  }
+
   async createLead(insertLead: InsertLead): Promise<Lead> {
     const [lead] = await db
       .insert(leads)
