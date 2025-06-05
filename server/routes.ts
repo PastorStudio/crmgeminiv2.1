@@ -961,18 +961,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         SELECT 
           id, 
           type, 
-          title, 
           description, 
           "createdAt",
           "updatedAt"
-        FROM sales_activities 
+        FROM activities 
         ORDER BY "createdAt" DESC 
         LIMIT 20
       `);
       
       res.json(result.rows);
     } catch (error) {
-      console.error("Error fetching activities:", error);
+      console.error("❌ Error obteniendo actividades:", error);
       res.status(500).json({ error: "Error al obtener actividades" });
     }
   });
@@ -2274,25 +2273,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint para obtener la clave API de Gemini para el cliente
   app.get("/api/settings/gemini-client-key", async (req: Request, res: Response) => {
     try {
-      // Importar el generador de claves de Gemini
-      const { geminiKeyGenerator } = await import('./services/geminiKeyGenerator');
+      // Obtener la clave API de Gemini del entorno
+      const apiKey = process.env.GOOGLE_AI_API_KEY;
       
-      // Obtener una clave API válida generada automáticamente si es necesario
-      const keyInfo = await geminiKeyGenerator.getValidKey();
-      
-      if (!keyInfo || !keyInfo.key) {
+      if (!apiKey) {
         return res.status(404).json({
           success: false,
-          message: 'No se pudo obtener una clave API de Gemini'
+          message: 'No se encontró la clave API de Gemini en las variables de entorno'
         });
       }
       
       // Devolver la clave API y la información de modelo al cliente
       res.json({
         success: true,
-        apiKey: keyInfo.key,
-        model: "gemini-pro", // Usamos sólo el modelo estable para evitar error 404
-        recommendedModel: "gemini-pro" // Modelo recomendado con cuota disponible
+        apiKey: apiKey,
+        model: "gemini-1.5-flash", // Modelo actualizado disponible
+        recommendedModel: "gemini-1.5-flash" // Modelo recomendado más reciente
       });
     } catch (error) {
       console.error('Error obteniendo clave API de Gemini:', error);
