@@ -29,6 +29,7 @@ import { conversationHistory } from './services/conversationHistory';
 import { MessageInterceptorService } from './services/messageInterceptorService';
 import { AutoWebScrapingHandler } from './services/autoWebScrapingHandler';
 import { qrAutoRefreshService } from './services/qrAutoRefresh';
+import { systemCleanupService } from './services/systemCleanup';
 import OpenAI from 'openai';
 import { autonomousProcessor } from './services/autonomousProcessor';
 import { simpleAutonomousProcessor } from './services/simpleAutonomousProcessor';
@@ -6131,6 +6132,61 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
       res.status(500).json({ 
         success: false, 
         error: 'Error obteniendo estado de auto-refresh' 
+      });
+    }
+  });
+
+  // System Cleanup API endpoints
+  app.post('/api/system/complete-cleanup', async (req: Request, res: Response) => {
+    try {
+      console.log('🧹 Iniciando limpieza completa del sistema...');
+      
+      const result = await systemCleanupService.performCompleteCleanup();
+      
+      if (result.success) {
+        console.log('✅ Limpieza completa exitosa');
+        res.json({
+          success: true,
+          message: 'Limpieza completa realizada exitosamente',
+          cleanedItems: result.cleanedItems,
+          totalCleaned: result.cleanedItems.length
+        });
+      } else {
+        console.log('⚠️ Limpieza completa con errores');
+        res.status(500).json({
+          success: false,
+          message: 'Limpieza completada con algunos errores',
+          cleanedItems: result.cleanedItems,
+          errors: result.errors,
+          totalCleaned: result.cleanedItems.length,
+          totalErrors: result.errors.length
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error en limpieza completa:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error durante la limpieza completa',
+        error: error.message
+      });
+    }
+  });
+
+  app.post('/api/system/quick-cleanup', async (req: Request, res: Response) => {
+    try {
+      console.log('⚡ Iniciando limpieza rápida...');
+      
+      const result = await systemCleanupService.quickCleanup();
+      
+      console.log('✅ Limpieza rápida completada');
+      res.json(result);
+      
+    } catch (error) {
+      console.error('❌ Error en limpieza rápida:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error durante la limpieza rápida',
+        error: error.message
       });
     }
   });
