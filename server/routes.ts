@@ -1688,17 +1688,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Importar el servicio Gemini
       const { geminiService } = await import('./services/geminiService');
       
-      // Por ahora, simular una respuesta simple ya que esta función está en desarrollo
-      const responseContent = "Soy tu asistente de CRM. Puedo ayudarte con análisis de leads, generación de contenido y proporcionando insights para tu proceso de ventas. ¿En qué tarea específica te gustaría recibir ayuda hoy?";
+      // Usar el servicio real de Gemini
+      const userMessage = prompt || message;
+      const chatHistory = context || history || [];
       
-      const responseObj = {
-        role: "assistant",
-        content: responseContent
-      };
+      const response = await geminiService.generateChatResponse(userMessage, chatHistory);
       
       res.json({ 
         success: true, 
-        response: responseObj 
+        response: {
+          role: "assistant",
+          content: response
+        }
       });
     } catch (error) {
       console.error("Error en chat con Gemini:", error);
