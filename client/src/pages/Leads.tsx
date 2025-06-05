@@ -35,7 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import LeadForm from "@/components/leads/LeadForm";
 import { LeadDetail } from "@/components/leads/LeadDetail";
 import { useGemini } from "@/hooks/useGemini";
-import { Eye, BrainCircuit, Plus, MoreVertical, Kanban } from "lucide-react";
+import { Eye, BrainCircuit, Plus, MoreVertical, Kanban, MessageCircle } from "lucide-react";
 import SalesPipelineKanban from "@/components/leads/SalesPipelineKanban";
 
 export default function Leads() {
@@ -120,6 +120,31 @@ export default function Leads() {
       toast({
         title: "Error",
         description: "No se pudo analizar el lead con IA",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle convert WhatsApp chats to leads
+  const handleConvertWhatsAppChats = async () => {
+    try {
+      const response = await apiRequest('/api/whatsapp/convert-chats-to-leads', {
+        method: 'POST'
+      });
+
+      if (response.success) {
+        toast({
+          title: "Chats convertidos",
+          description: `${response.convertedCount} chats de WhatsApp convertidos a leads`,
+        });
+        
+        // Refrescar la lista de leads
+        queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudieron convertir los chats a leads",
         variant: "destructive",
       });
     }
