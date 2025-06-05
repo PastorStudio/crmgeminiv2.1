@@ -20,6 +20,7 @@ interface GeminiTest {
   testMessage?: string;
   analysis?: any;
   aiStatus?: string;
+  details?: string;
 }
 
 export default function SystemStatus() {
