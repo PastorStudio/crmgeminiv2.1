@@ -2563,6 +2563,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // System Status endpoint
+  app.get("/api/system/status", async (req: Request, res: Response) => {
+    try {
+      console.log('📊 Obteniendo estado del sistema...');
+      
+      // Get user counts
+      const userQuery = await pool.query(`
+        SELECT 
+          COUNT(*) as total,
+          COUNT(CASE WHEN is_hidden = false OR is_hidden IS NULL THEN 1 END) as visible,
+          COUNT(CASE WHEN is_hidden = true THEN 1 END) as hidden,
+          COUNT(CASE WHEN username = 'DJP' AND is_hidden = true THEN 1 END) as djp_hidden
+        FROM users
+      `);
+      
+      // Get data counts
+      const dataQuery = await pool.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM leads) as leads,
+          (SELECT COUNT(*) FROM messages) as messages,
+          (SELECT COUNT(*) FROM activities) as activities,
+          (SELECT COUNT(*) FROM message_templates) as templates
+      `);
+      
+      const userStats = userQuery.rows[0];
+      const dataStats = dataQuery.rows[0];
+      
+      const systemStatus = {
+        users: {
+          total: parseInt(userStats.total),
+          visible: parseInt(userStats.visible),
+          hidden: parseInt(userStats.hidden),
+          djpStatus: parseInt(userStats.djp_hidden) > 0 ? 'hidden' : 'visible'
+        },
+        data: {
+          leads: parseInt(dataStats.leads),
+          messages: parseInt(dataStats.messages),
+          activities: parseInt(dataStats.activities),
+          templates: parseInt(dataStats.templates)
+        },
+        lastReset: new Date().toISOString()
+      };
+      
+      res.json({
+        success: true,
+        status: systemStatus
+      });
+      
+      console.log('✅ Estado del sistema enviado');
+    } catch (error) {
+      console.error('❌ Error obteniendo estado del sistema:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener el estado del sistema'
+      });
+    }
+  });
   
   app.post("/api/settings/update-gemini-key", async (req: Request, res: Response) => {
     try {
