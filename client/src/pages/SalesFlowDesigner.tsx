@@ -182,9 +182,19 @@ export default function SalesFlowDesigner() {
         id: `${selectedSourceNode}-${targetNodeId}`,
         source: selectedSourceNode,
         target: targetNodeId,
-        markerEnd: { type: MarkerType.ArrowClosed },
-        style: { stroke: '#6B7280', strokeWidth: 2 },
-        animated: true
+        markerEnd: { 
+          type: MarkerType.ArrowClosed,
+          color: '#2563EB',
+          width: 20,
+          height: 20
+        },
+        style: { 
+          stroke: '#2563EB', 
+          strokeWidth: 4,
+          strokeDasharray: '0',
+        },
+        animated: true,
+        type: 'smoothstep'
       };
       setEdges((eds) => addEdge(newEdge, eds));
       toast({
@@ -249,9 +259,19 @@ export default function SalesFlowDesigner() {
       const newEdge = {
         ...params,
         id: `${params.source}-${params.target}`,
-        markerEnd: { type: MarkerType.ArrowClosed },
-        style: { stroke: '#6B7280', strokeWidth: 2 },
-        animated: true
+        markerEnd: { 
+          type: MarkerType.ArrowClosed,
+          color: '#2563EB',
+          width: 20,
+          height: 20
+        },
+        style: { 
+          stroke: '#2563EB', 
+          strokeWidth: 4,
+          strokeDasharray: '0',
+        },
+        animated: true,
+        type: 'smoothstep'
       };
       setEdges((eds) => addEdge(newEdge, eds));
     },
@@ -601,6 +621,11 @@ export default function SalesFlowDesigner() {
             nodeTypes={nodeTypes}
             fitView
             className="bg-gray-50 h-full w-full"
+            connectionLineStyle={{
+              stroke: '#10B981',
+              strokeWidth: 4,
+              strokeDasharray: '5,5'
+            }}
           >
             <Controls />
             <Background />
