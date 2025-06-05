@@ -212,6 +212,14 @@ export default function Leads() {
           </TabsList>
           
           <div className="flex items-center gap-3">
+            <Button
+              onClick={handleConvertWhatsAppChats}
+              variant="outline"
+              className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Convertir Chats WhatsApp
+            </Button>
             <Input
               placeholder="Search leads..."
               value={searchTerm}

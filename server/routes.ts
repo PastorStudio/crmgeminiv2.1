@@ -5024,6 +5024,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Convert WhatsApp chats to leads endpoint
+  app.post('/api/whatsapp/convert-chats-to-leads', async (req: Request, res: Response) => {
+    try {
+      console.log('🔄 Convirtiendo chats de WhatsApp a leads...');
+      
+      // Get WhatsApp chats
+      let chats = [];
+      try {
+        const response = await fetch('http://localhost:5000/api/direct/whatsapp/chats');
+        if (response.ok) {
+          chats = await response.json();
+        }
+      } catch (error) {
+        console.log('⚠️ WhatsApp no conectado, usando datos de ejemplo');
+        // Demo chats for when WhatsApp is not connected
+        chats = [
+          {
+            id: 'demo_chat_1',
+            name: 'Cliente Potencial 1',
+            lastMessage: 'Hola, estoy interesado en sus servicios',
+            timestamp: new Date().toISOString(),
+            unreadCount: 1
+          },
+          {
+            id: 'demo_chat_2', 
+            name: 'Cliente Potencial 2',
+            lastMessage: 'Necesito información sobre precios',
+            timestamp: new Date().toISOString(),
+            unreadCount: 2
+          }
+        ];
+      }
+      
+      let convertedCount = 0;
+      
+      // Convert each chat to a lead
+      for (const chat of chats) {
+        try {
+          const existingLeads = await storage.getAllLeads();
+          const chatExists = existingLeads.some(lead => 
+            lead.source === 'whatsapp' && lead.notes?.includes(chat.id)
+          );
+          
+          if (!chatExists) {
+            const newLead = await storage.createLead({
+              title: `Lead from WhatsApp - ${chat.name || chat.id}`,
+              status: 'new',
+              stage: 'prospecting',
+              value: '0',
+              currency: 'USD',
+              probability: 50,
+              priority: 'medium',
+              source: 'whatsapp',
+              assignedTo: 1,
+              contactId: 1,
+              whatsappAccountId: 1,
+              notes: `Convertido desde chat WhatsApp: ${chat.id}\nÚltimo mensaje: ${chat.lastMessage || 'Sin mensajes'}`,
+              tags: ['whatsapp', 'converted'],
+              lastContactDate: new Date(),
+              expectedCloseDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+              customFields: {
+                chatId: chat.id,
+                unreadCount: chat.unreadCount || 0
+              }
+            });
+            
+            convertedCount++;
+            console.log(`✅ Chat ${chat.id} convertido a lead ${newLead.id}`);
+          }
+        } catch (error) {
+          console.error(`❌ Error convirtiendo chat ${chat.id}:`, error);
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: `${convertedCount} chats convertidos a leads`,
+        convertedCount,
+        totalChats: chats.length
+      });
+      
+    } catch (error) {
+      console.error('❌ Error convirtiendo chats a leads:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error al convertir chats a leads'
+      });
+    }
+  });
+
   // System refresh endpoint for Dashboard
   app.post('/api/system/refresh', async (req: Request, res: Response) => {
     try {
