@@ -888,28 +888,40 @@ export default function FlowTemplates() {
       
       console.log(`📊 Template encontrado con ${templateData.nodes.length} nodos y ${templateData.edges.length} conexiones`);
       
-      // Guardar el flujo en el backend usando apiRequest
-      const response = await apiRequest('/api/sales-flow', {
-        method: 'POST',
-        body: {
-          nodes: templateData.nodes,
-          edges: templateData.edges,
-          templateId: templateId
-        }
-      });
+      // Guardar datos del template en localStorage para bypassar problemas de Vite
+      const templateDataForStorage = {
+        nodes: templateData.nodes,
+        edges: templateData.edges,
+        templateId: templateId,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('salesFlowTemplate', JSON.stringify(templateDataForStorage));
+      console.log('✅ Template guardado en localStorage con', templateData.nodes.length, 'nodos');
+      
+      try {
+        // Intentar también guardar en el backend
+        const response = await apiRequest('/api/sales-flow', {
+          method: 'POST',
+          body: {
+            nodes: templateData.nodes,
+            edges: templateData.edges,
+            templateId: templateId
+          }
+        });
 
-      if (response.success) {
-        console.log('✅ Flujo creado exitosamente, navegando al diseñador...');
-        // Invalidar cache para refrescar datos
-        queryClient.invalidateQueries({ queryKey: ['/api/sales-flow'] });
-        // Navegar al diseñador con el flujo creado
-        window.location.href = '/sales-flow-designer';
-      } else {
-        console.error('❌ Error al crear flujo:', response);
-        window.location.href = '/sales-flow-designer';
+        if (response.success) {
+          console.log('✅ Flujo también guardado en backend');
+          queryClient.invalidateQueries({ queryKey: ['/api/sales-flow'] });
+        }
+      } catch (backendError) {
+        console.log('⚠️ Backend error, usando localStorage como fallback');
       }
+      
+      // Navegar al diseñador (usará localStorage si backend falla)
+      window.location.href = '/sales-flow-designer';
     } catch (error) {
       console.error('Error creando flujo desde plantilla:', error);
+      // Aún así intentar navegar, el diseñador manejará el fallback
       window.location.href = '/sales-flow-designer';
     }
   };

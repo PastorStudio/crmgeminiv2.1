@@ -256,11 +256,40 @@ export default function SalesFlowDesigner() {
 
   // Load template data when available
   useEffect(() => {
-    if (flowData) {
-      console.log('📊 Cargando datos del flujo:', flowData);
+    // Check localStorage first for template data (bypasses Vite interception)
+    const savedTemplate = localStorage.getItem('salesFlowTemplate');
+    let templateLoaded = false;
+    
+    if (savedTemplate) {
+      try {
+        const templateData = JSON.parse(savedTemplate);
+        console.log('🗂️ Encontrados datos de template en localStorage:', templateData.templateId);
+        console.log(`📊 Cargando ${templateData.nodes.length} nodos y ${templateData.edges.length} edges desde localStorage`);
+        
+        if (templateData.nodes && templateData.nodes.length > 0) {
+          setNodes(templateData.nodes);
+          templateLoaded = true;
+        }
+        
+        if (templateData.edges && templateData.edges.length > 0) {
+          setEdges(templateData.edges);
+        }
+        
+        // Clear localStorage after loading
+        localStorage.removeItem('salesFlowTemplate');
+        console.log('🧹 Template data cleared from localStorage');
+        
+      } catch (error) {
+        console.error('Error parsing template from localStorage:', error);
+      }
+    }
+    
+    // Fallback to API data if no localStorage template
+    if (!templateLoaded && flowData) {
+      console.log('📊 Cargando datos del flujo desde API:', flowData);
       
       if (flowData.nodes && flowData.nodes.length > 0) {
-        console.log(`🔥 Aplicando ${flowData.nodes.length} nodos reales del template`);
+        console.log(`🔥 Aplicando ${flowData.nodes.length} nodos desde API`);
         setNodes(flowData.nodes);
       } else {
         console.log('📋 Usando nodos iniciales por defecto');
@@ -268,14 +297,14 @@ export default function SalesFlowDesigner() {
       }
       
       if (flowData.edges && flowData.edges.length > 0) {
-        console.log(`🔗 Aplicando ${flowData.edges.length} conexiones reales del template`);
+        console.log(`🔗 Aplicando ${flowData.edges.length} conexiones desde API`);
         setEdges(flowData.edges);
       } else {
         console.log('🔗 Usando conexiones iniciales por defecto');
         setEdges(initialEdges);
       }
-    } else {
-      // Si no hay datos del flow, usar los iniciales
+    } else if (!templateLoaded && !flowData) {
+      // No template data from either source, use defaults
       console.log('⚡ No hay datos de flujo, usando valores iniciales');
       setNodes(initialNodes);
       setEdges(initialEdges);
