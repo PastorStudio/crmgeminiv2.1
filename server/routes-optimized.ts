@@ -143,6 +143,31 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  app.patch("/api/users/:id", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const updatedUser = await storage.updateUser(userId, updates);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+      
+      // Remove password from response
+      const { password, ...userWithoutPassword } = updatedUser;
+      
+      res.json({ 
+        success: true, 
+        user: userWithoutPassword,
+        message: "Usuario actualizado exitosamente" 
+      });
+    } catch (error) {
+      console.error("Error al actualizar usuario:", error);
+      res.status(500).json({ error: "Error al actualizar usuario" });
+    }
+  });
+
   // ***** RUTAS DE LEADS OPTIMIZADAS *****
   app.get("/api/leads", async (_req: Request, res: Response) => {
     try {
