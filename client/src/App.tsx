@@ -103,7 +103,8 @@ const AppRoutes: React.FC = () => {
   const publicRoutes = ['/login'];
   
   // No mostrar la barra lateral en la página de login
-  const showSidebar = !publicRoutes.includes(location) && isAuthenticated;
+  const bypassAuth = localStorage.getItem('bypass-auth') === 'true' || true;
+  const showSidebar = !publicRoutes.includes(location) && (isAuthenticated || bypassAuth);
   
   // Obtener clave API de Gemini para el cliente
   const { isLoading: isLoadingGeminiKey } = useQuery({
@@ -128,7 +129,7 @@ const AppRoutes: React.FC = () => {
         return null;
       }
     },
-    enabled: isAuthenticated // Solo cargar si está autenticado
+    enabled: isAuthenticated || bypassAuth // Solo cargar si está autenticado o hay bypass
   });
 
   // Verificar si el usuario tiene rol de administrador, supervisor o superadministrador

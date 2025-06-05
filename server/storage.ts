@@ -37,6 +37,20 @@ export interface IStorage {
   
   // Activity methods
   getActivitiesByUser(userId: number): Promise<any[]>;
+  getActivitiesByLead(leadId: number): Promise<any[]>;
+  getUpcomingActivities(userId: number, limit?: number): Promise<any[]>;
+  getActivity(id: number): Promise<any | undefined>;
+  createActivity(activity: any): Promise<any>;
+  updateActivity(id: number, updates: any): Promise<any | undefined>;
+  completeActivity(id: number): Promise<any | undefined>;
+  getMessage(id: number): Promise<any | undefined>;
+  createMessage(message: any): Promise<any>;
+  markMessageAsRead(id: number): Promise<any | undefined>;
+  getSurveysByLead(leadId: number): Promise<any[]>;
+  getSurvey(id: number): Promise<any | undefined>;
+  createSurvey(survey: any): Promise<any>;
+  updateSurveyResponses(id: number, responses: any): Promise<any | undefined>;
+  getRecentMessages(limit?: number): Promise<any[]>;
   
   // WhatsApp accounts methods
   getWhatsAppAccounts(): Promise<WhatsAppAccount[]>;

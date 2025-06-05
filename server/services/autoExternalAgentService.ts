@@ -243,7 +243,7 @@ export class AutoExternalAgentService {
   private async getAccountAgentConfig(accountId: number) {
     try {
       const result = await pool.query(`
-        SELECT assigned_external_agent_id, auto_response_enabled, response_delay
+        SELECT assigned_external_agent_id, autoresponseenabled as auto_response_enabled, responsedelay as response_delay
         FROM whatsapp_accounts 
         WHERE id = $1
       `, [accountId]);
