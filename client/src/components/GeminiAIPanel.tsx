@@ -75,55 +75,7 @@ export function GeminiAIPanel() {
     });
   };
 
-  const checkWhatsAppStatus = async () => {
-    try {
-      // Primary method: Check ping status for all accounts (this is working)
-      const pingResponse = await fetch('/api/whatsapp/ping-status/all');
-      if (pingResponse.ok) {
-        const pingData = await pingResponse.json();
-        if (pingData.success && pingData.accounts) {
-          const hasActiveAccount = pingData.accounts.some((acc: any) => 
-            acc.pingStatus && acc.pingStatus.isActive
-          );
-          if (hasActiveAccount) {
-            console.log('✅ WhatsApp connected - Active account found via ping status');
-            return true;
-          }
-        }
-      }
-      
-      // Secondary method: Check integration status
-      const integrationResponse = await fetch('/api/integrations/whatsapp/status');
-      if (integrationResponse.ok) {
-        const integrationData = await integrationResponse.json();
-        if (integrationData.authenticated || integrationData.ready) {
-          console.log('✅ WhatsApp connected via integration status');
-          return true;
-        }
-      }
-      
-      // Third method: Check account status
-      const accountResponse = await fetch('/api/whatsapp-accounts');
-      if (accountResponse.ok) {
-        const accountData = await accountResponse.json();
-        if (accountData.success && accountData.accounts) {
-          const hasConnectedAccount = accountData.accounts.some((acc: any) => 
-            acc.status === 'connected' || acc.status === 'active'
-          );
-          if (hasConnectedAccount) {
-            console.log('✅ WhatsApp connected via account status');
-            return true;
-          }
-        }
-      }
-      
-      console.log('❌ WhatsApp appears to be disconnected - no active connections found');
-      return false;
-    } catch (error) {
-      console.error('❌ Error checking WhatsApp status:', error);
-      return false;
-    }
-  };
+
 
   const analyzeFirstLead = async () => {
     if (isQuotaExceeded) return;
