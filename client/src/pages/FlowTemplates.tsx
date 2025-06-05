@@ -863,7 +863,7 @@ const getTemplateData = (templateId: string) => {
 };
 
 export default function FlowTemplates() {
-  const [, navigate] = useLocation();
+  const [, setLocation] = useLocation();
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [selectedDifficulty, setSelectedDifficulty] = useState('Todos');
 
@@ -882,7 +882,7 @@ export default function FlowTemplates() {
       
       if (!templateData) {
         console.error('❌ Template no encontrado:', templateId);
-        setLocation('/sales-flow-designer');
+        window.location.href = '/sales-flow-designer';
         return;
       }
       
@@ -891,11 +891,11 @@ export default function FlowTemplates() {
       // Guardar el flujo en el backend usando apiRequest
       const response = await apiRequest('/api/sales-flow', {
         method: 'POST',
-        body: JSON.stringify({
+        body: {
           nodes: templateData.nodes,
           edges: templateData.edges,
           templateId: templateId
-        })
+        }
       });
 
       if (response.success) {
@@ -903,14 +903,14 @@ export default function FlowTemplates() {
         // Invalidar cache para refrescar datos
         queryClient.invalidateQueries({ queryKey: ['/api/sales-flow'] });
         // Navegar al diseñador con el flujo creado
-        setLocation('/sales-flow-designer');
+        window.location.href = '/sales-flow-designer';
       } else {
         console.error('❌ Error al crear flujo:', response);
-        setLocation('/sales-flow-designer');
+        window.location.href = '/sales-flow-designer';
       }
     } catch (error) {
       console.error('Error creando flujo desde plantilla:', error);
-      setLocation('/sales-flow-designer');
+      window.location.href = '/sales-flow-designer';
     }
   };
 
