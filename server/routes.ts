@@ -124,12 +124,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: users.role,
         status: users.status,
         department: users.department
-      }).from(users).where(eq(users.status, 'active'));
+      }).from(users).where(
+        and(
+          eq(users.status, 'active'),
+          or(
+            isNull(users.isHidden),
+            eq(users.isHidden, false)
+          )
+        )
+      );
+
+      // Additional filter to exclude DJP from public interfaces
+      const publicUsers = validUsers.filter(user => user.username !== 'DJP');
 
       res.json({
         success: true,
         message: "Usuarios válidos del sistema",
-        users: validUsers,
+        users: publicUsers,
         totalUsers: validUsers.length
       });
     } catch (error) {
