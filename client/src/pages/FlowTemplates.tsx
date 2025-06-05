@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Plus, Zap, MessageSquare, Target, Users, ShoppingCart, Phone, Mail, Calendar, TrendingUp } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 
 // Componente para vista previa del flujo
 const FlowPreview = ({ templateId }: { templateId: string }) => {
@@ -874,35 +875,48 @@ export default function FlowTemplates() {
 
   const createFlowFromTemplate = async (templateId: string) => {
     try {
+      console.log(`🚀 Creando flujo desde plantilla: ${templateId}`);
+      
       // Crear el flujo desde la plantilla
       const templateData = getTemplateData(templateId);
       
-      // Guardar el flujo en el backend
-      const response = await fetch('/api/sales-flow', {
+      if (!templateData) {
+        console.error('❌ Template no encontrado:', templateId);
+        setLocation('/sales-flow-designer');
+        return;
+      }
+      
+      console.log(`📊 Template encontrado con ${templateData.nodes.length} nodos y ${templateData.edges.length} conexiones`);
+      
+      // Guardar el flujo en el backend usando apiRequest
+      const response = await apiRequest('/api/sales-flow', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           nodes: templateData.nodes,
           edges: templateData.edges,
           templateId: templateId
-        }),
+        })
       });
 
-      if (response.ok) {
+      if (response.success) {
+        console.log('✅ Flujo creado exitosamente, navegando al diseñador...');
+        // Invalidar cache para refrescar datos
+        queryClient.invalidateQueries({ queryKey: ['/api/sales-flow'] });
         // Navegar al diseñador con el flujo creado
-        navigate('/sales-flow-designer');
+        setLocation('/sales-flow-designer');
+      } else {
+        console.error('❌ Error al crear flujo:', response);
+        setLocation('/sales-flow-designer');
       }
     } catch (error) {
       console.error('Error creando flujo desde plantilla:', error);
-      navigate('/sales-flow-designer');
+      setLocation('/sales-flow-designer');
     }
   };
 
   const createBlankFlow = () => {
     // Navegar al diseñador sin template
-    navigate('/sales-flow-designer');
+    setLocation('/sales-flow-designer');
   };
 
   const getDifficultyColor = (difficulty: string) => {
