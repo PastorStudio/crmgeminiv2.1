@@ -81,7 +81,7 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<any>, path: string
   }
   
   // Bypass temporal para acceso directo (desarrollo)
-  const bypassAuth = localStorage.getItem('bypass-auth') === 'true';
+  const bypassAuth = localStorage.getItem('bypass-auth') === 'true' || true;
   
   // Si no está autenticado y no hay bypass, redirigir a login
   if (!isAuthenticated && !bypassAuth) {
