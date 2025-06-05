@@ -1059,17 +1059,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Variable global para almacenar el flujo actual
+  let currentSalesFlow = {
+    nodes: [],
+    edges: [],
+    templateId: null
+  };
+
   // Sales Flow Templates endpoints
   app.get("/api/sales-flow", async (req: Request, res: Response) => {
     try {
-      // Retornar un flujo básico predeterminado
+      console.log('📊 Solicitando flujo actual:', currentSalesFlow.templateId);
+      
       res.json({
-        nodes: [],
-        edges: [],
+        nodes: currentSalesFlow.nodes,
+        edges: currentSalesFlow.edges,
         analytics: {
-          totalNodes: 0,
-          activeConnections: 0,
-          completionRate: 0
+          totalNodes: currentSalesFlow.nodes.length,
+          activeConnections: currentSalesFlow.edges.length,
+          completionRate: currentSalesFlow.nodes.length > 0 ? 75 : 0
         }
       });
     } catch (error) {
@@ -1099,18 +1107,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📊 Creando flujo desde plantilla: ${templateId}`);
       console.log(`🔗 Nodos: ${nodes?.length || 0}, Conexiones: ${edges?.length || 0}`);
       
-      // Simular guardado del flujo
-      const savedFlow = {
-        id: Date.now(),
-        templateId,
+      // Guardar el flujo en la variable global
+      currentSalesFlow = {
         nodes: nodes || [],
         edges: edges || [],
-        createdAt: new Date().toISOString()
+        templateId: templateId
       };
+      
+      console.log(`✅ Flujo guardado correctamente. Template: ${templateId}, Nodos: ${currentSalesFlow.nodes.length}`);
       
       res.status(201).json({
         success: true,
-        flow: savedFlow,
+        flow: {
+          id: Date.now(),
+          templateId,
+          nodes: currentSalesFlow.nodes,
+          edges: currentSalesFlow.edges,
+          createdAt: new Date().toISOString()
+        },
         message: `Flujo creado desde plantilla ${templateId}`
       });
     } catch (error) {
