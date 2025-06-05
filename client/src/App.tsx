@@ -654,6 +654,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/agent-monitoring" component={() => <PrivateRoute component={AgentMonitoring} path="/agent-monitoring" />} />
                 <Route path="/agent-security" component={() => <PrivateRoute component={AgentSecurity} path="/agent-security" />} />
                 <Route path="/flow-templates" component={() => <PrivateRoute component={FlowTemplates} path="/flow-templates" />} />
+                <Route path="/system-status" component={() => <PrivateRoute component={SystemStatus} path="/system-status" />} />
                 <Route path="/sales-flow-designer" component={() => <PrivateRoute component={SalesFlowDesigner} path="/sales-flow-designer" />} />
                 <Route path="/chat-assignments" component={() => <PrivateRoute component={ChatAssignments} path="/chat-assignments" />} />
                 <Route path="/profile" component={() => <PrivateRoute component={Profile} path="/profile" />} />
