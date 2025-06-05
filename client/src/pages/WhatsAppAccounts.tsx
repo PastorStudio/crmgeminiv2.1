@@ -232,7 +232,7 @@ const WhatsAppAccounts = () => {
     },
     enabled: !!selectedAccount && qrDialogOpen && 
              ['inactive', 'pending_auth'].includes(selectedAccount.status || ''),
-    refetchInterval: qrDialogOpen ? 5000 : false // Refrescar cada 5 segundos si el diálogo está abierto
+    refetchInterval: qrDialogOpen ? 120000 : false // Refrescar cada 2 minutos si el diálogo está abierto
   });
   
   // Mutation para crear cuenta
