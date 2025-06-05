@@ -2344,6 +2344,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Smart API Key Management endpoints
+  app.get("/api/settings/api-keys-health", async (req: Request, res: Response) => {
+    try {
+      console.log('🔍 Obteniendo estado de salud de todas las APIs...');
+      
+      // Import the health monitor
+      const { apiKeyHealthMonitor } = await import('./services/apiKeyHealthMonitor');
+      
+      // Get current health metrics and key statuses
+      const healthMetrics = apiKeyHealthMonitor.getHealthMetrics();
+      const keyStatuses = apiKeyHealthMonitor.getAllKeyStatuses();
+      
+      res.json({
+        success: true,
+        metrics: healthMetrics,
+        keys: keyStatuses
+      });
+      
+      console.log(`✅ Estado de salud enviado: ${keyStatuses.length} claves monitoreadas`);
+    } catch (error) {
+      console.error('❌ Error obteniendo estado de salud de APIs:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener el estado de salud de las APIs'
+      });
+    }
+  });
+
+  app.post("/api/settings/test-key/:keyId", async (req: Request, res: Response) => {
+    try {
+      const { keyId } = req.params;
+      console.log(`🔍 Probando clave API: ${keyId}`);
+      
+      // Import the health monitor
+      const { apiKeyHealthMonitor } = await import('./services/apiKeyHealthMonitor');
+      
+      // Test the specific API key
+      const result = await apiKeyHealthMonitor.testApiKey(keyId);
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          responseTime: result.responseTime,
+          message: 'Prueba de API exitosa'
+        });
+        console.log(`✅ Prueba exitosa para ${keyId}: ${result.responseTime}ms`);
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error,
+          responseTime: result.responseTime
+        });
+        console.log(`❌ Prueba fallida para ${keyId}: ${result.error}`);
+      }
+    } catch (error: any) {
+      console.error('❌ Error probando clave API:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno al probar la clave API'
+      });
+    }
+  });
+
+  app.post("/api/settings/regenerate-key/:keyId", async (req: Request, res: Response) => {
+    try {
+      const { keyId } = req.params;
+      console.log(`🔄 Regenerando clave API: ${keyId}`);
+      
+      // Import the health monitor
+      const { apiKeyHealthMonitor } = await import('./services/apiKeyHealthMonitor');
+      
+      // Regenerate the specific API key
+      const result = await apiKeyHealthMonitor.regenerateApiKey(keyId);
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          message: result.message
+        });
+        console.log(`✅ Regeneración exitosa para ${keyId}`);
+      } else {
+        res.status(400).json({
+          success: false,
+          message: result.message
+        });
+        console.log(`❌ Regeneración fallida para ${keyId}: ${result.message}`);
+      }
+    } catch (error: any) {
+      console.error('❌ Error regenerando clave API:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno al regenerar la clave API'
+      });
+    }
+  });
+
+  app.post("/api/settings/add-api-key", async (req: Request, res: Response) => {
+    try {
+      const { provider, apiKey, name } = req.body;
+      
+      if (!provider || !apiKey || !name) {
+        return res.status(400).json({
+          success: false,
+          message: 'Faltan datos requeridos: provider, apiKey y name'
+        });
+      }
+      
+      console.log(`🔑 Agregando nueva clave API: ${name} (${provider})`);
+      
+      // For now, we'll store the key in environment variables
+      // In a production system, you'd want to store these securely in a database
+      switch (provider.toLowerCase()) {
+        case 'openai':
+          process.env.OPENAI_API_KEY = apiKey;
+          break;
+        case 'gemini':
+          process.env.GEMINI_API_KEY = apiKey;
+          break;
+        default:
+          // Store custom API keys with a prefix
+          process.env[`CUSTOM_${provider.toUpperCase()}_API_KEY`] = apiKey;
+      }
+      
+      res.json({
+        success: true,
+        message: 'Clave API agregada exitosamente'
+      });
+      
+      console.log(`✅ Clave API agregada: ${name}`);
+    } catch (error: any) {
+      console.error('❌ Error agregando clave API:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno al agregar la clave API'
+      });
+    }
+  });
   
   app.post("/api/settings/update-gemini-key", async (req: Request, res: Response) => {
     try {

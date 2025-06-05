@@ -47,6 +47,7 @@ import AgentSecurity from './pages/AgentSecurity';
 import SalesFlowDesigner from './pages/SalesFlowDesigner';
 import FlowTemplates from './pages/FlowTemplates';
 import SystemStatus from './pages/SystemStatus';
+import { ApiKeyManagementPage } from './pages/ApiKeyManagement';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
@@ -552,6 +553,18 @@ const AppRoutes: React.FC = () => {
 
 
 
+              <a href="/api-key-management" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/api-key-management' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="6" width="18" height="12" rx="2" fill="#3B82F6"/>
+                  <circle cx="8" cy="12" r="2" fill="white"/>
+                  <circle cx="16" cy="12" r="2" fill="white"/>
+                  <rect x="6" y="10" width="4" height="4" rx="1" fill="#10B981"/>
+                  <rect x="14" y="10" width="4" height="4" rx="1" fill="#F59E0B"/>
+                  <rect x="10" y="3" width="4" height="2" rx="1" fill="#8B5CF6"/>
+                </svg>
+                Gestión de APIs
+              </a>
+
               <a href="/settings" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/settings' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="8" fill="#374151"/>
@@ -655,6 +668,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/agent-security" component={() => <PrivateRoute component={AgentSecurity} path="/agent-security" />} />
                 <Route path="/flow-templates" component={() => <PrivateRoute component={FlowTemplates} path="/flow-templates" />} />
                 <Route path="/system-status" component={() => <PrivateRoute component={SystemStatus} path="/system-status" />} />
+                <Route path="/api-key-management" component={() => <PrivateRoute component={ApiKeyManagementPage} path="/api-key-management" />} />
                 <Route path="/sales-flow-designer" component={() => <PrivateRoute component={SalesFlowDesigner} path="/sales-flow-designer" />} />
                 <Route path="/chat-assignments" component={() => <PrivateRoute component={ChatAssignments} path="/chat-assignments" />} />
                 <Route path="/profile" component={() => <PrivateRoute component={Profile} path="/profile" />} />
