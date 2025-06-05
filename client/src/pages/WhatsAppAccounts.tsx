@@ -145,6 +145,7 @@ const WhatsAppAccounts = () => {
   const [authMethod, setAuthMethod] = useState<'qrcode' | 'phone'>('qrcode');
   const [agentConfigDialogOpen, setAgentConfigDialogOpen] = useState(false);
   const [selectedAccountForAgent, setSelectedAccountForAgent] = useState<WhatsAppAccount | null>(null);
+  const [qrAutoRefreshStatus, setQrAutoRefreshStatus] = useState<{[key: number]: boolean}>({});
   
   // Effect to automatically close QR dialog when connection becomes authenticated
   useEffect(() => {
