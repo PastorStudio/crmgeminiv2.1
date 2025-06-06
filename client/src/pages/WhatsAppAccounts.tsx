@@ -436,6 +436,97 @@ const WhatsAppAccounts = () => {
     }
   };
   
+  // Session recovery mutation
+  const recoverSessionMutation = useMutation({
+    mutationFn: async (accountId: number) => {
+      return await apiRequest(`/api/whatsapp-accounts/${accountId}/recover-session`, {
+        method: 'POST'
+      });
+    },
+    onSuccess: (data, accountId) => {
+      if (data.success) {
+        toast({
+          title: "Sesión recuperada",
+          description: data.message,
+        });
+        
+        if (data.action === 'retry_connection') {
+          // Retry connection with same account
+          initializeAccountMutation.mutate(accountId);
+        } else if (data.action === 'fresh_connection') {
+          // Account cleaned, ready for fresh QR
+          refetch();
+          if (selectedAccount?.id === accountId) {
+            refetchQr();
+          }
+        }
+      } else {
+        toast({
+          title: "Error en recuperación",
+          description: data.message,
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "No se pudo recuperar la sesión",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Clean session mutation
+  const cleanSessionMutation = useMutation({
+    mutationFn: async (accountId: number) => {
+      return await apiRequest(`/api/whatsapp-accounts/${accountId}/clean-session`, {
+        method: 'POST'
+      });
+    },
+    onSuccess: (data, accountId) => {
+      if (data.success) {
+        toast({
+          title: "Sesión limpiada",
+          description: "La cuenta está lista para una nueva conexión",
+        });
+        refetch();
+        if (selectedAccount?.id === accountId) {
+          refetchQr();
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: data.message,
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "No se pudo limpiar la sesión",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Handle session recovery
+  const handleRecoverSession = () => {
+    if (selectedAccount) {
+      recoverSessionMutation.mutate(selectedAccount.id);
+    }
+  };
+
+  // Handle session cleanup
+  const handleCleanSession = () => {
+    if (selectedAccount) {
+      if (window.confirm('¿Está seguro de que desea limpiar completamente la sesión? Esto eliminará todos los datos de autenticación.')) {
+        cleanSessionMutation.mutate(selectedAccount.id);
+      }
+    }
+  };
+
   // Actualizar QR code - usar endpoint de force refresh
   const handleRefreshQR = async () => {
     if (!selectedAccount) return;
@@ -1344,23 +1435,52 @@ const WhatsAppAccounts = () => {
                           <br />
                           El código se actualizará automáticamente.
                         </p>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={handleRefreshQR}
-                          >
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                            Actualizar QR
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={handleReconnect}
-                          >
-                            <Power className="h-4 w-4 mr-2" />
-                            Reinicializar
-                          </Button>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={handleRefreshQR}
+                            >
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Actualizar QR
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={handleReconnect}
+                            >
+                              <Power className="h-4 w-4 mr-2" />
+                              Reinicializar
+                            </Button>
+                          </div>
+                          
+                          {/* Session Recovery Options */}
+                          <div className="border-t pt-2">
+                            <p className="text-xs text-muted-foreground mb-2 text-center">
+                              ¿Problemas de conexión?
+                            </p>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={handleRecoverSession}
+                                disabled={recoverSessionMutation.isPending}
+                              >
+                                <Zap className="h-4 w-4 mr-2" />
+                                Recuperar Sesión
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={handleCleanSession}
+                                disabled={cleanSessionMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Limpiar Sesión
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ) : (
