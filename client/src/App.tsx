@@ -141,7 +141,7 @@ const AppRoutes: React.FC = () => {
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Notification System - Always active when authenticated */}
-      {(isAuthenticated || bypassAuth) && <NotificationSystem />}
+      {(isAuthenticated || bypassAuth) && <SimpleNotificationSystem />}
       
       {/* Sidebar con menú vertical - siempre visible cuando está autenticado */}
       {showSidebar && (
