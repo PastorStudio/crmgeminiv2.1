@@ -3,7 +3,8 @@
  * Versión optimizada para códigos QR en producción
  */
 import { EventEmitter } from 'events';
-import { Client } from 'whatsapp-web.js';
+import whatsappWebJS from 'whatsapp-web.js';
+const { Client, LocalAuth } = whatsappWebJS;
 import fs from 'fs';
 import path from 'path';
 import qrcode from 'qrcode';
@@ -28,7 +29,7 @@ interface WhatsAppStatus {
 interface WhatsAppInstance {
   id: number;
   name: string;
-  client: Client;
+  client: any;
   status: WhatsAppStatus;
   sessionPath: string;
   qrCodePath: string;
@@ -395,8 +396,10 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
       // Crear cliente WhatsApp con configuración de persistencia mejorada
       const client = new Client({
-        // Session persistence disabled to prevent import errors
-        // Will use QR authentication for maximum compatibility
+        authStrategy: new LocalAuth({
+          clientId: `account_${accountId}`,
+          dataPath: sessionPath
+        }),
         puppeteer: {
           ...puppeteerOptions,
           timeout: 180000, // Increased timeout
@@ -1077,7 +1080,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene el cliente de WhatsApp para una cuenta específica
    */
-  getClient(accountId: number): Client | null {
+  getClient(accountId: number): any | null {
     const instance = this.instances.get(accountId);
     return instance ? instance.client : null;
   }
