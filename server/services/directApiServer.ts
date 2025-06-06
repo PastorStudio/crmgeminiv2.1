@@ -127,7 +127,39 @@ export function registerDirectAPIRoutes(app: Express): void {
     }
   });
 
-  // Ruta para inicializar el servicio de WhatsApp
+  // Ruta para forzar conexión real de WhatsApp
+  app.post('/api/direct/whatsapp/force-real-auth', async (req, res) => {
+    try {
+      console.log('🔄 Forzando autenticación real de WhatsApp...');
+      
+      // Force initialize with real authentication
+      await whatsappMultiAccountManager.initializeAccount(1);
+      
+      // Force QR generation for real connection
+      const qrResult = await whatsappMultiAccountManager.forceRefreshQR(1);
+      
+      // Activate aggressive keep-alive
+      whatsappMultiAccountManager.activateKeepAlive(1);
+      
+      const instance = whatsappMultiAccountManager.getInstance(1);
+      const status = instance ? instance.status : { authenticated: false, ready: false };
+      
+      res.json({ 
+        success: true,
+        message: 'Sistema configurado para datos reales',
+        status,
+        qrGenerated: qrResult
+      });
+    } catch (error) {
+      console.error('Error forzando autenticación real:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error estableciendo conexión real'
+      });
+    }
+  });
+
+  // Ruta para inicializar el servicio de WhatsApp (legacy)
   app.post('/api/direct/whatsapp/initialize', async (req, res) => {
     try {
       await whatsappService.initialize();
@@ -166,25 +198,31 @@ export function registerDirectAPIRoutes(app: Express): void {
     try {
       console.log('🔄 API directa: Obteniendo chats desde WhatsApp...');
       
-      // Usar el multi-account manager directamente para datos reales
+      // Verificar autenticación real de WhatsApp
       const instance = whatsappMultiAccountManager.getInstance(1);
-      if (instance && instance.client && instance.status.authenticated) {
+      if (instance && instance.client && instance.status.authenticated && instance.status.ready) {
         try {
+          console.log('🔄 Obteniendo datos auténticos de WhatsApp...');
           const chats = await instance.client.getChats();
-          const processedChats = chats.slice(0, 50).map(chat => ({
-            id: chat.id._serialized || chat.id,
-            name: chat.name || chat.id.user || 'Sin nombre',
-            isGroup: Boolean(chat.isGroup),
-            timestamp: chat.timestamp || Date.now() / 1000,
-            unreadCount: chat.unreadCount || 0,
-            lastMessage: chat.lastMessage?.body || '',
-            accountId: 1
-          }));
-          console.log(`✅ Datos reales: ${processedChats.length} chats de WhatsApp auténticos`);
-          res.json(processedChats);
-          return;
+          
+          if (chats && chats.length > 0) {
+            const processedChats = chats.slice(0, 50).map(chat => ({
+              id: chat.id._serialized || chat.id,
+              name: chat.name || chat.id.user || 'Sin nombre',
+              isGroup: Boolean(chat.isGroup),
+              timestamp: chat.timestamp || Date.now() / 1000,
+              unreadCount: chat.unreadCount || 0,
+              lastMessage: chat.lastMessage?.body || '',
+              accountId: 1
+            }));
+            console.log(`✅ DATOS REALES: ${processedChats.length} chats auténticos de WhatsApp`);
+            res.json(processedChats);
+            return;
+          } else {
+            console.log('📱 WhatsApp conectado pero sin chats disponibles');
+          }
         } catch (error) {
-          console.log('❌ Error obteniendo datos reales:', error);
+          console.log('❌ Error accediendo a datos reales de WhatsApp:', error);
         }
       }
       
