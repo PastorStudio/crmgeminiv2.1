@@ -197,7 +197,7 @@ export default function Dashboard() {
       
       <div className="min-h-screen bg-gradient-to-br from-black via-black to-red-600">
         {/* Hero Section with Animated Business Icons */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-black to-red-900 py-20">
+        <div className="relative overflow-hidden bg-gradient-to-r from-black to-red-900 py-12">
           {/* Animated Background Elements */}
           <div className="absolute inset-0">
             {/* Floating WhatsApp Icons */}
@@ -241,47 +241,47 @@ export default function Dashboard() {
           {/* Main Hero Content */}
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
-              <h1 className="text-6xl font-bold text-white mb-6 animate-fade-in">
+              <h1 className="text-4xl font-bold text-white mb-4 animate-fade-in">
                 WhatsApp Business
                 <span className="block text-red-400">CRM Platform</span>
               </h1>
               
-              <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
+              <p className="text-lg text-gray-300 mb-6 max-w-2xl mx-auto">
                 Automatiza tu comunicación empresarial con IA avanzada, gestión de clientes y respuestas inteligentes
               </p>
 
               {/* Animated Business Features Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16">
-                <div className="bg-black/30 p-6 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-100">
-                  <MessageCircle className="h-12 w-12 text-green-400 mx-auto mb-4 animate-pulse" />
-                  <h3 className="text-white font-semibold mb-2">Mensajería</h3>
-                  <p className="text-gray-400 text-sm">Chat empresarial automatizado</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+                <div className="bg-black/30 p-4 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-100">
+                  <MessageCircle className="h-8 w-8 text-green-400 mx-auto mb-3 animate-pulse" />
+                  <h3 className="text-white font-semibold mb-1 text-sm">Mensajería</h3>
+                  <p className="text-gray-400 text-xs">Chat empresarial automatizado</p>
                 </div>
                 
-                <div className="bg-black/30 p-6 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-200">
-                  <Users className="h-12 w-12 text-red-400 mx-auto mb-4 animate-bounce" />
-                  <h3 className="text-white font-semibold mb-2">Clientes</h3>
-                  <p className="text-gray-400 text-sm">Gestión de contactos</p>
+                <div className="bg-black/30 p-4 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-200">
+                  <Users className="h-8 w-8 text-red-400 mx-auto mb-3 animate-bounce" />
+                  <h3 className="text-white font-semibold mb-1 text-sm">Clientes</h3>
+                  <p className="text-gray-400 text-xs">Gestión de contactos</p>
                 </div>
                 
-                <div className="bg-black/30 p-6 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-300">
-                  <FileText className="h-12 w-12 text-white mx-auto mb-4 animate-pulse" />
-                  <h3 className="text-white font-semibold mb-2">Archivos</h3>
-                  <p className="text-gray-400 text-sm">Documentos y multimedia</p>
+                <div className="bg-black/30 p-4 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-300">
+                  <FileText className="h-8 w-8 text-white mx-auto mb-3 animate-pulse" />
+                  <h3 className="text-white font-semibold mb-1 text-sm">Archivos</h3>
+                  <p className="text-gray-400 text-xs">Documentos y multimedia</p>
                 </div>
                 
-                <div className="bg-black/30 p-6 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-400">
-                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4 animate-bounce" />
-                  <h3 className="text-white font-semibold mb-2">Automatización</h3>
-                  <p className="text-gray-400 text-sm">Respuestas inteligentes</p>
+                <div className="bg-black/30 p-4 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-400">
+                  <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-3 animate-bounce" />
+                  <h3 className="text-white font-semibold mb-1 text-sm">Automatización</h3>
+                  <p className="text-gray-400 text-xs">Respuestas inteligentes</p>
                 </div>
               </div>
 
               {/* Live Business Activity Simulation */}
-              <div className="mt-16 bg-black/40 rounded-2xl p-8 backdrop-blur-sm border border-red-500/30">
-                <h3 className="text-white text-2xl font-bold mb-6">Actividad Empresarial en Tiempo Real</h3>
+              <div className="mt-8 bg-black/40 rounded-xl p-6 backdrop-blur-sm border border-red-500/30">
+                <h3 className="text-white text-lg font-bold mb-4">Actividad Empresarial en Tiempo Real</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Messages Activity */}
                   <div className="bg-green-600/20 p-4 rounded-lg border border-green-500/30">
                     <div className="flex items-center justify-between mb-3">
@@ -331,7 +331,7 @@ export default function Dashboard() {
               </div>
 
               {/* Time and User Info */}
-              <div className="mt-12 flex flex-col md:flex-row items-center justify-between bg-black/40 p-6 rounded-xl backdrop-blur-sm border border-red-500/30">
+              <div className="mt-6 flex flex-col md:flex-row items-center justify-between bg-black/40 p-4 rounded-xl backdrop-blur-sm border border-red-500/30">
                 <div className="flex items-center space-x-4 mb-4 md:mb-0">
                   {greeting.icon}
                   <span className="text-white text-lg">
