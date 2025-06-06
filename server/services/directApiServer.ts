@@ -166,33 +166,55 @@ export function registerDirectAPIRoutes(app: Express): void {
     try {
       console.log('🔄 API directa: Obteniendo chats desde WhatsApp...');
       
-      // Usar el servicio de WhatsApp simple que ya funciona
-      const status = whatsappService.getStatus();
-      if (status.authenticated && status.ready) {
-        // Intentar obtener chats del cliente actual
-        const instance = whatsappMultiAccountManager.getInstance(1);
-        if (instance && instance.client) {
-          try {
-            const chats = await instance.client.getChats();
-            const processedChats = chats.slice(0, 50).map(chat => ({
-              id: chat.id._serialized || chat.id,
-              name: chat.name || chat.id.user || 'Sin nombre',
-              isGroup: Boolean(chat.isGroup),
-              timestamp: chat.timestamp || Date.now() / 1000,
-              unreadCount: chat.unreadCount || 0,
-              lastMessage: chat.lastMessage?.body || '',
-              accountId: 1
-            }));
-            console.log(`✅ Obtenidos ${processedChats.length} chats reales`);
-            res.json(processedChats);
-            return;
-          } catch (error) {
-            console.log('❌ Error con cliente directo:', error);
-          }
+      // Usar el multi-account manager directamente para datos reales
+      const instance = whatsappMultiAccountManager.getInstance(1);
+      if (instance && instance.client && instance.status.authenticated) {
+        try {
+          const chats = await instance.client.getChats();
+          const processedChats = chats.slice(0, 50).map(chat => ({
+            id: chat.id._serialized || chat.id,
+            name: chat.name || chat.id.user || 'Sin nombre',
+            isGroup: Boolean(chat.isGroup),
+            timestamp: chat.timestamp || Date.now() / 1000,
+            unreadCount: chat.unreadCount || 0,
+            lastMessage: chat.lastMessage?.body || '',
+            accountId: 1
+          }));
+          console.log(`✅ Datos reales: ${processedChats.length} chats de WhatsApp auténticos`);
+          res.json(processedChats);
+          return;
+        } catch (error) {
+          console.log('❌ Error obteniendo datos reales:', error);
         }
       }
       
-      console.log('📭 WhatsApp no conectado o sin chats');
+      // Verificar si necesita inicialización o reconexión
+      if (instance && !instance.status.authenticated) {
+        console.log('🔄 Intentando reconexión automática...');
+        try {
+          await whatsappMultiAccountManager.initializeAccount(1);
+        } catch (error) {
+          console.log('❌ Error en reconexión:', error);
+        }
+      }
+      
+      // Si no hay instancia, crear una
+      if (!instance) {
+        console.log('🔄 Inicializando cuenta WhatsApp para datos reales...');
+        try {
+          await whatsappMultiAccountManager.initializeAccount(1);
+        } catch (error) {
+          console.log('❌ Error inicializando cuenta:', error);
+        }
+      }
+      
+      // Forzar activación del keep-alive para mantener conexión
+      if (instance) {
+        console.log('🔄 Activando keep-alive para mantener conexión persistente...');
+        whatsappMultiAccountManager.activateKeepAlive(1);
+      }
+      
+      console.log('📱 WhatsApp requiere autenticación - escanear código QR para datos reales');
       res.json([]);
     } catch (error) {
       console.error('❌ Error obteniendo chats:', error);
