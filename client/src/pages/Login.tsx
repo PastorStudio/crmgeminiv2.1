@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, LogIn, User, Lock } from 'lucide-react';
+import { Loader2, LogIn, User, Lock, MessageCircle, Users, FileText, Phone, Send, CheckCircle, Shield } from 'lucide-react';
 
 export default function Login() {
   const { login, isLoading } = useAuth();
@@ -36,87 +36,167 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <div className="bg-blue-600 rounded-full p-3">
-              <LogIn className="h-6 w-6 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-black via-black to-red-600">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        {/* Floating WhatsApp Business Icons */}
+        <div className="absolute top-20 left-20 animate-bounce delay-100">
+          <MessageCircle className="h-12 w-12 text-green-400 opacity-30" />
+        </div>
+        <div className="absolute top-40 right-32 animate-pulse delay-300">
+          <Users className="h-16 w-16 text-red-400 opacity-40" />
+        </div>
+        <div className="absolute bottom-40 left-40 animate-bounce delay-500">
+          <FileText className="h-10 w-10 text-white opacity-25" />
+        </div>
+        <div className="absolute top-60 left-1/4 animate-pulse delay-700">
+          <Phone className="h-14 w-14 text-green-500 opacity-35" />
+        </div>
+        <div className="absolute bottom-60 right-20 animate-bounce delay-900">
+          <Send className="h-12 w-12 text-red-300 opacity-30" />
+        </div>
+        <div className="absolute top-32 right-1/4 animate-pulse delay-200">
+          <Shield className="h-10 w-10 text-red-500 opacity-40" />
+        </div>
+        
+        {/* Business Chat Animation */}
+        <div className="absolute top-1/3 right-1/3 animate-pulse delay-400">
+          <div className="flex items-center space-x-2 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+            <MessageCircle className="h-6 w-6 text-green-400" />
+            <div className="flex space-x-1">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce delay-100"></div>
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce delay-200"></div>
             </div>
           </div>
-          <CardTitle className="text-2xl text-center">Iniciar Sesión</CardTitle>
-          <CardDescription className="text-center">
-            Accede al sistema CRM con tu cuenta
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Usuario</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="Ingresa tu usuario"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  className="pl-10"
-                  disabled={isSubmitting || isLoading}
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Ingresa tu contraseña"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="pl-10"
-                  disabled={isSubmitting || isLoading}
-                />
-              </div>
-            </div>
+        </div>
+        
+        {/* Security Animation */}
+        <div className="absolute bottom-1/3 left-1/3 animate-pulse delay-600">
+          <div className="flex items-center space-x-2 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+            <Shield className="h-6 w-6 text-red-400" />
+            <CheckCircle className="h-4 w-4 text-green-400 animate-pulse" />
+          </div>
+        </div>
+      </div>
 
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={isSubmitting || isLoading || !username || !password}
-            >
-              {isSubmitting || isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Iniciando sesión...
-                </>
-              ) : (
-                <>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Iniciar Sesión
-                </>
-              )}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              ¿No tienes acceso? Contacta al administrador del sistema
+      {/* Main Login Content */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center px-4">
+        <div className="w-full max-w-md">
+          {/* Hero Section */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-white mb-4 animate-fade-in">
+              WhatsApp Business
+              <span className="block text-red-400">CRM Login</span>
+            </h1>
+            <p className="text-lg text-gray-300 mb-6">
+              Accede a tu plataforma de comunicación empresarial
             </p>
+            
+            {/* Business Features Preview */}
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="bg-black/30 p-3 rounded-lg backdrop-blur-sm border border-red-500/20 animate-slide-up delay-100">
+                <MessageCircle className="h-6 w-6 text-green-400 mx-auto mb-2 animate-pulse" />
+                <span className="text-white text-xs">Mensajería</span>
+              </div>
+              <div className="bg-black/30 p-3 rounded-lg backdrop-blur-sm border border-red-500/20 animate-slide-up delay-200">
+                <Users className="h-6 w-6 text-red-400 mx-auto mb-2 animate-bounce" />
+                <span className="text-white text-xs">Clientes</span>
+              </div>
+              <div className="bg-black/30 p-3 rounded-lg backdrop-blur-sm border border-red-500/20 animate-slide-up delay-300">
+                <FileText className="h-6 w-6 text-white mx-auto mb-2 animate-pulse" />
+                <span className="text-white text-xs">Archivos</span>
+              </div>
+              <div className="bg-black/30 p-3 rounded-lg backdrop-blur-sm border border-red-500/20 animate-slide-up delay-400">
+                <CheckCircle className="h-6 w-6 text-green-500 mx-auto mb-2 animate-bounce" />
+                <span className="text-white text-xs">Automatización</span>
+              </div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Login Card */}
+          <Card className="bg-black/40 backdrop-blur-sm border border-red-500/30 animate-slide-up delay-500">
+            <CardHeader className="space-y-1">
+              <div className="flex items-center justify-center mb-4">
+                <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-full p-3 animate-glow">
+                  <LogIn className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl text-center text-white">Iniciar Sesión</CardTitle>
+              <CardDescription className="text-center text-gray-300">
+                Accede al sistema CRM con tu cuenta
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="text-white">Usuario</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="username"
+                      type="text"
+                      placeholder="Ingresa tu usuario"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required
+                      className="pl-10 bg-black/20 border-red-500/30 text-white placeholder:text-gray-400 focus:border-red-500"
+                      disabled={isSubmitting || isLoading}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-white">Contraseña</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Ingresa tu contraseña"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="pl-10 bg-black/20 border-red-500/30 text-white placeholder:text-gray-400 focus:border-red-500"
+                      disabled={isSubmitting || isLoading}
+                    />
+                  </div>
+                </div>
+
+                {error && (
+                  <Alert variant="destructive" className="bg-red-900/50 border-red-500/50">
+                    <AlertDescription className="text-red-200">{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white border-0" 
+                  disabled={isSubmitting || isLoading || !username || !password}
+                >
+                  {isSubmitting || isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Iniciando sesión...
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Iniciar Sesión
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-400">
+                  ¿No tienes acceso? Contacta al administrador del sistema
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
