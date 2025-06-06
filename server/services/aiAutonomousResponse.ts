@@ -18,9 +18,9 @@ interface ChatContext {
   chatId: string;
   contactName: string;
   recentMessages: Array<{
-    body: string;
-    fromMe: boolean;
-    timestamp: number;
+    content: string;
+    from_me: boolean;
+    timestamp: Date;
   }>;
   contactInfo?: any;
   leadInfo?: any;
@@ -151,16 +151,16 @@ CONTEXTO DE NEGOCIO: ${businessName} - Empresa comprometida con brindar excelent
       // Obtener mensajes recientes
       const recentMessages = await db
         .select({
-          body: messages.body,
-          fromMe: messages.fromMe,
-          timestamp: messages.timestamp
+          content: whatsappMessages.content,
+          from_me: whatsappMessages.from_me,
+          timestamp: whatsappMessages.timestamp
         })
-        .from(messages)
+        .from(whatsappMessages)
         .where(and(
-          eq(messages.chatId, chatId),
-          eq(messages.whatsappAccountId, accountId)
+          eq(whatsappMessages.chatId, chatId),
+          eq(whatsappMessages.accountId, accountId)
         ))
-        .orderBy(desc(messages.timestamp))
+        .orderBy(desc(whatsappMessages.timestamp))
         .limit(10);
 
       // Obtener información del contacto
@@ -183,7 +183,11 @@ CONTEXTO DE NEGOCIO: ${businessName} - Empresa comprometida con brindar excelent
       return {
         chatId,
         contactName: contact[0]?.name || 'Cliente',
-        recentMessages: recentMessages.reverse(), // Ordenar cronológicamente
+        recentMessages: recentMessages.reverse().map(msg => ({
+          content: msg.content || '',
+          from_me: msg.from_me || false,
+          timestamp: msg.timestamp
+        })),
         contactInfo: contact[0],
         leadInfo: lead[0]
       };
@@ -203,7 +207,7 @@ CONTEXTO DE NEGOCIO: ${businessName} - Empresa comprometida con brindar excelent
       // Construir historial de conversación para contexto
       const conversationHistory = context.recentMessages
         .slice(-5) // Últimos 5 mensajes
-        .map(msg => `${msg.fromMe ? 'Asistente' : context.contactName}: ${msg.body}`)
+        .map(msg => `${msg.from_me ? 'Asistente' : context.contactName}: ${msg.content}`)
         .join('\n');
 
       const systemPrompt = `${config.prompt}
