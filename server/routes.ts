@@ -3652,13 +3652,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
     
     // Enviar confirmación de conexión inmediatamente
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'connection_status',
-        status: 'connected',
-        timestamp: Date.now()
-      }));
-    }
+    setTimeout(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'connection_status',
+          status: 'connected',
+          timestamp: Date.now()
+        }));
+      }
+    }, 100);
     
     // Evento cuando se recibe un mensaje del cliente
     ws.on('message', (message: any) => {
@@ -3801,9 +3803,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
   };
+
+  // Endpoint para probar notificaciones
+  app.post('/api/test-notification', async (req, res) => {
+    try {
+      const { title, message } = req.body;
+      
+      const notification = {
+        id: `test_${Date.now()}`,
+        title: title || 'Notificación de Prueba',
+        message: message || 'Sistema de notificaciones funcionando correctamente',
+        type: 'message',
+        timestamp: new Date(),
+        read: false
+      };
+
+      console.log('🔔 Enviando notificación de prueba:', notification);
+
+      // Enviar a todos los clientes WebSocket conectados
+      let clientsSent = 0;
+      clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: 'notification',
+            data: notification
+          }));
+          clientsSent++;
+        }
+      });
+
+      console.log(`📤 Notificación enviada a ${clientsSent} clientes conectados`);
+
+      res.json({ 
+        success: true, 
+        notification,
+        clientsConnected: clients.size,
+        clientsSent
+      });
+    } catch (error) {
+      console.error('Error enviando notificación de prueba:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
   
-  // Test endpoint para verificar notificaciones WebSocket
-  app.post("/api/test-notification", (req: Request, res: Response) => {
+  // Test endpoint para verificar estado del sistema
+  app.get("/api/system-status", (req: Request, res: Response) => {
     try {
       const { title, message } = req.body;
       
