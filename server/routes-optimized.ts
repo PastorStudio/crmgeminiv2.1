@@ -105,6 +105,171 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // ***** GESTIÓN AUTOMÁTICA DE CLAVES GEMINI *****
+  app.get("/api/settings/gemini-client-key", async (req: Request, res: Response) => {
+    try {
+      const { geminiApiKeyManager } = await import('../services/geminiApiKeyManager');
+      const apiKey = await geminiApiKeyManager.getCurrentApiKey();
+      
+      res.json({
+        success: true,
+        apiKey: apiKey,
+        generated: true,
+        message: "Clave API de Gemini generada automáticamente"
+      });
+    } catch (error) {
+      console.error("Error obteniendo clave API de Gemini:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al generar clave API de Gemini automáticamente"
+      });
+    }
+  });
+
+  app.post("/api/settings/gemini-rotate-key", async (req: Request, res: Response) => {
+    try {
+      const { geminiApiKeyManager } = await import('../services/geminiApiKeyManager');
+      const newApiKey = await geminiApiKeyManager.forceKeyRotation();
+      
+      res.json({
+        success: true,
+        apiKey: newApiKey,
+        message: "Nueva clave API de Gemini generada automáticamente"
+      });
+    } catch (error) {
+      console.error("Error rotando clave API:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al rotar clave API de Gemini"
+      });
+    }
+  });
+
+  app.get("/api/settings/gemini-key-stats", async (req: Request, res: Response) => {
+    try {
+      const { geminiApiKeyManager } = await import('../services/geminiApiKeyManager');
+      const stats = geminiApiKeyManager.getKeyStats();
+      
+      res.json({
+        success: true,
+        stats: stats
+      });
+    } catch (error) {
+      console.error("Error obteniendo estadísticas de clave:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener estadísticas de clave API"
+      });
+    }
+  });
+
+  // ***** RUTAS DE AUTENTICACIÓN *****
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Usuario y contraseña requeridos" 
+        });
+      }
+      
+      // Buscar usuario en la base de datos
+      const user = await storage.getUserByUsername(username);
+      
+      if (!user) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Credenciales inválidas" 
+        });
+      }
+      
+      // Verificar contraseña (en un sistema real se usaría bcrypt)
+      if (user.password !== password) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Credenciales inválidas" 
+        });
+      }
+      
+      // Verificar que el usuario esté activo
+      if (user.status !== 'active') {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Usuario inactivo" 
+        });
+      }
+      
+      // Generar token de sesión
+      const token = `auth-token-${user.username}-${Date.now()}`;
+      
+      // Remover contraseña de la respuesta
+      const { password: _, ...userWithoutPassword } = user;
+      
+      res.json({
+        success: true,
+        token,
+        user: userWithoutPassword,
+        message: "Login exitoso"
+      });
+      
+    } catch (error) {
+      console.error("Error en login:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error interno del servidor" 
+      });
+    }
+  });
+
+  app.get("/api/auth/me", async (req: Request, res: Response) => {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      
+      if (!token) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Token requerido" 
+        });
+      }
+      
+      // Extraer username del token (simplificado para este ejemplo)
+      const tokenParts = token.split('-');
+      if (tokenParts.length < 3) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Token inválido" 
+        });
+      }
+      
+      const username = tokenParts[2];
+      const user = await storage.getUserByUsername(username);
+      
+      if (!user) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Usuario no encontrado" 
+        });
+      }
+      
+      // Remover contraseña de la respuesta
+      const { password: _, ...userWithoutPassword } = user;
+      
+      res.json({
+        success: true,
+        user: userWithoutPassword
+      });
+      
+    } catch (error) {
+      console.error("Error verificando token:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error interno del servidor" 
+      });
+    }
+  });
+
   // ***** RUTAS DE USUARIOS OPTIMIZADAS *****
   app.get("/api/users", async (_req: Request, res: Response) => {
     try {

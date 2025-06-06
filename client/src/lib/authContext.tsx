@@ -102,33 +102,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       
-      // Credenciales de usuarios reales registrados en PostgreSQL
-      const validCredentials = [
-        { username: 'DJP', password: 'Mi123456@', user: { id: 3, username: 'DJP', role: 'superadmin', email: 'superadmin@crm.com', fullName: 'Super Administrador' }},
-        { username: 'admin', password: 'admin123', user: { id: 1, username: 'admin', role: 'admin', email: 'admin@sistema.com', fullName: 'Administrador' }},
-        { username: 'agente', password: 'agente123', user: { id: 2, username: 'agente', role: 'agent', email: 'agente@sistema.com', fullName: 'Agente Principal' }},
-        { username: 'steph', password: 'Agente123456', user: { id: 4, username: 'steph', role: 'agent', email: 'steph@sistema.com', fullName: 'Steph Santiago' }},
-        { username: 'EvoGonz', password: 'Yoel123456', user: { id: 6, username: 'EvoGonz', role: 'admin', email: 'yoel@sistema.com', fullName: 'Yoel Gonzalez' }},
-        { username: 'CRMYMAS', password: 'admin123', user: { id: 7, username: 'CRMYMAS', role: 'admin', email: 'crmymas@sistema.com', fullName: 'CRM Y MAS' }}
-      ];
-      
-      const validUser = validCredentials.find(cred => cred.username === username && cred.password === password);
-      
-      if (validUser) {
-        const token = `temp-token-${validUser.user.username}-${Date.now()}`;
+      // Autenticación dinámca contra la base de datos
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
         
-        localStorage.setItem(TOKEN_KEY, token);
-        localStorage.setItem(USER_KEY, JSON.stringify(validUser.user));
-        
-        setToken(token);
-        setUser(validUser.user);
-        
-        console.log('✅ Login exitoso (modo bypass):', username);
-        return true;
+        if (data.success && data.user && data.token) {
+          const token = data.token;
+          
+          localStorage.setItem(TOKEN_KEY, token);
+          localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+          
+          setToken(token);
+          setUser(data.user);
+          
+          console.log('✅ Login exitoso:', username);
+          return true;
+        } else {
+          console.log('❌ Error en respuesta del servidor');
+          return false;
+        }
+      } else {
+        console.log('❌ Credenciales inválidas:', username);
+        return false;
       }
-      
-      console.log('❌ Credenciales inválidas:', username);
-      return false;
     } catch (error) {
       console.error('Error de inicio de sesión:', error);
       return false;
