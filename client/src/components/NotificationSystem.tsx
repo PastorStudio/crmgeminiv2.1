@@ -42,7 +42,7 @@ export default function NotificationSystem() {
   useEffect(() => {
     const connectWebSocket = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/notifications-ws`;
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
       
       wsRef.current = new WebSocket(wsUrl);
 
@@ -90,15 +90,21 @@ export default function NotificationSystem() {
     // No mostrar notificaciones de mensajes propios
     if (message.fromMe) return;
 
+    const notificationId = `msg_${message.id}_${Date.now()}`;
+    
+    // Check if notification was already read
+    const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]');
+    const isAlreadyRead = readNotifications.includes(notificationId);
+
     const notification: NotificationData = {
-      id: `msg_${message.id}_${Date.now()}`,
+      id: notificationId,
       title: message.contactName || message.from,
       message: message.body.length > 100 ? message.body.substring(0, 100) + '...' : message.body,
       timestamp: new Date(message.timestamp * 1000),
       chatId: message.chatId,
       contactName: message.contactName || message.from,
       type: 'message',
-      read: false
+      read: isAlreadyRead
     };
 
     setNotifications(prev => [notification, ...prev.slice(0, 9)]); // Mantener solo 10 notificaciones
@@ -194,6 +200,13 @@ export default function NotificationSystem() {
         notif.id === id ? { ...notif, read: true } : notif
       )
     );
+    
+    // Store read notification in localStorage
+    const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]');
+    if (!readNotifications.includes(id)) {
+      readNotifications.push(id);
+      localStorage.setItem('readNotifications', JSON.stringify(readNotifications));
+    }
   };
 
   const clearAllNotifications = () => {
@@ -203,13 +216,13 @@ export default function NotificationSystem() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="relative">
+    <div className="fixed top-4 right-4 z-50">
       {/* Botón de notificaciones */}
       <Button
         variant="ghost"
         size="sm"
         onClick={() => setShowNotifications(!showNotifications)}
-        className="relative text-white hover:bg-white/10"
+        className="relative text-white hover:bg-white/10 bg-black/80 border border-red-600"
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
