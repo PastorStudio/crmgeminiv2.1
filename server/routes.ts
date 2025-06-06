@@ -3627,21 +3627,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Configurar el servidor WebSocket para notificaciones en tiempo real
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws',
+    perMessageDeflate: false,
+    maxPayload: 16 * 1024 * 1024
+  });
   console.log('Servidor WebSocket inicializado en la ruta /ws');
   
-  // Intentaremos importar el servicio de notificaciones si está disponible
-  let notificationService: any;
-  try {
-    const notificationModule = await import('./services/notificationService');
-    notificationService = notificationModule.notificationService;
-  } catch (error) {
-    console.warn('Servicio de notificaciones no disponible:', error);
-    notificationService = null;
-  }
+  // Sistema de notificaciones directo sin dependencias externas
   
   // Lista de clientes conectados (para compatibilidad con código existente)
   const clients = new Set<WebSocket>();
+  
+  // Configurar keepalive para mantener conexiones activas
+  const keepAliveInterval = setInterval(() => {
+    wss.clients.forEach((ws: any) => {
+      if (ws.isAlive === false) {
+        console.log('🔌 Terminando conexión WebSocket inactiva');
+        return ws.terminate();
+      }
+      
+      ws.isAlive = false;
+      ws.ping();
+    });
+  }, 30000); // Cada 30 segundos
   
   // Evento cuando un cliente se conecta
   wss.on('connection', (ws: WebSocket) => {
@@ -3649,6 +3659,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Añadir a la lista de clientes conectados
     clients.add(ws);
+    
+    // Configurar keepalive para mantener la conexión
+    ws.isAlive = true;
+    ws.on('pong', () => {
+      ws.isAlive = true;
+    });
     
     // Enviar confirmación de conexión
     try {
@@ -3728,8 +3744,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
     
     // Evento cuando el cliente se desconecta
-    ws.on('close', () => {
-      console.log('Cliente WebSocket desconectado');
+    ws.on('close', (code, reason) => {
+      console.log(`🔌 Cliente WebSocket desconectado - Código: ${code}, Razón: ${reason}`);
+      clients.delete(ws);
+    });
+
+    // Evento de error
+    ws.on('error', (error) => {
+      console.error('❌ Error en WebSocket del servidor:', error);
       clients.delete(ws);
     });
   });
@@ -3773,6 +3795,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
   
+  // Test endpoint para verificar notificaciones WebSocket
+  app.post("/api/test-notification", (req: Request, res: Response) => {
+    try {
+      const { title, message } = req.body;
+      
+      // Enviar notificación de prueba a todos los clientes conectados
+      const testNotification = {
+        type: 'new_message',
+        message: {
+          id: `test_${Date.now()}`,
+          from: 'Test System',
+          body: message || 'Mensaje de prueba del sistema',
+          timestamp: Date.now(),
+          fromMe: false,
+          chatId: 'test_chat',
+          contactName: 'Sistema de Pruebas',
+          isGroup: false
+        },
+        timestamp: Date.now()
+      };
+      
+      clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify(testNotification));
+        }
+      });
+      
+      res.json({ 
+        success: true, 
+        clientsConnected: clients.size,
+        notificationSent: testNotification
+      });
+    } catch (error) {
+      console.error('Error enviando notificación de prueba:', error);
+      res.status(500).json({ error: 'Error enviando notificación de prueba' });
+    }
+  });
+
   // 🎯 RUTAS FUNDAMENTALES COMPLETAMENTE CORREGIDAS
   
   // APIs optimizadas - funciones obsoletas removidas para mejor rendimiento
