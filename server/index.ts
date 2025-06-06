@@ -38,6 +38,7 @@ import { backendAutoResponseManager } from './services/backendAutoResponseManage
 import { trulyIndependentAutoResponseSystem } from './services/trulyIndependentAutoResponse';
 import { autonomousWhatsAppConnectionManager } from './services/autonomousWhatsAppConnection';
 import { fullSystemActivator } from './services/fullSystemActivator';
+import { RealWhatsAppActivator } from './services/realWhatsAppActivator';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -4834,6 +4835,103 @@ app.use((req, res, next) => {
     } catch (error) {
       console.error('❌ Error en activación directa:', error);
       res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+
+  // ===== WHATSAPP AUTHENTICATION API ENDPOINTS =====
+  // Get QR code for WhatsApp authentication
+  app.get('/api/whatsapp-accounts/:accountId/qr', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      console.log('📱 GET /api/whatsapp-accounts/qr - Getting QR for account:', accountId);
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'no-cache');
+      
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      
+      // Force initialization if not already done
+      await whatsappMultiAccountManager.initializeAccount(accountId);
+      
+      // Get QR with image
+      const qrData = await whatsappMultiAccountManager.getQRWithImage(accountId);
+      
+      if (qrData) {
+        res.json(qrData);
+      } else {
+        res.status(404).json({ error: 'QR code not available' });
+      }
+    } catch (error) {
+      console.error('❌ Error getting QR code:', error);
+      res.status(500).json({ error: 'Failed to get QR code' });
+    }
+  });
+
+  // Refresh QR code
+  app.post('/api/whatsapp-accounts/:accountId/refresh-qr', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      console.log('🔄 POST /api/whatsapp-accounts/refresh-qr - Refreshing QR for account:', accountId);
+      res.setHeader('Content-Type', 'application/json');
+      
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      
+      const success = await whatsappMultiAccountManager.forceRefreshQR(accountId);
+      
+      if (success) {
+        res.json({ success: true, message: 'QR code refreshed' });
+      } else {
+        res.status(500).json({ error: 'Failed to refresh QR code' });
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing QR code:', error);
+      res.status(500).json({ error: 'Failed to refresh QR code' });
+    }
+  });
+
+  // Get authentication status
+  app.get('/api/whatsapp-accounts/:accountId/auth-status', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      console.log('📊 GET /api/whatsapp-accounts/auth-status - Checking status for account:', accountId);
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'no-cache');
+      
+      const { RealWhatsAppActivator } = await import('./services/realWhatsAppActivator');
+      
+      const authStatus = await RealWhatsAppActivator.checkAuthenticationStatus();
+      res.json(authStatus);
+    } catch (error) {
+      console.error('❌ Error checking auth status:', error);
+      res.status(500).json({ 
+        authenticated: false,
+        ready: false,
+        initialized: false,
+        hasClient: false,
+        error: 'Failed to check status'
+      });
+    }
+  });
+
+  // Force authentication check
+  app.post('/api/whatsapp-accounts/:accountId/force-auth', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      console.log('🚀 POST /api/whatsapp-accounts/force-auth - Forcing auth for account:', accountId);
+      res.setHeader('Content-Type', 'application/json');
+      
+      const { RealWhatsAppActivator } = await import('./services/realWhatsAppActivator');
+      
+      await RealWhatsAppActivator.activateRealConnections();
+      const authStatus = await RealWhatsAppActivator.checkAuthenticationStatus();
+      
+      res.json({
+        success: true,
+        message: 'Authentication check forced',
+        status: authStatus
+      });
+    } catch (error) {
+      console.error('❌ Error forcing auth:', error);
+      res.status(500).json({ error: 'Failed to force authentication' });
     }
   });
 

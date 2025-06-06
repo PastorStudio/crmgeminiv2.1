@@ -6,6 +6,7 @@ import type { Express, Request, Response } from "express";
 import whatsappService from './simplified-whatsappService';
 import { whatsappMultiAccountManager } from './whatsappMultiAccountManager';
 import { storage } from '../storage';
+import { RealWhatsAppActivator } from './realWhatsAppActivator';
 
 export function registerDirectAPIRoutes(app: Express): void {
   
@@ -250,6 +251,16 @@ export function registerDirectAPIRoutes(app: Express): void {
       if (instance) {
         console.log('🔄 Activando keep-alive para mantener conexión persistente...');
         whatsappMultiAccountManager.activateKeepAlive(1);
+      }
+      
+      // Force real authentication status check
+      const authStatus = await RealWhatsAppActivator.checkAuthenticationStatus();
+      
+      console.log('📱 Estado de autenticación WhatsApp:', authStatus);
+      
+      if (!authStatus.authenticated) {
+        console.log('🔄 Activando sistema de datos reales...');
+        await RealWhatsAppActivator.activateRealConnections();
       }
       
       console.log('📱 WhatsApp requiere autenticación - escanear código QR para datos reales');
