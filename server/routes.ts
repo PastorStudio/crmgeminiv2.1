@@ -3645,56 +3645,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Evento cuando un cliente se conecta
   wss.on('connection', (ws: WebSocket) => {
-    console.log('Cliente WebSocket conectado');
+    console.log('✅ Cliente WebSocket conectado');
     
-    // Registrar cliente en el servicio de notificaciones si está disponible
-    if (notificationService) {
-      try {
-        notificationService.registerClient(ws);
-      } catch (error) {
-        console.warn('Error al registrar cliente en servicio de notificaciones:', error);
-      }
-    }
-    
-    // Añadir a la lista simple de clientes (siempre activo)
+    // Añadir a la lista de clientes conectados
     clients.add(ws);
     
-    // Register client with calendar service for notifications
-    localCalendarService.addWebSocketClient(ws);
-    
-    // Enviar un mensaje de bienvenida
-    ws.send(JSON.stringify({
-      type: 'connection',
-      message: 'Conectado al servidor de notificaciones en tiempo real'
-    }));
-    
-    // Autenticación simulada
-    setTimeout(() => {
-      try {
-        // Si el servicio de notificaciones avanzado está disponible
-        if (notificationService) {
-          // Autenticar al cliente
-          notificationService.authenticateClient(ws, 1, 'admin');
-          
-          // Enviar una notificación de sistema de prueba
-          notificationService.sendSystemNotification(
-            "Sistema inicializado", 
-            "El sistema de notificaciones en tiempo real está funcionando",
-            "low"
-          );
-        } else {
-          // Fallback a notificación simple
-          ws.send(JSON.stringify({
-            type: 'notification',
-            title: 'Sistema inicializado',
-            message: 'Las notificaciones básicas están funcionando',
-            timestamp: new Date()
-          }));
-        }
-      } catch (error) {
-        console.error('Error al autenticar cliente WebSocket:', error);
-      }
-    }, 1000);
+    // Enviar confirmación de conexión
+    try {
+      ws.send(JSON.stringify({
+        type: 'connection_status',
+        status: 'connected',
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.error('Error enviando mensaje de bienvenida:', error);
+    }
     
     // Evento cuando se recibe un mensaje del cliente
     ws.on('message', (message: any) => {
@@ -3780,6 +3745,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(message);
+      }
+    });
+  };
+
+  // Función global para enviar notificaciones de nuevos mensajes
+  (global as any).sendNewMessageNotification = (message: any) => {
+    const notification = JSON.stringify({
+      type: 'new_message',
+      message: {
+        id: message.id,
+        from: message.from,
+        body: message.body,
+        timestamp: message.timestamp,
+        fromMe: message.fromMe,
+        chatId: message.chatId,
+        contactName: message.contactName,
+        isGroup: message.isGroup
+      },
+      timestamp: Date.now()
+    });
+    
+    clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(notification);
       }
     });
   };
