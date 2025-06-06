@@ -48,7 +48,7 @@ import SalesFlowDesigner from './pages/SalesFlowDesigner';
 import FlowTemplates from './pages/FlowTemplates';
 import SystemStatus from './pages/SystemStatus';
 import WhatsAppAuth from './pages/WhatsAppAuth';
-import NotificationSystem from './components/NotificationSystem';
+import SimpleNotificationSystem from './components/SimpleNotificationSystem';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
@@ -140,6 +140,9 @@ const AppRoutes: React.FC = () => {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
+      {/* Notification System - Always active when authenticated */}
+      {(isAuthenticated || bypassAuth) && <NotificationSystem />}
+      
       {/* Sidebar con menú vertical - siempre visible cuando está autenticado */}
       {showSidebar && (
         <aside className="fixed h-full w-44 bg-gradient-to-b from-black via-black to-red-600 shadow-2xl z-50 overflow-y-auto" style={{backgroundImage: 'linear-gradient(180deg, #000000 0%, #000000 65%, #dc2626 100%)'}}>
