@@ -508,9 +508,9 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       // Limpiar cache de QR
       this.qrCodeCache.delete(id);
       
-      // ✨ ACTIVAR KEEP-ALIVE AUTOMÁTICAMENTE ✨
-      console.log(`💓 Iniciando keep-alive automático para cuenta ${id} (${name})`);
-      this.startKeepAlive(instance);
+      // ✨ ACTIVAR CONEXIÓN PERMANENTE AUTOMÁTICAMENTE ✨
+      console.log(`🛡️ Iniciando conexión PERMANENTE para cuenta ${id} (${name})`);
+      this.activatePermanentConnection(instance);
     });
 
     // Evento cuando está listo
@@ -520,29 +520,30 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       this.activatePermanentConnection(instance);
     });
 
-    // Evento de desconexión
+    // Evento de desconexión con reconexión ULTRA AGRESIVA
     client.on('disconnected', (reason) => {
-      console.log(`Cliente WhatsApp ${id} (${name}) desconectado: ${reason}`);
+      console.log(`🚨 Cliente WhatsApp ${id} (${name}) desconectado: ${reason}`);
       instance.status.authenticated = false;
       instance.status.ready = false;
       
-      // NO DETENER KEEP-ALIVE - mantener activo para reconexión automática
-      console.log(`🔄 Manteniendo keep-alive activo para cuenta ${id} (${name}) - intentando reconexión`);
+      // NUNCA DETENER KEEP-ALIVE - mantener activo SIEMPRE
+      console.log(`💪 MANTENIENDO keep-alive ACTIVO para cuenta ${id} (${name}) - reconexión INMEDIATA`);
       
-      // Programar reconexión automática después de 30 segundos
-      setTimeout(async () => {
-        console.log(`🔄 Intentando reconectar cuenta ${id} (${name})...`);
-        try {
-          await client.initialize();
-          console.log(`✅ Reconexión iniciada para cuenta ${id} (${name})`);
-        } catch (error) {
-          console.error(`❌ Error en reconexión automática cuenta ${id}:`, error);
-          // Reintentar en 2 minutos
-          setTimeout(() => this.handleAutoReconnect(id), 120000);
+      // Reconexión INMEDIATA sin espera
+      this.immediateReconnect(instance);
+      
+      // Programar reconexiones adicionales cada 15 segundos hasta conseguir conexión
+      const reconnectInterval = setInterval(async () => {
+        if (!instance.status.authenticated) {
+          console.log(`🔄 Reintento de reconexión automática cuenta ${id} (${name})...`);
+          await this.immediateReconnect(instance);
+        } else {
+          console.log(`✅ Conexión restaurada para cuenta ${id}, deteniendo reintentos`);
+          clearInterval(reconnectInterval);
         }
-      }, 30000);
+      }, 15000);
       
-      this.deactivateConnectionTimers(instance);
+      // NO DESACTIVAR TIMERS - mantener keep-alive activo
     });
 
     // Evento de mensajes entrantes para sistema de tickets y análisis AI
@@ -793,15 +794,13 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
-   * Activa conexión permanente
+   * VERSIÓN ORIGINAL - Activa conexión permanente básica
    */
-  private activatePermanentConnection(instance: WhatsAppInstance): void {
+  private activatePermanentConnectionBasic(instance: WhatsAppInstance): void {
     // Verificar conexión cada 30 segundos
     instance.connectionTimers.connectionCheck = setInterval(() => {
       this.checkConnection(instance.id);
     }, 30000);
-
-    // Mantener vivo cada 5 minutos
     instance.connectionTimers.keepAlive = setInterval(() => {
       this.keepConnectionAlive(instance.id);
     }, 5 * 60 * 1000);
@@ -1334,6 +1333,87 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         this.forceReconnect(instance);
       }, 30000);
     }
+  }
+
+  private async immediateReconnect(instance: WhatsAppInstance): Promise<void> {
+    console.log(`🚀 RECONEXIÓN INMEDIATA para cuenta ${instance.id}`);
+    
+    try {
+      // Múltiples métodos de reconexión sin esperas
+      
+      // Método 1: Reinicializar cliente actual
+      if (instance.client) {
+        try {
+          console.log(`🔄 Reinicializando cliente existente para cuenta ${instance.id}`);
+          await instance.client.initialize();
+          console.log(`✅ Reinicialización exitosa cuenta ${instance.id}`);
+          return;
+        } catch (error) {
+          console.log(`⚠️ Método 1 falló para cuenta ${instance.id}, probando método 2`);
+        }
+      }
+
+      // Método 2: Crear completamente nuevo cliente
+      console.log(`🔄 Creando cliente completamente nuevo para cuenta ${instance.id}`);
+      await this.initializeAccount(instance.id);
+      console.log(`✅ Cliente nuevo creado para cuenta ${instance.id}`);
+      
+    } catch (error) {
+      console.error(`❌ Error en reconexión inmediata cuenta ${instance.id}:`, error);
+      // No fallar - el sistema seguirá intentando en el intervalo principal
+    }
+  }
+
+  private activatePermanentConnection(instance: WhatsAppInstance): void {
+    console.log(`🛡️ ACTIVANDO conexión PERMANENTE ULTRA-AGRESIVA para cuenta ${instance.id}`);
+    
+    // Activar keep-alive ultra agresivo cada 15 segundos
+    this.startKeepAlive(instance);
+    
+    // Configurar verificaciones CONTINUAS de estado cada 3 segundos
+    const statusCheck = setInterval(async () => {
+      try {
+        if (!instance.status.authenticated && instance.client) {
+          console.log(`⚠️ Cuenta ${instance.id} perdió autenticación, restaurando INMEDIATAMENTE...`);
+          await this.immediateReconnect(instance);
+        }
+        
+        // Verificación adicional de conexión real
+        const isConnected = await this.performAggressivePing(instance);
+        if (!isConnected && instance.client) {
+          console.log(`🚨 Conexión perdida detectada para cuenta ${instance.id}, forzando reconexión...`);
+          await this.forceReconnect(instance);
+        }
+      } catch (error) {
+        console.log(`🔄 Error en verificación continua cuenta ${instance.id}:`, error);
+        // Siempre intentar reconectar en caso de error
+        await this.immediateReconnect(instance);
+      }
+    }, 3000); // Cada 3 segundos - MUY agresivo
+
+    // Almacenar el timer para limpieza posterior si es necesario
+    instance.connectionTimers.connectionCheck = statusCheck;
+    
+    // Timer adicional de supervivencia cada 30 segundos
+    const survivalCheck = setInterval(async () => {
+      try {
+        if (instance.client) {
+          // Forzar una acción para mantener la sesión viva
+          await instance.client.getState();
+          console.log(`💪 Supervivencia verificada para cuenta ${instance.id}`);
+        }
+      } catch (error) {
+        console.log(`⚠️ Fallo en supervivencia cuenta ${instance.id}, reconectando...`);
+        await this.forceReconnect(instance);
+      }
+    }, 30000);
+    
+    // Almacenar también el timer de supervivencia
+    if (!instance.connectionTimers.keepAlive) {
+      instance.connectionTimers.keepAlive = survivalCheck;
+    }
+    
+    console.log(`✅ Conexión PERMANENTE ULTRA-AGRESIVA activada para cuenta ${instance.id}`);
   }
 
   private async handlePingFailure(instance: WhatsAppInstance): Promise<void> {
