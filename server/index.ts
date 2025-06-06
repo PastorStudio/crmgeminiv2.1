@@ -223,7 +223,8 @@ app.post('/api/ai-settings', async (req: Request, res: Response) => {
       qwenApiKey: qwenApiKey || null,
       customPrompt: customPrompt || 'Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.',
       temperature: temperature || 0.7,
-      enableAIResponses: enableAIResponses || false
+      enableAIResponses: enableAIResponses || false,
+      disableGroupResponses: disableGroupResponses || false
     };
     
     console.log('✅ Datos procesados:', validatedData);

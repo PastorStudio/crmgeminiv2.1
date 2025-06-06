@@ -115,6 +115,20 @@ CONTEXTO DE NEGOCIO: ${businessName} - Empresa comprometida con brindar excelent
       return false;
     }
 
+    // Verificar configuración de respuestas en grupos
+    try {
+      const { aiSettings } = await import('../../shared/schema.js');
+      const [settings] = await db.select().from(aiSettings).limit(1);
+      
+      // Si está habilitado "deshabilitar respuestas en grupos" y es un grupo, no responder
+      if (settings?.disableGroupResponses && message.isGroup) {
+        console.log(`🚫 Respuesta automática bloqueada en grupo ${message.chatId} (configuración activa)`);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error verificando configuración de grupos:', error);
+    }
+
     try {
       this.processingQueue.add(message.chatId);
       
