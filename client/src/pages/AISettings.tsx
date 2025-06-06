@@ -76,6 +76,7 @@ const aiIntegrationSchema = z.object({
   customPrompt: z.string().optional(),
   temperature: z.number().min(0).max(2).default(0.7),
   enableAIResponses: z.boolean().default(true),
+  disableGroupResponses: z.boolean().default(false),
 });
 
 // AI Prompt schema
@@ -759,6 +760,27 @@ export default function AISettings() {
                           <FormLabel className="text-base">Enable AI Responses</FormLabel>
                           <FormDescription>
                             Turn on AI-powered automatic responses for WhatsApp messages
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={aiForm.control}
+                    name="disableGroupResponses"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Disable Group Responses</FormLabel>
+                          <FormDescription>
+                            Turn off automatic AI responses in WhatsApp groups (recommended for privacy)
                           </FormDescription>
                         </div>
                         <FormControl>

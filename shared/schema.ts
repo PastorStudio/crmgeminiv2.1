@@ -49,6 +49,7 @@ export const whatsappAccounts = pgTable("whatsapp_accounts", {
   assignedExternalAgentId: text("assignedexternalagentid"),
   autoResponseEnabled: boolean("autoresponseenabled").default(false),
   responseDelay: integer("responsedelay").default(3),
+  disableGroupResponses: boolean("disablegroupresponses").default(false), // Disable AI responses in groups
   customPrompt: text("customprompt"), // Custom AI prompt for this account
   assignedPromptId: integer("assigned_prompt_id").references(() => aiPrompts.id), // Reference to AI prompt
   keepAliveEnabled: boolean("keepaliveenabled").default(true), // Persistent connection
