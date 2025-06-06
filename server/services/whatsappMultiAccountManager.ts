@@ -523,30 +523,50 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       this.activatePermanentConnection(instance);
     });
 
-    // Evento de desconexión con reconexión ULTRA AGRESIVA
-    client.on('disconnected', (reason) => {
+    // Evento de desconexión con sistema de recuperación de sesión
+    client.on('disconnected', async (reason) => {
       console.log(`🚨 Cliente WhatsApp ${id} (${name}) desconectado: ${reason}`);
       instance.status.authenticated = false;
       instance.status.ready = false;
       
-      // NUNCA DETENER KEEP-ALIVE - mantener activo SIEMPRE
-      console.log(`💪 MANTENIENDO keep-alive ACTIVO para cuenta ${id} (${name}) - reconexión INMEDIATA`);
-      
-      // Reconexión INMEDIATA sin espera
-      this.immediateReconnect(instance);
-      
-      // Programar reconexiones adicionales cada 15 segundos hasta conseguir conexión
-      const reconnectInterval = setInterval(async () => {
-        if (!instance.status.authenticated) {
-          console.log(`🔄 Reintento de reconexión automática cuenta ${id} (${name})...`);
-          await this.immediateReconnect(instance);
-        } else {
-          console.log(`✅ Conexión restaurada para cuenta ${id}, deteniendo reintentos`);
-          clearInterval(reconnectInterval);
+      // Solo usar recuperación para LOGOUT - otros tipos no necesitan recuperación
+      if (reason === 'LOGOUT') {
+        console.log(`🔄 Iniciando recuperación de sesión para cuenta ${id} (${name})`);
+        
+        try {
+          const { sessionRecovery } = await import('./whatsappSessionRecovery');
+          const recoveryResult = await sessionRecovery.attemptRecovery(id);
+          
+          if (recoveryResult === 'recovered') {
+            console.log(`✅ Sesión recuperada para cuenta ${id}, lista para nueva conexión`);
+            // No intentar reconexión automática - esperar que el usuario use el QR
+          } else if (recoveryResult === 'cleanup_needed') {
+            console.log(`🧹 Limpieza de sesión completada para cuenta ${id}`);
+            await sessionRecovery.cleanupSession(id);
+            console.log(`⏳ Cuenta ${id} preparada para nueva autenticación con QR`);
+          } else {
+            console.log(`❌ Recuperación fallida para cuenta ${id}, requiere limpieza manual`);
+            await sessionRecovery.cleanupSession(id);
+          }
+        } catch (error) {
+          console.error(`❌ Error en recuperación de sesión para cuenta ${id}:`, error);
+          // Como respaldo, limpiar la sesión
+          try {
+            const { sessionRecovery } = await import('./whatsappSessionRecovery');
+            await sessionRecovery.cleanupSession(id);
+          } catch (cleanupError) {
+            console.error(`❌ Error en limpieza de respaldo:`, cleanupError);
+          }
         }
-      }, 15000);
+      } else {
+        console.log(`ℹ️ Desconexión por ${reason} - no requiere recuperación de sesión`);
+      }
       
-      // NO DESACTIVAR TIMERS - mantener keep-alive activo
+      // Limpiar timers de keep-alive para evitar intentos fallidos
+      if (instance.connectionTimers.keepAlive) {
+        clearInterval(instance.connectionTimers.keepAlive);
+        instance.connectionTimers.keepAlive = null;
+      }
     });
 
     // Evento de mensajes entrantes para sistema de tickets y análisis AI
@@ -1338,34 +1358,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     }
   }
 
-  private async immediateReconnect(instance: WhatsAppInstance): Promise<void> {
-    console.log(`🚀 RECONEXIÓN INMEDIATA para cuenta ${instance.id}`);
-    
-    try {
-      // Múltiples métodos de reconexión sin esperas
-      
-      // Método 1: Reinicializar cliente actual
-      if (instance.client) {
-        try {
-          console.log(`🔄 Reinicializando cliente existente para cuenta ${instance.id}`);
-          await instance.client.initialize();
-          console.log(`✅ Reinicialización exitosa cuenta ${instance.id}`);
-          return;
-        } catch (error) {
-          console.log(`⚠️ Método 1 falló para cuenta ${instance.id}, probando método 2`);
-        }
-      }
-
-      // Método 2: Crear completamente nuevo cliente
-      console.log(`🔄 Creando cliente completamente nuevo para cuenta ${instance.id}`);
-      await this.initializeAccount(instance.id);
-      console.log(`✅ Cliente nuevo creado para cuenta ${instance.id}`);
-      
-    } catch (error) {
-      console.error(`❌ Error en reconexión inmediata cuenta ${instance.id}:`, error);
-      // No fallar - el sistema seguirá intentando en el intervalo principal
-    }
-  }
+  // Método de reconexión removido - usar sistema de recuperación de sesión en su lugar
 
   private activatePermanentConnection(instance: WhatsAppInstance): void {
     console.log(`🛡️ ACTIVANDO conexión PERMANENTE ULTRA-AGRESIVA para cuenta ${instance.id}`);
@@ -1377,8 +1370,8 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     const statusCheck = setInterval(async () => {
       try {
         if (!instance.status.authenticated && instance.client) {
-          console.log(`⚠️ Cuenta ${instance.id} perdió autenticación, restaurando INMEDIATAMENTE...`);
-          await this.immediateReconnect(instance);
+          console.log(`⚠️ Cuenta ${instance.id} perdió autenticación, usando recuperación de sesión...`);
+          // Usar sistema de recuperación de sesión en lugar de reconexión inmediata
         }
         
         // Verificación adicional de conexión real
@@ -1389,8 +1382,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         }
       } catch (error) {
         console.log(`🔄 Error en verificación continua cuenta ${instance.id}:`, error);
-        // Siempre intentar reconectar en caso de error
-        await this.immediateReconnect(instance);
+        // Usar sistema de recuperación de sesión en caso de error
       }
     }, 3000); // Cada 3 segundos - MUY agresivo
 
