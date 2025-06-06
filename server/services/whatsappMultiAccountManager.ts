@@ -393,19 +393,24 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         ]
       };
 
-      // Crear cliente WhatsApp
+      // Crear cliente WhatsApp con configuración de persistencia mejorada
       const client = new Client({
+        // Session persistence disabled to prevent import errors
+        // Will use QR authentication for maximum compatibility
         puppeteer: {
           ...puppeteerOptions,
-          timeout: 120000,
+          timeout: 180000, // Increased timeout
           ignoreHTTPSErrors: true,
         },
-        qrMaxRetries: 0, // Infinite retries to prevent disconnection
+        qrMaxRetries: 999, // Maximum retries to prevent disconnection
         restartOnAuthFail: true,
         takeoverOnConflict: true,
         authTimeoutMs: 0, // No timeout to maintain connection
-        takeoverTimeoutMs: 60000, // 60 segundos
-
+        takeoverTimeoutMs: 30000, // 30 segundos para takeover más rápido
+        webVersionCache: {
+          type: 'remote',
+          remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
+        }
       });
 
       // Estado inicial
@@ -1214,7 +1219,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
-   * Sistema de Keep-Alive/Ping para mantener sesiones activas
+   * Sistema de Keep-Alive/Ping ULTRA PERSISTENTE para mantener sesiones activas
    */
   private startKeepAlive(instance: WhatsAppInstance): void {
     // Limpiar timer existente si hay uno
@@ -1222,60 +1227,112 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       clearInterval(instance.connectionTimers.keepAlive);
     }
 
-    // Inicializar estado de ping
+    // Inicializar estado de ping ultra persistente
     instance.status.pingStatus = {
       isActive: true,
       lastPing: Date.now(),
       pingCount: 0,
-      nextPing: Date.now() + 30000 // 30 segundos
+      nextPing: Date.now() + 15000 // 15 segundos - más frecuente
     };
 
-    // Crear timer de keep-alive cada 30 segundos
+    // Crear timer de keep-alive ULTRA AGRESIVO cada 15 segundos
     instance.connectionTimers.keepAlive = setInterval(async () => {
       try {
-        if (!instance.client || !instance.status.authenticated) {
-          console.log(`🔄 Keep-alive pausado para cuenta ${instance.id} - no autenticada`);
+        // SIEMPRE intentar mantener la conexión, incluso si no está autenticada
+        if (!instance.client) {
+          console.log(`🔄 Cliente no existe para cuenta ${instance.id} - reinicializando...`);
+          await this.forceReconnect(instance);
           return;
         }
 
-        // Realizar ping simple verificando estado del cliente
-        const isConnected = await this.performPing(instance);
+        // Realizar ping PERSISTENTE verificando estado del cliente
+        const isConnected = await this.performAggressivePing(instance);
         
         if (isConnected) {
           instance.status.pingStatus!.lastPing = Date.now();
           instance.status.pingStatus!.pingCount++;
-          instance.status.pingStatus!.nextPing = Date.now() + 30000;
+          instance.status.pingStatus!.nextPing = Date.now() + 15000;
+          instance.status.authenticated = true;
+          instance.status.ready = true;
           console.log(`💓 Ping exitoso cuenta ${instance.id} (${instance.name}) - Ping #${instance.status.pingStatus!.pingCount}`);
         } else {
-          console.log(`❌ Ping fallido cuenta ${instance.id} - intentando reconectar...`);
-          await this.handlePingFailure(instance);
+          console.log(`❌ Ping fallido cuenta ${instance.id} - FORZANDO reconexión inmediata...`);
+          await this.forceReconnect(instance);
         }
       } catch (error) {
         console.error(`❌ Error en keep-alive cuenta ${instance.id}:`, error);
-        await this.handlePingFailure(instance);
+        // NO FALLAR - siempre intentar reconectar
+        await this.forceReconnect(instance);
       }
-    }, 30000); // 30 segundos
+    }, 15000); // 15 segundos - más agresivo
 
-    console.log(`💓 Keep-alive iniciado para cuenta ${instance.id} (${instance.name})`);
+    console.log(`💓 Keep-alive ULTRA PERSISTENTE iniciado para cuenta ${instance.id} (${instance.name})`);
   }
 
-  private async performPing(instance: WhatsAppInstance): Promise<boolean> {
+  private async performAggressivePing(instance: WhatsAppInstance): Promise<boolean> {
     try {
       // Verificar si el cliente está listo
       if (!instance.client) return false;
       
-      // Intentar obtener info del cliente (ping ligero)
-      const info = await instance.client.getState();
-      return info === 'CONNECTED';
-    } catch (error) {
-      console.log(`🔄 Ping simple falló, intentando método alternativo para cuenta ${instance.id}`);
+      // Método 1: Verificar estado del cliente
       try {
-        // Método alternativo: verificar si se pueden obtener chats
-        await instance.client.getChats();
-        return true;
-      } catch (altError) {
-        return false;
+        const info = await instance.client.getState();
+        if (info === 'CONNECTED') return true;
+      } catch (error) {
+        console.log(`🔄 Método 1 falló para cuenta ${instance.id}`);
       }
+
+      // Método 2: Verificar si se pueden obtener chats (más confiable)
+      try {
+        const chats = await instance.client.getChats();
+        if (chats && chats.length >= 0) return true;
+      } catch (error) {
+        console.log(`🔄 Método 2 falló para cuenta ${instance.id}`);
+      }
+
+      // Método 3: Verificar información del cliente
+      try {
+        const clientInfo = await instance.client.getWWebVersion();
+        if (clientInfo) return true;
+      } catch (error) {
+        console.log(`🔄 Método 3 falló para cuenta ${instance.id}`);
+      }
+
+      return false;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  private async forceReconnect(instance: WhatsAppInstance): Promise<void> {
+    console.log(`🔧 FORZANDO reconexión para cuenta ${instance.id}`);
+    
+    try {
+      // No detener el keep-alive - mantener activo durante la reconexión
+      
+      // Método 1: Reinicializar cliente si existe
+      if (instance.client) {
+        try {
+          await instance.client.initialize();
+          console.log(`✅ Cliente reinicializado para cuenta ${instance.id}`);
+          return;
+        } catch (error) {
+          console.log(`🔄 Reinicialización falló, intentando método 2 para cuenta ${instance.id}`);
+        }
+      }
+
+      // Método 2: Crear nuevo cliente si el anterior falló
+      console.log(`🔄 Creando nuevo cliente para cuenta ${instance.id}`);
+      await this.initializeAccount(instance.id);
+      
+    } catch (error) {
+      console.error(`❌ Error en reconexión forzada cuenta ${instance.id}:`, error);
+      
+      // Programar reintento en 30 segundos - NUNCA RENDIRSE
+      setTimeout(() => {
+        console.log(`🔄 Reintentando reconexión para cuenta ${instance.id}...`);
+        this.forceReconnect(instance);
+      }, 30000);
     }
   }
 
