@@ -39,7 +39,7 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-black via-black to-red-600">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
-        {/* Floating WhatsApp Business Icons */}
+        {/* Floating WhatsApp Business Icons - Distributed */}
         <div className="absolute top-20 left-20 animate-bounce delay-100">
           <MessageCircle className="h-12 w-12 text-green-400 opacity-30" />
         </div>
@@ -57,6 +57,50 @@ export default function Login() {
         </div>
         <div className="absolute top-32 right-1/4 animate-pulse delay-200">
           <Shield className="h-10 w-10 text-red-500 opacity-40" />
+        </div>
+        <div className="absolute top-16 right-16 animate-float delay-250">
+          <CheckCircle className="h-9 w-9 text-green-500 opacity-35" />
+        </div>
+        
+        {/* Additional Business Feature Icons */}
+        <div className="absolute top-36 left-1/3 animate-pulse delay-400">
+          <MessageCircle className="h-8 w-8 text-green-400 opacity-40" />
+        </div>
+        <div className="absolute bottom-36 right-1/3 animate-bounce delay-600">
+          <Users className="h-11 w-11 text-red-400 opacity-30" />
+        </div>
+        <div className="absolute top-52 right-1/5 animate-float delay-800">
+          <FileText className="h-9 w-9 text-white opacity-30" />
+        </div>
+        <div className="absolute bottom-52 left-1/5 animate-pulse delay-1000">
+          <CheckCircle className="h-10 w-10 text-green-500 opacity-25" />
+        </div>
+        
+        {/* Business Feature Labels as Background Images */}
+        <div className="absolute top-28 left-16 animate-fade-in delay-300">
+          <div className="bg-green-500/10 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/20">
+            <span className="text-green-400 text-xs font-medium">Mensajería</span>
+          </div>
+        </div>
+        <div className="absolute top-56 right-24 animate-fade-in delay-500">
+          <div className="bg-red-500/10 px-3 py-1 rounded-full backdrop-blur-sm border border-red-500/20">
+            <span className="text-red-400 text-xs font-medium">Clientes</span>
+          </div>
+        </div>
+        <div className="absolute bottom-48 left-32 animate-fade-in delay-700">
+          <div className="bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm border border-white/20">
+            <span className="text-white text-xs font-medium">Archivos</span>
+          </div>
+        </div>
+        <div className="absolute top-24 right-40 animate-fade-in delay-900">
+          <div className="bg-green-500/10 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/20">
+            <span className="text-green-500 text-xs font-medium">Automatización</span>
+          </div>
+        </div>
+        <div className="absolute bottom-20 left-1/2 animate-fade-in delay-1100">
+          <div className="bg-red-500/10 px-3 py-1 rounded-full backdrop-blur-sm border border-red-500/20">
+            <span className="text-red-500 text-xs font-medium">Seguridad</span>
+          </div>
         </div>
         
         {/* Business Chat Animation */}
@@ -93,25 +137,7 @@ export default function Login() {
               Accede a tu plataforma de comunicación empresarial
             </p>
             
-            {/* Business Features Preview */}
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              <div className="bg-black/30 p-3 rounded-lg backdrop-blur-sm border border-red-500/20 animate-slide-up delay-100">
-                <MessageCircle className="h-6 w-6 text-green-400 mx-auto mb-2 animate-pulse" />
-                <span className="text-white text-xs">Mensajería</span>
-              </div>
-              <div className="bg-black/30 p-3 rounded-lg backdrop-blur-sm border border-red-500/20 animate-slide-up delay-200">
-                <Users className="h-6 w-6 text-red-400 mx-auto mb-2 animate-bounce" />
-                <span className="text-white text-xs">Clientes</span>
-              </div>
-              <div className="bg-black/30 p-3 rounded-lg backdrop-blur-sm border border-red-500/20 animate-slide-up delay-300">
-                <FileText className="h-6 w-6 text-white mx-auto mb-2 animate-pulse" />
-                <span className="text-white text-xs">Archivos</span>
-              </div>
-              <div className="bg-black/30 p-3 rounded-lg backdrop-blur-sm border border-red-500/20 animate-slide-up delay-400">
-                <CheckCircle className="h-6 w-6 text-green-500 mx-auto mb-2 animate-bounce" />
-                <span className="text-white text-xs">Automatización</span>
-              </div>
-            </div>
+
           </div>
 
           {/* Login Card */}
