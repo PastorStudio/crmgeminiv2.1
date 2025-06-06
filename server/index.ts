@@ -39,6 +39,8 @@ import { trulyIndependentAutoResponseSystem } from './services/trulyIndependentA
 import { autonomousWhatsAppConnectionManager } from './services/autonomousWhatsAppConnection';
 import { fullSystemActivator } from './services/fullSystemActivator';
 import { RealWhatsAppActivator } from './services/realWhatsAppActivator';
+import { notificationService } from './services/notificationWebSocket';
+import { aiResponseService } from './services/aiAutonomousResponse';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -5856,6 +5858,16 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
       try {
         await stableAutoResponseManager.initialize();
         console.log('🚀 Sistema de respuestas automáticas inicializado correctamente');
+        
+        // Inicializar sistema de notificaciones WebSocket
+        console.log('🔔 Iniciando sistema de notificaciones en tiempo real...');
+        notificationService.initialize(server);
+        console.log('🚀 Servicio de notificaciones en tiempo real iniciado');
+        
+        // Inicializar sistema de respuestas autónomas AI
+        console.log('🤖 Iniciando sistema de respuestas autónomas AI...');
+        await aiResponseService.initialize();
+        console.log('✅ Sistema de respuestas autónomas AI iniciado exitosamente');
         
         // Inicializar sistema VERDADERAMENTE INDEPENDIENTE
         console.log('🤖 Iniciando sistema VERDADERAMENTE INDEPENDIENTE...');
