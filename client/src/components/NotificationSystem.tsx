@@ -42,7 +42,7 @@ export default function NotificationSystem() {
   useEffect(() => {
     const connectWebSocket = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      const wsUrl = `${protocol}//${window.location.host}/notifications-ws`;
       
       wsRef.current = new WebSocket(wsUrl);
 

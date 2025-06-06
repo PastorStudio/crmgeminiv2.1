@@ -171,7 +171,8 @@ app.get('/api/ai-settings', async (req: Request, res: Response) => {
         selectedProvider: 'gemini',
         customPrompt: 'Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.',
         temperature: 0.7,
-        enableAIResponses: false
+        enableAIResponses: false,
+        disableGroupResponses: false
       }).returning();
       
       console.log('✅ Configuración por defecto creada');
@@ -208,7 +209,8 @@ app.post('/api/ai-settings', async (req: Request, res: Response) => {
       qwenApiKey,
       customPrompt,
       temperature,
-      enableAIResponses
+      enableAIResponses,
+      disableGroupResponses
     } = req.body;
     
     console.log('✅ Validando datos manualmente...');
