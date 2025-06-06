@@ -180,6 +180,7 @@ export default function AISettings() {
       customPrompt: "Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.",
       temperature: 0.7,
       enableAIResponses: true,
+      disableGroupResponses: false,
     },
   });
 
@@ -196,6 +197,7 @@ export default function AISettings() {
         customPrompt: aiSettings.customPrompt || "Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.",
         temperature: aiSettings.temperature || 0.7,
         enableAIResponses: aiSettings.enableAIResponses || false,
+        disableGroupResponses: aiSettings.disableGroupResponses || false,
       });
 
       // Mostrar mensaje de bienvenida solo si hay configuraciones existentes
