@@ -200,7 +200,7 @@ export default function Dashboard() {
         <div className="relative overflow-hidden bg-gradient-to-r from-black to-red-900 py-12">
           {/* Animated Background Elements */}
           <div className="absolute inset-0">
-            {/* Floating WhatsApp Icons */}
+            {/* Floating WhatsApp Business Icons - Distributed */}
             <div className="absolute top-20 left-20 animate-bounce delay-100">
               <MessageCircle className="h-12 w-12 text-green-400 opacity-30" />
             </div>
@@ -215,6 +215,45 @@ export default function Dashboard() {
             </div>
             <div className="absolute bottom-60 right-20 animate-bounce delay-900">
               <Send className="h-12 w-12 text-red-300 opacity-30" />
+            </div>
+            <div className="absolute top-16 right-16 animate-float delay-200">
+              <CheckCircle className="h-10 w-10 text-green-500 opacity-35" />
+            </div>
+            
+            {/* Additional Business Feature Icons */}
+            <div className="absolute top-36 left-1/3 animate-pulse delay-400">
+              <MessageCircle className="h-8 w-8 text-green-400 opacity-40" />
+            </div>
+            <div className="absolute bottom-36 right-1/3 animate-bounce delay-600">
+              <Users className="h-12 w-12 text-red-400 opacity-30" />
+            </div>
+            <div className="absolute top-52 right-1/4 animate-float delay-800">
+              <FileText className="h-9 w-9 text-white opacity-30" />
+            </div>
+            <div className="absolute bottom-52 left-1/4 animate-pulse delay-1000">
+              <CheckCircle className="h-11 w-11 text-green-500 opacity-25" />
+            </div>
+            
+            {/* Business Feature Labels as Background Images */}
+            <div className="absolute top-28 left-16 animate-fade-in delay-300">
+              <div className="bg-green-500/10 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/20">
+                <span className="text-green-400 text-xs font-medium">Mensajería</span>
+              </div>
+            </div>
+            <div className="absolute top-56 right-24 animate-fade-in delay-500">
+              <div className="bg-red-500/10 px-3 py-1 rounded-full backdrop-blur-sm border border-red-500/20">
+                <span className="text-red-400 text-xs font-medium">Clientes</span>
+              </div>
+            </div>
+            <div className="absolute bottom-48 left-32 animate-fade-in delay-700">
+              <div className="bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm border border-white/20">
+                <span className="text-white text-xs font-medium">Archivos</span>
+              </div>
+            </div>
+            <div className="absolute top-20 right-40 animate-fade-in delay-900">
+              <div className="bg-green-500/10 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/20">
+                <span className="text-green-500 text-xs font-medium">Automatización</span>
+              </div>
             </div>
             
             {/* Business Chat Animation */}
@@ -250,32 +289,7 @@ export default function Dashboard() {
                 Automatiza tu comunicación empresarial con IA avanzada, gestión de clientes y respuestas inteligentes
               </p>
 
-              {/* Animated Business Features Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-                <div className="bg-black/30 p-4 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-100">
-                  <MessageCircle className="h-8 w-8 text-green-400 mx-auto mb-3 animate-pulse" />
-                  <h3 className="text-white font-semibold mb-1 text-sm">Mensajería</h3>
-                  <p className="text-gray-400 text-xs">Chat empresarial automatizado</p>
-                </div>
-                
-                <div className="bg-black/30 p-4 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-200">
-                  <Users className="h-8 w-8 text-red-400 mx-auto mb-3 animate-bounce" />
-                  <h3 className="text-white font-semibold mb-1 text-sm">Clientes</h3>
-                  <p className="text-gray-400 text-xs">Gestión de contactos</p>
-                </div>
-                
-                <div className="bg-black/30 p-4 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-300">
-                  <FileText className="h-8 w-8 text-white mx-auto mb-3 animate-pulse" />
-                  <h3 className="text-white font-semibold mb-1 text-sm">Archivos</h3>
-                  <p className="text-gray-400 text-xs">Documentos y multimedia</p>
-                </div>
-                
-                <div className="bg-black/30 p-4 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-400">
-                  <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-3 animate-bounce" />
-                  <h3 className="text-white font-semibold mb-1 text-sm">Automatización</h3>
-                  <p className="text-gray-400 text-xs">Respuestas inteligentes</p>
-                </div>
-              </div>
+
 
               {/* Live Business Activity Simulation */}
               <div className="mt-8 bg-black/40 rounded-xl p-6 backdrop-blur-sm border border-red-500/30">
