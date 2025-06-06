@@ -14,6 +14,7 @@ import { Loader2, Sun, Moon, Coffee, Star, MessageCircle, Users, FileText, Phone
 import { getRealNow, formatNYTime } from "@/lib/timeSync";
 import { PageTranslationSelector, usePageTranslation } from "@/components/translation/PageTranslator";
 import { SystemRefreshButton } from "@/components/dashboard/SystemRefreshButton";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
 
@@ -23,6 +24,72 @@ export default function Dashboard() {
   
   // Obtener el idioma actual del sistema de traducción
   const { currentLanguage } = usePageTranslation();
+
+  // Fetch real WhatsApp data
+  const { data: whatsappChats, isLoading: chatsLoading } = useQuery({
+    queryKey: ['/api/direct/whatsapp/chats'],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const { data: messages, isLoading: messagesLoading } = useQuery({
+    queryKey: ['/api/messages'],
+    refetchInterval: 30000,
+  });
+
+  const { data: whatsappAccounts, isLoading: accountsLoading } = useQuery({
+    queryKey: ['/api/whatsapp-accounts'],
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  // Calculate real WhatsApp metrics
+  const calculateWhatsAppMetrics = () => {
+    // Messages today count
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const messagesArray = Array.isArray(messages) ? messages : [];
+    const todayMessages = messagesArray.filter(msg => {
+      const msgDate = new Date(msg.timestamp || msg.createdAt);
+      return msgDate >= today;
+    });
+
+    // Active clients count (unique chats)
+    const chatsArray = Array.isArray(whatsappChats) ? whatsappChats : [];
+    const activeClients = chatsArray.length;
+
+    // Files shared count (messages with media)
+    const filesShared = messagesArray.filter(msg => 
+      msg.type === 'image' || 
+      msg.type === 'document' || 
+      msg.type === 'video' || 
+      msg.type === 'audio' ||
+      msg.hasMedia
+    ).length;
+
+    // Calculate growth percentages
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const yesterdayMessages = messagesArray.filter(msg => {
+      const msgDate = new Date(msg.timestamp || msg.createdAt);
+      return msgDate >= yesterday && msgDate < today;
+    });
+
+    const messageGrowth = yesterdayMessages.length > 0 
+      ? Math.round(((todayMessages.length - yesterdayMessages.length) / yesterdayMessages.length) * 100)
+      : todayMessages.length > 0 ? 100 : 0;
+
+    return {
+      messagesTotal: todayMessages.length,
+      activeClients: activeClients,
+      filesShared: filesShared,
+      messageGrowth: messageGrowth,
+      accountsActive: Array.isArray(whatsappAccounts) ? whatsappAccounts.filter(acc => acc.status === 'connected').length : 0,
+      totalAccounts: Array.isArray(whatsappAccounts) ? whatsappAccounts.length : 0
+    };
+  };
+
+  const metrics = calculateWhatsAppMetrics();
 
   // Update time every second usando fecha sincronizada
   useEffect(() => {
@@ -300,13 +367,21 @@ export default function Dashboard() {
                   <div className="bg-green-600/20 p-4 rounded-lg border border-green-500/30">
                     <div className="flex items-center justify-between mb-3">
                       <MessageCircle className="h-8 w-8 text-green-400" />
-                      <Clock className="h-5 w-5 text-green-300 animate-spin" />
+                      {(chatsLoading || messagesLoading) ? (
+                        <Loader2 className="h-5 w-5 text-green-300 animate-spin" />
+                      ) : (
+                        <Clock className="h-5 w-5 text-green-300 animate-spin" />
+                      )}
                     </div>
-                    <div className="text-white font-semibold text-lg">1,247</div>
+                    <div className="text-white font-semibold text-lg">
+                      {metrics.messagesTotal.toLocaleString()}
+                    </div>
                     <div className="text-green-300 text-sm">Mensajes hoy</div>
                     <div className="mt-2 flex items-center">
                       <TrendingUp className="h-4 w-4 text-green-400 mr-1" />
-                      <span className="text-green-400 text-xs">+23% vs ayer</span>
+                      <span className="text-green-400 text-xs">
+                        {metrics.messageGrowth >= 0 ? '+' : ''}{metrics.messageGrowth}% vs ayer
+                      </span>
                     </div>
                   </div>
 
@@ -314,17 +389,25 @@ export default function Dashboard() {
                   <div className="bg-red-600/20 p-4 rounded-lg border border-red-500/30">
                     <div className="flex items-center justify-between mb-3">
                       <Users className="h-8 w-8 text-red-400" />
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce delay-100"></div>
-                        <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce delay-200"></div>
-                      </div>
+                      {accountsLoading ? (
+                        <Loader2 className="h-5 w-5 text-red-300 animate-spin" />
+                      ) : (
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce delay-100"></div>
+                          <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce delay-200"></div>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-white font-semibold text-lg">342</div>
+                    <div className="text-white font-semibold text-lg">
+                      {metrics.activeClients.toLocaleString()}
+                    </div>
                     <div className="text-red-300 text-sm">Clientes activos</div>
                     <div className="mt-2 flex items-center">
                       <TrendingUp className="h-4 w-4 text-red-400 mr-1" />
-                      <span className="text-red-400 text-xs">+15 nuevos</span>
+                      <span className="text-red-400 text-xs">
+                        {metrics.accountsActive}/{metrics.totalAccounts} cuentas conectadas
+                      </span>
                     </div>
                   </div>
 
@@ -332,13 +415,21 @@ export default function Dashboard() {
                   <div className="bg-white/20 p-4 rounded-lg border border-white/30">
                     <div className="flex items-center justify-between mb-3">
                       <FileText className="h-8 w-8 text-white" />
-                      <Send className="h-5 w-5 text-white animate-pulse" />
+                      {messagesLoading ? (
+                        <Loader2 className="h-5 w-5 text-white animate-spin" />
+                      ) : (
+                        <Send className="h-5 w-5 text-white animate-pulse" />
+                      )}
                     </div>
-                    <div className="text-white font-semibold text-lg">89</div>
+                    <div className="text-white font-semibold text-lg">
+                      {metrics.filesShared.toLocaleString()}
+                    </div>
                     <div className="text-gray-300 text-sm">Archivos compartidos</div>
                     <div className="mt-2 flex items-center">
                       <TrendingUp className="h-4 w-4 text-white mr-1" />
-                      <span className="text-white text-xs">+7 recientes</span>
+                      <span className="text-white text-xs">
+                        Total de medios enviados
+                      </span>
                     </div>
                   </div>
                 </div>
