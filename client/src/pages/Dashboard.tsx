@@ -10,7 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/authContext";
-import { Loader2, Sun, Moon, Coffee, Star } from "lucide-react";
+import { Loader2, Sun, Moon, Coffee, Star, MessageCircle, Users, FileText, Phone, Send, Clock, CheckCircle, TrendingUp } from "lucide-react";
 import { getRealNow, formatNYTime } from "@/lib/timeSync";
 import { PageTranslationSelector, usePageTranslation } from "@/components/translation/PageTranslator";
 import { SystemRefreshButton } from "@/components/dashboard/SystemRefreshButton";
@@ -187,50 +187,6 @@ export default function Dashboard() {
       };
     }
   }, []);
-  
-  // Función para importar contactos de WhatsApp como leads
-  const importWhatsAppContacts = async () => {
-    try {
-      setIsImporting(true);
-      setImportResult(null);
-      
-      const response = await apiRequest('/api/direct/whatsapp/create-leads-from-contacts', {
-        method: 'POST'
-      });
-      
-      if (response.success) {
-        // Actualizar el resultado de la importación
-        setImportResult(response);
-        
-        // Mostrar notificación de éxito
-        toast({
-          title: '¡Contactos importados!',
-          description: response.message,
-        });
-        
-        // Invalidar las consultas de leads para que se actualice el pipeline
-        queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
-      } else {
-        // Mostrar notificación de error
-        toast({
-          title: 'Error en la importación',
-          description: response.message || 'No se pudieron importar los contactos de WhatsApp',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error("Error importando contactos:", error);
-      
-      // Mostrar notificación de error
-      toast({
-        title: 'Error en la importación',
-        description: 'Se produjo un error al intentar importar los contactos de WhatsApp',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsImporting(false);
-    }
-  };
 
   return (
     <>
@@ -239,60 +195,185 @@ export default function Dashboard() {
         <meta name="description" content="Overview of your CRM metrics, sales pipeline, upcoming activities, and recent conversations." />
       </Helmet>
       
-      <PageContainer>
-        {/* Título del sistema separado */}
-        <div className="mb-4">
-          <h1 className="text-3xl font-bold text-gray-800">CRM con Gemini</h1>
-        </div>
-
-        {/* Saludo personalizado con reloj del sistema */}
-        <div className="mb-8">
-          <div className="bg-gray-900 p-4 rounded-lg shadow-lg text-white">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                {greeting.icon}
-                <p className="text-sm" data-no-translate="true">
-                  {greeting.text}, {user?.fullName || user?.username || 'Usuario'}! - {greetingTranslations.welcomeBack[currentLanguage as keyof typeof greetingTranslations.welcomeBack] || greetingTranslations.welcomeBack.es}
-                </p>
+      <div className="min-h-screen bg-gradient-to-br from-black via-black to-red-600">
+        {/* Hero Section with Animated Business Icons */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-black to-red-900 py-20">
+          {/* Animated Background Elements */}
+          <div className="absolute inset-0">
+            {/* Floating WhatsApp Icons */}
+            <div className="absolute top-20 left-20 animate-bounce delay-100">
+              <MessageCircle className="h-12 w-12 text-green-400 opacity-30" />
+            </div>
+            <div className="absolute top-40 right-32 animate-pulse delay-300">
+              <Users className="h-16 w-16 text-red-400 opacity-40" />
+            </div>
+            <div className="absolute bottom-40 left-40 animate-bounce delay-500">
+              <FileText className="h-10 w-10 text-white opacity-25" />
+            </div>
+            <div className="absolute top-60 left-1/2 animate-pulse delay-700">
+              <Phone className="h-14 w-14 text-green-500 opacity-35" />
+            </div>
+            <div className="absolute bottom-60 right-20 animate-bounce delay-900">
+              <Send className="h-12 w-12 text-red-300 opacity-30" />
+            </div>
+            
+            {/* Business Chat Animation */}
+            <div className="absolute top-32 right-1/4 animate-pulse delay-200">
+              <div className="flex items-center space-x-2 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                <MessageCircle className="h-6 w-6 text-green-400" />
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce delay-100"></div>
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce delay-200"></div>
+                </div>
               </div>
+            </div>
+            
+            {/* File Transfer Animation */}
+            <div className="absolute bottom-32 left-1/3 animate-pulse delay-400">
+              <div className="flex items-center space-x-2 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                <FileText className="h-6 w-6 text-red-400" />
+                <TrendingUp className="h-4 w-4 text-white animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* Main Hero Content */}
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <h1 className="text-6xl font-bold text-white mb-6 animate-fade-in">
+                WhatsApp Business
+                <span className="block text-red-400">CRM Platform</span>
+              </h1>
               
-              {/* Controles del sistema */}
-              <div className="flex items-center space-x-3">
-                {/* Selector de traducción global */}
-                <div className="bg-white/10 px-3 py-2 rounded-lg border border-white/20">
-                  <PageTranslationSelector />
+              <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
+                Automatiza tu comunicación empresarial con IA avanzada, gestión de clientes y respuestas inteligentes
+              </p>
+
+              {/* Animated Business Features Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16">
+                <div className="bg-black/30 p-6 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-100">
+                  <MessageCircle className="h-12 w-12 text-green-400 mx-auto mb-4 animate-pulse" />
+                  <h3 className="text-white font-semibold mb-2">Mensajería</h3>
+                  <p className="text-gray-400 text-sm">Chat empresarial automatizado</p>
                 </div>
                 
-                {/* Reloj del sistema */}
-                <div className="flex items-center space-x-2 bg-white/10 px-3 py-2 rounded-lg border border-white/20">
-                  <span className="text-yellow-400 text-lg">🕐</span>
-                  <div className="text-sm font-semibold">{formatDateTime()}</div>
+                <div className="bg-black/30 p-6 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-200">
+                  <Users className="h-12 w-12 text-red-400 mx-auto mb-4 animate-bounce" />
+                  <h3 className="text-white font-semibold mb-2">Clientes</h3>
+                  <p className="text-gray-400 text-sm">Gestión de contactos</p>
+                </div>
+                
+                <div className="bg-black/30 p-6 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-300">
+                  <FileText className="h-12 w-12 text-white mx-auto mb-4 animate-pulse" />
+                  <h3 className="text-white font-semibold mb-2">Archivos</h3>
+                  <p className="text-gray-400 text-sm">Documentos y multimedia</p>
+                </div>
+                
+                <div className="bg-black/30 p-6 rounded-xl backdrop-blur-sm border border-red-500/20 hover:border-red-500/50 transition-all duration-300 animate-slide-up delay-400">
+                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4 animate-bounce" />
+                  <h3 className="text-white font-semibold mb-2">Automatización</h3>
+                  <p className="text-gray-400 text-sm">Respuestas inteligentes</p>
+                </div>
+              </div>
+
+              {/* Live Business Activity Simulation */}
+              <div className="mt-16 bg-black/40 rounded-2xl p-8 backdrop-blur-sm border border-red-500/30">
+                <h3 className="text-white text-2xl font-bold mb-6">Actividad Empresarial en Tiempo Real</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Messages Activity */}
+                  <div className="bg-green-600/20 p-4 rounded-lg border border-green-500/30">
+                    <div className="flex items-center justify-between mb-3">
+                      <MessageCircle className="h-8 w-8 text-green-400" />
+                      <Clock className="h-5 w-5 text-green-300 animate-spin" />
+                    </div>
+                    <div className="text-white font-semibold text-lg">1,247</div>
+                    <div className="text-green-300 text-sm">Mensajes hoy</div>
+                    <div className="mt-2 flex items-center">
+                      <TrendingUp className="h-4 w-4 text-green-400 mr-1" />
+                      <span className="text-green-400 text-xs">+23% vs ayer</span>
+                    </div>
+                  </div>
+
+                  {/* Clients Activity */}
+                  <div className="bg-red-600/20 p-4 rounded-lg border border-red-500/30">
+                    <div className="flex items-center justify-between mb-3">
+                      <Users className="h-8 w-8 text-red-400" />
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce delay-100"></div>
+                        <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce delay-200"></div>
+                      </div>
+                    </div>
+                    <div className="text-white font-semibold text-lg">342</div>
+                    <div className="text-red-300 text-sm">Clientes activos</div>
+                    <div className="mt-2 flex items-center">
+                      <TrendingUp className="h-4 w-4 text-red-400 mr-1" />
+                      <span className="text-red-400 text-xs">+15 nuevos</span>
+                    </div>
+                  </div>
+
+                  {/* Files Activity */}
+                  <div className="bg-white/20 p-4 rounded-lg border border-white/30">
+                    <div className="flex items-center justify-between mb-3">
+                      <FileText className="h-8 w-8 text-white" />
+                      <Send className="h-5 w-5 text-white animate-pulse" />
+                    </div>
+                    <div className="text-white font-semibold text-lg">89</div>
+                    <div className="text-gray-300 text-sm">Archivos compartidos</div>
+                    <div className="mt-2 flex items-center">
+                      <TrendingUp className="h-4 w-4 text-white mr-1" />
+                      <span className="text-white text-xs">+7 recientes</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Time and User Info */}
+              <div className="mt-12 flex flex-col md:flex-row items-center justify-between bg-black/40 p-6 rounded-xl backdrop-blur-sm border border-red-500/30">
+                <div className="flex items-center space-x-4 mb-4 md:mb-0">
+                  {greeting.icon}
+                  <span className="text-white text-lg">
+                    {greeting.text}, {user?.fullName || user?.username || 'Usuario'}!
+                  </span>
+                </div>
+                
+                <div className="flex items-center space-x-6">
+                  <div className="bg-red-600/20 px-4 py-2 rounded-lg border border-red-500/30">
+                    <PageTranslationSelector />
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 bg-black/40 px-4 py-2 rounded-lg border border-white/20">
+                    <Clock className="h-5 w-5 text-red-400" />
+                    <span className="text-white font-semibold">{formatDateTime()}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Panel de Control */}
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-semibold text-gray-700">Panel de Control</h3>
+        {/* Dashboard Content */}
+        <div className="bg-gray-900 min-h-screen">
+          <PageContainer>
+            {/* Dashboard Stats */}
+            <DashboardStats />
+            
+            {/* Administrative Metrics */}
+            <AdminMetrics />
+            
+            {/* Upcoming Activities and Recent Conversations */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+              <UpcomingActivities />
+              <RecentConversations />
+            </div>
+            
+            {/* Modern Floating System Refresh Button */}
+            <SystemRefreshButton />
+          </PageContainer>
         </div>
-        
-        {/* Dashboard Stats */}
-        <DashboardStats />
-        
-        {/* Administrative Metrics */}
-        <AdminMetrics />
-        
-        {/* Upcoming Activities and Recent Conversations */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          <UpcomingActivities />
-          <RecentConversations />
-        </div>
-        
-        {/* Modern Floating System Refresh Button */}
-        <SystemRefreshButton />
-      </PageContainer>
+      </div>
     </>
   );
 }
