@@ -418,6 +418,19 @@ const AppRoutes: React.FC = () => {
                 Cuentas WhatsApp
               </a>
               
+              <a href="/whatsapp-auth" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-auth' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="18" height="18" rx="3" fill="#25D366"/>
+                  <rect x="7" y="7" width="10" height="10" rx="2" fill="white"/>
+                  <rect x="9" y="9" width="2" height="2" fill="#25D366"/>
+                  <rect x="13" y="9" width="2" height="2" fill="#25D366"/>
+                  <rect x="9" y="13" width="2" height="2" fill="#25D366"/>
+                  <rect x="13" y="13" width="2" height="2" fill="#25D366"/>
+                  <rect x="11" y="11" width="2" height="2" fill="#25D366"/>
+                </svg>
+                QR Autenticación
+              </a>
+              
               {/* OCULTO: Gestor WhatsApp */}
               {/*<a href="/whatsapp-manager" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-manager' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -649,6 +662,7 @@ const AppRoutes: React.FC = () => {
                 {/* Ruta de demostración eliminada - solo chats reales */}
                 <Route path="/users" component={() => <PrivateRoute component={UserManagement} path="/users" />} />
                 <Route path="/whatsapp-accounts" component={() => <PrivateRoute component={WhatsAppAccounts} path="/whatsapp-accounts" />} />
+                <Route path="/whatsapp-auth" component={() => <PrivateRoute component={WhatsAppAuth} path="/whatsapp-auth" />} />
                 <Route path="/whatsapp-connection" component={() => <PrivateRoute component={WhatsAppConnection} path="/whatsapp-connection" />} />
                 <Route path="/agent-monitoring" component={() => <PrivateRoute component={AgentMonitoring} path="/agent-monitoring" />} />
                 <Route path="/agent-security" component={() => <PrivateRoute component={AgentSecurity} path="/agent-security" />} />
