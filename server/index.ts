@@ -4891,6 +4891,79 @@ app.use((req, res, next) => {
   });
 
   // Get authentication status
+  // Session recovery endpoints
+  app.post('/api/whatsapp-accounts/:accountId/recover-session', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { sessionRecovery } = await import('./services/whatsappSessionRecovery');
+      
+      console.log(`🔄 Intentando recuperar sesión para cuenta ${accountId}`);
+      
+      const recoveryResult = await sessionRecovery.attemptRecovery(accountId);
+      
+      if (recoveryResult === 'recovered') {
+        res.json({ 
+          success: true, 
+          message: 'Sesión recuperada exitosamente',
+          action: 'retry_connection'
+        });
+      } else if (recoveryResult === 'cleanup_needed') {
+        const cleanupSuccess = await sessionRecovery.cleanupSession(accountId);
+        res.json({
+          success: cleanupSuccess,
+          message: cleanupSuccess ? 'Sesión limpiada, listo para nueva conexión' : 'Error en limpieza de sesión',
+          action: 'fresh_connection'
+        });
+      } else {
+        res.json({
+          success: false,
+          message: 'No se pudo recuperar la sesión',
+          action: 'manual_intervention'
+        });
+      }
+    } catch (error) {
+      console.error('Error en recuperación de sesión:', error);
+      res.status(500).json({ success: false, message: 'Error interno en recuperación' });
+    }
+  });
+
+  app.post('/api/whatsapp-accounts/:accountId/clean-session', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { sessionRecovery } = await import('./services/whatsappSessionRecovery');
+      
+      console.log(`🧹 Limpiando sesión para cuenta ${accountId}`);
+      
+      const success = await sessionRecovery.prepareForFreshConnection(accountId);
+      
+      res.json({
+        success,
+        message: success ? 'Sesión limpiada completamente' : 'Error en limpieza de sesión',
+        accountId
+      });
+    } catch (error) {
+      console.error('Error limpiando sesión:', error);
+      res.status(500).json({ success: false, message: 'Error interno en limpieza' });
+    }
+  });
+
+  app.get('/api/whatsapp-accounts/:accountId/session-status', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { sessionRecovery } = await import('./services/whatsappSessionRecovery');
+      
+      const status = sessionRecovery.getRecoveryStatus(accountId);
+      
+      res.json({
+        success: true,
+        status
+      });
+    } catch (error) {
+      console.error('Error obteniendo estado de sesión:', error);
+      res.status(500).json({ success: false, message: 'Error interno' });
+    }
+  });
+
   app.get('/api/whatsapp-accounts/:accountId/auth-status', async (req: Request, res: Response) => {
     try {
       const accountId = parseInt(req.params.accountId);
