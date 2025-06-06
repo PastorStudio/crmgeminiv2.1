@@ -3629,29 +3629,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configurar el servidor WebSocket para notificaciones en tiempo real
   const wss = new WebSocketServer({ 
     server: httpServer, 
-    path: '/ws',
-    perMessageDeflate: false,
-    maxPayload: 16 * 1024 * 1024
+    path: '/ws'
   });
-  console.log('Servidor WebSocket inicializado en la ruta /ws');
+  console.log('🔌 Servidor WebSocket inicializado en la ruta /ws');
   
-  // Sistema de notificaciones directo sin dependencias externas
-  
-  // Lista de clientes conectados (para compatibilidad con código existente)
+  // Lista de clientes conectados
   const clients = new Set<WebSocket>();
-  
-  // Configurar keepalive para mantener conexiones activas
-  const keepAliveInterval = setInterval(() => {
-    wss.clients.forEach((ws: any) => {
-      if (ws.isAlive === false) {
-        console.log('🔌 Terminando conexión WebSocket inactiva');
-        return ws.terminate();
-      }
-      
-      ws.isAlive = false;
-      ws.ping();
-    });
-  }, 30000); // Cada 30 segundos
   
   // Evento cuando un cliente se conecta
   wss.on('connection', (ws: WebSocket) => {
@@ -3660,21 +3643,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Añadir a la lista de clientes conectados
     clients.add(ws);
     
-    // Configurar keepalive para mantener la conexión
-    ws.isAlive = true;
+    // Configurar propiedades de keepalive
+    (ws as any).isAlive = true;
+    
+    // Manejar pong responses
     ws.on('pong', () => {
-      ws.isAlive = true;
+      (ws as any).isAlive = true;
     });
     
-    // Enviar confirmación de conexión
-    try {
+    // Enviar confirmación de conexión inmediatamente
+    if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         type: 'connection_status',
         status: 'connected',
         timestamp: Date.now()
       }));
-    } catch (error) {
-      console.error('Error enviando mensaje de bienvenida:', error);
     }
     
     // Evento cuando se recibe un mensaje del cliente
@@ -3743,9 +3726,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
     
-    // Evento cuando el cliente se desconecta
+    // Evento cuando se cierra la conexión
     ws.on('close', (code, reason) => {
-      console.log(`🔌 Cliente WebSocket desconectado - Código: ${code}, Razón: ${reason}`);
+      console.log(`🔌 Cliente WebSocket desconectado - Código: ${code}, Razón: ${reason?.toString() || 'No especificada'}`);
       clients.delete(ws);
     });
 
@@ -3754,6 +3737,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('❌ Error en WebSocket del servidor:', error);
       clients.delete(ws);
     });
+  });
+
+  // Configurar keepalive para mantener conexiones activas
+  const keepAliveInterval = setInterval(() => {
+    wss.clients.forEach((ws: any) => {
+      if (ws.isAlive === false) {
+        console.log('🔌 Terminando conexión WebSocket inactiva');
+        return ws.terminate();
+      }
+      
+      ws.isAlive = false;
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.ping();
+      }
+    });
+  }, 30000); // Cada 30 segundos
+
+  // Limpiar intervalo de keepalive cuando el servidor se cierre
+  process.on('SIGTERM', () => {
+    clearInterval(keepAliveInterval);
+  });
+
+  process.on('SIGINT', () => {
+    clearInterval(keepAliveInterval);
   });
   
   // Función global para enviar notificaciones a todos los clientes

@@ -258,6 +258,34 @@ export default function NotificationSystem() {
           </div>
 
           <CardContent className="p-0 max-h-80 overflow-y-auto">
+            {/* Botón de prueba de notificación */}
+            <div className="p-3 border-b border-gray-700">
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/test-notification', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        title: 'Prueba de Notificación',
+                        message: 'Sistema funcionando correctamente'
+                      })
+                    });
+                    
+                    const result = await response.json();
+                    console.log('Respuesta del servidor:', result);
+                  } catch (error) {
+                    console.error('Error enviando notificación de prueba:', error);
+                  }
+                }}
+                className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
+              >
+                🔔 Probar Notificación WebSocket
+              </button>
+            </div>
+
             {notifications.length === 0 ? (
               <div className="p-4 text-center text-gray-400">
                 <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
