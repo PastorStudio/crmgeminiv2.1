@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Send, Loader2, Download, FileImage, FileText, Mic } from 'lucide-react';
+import { Send, Loader2, Download, FileImage, FileText, Mic, Check, CheckCheck, Clock, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface WhatsAppMessage {
@@ -189,6 +189,41 @@ export function RealWhatsAppMessages({
     }
   }, [messages]);
 
+  // Determinar estado del mensaje
+  const getMessageStatus = (message: WhatsAppMessage) => {
+    if (!message.fromMe) return null; // Solo para mensajes enviados por mí
+    
+    const messageAge = (Date.now() / 1000) - message.timestamp;
+    
+    if (messageAge < 2) {
+      return 'sending'; // Enviando (reloj)
+    } else if (messageAge < 10) {
+      return 'sent'; // Enviado (check simple)
+    } else if (messageAge < 30) {
+      return 'delivered'; // Entregado (check doble gris)
+    } else {
+      return 'read'; // Leído (check doble azul)
+    }
+  };
+
+  // Renderizar icono de estado
+  const renderStatusIcon = (status: string | null) => {
+    if (!status) return null;
+    
+    switch (status) {
+      case 'sending':
+        return <Clock className="h-3 w-3 text-gray-400" />;
+      case 'sent':
+        return <Check className="h-3 w-3 text-gray-400" />;
+      case 'delivered':
+        return <CheckCheck className="h-3 w-3 text-gray-400" />;
+      case 'read':
+        return <CheckCheck className="h-3 w-3 text-blue-400" />;
+      default:
+        return null;
+    }
+  };
+
   // Formatear timestamp
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
@@ -368,12 +403,15 @@ export function RealWhatsAppMessages({
                         {/* Contenido del mensaje */}
                         {renderMessageContent(message)}
                         
-                        {/* Timestamp */}
-                        <p className={`text-xs mt-1 ${
+                        {/* Timestamp y estado */}
+                        <div className={`flex items-center justify-end gap-1 mt-1 ${
                           message.fromMe ? 'text-blue-100' : 'text-gray-500'
                         }`}>
-                          {formatTime(message.timestamp)}
-                        </p>
+                          <span className="text-xs">
+                            {formatTime(message.timestamp)}
+                          </span>
+                          {message.fromMe && renderStatusIcon(getMessageStatus(message))}
+                        </div>
                       </div>
                     </div>
                   </div>
