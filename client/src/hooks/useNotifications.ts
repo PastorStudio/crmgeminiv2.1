@@ -189,22 +189,20 @@ export function useNotifications() {
     );
   }, []);
 
-  // Conectar automáticamente al montar el componente
+  // Temporarily disable auto-connection to prevent chat loading issues
   useEffect(() => {
-    // Delay initial connection to prevent rapid cycling
-    const initialConnectionTimeout = setTimeout(() => {
-      connect();
-    }, 1000);
+    // Auto-connection disabled to fix chat page loading
+    // Manual connection can be initiated if needed
+    console.log('🔔 Notificaciones deshabilitadas temporalmente para evitar conflictos con el chat');
     
-    // Obtener estadísticas cada 60 segundos (reduced frequency)
+    // Obtener estadísticas cada 60 segundos sin WebSocket
     const statsInterval = setInterval(getNotificationStats, 60000);
     
     return () => {
-      clearTimeout(initialConnectionTimeout);
       disconnect();
       clearInterval(statsInterval);
     };
-  }, [connect, disconnect, getNotificationStats]);
+  }, [disconnect, getNotificationStats]);
 
   return {
     isConnected,
