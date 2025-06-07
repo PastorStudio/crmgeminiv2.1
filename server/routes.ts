@@ -1106,10 +1106,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     templateId: null
   };
 
-  // Flow Templates endpoint - Returns 6 complete sales flow templates
+  // Simple test endpoint to verify routing
+  app.get("/api/test-simple", (req: Request, res: Response) => {
+    res.json({ message: "Test endpoint working", count: 6 });
+  });
+
+  // Flow Templates endpoint - Clean implementation
   app.get("/api/flow-templates", (req: Request, res: Response) => {
-    res.setHeader('Content-Type', 'application/json');
-    
     const templates = [
         {
           id: 'lead-qualification',
@@ -1335,15 +1338,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       ];
 
-      console.log(`📋 Enviando ${flowTemplates.length} plantillas de flujo completas`);
-      res.json(flowTemplates);
-    } catch (error) {
-      console.error('Error al obtener plantillas de flujo:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error al cargar plantillas de flujo" 
-      });
-    }
+    console.log(`📋 Returning ${templates.length} flow templates`);
+    res.json(templates);
   });
 
   // Sales Flow Templates endpoints
