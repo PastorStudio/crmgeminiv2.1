@@ -870,13 +870,22 @@ export default function FlowTemplates() {
   const [selectedDifficulty, setSelectedDifficulty] = useState('Todos');
   const [isLoadDialogOpen, setIsLoadDialogOpen] = useState(false);
 
+  // Query para obtener plantillas de flujo desde API
+  const { data: apiTemplates, isLoading: templatesLoading } = useQuery({
+    queryKey: ['/api/flow-templates'],
+    staleTime: 300000 // 5 minutos
+  });
+
   // Query para obtener flujos guardados
   const { data: savedFlows } = useQuery({
     queryKey: ['/api/sales-flow'],
     staleTime: 30000
   });
 
-  const filteredTemplates = flowTemplates.filter(template => {
+  // Usar plantillas de API si están disponibles, sino usar las locales
+  const availableTemplates = apiTemplates && apiTemplates.length > 0 ? apiTemplates : flowTemplates;
+
+  const filteredTemplates = availableTemplates.filter(template => {
     const categoryMatch = selectedCategory === 'Todos' || template.category === selectedCategory;
     const difficultyMatch = selectedDifficulty === 'Todos' || template.difficulty === selectedDifficulty;
     return categoryMatch && difficultyMatch;
@@ -886,8 +895,20 @@ export default function FlowTemplates() {
     try {
       console.log(`🚀 Creando flujo desde plantilla: ${templateId}`);
       
-      // Crear el flujo desde la plantilla
-      const templateData = getTemplateData(templateId);
+      // First check API templates for flowData
+      let templateData;
+      if (apiTemplates && apiTemplates.length > 0) {
+        const apiTemplate = apiTemplates.find(t => t.id === templateId);
+        if (apiTemplate && apiTemplate.flowData) {
+          templateData = apiTemplate.flowData;
+          console.log('📊 Usando datos de flujo desde API');
+        }
+      }
+      
+      // Fallback to local template data
+      if (!templateData) {
+        templateData = getTemplateData(templateId);
+      }
       
       if (!templateData) {
         console.error('❌ Template no encontrado:', templateId);
@@ -964,6 +985,17 @@ export default function FlowTemplates() {
     }
   };
 
+  if (templatesLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando plantillas de flujo...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -972,7 +1004,7 @@ export default function FlowTemplates() {
           <div className="flex items-center justify-between h-16">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Plantillas de Flujos</h1>
-              <p className="text-sm text-gray-600">Selecciona una plantilla o crea un flujo desde cero</p>
+              <p className="text-sm text-gray-600">{availableTemplates.length} plantillas disponibles - Selecciona una plantilla o crea un flujo desde cero</p>
             </div>
             <div className="flex gap-3">
               <Button 

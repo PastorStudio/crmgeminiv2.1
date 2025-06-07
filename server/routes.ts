@@ -1106,6 +1106,185 @@ export async function registerRoutes(app: Express): Promise<Server> {
     templateId: null
   };
 
+  // Flow Templates endpoint - Complete collection of sales flow templates
+  app.get("/api/flow-templates", async (req: Request, res: Response) => {
+    try {
+      const flowTemplates = [
+        {
+          id: 'lead-qualification',
+          name: 'Calificación de Leads',
+          description: 'Flujo completo para calificar nuevos leads desde WhatsApp hasta cierre de venta',
+          category: 'Ventas',
+          difficulty: 'Principiante',
+          nodes: 8,
+          estimatedTime: '15 min',
+          icon: 'Target',
+          color: 'bg-blue-500',
+          tags: ['WhatsApp', 'Calificación', 'CRM'],
+          flowData: {
+            nodes: [
+              { id: '1', type: 'trigger', position: { x: 100, y: 100 }, data: { label: 'Mensaje WhatsApp recibido' } },
+              { id: '2', type: 'ai', position: { x: 300, y: 100 }, data: { label: 'Análisis IA del mensaje' } },
+              { id: '3', type: 'condition', position: { x: 500, y: 100 }, data: { label: '¿Es lead válido?' } },
+              { id: '4', type: 'action', position: { x: 700, y: 50 }, data: { label: 'Crear lead en CRM' } },
+              { id: '5', type: 'action', position: { x: 700, y: 150 }, data: { label: 'Enviar mensaje automático' } }
+            ],
+            edges: [
+              { id: 'e1-2', source: '1', target: '2' },
+              { id: 'e2-3', source: '2', target: '3' },
+              { id: 'e3-4', source: '3', target: '4' },
+              { id: 'e3-5', source: '3', target: '5' }
+            ]
+          }
+        },
+        {
+          id: 'customer-support',
+          name: 'Soporte al Cliente',
+          description: 'Sistema automatizado de tickets y respuestas para soporte técnico',
+          category: 'Soporte',
+          difficulty: 'Intermedio',
+          nodes: 12,
+          estimatedTime: '25 min',
+          icon: 'MessageSquare',
+          color: 'bg-green-500',
+          tags: ['Tickets', 'Automatización', 'IA'],
+          flowData: {
+            nodes: [
+              { id: '1', type: 'trigger', position: { x: 100, y: 100 }, data: { label: 'Consulta cliente recibida' } },
+              { id: '2', type: 'ai', position: { x: 300, y: 100 }, data: { label: 'Análisis IA de consulta' } },
+              { id: '3', type: 'condition', position: { x: 500, y: 100 }, data: { label: '¿Problema común?' } },
+              { id: '4', type: 'action', position: { x: 700, y: 50 }, data: { label: 'Respuesta automática' } },
+              { id: '5', type: 'action', position: { x: 700, y: 150 }, data: { label: 'Crear ticket soporte' } }
+            ],
+            edges: [
+              { id: 'e1-2', source: '1', target: '2' },
+              { id: 'e2-3', source: '2', target: '3' },
+              { id: 'e3-4', source: '3', target: '4' },
+              { id: 'e3-5', source: '3', target: '5' }
+            ]
+          }
+        },
+        {
+          id: 'ecommerce-sales',
+          name: 'Ventas E-commerce',
+          description: 'Flujo optimizado para tiendas online con carritos abandonados y seguimiento',
+          category: 'E-commerce',
+          difficulty: 'Avanzado',
+          nodes: 15,
+          estimatedTime: '40 min',
+          icon: 'ShoppingCart',
+          color: 'bg-purple-500',
+          tags: ['E-commerce', 'Carritos', 'Conversión'],
+          flowData: {
+            nodes: [
+              { id: '1', type: 'trigger', position: { x: 100, y: 100 }, data: { label: 'Carrito abandonado detectado' } },
+              { id: '2', type: 'delay', position: { x: 300, y: 100 }, data: { label: 'Esperar 1 hora' } },
+              { id: '3', type: 'action', position: { x: 500, y: 100 }, data: { label: 'Enviar descuento 10%' } },
+              { id: '4', type: 'condition', position: { x: 700, y: 100 }, data: { label: '¿Cliente compró?' } },
+              { id: '5', type: 'action', position: { x: 500, y: 200 }, data: { label: 'Descuento 20% final' } }
+            ],
+            edges: [
+              { id: 'e1-2', source: '1', target: '2' },
+              { id: 'e2-3', source: '2', target: '3' },
+              { id: 'e3-4', source: '3', target: '4' },
+              { id: 'e4-5', source: '4', target: '5' }
+            ]
+          }
+        },
+        {
+          id: 'appointment-booking',
+          name: 'Reserva de Citas',
+          description: 'Sistema completo de agendamiento con recordatorios y confirmaciones',
+          category: 'Citas',
+          difficulty: 'Intermedio',
+          nodes: 10,
+          estimatedTime: '20 min',
+          icon: 'Calendar',
+          color: 'bg-orange-500',
+          tags: ['Calendario', 'Recordatorios', 'Confirmaciones'],
+          flowData: {
+            nodes: [
+              { id: '1', type: 'trigger', position: { x: 100, y: 100 }, data: { label: 'Solicitud de cita recibida' } },
+              { id: '2', type: 'action', position: { x: 300, y: 100 }, data: { label: 'Verificar disponibilidad' } },
+              { id: '3', type: 'condition', position: { x: 500, y: 100 }, data: { label: '¿Horario disponible?' } },
+              { id: '4', type: 'action', position: { x: 700, y: 50 }, data: { label: 'Confirmar cita' } },
+              { id: '5', type: 'delay', position: { x: 700, y: 150 }, data: { label: 'Recordatorio 24h antes' } }
+            ],
+            edges: [
+              { id: 'e1-2', source: '1', target: '2' },
+              { id: 'e2-3', source: '2', target: '3' },
+              { id: 'e3-4', source: '3', target: '4' },
+              { id: 'e3-5', source: '3', target: '5' }
+            ]
+          }
+        },
+        {
+          id: 'lead-nurturing',
+          name: 'Nutrición de Leads',
+          description: 'Secuencia automatizada para educar y convertir leads fríos en clientes',
+          category: 'Marketing',
+          difficulty: 'Avanzado',
+          nodes: 18,
+          estimatedTime: '45 min',
+          icon: 'TrendingUp',
+          color: 'bg-indigo-500',
+          tags: ['Email Marketing', 'Secuencias', 'Conversión'],
+          flowData: {
+            nodes: [
+              { id: '1', type: 'trigger', position: { x: 100, y: 100 }, data: { label: 'Lead frío identificado' } },
+              { id: '2', type: 'action', position: { x: 300, y: 100 }, data: { label: 'Enviar contenido educativo' } },
+              { id: '3', type: 'delay', position: { x: 500, y: 100 }, data: { label: 'Esperar 3 días' } },
+              { id: '4', type: 'action', position: { x: 700, y: 100 }, data: { label: 'Seguimiento personalizado' } },
+              { id: '5', type: 'condition', position: { x: 400, y: 200 }, data: { label: '¿Muestra interés?' } }
+            ],
+            edges: [
+              { id: 'e1-2', source: '1', target: '2' },
+              { id: 'e2-3', source: '2', target: '3' },
+              { id: 'e3-4', source: '3', target: '4' },
+              { id: 'e4-5', source: '4', target: '5' }
+            ]
+          }
+        },
+        {
+          id: 'call-center',
+          name: 'Centro de Llamadas',
+          description: 'Gestión automática de llamadas entrantes con enrutamiento inteligente',
+          category: 'Telefonía',
+          difficulty: 'Avanzado',
+          nodes: 14,
+          estimatedTime: '35 min',
+          icon: 'Phone',
+          color: 'bg-red-500',
+          tags: ['Llamadas', 'Enrutamiento', 'IVR'],
+          flowData: {
+            nodes: [
+              { id: '1', type: 'trigger', position: { x: 100, y: 100 }, data: { label: 'Llamada entrante' } },
+              { id: '2', type: 'condition', position: { x: 300, y: 100 }, data: { label: '¿Cliente existente?' } },
+              { id: '3', type: 'action', position: { x: 500, y: 50 }, data: { label: 'Enrutar a agente VIP' } },
+              { id: '4', type: 'condition', position: { x: 500, y: 150 }, data: { label: '¿Horario laboral?' } },
+              { id: '5', type: 'action', position: { x: 700, y: 150 }, data: { label: 'Cola de espera' } }
+            ],
+            edges: [
+              { id: 'e1-2', source: '1', target: '2' },
+              { id: 'e2-3', source: '2', target: '3' },
+              { id: 'e2-4', source: '2', target: '4' },
+              { id: 'e4-5', source: '4', target: '5' }
+            ]
+          }
+        }
+      ];
+
+      console.log(`📋 Enviando ${flowTemplates.length} plantillas de flujo completas`);
+      res.json(flowTemplates);
+    } catch (error) {
+      console.error('Error al obtener plantillas de flujo:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al cargar plantillas de flujo" 
+      });
+    }
+  });
+
   // Sales Flow Templates endpoints
   app.get("/api/sales-flow", async (req: Request, res: Response) => {
     try {
