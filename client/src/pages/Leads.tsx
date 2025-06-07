@@ -128,23 +128,26 @@ export default function Leads() {
   // Handle convert WhatsApp chats to leads
   const handleConvertWhatsAppChats = async () => {
     try {
-      const response = await apiRequest('/api/whatsapp/convert-chats-to-leads', {
-        method: 'POST'
-      });
+      const response = await apiRequest('POST', '/api/whatsapp/convert-chats-to-leads');
 
       if (response.success) {
+        const { converted = 0, details } = response;
+        const { created = 0, updated = 0, processed = 0 } = details || {};
+        
         toast({
-          title: "Chats convertidos",
-          description: `${response.convertedCount} chats de WhatsApp convertidos a leads`,
+          title: "Conversión completada",
+          description: `${processed} chats procesados: ${created} leads creados, ${updated} actualizados`,
         });
         
-        // Refrescar la lista de leads
+        // Refresh leads list
         queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      } else {
+        throw new Error(response.message || 'Error en la conversión');
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "No se pudieron convertir los chats a leads",
+        description: "No se pudieron convertir los chats reales a leads. Verifica que WhatsApp esté conectado.",
         variant: "destructive",
       });
     }

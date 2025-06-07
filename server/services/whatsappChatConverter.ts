@@ -24,8 +24,7 @@ export interface WhatsAppChat {
 export class WhatsAppChatConverter {
   
   /**
-   * Convierte chats de WhatsApp en leads usando datos simulados realistas
-   * cuando no hay conexión real de WhatsApp
+   * Convierte chats reales de WhatsApp en leads
    */
   static async convertChatsToLeads(accountId: number): Promise<{
     processed: number;
@@ -33,17 +32,22 @@ export class WhatsAppChatConverter {
     updated: number;
     analyzed: number;
   }> {
-    console.log(`🔄 Iniciando conversión de chats para cuenta ${accountId}...`);
+    console.log(`🔄 Iniciando conversión de chats reales para cuenta ${accountId}...`);
 
     try {
-      // Generar datos de conversaciones realistas para demostración
-      const mockChats = this.generateRealisticChats();
+      // Fetch real WhatsApp chats from the direct API
+      const realChats = await this.fetchRealWhatsAppChats(accountId);
+      
+      if (realChats.length === 0) {
+        console.log('📱 No hay chats reales disponibles. Asegúrate de que WhatsApp esté conectado y autenticado.');
+        return { processed: 0, created: 0, updated: 0, analyzed: 0 };
+      }
       
       let created = 0;
       let updated = 0;
       let analyzed = 0;
 
-      for (const chat of mockChats) {
+      for (const chat of realChats) {
         try {
           // Extraer información del contacto
           const phoneNumber = this.extractPhoneFromChatId(chat.id);
@@ -113,10 +117,10 @@ export class WhatsAppChatConverter {
         }
       }
 
-      console.log(`✅ Conversión completada: ${mockChats.length} chats procesados, ${created} leads creados, ${updated} actualizados, ${analyzed} analizados`);
+      console.log(`✅ Conversión completada: ${realChats.length} chats procesados, ${created} leads creados, ${updated} actualizados, ${analyzed} analizados`);
 
       return {
-        processed: mockChats.length,
+        processed: realChats.length,
         created,
         updated,
         analyzed
@@ -124,6 +128,59 @@ export class WhatsAppChatConverter {
     } catch (error) {
       console.error('Error en conversión de chats a leads:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Fetches real WhatsApp chats from the direct API
+   */
+  private static async fetchRealWhatsAppChats(accountId: number): Promise<WhatsAppChat[]> {
+    try {
+      console.log(`📱 Obteniendo chats reales de WhatsApp para cuenta ${accountId}...`);
+      
+      // Make request to the direct WhatsApp API endpoint
+      const response = await fetch('http://localhost:5000/api/direct/whatsapp/chats', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.log('⚠️ WhatsApp API no disponible, verificando conexión...');
+        return [];
+      }
+
+      const chatsData = await response.json();
+      
+      if (!Array.isArray(chatsData)) {
+        console.log('⚠️ Formato de datos inesperado del API de WhatsApp');
+        return [];
+      }
+
+      console.log(`📊 ${chatsData.length} chats reales obtenidos de WhatsApp`);
+      
+      // Transform the chat data to our internal format
+      return chatsData.map((chat: any) => ({
+        id: chat.id?._serialized || chat.id || `chat_${Date.now()}`,
+        name: chat.name || chat.pushname || 'Contacto sin nombre',
+        lastMessage: chat.lastMessage ? {
+          body: chat.lastMessage.body || '',
+          timestamp: chat.lastMessage.timestamp || Date.now(),
+          fromMe: chat.lastMessage.fromMe || false
+        } : undefined,
+        unreadCount: chat.unreadCount || 0,
+        isGroup: chat.isGroup || false,
+        contact: {
+          name: chat.name || chat.pushname || 'Contacto sin nombre',
+          number: chat.id?.user || chat.id?._serialized || ''
+        }
+      }));
+
+    } catch (error) {
+      console.error('Error fetching real WhatsApp chats:', error);
+      console.log('📱 WhatsApp no está conectado. Asegúrate de escanear el código QR para obtener datos reales.');
+      return [];
     }
   }
 
