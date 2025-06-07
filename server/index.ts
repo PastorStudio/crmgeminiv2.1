@@ -113,6 +113,10 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Registrar rutas optimizadas INMEDIATAMENTE después de middleware básico
+const server = registerOptimizedRoutes(app);
+console.log('🚀 Rutas optimizadas registradas ANTES de Vite middleware');
+
 // ===== CALENDAR API ROUTES (BYPASS VITE) =====
 // Create calendar event
 app.post('/api/calendar/create-event', async (req: Request, res: Response) => {
@@ -5276,8 +5280,7 @@ app.use((req, res, next) => {
     next();
   });
 
-  // Registrar rutas optimizadas ANTES de Vite para evitar conflictos
-  const server = registerOptimizedRoutes(app);
+  // Routes already registered early in the application startup
 
   if (app.get("env") === "development") {
     await setupVite(app, server);
