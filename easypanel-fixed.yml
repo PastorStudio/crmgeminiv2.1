@@ -1,0 +1,112 @@
+name: crm-whatsapp-ai
+services:
+  app:
+    type: app
+    data:
+      projectName: crm-whatsapp-ai
+      serviceName: app
+      source:
+        type: github
+        owner: PastorStudio
+        repo: geminiaicrm
+        branch: main
+        path: /
+      build:
+        type: dockerfile
+        dockerfile: Dockerfile
+      port: 3000
+      env:
+        - name: NODE_ENV
+          value: production
+        - name: PORT
+          value: "3000"
+        - name: DATABASE_URL
+          value: ${{ services.postgres.DATABASE_URL }}
+        - name: OPENAI_API_KEY
+          value: ${{ secrets.OPENAI_API_KEY }}
+        - name: GEMINI_API_KEY
+          value: ${{ secrets.GEMINI_API_KEY }}
+        - name: JWT_SECRET
+          value: ${{ secrets.JWT_SECRET }}
+        - name: SESSION_SECRET
+          value: ${{ secrets.SESSION_SECRET }}
+        - name: POSTGRES_PASSWORD
+          value: ${{ secrets.POSTGRES_PASSWORD }}
+        - name: FRONTEND_URL
+          value: https://${{ domains.app.host }}
+        - name: API_BASE_URL
+          value: https://${{ domains.app.host }}
+      domains:
+        - name: app
+          host: ${{ project.name }}.easypanel.host
+      mounts:
+        - type: volume
+          name: whatsapp-sessions
+          mountPath: /app/whatsapp-sessions
+        - type: volume
+          name: uploads
+          mountPath: /app/uploads
+        - type: volume
+          name: logs
+          mountPath: /app/logs
+      deploy:
+        replicas: 1
+        command: npm start
+        resources:
+          memoryReservation: 1024
+          memoryLimit: 2048
+          cpuReservation: 500
+          cpuLimit: 1000
+
+  postgres:
+    type: postgres
+    data:
+      projectName: crm-whatsapp-ai
+      serviceName: postgres
+      image: postgres:15
+      password: ${{ secrets.POSTGRES_PASSWORD }}
+      database: crm_whatsapp_ai
+      username: postgres
+      mounts:
+        - type: volume
+          name: postgres-data
+          mountPath: /var/lib/postgresql/data
+      deploy:
+        replicas: 1
+        resources:
+          memoryReservation: 512
+          memoryLimit: 1024
+          cpuReservation: 250
+          cpuLimit: 500
+
+  redis:
+    type: redis
+    data:
+      projectName: crm-whatsapp-ai
+      serviceName: redis
+      image: redis:7-alpine
+      mounts:
+        - type: volume
+          name: redis-data
+          mountPath: /data
+      deploy:
+        replicas: 1
+        resources:
+          memoryReservation: 256
+          memoryLimit: 512
+          cpuReservation: 100
+          cpuLimit: 250
+
+volumes:
+  - name: postgres-data
+  - name: redis-data
+  - name: whatsapp-sessions
+  - name: uploads
+  - name: logs
+
+secrets:
+  - POSTGRES_PASSWORD
+  - OPENAI_API_KEY
+  - GEMINI_API_KEY
+  - JWT_SECRET
+  - SESSION_SECRET
