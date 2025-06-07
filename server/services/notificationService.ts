@@ -1,130 +1,188 @@
+/**
+ * Sistema de notificaciones en tiempo real para WhatsApp CRM
+ * Maneja detección de mensajes nuevos y notificaciones push
+ */
+
+import { WebSocket, WebSocketServer } from 'ws';
 import { EventEmitter } from 'events';
-import WebSocket from 'ws';
 
-// Tipos de notificaciones
-export enum NotificationType {
-  NEW_MESSAGE = 'NEW_MESSAGE',
-  MESSAGE_STATUS_CHANGE = 'MESSAGE_STATUS_CHANGE',
-  CONNECTION_STATUS = 'CONNECTION_STATUS',
-  CAMPAIGN_STATUS = 'CAMPAIGN_STATUS',
-  USER_ACTION = 'USER_ACTION',
-  SYSTEM_ALERT = 'SYSTEM_ALERT'
-}
-
-// Interfaz para notificaciones
-export interface Notification {
+export interface NotificationMessage {
   id: string;
-  type: NotificationType;
-  timestamp: Date;
-  data: any;
+  type: 'new_message' | 'status_change' | 'system_alert';
+  chatId: string;
+  accountId: number;
+  title: string;
+  message: string;
+  timestamp: number;
+  urgent?: boolean;
+  data?: any;
 }
 
-// Clase para gestionar las notificaciones
-export class NotificationService extends EventEmitter {
-  private clients: Map<string, WebSocket> = new Map();
-  private notificationHistory: Notification[] = [];
-  private historyLimit = 100;
+class NotificationService extends EventEmitter {
+  private static instance: NotificationService;
+  private wss: WebSocketServer | null = null;
+  private clients: Set<WebSocket> = new Set();
+  private lastMessageTimestamps: Map<string, number> = new Map();
 
-  constructor() {
-    super();
-    console.log('NotificationService initialized');
+  static getInstance(): NotificationService {
+    if (!NotificationService.instance) {
+      NotificationService.instance = new NotificationService();
+    }
+    return NotificationService.instance;
   }
 
-  // Registrar un cliente WebSocket
-  registerClient(clientId: string, ws: WebSocket): void {
-    this.clients.set(clientId, ws);
-    console.log(`Cliente WebSocket registrado: ${clientId}`);
-    
-    // Enviar historial de notificaciones
-    this.sendNotificationHistory(clientId);
-    
-    // Enviar notificación de conexión exitosa
-    this.sendNotification({
-      id: this.generateId(),
-      type: NotificationType.CONNECTION_STATUS,
-      timestamp: new Date(),
-      data: { status: 'connected', message: 'Conectado al servidor de notificaciones' }
-    }, clientId);
-  }
-
-  // Eliminar un cliente
-  removeClient(clientId: string): void {
-    this.clients.delete(clientId);
-    console.log(`Cliente WebSocket eliminado: ${clientId}`);
-  }
-
-  // Enviar una notificación a todos los clientes
-  broadcastNotification(notification: Notification): void {
-    // Guardar en el historial
-    this.addToHistory(notification);
-    
-    // Enviar a todos los clientes conectados
-    this.clients.forEach((ws, clientId) => {
-      this.sendToClient(clientId, ws, notification);
+  /**
+   * Inicializa el servidor WebSocket para notificaciones
+   */
+  initialize(server: any) {
+    this.wss = new WebSocketServer({ 
+      server, 
+      path: '/notifications',
+      perMessageDeflate: false
     });
+
+    this.wss.on('connection', (ws: WebSocket, request) => {
+      console.log('🔔 Nueva conexión de notificaciones establecida');
+      this.clients.add(ws);
+
+      // Enviar mensaje de bienvenida
+      this.sendToClient(ws, {
+        id: 'welcome',
+        type: 'system_alert',
+        chatId: '',
+        accountId: 0,
+        title: 'Conectado',
+        message: 'Sistema de notificaciones activo',
+        timestamp: Date.now()
+      });
+
+      ws.on('close', () => {
+        console.log('🔔 Conexión de notificaciones cerrada');
+        this.clients.delete(ws);
+      });
+
+      ws.on('error', (error) => {
+        console.error('❌ Error en WebSocket de notificaciones:', error);
+        this.clients.delete(ws);
+      });
+
+      // Mantener conexión activa
+      const pingInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.ping();
+        } else {
+          clearInterval(pingInterval);
+          this.clients.delete(ws);
+        }
+      }, 30000);
+    });
+
+    console.log('🔔 Servicio de notificaciones inicializado en /notifications');
   }
 
-  // Enviar una notificación a un cliente específico
-  sendNotification(notification: Notification, clientId: string): void {
-    const ws = this.clients.get(clientId);
-    if (ws) {
-      // Guardar en el historial si es una notificación global
-      if (notification.type !== NotificationType.CONNECTION_STATUS) {
-        this.addToHistory(notification);
-      }
-      
-      this.sendToClient(clientId, ws, notification);
-    }
-  }
-
-  // Enviar historial de notificaciones a un cliente
-  private sendNotificationHistory(clientId: string): void {
-    const ws = this.clients.get(clientId);
-    if (ws) {
+  /**
+   * Envía notificación a un cliente específico
+   */
+  private sendToClient(client: WebSocket, notification: NotificationMessage) {
+    if (client.readyState === WebSocket.OPEN) {
       try {
-        ws.send(JSON.stringify({
-          type: 'NOTIFICATION_HISTORY',
-          data: this.notificationHistory
-        }));
+        client.send(JSON.stringify(notification));
       } catch (error) {
-        console.error(`Error enviando historial de notificaciones a ${clientId}:`, error);
+        console.error('❌ Error enviando notificación:', error);
+        this.clients.delete(client);
       }
     }
   }
 
-  // Enviar notificación a un cliente
-  private sendToClient(clientId: string, ws: WebSocket, notification: Notification): void {
-    // Verificar si el WebSocket está abierto
-    if (ws.readyState === WebSocket.OPEN) {
-      try {
-        ws.send(JSON.stringify({
-          type: 'NOTIFICATION',
-          data: notification
-        }));
-      } catch (error) {
-        console.error(`Error enviando notificación a ${clientId}:`, error);
-        this.removeClient(clientId);
-      }
-    } else {
-      console.log(`WebSocket no está abierto para ${clientId}, eliminando.`);
-      this.removeClient(clientId);
-    }
-  }
-
-  // Agregar notificación al historial
-  private addToHistory(notification: Notification): void {
-    this.notificationHistory.unshift(notification);
+  /**
+   * Envía notificación a todos los clientes conectados
+   */
+  broadcast(notification: NotificationMessage) {
+    console.log(`🔔 Enviando notificación: ${notification.title}`);
     
-    // Limitar el tamaño del historial
-    if (this.notificationHistory.length > this.historyLimit) {
-      this.notificationHistory = this.notificationHistory.slice(0, this.historyLimit);
+    this.clients.forEach(client => {
+      this.sendToClient(client, notification);
+    });
+
+    // Limpiar clientes desconectados
+    this.clients = new Set([...this.clients].filter(client => 
+      client.readyState === WebSocket.OPEN
+    ));
+  }
+
+  /**
+   * Notifica sobre un nuevo mensaje
+   */
+  notifyNewMessage(chatId: string, accountId: number, messageData: any) {
+    const now = Date.now();
+    const lastTimestamp = this.lastMessageTimestamps.get(chatId) || 0;
+    
+    // Solo notificar si es un mensaje realmente nuevo (más de 2 segundos de diferencia)
+    if (now - lastTimestamp > 2000) {
+      this.lastMessageTimestamps.set(chatId, now);
+      
+      const notification: NotificationMessage = {
+        id: `msg_${chatId}_${now}`,
+        type: 'new_message',
+        chatId,
+        accountId,
+        title: 'Nuevo mensaje',
+        message: `Mensaje de ${messageData.contactName || 'Contacto'}`,
+        timestamp: now,
+        urgent: true,
+        data: messageData
+      };
+
+      this.broadcast(notification);
     }
   }
 
-  // Generar ID único para notificaciones
-  private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  /**
+   * Notifica cambio de estado de WhatsApp
+   */
+  notifyStatusChange(accountId: number, status: string, details?: any) {
+    const notification: NotificationMessage = {
+      id: `status_${accountId}_${Date.now()}`,
+      type: 'status_change',
+      chatId: '',
+      accountId,
+      title: 'Estado WhatsApp',
+      message: `Cuenta ${accountId}: ${status}`,
+      timestamp: Date.now(),
+      data: { status, details }
+    };
+
+    this.broadcast(notification);
+  }
+
+  /**
+   * Notifica alertas del sistema
+   */
+  notifySystemAlert(title: string, message: string, urgent = false) {
+    const notification: NotificationMessage = {
+      id: `alert_${Date.now()}`,
+      type: 'system_alert',
+      chatId: '',
+      accountId: 0,
+      title,
+      message,
+      timestamp: Date.now(),
+      urgent
+    };
+
+    this.broadcast(notification);
+  }
+
+  /**
+   * Obtiene estadísticas del servicio
+   */
+  getStats() {
+    return {
+      connectedClients: this.clients.size,
+      isActive: this.wss !== null,
+      lastMessageTimestamps: this.lastMessageTimestamps.size
+    };
   }
 }
 
-export const notificationService = new NotificationService();
+export const notificationService = NotificationService.getInstance();
