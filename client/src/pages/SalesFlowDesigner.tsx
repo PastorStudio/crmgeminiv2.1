@@ -310,12 +310,38 @@ export default function SalesFlowDesigner() {
         console.log(`📊 Cargando ${templateData.nodes.length} nodos y ${templateData.edges.length} edges desde localStorage`);
         
         if (templateData.nodes && templateData.nodes.length > 0) {
-          setNodes(templateData.nodes);
+          // Convert API template nodes to ReactFlow format
+          const convertedNodes = templateData.nodes.map((node: any) => ({
+            id: node.id,
+            type: node.type,
+            position: node.position,
+            data: {
+              label: node.data.label,
+              description: node.data.description || 'Configurar nodo',
+              nodeId: node.id,
+              ...node.data
+            }
+          }));
+          
+          setNodes(convertedNodes);
           templateLoaded = true;
+          console.log('✅ Nodos convertidos y aplicados:', convertedNodes.length);
         }
         
         if (templateData.edges && templateData.edges.length > 0) {
-          setEdges(templateData.edges);
+          // Convert API template edges to ReactFlow format
+          const convertedEdges = templateData.edges.map((edge: any) => ({
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            markerEnd: { type: MarkerType.ArrowClosed },
+            style: { stroke: '#6B7280', strokeWidth: 2 },
+            animated: true,
+            type: 'smoothstep'
+          }));
+          
+          setEdges(convertedEdges);
+          console.log('✅ Conexiones convertidas y aplicadas:', convertedEdges.length);
         }
         
         // Clear localStorage after loading
