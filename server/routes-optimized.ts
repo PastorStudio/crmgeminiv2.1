@@ -1573,6 +1573,171 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // ***** WHATSAPP ACCOUNTS AND MESSAGING ENDPOINTS *****
+  app.get('/api/whatsapp/accounts', async (req: Request, res: Response) => {
+    try {
+      console.log('🔄 Fetching WhatsApp accounts...');
+      
+      const accounts = await storage.getAllWhatsappAccounts();
+      console.log(`✅ Found ${accounts.length} accounts`);
+      
+      const transformedAccounts = accounts.map(account => ({
+        id: account.id,
+        name: account.name || `Account ${account.id}`,
+        phone: account.ownerPhone || 'Not configured',
+        status: account.status || 'disconnected',
+        lastSeen: account.lastActivity || account.createdAt,
+        messageCount: 0,
+        profilePicUrl: null
+      }));
+
+      res.json(transformedAccounts);
+    } catch (error) {
+      console.error('Error fetching WhatsApp accounts:', error);
+      res.status(500).json([]);
+    }
+  });
+
+  app.get('/api/whatsapp-accounts/:accountId/chats', async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      console.log(`🔄 Fetching chats for account ${accountId}...`);
+      
+      // Return demonstration chats for testing
+      const demoChats = [
+        {
+          id: `chat_${accountId}_1`,
+          name: "María González",
+          isGroup: false,
+          timestamp: Date.now() / 1000,
+          unreadCount: 2,
+          lastMessage: "Hola, necesito información sobre sus servicios",
+          accountId: parseInt(accountId),
+          isOnline: true,
+          messageRead: false,
+          profilePicUrl: null
+        },
+        {
+          id: `chat_${accountId}_2`,
+          name: "Carlos Empresa",
+          isGroup: false,
+          timestamp: (Date.now() - 300000) / 1000,
+          unreadCount: 0,
+          lastMessage: "Gracias por la cotización",
+          accountId: parseInt(accountId),
+          isOnline: false,
+          messageRead: true,
+          profilePicUrl: null
+        },
+        {
+          id: `chat_${accountId}_3`,
+          name: "Ana Marketing",
+          isGroup: false,
+          timestamp: (Date.now() - 600000) / 1000,
+          unreadCount: 1,
+          lastMessage: "¿Cuando podemos reunirnos?",
+          accountId: parseInt(accountId),
+          isOnline: true,
+          messageRead: false,
+          profilePicUrl: null
+        }
+      ];
+
+      console.log(`✅ Returning ${demoChats.length} demonstration chats`);
+      res.json(demoChats);
+    } catch (error) {
+      console.error(`Error fetching chats for account ${req.params.accountId}:`, error);
+      res.status(500).json([]);
+    }
+  });
+
+  app.get('/api/whatsapp-accounts/:accountId/messages/:chatId', async (req: Request, res: Response) => {
+    try {
+      const { accountId, chatId } = req.params;
+      console.log(`🔄 Fetching messages for chat ${chatId} in account ${accountId}...`);
+      
+      // Return demonstration messages for testing
+      const demoMessages = [
+        {
+          id: `msg_${chatId}_1`,
+          body: "Hola, buenos días",
+          fromMe: false,
+          timestamp: (Date.now() - 1800000) / 1000,
+          hasMedia: false,
+          type: 'chat',
+          chatId: chatId,
+          author: "Cliente",
+          authorNumber: "+52 55 1234 5678"
+        },
+        {
+          id: `msg_${chatId}_2`,
+          body: "¡Hola! Buenos días, ¿en qué puedo ayudarte?",
+          fromMe: true,
+          timestamp: (Date.now() - 1740000) / 1000,
+          hasMedia: false,
+          type: 'chat',
+          chatId: chatId
+        },
+        {
+          id: `msg_${chatId}_3`,
+          body: "Necesito información sobre sus servicios de marketing digital",
+          fromMe: false,
+          timestamp: (Date.now() - 1680000) / 1000,
+          hasMedia: false,
+          type: 'chat',
+          chatId: chatId,
+          author: "Cliente",
+          authorNumber: "+52 55 1234 5678"
+        },
+        {
+          id: `msg_${chatId}_4`,
+          body: "Por supuesto, te puedo ayudar con eso. ¿Qué tipo de negocio tienes?",
+          fromMe: true,
+          timestamp: (Date.now() - 1620000) / 1000,
+          hasMedia: false,
+          type: 'chat',
+          chatId: chatId
+        }
+      ];
+
+      console.log(`✅ Returning ${demoMessages.length} demonstration messages`);
+      res.json(demoMessages);
+    } catch (error) {
+      console.error(`Error fetching messages for chat ${req.params.chatId}:`, error);
+      res.status(500).json([]);
+    }
+  });
+
+  app.post('/api/whatsapp/send-message', async (req: Request, res: Response) => {
+    try {
+      const { chatId, accountId, message } = req.body;
+      console.log(`📤 Sending message to chat ${chatId} from account ${accountId}: ${message}`);
+      
+      // Simulate message sending
+      const newMessage = {
+        id: `msg_${Date.now()}`,
+        body: message,
+        fromMe: true,
+        timestamp: Date.now() / 1000,
+        hasMedia: false,
+        type: 'chat',
+        chatId: chatId
+      };
+
+      console.log('✅ Message sent successfully (simulated)');
+      res.json({
+        success: true,
+        message: newMessage
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to send message'
+      });
+    }
+  });
+
   // WhatsApp-specific endpoint for compatibility
   app.post('/api/whatsapp/convert-chats-to-leads', async (req: Request, res: Response) => {
     try {
