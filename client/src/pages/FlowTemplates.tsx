@@ -3,10 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Zap, MessageSquare, Target, Users, ShoppingCart, Phone, Mail, Calendar, TrendingUp, FolderOpen } from 'lucide-react';
+import { Plus, Zap, MessageSquare, Target, Users, ShoppingCart, Phone, Mail, Calendar, TrendingUp, FolderOpen, Headphones } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 
 // Componente para vista previa del flujo
 const FlowPreview = ({ templateId }: { templateId: string }) => {
@@ -895,27 +896,16 @@ export default function FlowTemplates() {
     try {
       console.log(`🚀 Creando flujo desde plantilla: ${templateId}`);
       
-      // First check API templates for flowData
-      let templateData;
-      if (apiTemplates && apiTemplates.length > 0) {
-        const apiTemplate = apiTemplates.find(t => t.id === templateId);
-        if (apiTemplate && apiTemplate.flowData) {
-          templateData = apiTemplate.flowData;
-          console.log('📊 Usando datos de flujo desde API');
-        }
-      }
+      // Get template data from specific template endpoint
+      const templateResponse = await apiRequest(`/api/flow-templates/${templateId}`);
       
-      // Fallback to local template data
-      if (!templateData) {
-        templateData = getTemplateData(templateId);
-      }
-      
-      if (!templateData) {
+      if (!templateResponse.success || !templateResponse.template) {
         console.error('❌ Template no encontrado:', templateId);
         window.location.href = '/sales-flow-designer';
         return;
       }
       
+      const templateData = templateResponse.template.flowData;
       console.log(`📊 Template encontrado con ${templateData.nodes.length} nodos y ${templateData.edges.length} conexiones`);
       
       // Guardar datos del template en localStorage para bypassar problemas de Vite
@@ -923,6 +913,7 @@ export default function FlowTemplates() {
         nodes: templateData.nodes,
         edges: templateData.edges,
         templateId: templateId,
+        templateName: templateResponse.template.name,
         timestamp: Date.now()
       };
       localStorage.setItem('salesFlowTemplate', JSON.stringify(templateDataForStorage));

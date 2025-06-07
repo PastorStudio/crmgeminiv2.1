@@ -36,7 +36,7 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   };
 
-  // Flow Templates endpoint - Returns 6 complete sales flow templates
+  // Flow Templates endpoint - Returns functional templates with nodes and edges
   app.get("/api/flow-templates", (req: Request, res: Response) => {
     try {
       const templates = [
@@ -50,7 +50,100 @@ export function registerOptimizedRoutes(app: Express): Server {
           estimatedTime: '15 min',
           icon: 'Target',
           color: 'bg-blue-500',
-          tags: ['WhatsApp', 'Calificación', 'CRM']
+          tags: ['WhatsApp', 'Calificación', 'CRM'],
+          flowData: {
+            nodes: [
+              {
+                id: 'start-1',
+                type: 'startNode',
+                position: { x: 100, y: 100 },
+                data: {
+                  label: 'Inicio - Lead WhatsApp',
+                  description: 'Nuevo contacto desde WhatsApp',
+                  nodeId: 'start-1'
+                }
+              },
+              {
+                id: 'qualify-1',
+                type: 'conditionNode',
+                position: { x: 350, y: 100 },
+                data: {
+                  label: 'Calificar Lead',
+                  description: 'Evaluar potencial del cliente',
+                  nodeId: 'qualify-1'
+                }
+              },
+              {
+                id: 'interested-1',
+                type: 'actionNode',
+                position: { x: 600, y: 50 },
+                data: {
+                  label: 'Lead Interesado',
+                  description: 'Procesar lead calificado',
+                  nodeId: 'interested-1'
+                }
+              },
+              {
+                id: 'proposal-1',
+                type: 'actionNode',
+                position: { x: 850, y: 50 },
+                data: {
+                  label: 'Enviar Propuesta',
+                  description: 'Generar y enviar cotización',
+                  nodeId: 'proposal-1'
+                }
+              },
+              {
+                id: 'followup-1',
+                type: 'actionNode',
+                position: { x: 1100, y: 50 },
+                data: {
+                  label: 'Seguimiento',
+                  description: 'Programar recordatorios automáticos',
+                  nodeId: 'followup-1'
+                }
+              },
+              {
+                id: 'close-1',
+                type: 'endNode',
+                position: { x: 1350, y: 50 },
+                data: {
+                  label: 'Cerrar Venta',
+                  description: 'Finalizar proceso exitoso',
+                  nodeId: 'close-1'
+                }
+              },
+              {
+                id: 'nurture-1',
+                type: 'actionNode',
+                position: { x: 600, y: 200 },
+                data: {
+                  label: 'Nutrición',
+                  description: 'Campañas de educación',
+                  nodeId: 'nurture-1'
+                }
+              },
+              {
+                id: 'discard-1',
+                type: 'endNode',
+                position: { x: 600, y: 350 },
+                data: {
+                  label: 'Descartar',
+                  description: 'Lead no calificado',
+                  nodeId: 'discard-1'
+                }
+              }
+            ],
+            edges: [
+              { id: 'e1-2', source: 'start-1', target: 'qualify-1' },
+              { id: 'e2-3a', source: 'qualify-1', target: 'interested-1' },
+              { id: 'e2-3b', source: 'qualify-1', target: 'nurture-1' },
+              { id: 'e2-3c', source: 'qualify-1', target: 'discard-1' },
+              { id: 'e3-4', source: 'interested-1', target: 'proposal-1' },
+              { id: 'e4-5', source: 'proposal-1', target: 'followup-1' },
+              { id: 'e5-6', source: 'followup-1', target: 'close-1' }
+            ]
+          }
         },
         {
           id: 'ecommerce-sales',
@@ -62,62 +155,494 @@ export function registerOptimizedRoutes(app: Express): Server {
           estimatedTime: '25 min',
           icon: 'ShoppingCart',
           color: 'bg-purple-500',
-          tags: ['E-commerce', 'Carritos abandonados', 'Seguimiento']
+          tags: ['E-commerce', 'Carritos abandonados', 'Seguimiento'],
+          flowData: {
+            nodes: [
+              {
+                id: 'start-2',
+                type: 'startNode',
+                position: { x: 100, y: 100 },
+                data: {
+                  label: 'Inicio - Carrito Abandonado',
+                  description: 'Cliente abandona carrito de compras',
+                  nodeId: 'start-2'
+                }
+              },
+              {
+                id: 'wait-2',
+                type: 'delayNode',
+                position: { x: 350, y: 100 },
+                data: {
+                  label: 'Esperar 2 horas',
+                  description: 'Delay antes del primer recordatorio',
+                  nodeId: 'wait-2'
+                }
+              },
+              {
+                id: 'reminder1-2',
+                type: 'messageNode',
+                position: { x: 600, y: 100 },
+                data: {
+                  label: 'Primer Recordatorio',
+                  description: 'Mensaje personalizado con descuento',
+                  nodeId: 'reminder1-2'
+                }
+              },
+              {
+                id: 'check-2',
+                type: 'conditionNode',
+                position: { x: 850, y: 100 },
+                data: {
+                  label: 'Cliente Compró?',
+                  description: 'Verificar si completó la compra',
+                  nodeId: 'check-2'
+                }
+              },
+              {
+                id: 'success-2',
+                type: 'endNode',
+                position: { x: 1100, y: 50 },
+                data: {
+                  label: 'Venta Exitosa',
+                  description: 'Cliente completó la compra',
+                  nodeId: 'success-2'
+                }
+              },
+              {
+                id: 'reminder2-2',
+                type: 'messageNode',
+                position: { x: 1100, y: 150 },
+                data: {
+                  label: 'Segundo Recordatorio',
+                  description: 'Oferta especial limitada',
+                  nodeId: 'reminder2-2'
+                }
+              },
+              {
+                id: 'final-2',
+                type: 'endNode',
+                position: { x: 1350, y: 150 },
+                data: {
+                  label: 'Fin Secuencia',
+                  description: 'Terminar seguimiento',
+                  nodeId: 'final-2'
+                }
+              }
+            ],
+            edges: [
+              { id: 'e1-2', source: 'start-2', target: 'wait-2' },
+              { id: 'e2-3', source: 'wait-2', target: 'reminder1-2' },
+              { id: 'e3-4', source: 'reminder1-2', target: 'check-2' },
+              { id: 'e4-5a', source: 'check-2', target: 'success-2' },
+              { id: 'e4-5b', source: 'check-2', target: 'reminder2-2' },
+              { id: 'e5-6', source: 'reminder2-2', target: 'final-2' }
+            ]
+          }
         },
         {
           id: 'customer-support',
           name: 'Soporte al Cliente',
-          description: 'Sistema inteligente de atención al cliente con escalamiento automático y resolución de tickets',
+          description: 'Sistema inteligente de atención al cliente con escalamiento automático',
           category: 'Soporte',
           difficulty: 'Intermedio',
-          nodes: 12,
-          estimatedTime: '30 min',
+          nodes: 6,
+          estimatedTime: '20 min',
           icon: 'Headphones',
           color: 'bg-green-500',
-          tags: ['Soporte', 'Tickets', 'Escalamiento']
-        },
-        {
-          id: 'appointment-booking',
-          name: 'Reserva de Citas',
-          description: 'Sistema automatizado para agendar citas con integración de calendario y recordatorios',
-          category: 'Productividad',
-          difficulty: 'Intermedio',
-          nodes: 9,
-          estimatedTime: '20 min',
-          icon: 'Calendar',
-          color: 'bg-orange-500',
-          tags: ['Citas', 'Calendario', 'Recordatorios']
-        },
-        {
-          id: 'event-promotion',
-          name: 'Promoción de Eventos',
-          description: 'Campaña automatizada para promocionar eventos con segmentación de audiencia y seguimiento',
-          category: 'Marketing',
-          difficulty: 'Avanzado',
-          nodes: 11,
-          estimatedTime: '35 min',
-          icon: 'Megaphone',
-          color: 'bg-pink-500',
-          tags: ['Eventos', 'Marketing', 'Segmentación']
-        },
-        {
-          id: 'survey-feedback',
-          name: 'Encuestas y Feedback',
-          description: 'Sistema de recolección de feedback automatizado con análisis de sentimientos y reportes',
-          category: 'Investigación',
-          difficulty: 'Principiante',
-          nodes: 7,
-          estimatedTime: '18 min',
-          icon: 'BarChart3',
-          color: 'bg-cyan-500',
-          tags: ['Encuestas', 'Feedback', 'Análisis']
+          tags: ['Soporte', 'Tickets', 'Escalamiento'],
+          flowData: {
+            nodes: [
+              {
+                id: 'start-3',
+                type: 'startNode',
+                position: { x: 100, y: 100 },
+                data: {
+                  label: 'Consulta Cliente',
+                  description: 'Nueva consulta de soporte',
+                  nodeId: 'start-3'
+                }
+              },
+              {
+                id: 'categorize-3',
+                type: 'conditionNode',
+                position: { x: 350, y: 100 },
+                data: {
+                  label: 'Categorizar Consulta',
+                  description: 'Clasificar tipo de problema',
+                  nodeId: 'categorize-3'
+                }
+              },
+              {
+                id: 'auto-3',
+                type: 'actionNode',
+                position: { x: 600, y: 50 },
+                data: {
+                  label: 'Respuesta Automática',
+                  description: 'FAQ y soluciones comunes',
+                  nodeId: 'auto-3'
+                }
+              },
+              {
+                id: 'agent-3',
+                type: 'actionNode',
+                position: { x: 600, y: 150 },
+                data: {
+                  label: 'Asignar Agente',
+                  description: 'Escalamiento a humano',
+                  nodeId: 'agent-3'
+                }
+              },
+              {
+                id: 'solve-3',
+                type: 'endNode',
+                position: { x: 850, y: 100 },
+                data: {
+                  label: 'Problema Resuelto',
+                  description: 'Ticket cerrado exitosamente',
+                  nodeId: 'solve-3'
+                }
+              },
+              {
+                id: 'escalate-3',
+                type: 'actionNode',
+                position: { x: 600, y: 250 },
+                data: {
+                  label: 'Escalar Supervisor',
+                  description: 'Casos complejos',
+                  nodeId: 'escalate-3'
+                }
+              }
+            ],
+            edges: [
+              { id: 'e1-2', source: 'start-3', target: 'categorize-3' },
+              { id: 'e2-3a', source: 'categorize-3', target: 'auto-3' },
+              { id: 'e2-3b', source: 'categorize-3', target: 'agent-3' },
+              { id: 'e2-3c', source: 'categorize-3', target: 'escalate-3' },
+              { id: 'e3-4a', source: 'auto-3', target: 'solve-3' },
+              { id: 'e3-4b', source: 'agent-3', target: 'solve-3' },
+              { id: 'e3-4c', source: 'escalate-3', target: 'solve-3' }
+            ]
+          }
         }
       ];
 
-      console.log(`📋 Returning ${templates.length} flow templates`);
+      console.log(`📋 Returning ${templates.length} functional flow templates with nodes and edges`);
       res.json(templates);
     } catch (error) {
       console.error('Error in flow templates:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Apply Flow Template endpoint - Returns specific template with flowData
+  app.get("/api/flow-templates/:templateId", (req: Request, res: Response) => {
+    try {
+      const { templateId } = req.params;
+      
+      // Get all templates (could be optimized to load from database in future)
+      const templates = [
+        {
+          id: 'lead-qualification',
+          name: 'Calificación de Leads',
+          description: 'Flujo completo para calificar nuevos leads desde WhatsApp hasta cierre de venta',
+          category: 'Ventas',
+          difficulty: 'Principiante',
+          nodes: 8,
+          estimatedTime: '15 min',
+          icon: 'Target',
+          color: 'bg-blue-500',
+          tags: ['WhatsApp', 'Calificación', 'CRM'],
+          flowData: {
+            nodes: [
+              {
+                id: 'start-1',
+                type: 'startNode',
+                position: { x: 100, y: 100 },
+                data: {
+                  label: 'Inicio - Lead WhatsApp',
+                  description: 'Nuevo contacto desde WhatsApp',
+                  nodeId: 'start-1'
+                }
+              },
+              {
+                id: 'qualify-1',
+                type: 'conditionNode',
+                position: { x: 350, y: 100 },
+                data: {
+                  label: 'Calificar Lead',
+                  description: 'Evaluar potencial del cliente',
+                  nodeId: 'qualify-1'
+                }
+              },
+              {
+                id: 'interested-1',
+                type: 'actionNode',
+                position: { x: 600, y: 50 },
+                data: {
+                  label: 'Lead Interesado',
+                  description: 'Procesar lead calificado',
+                  nodeId: 'interested-1'
+                }
+              },
+              {
+                id: 'proposal-1',
+                type: 'actionNode',
+                position: { x: 850, y: 50 },
+                data: {
+                  label: 'Enviar Propuesta',
+                  description: 'Generar y enviar cotización',
+                  nodeId: 'proposal-1'
+                }
+              },
+              {
+                id: 'followup-1',
+                type: 'actionNode',
+                position: { x: 1100, y: 50 },
+                data: {
+                  label: 'Seguimiento',
+                  description: 'Programar recordatorios automáticos',
+                  nodeId: 'followup-1'
+                }
+              },
+              {
+                id: 'close-1',
+                type: 'endNode',
+                position: { x: 1350, y: 50 },
+                data: {
+                  label: 'Cerrar Venta',
+                  description: 'Finalizar proceso exitoso',
+                  nodeId: 'close-1'
+                }
+              },
+              {
+                id: 'nurture-1',
+                type: 'actionNode',
+                position: { x: 600, y: 200 },
+                data: {
+                  label: 'Nutrición',
+                  description: 'Campañas de educación',
+                  nodeId: 'nurture-1'
+                }
+              },
+              {
+                id: 'discard-1',
+                type: 'endNode',
+                position: { x: 600, y: 350 },
+                data: {
+                  label: 'Descartar',
+                  description: 'Lead no calificado',
+                  nodeId: 'discard-1'
+                }
+              }
+            ],
+            edges: [
+              { id: 'e1-2', source: 'start-1', target: 'qualify-1' },
+              { id: 'e2-3a', source: 'qualify-1', target: 'interested-1' },
+              { id: 'e2-3b', source: 'qualify-1', target: 'nurture-1' },
+              { id: 'e2-3c', source: 'qualify-1', target: 'discard-1' },
+              { id: 'e3-4', source: 'interested-1', target: 'proposal-1' },
+              { id: 'e4-5', source: 'proposal-1', target: 'followup-1' },
+              { id: 'e5-6', source: 'followup-1', target: 'close-1' }
+            ]
+          }
+        },
+        {
+          id: 'ecommerce-sales',
+          name: 'Ventas E-commerce',
+          description: 'Automatización completa de ventas para tiendas online con seguimiento de carritos abandonados',
+          category: 'E-commerce',
+          difficulty: 'Avanzado',
+          nodes: 7,
+          estimatedTime: '25 min',
+          icon: 'ShoppingCart',
+          color: 'bg-purple-500',
+          tags: ['E-commerce', 'Carritos abandonados', 'Seguimiento'],
+          flowData: {
+            nodes: [
+              {
+                id: 'start-2',
+                type: 'startNode',
+                position: { x: 100, y: 100 },
+                data: {
+                  label: 'Inicio - Carrito Abandonado',
+                  description: 'Cliente abandona carrito de compras',
+                  nodeId: 'start-2'
+                }
+              },
+              {
+                id: 'wait-2',
+                type: 'delayNode',
+                position: { x: 350, y: 100 },
+                data: {
+                  label: 'Esperar 2 horas',
+                  description: 'Delay antes del primer recordatorio',
+                  nodeId: 'wait-2'
+                }
+              },
+              {
+                id: 'reminder1-2',
+                type: 'messageNode',
+                position: { x: 600, y: 100 },
+                data: {
+                  label: 'Primer Recordatorio',
+                  description: 'Mensaje personalizado con descuento',
+                  nodeId: 'reminder1-2'
+                }
+              },
+              {
+                id: 'check-2',
+                type: 'conditionNode',
+                position: { x: 850, y: 100 },
+                data: {
+                  label: 'Cliente Compró?',
+                  description: 'Verificar si completó la compra',
+                  nodeId: 'check-2'
+                }
+              },
+              {
+                id: 'success-2',
+                type: 'endNode',
+                position: { x: 1100, y: 50 },
+                data: {
+                  label: 'Venta Exitosa',
+                  description: 'Cliente completó la compra',
+                  nodeId: 'success-2'
+                }
+              },
+              {
+                id: 'reminder2-2',
+                type: 'messageNode',
+                position: { x: 1100, y: 150 },
+                data: {
+                  label: 'Segundo Recordatorio',
+                  description: 'Oferta especial limitada',
+                  nodeId: 'reminder2-2'
+                }
+              },
+              {
+                id: 'final-2',
+                type: 'endNode',
+                position: { x: 1350, y: 150 },
+                data: {
+                  label: 'Fin Secuencia',
+                  description: 'Terminar seguimiento',
+                  nodeId: 'final-2'
+                }
+              }
+            ],
+            edges: [
+              { id: 'e1-2', source: 'start-2', target: 'wait-2' },
+              { id: 'e2-3', source: 'wait-2', target: 'reminder1-2' },
+              { id: 'e3-4', source: 'reminder1-2', target: 'check-2' },
+              { id: 'e4-5a', source: 'check-2', target: 'success-2' },
+              { id: 'e4-5b', source: 'check-2', target: 'reminder2-2' },
+              { id: 'e5-6', source: 'reminder2-2', target: 'final-2' }
+            ]
+          }
+        },
+        {
+          id: 'customer-support',
+          name: 'Soporte al Cliente',
+          description: 'Sistema inteligente de atención al cliente con escalamiento automático',
+          category: 'Soporte',
+          difficulty: 'Intermedio',
+          nodes: 6,
+          estimatedTime: '20 min',
+          icon: 'Headphones',
+          color: 'bg-green-500',
+          tags: ['Soporte', 'Tickets', 'Escalamiento'],
+          flowData: {
+            nodes: [
+              {
+                id: 'start-3',
+                type: 'startNode',
+                position: { x: 100, y: 100 },
+                data: {
+                  label: 'Consulta Cliente',
+                  description: 'Nueva consulta de soporte',
+                  nodeId: 'start-3'
+                }
+              },
+              {
+                id: 'categorize-3',
+                type: 'conditionNode',
+                position: { x: 350, y: 100 },
+                data: {
+                  label: 'Categorizar Consulta',
+                  description: 'Clasificar tipo de problema',
+                  nodeId: 'categorize-3'
+                }
+              },
+              {
+                id: 'auto-3',
+                type: 'actionNode',
+                position: { x: 600, y: 50 },
+                data: {
+                  label: 'Respuesta Automática',
+                  description: 'FAQ y soluciones comunes',
+                  nodeId: 'auto-3'
+                }
+              },
+              {
+                id: 'agent-3',
+                type: 'actionNode',
+                position: { x: 600, y: 150 },
+                data: {
+                  label: 'Asignar Agente',
+                  description: 'Escalamiento a humano',
+                  nodeId: 'agent-3'
+                }
+              },
+              {
+                id: 'solve-3',
+                type: 'endNode',
+                position: { x: 850, y: 100 },
+                data: {
+                  label: 'Problema Resuelto',
+                  description: 'Ticket cerrado exitosamente',
+                  nodeId: 'solve-3'
+                }
+              },
+              {
+                id: 'escalate-3',
+                type: 'actionNode',
+                position: { x: 600, y: 250 },
+                data: {
+                  label: 'Escalar Supervisor',
+                  description: 'Casos complejos',
+                  nodeId: 'escalate-3'
+                }
+              }
+            ],
+            edges: [
+              { id: 'e1-2', source: 'start-3', target: 'categorize-3' },
+              { id: 'e2-3a', source: 'categorize-3', target: 'auto-3' },
+              { id: 'e2-3b', source: 'categorize-3', target: 'agent-3' },
+              { id: 'e2-3c', source: 'categorize-3', target: 'escalate-3' },
+              { id: 'e3-4a', source: 'auto-3', target: 'solve-3' },
+              { id: 'e3-4b', source: 'agent-3', target: 'solve-3' },
+              { id: 'e3-4c', source: 'escalate-3', target: 'solve-3' }
+            ]
+          }
+        }
+      ];
+
+      const template = templates.find(t => t.id === templateId);
+      
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+
+      console.log(`📋 Returning template ${templateId} with ${template.flowData.nodes.length} nodes and ${template.flowData.edges.length} edges`);
+      res.json({
+        success: true,
+        template: {
+          ...template,
+          templateId: template.id
+        }
+      });
+    } catch (error) {
+      console.error('Error getting template:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
