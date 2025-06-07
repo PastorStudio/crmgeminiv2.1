@@ -1,23 +1,38 @@
-2025/06/07-17:09:20.907 1355 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/06/07-17:09:20.907 1355 Recovering log #150
-2025/06/07-17:09:20.913 1355 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000150.log 
-2025/06/07-17:09:22.694 135a Level-0 table #160: started
-2025/06/07-17:09:22.702 135a Level-0 table #160: 115234 bytes OK
-2025/06/07-17:09:22.714 135a Delete type=0 #150
-2025/06/07-17:09:22.714 135a Manual compaction at level-0 from '\x00\x1d\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1e\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/06/07-17:09:26.302 1357 Compacting 1@1 + 6@2 files
-2025/06/07-17:09:26.409 1357 Generated table #161@1: 29431 keys, 2189098 bytes
-2025/06/07-17:09:26.642 1357 Generated table #162@1: 3037 keys, 2154377 bytes
-2025/06/07-17:09:26.748 1357 Generated table #163@1: 22575 keys, 2226244 bytes
-2025/06/07-17:09:26.811 1357 Generated table #164@1: 35401 keys, 2174102 bytes
-2025/06/07-17:09:26.900 1357 Generated table #165@1: 106952 keys, 2260733 bytes
-2025/06/07-17:09:27.095 1357 Generated table #166@1: 25853 keys, 542752 bytes
-2025/06/07-17:09:27.095 1357 Compacted 1@1 + 6@2 files => 11547306 bytes
-2025/06/07-17:09:27.102 1357 compacted to: files[ 0 0 6 0 0 0 0 ]
-2025/06/07-17:09:27.103 1357 Delete type=2 #152
-2025/06/07-17:09:27.103 1357 Delete type=2 #153
-2025/06/07-17:09:27.103 1357 Delete type=2 #154
-2025/06/07-17:09:27.103 1357 Delete type=2 #155
-2025/06/07-17:09:27.103 1357 Delete type=2 #156
-2025/06/07-17:09:27.103 1357 Delete type=2 #157
-2025/06/07-17:09:27.103 1357 Delete type=2 #160
+2025/06/07-17:21:50.042 1873 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/07-17:21:50.042 1873 Recovering log #132
+2025/06/07-17:21:50.043 1873 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000132.log 
+2025/06/07-17:21:51.142 1875 Compacting 1@1 + 5@2 files
+2025/06/07-17:21:51.280 1875 Generated table #135@1: 24956 keys, 2186234 bytes
+2025/06/07-17:21:51.335 1875 Generated table #136@1: 3106 keys, 2153298 bytes
+2025/06/07-17:21:51.450 1875 Generated table #137@1: 27084 keys, 2233348 bytes
+2025/06/07-17:21:51.541 1875 Generated table #138@1: 39456 keys, 2176643 bytes
+2025/06/07-17:21:51.643 1875 Generated table #139@1: 107162 keys, 2259897 bytes
+2025/06/07-17:21:51.863 1875 Generated table #140@1: 16811 keys, 356266 bytes
+2025/06/07-17:21:51.863 1875 Compacted 1@1 + 5@2 files => 11365686 bytes
+2025/06/07-17:21:51.881 1875 compacted to: files[ 0 0 6 0 0 0 0 ]
+2025/06/07-17:21:51.881 1875 Level-0 table #142: started
+2025/06/07-17:21:51.889 1875 Level-0 table #142: 11913 bytes OK
+2025/06/07-17:21:51.903 1875 Delete type=0 #132
+2025/06/07-17:21:51.904 1873 Manual compaction at level-0 from '\x00\x1b\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1c\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/07-17:21:54.666 1875 Compacting 1@1 + 6@2 files
+2025/06/07-17:21:54.724 1875 Generated table #143@1: 25101 keys, 2184791 bytes
+2025/06/07-17:21:54.768 1875 Generated table #144@1: 3099 keys, 2151491 bytes
+2025/06/07-17:21:54.857 1875 Generated table #145@1: 27077 keys, 2233652 bytes
+2025/06/07-17:21:54.918 1875 Generated table #146@1: 39073 keys, 2175188 bytes
+2025/06/07-17:21:55.092 1875 Generated table #147@1: 107163 keys, 2259982 bytes
+2025/06/07-17:21:55.119 1875 Generated table #148@1: 17212 keys, 364685 bytes
+2025/06/07-17:21:55.119 1875 Compacted 1@1 + 6@2 files => 11369789 bytes
+2025/06/07-17:21:55.133 1875 compacted to: files[ 0 0 6 0 0 0 0 ]
+2025/06/07-17:21:55.134 1875 Delete type=2 #126
+2025/06/07-17:21:55.134 1875 Delete type=2 #127
+2025/06/07-17:21:55.134 1875 Delete type=2 #128
+2025/06/07-17:21:55.134 1875 Delete type=2 #129
+2025/06/07-17:21:55.134 1875 Delete type=2 #130
+2025/06/07-17:21:55.134 1875 Delete type=2 #133
+2025/06/07-17:21:55.134 1875 Delete type=2 #135
+2025/06/07-17:21:55.134 1875 Delete type=2 #136
+2025/06/07-17:21:55.134 1875 Delete type=2 #137
+2025/06/07-17:21:55.135 1875 Delete type=2 #138
+2025/06/07-17:21:55.135 1875 Delete type=2 #139
+2025/06/07-17:21:55.135 1875 Delete type=2 #140
+2025/06/07-17:21:55.135 1875 Delete type=2 #142
