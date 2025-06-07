@@ -77,6 +77,7 @@ const aiIntegrationSchema = z.object({
   temperature: z.number().min(0).max(2).default(0.7),
   enableAIResponses: z.boolean().default(true),
   disableGroupResponses: z.boolean().default(false),
+  responseLanguage: z.string().default("es"),
 });
 
 // AI Prompt schema
@@ -791,6 +792,64 @@ export default function AISettings() {
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={aiForm.control}
+                    name="responseLanguage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Idioma de Respuestas AI</FormLabel>
+                        <FormControl>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar idioma para respuestas AI" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60 overflow-y-auto">
+                              <SelectItem value="es">🇪🇸 Español</SelectItem>
+                              <SelectItem value="en">🇺🇸 Inglés</SelectItem>
+                              <SelectItem value="fr">🇫🇷 Francés</SelectItem>
+                              <SelectItem value="de">🇩🇪 Alemán</SelectItem>
+                              <SelectItem value="it">🇮🇹 Italiano</SelectItem>
+                              <SelectItem value="pt">🇵🇹 Portugués</SelectItem>
+                              <SelectItem value="zh">🇨🇳 Chino</SelectItem>
+                              <SelectItem value="ja">🇯🇵 Japonés</SelectItem>
+                              <SelectItem value="ko">🇰🇷 Coreano</SelectItem>
+                              <SelectItem value="ar">🇸🇦 Árabe</SelectItem>
+                              <SelectItem value="ru">🇷🇺 Ruso</SelectItem>
+                              <SelectItem value="hi">🇮🇳 Hindi</SelectItem>
+                              <SelectItem value="tr">🇹🇷 Turco</SelectItem>
+                              <SelectItem value="pl">🇵🇱 Polaco</SelectItem>
+                              <SelectItem value="nl">🇳🇱 Holandés</SelectItem>
+                              <SelectItem value="sv">🇸🇪 Sueco</SelectItem>
+                              <SelectItem value="da">🇩🇰 Danés</SelectItem>
+                              <SelectItem value="no">🇳🇴 Noruego</SelectItem>
+                              <SelectItem value="fi">🇫🇮 Finlandés</SelectItem>
+                              <SelectItem value="th">🇹🇭 Tailandés</SelectItem>
+                              <SelectItem value="vi">🇻🇳 Vietnamita</SelectItem>
+                              <SelectItem value="id">🇮🇩 Indonesio</SelectItem>
+                              <SelectItem value="ms">🇲🇾 Malayo</SelectItem>
+                              <SelectItem value="tl">🇵🇭 Filipino</SelectItem>
+                              <SelectItem value="he">🇮🇱 Hebreo</SelectItem>
+                              <SelectItem value="fa">🇮🇷 Persa</SelectItem>
+                              <SelectItem value="ur">🇵🇰 Urdu</SelectItem>
+                              <SelectItem value="bn">🇧🇩 Bengalí</SelectItem>
+                              <SelectItem value="ta">🇱🇰 Tamil</SelectItem>
+                              <SelectItem value="te">🇮🇳 Telugu</SelectItem>
+                              <SelectItem value="ml">🇮🇳 Malayalam</SelectItem>
+                              <SelectItem value="kn">🇮🇳 Kannada</SelectItem>
+                              <SelectItem value="gu">🇮🇳 Gujarati</SelectItem>
+                              <SelectItem value="mr">🇮🇳 Marathi</SelectItem>
+                              <SelectItem value="pa">🇮🇳 Punjabi</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormDescription>
+                          Idioma automático para respuestas AI. Si la traducción de mensajes está deshabilitada, las respuestas serán en español por defecto.
+                        </FormDescription>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
