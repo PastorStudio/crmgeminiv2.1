@@ -67,20 +67,26 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<any>, path: string
   
   // Rutas públicas que no requieren autenticación
   const publicRoutes = ['/login'];
+  const bypassAuth = true; // Enable bypass for development
   
   // Si estamos en una ruta pública, permitir acceso
   if (publicRoutes.includes(path)) {
     return <Component />;
   }
   
-  // Mostrar cargando mientras se verifica la autenticación
-  if (isLoading) {
+  // Mostrar cargando mientras se verifica la autenticación (solo si no hay bypass)
+  if (!bypassAuth && isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         <span className="ml-2 text-gray-600">Verificando sesión...</span>
       </div>
     );
+  }
+  
+  // Si hay bypass de autenticación, renderizar directamente
+  if (bypassAuth) {
+    return <Component />;
   }
   
   // Si no está autenticado, redirigir a login
@@ -103,7 +109,7 @@ const AppRoutes: React.FC = () => {
   const publicRoutes = ['/login'];
   
   // No mostrar la barra lateral en la página de login
-  const bypassAuth = localStorage.getItem('bypass-auth') === 'true' || true;
+  const bypassAuth = true; // Enable bypass for development
   const showSidebar = !publicRoutes.includes(location) && (isAuthenticated || bypassAuth);
   
   // Obtener clave API de Gemini para el cliente

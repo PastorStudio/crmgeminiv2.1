@@ -65,6 +65,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('Error parsing stored user data:', err);
         localStorage.removeItem(USER_KEY);
       }
+    } else {
+      // Create a temporary user for development bypass
+      const tempUser = {
+        id: 999,
+        username: 'demo',
+        fullName: 'Demo User',
+        role: 'admin',
+        status: 'active'
+      };
+      setUser(tempUser);
+      setToken('temp-token-dev');
     }
     
     setIsLoading(false);
