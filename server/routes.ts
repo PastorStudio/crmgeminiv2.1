@@ -5438,6 +5438,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Real-time analysis endpoints
+  app.post('/api/analysis/start', async (req: Request, res: Response) => {
+    try {
+      const { realtimeAnalysis } = await import('./services/realtimeAnalysisService');
+      
+      if (realtimeAnalysis.isAnalysisRunning()) {
+        return res.json({
+          success: true,
+          message: 'El análisis en tiempo real ya está ejecutándose',
+          status: 'running'
+        });
+      }
+      
+      realtimeAnalysis.startRealtimeAnalysis();
+      
+      res.json({
+        success: true,
+        message: 'Análisis en tiempo real iniciado - actualizando cada 5 segundos',
+        status: 'started'
+      });
+    } catch (error) {
+      console.error('Error starting real-time analysis:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al iniciar análisis en tiempo real'
+      });
+    }
+  });
+
+  app.post('/api/analysis/stop', async (req: Request, res: Response) => {
+    try {
+      const { realtimeAnalysis } = await import('./services/realtimeAnalysisService');
+      
+      realtimeAnalysis.stopRealtimeAnalysis();
+      
+      res.json({
+        success: true,
+        message: 'Análisis en tiempo real detenido',
+        status: 'stopped'
+      });
+    } catch (error) {
+      console.error('Error stopping real-time analysis:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al detener análisis en tiempo real'
+      });
+    }
+  });
+
+  app.get('/api/analysis/status', async (req: Request, res: Response) => {
+    try {
+      const { realtimeAnalysis } = await import('./services/realtimeAnalysisService');
+      
+      const stats = realtimeAnalysis.getAnalysisStats();
+      
+      res.json({
+        success: true,
+        analysis: stats
+      });
+    } catch (error) {
+      console.error('Error getting analysis status:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener estado del análisis'
+      });
+    }
+  });
+
+  app.get('/api/analysis/conversations', async (req: Request, res: Response) => {
+    try {
+      const result = await pool.query(`
+        SELECT 
+          chat_id,
+          contact_name,
+          phone_number,
+          sentiment,
+          intent,
+          urgency,
+          lead_score,
+          ticket_status,
+          categories,
+          estimated_value,
+          response_needed,
+          last_activity,
+          message_stats,
+          updated_at
+        FROM conversation_analysis 
+        ORDER BY last_activity DESC
+        LIMIT 100
+      `);
+      
+      res.json({
+        success: true,
+        conversations: result.rows
+      });
+    } catch (error) {
+      console.error('Error getting conversation analysis:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener análisis de conversaciones'
+      });
+    }
+  });
+
+  app.get('/api/analysis/conversations/:chatId', async (req: Request, res: Response) => {
+    try {
+      const { chatId } = req.params;
+      
+      const result = await pool.query(`
+        SELECT * FROM conversation_analysis WHERE chat_id = $1
+      `, [chatId]);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Análisis de conversación no encontrado'
+        });
+      }
+      
+      res.json({
+        success: true,
+        conversation: result.rows[0]
+      });
+    } catch (error) {
+      console.error('Error getting conversation analysis:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener análisis de conversación'
+      });
+    }
+  });
+
   // System refresh endpoint for Dashboard
   app.post('/api/system/refresh', async (req: Request, res: Response) => {
     try {

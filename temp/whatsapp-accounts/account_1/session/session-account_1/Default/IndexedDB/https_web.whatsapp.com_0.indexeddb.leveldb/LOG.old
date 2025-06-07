@@ -1,0 +1,16 @@
+2025/06/07-10:37:56.777 9d Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/07-10:37:56.777 9d Recovering log #94
+2025/06/07-10:37:56.779 9d Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000094.log 
+2025/06/07-10:37:56.779 9d Delete type=2 #51
+2025/06/07-10:37:56.779 9d Delete type=2 #93
+2025/06/07-10:37:57.576 9e Level-0 table #100: started
+2025/06/07-10:37:57.589 9e Level-0 table #100: 17245 bytes OK
+2025/06/07-10:37:57.608 9e Delete type=0 #94
+2025/06/07-10:37:57.609 9d Manual compaction at level-0 from '\x00&\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00'\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/07-10:37:57.610 9d Manual compaction at level-1 from '\x00&\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00'\x00\x00\x00' @ 0 : 0; will stop at '\x00&\x0a\x02\x03\x00\x00\x00\x00\x00\x00\xf0?' @ 17114 : 1
+2025/06/07-10:37:57.610 9d Compacting 1@1 + 1@2 files
+2025/06/07-10:37:57.618 9d Generated table #101@1: 9 keys, 400 bytes
+2025/06/07-10:37:57.618 9d Compacted 1@1 + 1@2 files => 400 bytes
+2025/06/07-10:37:57.625 9d compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/06/07-10:37:57.625 9d Delete type=2 #100
+2025/06/07-10:37:57.629 9d Manual compaction at level-1 from '\x00&\x0a\x02\x03\x00\x00\x00\x00\x00\x00\xf0?' @ 17114 : 1 .. '\x00'\x00\x00\x00' @ 0 : 0; will stop at (end)

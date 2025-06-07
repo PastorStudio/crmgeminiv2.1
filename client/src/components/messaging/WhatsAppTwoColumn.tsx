@@ -3717,17 +3717,29 @@ function ContactInfoPanel({ chat, setCommentsDialogOpen }: { chat: WhatsAppChat;
             <p className="text-gray-900 font-mono">{chat.id.replace('@c.us', '').replace('@g.us', '')}</p>
           </div>
 
-          {/* c. Leads */}
+          {/* c. Leads - Real-time Analysis */}
           <div className="bg-gray-50 p-3 rounded-lg">
             <div className="flex items-center space-x-2 mb-2">
               <Target className="h-4 w-4 text-gray-600" />
-              <span className="font-medium text-sm text-gray-700">Leads</span>
+              <span className="font-medium text-sm text-gray-700">Análisis IA</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-900">Potencial cliente</span>
-              <Badge variant="outline" className="text-xs">
-                Activo
-              </Badge>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-600">Score Lead:</span>
+                <Badge variant={getLeadScoreBadge(chatAnalysis?.lead_score)} className="text-xs">
+                  {chatAnalysis?.lead_score || 0}%
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-600">Intención:</span>
+                <span className="text-xs font-medium">{chatAnalysis?.intent || 'Analizando...'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-600">Sentimiento:</span>
+                <Badge variant={getSentimentBadge(chatAnalysis?.sentiment)} className="text-xs">
+                  {chatAnalysis?.sentiment || 'neutral'}
+                </Badge>
+              </div>
             </div>
           </div>
 
