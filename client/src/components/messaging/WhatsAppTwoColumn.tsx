@@ -1467,15 +1467,6 @@ export function WhatsAppTwoColumn() {
     refetchInterval: 5000 // Refresh every 5 seconds to check status
   });
 
-  // Automatically select all accounts when they load
-  useEffect(() => {
-    if (accounts.length > 0 && selectedAccounts.length === 0) {
-      const accountIds = accounts.map((account: any) => account.id);
-      setSelectedAccounts(accountIds);
-      console.log('🔄 Automatically selected accounts:', accountIds);
-    }
-  }, [accounts, selectedAccounts.length]);
-
   // Fetch external agents for AI selection
   const { data: externalAgentsResponse } = useQuery({
     queryKey: ['/api/external-agents'],
