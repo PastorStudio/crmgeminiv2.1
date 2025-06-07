@@ -51,6 +51,27 @@ export default function Leads() {
     queryKey: ["/api/leads"],
   });
 
+  // Check WhatsApp connection status
+  const { data: whatsappStatus } = useQuery({
+    queryKey: ["/api/whatsapp-accounts"],
+    refetchInterval: 10000, // Check every 10 seconds
+  });
+
+  // Determine if WhatsApp is connected
+  const isWhatsAppConnected = whatsappStatus?.success && 
+    whatsappStatus?.accounts?.some((account: any) => 
+      account.authenticated === true || account.ready === true
+    );
+
+  // Get connection status text and color
+  const getConnectionStatus = () => {
+    if (!whatsappStatus) return { text: "Verificando...", connected: false };
+    if (isWhatsAppConnected) return { text: "WhatsApp Conectado", connected: true };
+    return { text: "WhatsApp Desconectado", connected: false };
+  };
+
+  const connectionStatus = getConnectionStatus();
+
   // Filter leads based on search term and selected status
   const filteredLeads = allLeads?.filter(lead => {
     const matchesSearch = 
@@ -67,7 +88,10 @@ export default function Leads() {
   // Handle lead status update
   const handleUpdateStatus = async (leadId: number, newStatus: string) => {
     try {
-      await apiRequest('PATCH', `/api/leads/${leadId}/status`, { status: newStatus });
+      await apiRequest(`/api/leads/${leadId}/status`, {
+        method: 'PATCH',
+        body: { status: newStatus }
+      });
       
       queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       
@@ -87,7 +111,9 @@ export default function Leads() {
   // Handle lead deletion
   const handleDeleteLead = async (leadId: number) => {
     try {
-      await apiRequest('DELETE', `/api/leads/${leadId}`);
+      await apiRequest(`/api/leads/${leadId}`, {
+        method: 'DELETE'
+      });
       
       queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       
@@ -128,7 +154,9 @@ export default function Leads() {
   // Handle convert WhatsApp chats to leads
   const handleConvertWhatsAppChats = async () => {
     try {
-      const response = await apiRequest('POST', '/api/whatsapp/convert-chats-to-leads');
+      const response = await apiRequest('/api/whatsapp/convert-chats-to-leads', {
+        method: 'POST'
+      });
 
       if (response.success) {
         const { converted = 0, details } = response;
@@ -218,10 +246,18 @@ export default function Leads() {
             <Button
               onClick={handleConvertWhatsAppChats}
               variant="outline"
-              className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+              disabled={!connectionStatus.connected}
+              className={connectionStatus.connected 
+                ? "bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+                : "bg-red-50 border-red-200 text-red-700 cursor-not-allowed"
+              }
+              title={connectionStatus.connected 
+                ? "Convertir chats de WhatsApp a leads" 
+                : "WhatsApp debe estar conectado para convertir chats"
+              }
             >
               <MessageCircle className="h-4 w-4 mr-2" />
-              Convertir Chats WhatsApp
+              {connectionStatus.text}
             </Button>
             <Input
               placeholder="Search leads..."
