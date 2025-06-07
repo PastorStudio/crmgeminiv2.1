@@ -37,7 +37,7 @@ class NotificationService extends EventEmitter {
   initialize(server: any) {
     this.wss = new WebSocketServer({ 
       server, 
-      path: '/ws/notifications',
+      path: '/notifications',
       perMessageDeflate: false
     });
 
