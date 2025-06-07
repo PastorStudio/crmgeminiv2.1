@@ -3646,7 +3646,7 @@ export function WhatsAppTwoColumn() {
       {/* Right Panel - Contact Information (20%) */}
       <div className="w-[20%] bg-white border-l border-gray-200 flex flex-col overflow-hidden">
         {selectedChat ? (
-          <ContactInfoPanel chat={selectedChat} setCommentsDialogOpen={setCommentsDialogOpen} />
+          <ContactInfoPanel chat={selectedChat} setCommentsDialogOpen={setCommentsDialogOpen} chatAnalysis={chatAnalysis} />
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500">
             <div className="text-center">
@@ -3700,7 +3700,11 @@ export function WhatsAppTwoColumn() {
 }
 
 // Componente del Panel de Información del Contacto
-function ContactInfoPanel({ chat, setCommentsDialogOpen }: { chat: WhatsAppChat; setCommentsDialogOpen: (open: boolean) => void }) {
+function ContactInfoPanel({ chat, setCommentsDialogOpen, chatAnalysis }: { 
+  chat: WhatsAppChat; 
+  setCommentsDialogOpen: (open: boolean) => void;
+  chatAnalysis?: any;
+}) {
   const { data: chatAssignment } = useQuery({
     queryKey: [`/api/chat-assignments/${chat.id}`],
     enabled: !!chat.id
