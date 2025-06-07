@@ -2083,6 +2083,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // API endpoints for WhatsApp contacts and tag management
+  app.get("/api/whatsapp/contacts", async (req: Request, res: Response) => {
+    try {
+      // Mock WhatsApp contacts data with tags - in real implementation this would come from WhatsApp API
+      const contacts = [
+        {
+          id: "1234567890@c.us",
+          name: "Juan Pérez",
+          phone: "+507 6234-5678",
+          pushname: "Juan",
+          tags: ["cliente", "vip", "activo"],
+          lastSeen: new Date().toISOString(),
+          profilePic: null
+        },
+        {
+          id: "9876543210@c.us", 
+          name: "María González",
+          phone: "+507 6987-6543",
+          pushname: "María",
+          tags: ["prospecto", "seguimiento"],
+          lastSeen: new Date(Date.now() - 3600000).toISOString(),
+          profilePic: null
+        },
+        {
+          id: "5555555555@c.us",
+          name: "Carlos Rodriguez",
+          phone: "+507 6555-5555", 
+          pushname: "Carlos",
+          tags: ["cliente", "nuevo"],
+          lastSeen: new Date(Date.now() - 7200000).toISOString(),
+          profilePic: null
+        }
+      ];
+
+      res.json(contacts);
+    } catch (error) {
+      console.error("Error fetching WhatsApp contacts:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error fetching WhatsApp contacts" 
+      });
+    }
+  });
+
+  // Add tag to contact
+  app.post("/api/whatsapp/contacts/tags", async (req: Request, res: Response) => {
+    try {
+      const { contactId, tag } = req.body;
+      
+      if (!contactId || !tag) {
+        return res.status(400).json({
+          success: false,
+          message: "Contact ID and tag are required"
+        });
+      }
+
+      // In real implementation, this would update contact tags in WhatsApp storage/database
+      console.log(`Adding tag "${tag}" to contact ${contactId}`);
+      
+      res.json({
+        success: true,
+        message: `Tag "${tag}" added to contact`
+      });
+    } catch (error) {
+      console.error("Error adding tag to contact:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error adding tag to contact"
+      });
+    }
+  });
+
+  // Remove tag from contact  
+  app.delete("/api/whatsapp/contacts/tags", async (req: Request, res: Response) => {
+    try {
+      const { contactId, tag } = req.body;
+      
+      if (!contactId || !tag) {
+        return res.status(400).json({
+          success: false,
+          message: "Contact ID and tag are required"
+        });
+      }
+
+      // In real implementation, this would remove contact tag from WhatsApp storage/database
+      console.log(`Removing tag "${tag}" from contact ${contactId}`);
+      
+      res.json({
+        success: true,
+        message: `Tag "${tag}" removed from contact`
+      });
+    } catch (error) {
+      console.error("Error removing tag from contact:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error removing tag from contact"
+      });
+    }
+  });
+
   // Verificar secretos disponibles (API keys)
   app.get("/api/check-secrets", async (req: Request, res: Response) => {
     try {
