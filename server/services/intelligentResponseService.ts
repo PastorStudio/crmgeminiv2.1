@@ -112,8 +112,9 @@ class IntelligentResponseService {
           response = await this.generateGeminiResponse(fullContext, aiConfig);
       }
 
-      // Guardar respuesta en el historial
+      // Traducir respuesta al idioma configurado
       if (response.message) {
+        response.message = await this.translateResponse(response.message, aiConfig);
         conversationHistory.addAssistantMessage(context.chatId, 'ai-agent', response.message);
       }
 
@@ -183,6 +184,98 @@ class IntelligentResponseService {
     aiContext += systemPrompt + '\n\n';
 
     return aiContext;
+  }
+
+  /**
+   * Traduce la respuesta AI al idioma configurado
+   */
+  private async translateResponse(message: string, aiConfig: any): Promise<string> {
+    try {
+      // Obtener idioma de respuesta desde configuración AI
+      const targetLanguage = aiConfig.responseLanguage || 'es';
+      
+      // Si ya está en español o no hay idioma configurado, no traducir
+      if (targetLanguage === 'es') {
+        return message;
+      }
+
+      // Mapeo de códigos de idioma a nombres completos para traducción
+      const languageNames: Record<string, string> = {
+        en: 'inglés',
+        fr: 'francés',
+        de: 'alemán',
+        it: 'italiano',
+        pt: 'portugués',
+        zh: 'chino mandarín',
+        ja: 'japonés',
+        ko: 'coreano',
+        ar: 'árabe',
+        ru: 'ruso',
+        hi: 'hindi',
+        tr: 'turco',
+        pl: 'polaco',
+        nl: 'holandés',
+        sv: 'sueco',
+        da: 'danés',
+        no: 'noruego',
+        fi: 'finlandés',
+        th: 'tailandés',
+        vi: 'vietnamita',
+        id: 'indonesio',
+        ms: 'malayo',
+        tl: 'filipino',
+        he: 'hebreo',
+        fa: 'persa',
+        ur: 'urdu',
+        bn: 'bengalí',
+        ta: 'tamil',
+        te: 'telugu',
+        ml: 'malayalam',
+        kn: 'kannada',
+        gu: 'gujarati',
+        mr: 'marathi',
+        pa: 'punjabi'
+      };
+
+      const targetLanguageName = languageNames[targetLanguage] || targetLanguage;
+
+      // Usar OpenAI para traducción si está disponible
+      if (process.env.OPENAI_API_KEY || aiConfig.openaiApiKey) {
+        const { OpenAI } = await import('openai');
+        const openai = new OpenAI({ 
+          apiKey: aiConfig.openaiApiKey || process.env.OPENAI_API_KEY 
+        });
+
+        const translationResponse = await openai.chat.completions.create({
+          model: 'gpt-4o', // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          messages: [
+            {
+              role: 'system',
+              content: `Traduce el siguiente texto al ${targetLanguageName} de manera natural y conversacional. Mantén el tono profesional y amigable. Responde únicamente con la traducción, sin explicaciones adicionales.`
+            },
+            {
+              role: 'user',
+              content: message
+            }
+          ],
+          max_tokens: 300,
+          temperature: 0.3
+        });
+
+        const translatedMessage = translationResponse.choices[0]?.message?.content || message;
+        console.log(`🌐 Respuesta traducida de español a ${targetLanguageName}: ${translatedMessage.substring(0, 100)}...`);
+        return translatedMessage;
+      }
+
+      // Si OpenAI no está disponible, devolver mensaje original
+      console.log(`⚠️ No se puede traducir - OpenAI no configurado. Usando español por defecto.`);
+      return message;
+
+    } catch (error) {
+      console.error('❌ Error traduciendo respuesta AI:', error);
+      // En caso de error, devolver mensaje original
+      return message;
+    }
   }
 
   /**
