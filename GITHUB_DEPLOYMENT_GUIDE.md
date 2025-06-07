@@ -1,227 +1,337 @@
-# GitHub Deployment Configuration Guide
+# 🚀 WhatsApp CRM - Guía Completa de Despliegue
 
-## Información del Repositorio para Deployment
+## Instalación Automática con Wizard Interactivo
 
-### Configuración Básica
-- **Rama Principal**: `main`
-- **Ruta de Compilación**: `/` (raíz del proyecto)
-- **Comando de Build**: `npm run build`
-- **Directorio de Salida**: `dist/` (para frontend) + servidor Node.js
-- **Puerto**: `3000`
+### Un Solo Comando - Instalación Completa
 
-### URLs del Repositorio GitHub
-```
-URL HTTPS: https://github.com/tu-usuario/crm-whatsapp-ai.git
-URL SSH: git@github.com:tu-usuario/crm-whatsapp-ai.git
+```bash
+curl -sSL https://raw.githubusercontent.com/TU_USUARIO/whatsapp-crm-system/main/install-wizard.sh | bash
 ```
 
-## Para Configurar en Plataformas de Deployment
+**O descarga y ejecuta:**
 
-### 1. Vercel Deployment
-```yaml
-Configuración:
-- Framework: Other
-- Build Command: npm run build
-- Output Directory: dist
-- Install Command: npm install
-- Development Command: npm run dev
-- Root Directory: /
+```bash
+wget https://raw.githubusercontent.com/TU_USUARIO/whatsapp-crm-system/main/install-wizard.sh
+chmod +x install-wizard.sh
+./install-wizard.sh
 ```
 
-### 2. Netlify Deployment
-```yaml
-Configuración:
-- Build Command: npm run build
-- Publish Directory: dist
-- Production Branch: main
-- Base Directory: /
+## ¿Qué Hace el Wizard Automáticamente?
+
+### ✅ Verificación del Sistema
+- Detecta Ubuntu/Debian automáticamente
+- Verifica conectividad y permisos
+- Comprueba recursos disponibles
+
+### ✅ Instalación Completa
+- Node.js 20 (última versión LTS)
+- PostgreSQL con configuración segura
+- PM2 para gestión de procesos
+- Nginx como proxy reverso (opcional)
+- Firewall UFW configurado
+- SSL/HTTPS con Let's Encrypt (opcional)
+
+### ✅ Configuración Personalizada
+- Base de datos con credenciales únicas
+- Variables de entorno seguras
+- Puertos personalizables
+- Dominio personalizado (opcional)
+
+### ✅ Seguridad Integrada
+- Contraseñas generadas criptográficamente
+- Usuario de BD con permisos limitados
+- Firewall configurado automáticamente
+- Tokens JWT únicos
+
+## Compatibilidad Completa
+
+### Sistemas Operativos:
+- Ubuntu 20.04 LTS ✅
+- Ubuntu 22.04 LTS ✅
+- Debian 10 (Buster) ✅
+- Debian 11 (Bullseye) ✅
+
+### Proveedores VPS:
+- Contabo VPS ✅
+- DigitalOcean ✅
+- Amazon EC2 ✅
+- Google Cloud ✅
+- Vultr ✅
+- Linode ✅
+- Hetzner Cloud ✅
+
+## Requisitos Mínimos VPS
+
+| Componente | Mínimo | Recomendado |
+|------------|--------|-------------|
+| RAM | 1GB | 2GB+ |
+| Disco | 10GB | 20GB+ |
+| CPU | 1 vCPU | 2 vCPU+ |
+| Puertos | 22, 80, 443, 3000 | Abiertos |
+
+## Instalación Paso a Paso
+
+### 1. Conectar a tu VPS
+
+**Contabo:**
+```bash
+ssh root@tu-ip-contabo
 ```
 
-### 3. Railway Deployment
-```yaml
-Configuración:
-- Source: GitHub Repository
-- Branch: main
-- Build Command: npm run build
-- Start Command: npm start
-- Port: 3000
+**DigitalOcean:**
+```bash
+ssh root@tu-droplet-ip
 ```
 
-### 4. Render Deployment
-```yaml
-Configuración:
-- Repository: https://github.com/tu-usuario/crm-whatsapp-ai
-- Branch: main
-- Build Command: npm run build
-- Start Command: npm start
-- Environment: Node
+**AWS EC2:**
+```bash
+ssh -i tu-key.pem ubuntu@ec2-ip
 ```
 
-### 5. DigitalOcean App Platform
-```yaml
-Configuración:
-- Source Type: GitHub
-- Repository: crm-whatsapp-ai
-- Branch: main
-- Build Command: npm run build
-- Run Command: npm start
+### 2. Ejecutar el Wizard
+
+```bash
+wget https://raw.githubusercontent.com/TU_USUARIO/whatsapp-crm-system/main/install-wizard.sh
+chmod +x install-wizard.sh
+./install-wizard.sh
 ```
 
-## Variables de Entorno Requeridas
+### 3. Seguir las Instrucciones Interactivas
 
-### Para Todas las Plataformas:
+El wizard te guiará a través de:
+
+1. **Verificación del sistema** (automática)
+2. **Configuración personalizada** (interactiva)
+3. **Instalación de dependencias** (automática)
+4. **Configuración de base de datos** (automática)
+5. **Construcción de la aplicación** (automática)
+6. **Configuración de Nginx** (opcional)
+7. **Inicio de la aplicación** (automática)
+8. **Resumen de configuración** (informativo)
+
+### 4. Configurar Claves API
+
+Después de la instalación:
+
+```bash
+nano .env
+```
+
+Agregar tu clave OpenAI:
 ```env
-# Base de Datos
-DATABASE_URL=postgresql://user:pass@host:5432/db
-POSTGRES_PASSWORD=tu_password_seguro
-
-# Claves API de IA
-OPENAI_API_KEY=sk-tu_clave_openai
-GEMINI_API_KEY=tu_clave_gemini
-ANTHROPIC_API_KEY=tu_clave_anthropic
-
-# Seguridad
-JWT_SECRET=tu_jwt_secret_minimo_32_caracteres
-SESSION_SECRET=tu_session_secret_minimo_32_caracteres
-
-# Configuración de Aplicación
-NODE_ENV=production
-PORT=3000
-FRONTEND_URL=https://tu-dominio.com
-API_BASE_URL=https://tu-dominio.com
+OPENAI_API_KEY=sk-tu-clave-aqui
 ```
 
-## Comandos de Package.json
-
-El proyecto incluye estos comandos esenciales:
-```json
-{
-  "scripts": {
-    "dev": "tsx server/index.ts",
-    "build": "tsc && vite build",
-    "start": "node dist/server/index.js",
-    "preview": "vite preview",
-    "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
-  }
-}
-```
-
-## Dockerfile para Container Deployment
-
-Si prefieres deployment con contenedores:
-```dockerfile
-# Ubicación: ./Dockerfile (ya incluido en el proyecto)
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-## GitHub Actions Configuration
-
-El archivo `.github/workflows/deploy.yml` está configurado para:
-- **Trigger**: Push a rama `main`
-- **Testing**: Ejecuta pruebas automáticamente
-- **Build**: Construye la aplicación
-- **Deploy**: Despliega automáticamente
-
-## Pasos para Conectar con GitHub
-
-### 1. Crear Repositorio en GitHub
+Reiniciar la aplicación:
 ```bash
-# En GitHub, crear nuevo repositorio llamado "crm-whatsapp-ai"
+pm2 restart whatsapp-crm
 ```
 
-### 2. Conectar Proyecto Local
+## Acceso a tu Sistema
+
+### URLs de Acceso:
+- **Con Nginx**: `http://tu-servidor-ip`
+- **Directo**: `http://tu-servidor-ip:3000`
+- **Con SSL**: `https://tu-dominio.com`
+
+### Funcionalidades Disponibles:
+- Dashboard principal con métricas en tiempo real
+- Conexión WhatsApp con código QR
+- Gestión completa de leads y tickets
+- Respuestas automáticas AI
+- Análisis de conversaciones
+- Traducción automática
+- Gestión de agentes externos
+- API REST completa
+
+## Comandos de Gestión
+
+### PM2 (Gestión de Procesos):
 ```bash
-git remote add origin https://github.com/tu-usuario/crm-whatsapp-ai.git
-git branch -M main
-git push -u origin main
+pm2 status                # Ver estado
+pm2 logs whatsapp-crm     # Ver logs
+pm2 restart whatsapp-crm  # Reiniciar
+pm2 stop whatsapp-crm     # Detener
+pm2 monit                 # Monitor gráfico
 ```
 
-### 3. Configurar Secrets en GitHub
-En tu repositorio de GitHub, ve a:
-`Settings > Secrets and variables > Actions`
-
-Agregar estos secrets:
-- `OPENAI_API_KEY`
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `SESSION_SECRET`
-- `POSTGRES_PASSWORD`
-
-## URLs de Ejemplo para Deployment
-
-### Para EasyPanel:
-```yaml
-Repository URL: https://github.com/tu-usuario/crm-whatsapp-ai
-Branch: main
-Build Path: /
-```
-
-### Para Heroku:
+### Nginx (Si instalado):
 ```bash
-heroku create crm-whatsapp-ai
-git push heroku main
+sudo systemctl status nginx     # Estado
+sudo systemctl restart nginx    # Reiniciar
+sudo nginx -t                   # Verificar configuración
 ```
 
-### Para Railway:
-```yaml
-Source: GitHub
-Repository: tu-usuario/crm-whatsapp-ai
-Branch: main
-```
-
-## Configuración de Base de Datos
-
-### PostgreSQL Cloud (Recomendado):
-- **Neon**: https://neon.tech
-- **Supabase**: https://supabase.com
-- **PlanetScale**: https://planetscale.com
-- **Railway PostgreSQL**: Automático con Railway
-
-### Configuración Automática:
-El archivo `init.sql` se ejecuta automáticamente para crear:
-- Todas las tablas necesarias
-- Datos iniciales
-- Usuarios por defecto (admin/admin123)
-
-## Health Check Endpoints
-
-Para monitoreo de deployment:
-- **Health Check**: `GET /api/health`
-- **Status**: `GET /api/status`
-- **Version**: `GET /api/version`
-
-## Comandos Post-Deployment
-
-Después del deployment, ejecutar:
+### Base de Datos:
 ```bash
-# Ejecutar migraciones de base de datos
-npm run db:push
+# Backup
+pg_dump -U whatsapp_user -h localhost whatsapp_crm_db > backup.sql
 
-# Verificar estado de la aplicación
-curl https://tu-dominio.com/api/health
+# Verificar conexión
+psql -U whatsapp_user -h localhost -d whatsapp_crm_db
 ```
 
-## Troubleshooting Common Issues
+## Actualizaciones
 
-### Error de Build:
-- Verificar que todas las dependencias estén en `package.json`
-- Asegurar que `NODE_VERSION` sea 18 o superior
+### Actualizar desde GitHub:
+```bash
+cd whatsapp-crm-system
+git pull origin main
+npm install
+npm run build
+pm2 restart whatsapp-crm
+```
 
-### Error de Base de Datos:
-- Verificar `DATABASE_URL` en variables de entorno
-- Asegurar que PostgreSQL esté disponible
+### Actualizar dependencias:
+```bash
+npm update
+npm audit fix
+pm2 restart whatsapp-crm
+```
 
-### Error de Autenticación:
-- Verificar que todas las API keys estén configuradas
-- Revisar que `JWT_SECRET` tenga al menos 32 caracteres
+## Monitoreo y Logs
 
-Esta configuración te permite desplegar en cualquier plataforma moderna que soporte Node.js y PostgreSQL.
+### Ver logs en tiempo real:
+```bash
+pm2 logs whatsapp-crm --lines 100
+```
+
+### Logs del sistema:
+```bash
+# Nginx
+sudo tail -f /var/log/nginx/error.log
+
+# PostgreSQL
+sudo tail -f /var/log/postgresql/postgresql-*.log
+
+# Sistema
+journalctl -f
+```
+
+### Métricas del servidor:
+```bash
+htop                    # Uso de CPU/RAM
+df -h                   # Espacio en disco
+ss -tulpn               # Puertos abiertos
+```
+
+## Solución de Problemas
+
+### Aplicación no inicia:
+```bash
+# Verificar logs
+pm2 logs whatsapp-crm
+
+# Verificar configuración
+cat .env
+
+# Verificar puerto
+netstat -tulpn | grep :3000
+```
+
+### Error de base de datos:
+```bash
+# Reiniciar PostgreSQL
+sudo systemctl restart postgresql
+
+# Verificar estado
+sudo systemctl status postgresql
+```
+
+### Error 502 (Nginx):
+```bash
+# Verificar configuración
+sudo nginx -t
+
+# Reiniciar servicios
+sudo systemctl restart nginx
+pm2 restart whatsapp-crm
+```
+
+## Backup y Seguridad
+
+### Backup automático:
+```bash
+# Crear script de backup
+cat > backup.sh << 'EOF'
+#!/bin/bash
+DATE=$(date +%Y%m%d_%H%M%S)
+pg_dump -U whatsapp_user -h localhost whatsapp_crm_db > backup_db_$DATE.sql
+tar -czf backup_full_$DATE.tar.gz whatsapp-crm-system/
+EOF
+
+chmod +x backup.sh
+```
+
+### Programar backups:
+```bash
+# Añadir a crontab (backup diario a las 2 AM)
+echo "0 2 * * * /path/to/backup.sh" | crontab -
+```
+
+### Configurar firewall:
+```bash
+# Ver reglas activas
+sudo ufw status
+
+# Permitir puerto específico
+sudo ufw allow 8080
+
+# Bloquear IP
+sudo ufw deny from 192.168.1.100
+```
+
+## Funcionalidades del Sistema
+
+### ✅ Características Principales:
+- Conexiones WhatsApp reales con autenticación QR
+- Respuestas automáticas AI con OpenAI/Gemini
+- Gestión completa de leads con cards visuales
+- Sistema de tickets integrado
+- Dashboard con métricas en tiempo real
+- Análisis automático de conversaciones cada 5 segundos
+- Traducción automática a 60+ idiomas
+- Gestión de agentes externos
+- API REST completa
+- WebSocket para notificaciones en tiempo real
+
+### ✅ Seguridad y Rendimiento:
+- Autenticación JWT
+- Sesiones seguras
+- Proxy reverso Nginx
+- Compresión y caché
+- Gestión de procesos con PM2
+- Base de datos PostgreSQL optimizada
+- Firewall configurado
+- SSL/HTTPS automático
+
+## Soporte Técnico
+
+### Información necesaria para soporte:
+1. Salida de `pm2 logs whatsapp-crm`
+2. Contenido de `.env` (sin claves privadas)
+3. Salida de `pm2 status`
+4. Versión del sistema: `lsb_release -a`
+5. Logs de error específicos
+
+### Contacto:
+- Documentación: Este README
+- Logs del sistema: `pm2 logs`
+- Estado del servicio: `pm2 status`
+
+## ¡Instalación Exitosa!
+
+Si el wizard completó sin errores, tu sistema WhatsApp CRM está completamente operativo con:
+
+🎉 **Conexiones WhatsApp reales**
+🎉 **Inteligencia artificial integrada**  
+🎉 **Dashboard profesional**
+🎉 **Gestión completa de leads**
+🎉 **Sistema de respuestas automáticas**
+🎉 **Análisis en tiempo real**
+🎉 **Traducción automática**
+🎉 **API REST completa**
+🎉 **Monitoreo y backup integrado**
+🎉 **Seguridad empresarial**
+
+**Tu CRM está listo para manejar comunicaciones profesionales de WhatsApp con inteligencia artificial avanzada.**
