@@ -16,6 +16,7 @@ export interface NotificationMessage {
   timestamp: number;
   urgent?: boolean;
   data?: any;
+  read?: boolean;
 }
 
 export interface NotificationStats {
@@ -34,7 +35,7 @@ export function useNotifications() {
   const connect = useCallback(() => {
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/notifications`;
+      const wsUrl = `${protocol}//${window.location.host}/ws/notifications`;
       
       console.log('🔔 Conectando a notificaciones:', wsUrl);
       

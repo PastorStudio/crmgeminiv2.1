@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { WhatsAppConnectionStatus } from './WhatsAppConnectionStatus';
+import { NotificationPanel } from '../NotificationPanel';
 
 // Función de detección automática de idioma
 const detectLanguageFromMessage = (text: string) => {
@@ -2720,9 +2721,12 @@ export function WhatsAppTwoColumn() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">WhatsApp Business</h2>
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
-                {selectedAccounts.length}/{(accounts as any[])?.length || 0} seleccionadas
-              </Badge>
+              <div className="flex items-center gap-3">
+                <NotificationPanel />
+                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  {selectedAccounts.length}/{(accounts as any[])?.length || 0} seleccionadas
+                </Badge>
+              </div>
             </div>
             
             <AccountSelector
