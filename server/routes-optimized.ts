@@ -36,6 +36,92 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   };
 
+  // Flow Templates endpoint - Returns 6 complete sales flow templates
+  app.get("/api/flow-templates", (req: Request, res: Response) => {
+    try {
+      const templates = [
+        {
+          id: 'lead-qualification',
+          name: 'Calificación de Leads',
+          description: 'Flujo completo para calificar nuevos leads desde WhatsApp hasta cierre de venta',
+          category: 'Ventas',
+          difficulty: 'Principiante',
+          nodes: 8,
+          estimatedTime: '15 min',
+          icon: 'Target',
+          color: 'bg-blue-500',
+          tags: ['WhatsApp', 'Calificación', 'CRM']
+        },
+        {
+          id: 'ecommerce-sales',
+          name: 'Ventas E-commerce',
+          description: 'Automatización completa de ventas para tiendas online con seguimiento de carritos abandonados',
+          category: 'E-commerce',
+          difficulty: 'Avanzado',
+          nodes: 7,
+          estimatedTime: '25 min',
+          icon: 'ShoppingCart',
+          color: 'bg-purple-500',
+          tags: ['E-commerce', 'Carritos abandonados', 'Seguimiento']
+        },
+        {
+          id: 'customer-support',
+          name: 'Soporte al Cliente',
+          description: 'Sistema inteligente de atención al cliente con escalamiento automático y resolución de tickets',
+          category: 'Soporte',
+          difficulty: 'Intermedio',
+          nodes: 12,
+          estimatedTime: '30 min',
+          icon: 'Headphones',
+          color: 'bg-green-500',
+          tags: ['Soporte', 'Tickets', 'Escalamiento']
+        },
+        {
+          id: 'appointment-booking',
+          name: 'Reserva de Citas',
+          description: 'Sistema automatizado para agendar citas con integración de calendario y recordatorios',
+          category: 'Productividad',
+          difficulty: 'Intermedio',
+          nodes: 9,
+          estimatedTime: '20 min',
+          icon: 'Calendar',
+          color: 'bg-orange-500',
+          tags: ['Citas', 'Calendario', 'Recordatorios']
+        },
+        {
+          id: 'event-promotion',
+          name: 'Promoción de Eventos',
+          description: 'Campaña automatizada para promocionar eventos con segmentación de audiencia y seguimiento',
+          category: 'Marketing',
+          difficulty: 'Avanzado',
+          nodes: 11,
+          estimatedTime: '35 min',
+          icon: 'Megaphone',
+          color: 'bg-pink-500',
+          tags: ['Eventos', 'Marketing', 'Segmentación']
+        },
+        {
+          id: 'survey-feedback',
+          name: 'Encuestas y Feedback',
+          description: 'Sistema de recolección de feedback automatizado con análisis de sentimientos y reportes',
+          category: 'Investigación',
+          difficulty: 'Principiante',
+          nodes: 7,
+          estimatedTime: '18 min',
+          icon: 'BarChart3',
+          color: 'bg-cyan-500',
+          tags: ['Encuestas', 'Feedback', 'Análisis']
+        }
+      ];
+
+      console.log(`📋 Returning ${templates.length} flow templates`);
+      res.json(templates);
+    } catch (error) {
+      console.error('Error in flow templates:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // ***** RUTAS DE TICKETS CRÍTICAS *****
   app.get("/api/tickets", async (_req: Request, res: Response) => {
     try {
