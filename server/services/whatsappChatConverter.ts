@@ -3,9 +3,7 @@
  * Incluye análisis de contenido con IA y detección de interés
  */
 
-import { db } from '../db';
-import { leads } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { pool } from '../db';
 
 export interface WhatsAppChat {
   id: string;
@@ -34,22 +32,15 @@ export class WhatsAppChatConverter {
     updated: number;
     analyzed: number;
   }> {
-    console.log(`🔄 Iniciando conversión de chats para cuenta ${accountId}...`);
+    console.log(`🔄 Iniciando conversión de chats reales para cuenta ${accountId}...`);
 
     try {
-      // Try to fetch real WhatsApp chats, fallback to demo data if not available
-      let realChats: WhatsAppChat[] = [];
-      
-      try {
-        realChats = await this.fetchRealWhatsAppChats(accountId);
-      } catch (error) {
-        console.log('📱 WhatsApp no disponible, generando chats de demostración...');
-        realChats = this.generateRealisticChats();
-      }
+      // Fetch real WhatsApp chats from the direct API
+      const realChats = await this.fetchRealWhatsAppChats(accountId);
       
       if (realChats.length === 0) {
-        console.log('📱 Generando chats de demostración para la conversión...');
-        realChats = this.generateRealisticChats();
+        console.log('📱 No hay chats reales disponibles. Asegúrate de que WhatsApp esté conectado y autenticado.');
+        return { processed: 0, created: 0, updated: 0, analyzed: 0 };
       }
       
       let created = 0;
@@ -66,46 +57,57 @@ export class WhatsAppChatConverter {
           const interest = this.analyzeMessageContent(chat.lastMessage?.body || '');
           
           // Verificar si ya existe un lead para este número
-          const existingLeads = await db
-            .select()
-            .from(leads)
-            .where(eq(leads.phone, phoneNumber))
-            .limit(1);
+          const existingLead = await pool.query(
+            'SELECT id FROM leads WHERE phone = $1',
+            [phoneNumber]
+          );
 
-          if (existingLeads.length > 0) {
+          if (existingLead.rows.length > 0) {
             // Actualizar lead existente
-            await db
-              .update(leads)
-              .set({
-                notes: `Interés detectado: ${interest.category}. Último mensaje: ${chat.lastMessage?.body?.substring(0, 200) || 'Sin mensaje'}`,
-                lastContactDate: new Date(),
-                updatedAt: new Date()
-              })
-              .where(eq(leads.phone, phoneNumber));
+            await pool.query(`
+              UPDATE leads 
+              SET 
+                notes = $1,
+                "lastContactDate" = NOW(),
+                "updatedAt" = NOW()
+              WHERE phone = $2
+            `, [
+              `Interés detectado: ${interest.category}. Último mensaje: ${chat.lastMessage?.body?.substring(0, 200) || 'Sin mensaje'}`,
+              phoneNumber
+            ]);
             updated++;
           } else {
             // Crear nuevo lead
-            await db
-              .insert(leads)
-              .values({
-                name: contactName,
-                fullName: contactName,
-                phone: phoneNumber,
-                source: 'WhatsApp',
-                status: 'new',
-                notes: `Interés detectado: ${interest.category}. Último mensaje: ${chat.lastMessage?.body?.substring(0, 200) || 'Sin mensaje'}`,
-                value: interest.estimatedBudget.toString(),
-                priority: interest.priority,
-                stage: 'prospecting',
-                whatsappAccountId: accountId,
-                lastContactDate: new Date(),
-                probability: interest.conversionProbability,
-                tags: [interest.category],
-                company: '',
-                email: '',
-                assignedTo: 1,
-                currency: 'USD'
-              });
+            await pool.query(`
+              INSERT INTO leads (
+                name, 
+                "fullName",
+                phone, 
+                source, 
+                status, 
+                notes, 
+                budget, 
+                priority, 
+                stage,
+                "whatsappAccountId",
+                "createdAt",
+                "lastContactDate",
+                probability
+              )
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW(), $11)
+            `, [
+              contactName,
+              contactName,
+              phoneNumber,
+              'WhatsApp',
+              'new',
+              `Interés detectado: ${interest.category}. Último mensaje: ${chat.lastMessage?.body?.substring(0, 200) || 'Sin mensaje'}`,
+              interest.estimatedBudget,
+              interest.priority,
+              'prospecting',
+              accountId,
+              interest.conversionProbability
+            ]);
             created++;
           }
           
@@ -136,40 +138,7 @@ export class WhatsAppChatConverter {
     try {
       console.log(`📱 Obteniendo chats reales de WhatsApp para cuenta ${accountId}...`);
       
-      // First check if we have an active WhatsApp connection
-      const { whatsappMultiAccountManager } = await import('./whatsappMultiAccountManager');
-      
-      // Try to get chats through the multi-account manager first
-      try {
-        const client = whatsappMultiAccountManager.getClient(accountId);
-        if (client && client.info && client.info.wid) {
-          console.log('📱 Cliente WhatsApp encontrado, obteniendo chats...');
-          const chats = await client.getChats();
-          
-          if (chats && chats.length > 0) {
-            console.log(`✅ ${chats.length} chats obtenidos directamente del cliente`);
-            return chats.slice(0, 10).map(chat => ({
-              id: chat.id._serialized,
-              name: chat.name || chat.contact?.name || chat.id.user,
-              lastMessage: chat.lastMessage ? {
-                body: chat.lastMessage.body || '',
-                timestamp: chat.lastMessage.timestamp,
-                fromMe: chat.lastMessage.fromMe
-              } : undefined,
-              unreadCount: chat.unreadCount || 0,
-              isGroup: chat.isGroup,
-              contact: {
-                name: chat.contact?.name || chat.name || chat.id.user,
-                number: chat.id.user
-              }
-            }));
-          }
-        }
-      } catch (clientError) {
-        console.log('⚠️ Error accediendo al cliente directo:', clientError.message);
-      }
-      
-      // Fallback to API endpoint
+      // Make request to the direct WhatsApp API endpoint
       const response = await fetch('http://localhost:5000/api/direct/whatsapp/chats', {
         method: 'GET',
         headers: {
@@ -178,8 +147,8 @@ export class WhatsAppChatConverter {
       });
 
       if (!response.ok) {
-        console.log('⚠️ API endpoint no disponible, generando chats de demostración...');
-        return this.generateRealisticChats();
+        console.log('⚠️ WhatsApp API no disponible, verificando conexión...');
+        return [];
       }
 
       const chatsData = await response.json();
@@ -210,8 +179,8 @@ export class WhatsAppChatConverter {
 
     } catch (error) {
       console.error('Error fetching real WhatsApp chats:', error);
-      console.log('📱 WhatsApp no está conectado completamente. Generando chats de demostración...');
-      return this.generateRealisticChats();
+      console.log('📱 WhatsApp no está conectado. Asegúrate de escanear el código QR para obtener datos reales.');
+      return [];
     }
   }
 
