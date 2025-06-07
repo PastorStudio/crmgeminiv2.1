@@ -4,7 +4,7 @@ services:
   # Main Application Service
   app:
     image: 
-      dockerfile: ./Dockerfile
+      dockerfile: Dockerfile
       context: .
     deploy:
       replicas: 1
