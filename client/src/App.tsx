@@ -48,6 +48,7 @@ import SalesFlowDesigner from './pages/SalesFlowDesigner';
 import FlowTemplates from './pages/FlowTemplates';
 import SystemStatus from './pages/SystemStatus';
 import WhatsAppAuth from './pages/WhatsAppAuth';
+import { FunctionDocumentation } from './pages/FunctionDocumentation';
 import NotificationSystem from './components/NotificationSystem';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
@@ -393,6 +394,18 @@ const AppRoutes: React.FC = () => {
                 </svg>
                 Gemini AI
               </a>
+
+              <a href="/function-documentation" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/function-documentation' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="18" height="18" rx="3" fill="#DC2626"/>
+                  <rect x="6" y="7" width="12" height="2" rx="1" fill="white"/>
+                  <rect x="6" y="11" width="8" height="2" rx="1" fill="white"/>
+                  <rect x="6" y="15" width="10" height="2" rx="1" fill="white"/>
+                  <circle cx="18" cy="6" r="2" fill="#EF4444"/>
+                  <rect x="17" y="5" width="2" height="2" rx="0.5" fill="white"/>
+                </svg>
+                Documentación
+              </a>
               
               <a href="/media-gallery" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/media-gallery' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -644,6 +657,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/tickets" component={() => <PrivateRoute component={TicketsSimple} path="/tickets" />} />
                 <Route path="/analytics" component={() => <PrivateRoute component={Analytics} path="/analytics" />} />
                 <Route path="/gemini-ai" component={() => <PrivateRoute component={GeminiAI} path="/gemini-ai" />} />
+                <Route path="/function-documentation" component={() => <PrivateRoute component={FunctionDocumentation} path="/function-documentation" />} />
                 <Route path="/settings" component={() => <PrivateRoute component={Settings} path="/settings" />} />
                 <Route path="/ai-settings" component={() => <PrivateRoute component={AISettings} path="/ai-settings" />} />
 
