@@ -589,64 +589,7 @@ const WhatsAppAccounts = () => {
     }
   };
   
-  // Session management handlers
-  const recoverSessionMutation = useMutation({
-    mutationFn: async (accountId: number) => {
-      return await apiRequest(`/api/whatsapp-accounts/${accountId}/recover-session`, {
-        method: 'POST'
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Sesión recuperada",
-        description: "Se ha iniciado la recuperación de sesión",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "No se pudo recuperar la sesión",
-        variant: "destructive",
-      });
-    }
-  });
-
-  const cleanSessionMutation = useMutation({
-    mutationFn: async (accountId: number) => {
-      return await apiRequest(`/api/whatsapp-accounts/${accountId}/clean-session`, {
-        method: 'POST'
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Sesión limpiada",
-        description: "Se ha limpiado y reinicializado la sesión",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
-      refetchQr();
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "No se pudo limpiar la sesión",
-        variant: "destructive",
-      });
-    }
-  });
-
-  // Session handlers
-  const handleRecoverSession = () => {
-    if (selectedAccount) {
-      recoverSessionMutation.mutate(selectedAccount.id);
-    }
-  };
-
-  const handleCleanSession = () => {
-    if (selectedAccount) {
-      cleanSessionMutation.mutate(selectedAccount.id);
-    }
-  };
+  // Session handlers using existing mutations
 
   // Desconectar cuenta
   const handleDisconnect = () => {
