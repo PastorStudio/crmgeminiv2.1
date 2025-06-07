@@ -108,20 +108,20 @@ export function registerOptimizedRoutes(app: Express): Server {
   // ***** GESTIÓN AUTOMÁTICA DE CLAVES GEMINI *****
   app.get("/api/settings/gemini-client-key", async (req: Request, res: Response) => {
     try {
-      const { geminiApiKeyManager } = await import('../services/geminiApiKeyManager');
-      const apiKey = await geminiApiKeyManager.getCurrentApiKey();
+      const { apiKeyManager } = await import('./services/apiKeyManager');
+      const apiKey = apiKeyManager.getGeminiKey();
       
       res.json({
         success: true,
         apiKey: apiKey,
         generated: true,
-        message: "Clave API de Gemini generada automáticamente"
+        message: "Clave API de Gemini obtenida correctamente"
       });
     } catch (error) {
       console.error("Error obteniendo clave API de Gemini:", error);
       res.status(500).json({
         success: false,
-        message: "Error al generar clave API de Gemini automáticamente"
+        message: "Error al obtener clave API de Gemini"
       });
     }
   });
