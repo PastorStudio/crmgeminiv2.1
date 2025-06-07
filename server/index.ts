@@ -39,7 +39,7 @@ import { trulyIndependentAutoResponseSystem } from './services/trulyIndependentA
 import { autonomousWhatsAppConnectionManager } from './services/autonomousWhatsAppConnection';
 import { fullSystemActivator } from './services/fullSystemActivator';
 import { RealWhatsAppActivator } from './services/realWhatsAppActivator';
-import { notificationService } from './services/notificationWebSocket';
+import { notificationService } from './services/notificationService';
 import { aiResponseService } from './services/aiAutonomousResponse';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
@@ -692,6 +692,25 @@ app.get("/bypass/deepseek-status/:accountId", (req: Request, res: Response) => {
   
   console.log('✅ [BYPASS] Estado enviado:', response);
   res.status(200).end(JSON.stringify(response));
+});
+
+// === ENDPOINTS DE NOTIFICACIONES (ANTES DE VITE) ===
+app.get('/api/notifications/status', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache');
+  
+  const stats = notificationService.getStats();
+  res.status(200).json(stats);
+});
+
+app.post('/api/notifications/test', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache');
+  
+  notificationService.notifySystemAlert('Prueba', 'Notificación de prueba funcionando');
+  res.status(200).json({ success: true, message: 'Notificación de prueba enviada' });
 });
 
 // === ENDPOINTS DEEPSEEK DIRECTOS (ANTES DE VITE) ===
@@ -6158,6 +6177,16 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
         // Inicializar sistema de notificaciones WebSocket
         console.log('🔔 Iniciando sistema de notificaciones en tiempo real...');
         notificationService.initialize(server);
+        
+        // Agregar endpoints de notificaciones
+        app.get('/api/notifications/status', (req, res) => {
+          res.json(notificationService.getStats());
+        });
+        
+        app.post('/api/notifications/test', (req, res) => {
+          notificationService.notifySystemAlert('Prueba', 'Notificación de prueba funcionando');
+          res.json({ success: true, message: 'Notificación de prueba enviada' });
+        });
         console.log('🚀 Servicio de notificaciones en tiempo real iniciado');
         
         // Inicializar sistema de respuestas autónomas AI
