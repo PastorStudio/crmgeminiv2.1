@@ -3991,20 +3991,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     setTimeout(() => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
-          type: 'connection_status',
-          status: 'connected',
-          timestamp: Date.now()
+          type: 'connection_confirmed',
+          timestamp: Date.now(),
+          message: 'Conectado al sistema de notificaciones'
         }));
       }
     }, 100);
     
-    // Evento cuando se recibe un mensaje del cliente
-    ws.on('message', (message: any) => {
+    // Manejar mensajes del cliente
+    ws.on('message', (data: Buffer) => {
       try {
-        let parsedMessage: any;
+        const message = JSON.parse(data.toString());
+        console.log('📨 Mensaje WebSocket recibido:', message);
         
-        if (typeof message === 'string') {
-          parsedMessage = JSON.parse(message);
+        // Handle notification subscription
+        if (message.type === 'subscribe_notifications') {
+          (ws as any).subscribedToNotifications = true;
+          ws.send(JSON.stringify({
+            type: 'subscription_confirmed',
+            timestamp: Date.now()
+          }));
+        }
+      } catch (error) {
+        console.error('Error procesando mensaje WebSocket:', error);
+      }
+    });
+    
+    // Manejar desconexión
+    ws.on('close', () => {
+      console.log('🔌 Cliente WebSocket desconectado');
+      clients.delete(ws);
+    });
+    
+    ws.on('error', (error) => {
+      console.error('❌ Error WebSocket:', error);
+      clients.delete(ws);
+    });
+  });
+  
+  // Función global para enviar notificaciones a todos los clientes conectados
+  const broadcastNotification = (notification: any) => {
+    const message = JSON.stringify(notification);
+    clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN && (client as any).subscribedToNotifications) {
+        try {
+          client.send(message);
+        } catch (error) {
+          console.error('Error enviando notificación:', error);
+          clients.delete(client);
+        }
+      }
+    });
+  };
+  
+  // Hacer la función disponible globalmente para otros servicios
+  global.broadcastNotification = broadcastNotification;
+  
+  // Keepalive para mantener conexiones activas
+  setInterval(() => {
+    clients.forEach((client) => {
+      if ((client as any).isAlive === false) {
+        client.terminate();
+        clients.delete(client);
+        return;
+      }
+      
+      (client as any).isAlive = false;
+      if (client.readyState === WebSocket.OPEN) {
+        client.ping();
+      }
+    });
+  }, 30000);
+
+  // API endpoints para notificaciones
+  app.get('/api/notifications/status', (req: Request, res: Response) => {
+    res.json({
+      success: true,
+      connectedClients: clients.size,
+      isActive: true,
+      lastCheck: Date.now()
+    });
+  });
+
+  app.post('/api/notifications/test', (req: Request, res: Response) => {
+    try {
+      const testNotification = {
+        id: `test-${Date.now()}`,
+        type: 'system_alert',
+        title: 'Notificación de Prueba',
+        message: 'Sistema de notificaciones funcionando correctamente',
+        timestamp: Date.now(),
+        urgent: false
+      };
+      
+      broadcastNotification(testNotification);
+      
+      res.json({
+        success: true,
+        message: 'Notificación de prueba enviada',
+        clientCount: clients.size
+      });
+    } catch (error) {
+      console.error('Error enviando notificación de prueba:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error enviando notificación de prueba'
+      });
+    }
+  });
         } else if (message instanceof Buffer) {
           parsedMessage = JSON.parse(message.toString('utf8'));
         } else {

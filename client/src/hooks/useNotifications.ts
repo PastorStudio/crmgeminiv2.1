@@ -34,9 +34,9 @@ export function useNotifications() {
 
   const connect = useCallback(() => {
     try {
+      // Use the same host and port as the main application for notifications
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.hostname;
-      const wsUrl = `${protocol}//${host}:3001/notifications`;
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
       
       console.log('🔔 Conectando a notificaciones:', wsUrl);
       
