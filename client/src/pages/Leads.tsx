@@ -35,11 +35,19 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 // Type definitions for WhatsApp API responses
 interface WhatsAppAccount {
   id: number;
-  accountName: string;
-  phoneNumber: string;
-  authenticated: boolean;
-  ready: boolean;
+  name: string;
+  ownerPhone: string;
   status: string;
+  currentStatus?: {
+    authenticated: boolean;
+    ready: boolean;
+    initialized: boolean;
+    pingStatus?: {
+      isActive: boolean;
+      lastPing: number;
+      pingCount: number;
+    };
+  };
 }
 
 interface WhatsAppStatusResponse {
@@ -76,7 +84,10 @@ export default function Leads() {
   const isWhatsAppConnected = Boolean(
     whatsappStatus?.success && 
     whatsappStatus?.accounts?.some((account) => 
-      account.authenticated === true || account.ready === true
+      account.currentStatus?.authenticated === true || 
+      account.currentStatus?.ready === true ||
+      account.status === 'active' ||
+      account.status === 'connected'
     )
   );
 
