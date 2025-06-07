@@ -1123,37 +1123,227 @@ export async function registerRoutes(app: Express): Promise<Server> {
           tags: ['WhatsApp', 'Calificación', 'CRM'],
           flowData: {
             nodes: [
-              { id: '1', type: 'trigger', position: { x: 100, y: 100 }, data: { label: 'Mensaje WhatsApp recibido' } },
-              { id: '2', type: 'ai', position: { x: 300, y: 100 }, data: { label: 'Análisis IA del mensaje' } },
-              { id: '3', type: 'condition', position: { x: 500, y: 100 }, data: { label: '¿Es lead válido?' } },
-              { id: '4', type: 'action', position: { x: 700, y: 50 }, data: { label: 'Crear lead en CRM' } },
-              { id: '5', type: 'action', position: { x: 700, y: 150 }, data: { label: 'Enviar mensaje automático' } }
+              { id: '1', type: 'trigger', position: { x: 250, y: 50 }, data: { label: 'Mensaje WhatsApp recibido', description: 'Cliente inicia conversación' } },
+              { id: '2', type: 'condition', position: { x: 250, y: 200 }, data: { label: 'Análisis IA del mensaje', description: 'Verificar intención del cliente' } },
+              { id: '3', type: 'condition', position: { x: 450, y: 200 }, data: { label: '¿Es lead válido?', description: 'Evaluar potencial de venta' } },
+              { id: '4', type: 'action', position: { x: 650, y: 150 }, data: { label: 'Crear lead en CRM', description: 'Registrar nuevo prospecto' } },
+              { id: '5', type: 'response', position: { x: 650, y: 250 }, data: { label: 'Mensaje de bienvenida', description: 'Enviar saludo personalizado' } },
+              { id: '6', type: 'automation', position: { x: 450, y: 350 }, data: { label: 'Asignar agente', description: 'Transferir a vendedor' } },
+              { id: '7', type: 'webhook', position: { x: 250, y: 350 }, data: { label: 'Notificar CRM', description: 'Actualizar sistema' } },
+              { id: '8', type: 'delay', position: { x: 50, y: 200 }, data: { label: 'Esperar respuesta', description: 'Aguardar 5 minutos' } }
             ],
             edges: [
               { id: 'e1-2', source: '1', target: '2' },
               { id: 'e2-3', source: '2', target: '3' },
               { id: 'e3-4', source: '3', target: '4' },
-              { id: 'e3-5', source: '3', target: '5' }
+              { id: 'e3-5', source: '3', target: '5' },
+              { id: 'e4-6', source: '4', target: '6' },
+              { id: 'e5-6', source: '5', target: '6' },
+              { id: 'e6-7', source: '6', target: '7' },
+              { id: 'e1-8', source: '1', target: '8' }
+            ]
+          }
+        },
+        {
+          id: 'ecommerce-sales',
+          name: 'Ventas E-commerce',
+          description: 'Automatización completa de ventas para tiendas online con seguimiento de carritos abandonados',
+          category: 'E-commerce',
+          difficulty: 'Intermedio',
+          nodes: 10,
+          estimatedTime: '25 min',
+          icon: 'ShoppingCart',
+          color: 'bg-green-500',
+          tags: ['E-commerce', 'Carritos', 'Recuperación'],
+          flowData: {
+            nodes: [
+              { id: '1', type: 'trigger', position: { x: 100, y: 50 }, data: { label: 'Carrito abandonado', description: 'Cliente dejó productos' } },
+              { id: '2', type: 'delay', position: { x: 300, y: 50 }, data: { label: 'Esperar 1 hora', description: 'Tiempo de gracia' } },
+              { id: '3', type: 'condition', position: { x: 500, y: 50 }, data: { label: '¿Aún sin comprar?', description: 'Verificar estado' } },
+              { id: '4', type: 'response', position: { x: 700, y: 50 }, data: { label: 'Recordatorio personal', description: 'Mensaje con descuento' } },
+              { id: '5', type: 'condition', position: { x: 500, y: 200 }, data: { label: '¿Cliente responde?', description: 'Evaluar interés' } },
+              { id: '6', type: 'automation', position: { x: 700, y: 200 }, data: { label: 'Transferir a ventas', description: 'Agente especializado' } },
+              { id: '7', type: 'delay', position: { x: 300, y: 350 }, data: { label: 'Esperar 24h', description: 'Segundo intento' } },
+              { id: '8', type: 'response', position: { x: 500, y: 350 }, data: { label: 'Oferta especial', description: 'Descuento mayor' } },
+              { id: '9', type: 'webhook', position: { x: 700, y: 350 }, data: { label: 'Actualizar CRM', description: 'Registrar interacción' } },
+              { id: '10', type: 'validation', position: { x: 100, y: 200 }, data: { label: 'Validar productos', description: 'Verificar disponibilidad' } }
+            ],
+            edges: [
+              { id: 'e1-2', source: '1', target: '2' },
+              { id: 'e2-3', source: '2', target: '3' },
+              { id: 'e3-4', source: '3', target: '4' },
+              { id: 'e4-5', source: '4', target: '5' },
+              { id: 'e5-6', source: '5', target: '6' },
+              { id: 'e3-7', source: '3', target: '7' },
+              { id: 'e7-8', source: '7', target: '8' },
+              { id: 'e8-9', source: '8', target: '9' },
+              { id: 'e1-10', source: '1', target: '10' },
+              { id: 'e10-5', source: '10', target: '5' }
             ]
           }
         },
         {
           id: 'customer-support',
           name: 'Soporte al Cliente',
-          description: 'Sistema automatizado de tickets y respuestas para soporte técnico',
+          description: 'Sistema automatizado de atención al cliente con escalamiento inteligente a agentes humanos',
           category: 'Soporte',
-          difficulty: 'Intermedio',
+          difficulty: 'Avanzado',
           nodes: 12,
-          estimatedTime: '25 min',
-          icon: 'MessageSquare',
-          color: 'bg-green-500',
-          tags: ['Tickets', 'Automatización', 'IA'],
+          estimatedTime: '30 min',
+          icon: 'HeadphonesIcon',
+          color: 'bg-purple-500',
+          tags: ['Soporte', 'Escalamiento', 'IA'],
           flowData: {
             nodes: [
-              { id: '1', type: 'trigger', position: { x: 100, y: 100 }, data: { label: 'Consulta cliente recibida' } },
-              { id: '2', type: 'ai', position: { x: 300, y: 100 }, data: { label: 'Análisis IA de consulta' } },
-              { id: '3', type: 'condition', position: { x: 500, y: 100 }, data: { label: '¿Problema común?' } },
-              { id: '4', type: 'action', position: { x: 700, y: 50 }, data: { label: 'Respuesta automática' } },
+              { id: '1', type: 'trigger', position: { x: 150, y: 50 }, data: { label: 'Solicitud de soporte', description: 'Cliente pide ayuda' } },
+              { id: '2', type: 'condition', position: { x: 150, y: 200 }, data: { label: 'Categorizar problema', description: 'IA analiza consulta' } },
+              { id: '3', type: 'response', position: { x: 50, y: 350 }, data: { label: 'FAQ automática', description: 'Respuesta predefinida' } },
+              { id: '4', type: 'automation', position: { x: 250, y: 350 }, data: { label: 'Agente técnico', description: 'Problema complejo' } },
+              { id: '5', type: 'handoff', position: { x: 450, y: 350 }, data: { label: 'Supervisor', description: 'Escalamiento nivel 2' } },
+              { id: '6', type: 'validation', position: { x: 350, y: 200 }, data: { label: 'Verificar usuario', description: 'Autenticación cliente' } },
+              { id: '7', type: 'webhook', position: { x: 550, y: 200 }, data: { label: 'Crear ticket', description: 'Sistema de tickets' } },
+              { id: '8', type: 'delay', position: { x: 350, y: 50 }, data: { label: 'Tiempo respuesta', description: 'SLA 2 minutos' } },
+              { id: '9', type: 'condition', position: { x: 650, y: 350 }, data: { label: '¿Problema resuelto?', description: 'Verificar satisfacción' } },
+              { id: '10', type: 'response', position: { x: 750, y: 250 }, data: { label: 'Encuesta satisfacción', description: 'Calificar servicio' } },
+              { id: '11', type: 'automation', position: { x: 750, y: 450 }, data: { label: 'Reabrir caso', description: 'Seguimiento adicional' } },
+              { id: '12', type: 'broadcast', position: { x: 450, y: 50 }, data: { label: 'Notificar equipo', description: 'Alertar responsables' } }
+            ],
+            edges: [
+              { id: 'e1-2', source: '1', target: '2' },
+              { id: 'e2-3', source: '2', target: '3' },
+              { id: 'e2-4', source: '2', target: '4' },
+              { id: 'e2-6', source: '2', target: '6' },
+              { id: 'e6-7', source: '6', target: '7' },
+              { id: 'e4-5', source: '4', target: '5' },
+              { id: 'e1-8', source: '1', target: '8' },
+              { id: 'e8-12', source: '8', target: '12' },
+              { id: 'e5-9', source: '5', target: '9' },
+              { id: 'e9-10', source: '9', target: '10' },
+              { id: 'e9-11', source: '9', target: '11' },
+              { id: 'e7-9', source: '7', target: '9' }
+            ]
+          }
+        },
+        {
+          id: 'appointment-booking',
+          name: 'Reserva de Citas',
+          description: 'Sistema automatizado para agendar citas con integración de calendario y recordatorios',
+          category: 'Productividad',
+          difficulty: 'Intermedio',
+          nodes: 9,
+          estimatedTime: '20 min',
+          icon: 'Calendar',
+          color: 'bg-orange-500',
+          tags: ['Citas', 'Calendario', 'Recordatorios'],
+          flowData: {
+            nodes: [
+              { id: '1', type: 'trigger', position: { x: 200, y: 50 }, data: { label: 'Solicitar cita', description: 'Cliente pide reunión' } },
+              { id: '2', type: 'condition', position: { x: 200, y: 200 }, data: { label: 'Verificar disponibilidad', description: 'Consultar agenda' } },
+              { id: '3', type: 'response', position: { x: 400, y: 200 }, data: { label: 'Mostrar horarios', description: 'Opciones disponibles' } },
+              { id: '4', type: 'validation', position: { x: 600, y: 200 }, data: { label: 'Confirmar selección', description: 'Validar horario elegido' } },
+              { id: '5', type: 'webhook', position: { x: 600, y: 350 }, data: { label: 'Crear evento', description: 'Agregar a calendario' } },
+              { id: '6', type: 'response', position: { x: 400, y: 350 }, data: { label: 'Confirmación', description: 'Detalles de la cita' } },
+              { id: '7', type: 'schedule', position: { x: 200, y: 350 }, data: { label: 'Recordatorio 24h', description: 'Notificación previa' } },
+              { id: '8', type: 'schedule', position: { x: 50, y: 200 }, data: { label: 'Recordatorio 1h', description: 'Alerta final' } },
+              { id: '9', type: 'automation', position: { x: 50, y: 350 }, data: { label: 'Follow-up', description: 'Encuesta post-cita' } }
+            ],
+            edges: [
+              { id: 'e1-2', source: '1', target: '2' },
+              { id: 'e2-3', source: '2', target: '3' },
+              { id: 'e3-4', source: '3', target: '4' },
+              { id: 'e4-5', source: '4', target: '5' },
+              { id: 'e5-6', source: '5', target: '6' },
+              { id: 'e6-7', source: '6', target: '7' },
+              { id: 'e7-8', source: '7', target: '8' },
+              { id: 'e8-9', source: '8', target: '9' },
+              { id: 'e2-8', source: '2', target: '8' }
+            ]
+          }
+        },
+        {
+          id: 'event-promotion',
+          name: 'Promoción de Eventos',
+          description: 'Campaña automatizada para promocionar eventos con segmentación de audiencia y seguimiento',
+          category: 'Marketing',
+          difficulty: 'Avanzado',
+          nodes: 11,
+          estimatedTime: '35 min',
+          icon: 'Megaphone',
+          color: 'bg-pink-500',
+          tags: ['Eventos', 'Marketing', 'Segmentación'],
+          flowData: {
+            nodes: [
+              { id: '1', type: 'trigger', position: { x: 100, y: 50 }, data: { label: 'Lanzar campaña', description: 'Iniciar promoción evento' } },
+              { id: '2', type: 'condition', position: { x: 300, y: 50 }, data: { label: 'Segmentar audiencia', description: 'Filtrar por intereses' } },
+              { id: '3', type: 'broadcast', position: { x: 500, y: 50 }, data: { label: 'Envío masivo', description: 'Mensaje promocional' } },
+              { id: '4', type: 'condition', position: { x: 700, y: 50 }, data: { label: '¿Interés mostrado?', description: 'Analizar respuestas' } },
+              { id: '5', type: 'response', position: { x: 700, y: 200 }, data: { label: 'Información detallada', description: 'Datos del evento' } },
+              { id: '6', type: 'validation', position: { x: 500, y: 200 }, data: { label: 'Confirmar asistencia', description: 'Registro de participantes' } },
+              { id: '7', type: 'webhook', position: { x: 300, y: 200 }, data: { label: 'Actualizar lista', description: 'CRM de asistentes' } },
+              { id: '8', type: 'schedule', position: { x: 100, y: 200 }, data: { label: 'Recordatorio previo', description: '48h antes del evento' } },
+              { id: '9', type: 'schedule', position: { x: 100, y: 350 }, data: { label: 'Recordatorio día', description: 'Mañana del evento' } },
+              { id: '10', type: 'automation', position: { x: 300, y: 350 }, data: { label: 'Check-in digital', description: 'Validar asistencia' } },
+              { id: '11', type: 'delay', position: { x: 500, y: 350 }, data: { label: 'Post-evento', description: 'Seguimiento 24h después' } }
+            ],
+            edges: [
+              { id: 'e1-2', source: '1', target: '2' },
+              { id: 'e2-3', source: '2', target: '3' },
+              { id: 'e3-4', source: '3', target: '4' },
+              { id: 'e4-5', source: '4', target: '5' },
+              { id: 'e5-6', source: '5', target: '6' },
+              { id: 'e6-7', source: '6', target: '7' },
+              { id: 'e7-8', source: '7', target: '8' },
+              { id: 'e8-9', source: '8', target: '9' },
+              { id: 'e9-10', source: '9', target: '10' },
+              { id: 'e10-11', source: '10', target: '11' },
+              { id: 'e4-11', source: '4', target: '11' }
+            ]
+          }
+        },
+        {
+          id: 'survey-feedback',
+          name: 'Encuestas y Feedback',
+          description: 'Sistema de recolección de feedback automatizado con análisis de sentimientos y reportes',
+          category: 'Investigación',
+          difficulty: 'Principiante',
+          nodes: 7,
+          estimatedTime: '18 min',
+          icon: 'BarChart3',
+          color: 'bg-cyan-500',
+          tags: ['Encuestas', 'Feedback', 'Análisis'],
+          flowData: {
+            nodes: [
+              { id: '1', type: 'trigger', position: { x: 200, y: 50 }, data: { label: 'Activar encuesta', description: 'Iniciar recolección feedback' } },
+              { id: '2', type: 'response', position: { x: 200, y: 200 }, data: { label: 'Enviar preguntas', description: 'Cuestionario estructurado' } },
+              { id: '3', type: 'validation', position: { x: 400, y: 200 }, data: { label: 'Validar respuestas', description: 'Verificar completitud' } },
+              { id: '4', type: 'condition', position: { x: 600, y: 200 }, data: { label: 'Análisis de sentimiento', description: 'IA evalúa respuestas' } },
+              { id: '5', type: 'webhook', position: { x: 600, y: 350 }, data: { label: 'Guardar en base', description: 'Almacenar resultados' } },
+              { id: '6', type: 'automation', position: { x: 400, y: 350 }, data: { label: 'Generar reporte', description: 'Dashboard automático' } },
+              { id: '7', type: 'response', position: { x: 200, y: 350 }, data: { label: 'Agradecer participación', description: 'Mensaje de cierre' } }
+            ],
+            edges: [
+              { id: 'e1-2', source: '1', target: '2' },
+              { id: 'e2-3', source: '2', target: '3' },
+              { id: 'e3-4', source: '3', target: '4' },
+              { id: 'e4-5', source: '4', target: '5' },
+              { id: 'e5-6', source: '5', target: '6' },
+              { id: 'e6-7', source: '6', target: '7' },
+              { id: 'e3-7', source: '3', target: '7' }
+            ]
+          }
+        }
+      ];
+
+      console.log(`📋 Enviando ${flowTemplates.length} plantillas de flujo completas`);
+      res.json(flowTemplates);
+    } catch (error) {
+      console.error('Error al obtener plantillas de flujo:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al cargar plantillas de flujo" 
+      });
+    }
+  });
               { id: '5', type: 'action', position: { x: 700, y: 150 }, data: { label: 'Crear ticket soporte' } }
             ],
             edges: [
