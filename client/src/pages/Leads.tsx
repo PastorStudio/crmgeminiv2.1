@@ -31,6 +31,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Lead } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+
+// Type definitions for WhatsApp API responses
+interface WhatsAppAccount {
+  id: number;
+  accountName: string;
+  phoneNumber: string;
+  authenticated: boolean;
+  ready: boolean;
+  status: string;
+}
+
+interface WhatsAppStatusResponse {
+  success: boolean;
+  accounts: WhatsAppAccount[];
+}
 import { useToast } from "@/hooks/use-toast";
 import LeadForm from "@/components/leads/LeadForm";
 import { LeadDetail } from "@/components/leads/LeadDetail";
@@ -52,16 +67,18 @@ export default function Leads() {
   });
 
   // Check WhatsApp connection status
-  const { data: whatsappStatus } = useQuery({
+  const { data: whatsappStatus } = useQuery<WhatsAppStatusResponse>({
     queryKey: ["/api/whatsapp-accounts"],
     refetchInterval: 10000, // Check every 10 seconds
   });
 
   // Determine if WhatsApp is connected
-  const isWhatsAppConnected = whatsappStatus?.success && 
-    whatsappStatus?.accounts?.some((account: any) => 
+  const isWhatsAppConnected = Boolean(
+    whatsappStatus?.success && 
+    whatsappStatus?.accounts?.some((account) => 
       account.authenticated === true || account.ready === true
-    );
+    )
+  );
 
   // Get connection status text and color
   const getConnectionStatus = () => {
