@@ -128,31 +128,35 @@ export function registerOptimizedRoutes(app: Express): Server {
 
   app.post("/api/settings/gemini-rotate-key", async (req: Request, res: Response) => {
     try {
-      const { geminiApiKeyManager } = await import('../services/geminiApiKeyManager');
-      const newApiKey = await geminiApiKeyManager.forceKeyRotation();
+      const { apiKeyManager } = await import('./services/apiKeyManager');
+      const currentKey = apiKeyManager.getGeminiKey();
       
       res.json({
         success: true,
-        apiKey: newApiKey,
-        message: "Nueva clave API de Gemini generada automáticamente"
+        apiKey: currentKey,
+        message: "Clave API de Gemini obtenida correctamente"
       });
     } catch (error) {
-      console.error("Error rotando clave API:", error);
+      console.error("Error obteniendo clave API:", error);
       res.status(500).json({
         success: false,
-        message: "Error al rotar clave API de Gemini"
+        message: "Error al obtener clave API de Gemini"
       });
     }
   });
 
   app.get("/api/settings/gemini-key-stats", async (req: Request, res: Response) => {
     try {
-      const { geminiApiKeyManager } = await import('../services/geminiApiKeyManager');
-      const stats = geminiApiKeyManager.getKeyStats();
+      const { apiKeyManager } = await import('./services/apiKeyManager');
+      const currentKey = apiKeyManager.getGeminiKey();
       
       res.json({
         success: true,
-        stats: stats
+        stats: {
+          hasKey: !!currentKey,
+          keyLength: currentKey ? currentKey.length : 0,
+          lastUpdated: new Date().toISOString()
+        }
       });
     } catch (error) {
       console.error("Error obteniendo estadísticas de clave:", error);
