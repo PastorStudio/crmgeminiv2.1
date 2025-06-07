@@ -527,6 +527,25 @@ const WhatsAppAccounts = () => {
     }
   };
 
+  // Auto-create leads when account connects
+  const handleAutoCreateLeads = async (accountId: number) => {
+    try {
+      console.log('🎯 Auto-creating leads for account:', accountId);
+      const response = await apiRequest(`/api/whatsapp/auto-create-leads/${accountId}`, {
+        method: 'POST'
+      });
+      
+      if (response.success && response.leadsCreated > 0) {
+        toast({
+          title: "Leads creados automáticamente",
+          description: `Se crearon ${response.leadsCreated} nuevos leads desde los chats de WhatsApp`,
+        });
+      }
+    } catch (error) {
+      console.error('Error auto-creating leads:', error);
+    }
+  };
+
   // Actualizar QR code - usar endpoint de force refresh
   const handleRefreshQR = async () => {
     if (!selectedAccount) return;
@@ -548,6 +567,11 @@ const WhatsAppAccounts = () => {
         
         // Refrescar el QR después del force refresh
         refetchQr();
+        
+        // Invalidar queries para forzar actualización
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts', selectedAccount.id, 'qrcode'] });
+        
         toast({
           title: "QR actualizado",
           description: "Se ha generado un nuevo código QR",
@@ -565,6 +589,65 @@ const WhatsAppAccounts = () => {
     }
   };
   
+  // Session management handlers
+  const recoverSessionMutation = useMutation({
+    mutationFn: async (accountId: number) => {
+      return await apiRequest(`/api/whatsapp-accounts/${accountId}/recover-session`, {
+        method: 'POST'
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sesión recuperada",
+        description: "Se ha iniciado la recuperación de sesión",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo recuperar la sesión",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const cleanSessionMutation = useMutation({
+    mutationFn: async (accountId: number) => {
+      return await apiRequest(`/api/whatsapp-accounts/${accountId}/clean-session`, {
+        method: 'POST'
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sesión limpiada",
+        description: "Se ha limpiado y reinicializado la sesión",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+      refetchQr();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo limpiar la sesión",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Session handlers
+  const handleRecoverSession = () => {
+    if (selectedAccount) {
+      recoverSessionMutation.mutate(selectedAccount.id);
+    }
+  };
+
+  const handleCleanSession = () => {
+    if (selectedAccount) {
+      cleanSessionMutation.mutate(selectedAccount.id);
+    }
+  };
+
   // Desconectar cuenta
   const handleDisconnect = () => {
     if (selectedAccount) {

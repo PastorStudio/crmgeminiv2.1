@@ -2997,6 +2997,141 @@ app.use((req, res, next) => {
     }
   });
 
+  // ===== AUTOMATIC LEAD CREATION FROM WHATSAPP CHATS =====
+  
+  // Auto-create leads from WhatsApp chats when accounts connect
+  app.post('/api/whatsapp/auto-create-leads/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      console.log('🎯 Auto-creating leads from WhatsApp chats for account:', accountId);
+      
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      
+      // Get all chats from the connected WhatsApp account
+      const chats = await whatsappMultiAccountManager.getChats(accountId);
+      
+      if (!chats || chats.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No chats found',
+          leadsCreated: 0
+        });
+      }
+      
+      const { leads } = await import('@shared/schema');
+      let leadsCreated = 0;
+      
+      for (const chat of chats) {
+        try {
+          // Extract phone number and name from chat
+          const phoneNumber = chat.id.user || chat.id._serialized || chat.id;
+          const chatName = chat.name || chat.pushname || phoneNumber;
+          
+          // Check if lead already exists
+          const existingLead = await db
+            .select()
+            .from(leads)
+            .where(eq(leads.phone, phoneNumber))
+            .limit(1);
+          
+          if (existingLead.length === 0) {
+            // Create new lead
+            const [newLead] = await db
+              .insert(leads)
+              .values({
+                fullName: chatName,
+                phone: phoneNumber,
+                source: 'whatsapp',
+                status: 'new',
+                estimatedValue: 0,
+                tags: ['whatsapp-auto'],
+                notes: `Auto-created from WhatsApp chat on account ${accountId}`,
+                createdAt: new Date(),
+                updatedAt: new Date()
+              })
+              .returning();
+            
+            leadsCreated++;
+            console.log(`✅ Lead created for ${chatName} (${phoneNumber})`);
+          }
+        } catch (error) {
+          console.error(`❌ Error creating lead for chat ${chat.id}:`, error);
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: `Successfully processed ${chats.length} chats`,
+        leadsCreated,
+        totalChats: chats.length
+      });
+      
+    } catch (error) {
+      console.error('❌ Error auto-creating leads:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error creating leads from chats'
+      });
+    }
+  });
+
+  // Get lead card data for chat
+  app.get('/api/leads/chat/:chatId', async (req: Request, res: Response) => {
+    try {
+      const chatId = req.params.chatId;
+      const phoneNumber = chatId.split('@')[0]; // Extract phone from chat ID
+      
+      const { leads, chatAssignments } = await import('@shared/schema');
+      
+      // Find lead by phone number
+      const [lead] = await db
+        .select()
+        .from(leads)
+        .where(eq(leads.phone, phoneNumber))
+        .limit(1);
+      
+      if (!lead) {
+        return res.status(404).json({
+          success: false,
+          message: 'Lead not found'
+        });
+      }
+      
+      // Get assigned agent if any
+      const [assignment] = await db
+        .select()
+        .from(chatAssignments)
+        .where(eq(chatAssignments.chatId, chatId))
+        .limit(1);
+      
+      // Get ticket count (simulated for now)
+      const ticketCount = Math.floor(Math.random() * 5); // Replace with actual ticket query
+      
+      res.json({
+        success: true,
+        lead: {
+          id: lead.id,
+          name: lead.fullName,
+          phone: lead.phone,
+          tickets: ticketCount,
+          estimatedValue: lead.estimatedValue,
+          comments: lead.notes,
+          assignedAgent: assignment?.agentName || null,
+          status: lead.status,
+          tags: lead.tags,
+          source: lead.source
+        }
+      });
+      
+    } catch (error) {
+      console.error('❌ Error getting lead data:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error retrieving lead information'
+      });
+    }
+  });
+
   // Crear agente externo desde URL (CONSOLIDADO) - Movido antes del middleware
   app.post('/api/external-agents', async (req, res) => {
     try {
@@ -4844,6 +4979,86 @@ app.use((req, res, next) => {
   });
 
   // ===== WHATSAPP AUTHENTICATION API ENDPOINTS =====
+  
+  // Force QR refresh endpoint
+  app.post('/api/whatsapp/qr/:accountId/refresh', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      console.log('🔄 Force refreshing QR for account:', accountId);
+      
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      
+      // Restart the WhatsApp client session
+      const result = await whatsappMultiAccountManager.restartAccount(accountId);
+      
+      if (result) {
+        res.json({
+          success: true,
+          message: 'QR code refreshed successfully'
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to refresh QR code'
+        });
+      }
+    } catch (error) {
+      console.error('Error refreshing QR:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  });
+
+  // Restart WhatsApp session endpoint
+  app.post('/api/whatsapp-accounts/:accountId/recover-session', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      console.log('🔄 Recovering session for account:', accountId);
+      
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      
+      const result = await whatsappMultiAccountManager.initializeAccount(accountId);
+      
+      res.json({
+        success: true,
+        message: 'Session recovery initiated'
+      });
+    } catch (error) {
+      console.error('Error recovering session:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to recover session'
+      });
+    }
+  });
+
+  // Clean session endpoint  
+  app.post('/api/whatsapp-accounts/:accountId/clean-session', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      console.log('🧹 Cleaning session for account:', accountId);
+      
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      
+      // Clear session data and reinitialize
+      await whatsappMultiAccountManager.clearSession(accountId);
+      await whatsappMultiAccountManager.initializeAccount(accountId);
+      
+      res.json({
+        success: true,
+        message: 'Session cleaned and reinitialized'
+      });
+    } catch (error) {
+      console.error('Error cleaning session:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to clean session'
+      });
+    }
+  });
+
   // Get QR code for WhatsApp authentication
   app.get('/api/whatsapp-accounts/:accountId/qr', async (req: Request, res: Response) => {
     try {
