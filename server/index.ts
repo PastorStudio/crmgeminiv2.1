@@ -3458,8 +3458,7 @@ app.use((req, res, next) => {
 
 
 
-  // Registrar rutas optimizadas y limpias
-  const server = registerOptimizedRoutes(app);
+  // Note: Routes already registered above before Vite setup
   
   // Inicializar sistema de notificaciones en tiempo real
   try {
@@ -5276,6 +5275,9 @@ app.use((req, res, next) => {
     }
     next();
   });
+
+  // Registrar rutas optimizadas ANTES de Vite para evitar conflictos
+  const server = registerOptimizedRoutes(app);
 
   if (app.get("env") === "development") {
     await setupVite(app, server);
