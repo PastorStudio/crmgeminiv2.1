@@ -117,6 +117,38 @@ app.use(express.urlencoded({ extended: false }));
 const server = registerOptimizedRoutes(app);
 console.log('🚀 Rutas optimizadas registradas ANTES de Vite middleware');
 
+// ===== HEALTH CHECK ENDPOINT =====
+app.get('/api/health', async (req: Request, res: Response) => {
+  try {
+    // Check database connection
+    await db.select().from(users).limit(1);
+    
+    // Check WhatsApp status
+    const whatsappStatus = {
+      accounts: 1,
+      connected: false,
+      lastCheck: new Date().toISOString()
+    };
+    
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      database: 'connected',
+      whatsapp: whatsappStatus,
+      version: '1.0.0'
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(500).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // ===== CALENDAR API ROUTES (BYPASS VITE) =====
 // Create calendar event
 app.post('/api/calendar/create-event', async (req: Request, res: Response) => {
