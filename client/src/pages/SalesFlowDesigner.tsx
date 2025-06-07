@@ -1147,7 +1147,7 @@ function TemplateDialog({
             Selecciona una plantilla predeterminada para cargar en el diseñador:
           </p>
           
-          {templates?.templates?.map((template: any) => (
+          {templates?.map((template: any) => (
             <Button
               key={template.id}
               variant="outline"
@@ -1161,7 +1161,7 @@ function TemplateDialog({
             </Button>
           ))}
           
-          {(!templates?.templates || templates.templates.length === 0) && (
+          {(!templates || templates.length === 0) && (
             <div className="text-center py-4 text-gray-500">
               No hay plantillas disponibles
             </div>
