@@ -1,3 +1,23 @@
-2025/06/07-17:05:42.994 c49 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/06/07-17:05:42.994 c49 Recovering log #131
-2025/06/07-17:05:42.995 c49 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000131.log 
+2025/06/07-17:05:58.964 d88 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/07-17:05:58.967 d88 Recovering log #131
+2025/06/07-17:05:58.968 d88 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000131.log 
+2025/06/07-17:06:01.084 d88 Level-0 table #142: started
+2025/06/07-17:06:01.118 d88 Level-0 table #142: 32413 bytes OK
+2025/06/07-17:06:01.139 d88 Delete type=0 #131
+2025/06/07-17:06:01.139 d88 Manual compaction at level-0 from '\x00\x1b\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1c\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/07-17:06:02.983 d8a Compacting 1@1 + 6@2 files
+2025/06/07-17:06:03.095 d8a Generated table #143@1: 26560 keys, 2185409 bytes
+2025/06/07-17:06:03.154 d8a Generated table #144@1: 3063 keys, 2153311 bytes
+2025/06/07-17:06:03.246 d8a Generated table #145@1: 26146 keys, 2232469 bytes
+2025/06/07-17:06:03.347 d8a Generated table #146@1: 36539 keys, 2175542 bytes
+2025/06/07-17:06:03.468 d8a Generated table #147@1: 106841 keys, 2260350 bytes
+2025/06/07-17:06:03.503 d8a Generated table #148@1: 21129 keys, 442385 bytes
+2025/06/07-17:06:03.503 d8a Compacted 1@1 + 6@2 files => 11449466 bytes
+2025/06/07-17:06:03.510 d8a compacted to: files[ 0 0 6 0 0 0 0 ]
+2025/06/07-17:06:03.510 d8a Delete type=2 #134
+2025/06/07-17:06:03.510 d8a Delete type=2 #135
+2025/06/07-17:06:03.511 d8a Delete type=2 #136
+2025/06/07-17:06:03.511 d8a Delete type=2 #137
+2025/06/07-17:06:03.511 d8a Delete type=2 #138
+2025/06/07-17:06:03.511 d8a Delete type=2 #139
+2025/06/07-17:06:03.511 d8a Delete type=2 #142
