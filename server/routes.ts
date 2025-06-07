@@ -1106,10 +1106,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     templateId: null
   };
 
-  // Flow Templates endpoint - Complete collection of sales flow templates
-  app.get("/api/flow-templates", async (req: Request, res: Response) => {
-    try {
-      const flowTemplates = [
+  // Flow Templates endpoint - Returns 6 complete sales flow templates
+  app.get("/api/flow-templates", (req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/json');
+    
+    const templates = [
         {
           id: 'lead-qualification',
           name: 'Calificación de Leads',
