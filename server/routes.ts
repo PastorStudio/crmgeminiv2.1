@@ -3981,34 +3981,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Configurar propiedades de keepalive
     (ws as any).isAlive = true;
+    (ws as any).subscribedToNotifications = true;
     
     // Manejar pong responses
     ws.on('pong', () => {
       (ws as any).isAlive = true;
     });
     
-    // Enviar confirmación de conexión inmediatamente
-    setTimeout(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'connection_confirmed',
-          timestamp: Date.now(),
-          message: 'Conectado al sistema de notificaciones'
-        }));
-      }
-    }, 100);
+    // Enviar mensaje de bienvenida simple
+    try {
+      ws.send(JSON.stringify({
+        type: 'welcome',
+        message: 'Conectado al sistema de mensajería',
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error) {
+      console.error('Error enviando mensaje de bienvenida:', error);
+    }
     
     // Manejar mensajes del cliente
     ws.on('message', (data: Buffer) => {
       try {
         const message = JSON.parse(data.toString());
-        console.log('📨 Mensaje WebSocket recibido:', message);
         
-        // Handle notification subscription
-        if (message.type === 'subscribe_notifications') {
-          (ws as any).subscribedToNotifications = true;
+        if (message.type === 'ping') {
           ws.send(JSON.stringify({
-            type: 'subscription_confirmed',
+            type: 'pong',
             timestamp: Date.now()
           }));
         }

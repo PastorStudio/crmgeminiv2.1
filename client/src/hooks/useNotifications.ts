@@ -31,6 +31,8 @@ export function useNotifications() {
   const [stats, setStats] = useState<NotificationStats | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const maxReconnectAttempts = 3;
 
   const connect = useCallback(() => {
     try {
@@ -47,6 +49,9 @@ export function useNotifications() {
         console.log('🔔 Conectado al sistema de notificaciones');
         setIsConnected(true);
         
+        // Reset reconnection attempts on successful connection
+        reconnectAttemptsRef.current = 0;
+        
         // Limpiar timeout de reconexión si existe
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
@@ -56,11 +61,31 @@ export function useNotifications() {
 
       ws.onmessage = (event) => {
         try {
-          const notification: NotificationMessage = JSON.parse(event.data);
-          console.log('🔔 Notificación recibida:', notification);
+          const data = JSON.parse(event.data);
+          console.log('🔔 Notificación recibida:', data);
+          
+          // Handle different message types
+          if (data.type === 'welcome') {
+            // Connection established successfully
+            return;
+          }
+          
+          // Convert to notification format
+          const notification: NotificationMessage = {
+            id: data.id || Date.now().toString(),
+            type: data.type || 'system_alert',
+            chatId: data.chatId || '',
+            accountId: data.accountId || 1,
+            title: data.title || 'Nueva notificación',
+            message: data.message || '',
+            timestamp: data.timestamp || Date.now(),
+            urgent: data.urgent || false,
+            data: data.data,
+            read: false
+          };
           
           // Agregar a la lista de notificaciones
-          setNotifications(prev => [notification, ...prev.slice(0, 49)]); // Mantener últimas 50
+          setNotifications(prev => [notification, ...prev.slice(0, 49)]);
           
           // Mostrar toast para notificaciones importantes
           if (notification.type === 'new_message' || notification.urgent) {
@@ -79,11 +104,19 @@ export function useNotifications() {
         console.log('🔔 Conexión de notificaciones cerrada');
         setIsConnected(false);
         
-        // Intentar reconectar después de 3 segundos
-        reconnectTimeoutRef.current = setTimeout(() => {
-          console.log('🔔 Reintentando conexión...');
-          connect();
-        }, 3000);
+        // Limit reconnection attempts to prevent endless cycling
+        if (reconnectAttemptsRef.current < maxReconnectAttempts && !reconnectTimeoutRef.current) {
+          reconnectAttemptsRef.current += 1;
+          const delay = Math.min(5000 * reconnectAttemptsRef.current, 30000); // Exponential backoff, max 30s
+          
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log(`🔔 Reintentando conexión... (intento ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`);
+            reconnectTimeoutRef.current = null;
+            connect();
+          }, delay);
+        } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+          console.log('🔔 Máximo de intentos de reconexión alcanzado. Notificaciones deshabilitadas temporalmente.');
+        }
       };
 
       ws.onerror = (error) => {
@@ -158,12 +191,16 @@ export function useNotifications() {
 
   // Conectar automáticamente al montar el componente
   useEffect(() => {
-    connect();
+    // Delay initial connection to prevent rapid cycling
+    const initialConnectionTimeout = setTimeout(() => {
+      connect();
+    }, 1000);
     
-    // Obtener estadísticas cada 30 segundos
-    const statsInterval = setInterval(getNotificationStats, 30000);
+    // Obtener estadísticas cada 60 segundos (reduced frequency)
+    const statsInterval = setInterval(getNotificationStats, 60000);
     
     return () => {
+      clearTimeout(initialConnectionTimeout);
       disconnect();
       clearInterval(statsInterval);
     };
