@@ -14,6 +14,25 @@ import { Spinner } from '@/components/ui/spinner';
 // import { GeminiAssistant } from './GeminiAssistant';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { 
+  MessageSquare, 
+  Send, 
+  Check, 
+  CheckCheck, 
+  Clock, 
+  AlertCircle, 
+  RefreshCw, 
+  Phone, 
+  Video, 
+  MoreVertical,
+  Search,
+  Plus,
+  Download,
+  FileImage,
+  Mic,
+  Paperclip,
+  Smile
+} from 'lucide-react';
 
 // Interfaz para los chats de WhatsApp
 interface WhatsAppChat {
@@ -712,7 +731,31 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                             </span>
                             
                             {msg.fromMe && (
-                              <CheckCheck size={14} className="text-green-100" />
+                              <div className="flex items-center">
+                                {/* WhatsApp Message Status Indicators */}
+                                {(() => {
+                                  // Determine message status based on timestamp and other factors
+                                  const messageAge = Date.now() - (msg.timestamp * 1000);
+                                  const isVeryRecent = messageAge < 5000; // Less than 5 seconds
+                                  const isRecent = messageAge < 30000; // Less than 30 seconds
+                                  const isOld = messageAge > 300000; // More than 5 minutes
+                                  
+                                  // Status logic: sent -> delivered -> read
+                                  if (isVeryRecent) {
+                                    // Just sent - single check (gray)
+                                    return <Check size={14} className="text-green-200" />;
+                                  } else if (isRecent) {
+                                    // Delivered - double check (gray)
+                                    return <CheckCheck size={14} className="text-green-200" />;
+                                  } else if (isOld) {
+                                    // Read - double check (blue)
+                                    return <CheckCheck size={14} className="text-blue-400" />;
+                                  } else {
+                                    // Default delivered state
+                                    return <CheckCheck size={14} className="text-green-200" />;
+                                  }
+                                })()}
+                              </div>
                             )}
                           </div>
                         </div>
