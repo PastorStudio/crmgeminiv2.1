@@ -224,7 +224,7 @@ export class DatabaseAdapter {
             notes: 'Proyecto de automatización',
             source: 'whatsapp',
             priority: 'high',
-            status: 'qualified',
+            status: 'contacted',
             budget: 8000,
             tags: ['automatización', 'proyecto'],
             assigneeId: null
