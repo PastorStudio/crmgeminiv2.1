@@ -1344,44 +1344,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-          id: 'call-center',
-          name: 'Centro de Llamadas',
-          description: 'Gestión automática de llamadas entrantes con enrutamiento inteligente',
-          category: 'Telefonía',
-          difficulty: 'Avanzado',
-          nodes: 14,
-          estimatedTime: '35 min',
-          icon: 'Phone',
-          color: 'bg-red-500',
-          tags: ['Llamadas', 'Enrutamiento', 'IVR'],
-          flowData: {
-            nodes: [
-              { id: '1', type: 'trigger', position: { x: 100, y: 100 }, data: { label: 'Llamada entrante' } },
-              { id: '2', type: 'condition', position: { x: 300, y: 100 }, data: { label: '¿Cliente existente?' } },
-              { id: '3', type: 'action', position: { x: 500, y: 50 }, data: { label: 'Enrutar a agente VIP' } },
-              { id: '4', type: 'condition', position: { x: 500, y: 150 }, data: { label: '¿Horario laboral?' } },
-              { id: '5', type: 'action', position: { x: 700, y: 150 }, data: { label: 'Cola de espera' } }
-            ],
-            edges: [
-              { id: 'e1-2', source: '1', target: '2' },
-              { id: 'e2-3', source: '2', target: '3' },
-              { id: 'e2-4', source: '2', target: '4' },
-              { id: 'e4-5', source: '4', target: '5' }
-            ]
-          }
-        }
-      ];
-
-      console.log(`📋 Enviando ${flowTemplates.length} plantillas de flujo completas`);
-      res.json(flowTemplates);
-    } catch (error) {
-      console.error('Error al obtener plantillas de flujo:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error al cargar plantillas de flujo" 
-      });
-    }
-  });
 
   // Sales Flow Templates endpoints
   app.get("/api/sales-flow", async (req: Request, res: Response) => {
