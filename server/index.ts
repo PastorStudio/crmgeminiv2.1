@@ -7349,6 +7349,19 @@ Responde de manera conversacional, profesional y útil según tu especializació
     console.error('❌ Error iniciando servicio de recordatorios de calendario:', error);
   }
 
-
+  // ===== INICIALIZACIÓN SERVIDOR WEBSOCKET DEDICADO =====
+  const { WebSocketServer } = await import('ws');
+  const http = await import('http');
+  
+  // Crear servidor HTTP dedicado para WebSocket en puerto 3001
+  const wsServer = http.createServer();
+  
+  // Inicializar el servicio de notificaciones con el servidor dedicado
+  notificationService.initialize(wsServer);
+  
+  // Escuchar en puerto 3001
+  wsServer.listen(3001, '0.0.0.0', () => {
+    console.log('🔔 Servidor WebSocket de notificaciones ejecutándose en puerto 3001');
+  });
 
 })();
