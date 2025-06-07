@@ -3206,20 +3206,26 @@ export function WhatsAppTwoColumn() {
                                 </div>
                               )}
                               {message.fromMe && (
-                                <div className="text-xs pt-[10px] pb-[10px] ml-[2px] mr-[8px] flex-shrink-0">
-                                  <span className={`${
-                                    message.messageRead 
-                                      ? 'text-blue-500' 
-                                      : message.type === 'delivered' 
-                                        ? 'text-gray-500' 
-                                        : 'text-gray-400'
-                                  }`}>
-                                    {message.messageRead 
-                                      ? '✓✓' 
-                                      : (message.type === 'delivered' || message.type === 'received') 
-                                        ? '✓✓' 
-                                        : '✓'}
+                                <div className="text-xs pt-[10px] pb-[10px] ml-[2px] mr-[8px] flex-shrink-0 flex items-center gap-1">
+                                  <span className="text-gray-500">
+                                    {new Date(message.timestamp * 1000).toLocaleTimeString('es-ES', { 
+                                      hour: '2-digit', 
+                                      minute: '2-digit',
+                                      hour12: false
+                                    })}
                                   </span>
+                                  {(() => {
+                                    const messageAge = (Date.now() / 1000) - message.timestamp;
+                                    if (messageAge < 2) {
+                                      return <Clock className="h-3 w-3 text-gray-400" />;
+                                    } else if (messageAge < 10) {
+                                      return <Check className="h-3 w-3 text-gray-400" />;
+                                    } else if (messageAge < 30) {
+                                      return <CheckCheck className="h-3 w-3 text-gray-400" />;
+                                    } else {
+                                      return <CheckCheck className="h-3 w-3 text-blue-400" />;
+                                    }
+                                  })()}
                                 </div>
                               )}
                             </div>
