@@ -1,0 +1,149 @@
+# EasyPanel deployment configuration for CRM WhatsApp AI
+name: crm-whatsapp-ai
+services:
+  # Main Application Service
+  app:
+    image: 
+      dockerfile: ./Dockerfile
+      context: .
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          memory: 1GB
+          cpus: '0.5'
+        limits:
+          memory: 2GB
+          cpus: '1.0'
+    env:
+      NODE_ENV: production
+      PORT: 3000
+      # Database connection will be set by EasyPanel PostgreSQL service
+      DATABASE_URL: ${{ services.postgres.DATABASE_URL }}
+      REDIS_URL: ${{ services.redis.REDIS_URL }}
+      # AI API Keys - to be configured in EasyPanel secrets
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Security secrets
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+      # Application URLs
+      FRONTEND_URL: https://${{ domains.app.host }}
+      API_BASE_URL: https://${{ domains.app.host }}
+      # WhatsApp Configuration
+      WHATSAPP_SESSION_PATH: /app/whatsapp-sessions
+      WHATSAPP_WEBHOOK_URL: https://${{ domains.app.host }}/api/webhooks/whatsapp
+      # Optional services
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASS: ${{ secrets.SMTP_PASS }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+    domains:
+      - host: ${{ project.name }}.easypanel.host
+        port: 3000
+        https: true
+    volumes:
+      - name: whatsapp-sessions
+        mount: /app/whatsapp-sessions
+      - name: app-uploads
+        mount: /app/uploads
+      - name: app-logs
+        mount: /app/logs
+      - name: app-temp
+        mount: /app/temp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          memory: 512MB
+          cpus: '0.25'
+        limits:
+          memory: 1GB
+          cpus: '0.5'
+    env:
+      POSTGRES_DB: crm_whatsapp_ai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - name: postgres-data
+        mount: /var/lib/postgresql/data
+      - name: postgres-init
+        mount: /docker-entrypoint-initdb.d
+        files:
+          - source: ./init.sql
+            target: init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d crm_whatsapp_ai"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for session management
+  redis:
+    image: redis:7-alpine
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          memory: 256MB
+          cpus: '0.1'
+        limits:
+          memory: 512MB
+          cpus: '0.25'
+    volumes:
+      - name: redis-data
+        mount: /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# Volume definitions
+volumes:
+  postgres-data:
+    type: local
+  redis-data:
+    type: local
+  whatsapp-sessions:
+    type: local
+  app-uploads:
+    type: local
+  app-logs:
+    type: local
+  app-temp:
+    type: local
+  postgres-init:
+    type: local
+
+# Required secrets that need to be configured in EasyPanel
+secrets:
+  # Database
+  - POSTGRES_PASSWORD
+  # AI Services
+  - OPENAI_API_KEY
+  - GEMINI_API_KEY
+  - ANTHROPIC_API_KEY
+  # Security
+  - JWT_SECRET
+  - SESSION_SECRET
+  # Optional: Email
+  - SMTP_HOST
+  - SMTP_PORT
+  - SMTP_USER
+  - SMTP_PASS
+  # Optional: Telegram
+  - TELEGRAM_BOT_TOKEN
