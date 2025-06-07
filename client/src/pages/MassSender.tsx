@@ -40,7 +40,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle, Upload, Database, FileText, FileSpreadsheet, CheckCircle, Phone, Clock, AlertCircle, Check, Circle, Plus } from "lucide-react";
+import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle, Upload, Database, FileText, FileSpreadsheet, CheckCircle, Phone, Clock, AlertCircle, Check, Circle, Plus, RefreshCw, Tag } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -192,8 +192,6 @@ export default function MassSender() {
   
   // Estados para contactos individuales de WhatsApp
   const [showWhatsAppContacts, setShowWhatsAppContacts] = useState<boolean>(false);
-  const [whatsAppContacts, setWhatsAppContacts] = useState<any[]>([]);
-  const [loadingWhatsAppContacts, setLoadingWhatsAppContacts] = useState<boolean>(false);
   const [selectedWhatsAppContactIds, setSelectedWhatsAppContactIds] = useState<string[]>([]);
   const [selectAllWhatsAppContacts, setSelectAllWhatsAppContacts] = useState<boolean>(false);
   
@@ -202,6 +200,14 @@ export default function MassSender() {
   const [geminiResult, setGeminiResult] = useState<string>("");
   const [geminiPrompt, setGeminiPrompt] = useState<string>("");
   const [isGeneratingWithGemini, setIsGeneratingWithGemini] = useState<boolean>(false);
+  
+  // Estados para manejo de contactos y etiquetas
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [selectedTagFilters, setSelectedTagFilters] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [selectedContactForTags, setSelectedContactForTags] = useState<any>(null);
+  const [contactTagsDialog, setContactTagsDialog] = useState<boolean>(false);
+  const [newContactTag, setNewContactTag] = useState<string>("");
   
   // Consulta para obtener los grupos de contactos
   const { data: contactGroups = [], isLoading: loadingGroups } = useQuery<ContactGroup[]>({
@@ -262,6 +268,83 @@ export default function MassSender() {
     queryKey: ['/api/whatsapp/contact-tags'],
     retry: false
   });
+
+  // Consulta para obtener contactos de WhatsApp reales
+  const { 
+    data: whatsappContacts = [], 
+    isLoading: loadingWhatsAppContacts, 
+    refetch: refetchWhatsAppContacts 
+  } = useQuery({
+    queryKey: ['/api/whatsapp/contacts'],
+    queryFn: async () => {
+      const response = await fetch('/api/whatsapp/contacts');
+      if (!response.ok) {
+        throw new Error('Failed to fetch WhatsApp contacts');
+      }
+      const data = await response.json();
+      
+      // Extraer etiquetas únicas de todos los contactos
+      const allTags = new Set<string>();
+      data.forEach((contact: any) => {
+        if (contact.tags && Array.isArray(contact.tags)) {
+          contact.tags.forEach((tag: string) => allTags.add(tag));
+        }
+      });
+      setAvailableTags(Array.from(allTags));
+      
+      return data;
+    },
+    retry: false
+  });
+
+  // Filtrar contactos basado en etiquetas seleccionadas
+  const filteredContacts = React.useMemo(() => {
+    if (selectedTagFilters.length === 0) {
+      return whatsappContacts;
+    }
+    
+    return whatsappContacts.filter((contact: any) => {
+      if (!contact.tags || !Array.isArray(contact.tags)) {
+        return false;
+      }
+      return selectedTagFilters.some(tag => contact.tags.includes(tag));
+    });
+  }, [whatsappContacts, selectedTagFilters]);
+
+  // Función para añadir nueva etiqueta a contacto
+  const handleAddContactTag = async () => {
+    if (!newContactTag.trim() || !selectedContactForTags) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/whatsapp/contacts/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactId: selectedContactForTags.id,
+          tag: newContactTag.trim()
+        })
+      });
+      
+      if (response.ok) {
+        refetchWhatsAppContacts();
+        setNewContactTag('');
+        toast({
+          title: "Etiqueta añadida",
+          description: `Se añadió la etiqueta "${newContactTag.trim()}" al contacto`
+        });
+      } else {
+        throw new Error('Failed to add tag');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo añadir la etiqueta",
+        variant: "destructive"
+      });
+    }
+  };
   
   // Consulta para obtener todas las campañas
   const { 
@@ -1290,80 +1373,152 @@ export default function MassSender() {
                     )}
                   </div>
                   
+                  {/* Lista de Contactos de WhatsApp */}
                   <div className="space-y-2">
-                    <Label>Grupos de Destinatarios</Label>
-                    <ScrollArea className="h-32 border rounded-md p-2">
-                      {loadingGroups ? (
+                    <div className="flex items-center justify-between">
+                      <Label>Contactos de WhatsApp</Label>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (whatsappContacts.length > 0) {
+                              const allContactIds = whatsappContacts.map(contact => contact.id);
+                              if (selectedContacts.length === allContactIds.length) {
+                                setSelectedContacts([]);
+                              } else {
+                                setSelectedContacts(allContactIds);
+                              }
+                            }
+                          }}
+                        >
+                          {selectedContacts.length === whatsappContacts.length ? 'Deseleccionar' : 'Seleccionar'} Todo
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            // Refrescar lista de contactos
+                            refetchWhatsAppContacts();
+                          }}
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {/* Filtros por etiquetas */}
+                    <div className="space-y-2">
+                      <Label className="text-xs">Filtrar por etiquetas:</Label>
+                      <div className="flex flex-wrap gap-1">
+                        {availableTags.map((tag) => (
+                          <Badge
+                            key={tag}
+                            variant={selectedTagFilters.includes(tag) ? "default" : "outline"}
+                            className="cursor-pointer text-xs"
+                            onClick={() => {
+                              if (selectedTagFilters.includes(tag)) {
+                                setSelectedTagFilters(selectedTagFilters.filter(t => t !== tag));
+                              } else {
+                                setSelectedTagFilters([...selectedTagFilters, tag]);
+                              }
+                            }}
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
+                        {availableTags.length === 0 && (
+                          <span className="text-xs text-muted-foreground">No hay etiquetas disponibles</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <ScrollArea className="h-64 border rounded-md p-2">
+                      {loadingWhatsAppContacts ? (
                         <div className="flex items-center justify-center h-full">
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                          <span className="ml-2 text-sm text-muted-foreground">Cargando contactos...</span>
                         </div>
-                      ) : Array.isArray(contactGroups) && contactGroups && contactGroups.length > 0 ? (
+                      ) : filteredContacts.length > 0 ? (
                         <div className="space-y-2">
-                          {contactGroups.map((group: ContactGroup) => (
-                            <div key={group.id} className="flex items-center space-x-2">
+                          {filteredContacts.map((contact) => (
+                            <div key={contact.id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 border border-transparent hover:border-border">
                               <input 
                                 type="checkbox"
-                                id={`group-${group.id}`}
-                                checked={selectedGroups.includes(group.id)}
+                                id={`contact-${contact.id}`}
+                                checked={selectedContacts.includes(contact.id)}
                                 onChange={(e) => {
                                   if (e.target.checked) {
-                                    setSelectedGroups([...selectedGroups, group.id]);
+                                    setSelectedContacts([...selectedContacts, contact.id]);
                                   } else {
-                                    setSelectedGroups(selectedGroups.filter(id => id !== group.id));
+                                    setSelectedContacts(selectedContacts.filter(id => id !== contact.id));
                                   }
                                 }}
                                 className="h-4 w-4 rounded border-gray-300"
                               />
-                              <Label htmlFor={`group-${group.id}`} className="font-normal">
-                                {group.name} <span className="text-xs text-muted-foreground">({group.count})</span>
-                              </Label>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <Label htmlFor={`contact-${contact.id}`} className="font-normal text-sm cursor-pointer">
+                                      {contact.name || contact.pushname || contact.phone}
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground truncate">{contact.phone}</p>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => {
+                                        setSelectedContactForTags(contact);
+                                        setContactTagsDialog(true);
+                                      }}
+                                    >
+                                      <Tag className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                {contact.tags && contact.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {contact.tags.slice(0, 3).map((tag, index) => (
+                                      <Badge key={index} variant="secondary" className="text-xs px-1 py-0">
+                                        {tag}
+                                      </Badge>
+                                    ))}
+                                    {contact.tags.length > 3 && (
+                                      <Badge variant="outline" className="text-xs px-1 py-0">
+                                        +{contact.tags.length - 3}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                          No hay grupos disponibles
+                        <div className="flex flex-col items-center justify-center h-full text-center">
+                          <Users className="h-8 w-8 text-muted-foreground mb-2" />
+                          <span className="text-sm text-muted-foreground">
+                            {whatsappContacts.length === 0 
+                              ? "No hay contactos de WhatsApp disponibles"
+                              : "No hay contactos que coincidan con los filtros seleccionados"
+                            }
+                          </span>
+                          {whatsappContacts.length === 0 && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Asegúrate de que tu cuenta de WhatsApp esté conectada
+                            </p>
+                          )}
                         </div>
                       )}
                     </ScrollArea>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Etiquetas de Destinatarios</Label>
-                    <ScrollArea className="h-32 border rounded-md p-2">
-                      {loadingTags ? (
-                        <div className="flex items-center justify-center h-full">
-                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                        </div>
-                      ) : Array.isArray(contactTags) && contactTags && contactTags.length > 0 ? (
-                        <div className="space-y-2">
-                          {contactTags.map((tag: any) => (
-                            <div key={tag.id} className="flex items-center space-x-2">
-                              <input 
-                                type="checkbox"
-                                id={`tag-${tag.id}`}
-                                checked={selectedTags.includes(tag.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedTags([...selectedTags, tag.id]);
-                                  } else {
-                                    setSelectedTags(selectedTags.filter(id => id !== tag.id));
-                                  }
-                                }}
-                                className="h-4 w-4 rounded border-gray-300"
-                              />
-                              <Label htmlFor={`tag-${tag.id}`} className="font-normal">
-                                {tag.name} <span className="text-xs text-muted-foreground">({tag.count})</span>
-                              </Label>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                          No hay etiquetas disponibles
-                        </div>
-                      )}
-                    </ScrollArea>
+                    
+                    {selectedContacts.length > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        {selectedContacts.length} contacto{selectedContacts.length !== 1 ? 's' : ''} seleccionado{selectedContacts.length !== 1 ? 's' : ''}
+                      </div>
+                    )}
                   </div>
                   
                   {/* Configuración avanzada */}
@@ -2665,6 +2820,147 @@ export default function MassSender() {
         onOpenChange={setShowImmediateMessaging}
         importedData={importedData}
       />
+
+      {/* Diálogo para gestión de etiquetas de contacto */}
+      <Dialog open={contactTagsDialog} onOpenChange={setContactTagsDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Gestionar Etiquetas</DialogTitle>
+            <DialogDescription>
+              Gestiona las etiquetas para {selectedContactForTags?.name || selectedContactForTags?.phone || 'este contacto'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Etiquetas actuales del contacto */}
+            <div>
+              <Label className="text-sm font-medium">Etiquetas actuales</Label>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {selectedContactForTags?.tags && selectedContactForTags.tags.length > 0 ? (
+                  selectedContactForTags.tags.map((tag: string, index: number) => (
+                    <Badge 
+                      key={index} 
+                      variant="secondary" 
+                      className="text-xs cursor-pointer hover:bg-red-100"
+                      onClick={async () => {
+                        // Remover etiqueta del contacto
+                        try {
+                          const response = await fetch('/api/whatsapp/contacts/tags', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              contactId: selectedContactForTags.id,
+                              tag: tag
+                            })
+                          });
+                          
+                          if (response.ok) {
+                            refetchWhatsAppContacts();
+                            toast({
+                              title: "Etiqueta removida",
+                              description: `Se removió la etiqueta "${tag}" del contacto`
+                            });
+                          }
+                        } catch (error) {
+                          toast({
+                            title: "Error",
+                            description: "No se pudo remover la etiqueta",
+                            variant: "destructive"
+                          });
+                        }
+                      }}
+                    >
+                      {tag} ×
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-sm text-muted-foreground">Sin etiquetas</span>
+                )}
+              </div>
+            </div>
+
+            {/* Añadir nueva etiqueta */}
+            <div>
+              <Label className="text-sm font-medium">Añadir etiqueta</Label>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  placeholder="Nueva etiqueta..."
+                  value={newContactTag}
+                  onChange={(e) => setNewContactTag(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && newContactTag.trim()) {
+                      // Añadir etiqueta
+                      handleAddContactTag();
+                    }
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  onClick={handleAddContactTag}
+                  disabled={!newContactTag.trim()}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Etiquetas disponibles */}
+            <div>
+              <Label className="text-sm font-medium">Etiquetas disponibles</Label>
+              <div className="flex flex-wrap gap-1 mt-2 max-h-32 overflow-y-auto">
+                {availableTags
+                  .filter(tag => !selectedContactForTags?.tags?.includes(tag))
+                  .map((tag) => (
+                    <Badge 
+                      key={tag} 
+                      variant="outline" 
+                      className="text-xs cursor-pointer hover:bg-blue-100"
+                      onClick={async () => {
+                        // Añadir etiqueta existente al contacto
+                        try {
+                          const response = await fetch('/api/whatsapp/contacts/tags', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              contactId: selectedContactForTags.id,
+                              tag: tag
+                            })
+                          });
+                          
+                          if (response.ok) {
+                            refetchWhatsAppContacts();
+                            toast({
+                              title: "Etiqueta añadida",
+                              description: `Se añadió la etiqueta "${tag}" al contacto`
+                            });
+                          }
+                        } catch (error) {
+                          toast({
+                            title: "Error",
+                            description: "No se pudo añadir la etiqueta",
+                            variant: "destructive"
+                          });
+                        }
+                      }}
+                    >
+                      + {tag}
+                    </Badge>
+                  ))
+                }
+                {availableTags.filter(tag => !selectedContactForTags?.tags?.includes(tag)).length === 0 && (
+                  <span className="text-sm text-muted-foreground">No hay etiquetas disponibles</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setContactTagsDialog(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
