@@ -118,6 +118,33 @@ const detectLanguageFromMessage = (text: string) => {
     flag: languageMap[detectedLang]?.flag || '🇪🇸'
   };
 };
+
+// Helper functions for real-time analysis badges
+const getLeadScoreBadge = (score: number): "default" | "secondary" | "destructive" | "outline" => {
+  if (score >= 80) return "default"; // Green/success
+  if (score >= 60) return "secondary"; // Blue
+  if (score >= 40) return "outline"; // Gray
+  return "destructive"; // Red
+};
+
+const getSentimentBadge = (sentiment: string): "default" | "secondary" | "destructive" | "outline" => {
+  switch (sentiment) {
+    case 'positive': return "default";
+    case 'negative': return "destructive";
+    case 'neutral':
+    default: return "outline";
+  }
+};
+
+const getUrgencyColor = (urgency: string): string => {
+  switch (urgency) {
+    case 'critical': return 'text-red-600 bg-red-50';
+    case 'high': return 'text-orange-600 bg-orange-50';
+    case 'medium': return 'text-yellow-600 bg-yellow-50';
+    case 'low':
+    default: return 'text-green-600 bg-green-50';
+  }
+};
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -921,6 +948,10 @@ export function WhatsAppTwoColumn() {
   const [externalAgentProcessing, setExternalAgentProcessing] = useState(false);
   const [externalAgentUrl, setExternalAgentUrl] = useState<string>('');
 
+  // Estados para análisis en tiempo real
+  const [chatAnalysis, setChatAnalysis] = useState<any>(null);
+  const [analysisStatus, setAnalysisStatus] = useState<any>(null);
+
   // Cargar estado del agente externo al seleccionar chat
   useEffect(() => {
     const loadAgentStatus = async () => {
@@ -942,6 +973,48 @@ export function WhatsAppTwoColumn() {
 
     loadAgentStatus();
   }, [selectedChat]);
+
+  // Cargar análisis en tiempo real del chat seleccionado
+  useEffect(() => {
+    const loadChatAnalysis = async () => {
+      if (!selectedChat) {
+        setChatAnalysis(null);
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/analysis/conversations/${selectedChat.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.conversation) {
+            setChatAnalysis(data.conversation);
+            console.log('🔍 Análisis de conversación cargado:', data.conversation);
+          } else {
+            setChatAnalysis(null);
+          }
+        } else {
+          setChatAnalysis(null);
+        }
+      } catch (error) {
+        console.error('Error cargando análisis de conversación:', error);
+        setChatAnalysis(null);
+      }
+    };
+
+    loadChatAnalysis();
+    
+    // Recargar análisis cada 10 segundos para mantener datos actualizados
+    const analysisInterval = setInterval(loadChatAnalysis, 10000);
+    
+    return () => clearInterval(analysisInterval);
+  }, [selectedChat]);
+
+  // Obtener estado del análisis en tiempo real
+  const { data: realtimeAnalysisStatus } = useQuery({
+    queryKey: ['/api/analysis/status'],
+    refetchInterval: 5000, // Actualizar cada 5 segundos
+    staleTime: 4000
+  });
 
   // Función para alternar A.E AI (Agentes Externos)
   const toggleExternalAgent = async () => {
