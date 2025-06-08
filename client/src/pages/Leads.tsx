@@ -293,59 +293,7 @@ export default function Leads() {
     }
   };
 
-  // Handle create new status
-  const handleCreateStatus = async () => {
-    const statusName = prompt('Ingresa el nombre del nuevo estado:');
-    if (!statusName) return;
 
-    try {
-      const response = await apiRequest('/api/lead-statuses', {
-        method: 'POST',
-        body: { name: statusName.toLowerCase(), displayName: statusName }
-      });
-
-      if (response.success) {
-        toast({
-          title: "Estado creado",
-          description: `Nuevo estado "${statusName}" creado exitosamente`,
-        });
-      } else {
-        throw new Error(response.message || 'Error al crear el estado');
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo crear el nuevo estado",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle refresh real data
-  const handleRefreshRealData = async () => {
-    try {
-      const response = await apiRequest('/api/whatsapp-accounts/sync-real-chats', {
-        method: 'POST'
-      });
-
-      if (response.success) {
-        toast({
-          title: "Datos actualizados",
-          description: `${response.synced || 0} chats sincronizados desde WhatsApp`,
-        });
-        
-        queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
-      } else {
-        throw new Error(response.message || 'Error al sincronizar');
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudieron sincronizar los datos reales",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Get badge variant based on status
   const getStatusBadgeVariant = (status?: string): "default" | "destructive" | "secondary" | "outline" => {

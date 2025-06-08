@@ -619,19 +619,19 @@ export const enhancedMessagesRelations = relations(enhancedMessagesTable, ({ one
 }));
 
 // Esquemas de inserción
-export const insertAiPromptSchema = createInsertSchema(aiPrompts).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertAiSettingsSchema = createInsertSchema(aiSettings).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertChatAssignmentSchema = createInsertSchema(chatAssignments).omit({ id: true, assignedAt: true, lastActivityAt: true });
-export const insertChatCommentSchema = createInsertSchema(chatComments).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertModernTicketSchema = createInsertSchema(modernTickets).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertAutoResponseConfigSchema = createInsertSchema(autoResponseConfigs).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertConversationAnalyticsSchema = createInsertSchema(conversationAnalytics).omit({ id: true, lastAnalyzed: true });
-export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
-export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true });
-export const insertWhatsAppAccountSchema = createInsertSchema(whatsappAccounts).omit({ id: true, createdAt: true, lastActiveAt: true });
-export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertLocalEventSchema = createInsertSchema(localEvents).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertAiPromptSchema = createInsertSchema(aiPrompts);
+export const insertAiSettingsSchema = createInsertSchema(aiSettings);
+export const insertChatAssignmentSchema = createInsertSchema(chatAssignments);
+export const insertChatCommentSchema = createInsertSchema(chatComments);
+export const insertModernTicketSchema = createInsertSchema(modernTickets);
+export const insertAutoResponseConfigSchema = createInsertSchema(autoResponseConfigs);
+export const insertConversationAnalyticsSchema = createInsertSchema(conversationAnalytics);
+export const insertNotificationSchema = createInsertSchema(notifications);
+export const insertUserSchema = createInsertSchema(users);
+export const insertLeadSchema = createInsertSchema(leads);
+export const insertWhatsAppAccountSchema = createInsertSchema(whatsappAccounts);
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents);
+export const insertLocalEventSchema = createInsertSchema(localEvents);
 
 // Tipos de TypeScript
 export type AiSettings = typeof aiSettings.$inferSelect;
@@ -662,7 +662,7 @@ export type InsertCalendarEvent = typeof insertCalendarEventSchema._type;
 export type LocalEvent = typeof localEvents.$inferSelect;
 export type InsertLocalEvent = typeof insertLocalEventSchema._type;
 export type SalesFlow = typeof salesFlows.$inferSelect;
-export type InsertSalesFlow = typeof insertSalesFlowSchema._type;
+export type InsertSalesFlow = typeof insertSalesFlowStageSchema._type;
 
 // Sales Flow Tables
 export const salesFlowStages = pgTable("sales_flow_stages", {
@@ -778,12 +778,12 @@ export const chatCategories = pgTable("chat_categories", {
 });
 
 // Sales flow schema exports
-export const insertSalesFlowStageSchema = createInsertSchema(salesFlowStages).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertFlowNodeSchema = createInsertSchema(flowNodes).omit({ id: true, createdAt: true });
-export const insertFlowConnectionSchema = createInsertSchema(flowConnections).omit({ id: true, createdAt: true });
-export const insertConversationFlowSessionSchema = createInsertSchema(conversationFlowSessions).omit({ id: true, startedAt: true, lastActivityAt: true });
-export const insertFlowExecutionLogSchema = createInsertSchema(flowExecutionLog).omit({ id: true, executedAt: true });
-export const insertSalesMetricsSchema = createInsertSchema(salesMetrics).omit({ id: true, date: true, createdAt: true });
+export const insertSalesFlowStageSchema = createInsertSchema(salesFlowStages);
+export const insertFlowNodeSchema = createInsertSchema(flowNodes);
+export const insertFlowConnectionSchema = createInsertSchema(flowConnections);
+export const insertConversationFlowSessionSchema = createInsertSchema(conversationFlowSessions);
+export const insertFlowExecutionLogSchema = createInsertSchema(flowExecutionLog);
+export const insertSalesMetricsSchema = createInsertSchema(salesMetrics);
 
 // Sales flow types
 export type SalesFlowStage = typeof salesFlowStages.$inferSelect;
@@ -799,31 +799,7 @@ export type InsertConversationFlowSession = typeof insertConversationFlowSession
 export type InsertFlowExecutionLog = typeof insertFlowExecutionLogSchema._type;
 export type InsertSalesMetrics = typeof insertSalesMetricsSchema._type;
 
-// Core types and schemas
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
-export type Lead = typeof leads.$inferSelect;
-export type InsertLead = typeof leads.$inferInsert;
-export type Contact = typeof contacts.$inferSelect;
-export type InsertContact = typeof contacts.$inferInsert;
-export type WhatsAppAccount = typeof whatsappAccounts.$inferSelect;
-export type InsertWhatsAppAccount = typeof whatsappAccounts.$inferInsert;
-export type Conversation = typeof conversations.$inferSelect;
-export type InsertConversation = typeof conversations.$inferInsert;
-export type Message = typeof messages.$inferSelect;
-export type InsertMessage = typeof messages.$inferInsert;
-export type Activity = typeof activities.$inferSelect;
-export type InsertActivity = typeof activities.$inferInsert;
-export type Ticket = typeof tickets.$inferSelect;
-export type InsertTicket = typeof tickets.$inferInsert;
-export type ChatAssignment = typeof chatAssignments.$inferSelect;
-export type InsertChatAssignment = typeof chatAssignments.$inferInsert;
-export type AiPrompt = typeof aiPrompts.$inferSelect;
-export type InsertAiPrompt = typeof aiPrompts.$inferInsert;
-export type DashboardStats = typeof dashboardStats.$inferSelect;
-export type InsertDashboardStats = typeof dashboardStats.$inferInsert;
-export type AgentActivity = typeof agentActivity.$inferSelect;
-export type InsertAgentActivity = typeof agentActivity.$inferInsert;
+
 
 // Additional validation schemas (avoiding duplicates)
 export const insertContactSchema = createInsertSchema(contacts);
