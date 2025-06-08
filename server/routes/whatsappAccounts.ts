@@ -876,17 +876,47 @@ router.post('/convert-chats-to-leads', async (req, res) => {
         console.log(`📱 Processing account ${account.id} for lead conversion`);
         
         try {
-          // Import the WhatsApp chat service
-          const { whatsappChatService } = await import('../services/whatsappChatService');
+          // Get real chats directly from whatsappMultiAccountManager
+          const chats = await whatsappMultiAccountManager.getChats(account.id);
           
-          // Try to get real chats from the account
-          const result = await whatsappChatService.convertChatsToLeads(account.id);
-          
-          totalProcessed += result.processed;
-          totalCreated += result.created;
-          totalUpdated += result.updated;
-          
-          console.log(`✅ Account ${account.id}: ${result.processed} chats processed, ${result.created} created, ${result.updated} updated`);
+          if (chats && chats.length > 0) {
+            let processed = 0;
+            let created = 0;
+            
+            for (const chat of chats.slice(0, 10)) { // Limit to 10 chats for demo
+              try {
+                const leadData = {
+                  name: chat.name || 'WhatsApp Contact',
+                  fullName: chat.name || 'WhatsApp Contact',
+                  email: `${chat.id.replace(/[^a-zA-Z0-9]/g, '')}@whatsapp.contact`,
+                  company: '',
+                  notes: `Real WhatsApp contact from account ${account.id}`,
+                  source: 'whatsapp',
+                  priority: 'medium',
+                  status: 'new',
+                  budget: 0,
+                  tags: ['whatsapp-real'],
+                  assigneeId: null,
+                  whatsappAccountId: account.id,
+                  contactId: 1,
+                  title: `WhatsApp - ${chat.name || chat.id}`
+                };
+                
+                await storage.createLead(leadData);
+                created++;
+                processed++;
+              } catch (leadError) {
+                console.error(`Error creating lead from chat ${chat.id}:`, leadError);
+              }
+            }
+            
+            totalProcessed += processed;
+            totalCreated += created;
+            
+            console.log(`✅ Account ${account.id}: ${processed} chats processed, ${created} created from real data`);
+          } else {
+            console.log(`⚠️ No real chats found for account ${account.id}`);
+          }
         } catch (error) {
           console.error(`❌ Error processing account ${account.id}:`, error);
           
@@ -945,16 +975,19 @@ router.post('/sync-real-chats', async (req, res) => {
   try {
     console.log('🔄 Syncing real chats from WhatsApp...');
     
-    const { whatsappChatService } = await import('../services/whatsappChatService');
     const accounts = await storage.getAllWhatsappAccounts();
-    
     let totalSynced = 0;
     
     for (const account of accounts) {
       try {
-        const chats = await whatsappChatService.getRealChatsFromAccount(account.id);
-        totalSynced += chats.length;
-        console.log(`✅ Synced ${chats.length} chats from account ${account.id}`);
+        // Get real chats directly from whatsappMultiAccountManager
+        const chats = await whatsappMultiAccountManager.getChats(account.id);
+        if (chats && chats.length > 0) {
+          totalSynced += chats.length;
+          console.log(`✅ Synced ${chats.length} chats from account ${account.id}`);
+        } else {
+          console.log(`⚠️ No chats found for account ${account.id}`);
+        }
       } catch (error) {
         console.error(`❌ Error syncing account ${account.id}:`, error);
       }
