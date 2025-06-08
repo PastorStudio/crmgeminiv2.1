@@ -2742,6 +2742,230 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para obtener contactos de WhatsApp reales con formato normalizado
+  app.get("/api/whatsapp/contacts", async (req: Request, res: Response) => {
+    try {
+      console.log('🔄 Obteniendo contactos de WhatsApp reales...');
+      
+      // Importar el manager multi-cuenta
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      
+      const allContacts: any[] = [];
+      
+      // Obtener contactos de todas las cuentas configuradas
+      const accounts = await pool.query('SELECT id, name FROM whatsapp_accounts ORDER BY id ASC');
+      
+      for (const account of accounts.rows) {
+        try {
+          const client = whatsappMultiAccountManager.getClient(account.id);
+          if (!client) {
+            console.log(`⚠️ No hay cliente para cuenta ${account.id} (${account.name})`);
+            continue;
+          }
+
+          const state = await client.getState();
+          if (state !== 'CONNECTED') {
+            console.log(`⚠️ Cuenta ${account.id} no conectada (estado: ${state})`);
+            continue;
+          }
+
+          // Obtener todos los chats
+          const chats = await client.getChats();
+          console.log(`📱 Encontrados ${chats.length} chats para cuenta ${account.id} (${account.name})`);
+
+          for (const chat of chats) {
+            // Saltear chats grupales y estados
+            if (chat.isGroup || chat.id._serialized.includes('status@broadcast')) {
+              continue;
+            }
+
+            // Obtener información del contacto
+            const contact = await chat.getContact();
+            const phone = contact.number || chat.id.user;
+            const displayName = contact.name || contact.pushname || contact.shortName || `Contacto ${phone}`;
+
+            // Obtener último mensaje
+            const messages = await chat.fetchMessages({ limit: 1 });
+            const lastMessage = messages.length > 0 ? messages[0] : null;
+
+            allContacts.push({
+              id: chat.id._serialized,
+              phone: phone,
+              name: displayName,
+              pushname: contact.pushname,
+              shortName: contact.shortName,
+              lastMessage: lastMessage?.body || '',
+              lastMessageTime: lastMessage ? new Date(lastMessage.timestamp * 1000) : null,
+              isGroup: false,
+              accountId: account.id,
+              accountName: account.name,
+              profilePic: contact.profilePicUrl,
+              tags: [] // Se pueden añadir etiquetas más tarde
+            });
+          }
+        } catch (error) {
+          console.error(`❌ Error obteniendo contactos de cuenta ${account.id}:`, error);
+        }
+      }
+
+      console.log(`✅ Total de contactos obtenidos: ${allContacts.length}`);
+      res.json(allContacts);
+    } catch (error) {
+      console.error('❌ Error obteniendo contactos de WhatsApp:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener contactos de WhatsApp",
+        contacts: []
+      });
+    }
+  });
+
+  // Endpoint para sincronización masiva de contactos de WhatsApp - UN CLICK
+  app.post("/api/whatsapp/sync-all-contacts", async (req: Request, res: Response) => {
+    try {
+      console.log('🚀 SINCRONIZACIÓN MASIVA: Importando TODOS los contactos de WhatsApp...');
+      
+      // Importar servicios necesarios
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      
+      let totalSyncedContacts = 0;
+      const syncResults: any[] = [];
+      
+      // Obtener todas las cuentas de WhatsApp
+      const accounts = await pool.query('SELECT id, name FROM whatsapp_accounts ORDER BY id ASC');
+      console.log(`📊 Procesando ${accounts.rows.length} cuentas de WhatsApp...`);
+      
+      for (const account of accounts.rows) {
+        try {
+          console.log(`🔄 Sincronizando cuenta ${account.id} (${account.name})...`);
+          
+          const client = whatsappMultiAccountManager.getClient(account.id);
+          if (!client) {
+            console.log(`⚠️ Sin cliente para cuenta ${account.id}`);
+            syncResults.push({
+              accountId: account.id,
+              accountName: account.name,
+              status: 'no_client',
+              contacts: 0
+            });
+            continue;
+          }
+
+          const state = await client.getState();
+          if (state !== 'CONNECTED') {
+            console.log(`⚠️ Cuenta ${account.id} no conectada (${state})`);
+            syncResults.push({
+              accountId: account.id,
+              accountName: account.name,
+              status: 'not_connected',
+              contacts: 0,
+              state: state
+            });
+            continue;
+          }
+
+          // Obtener todos los chats de esta cuenta
+          const chats = await client.getChats();
+          console.log(`📱 Procesando ${chats.length} chats de cuenta ${account.id}...`);
+          
+          let accountContactCount = 0;
+          
+          for (const chat of chats) {
+            // Solo procesar chats individuales, no grupos
+            if (chat.isGroup || chat.id._serialized.includes('status@broadcast')) {
+              continue;
+            }
+
+            try {
+              // Obtener información del contacto
+              const contact = await chat.getContact();
+              const phone = contact.number || chat.id.user;
+              const displayName = contact.name || contact.pushname || contact.shortName || `Contacto ${phone}`;
+
+              // Verificar si el contacto ya existe en la base de datos
+              const existingContact = await pool.query(
+                'SELECT id FROM whatsapp_contacts WHERE phone = $1 AND account_id = $2',
+                [phone, account.id]
+              );
+
+              if (existingContact.rows.length === 0) {
+                // Insertar nuevo contacto
+                await pool.query(`
+                  INSERT INTO whatsapp_contacts 
+                  (account_id, whatsapp_id, phone, name, pushname, profile_pic_url, created_at, updated_at)
+                  VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+                `, [
+                  account.id,
+                  chat.id._serialized,
+                  phone,
+                  displayName,
+                  contact.pushname || null,
+                  contact.profilePicUrl || null
+                ]);
+                
+                accountContactCount++;
+                totalSyncedContacts++;
+              } else {
+                // Actualizar contacto existente
+                await pool.query(`
+                  UPDATE whatsapp_contacts 
+                  SET name = $1, pushname = $2, profile_pic_url = $3, updated_at = NOW()
+                  WHERE phone = $4 AND account_id = $5
+                `, [
+                  displayName,
+                  contact.pushname || null,
+                  contact.profilePicUrl || null,
+                  phone,
+                  account.id
+                ]);
+              }
+            } catch (contactError) {
+              console.error(`❌ Error procesando contacto individual:`, contactError);
+            }
+          }
+          
+          syncResults.push({
+            accountId: account.id,
+            accountName: account.name,
+            status: 'success',
+            contacts: accountContactCount,
+            totalChats: chats.length
+          });
+          
+          console.log(`✅ Cuenta ${account.id}: ${accountContactCount} contactos sincronizados`);
+          
+        } catch (accountError) {
+          console.error(`❌ Error sincronizando cuenta ${account.id}:`, accountError);
+          syncResults.push({
+            accountId: account.id,
+            accountName: account.name,
+            status: 'error',
+            contacts: 0,
+            error: accountError instanceof Error ? accountError.message : 'Error desconocido'
+          });
+        }
+      }
+      
+      console.log(`🎉 SINCRONIZACIÓN COMPLETADA: ${totalSyncedContacts} contactos totales importados`);
+      
+      res.json({
+        success: true,
+        message: `Sincronización completada: ${totalSyncedContacts} contactos importados`,
+        totalContacts: totalSyncedContacts,
+        accountResults: syncResults,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('❌ Error en sincronización masiva de contactos:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error en la sincronización masiva de contactos",
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
   // Autonomous WhatsApp AI System - Converts every chat to lead cards and tickets
   const { getAutonomousLeads, getAutonomousStats, forceProcessMessages, processSpecificMessage, getConversionMetrics, getRecentActivity } = await import('./routes/autonomousApi');
   app.get("/api/autonomous/leads", getAutonomousLeads);
