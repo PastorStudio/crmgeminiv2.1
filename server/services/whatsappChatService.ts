@@ -2,7 +2,7 @@
  * Service for managing WhatsApp chat data and conversion to leads
  */
 import { storage } from '../storage';
-import { whatsappMultiAccountManager } from '../whatsappMultiAccountManager';
+import { whatsappMultiAccountManager } from './whatsappMultiAccountManager';
 
 interface WhatsAppChatData {
   id: string;
