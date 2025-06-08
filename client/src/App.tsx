@@ -5,6 +5,7 @@ import { Spinner } from '@/components/ui/spinner';
 import PageTransition from '@/components/ui/page-transition';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { PersistentMenu, useMenuLoading } from '@/components/ui/persistent-menu';
+import { CollapsibleSidebar } from '@/components/ui/CollapsibleSidebar';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import Messages from './pages/Messages';
@@ -145,24 +146,361 @@ const AppRoutes: React.FC = () => {
   const canManageUsers = isSuperAdmin || isAdmin || isSupervisor;
   const hasFullAccess = isSuperAdmin; // DJP tiene acceso completo como superadministrador
 
+  // Menu structure for collapsible sidebar
+  const menuSections = [
+    {
+      title: "Principal",
+      items: [
+        {
+          href: "/",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="7" height="7" rx="1" fill="#3B82F6"/>
+              <rect x="14" y="3" width="7" height="7" rx="1" fill="#10B981"/>
+              <rect x="3" y="14" width="7" height="7" rx="1" fill="#F59E0B"/>
+              <rect x="14" y="14" width="7" height="7" rx="1" fill="#EF4444"/>
+            </svg>
+          ),
+          label: "Dashboard"
+        },
+        {
+          href: "/leads",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="8" r="3" fill="#8B5CF6"/>
+              <circle cx="8" cy="14" r="2" fill="#06B6D4"/>
+              <circle cx="16" cy="14" r="2" fill="#F59E0B"/>
+              <path d="M12 14v6M8 18h8" stroke="#10B981" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          ),
+          label: "Leads"
+        },
+        {
+          href: "/sales-pipeline",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="4" width="4" height="16" rx="1" fill="#3B82F6"/>
+              <rect x="7" y="6" width="4" height="14" rx="1" fill="#8B5CF6"/>
+              <rect x="12" y="8" width="4" height="12" rx="1" fill="#F59E0B"/>
+              <rect x="17" y="10" width="4" height="10" rx="1" fill="#10B981"/>
+              <circle cx="4" cy="2" r="1" fill="#EF4444"/>
+              <circle cx="9" cy="4" r="1" fill="#EF4444"/>
+              <circle cx="14" cy="6" r="1" fill="#EF4444"/>
+              <circle cx="19" cy="8" r="1" fill="#EF4444"/>
+            </svg>
+          ),
+          label: "Pipeline Ventas"
+        },
+        {
+          href: "/flow-templates",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="7" height="5" rx="1" fill="#8B5CF6"/>
+              <rect x="14" y="3" width="7" height="5" rx="1" fill="#06B6D4"/>
+              <rect x="3" y="10" width="7" height="5" rx="1" fill="#10B981"/>
+              <rect x="14" y="10" width="7" height="5" rx="1" fill="#F59E0B"/>
+              <rect x="8" y="16" width="8" height="5" rx="1" fill="#EF4444"/>
+            </svg>
+          ),
+          label: "Plantillas de Flujos"
+        },
+        {
+          href: "/system-status",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="8" stroke="#10B981" strokeWidth="2" fill="none"/>
+              <circle cx="12" cy="12" r="4" fill="#10B981"/>
+              <circle cx="8" cy="8" r="1" fill="#F59E0B"/>
+              <circle cx="16" cy="8" r="1" fill="#EF4444"/>
+              <circle cx="8" cy="16" r="1" fill="#3B82F6"/>
+              <circle cx="16" cy="16" r="1" fill="#8B5CF6"/>
+            </svg>
+          ),
+          label: "Estado del Sistema"
+        },
+        {
+          href: "/sales-flow-designer",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M6 3v12M18 9v12M12 3v6M12 15v6" stroke="#6366F1" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="6" cy="9" r="2" fill="#6366F1"/>
+              <circle cx="12" cy="9" r="2" fill="#10B981"/>
+              <circle cx="18" cy="15" r="2" fill="#F59E0B"/>
+              <path d="M8 9h2M14 9h2" stroke="#6366F1" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          ),
+          label: "Flujos de Ventas"
+        }
+      ]
+    },
+    {
+      title: "Comunicación",
+      items: [
+        {
+          href: "/messages",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="4" width="20" height="14" rx="3" fill="#25D366"/>
+              <circle cx="7" cy="11" r="1" fill="white"/>
+              <circle cx="12" cy="11" r="1" fill="white"/>
+              <circle cx="17" cy="11" r="1" fill="white"/>
+            </svg>
+          ),
+          label: "Mensajes"
+        },
+        {
+          href: "/message-templates",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="18" height="18" rx="2" fill="#6366F1"/>
+              <rect x="6" y="6" width="12" height="2" rx="1" fill="white"/>
+              <rect x="6" y="10" width="8" height="2" rx="1" fill="white"/>
+              <rect x="6" y="14" width="10" height="2" rx="1" fill="white"/>
+            </svg>
+          ),
+          label: "Plantillas"
+        },
+        {
+          href: "/mass-sender",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="8" fill="#F59E0B"/>
+              <path d="M8 12h8M12 8v8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="6" cy="6" r="2" fill="#EF4444"/>
+              <circle cx="18" cy="6" r="2" fill="#10B981"/>
+              <circle cx="6" cy="18" r="2" fill="#3B82F6"/>
+              <circle cx="18" cy="18" r="2" fill="#8B5CF6"/>
+            </svg>
+          ),
+          label: "Envío Masivo"
+        }
+      ]
+    },
+    {
+      title: "Planificación",
+      items: [
+        {
+          href: "/calendar",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="4" width="18" height="18" rx="2" fill="#EF4444"/>
+              <rect x="3" y="4" width="18" height="6" rx="2" fill="#DC2626"/>
+              <circle cx="8" cy="7" r="1" fill="white"/>
+              <circle cx="16" cy="7" r="1" fill="white"/>
+              <rect x="6" y="12" width="2" height="2" rx="0.5" fill="white"/>
+              <rect x="11" y="12" width="2" height="2" rx="0.5" fill="white"/>
+              <rect x="16" y="12" width="2" height="2" rx="0.5" fill="white"/>
+            </svg>
+          ),
+          label: "Calendario"
+        },
+        {
+          href: "/tasks",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="4" y="3" width="16" height="18" rx="2" fill="#10B981"/>
+              <path d="M8 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <rect x="8" y="7" width="8" height="1" fill="white" opacity="0.7"/>
+              <rect x="8" y="16" width="6" height="1" fill="white" opacity="0.7"/>
+            </svg>
+          ),
+          label: "Tareas"
+        },
+        {
+          href: "/tickets",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="3" width="20" height="18" rx="3" fill="#8B5CF6"/>
+              <rect x="5" y="7" width="14" height="2" rx="1" fill="white"/>
+              <rect x="5" y="11" width="10" height="2" rx="1" fill="white"/>
+              <rect x="5" y="15" width="12" height="2" rx="1" fill="white"/>
+              <circle cx="18" cy="8" r="2" fill="#EF4444"/>
+              <circle cx="18" cy="8" r="1" fill="white"/>
+            </svg>
+          ),
+          label: "Tickets"
+        }
+      ]
+    },
+    {
+      title: "Análisis y Recursos",
+      items: [
+        {
+          href: "/analytics",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="12" width="4" height="8" rx="1" fill="#3B82F6"/>
+              <rect x="8" y="8" width="4" height="12" rx="1" fill="#10B981"/>
+              <rect x="13" y="4" width="4" height="16" rx="1" fill="#F59E0B"/>
+              <rect x="18" y="10" width="4" height="10" rx="1" fill="#EF4444"/>
+            </svg>
+          ),
+          label: "Análisis"
+        },
+        {
+          href: "/gemini-ai",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="8" fill="#9333EA"/>
+              <path d="M8 12h8M12 8v8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="9" cy="9" r="1.5" fill="#C084FC"/>
+              <circle cx="15" cy="15" r="1.5" fill="#A855F7"/>
+              <circle cx="15" cy="9" r="1" fill="white"/>
+              <circle cx="9" cy="15" r="1" fill="white"/>
+            </svg>
+          ),
+          label: "Gemini AI"
+        },
+        {
+          href: "/media-gallery",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="18" height="18" rx="2" fill="#8B5CF6"/>
+              <rect x="6" y="6" width="5" height="5" rx="1" fill="#A855F7"/>
+              <rect x="13" y="6" width="5" height="5" rx="1" fill="#C084FC"/>
+              <rect x="6" y="13" width="5" height="5" rx="1" fill="#DDD6FE"/>
+              <rect x="13" y="13" width="5" height="5" rx="1" fill="#EDE9FE"/>
+              <circle cx="8.5" cy="8.5" r="1" fill="white"/>
+            </svg>
+          ),
+          label: "Galería"
+        }
+      ]
+    },
+    {
+      title: "Conexiones",
+      items: [
+        {
+          href: "/whatsapp-accounts",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="4" width="18" height="16" rx="3" fill="#25D366"/>
+              <circle cx="8" cy="10" r="2" fill="white"/>
+              <circle cx="16" cy="10" r="2" fill="white"/>
+              <path d="M6 14h4v2H6zM14 14h4v2h-4z" fill="white"/>
+              <rect x="10" y="6" width="4" height="1" fill="white" opacity="0.8"/>
+            </svg>
+          ),
+          label: "Cuentas WhatsApp"
+        },
+        {
+          href: "/whatsapp-auth",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="18" height="18" rx="3" fill="#25D366"/>
+              <rect x="7" y="7" width="10" height="10" rx="2" fill="white"/>
+              <rect x="9" y="9" width="2" height="2" fill="#25D366"/>
+              <rect x="13" y="9" width="2" height="2" fill="#25D366"/>
+              <rect x="9" y="13" width="2" height="2" fill="#25D366"/>
+              <rect x="13" y="13" width="2" height="2" fill="#25D366"/>
+              <rect x="11" y="11" width="2" height="2" fill="#25D366"/>
+            </svg>
+          ),
+          label: "QR Autenticación"
+        },
+        {
+          href: "/agent-monitoring",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="2" width="20" height="20" rx="2" fill="#1F2937"/>
+              <circle cx="8" cy="8" r="2" fill="#10B981"/>
+              <circle cx="16" cy="8" r="2" fill="#3B82F6"/>
+              <circle cx="8" cy="16" r="2" fill="#F59E0B"/>
+              <circle cx="16" cy="16" r="2" fill="#EF4444"/>
+              <rect x="6" y="11" width="4" height="1" fill="#10B981"/>
+              <rect x="14" y="11" width="4" height="1" fill="#3B82F6"/>
+              <rect x="10" y="6" width="4" height="1" fill="#6B7280"/>
+              <rect x="10" y="17" width="4" height="1" fill="#6B7280"/>
+            </svg>
+          ),
+          label: "Monitoreo Agentes"
+        }
+      ]
+    },
+    {
+      title: "Administración",
+      items: [
+        {
+          href: "/users",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="8" r="4" fill="#3B82F6"/>
+              <circle cx="8" cy="15" r="2" fill="#10B981"/>
+              <circle cx="16" cy="15" r="2" fill="#F59E0B"/>
+              <path d="M12 13v6" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M8 17h8" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"/>
+              <rect x="2" y="20" width="20" height="2" rx="1" fill="#EF4444"/>
+            </svg>
+          ),
+          label: "Agentes"
+        },
+        {
+          href: "/ai-settings",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="8" fill="#9333EA"/>
+              <path d="M8 12h8M12 8v8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="9" cy="9" r="1.5" fill="#C084FC"/>
+              <circle cx="15" cy="15" r="1.5" fill="#A855F7"/>
+              <circle cx="15" cy="9" r="1" fill="white"/>
+              <circle cx="9" cy="15" r="1" fill="white"/>
+            </svg>
+          ),
+          label: "AI Integration"
+        },
+        {
+          href: "/function-documentation",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="18" height="18" rx="3" fill="#DC2626"/>
+              <rect x="6" y="7" width="12" height="2" rx="1" fill="white"/>
+              <rect x="6" y="11" width="8" height="2" rx="1" fill="white"/>
+              <rect x="6" y="15" width="10" height="2" rx="1" fill="white"/>
+              <circle cx="18" cy="6" r="2" fill="#EF4444"/>
+              <rect x="17" y="5" width="2" height="2" rx="0.5" fill="white"/>
+            </svg>
+          ),
+          label: "Documentación"
+        },
+        {
+          href: "/agent-security",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="11" width="18" height="10" rx="2" fill="#DC2626"/>
+              <rect x="7" y="7" width="10" height="4" rx="2" stroke="#DC2626" strokeWidth="2" fill="none"/>
+              <circle cx="12" cy="15" r="2" fill="white"/>
+              <rect x="11" y="16" width="2" height="3" fill="white"/>
+            </svg>
+          ),
+          label: "Control y Seguridad"
+        },
+        {
+          href: "/settings",
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="8" fill="#374151"/>
+              <circle cx="12" cy="12" r="3" fill="#F59E0B"/>
+              <rect x="11" y="2" width="2" height="4" rx="1" fill="#6B7280"/>
+              <rect x="11" y="18" width="2" height="4" rx="1" fill="#6B7280"/>
+              <rect x="18" y="11" width="4" height="2" rx="1" fill="#6B7280"/>
+              <rect x="2" y="11" width="4" height="2" rx="1" fill="#6B7280"/>
+            </svg>
+          ),
+          label: "Configuración"
+        }
+      ]
+    }
+  ];
+
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Notification System - Always active when authenticated */}
       {(isAuthenticated || bypassAuth) && <NotificationSystem />}
       
-      {/* Sidebar con menú vertical - siempre visible cuando está autenticado */}
-      {showSidebar && (
-        <aside className="fixed h-full w-44 bg-gradient-to-b from-black via-black to-red-600 shadow-2xl z-50 overflow-y-auto" style={{backgroundImage: 'linear-gradient(180deg, #000000 0%, #000000 65%, #dc2626 100%)'}}>
-          <div className="p-2">
-            <div className="flex items-center justify-center mb-4">
-              <span className="text-white text-sm font-bold">WhatsApp CRM</span>
-            </div>
-            
-            <nav className="mt-2 flex flex-col space-y-1">
-              {/* Principal */}
-              <div className="px-3 py-1">
-                <span className="text-xs uppercase font-semibold text-white/70">Principal</span>
-              </div>
+      {/* Collapsible Sidebar - shows only icons, expands on hover */}
+      {showSidebar && <CollapsibleSidebar sections={menuSections} />}
+
+
               
               <a href="/" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
