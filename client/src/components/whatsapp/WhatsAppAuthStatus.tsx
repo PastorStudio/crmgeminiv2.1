@@ -174,7 +174,8 @@ export function WhatsAppAuthStatus({ onAuthenticationChange }: WhatsAppAuthStatu
             <Alert>
               <AlertCircle className="w-4 h-4" />
               <AlertDescription>
-                {needsAuth.length} cuenta(s) requiere(n) autenticación para acceder a chats reales
+                <strong>¡Importante!</strong> {needsAuth.length} cuenta(s) requiere(n) autenticación para acceder a chats reales. 
+                Los contactos para mensajería masiva aparecerán después de escanear el código QR.
               </AlertDescription>
             </Alert>
           )}

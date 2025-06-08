@@ -1566,19 +1566,26 @@ export default function MassSender() {
                           ))}
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-center">
+                        <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
                           <Users className="h-8 w-8 text-muted-foreground mb-2" />
-                          <span className="text-sm text-muted-foreground">
-                            {whatsappContacts.length === 0 
-                              ? "No hay contactos de WhatsApp disponibles"
-                              : "No hay contactos que coincidan con los filtros seleccionados"
-                            }
-                          </span>
-                          {whatsappContacts.length === 0 && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Asegúrate de que tu cuenta de WhatsApp esté conectada
-                            </p>
-                          )}
+                          <div className="space-y-2">
+                            <span className="text-sm text-muted-foreground">
+                              {whatsappContacts.length === 0 
+                                ? "No hay contactos de WhatsApp disponibles"
+                                : "No hay contactos que coincidan con los filtros seleccionados"
+                              }
+                            </span>
+                            {whatsappContacts.length === 0 && (
+                              <div className="space-y-2">
+                                <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                                  Los contactos aparecerán después de autenticar WhatsApp
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Usa el botón "Generar QR" en la sección de arriba para conectar tu cuenta
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </ScrollArea>
