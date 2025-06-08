@@ -76,8 +76,10 @@ export default function Leads() {
   const isWhatsAppConnected = Boolean(
     whatsappStatus?.success && 
     whatsappStatus?.accounts?.some((account) => 
-      account.status === 'active' || account.status === 'connected' || 
-      account.authenticated === true || account.ready === true
+      account.autoResponseEnabled === true || 
+      account.status === 'active' ||
+      account.authenticated === true || 
+      account.ready === true
     )
   );
 
