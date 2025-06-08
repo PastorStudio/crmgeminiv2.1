@@ -801,6 +801,25 @@ export type InsertSalesMetrics = typeof insertSalesMetricsSchema._type;
 
 
 
+// Message Templates for mass messaging
+export const messageTemplates = pgTable("message_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  content: text("content").notNull(),
+  category: text("category").default("general"),
+  tags: text("tags").array().default([]),
+  variables: text("variables").array().default([]),
+  isActive: boolean("is_active").default(true),
+  usageCount: integer("usage_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Message templates schemas
+export const insertMessageTemplateSchema = createInsertSchema(messageTemplates);
+export type MessageTemplate = typeof messageTemplates.$inferSelect;
+export type InsertMessageTemplate = typeof insertMessageTemplateSchema._type;
+
 // Additional validation schemas (avoiding duplicates)
 export const insertContactSchema = createInsertSchema(contacts);
 export const insertConversationSchema = createInsertSchema(conversations);
