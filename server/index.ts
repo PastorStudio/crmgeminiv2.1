@@ -5325,14 +5325,10 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  // Middleware para evitar que Vite intercepte endpoints críticos
+  // Middleware para evitar que Vite intercepte todos los endpoints de API
   app.use((req, res, next) => {
-    if (req.path === '/api/external-agents-direct' && req.method === 'POST') {
-      // Saltar completamente cualquier middleware de Vite para este endpoint
-      return next('route');
-    }
-    if (req.path === '/api/external-agents-direct' && req.method === 'GET') {
-      // Saltar completamente cualquier middleware de Vite para este endpoint
+    if (req.path.startsWith('/api/')) {
+      // Saltar completamente cualquier middleware de Vite para todos los endpoints API
       return next('route');
     }
     next();
