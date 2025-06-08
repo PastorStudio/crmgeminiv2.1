@@ -1694,7 +1694,6 @@ export default function MassSender() {
                         {selectedContacts.length} contacto{selectedContacts.length !== 1 ? 's' : ''} seleccionado{selectedContacts.length !== 1 ? 's' : ''}
                       </div>
                     )}
-                      </ScrollArea>
                     </div>
                   </div>
                   
