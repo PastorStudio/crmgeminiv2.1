@@ -2109,6 +2109,105 @@ app.use((req, res, next) => {
     }
   });
 
+  // ===== MESSAGE TEMPLATES API (BEFORE VITE) =====
+  
+  // Get all message templates
+  app.get("/api/message-templates", async (req: Request, res: Response) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'no-cache');
+      
+      const { messageTemplateService } = await import("./services/messageTemplateService");
+      const templates = await messageTemplateService.getAllTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error("Error al obtener plantillas:", error);
+      res.status(500).json({ error: "Error al obtener plantillas" });
+    }
+  });
+
+  // Get single message template
+  app.get("/api/message-templates/:id", async (req: Request, res: Response) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      
+      const { messageTemplateService } = await import("./services/messageTemplateService");
+      const id = parseInt(req.params.id);
+      const template = await messageTemplateService.getTemplateById(id);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Plantilla no encontrada" });
+      }
+      
+      res.json(template);
+    } catch (error) {
+      console.error("Error al obtener plantilla:", error);
+      res.status(500).json({ error: "Error al obtener plantilla" });
+    }
+  });
+
+  // Create new message template
+  app.post("/api/message-templates", async (req: Request, res: Response) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      
+      const { messageTemplateService } = await import("./services/messageTemplateService");
+      const templateData = req.body;
+      const template = await messageTemplateService.createTemplate(templateData);
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Error al crear plantilla:", error);
+      res.status(500).json({ error: "Error al crear plantilla" });
+    }
+  });
+
+  // Update message template
+  app.patch("/api/message-templates/:id", async (req: Request, res: Response) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      
+      const { messageTemplateService } = await import("./services/messageTemplateService");
+      const id = parseInt(req.params.id);
+      const templateData = req.body;
+      
+      // Ensure tags are properly formatted as array
+      if (templateData.tags && !Array.isArray(templateData.tags)) {
+        templateData.tags = [];
+      }
+      
+      const template = await messageTemplateService.updateTemplate(id, templateData);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Plantilla no encontrada" });
+      }
+      
+      res.json(template);
+    } catch (error) {
+      console.error("Error al actualizar plantilla:", error);
+      res.status(500).json({ error: "Error al actualizar plantilla" });
+    }
+  });
+
+  // Delete message template
+  app.delete("/api/message-templates/:id", async (req: Request, res: Response) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      
+      const { messageTemplateService } = await import("./services/messageTemplateService");
+      const id = parseInt(req.params.id);
+      const success = await messageTemplateService.deleteTemplate(id);
+      
+      if (!success) {
+        return res.status(404).json({ error: "Plantilla no encontrada" });
+      }
+      
+      res.json({ success: true, message: "Plantilla eliminada exitosamente" });
+    } catch (error) {
+      console.error("Error al eliminar plantilla:", error);
+      res.status(500).json({ error: "Error al eliminar plantilla" });
+    }
+  });
+
   // Modern messaging system routes
   app.use('/api/modern-messaging', modernMessagingRouter);
 
@@ -2969,105 +3068,6 @@ app.use((req, res, next) => {
         active: false, 
         agentUrl: null 
       });
-    }
-  });
-
-  // ===== MESSAGE TEMPLATES API =====
-  
-  // Get all message templates
-  app.get("/api/message-templates", async (req: Request, res: Response) => {
-    try {
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Cache-Control', 'no-cache');
-      
-      const { messageTemplateService } = await import("./services/messageTemplateService");
-      const templates = await messageTemplateService.getAllTemplates();
-      res.json(templates);
-    } catch (error) {
-      console.error("Error al obtener plantillas:", error);
-      res.status(500).json({ error: "Error al obtener plantillas" });
-    }
-  });
-
-  // Get single message template
-  app.get("/api/message-templates/:id", async (req: Request, res: Response) => {
-    try {
-      res.setHeader('Content-Type', 'application/json');
-      
-      const { messageTemplateService } = await import("./services/messageTemplateService");
-      const id = parseInt(req.params.id);
-      const template = await messageTemplateService.getTemplateById(id);
-      
-      if (!template) {
-        return res.status(404).json({ error: "Plantilla no encontrada" });
-      }
-      
-      res.json(template);
-    } catch (error) {
-      console.error("Error al obtener plantilla:", error);
-      res.status(500).json({ error: "Error al obtener plantilla" });
-    }
-  });
-
-  // Create new message template
-  app.post("/api/message-templates", async (req: Request, res: Response) => {
-    try {
-      res.setHeader('Content-Type', 'application/json');
-      
-      const { messageTemplateService } = await import("./services/messageTemplateService");
-      const templateData = req.body;
-      const template = await messageTemplateService.createTemplate(templateData);
-      res.status(201).json(template);
-    } catch (error) {
-      console.error("Error al crear plantilla:", error);
-      res.status(500).json({ error: "Error al crear plantilla" });
-    }
-  });
-
-  // Update message template
-  app.patch("/api/message-templates/:id", async (req: Request, res: Response) => {
-    try {
-      res.setHeader('Content-Type', 'application/json');
-      
-      const { messageTemplateService } = await import("./services/messageTemplateService");
-      const id = parseInt(req.params.id);
-      const templateData = req.body;
-      
-      // Ensure tags are properly formatted as array
-      if (templateData.tags && !Array.isArray(templateData.tags)) {
-        templateData.tags = [];
-      }
-      
-      const template = await messageTemplateService.updateTemplate(id, templateData);
-      
-      if (!template) {
-        return res.status(404).json({ error: "Plantilla no encontrada" });
-      }
-      
-      res.json(template);
-    } catch (error) {
-      console.error("Error al actualizar plantilla:", error);
-      res.status(500).json({ error: "Error al actualizar plantilla" });
-    }
-  });
-
-  // Delete message template
-  app.delete("/api/message-templates/:id", async (req: Request, res: Response) => {
-    try {
-      res.setHeader('Content-Type', 'application/json');
-      
-      const { messageTemplateService } = await import("./services/messageTemplateService");
-      const id = parseInt(req.params.id);
-      const success = await messageTemplateService.deleteTemplate(id);
-      
-      if (!success) {
-        return res.status(404).json({ error: "Plantilla no encontrada" });
-      }
-      
-      res.json({ success: true, message: "Plantilla eliminada exitosamente" });
-    } catch (error) {
-      console.error("Error al eliminar plantilla:", error);
-      res.status(500).json({ error: "Error al eliminar plantilla" });
     }
   });
 
