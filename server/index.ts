@@ -1140,6 +1140,36 @@ app.get('/api/external-agents-direct', async (req: Request, res: Response) => {
 
 // RUTAS CRÍTICAS ANTES QUE VITE - AGENTES EXTERNOS Y ESTADO EN VIVO
 
+// Real Lead Generation from WhatsApp Conversations - DIRECT BYPASS
+app.post("/bypass/generate-real-leads", async (req: Request, res: Response) => {
+  try {
+    console.log('🔄 Converting real WhatsApp conversations to leads...');
+    res.setHeader('Content-Type', 'application/json');
+
+    const { RealLeadGenerator } = await import('./services/realLeadGenerator');
+    const leadGenerator = new RealLeadGenerator(storage);
+    
+    const result = await leadGenerator.convertConversationsToLeads();
+    
+    console.log(`✅ Lead generation completed: ${result.leadsCreated} leads created`);
+    
+    return res.json({
+      success: true,
+      leadsCreated: result.leadsCreated,
+      message: result.message,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Error generating real leads:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Error desconocido',
+      message: 'Error al generar leads desde conversaciones reales' 
+    });
+  }
+});
+
 // WhatsApp Contact Synchronization Endpoint - DIRECT BYPASS
 app.post("/bypass/whatsapp/sync-all-contacts", async (req: Request, res: Response) => {
   try {
