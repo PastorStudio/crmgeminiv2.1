@@ -973,6 +973,15 @@ export default function MassSender() {
       });
       return;
     }
+
+    if (!selectedWhatsAppAccountId) {
+      toast({
+        title: "Cuenta de WhatsApp requerida",
+        description: "Debes seleccionar una cuenta de WhatsApp para enviar los mensajes.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if ((selectedGroups || []).length === 0 && (selectedTags || []).length === 0) {
       toast({
@@ -990,6 +999,7 @@ export default function MassSender() {
       targetGroups: selectedGroups,
       targetTags: selectedTags,
       config: currentConfig,
+      whatsappAccountId: selectedWhatsAppAccountId,
       status: 'pending',
       totalContacts: 0,
       processedContacts: 0,
@@ -2763,6 +2773,53 @@ export default function MassSender() {
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
+            {/* Selección de cuenta de WhatsApp */}
+            <div className="grid gap-2">
+              <Label htmlFor="whatsapp-account-immediate">Cuenta de WhatsApp para enviar</Label>
+              <Select
+                value={selectedWhatsAppAccountId?.toString() || ""}
+                onValueChange={(value) => setSelectedWhatsAppAccountId(parseInt(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona la cuenta de WhatsApp" />
+                </SelectTrigger>
+                <SelectContent>
+                  {loadingAccounts ? (
+                    <SelectItem value="" disabled>
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Cargando cuentas...
+                      </div>
+                    </SelectItem>
+                  ) : whatsappAccounts?.accounts?.length > 0 ? (
+                    whatsappAccounts.accounts.map((account: any) => (
+                      <SelectItem key={account.id} value={account.id.toString()}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${
+                            account.currentStatus?.ready ? 'bg-green-500' : 'bg-red-500'
+                          }`} />
+                          <span className="font-medium">{account.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({account.ownerPhone})
+                          </span>
+                          {account.currentStatus?.ready && (
+                            <Badge variant="outline" className="text-xs">Conectado</Badge>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>
+                      No hay cuentas de WhatsApp disponibles
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Selecciona desde qué cuenta de WhatsApp se enviarán los mensajes.
+              </p>
+            </div>
+
             {/* Selección de contactos */}
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
