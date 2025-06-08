@@ -201,31 +201,33 @@ export default function Leads() {
     }
   };
 
-  // Handle convert WhatsApp chats to leads
+  // Handle convert real WhatsApp conversations to leads
   const handleConvertWhatsAppChats = async () => {
     try {
-      const response = await apiRequest('/api/whatsapp-accounts/convert-chats-to-leads', {
-        method: 'POST'
+      const response = await fetch('/bypass/generate-real-leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
+      
+      const data = await response.json();
 
-      if (response.success) {
-        const { converted = 0, details } = response;
-        const { created = 0, updated = 0, processed = 0 } = details || {};
-        
+      if (data.success) {
         toast({
           title: "Conversión completada",
-          description: `${processed} chats procesados: ${created} leads creados, ${updated} actualizados`,
+          description: `${data.leadsCreated} leads reales creados desde conversaciones de WhatsApp`,
         });
         
         // Refresh leads list
         queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       } else {
-        throw new Error(response.message || 'Error en la conversión');
+        throw new Error(data.message || 'Error en la conversión');
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "No se pudieron convertir los chats reales a leads. Verifica que WhatsApp esté conectado.",
+        description: "No se pudieron convertir las conversaciones reales a leads",
         variant: "destructive",
       });
     }
@@ -388,18 +390,11 @@ export default function Leads() {
             <Button
               onClick={handleConvertWhatsAppChats}
               variant="outline"
-              disabled={!connectionStatus.connected}
-              className={connectionStatus.connected 
-                ? "bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
-                : "bg-red-50 border-red-200 text-red-700 cursor-not-allowed"
-              }
-              title={connectionStatus.connected 
-                ? "Convertir chats de WhatsApp a leads" 
-                : "WhatsApp debe estar conectado para convertir chats"
-              }
+              className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 font-medium"
+              title="Convertir conversaciones reales de WhatsApp a leads"
             >
               <MessageCircle className="h-4 w-4 mr-2" />
-              {connectionStatus.text}
+              Convertir Chats Reales
             </Button>
             
             <Button
@@ -487,9 +482,24 @@ export default function Leads() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLeads?.map((lead) => (
-                    <TableRow key={lead.id}>
-                      <TableCell className="font-medium">{lead.fullName}</TableCell>
+                  {filteredLeads?.map((lead) => {
+                    const customFields = lead.customFields as any;
+                    const isRealConversation = customFields?.isRealConversation === true;
+                    const messageCount = customFields?.messageCount;
+                    
+                    return (
+                    <TableRow key={lead.id} className={isRealConversation ? "bg-green-50 border-l-4 border-l-green-500" : ""}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {lead.fullName || lead.name}
+                          {isRealConversation && (
+                            <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 text-xs">
+                              <MessageCircle className="w-3 h-3 mr-1" />
+                              Real Chat ({messageCount} msgs)
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="hidden md:table-cell">{lead.email}</TableCell>
                       <TableCell className="hidden md:table-cell">{lead.company || "—"}</TableCell>
                       <TableCell>
@@ -497,7 +507,14 @@ export default function Leads() {
                           {formatStatus(lead.status)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell">{lead.source || "—"}</TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="flex items-center gap-1">
+                          {lead.source || "—"}
+                          {isRealConversation && (
+                            <span className="text-xs text-green-600 font-medium">WhatsApp</span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         {lead.matchPercentage ? (
                           <span className="text-xs font-medium text-green-600">
@@ -576,7 +593,8 @@ export default function Leads() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
