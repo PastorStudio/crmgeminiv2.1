@@ -254,21 +254,41 @@ export default function SalesPipelineKanban() {
                             >
                               <div className="space-y-2">
                                 <div className="flex items-start justify-between">
-                                  <h4 className="font-medium text-sm text-gray-900 line-clamp-2">
-                                    {lead.title}
-                                  </h4>
+                                  <div className="flex-1">
+                                    <h4 className="font-medium text-sm text-gray-900 line-clamp-1">
+                                      {lead.name || lead.fullName || 'Sin nombre'}
+                                    </h4>
+                                    {lead.company && (
+                                      <p className="text-xs text-gray-500 mt-0.5">
+                                        {lead.company}
+                                      </p>
+                                    )}
+                                    <p className="text-xs text-gray-600 mt-1 flex items-center space-x-1">
+                                      {lead.source === 'whatsapp' && (
+                                        <span className="text-green-600 font-medium">📱</span>
+                                      )}
+                                      <span>
+                                        {/* Extract phone from email or notes for WhatsApp leads */}
+                                        {lead.email?.includes('@whatsapp.contact') 
+                                          ? lead.email.split('@')[0].replace('whatsapp-', '+507 ') 
+                                          : lead.notes?.match(/Phone: (.+)/)?.[1] || 
+                                            lead.notes?.match(/WhatsApp: (.+)/)?.[1] || 
+                                            lead.email || 'Sin teléfono'}
+                                      </span>
+                                    </p>
+                                  </div>
                                 </div>
                                 
                                 <div className="text-xs text-gray-600 space-y-1">
                                   <div className="flex items-center space-x-1">
-                                    <span>Value: {lead.value} {lead.currency}</span>
+                                    <span>Valor: ${lead.value || 0} {lead.currency}</span>
                                   </div>
                                   <div className="flex items-center space-x-1">
                                     <Calendar className="h-3 w-3" />
                                     <span>{formatDistanceToNow(new Date(lead.updatedAt), { addSuffix: true })}</span>
                                   </div>
                                   <div className="flex items-center space-x-1">
-                                    <span>Priority: {lead.priority}</span>
+                                    <span>Prioridad: {lead.priority}</span>
                                   </div>
                                 </div>
                                 
