@@ -196,6 +196,7 @@ export default function MassSender() {
   const [showWhatsAppContacts, setShowWhatsAppContacts] = useState<boolean>(false);
   const [selectedWhatsAppContactIds, setSelectedWhatsAppContactIds] = useState<string[]>([]);
   const [selectAllWhatsAppContacts, setSelectAllWhatsAppContacts] = useState<boolean>(false);
+  const [whatsAppContacts, setWhatsAppContacts] = useState<any[]>([]);
   
   // Estados para asistente Gemini
   const [isGeminiAssistantOpen, setIsGeminiAssistantOpen] = useState<boolean>(false);
@@ -224,28 +225,39 @@ export default function MassSender() {
     retry: false
   });
   
-  // Consulta para obtener contactos individuales de WhatsApp
-  const fetchWhatsAppContacts = async () => {
+  // Function to import all WhatsApp contacts
+  const handleImportAllContacts = async () => {
     try {
-      setLoadingWhatsAppContacts(true);
-      const response = await fetch('/api/direct/whatsapp/contacts');
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
+      console.log('🚀 IMPORTACIÓN MASIVA: Iniciando sincronización de contactos...');
+      
+      const response = await fetch('/bypass/whatsapp/sync-all-contacts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
       const data = await response.json();
-      console.log("Contactos WhatsApp obtenidos:", data);
-      setWhatsAppContacts(data);
-      return data;
-    } catch (error) {
-      console.error('Error obteniendo contactos de WhatsApp:', error);
+      
+      if (data.success) {
+        toast({
+          title: "Importación exitosa",
+          description: `${data.totalContacts} contactos sincronizados desde WhatsApp`,
+        });
+        
+        // Refresh contacts list after import
+        refetchWhatsAppContacts();
+        console.log(`✅ ${data.totalContacts} contactos importados exitosamente`);
+      } else {
+        throw new Error(data.message || 'Error en la importación');
+      }
+    } catch (error: any) {
+      console.error('❌ Error importando contactos:', error);
       toast({
-        title: "Error",
-        description: "No se pudieron obtener los contactos de WhatsApp.",
+        title: "Error en importación",
+        description: error.message || "No se pudieron importar los contactos de WhatsApp",
         variant: "destructive",
       });
-      return [];
-    } finally {
-      setLoadingWhatsAppContacts(false);
     }
   };
   
@@ -280,8 +292,8 @@ export default function MassSender() {
 
   // Consulta para obtener contactos de WhatsApp reales
   const { 
-    data: whatsappContacts = [], 
-    isLoading: loadingWhatsAppContacts, 
+    data: whatsappContactsQuery = [], 
+    isLoading: loadingWhatsAppContactsQuery, 
     refetch: refetchWhatsAppContacts 
   } = useQuery({
     queryKey: ['/api/whatsapp/contacts'],
