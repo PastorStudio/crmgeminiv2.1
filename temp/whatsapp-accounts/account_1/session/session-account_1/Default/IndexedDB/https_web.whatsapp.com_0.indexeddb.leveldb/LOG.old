@@ -1,7 +1,0 @@
-2025/06/08-15:57:33.209 6b1 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/06/08-15:57:33.209 6b1 Recovering log #124
-2025/06/08-15:57:33.244 6b1 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000124.log 
-2025/06/08-15:57:35.012 6af Level-0 table #134: started
-2025/06/08-15:57:35.040 6af Level-0 table #134: 263823 bytes OK
-2025/06/08-15:57:35.059 6af Delete type=0 #124
-2025/06/08-15:57:35.059 6b3 Manual compaction at level-0 from '\x00\x1c\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1d\x00\x00\x00' @ 0 : 0; will stop at (end)
