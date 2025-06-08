@@ -2826,7 +2826,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('🚀 SINCRONIZACIÓN MASIVA: Importando TODOS los contactos de WhatsApp...');
       
       // Importar servicios necesarios
-      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+      let whatsappMultiAccountManager;
+      try {
+        const importedModule = await import('./services/whatsappMultiAccountManager');
+        whatsappMultiAccountManager = importedModule.whatsappMultiAccountManager;
+      } catch (importError) {
+        console.error('❌ Error importando whatsappMultiAccountManager:', importError);
+        return res.status(500).json({
+          success: false,
+          message: "Servicio de WhatsApp no disponible",
+          error: "WhatsApp service import failed"
+        });
+      }
       
       let totalSyncedContacts = 0;
       const syncResults: any[] = [];
