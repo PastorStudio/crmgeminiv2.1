@@ -805,14 +805,15 @@ export type InsertSalesMetrics = typeof insertSalesMetricsSchema._type;
 export const messageTemplates = pgTable("message_templates", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  description: text("description"),
   content: text("content").notNull(),
   category: text("category").default("general"),
   tags: text("tags").array().default([]),
-  variables: text("variables").array().default([]),
-  isActive: boolean("is_active").default(true),
-  usageCount: integer("usage_count").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  variables: jsonb("variables").default([]),
+  createdAt: timestamp("createdAt"),
+  updatedAt: timestamp("updatedAt"),
+  createdBy: integer("createdBy"),
+  isActive: boolean("isActive").default(true),
 });
 
 // Message templates schemas
