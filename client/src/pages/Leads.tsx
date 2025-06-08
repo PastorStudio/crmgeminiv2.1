@@ -40,6 +40,8 @@ interface WhatsAppAccount {
   authenticated: boolean;
   ready: boolean;
   status: string;
+  autoResponseEnabled: boolean;
+  name?: string;
 }
 
 interface WhatsAppStatusResponse {
