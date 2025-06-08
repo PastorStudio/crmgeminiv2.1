@@ -74,22 +74,50 @@ export default function Leads() {
     refetchInterval: 10000, // Check every 10 seconds
   });
 
-  // Determine if WhatsApp is connected
+  // Determine if WhatsApp is connected by checking nested authentication status
   const isWhatsAppConnected = Boolean(
     whatsappStatus?.success && 
-    whatsappStatus?.accounts?.some((account) => 
-      account.autoResponseEnabled === true || 
-      account.status === 'active' ||
-      account.authenticated === true || 
-      account.ready === true
-    )
+    whatsappStatus?.accounts?.some((account: any) => {
+      // Check authentication in nested sessionData and currentStatus objects
+      const sessionAuthenticated = account.sessionData?.authenticated === true;
+      const sessionReady = account.sessionData?.ready === true;
+      const currentAuthenticated = account.currentStatus?.authenticated === true;
+      const currentReady = account.currentStatus?.ready === true;
+      
+      // Also check top-level properties as fallback
+      const topLevelAuth = account.authenticated === true;
+      const topLevelReady = account.ready === true;
+      const hasAutoResponse = account.autoResponseEnabled === true;
+      const isActive = account.status === 'Conectado' || account.status === 'active';
+      
+      return sessionAuthenticated || sessionReady || currentAuthenticated || 
+             currentReady || topLevelAuth || topLevelReady || hasAutoResponse || isActive;
+    })
   );
 
-  // Get connection status text and color
+  // Get detailed connection status with proper nested status checking
   const getConnectionStatus = () => {
-    if (!whatsappStatus) return { text: "Verificando...", connected: false };
-    if (isWhatsAppConnected) return { text: "WhatsApp Conectado", connected: true };
-    return { text: "WhatsApp Desconectado", connected: false };
+    if (!whatsappStatus?.success) return { text: "Verificando...", connected: false };
+    
+    const connectedAccounts = whatsappStatus.accounts?.filter((account: any) => {
+      const sessionAuth = account.sessionData?.authenticated || account.sessionData?.ready;
+      const currentAuth = account.currentStatus?.authenticated || account.currentStatus?.ready;
+      const topLevel = account.authenticated || account.ready || account.autoResponseEnabled;
+      const isActive = account.status === 'Conectado' || account.status === 'active';
+      
+      return sessionAuth || currentAuth || topLevel || isActive;
+    }) || [];
+    
+    if (connectedAccounts.length > 0) {
+      const accountNames = connectedAccounts.map((acc: any) => acc.name || acc.accountName).join(', ');
+      return { 
+        text: `WhatsApp Conectado (${accountNames})`, 
+        connected: true,
+        accounts: connectedAccounts
+      };
+    }
+    
+    return { text: "WhatsApp Sin Autenticar", connected: false };
   };
 
   const connectionStatus = getConnectionStatus();
