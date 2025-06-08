@@ -482,24 +482,9 @@ export default function Leads() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLeads?.map((lead) => {
-                    const customFields = lead.customFields as any;
-                    const isRealConversation = customFields?.isRealConversation === true;
-                    const messageCount = customFields?.messageCount;
-                    
-                    return (
-                    <TableRow key={lead.id} className={isRealConversation ? "bg-green-50 border-l-4 border-l-green-500" : ""}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {lead.fullName || lead.name}
-                          {isRealConversation && (
-                            <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 text-xs">
-                              <MessageCircle className="w-3 h-3 mr-1" />
-                              Real Chat ({messageCount} msgs)
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
+                  {filteredLeads?.map((lead) => (
+                    <TableRow key={lead.id}>
+                      <TableCell className="font-medium">{lead.fullName || lead.name}</TableCell>
                       <TableCell className="hidden md:table-cell">{lead.email}</TableCell>
                       <TableCell className="hidden md:table-cell">{lead.company || "—"}</TableCell>
                       <TableCell>
@@ -507,14 +492,7 @@ export default function Leads() {
                           {formatStatus(lead.status)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <div className="flex items-center gap-1">
-                          {lead.source || "—"}
-                          {isRealConversation && (
-                            <span className="text-xs text-green-600 font-medium">WhatsApp</span>
-                          )}
-                        </div>
-                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">{lead.source || "—"}</TableCell>
                       <TableCell className="hidden lg:table-cell">
                         {lead.matchPercentage ? (
                           <span className="text-xs font-medium text-green-600">
@@ -593,8 +571,7 @@ export default function Leads() {
                         </div>
                       </TableCell>
                     </TableRow>
-                    );
-                  })}
+                  ))}
                 </TableBody>
               </Table>
             </div>
