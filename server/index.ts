@@ -2083,6 +2083,13 @@ app.use((req, res, next) => {
   // WhatsApp accounts routes
   app.use('/api/whatsapp-accounts', whatsappAccountsRouter);
 
+  // Import and register new routes for leads management
+  const leadsRouter = (await import('./routes/leads')).default;
+  const leadStatusesRouter = (await import('./routes/leadStatuses')).default;
+  
+  app.use('/api/leads', leadsRouter);
+  app.use('/api/lead-statuses', leadStatusesRouter);
+
   // Registramos rutas directas para evitar la interceptación de Vite
   registerDirectAPIRoutes(app);
 

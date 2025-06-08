@@ -940,4 +940,40 @@ router.post('/convert-chats-to-leads', async (req, res) => {
   }
 });
 
+// Sync real chats from WhatsApp
+router.post('/sync-real-chats', async (req, res) => {
+  try {
+    console.log('🔄 Syncing real chats from WhatsApp...');
+    
+    const { whatsappChatService } = await import('../services/whatsappChatService');
+    const accounts = await storage.getAllWhatsappAccounts();
+    
+    let totalSynced = 0;
+    
+    for (const account of accounts) {
+      try {
+        const chats = await whatsappChatService.getRealChatsFromAccount(account.id);
+        totalSynced += chats.length;
+        console.log(`✅ Synced ${chats.length} chats from account ${account.id}`);
+      } catch (error) {
+        console.error(`❌ Error syncing account ${account.id}:`, error);
+      }
+    }
+    
+    res.json({
+      success: true,
+      synced: totalSynced,
+      message: `Synced ${totalSynced} chats from WhatsApp accounts`
+    });
+    
+  } catch (error) {
+    console.error('❌ Error syncing real chats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to sync real chats',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 export default router;
