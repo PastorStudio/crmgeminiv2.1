@@ -210,6 +210,7 @@ export default function MassSender() {
   const [selectedContactForTags, setSelectedContactForTags] = useState<any>(null);
   const [contactTagsDialog, setContactTagsDialog] = useState<boolean>(false);
   const [newContactTag, setNewContactTag] = useState<string>("");
+  const [isSyncingContacts, setIsSyncingContacts] = useState<boolean>(false);
   
   // Consulta para obtener los grupos de contactos
   const { data: contactGroups = [], isLoading: loadingGroups } = useQuery<ContactGroup[]>({
@@ -351,6 +352,57 @@ export default function MassSender() {
         description: "No se pudo añadir la etiqueta",
         variant: "destructive"
       });
+    }
+  };
+
+  // Función para sincronización masiva de contactos de WhatsApp - UN CLICK
+  const handleSyncAllWhatsAppContacts = async () => {
+    setIsSyncingContacts(true);
+    
+    try {
+      console.log('🚀 Iniciando sincronización masiva de contactos...');
+      
+      const response = await fetch('/api/whatsapp/sync-all-contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ Sincronización completada:', result);
+        
+        // Refrescar la lista de contactos
+        refetchWhatsAppContacts();
+        
+        toast({
+          title: "Contactos sincronizados",
+          description: `Se importaron ${result.totalContacts} contactos de WhatsApp correctamente`,
+        });
+        
+        // Mostrar detalles por cuenta
+        if (result.accountResults && result.accountResults.length > 0) {
+          const successfulAccounts = result.accountResults.filter((acc: any) => acc.status === 'success');
+          if (successfulAccounts.length > 0) {
+            console.log('📊 Resultados por cuenta:', successfulAccounts);
+          }
+        }
+      } else {
+        throw new Error(result.message || 'Error en la sincronización');
+      }
+    } catch (error) {
+      console.error('❌ Error en sincronización de contactos:', error);
+      toast({
+        title: "Error de sincronización",
+        description: "No se pudieron sincronizar los contactos. Verifica que WhatsApp esté autenticado.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSyncingContacts(false);
     }
   };
   
@@ -1502,13 +1554,60 @@ export default function MassSender() {
                       </div>
                     </div>
 
-                    <ScrollArea className="h-64 border rounded-md p-2">
-                      {loadingWhatsAppContacts ? (
-                        <div className="flex items-center justify-center h-full">
-                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                          <span className="ml-2 text-sm text-muted-foreground">Cargando contactos...</span>
+                    <div className="space-y-3">
+                      {/* Botón de importación masiva de contactos */}
+                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
+                            <Database className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                              Importación Automática de Contactos
+                            </h4>
+                            <p className="text-xs text-blue-700 dark:text-blue-300">
+                              Sincroniza todos los contactos de WhatsApp con un click
+                            </p>
+                          </div>
                         </div>
-                      ) : filteredContacts.length > 0 ? (
+                        <Button
+                          onClick={handleSyncAllWhatsAppContacts}
+                          disabled={isSyncingContacts}
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                          size="sm"
+                        >
+                          {isSyncingContacts ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Sincronizando...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Importar Todos
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      
+                      {/* Lista de contactos */}
+                      <ScrollArea className="h-64 border rounded-md p-2">
+                        {isSyncingContacts ? (
+                          <div className="flex flex-col items-center justify-center h-full space-y-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                            <div className="text-center">
+                              <span className="text-sm font-medium text-blue-900">Sincronizando contactos...</span>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Importando contactos de todas las cuentas de WhatsApp
+                              </p>
+                            </div>
+                          </div>
+                        ) : loadingWhatsAppContacts ? (
+                          <div className="flex items-center justify-center h-full">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            <span className="ml-2 text-sm text-muted-foreground">Cargando contactos...</span>
+                          </div>
+                        ) : filteredContacts.length > 0 ? (
                         <div className="space-y-2">
                           {filteredContacts.map((contact) => (
                             <div key={contact.id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 border border-transparent hover:border-border">
@@ -1595,6 +1694,8 @@ export default function MassSender() {
                         {selectedContacts.length} contacto{selectedContacts.length !== 1 ? 's' : ''} seleccionado{selectedContacts.length !== 1 ? 's' : ''}
                       </div>
                     )}
+                      </ScrollArea>
+                    </div>
                   </div>
                   
                   {/* Configuración avanzada */}
