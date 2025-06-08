@@ -5,6 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import { TemplateSelector } from "@/components/message-templates/TemplateSelector";
 import { TemplatePreview } from "@/components/message-templates/TemplatePreview";
 import { SendImmediateDialog } from "@/components/messaging/SendImmediateDialog";
+import { WhatsAppAuthStatus } from "@/components/whatsapp/WhatsAppAuthStatus";
 import { 
   Card, 
   CardContent, 
@@ -1336,6 +1337,11 @@ export default function MassSender() {
           
           {/* Pestaña para crear una nueva campaña */}
           <TabsContent value="new-campaign">
+            {/* WhatsApp Authentication Status */}
+            <div className="mb-6">
+              <WhatsAppAuthStatus />
+            </div>
+            
             <div className="grid gap-6 md:grid-cols-2">
               {/* Formulario de creación de campaña */}
               <Card>
@@ -1367,7 +1373,7 @@ export default function MassSender() {
                       </SelectTrigger>
                       <SelectContent>
                         {loadingAccounts ? (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="loading" disabled>
                             <div className="flex items-center gap-2">
                               <Loader2 className="h-4 w-4 animate-spin" />
                               Cargando cuentas...
@@ -1391,7 +1397,7 @@ export default function MassSender() {
                             </SelectItem>
                           ))
                         ) : (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="no-accounts" disabled>
                             No hay cuentas de WhatsApp disponibles
                           </SelectItem>
                         )}
@@ -2785,7 +2791,7 @@ export default function MassSender() {
                 </SelectTrigger>
                 <SelectContent>
                   {loadingAccounts ? (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="loading-accounts" disabled>
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Cargando cuentas...
@@ -2809,7 +2815,7 @@ export default function MassSender() {
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="no-whatsapp-accounts" disabled>
                       No hay cuentas de WhatsApp disponibles
                     </SelectItem>
                   )}
