@@ -1,74 +1,113 @@
 /**
- * Monitor de auto-respuestas para mensajes entrantes
+ * Monitor de auto-respuestas para mensajes entrantes - Multi-cuenta
  */
 
 interface MessageTracker {
   chatId: string;
   lastMessageId: string;
   lastProcessed: number;
+  accountId: number;
+}
+
+interface WhatsAppAccount {
+  id: number;
+  name: string;
+  status: string;
 }
 
 class AutoResponseMonitor {
   private messageTrackers = new Map<string, MessageTracker>();
   private isMonitoring = false;
+  private connectedAccounts: WhatsAppAccount[] = [];
   
   async startMonitoring() {
     if (this.isMonitoring) return;
     this.isMonitoring = true;
     
-    console.log('🔄 Iniciando monitoreo de auto-respuestas...');
+    console.log('🔄 Iniciando monitoreo de auto-respuestas multi-cuenta...');
+    
+    // Cargar cuentas conectadas
+    await this.loadConnectedAccounts();
     
     setInterval(async () => {
       await this.checkForNewMessages();
     }, 10000); // Verificar cada 10 segundos para reducir carga
   }
   
-  async checkForNewMessages() {
+  async loadConnectedAccounts() {
     try {
-      // Usar la API existente del servidor para obtener chats
-      const response = await fetch('http://localhost:5173/api/whatsapp-accounts/1/chats');
+      const response = await fetch('http://localhost:5173/api/whatsapp-accounts');
       if (!response.ok) return;
       
-      const chats = await response.json();
-      
-      for (const chat of chats) {
-        await this.processChat(chat.id);
+      const data = await response.json();
+      if (data.success && Array.isArray(data.accounts)) {
+        this.connectedAccounts = data.accounts.filter(acc => acc.status === 'connected');
+        console.log(`📱 Monitoreando ${this.connectedAccounts.length} cuentas WhatsApp`);
+      }
+    } catch (error) {
+      console.log('⚠️ Error cargando cuentas, usando cuenta por defecto');
+      this.connectedAccounts = [{ id: 1, name: 'Default', status: 'connected' }];
+    }
+  }
+  
+  async checkForNewMessages() {
+    try {
+      // Verificar mensajes en todas las cuentas conectadas
+      for (const account of this.connectedAccounts) {
+        await this.checkAccountMessages(account.id);
       }
     } catch (error) {
       // Error silencioso para no saturar logs
     }
   }
   
-  async processChat(chatId: string) {
+  async checkAccountMessages(accountId: number) {
+    try {
+      const response = await fetch(`http://localhost:5173/api/whatsapp-accounts/${accountId}/chats`);
+      if (!response.ok) return;
+      
+      const chats = await response.json();
+      
+      for (const chat of chats) {
+        await this.processChat(chat.id, accountId);
+      }
+    } catch (error) {
+      // Error silencioso para no saturar logs
+    }
+  }
+  
+  async processChat(chatId: string, accountId: number) {
     try {
       // Obtener mensajes del chat usando la API existente
-      const messagesResponse = await fetch(`http://localhost:5173/api/whatsapp-accounts/1/messages/${chatId}`);
+      const messagesResponse = await fetch(`http://localhost:5173/api/whatsapp-accounts/${accountId}/messages/${chatId}`);
       if (!messagesResponse.ok) return;
       
       const messages = await messagesResponse.json();
       if (messages.length === 0) return;
       
       const latestMessage = messages[0];
-      const tracker = this.messageTrackers.get(chatId);
+      const trackerKey = `${accountId}-${chatId}`;
+      const tracker = this.messageTrackers.get(trackerKey);
       
       // Verificar si es un mensaje nuevo y no enviado por nosotros
       if (!latestMessage.fromMe && 
           (!tracker || tracker.lastMessageId !== latestMessage.id)) {
         
-        console.log(`🆕 Nuevo mensaje detectado en ${chatId}: ${latestMessage.body?.substring(0, 50)}...`);
+        console.log(`🆕 Nuevo mensaje detectado en cuenta ${accountId}, chat ${chatId}: ${latestMessage.body?.substring(0, 50)}...`);
         
         // Verificar si tiene auto-respuesta habilitada
-        const hasAutoResponse = await this.checkAutoResponseEnabled(chatId);
+        const hasAutoResponse = await this.checkAutoResponseEnabled(chatId, accountId);
         
         if (hasAutoResponse) {
-          await this.generateAndSendResponse(chatId, latestMessage);
+          await this.generateAndSendResponse(chatId, latestMessage, accountId);
         }
         
         // Actualizar tracker
-        this.messageTrackers.set(chatId, {
+        this.messageTrackers.set(trackerKey, {
           chatId,
           lastMessageId: latestMessage.id,
-          lastProcessed: Date.now()
+          lastProcessed: Date.now(),
+          accountId
         });
       }
     } catch (error) {
@@ -76,9 +115,9 @@ class AutoResponseMonitor {
     }
   }
   
-  async checkAutoResponseEnabled(chatId: string): Promise<boolean> {
+  async checkAutoResponseEnabled(chatId: string, accountId: number): Promise<boolean> {
     try {
-      const response = await fetch('http://localhost:5173/api/whatsapp-accounts/1/agent-config');
+      const response = await fetch(`http://localhost:5173/api/whatsapp-accounts/${accountId}/agent-config`);
       if (!response.ok) return false;
       
       const config = await response.json();
@@ -88,12 +127,12 @@ class AutoResponseMonitor {
     }
   }
   
-  async generateAndSendResponse(chatId: string, message: any) {
+  async generateAndSendResponse(chatId: string, message: any, accountId: number) {
     try {
-      console.log(`🧠 Procesando conversación real para ${chatId}...`);
+      console.log(`🧠 Procesando conversación real para cuenta ${accountId}, chat ${chatId}...`);
       
       // Obtener configuración del agente
-      const configResponse = await fetch('http://localhost:5173/api/whatsapp-accounts/1/agent-config');
+      const configResponse = await fetch(`http://localhost:5173/api/whatsapp-accounts/${accountId}/agent-config`);
       if (!configResponse.ok) return;
       
       const config = await configResponse.json();
@@ -132,7 +171,7 @@ class AutoResponseMonitor {
         body: JSON.stringify({
           message: message.body,
           chatId: chatId,
-          accountId: 1,
+          accountId: accountId,
           conversationHistory: conversationHistory,
           agentContext: {
             name: agent.name,
