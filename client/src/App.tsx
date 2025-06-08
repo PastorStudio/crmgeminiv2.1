@@ -179,7 +179,9 @@ const AppRoutes: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <PageTranslationProvider>
+        <AppRoutes />
+      </PageTranslationProvider>
     </AuthProvider>
   );
 };
