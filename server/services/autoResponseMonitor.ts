@@ -229,7 +229,7 @@ class AutoResponseMonitor {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                accountId: 1,
+                accountId: accountId,
                 chatId: chatId,
                 message: finalResponse
               })
