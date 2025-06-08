@@ -998,6 +998,25 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // ***** RUTAS DE CHAT ASSIGNMENTS OPTIMIZADAS *****
+  app.get("/api/chat-assignments", async (_req: Request, res: Response) => {
+    try {
+      const assignments = await storage.getAllChatAssignments();
+      res.json(assignments);
+    } catch (error) {
+      res.status(500).json({ error: "Error al obtener asignaciones de chat" });
+    }
+  });
+
+  app.post("/api/chat-assignments", async (req: Request, res: Response) => {
+    try {
+      const assignment = await storage.createChatAssignment(req.body);
+      res.status(201).json(assignment);
+    } catch (error) {
+      res.status(500).json({ error: "Error al crear asignación de chat" });
+    }
+  });
+
   // ***** RUTAS DE MENSAJES OPTIMIZADAS *****
   app.get("/api/messages", async (_req: Request, res: Response) => {
     try {
