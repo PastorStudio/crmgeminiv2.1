@@ -42,8 +42,15 @@ interface PreviewResult {
   successfulTests: number;
 }
 
+interface WhatsAppAccount {
+  id: number;
+  name: string;
+  status: string;
+}
+
 export default function ExternalAgents() {
   const [agents, setAgents] = useState<ExternalAgent[]>([]);
+  const [whatsappAccounts, setWhatsappAccounts] = useState<WhatsAppAccount[]>([]);
   const [stats, setStats] = useState<AgentStats | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newAgentUrl, setNewAgentUrl] = useState('');
@@ -71,12 +78,27 @@ export default function ExternalAgents() {
   useEffect(() => {
     fetchAgents();
     fetchStats();
+    fetchWhatsAppAccounts();
   }, []);
 
   // Actualizar estadísticas cuando cambien los agentes
   useEffect(() => {
     fetchStats();
   }, [agents]);
+
+  const fetchWhatsAppAccounts = async () => {
+    try {
+      const response = await fetch('/api/whatsapp-accounts');
+      const data = await response.json();
+      
+      if (data.success && Array.isArray(data.accounts)) {
+        setWhatsappAccounts(data.accounts);
+        console.log('📱 Cuentas WhatsApp cargadas:', data.accounts.length);
+      }
+    } catch (error) {
+      console.error('❌ Error cargando cuentas WhatsApp:', error);
+    }
+  };
 
   const fetchAgents = async () => {
     try {
@@ -999,14 +1021,25 @@ export default function ExternalAgents() {
                     />
                     <Label className="text-sm">Agente Activo</Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={editingAgent.accountId === 1}
-                      onCheckedChange={(checked) => 
-                        setEditingAgent({...editingAgent, accountId: checked ? 1 : 2})
+                  <div className="space-y-2">
+                    <Label className="text-sm">Cuenta WhatsApp</Label>
+                    <Select
+                      value={editingAgent.accountId?.toString() || ''}
+                      onValueChange={(value) => 
+                        setEditingAgent({...editingAgent, accountId: parseInt(value)})
                       }
-                    />
-                    <Label className="text-sm">Cuenta Principal</Label>
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Seleccionar cuenta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {whatsappAccounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id.toString()}>
+                            {account.name} (ID: {account.id})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
