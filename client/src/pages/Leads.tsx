@@ -52,7 +52,7 @@ import { useToast } from "@/hooks/use-toast";
 import LeadForm from "@/components/leads/LeadForm";
 import { LeadDetail } from "@/components/leads/LeadDetail";
 import { useGemini } from "@/hooks/useGemini";
-import { Eye, BrainCircuit, Plus, MoreVertical, Kanban, MessageCircle } from "lucide-react";
+import { Eye, BrainCircuit, Plus, MoreVertical, Kanban, MessageCircle, Database, Settings, Trash, RefreshCw } from "lucide-react";
 import SalesPipelineKanban from "@/components/leads/SalesPipelineKanban";
 
 export default function Leads() {
@@ -203,6 +203,90 @@ export default function Leads() {
     }
   };
 
+  // Handle clear database
+  const handleClearDatabase = async () => {
+    if (!confirm('¿Estás seguro de que quieres eliminar todos los leads de WhatsApp? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    try {
+      const response = await apiRequest('/api/leads/clear-whatsapp', {
+        method: 'DELETE'
+      });
+
+      if (response.success) {
+        toast({
+          title: "Base de datos limpiada",
+          description: `${response.deleted || 0} leads de WhatsApp eliminados`,
+        });
+        
+        queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      } else {
+        throw new Error(response.message || 'Error al limpiar la base de datos');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo limpiar la base de datos",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle create new status
+  const handleCreateStatus = async () => {
+    const statusName = prompt('Ingresa el nombre del nuevo estado:');
+    if (!statusName) return;
+
+    try {
+      const response = await apiRequest('/api/lead-statuses', {
+        method: 'POST',
+        body: { name: statusName.toLowerCase(), displayName: statusName }
+      });
+
+      if (response.success) {
+        toast({
+          title: "Estado creado",
+          description: `Nuevo estado "${statusName}" creado exitosamente`,
+        });
+      } else {
+        throw new Error(response.message || 'Error al crear el estado');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo crear el nuevo estado",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle refresh real data
+  const handleRefreshRealData = async () => {
+    try {
+      const response = await apiRequest('/api/whatsapp-accounts/sync-real-chats', {
+        method: 'POST'
+      });
+
+      if (response.success) {
+        toast({
+          title: "Datos actualizados",
+          description: `${response.synced || 0} chats sincronizados desde WhatsApp`,
+        });
+        
+        queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      } else {
+        throw new Error(response.message || 'Error al sincronizar');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudieron sincronizar los datos reales",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Get badge variant based on status
   const getStatusBadgeVariant = (status?: string): "default" | "destructive" | "secondary" | "outline" => {
     switch (status) {
@@ -280,6 +364,34 @@ export default function Leads() {
             >
               <MessageCircle className="h-4 w-4 mr-2" />
               {connectionStatus.text}
+            </Button>
+            
+            <Button
+              onClick={handleRefreshRealData}
+              variant="outline"
+              disabled={!connectionStatus.connected}
+              className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700"
+              title="Actualizar datos reales de WhatsApp"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              onClick={handleCreateStatus}
+              variant="outline"
+              className="bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700"
+              title="Crear nuevo estado"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              onClick={handleClearDatabase}
+              variant="outline"
+              className="bg-red-50 hover:bg-red-100 border-red-200 text-red-700"
+              title="Limpiar base de datos de WhatsApp"
+            >
+              <Trash className="h-4 w-4" />
             </Button>
             <Input
               placeholder="Search leads..."
