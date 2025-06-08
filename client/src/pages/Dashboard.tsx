@@ -12,7 +12,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/authContext";
 import { Loader2, Sun, Moon, Coffee, Star, MessageCircle, Users, FileText, Phone, Send, Clock, CheckCircle, TrendingUp } from "lucide-react";
 import { getRealNow, formatNYTime } from "@/lib/timeSync";
-import { usePageTranslation } from "@/components/translation/PageTranslationProvider";
+import { PageTranslationSelector, usePageTranslation } from "@/components/translation/PageTranslator";
 import { SystemRefreshButton } from "@/components/dashboard/SystemRefreshButton";
 import { useQuery } from "@tanstack/react-query";
 
@@ -443,6 +443,10 @@ export default function Dashboard() {
                 </div>
                 
                 <div className="flex items-center space-x-6">
+                  <div className="bg-red-600/20 px-4 py-2 rounded-lg border border-red-500/30">
+                    <PageTranslationSelector />
+                  </div>
+                  
                   <div className="flex items-center space-x-2 bg-black/40 px-4 py-2 rounded-lg border border-white/20">
                     <Clock className="h-5 w-5 text-red-400" />
                     <span className="text-white font-semibold">{formatDateTime()}</span>
