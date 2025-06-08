@@ -76,6 +76,7 @@ export default function Leads() {
   const isWhatsAppConnected = Boolean(
     whatsappStatus?.success && 
     whatsappStatus?.accounts?.some((account) => 
+      account.status === 'active' || account.status === 'connected' || 
       account.authenticated === true || account.ready === true
     )
   );
@@ -171,7 +172,7 @@ export default function Leads() {
   // Handle convert WhatsApp chats to leads
   const handleConvertWhatsAppChats = async () => {
     try {
-      const response = await apiRequest('/api/whatsapp/convert-chats-to-leads', {
+      const response = await apiRequest('/api/whatsapp-accounts/convert-chats-to-leads', {
         method: 'POST'
       });
 
