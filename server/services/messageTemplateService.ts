@@ -116,17 +116,31 @@ export class MessageTemplateService {
 
   // Actualizar una plantilla existente
   async updateTemplate(id: number, data: Partial<InsertMessageTemplate>): Promise<MessageTemplate | undefined> {
+    console.log(`🔍 Verificando existencia de plantilla ID ${id}`);
     const template = await this.getTemplateById(id);
-    if (!template) return undefined;
+    if (!template) {
+      console.log(`❌ Plantilla con ID ${id} no existe`);
+      return undefined;
+    }
 
-    const result = await db.update(messageTemplates)
-      .set({
-        ...data,
-        updatedAt: new Date()
-      })
-      .where(eq(messageTemplates.id, id))
-      .returning();
-    return result[0];
+    console.log(`📋 Plantilla existente:`, template);
+    console.log(`📝 Datos para actualización:`, data);
+
+    try {
+      const result = await db.update(messageTemplates)
+        .set({
+          ...data,
+          updatedAt: new Date()
+        })
+        .where(eq(messageTemplates.id, id))
+        .returning();
+      
+      console.log(`✅ Resultado de actualización:`, result);
+      return result[0];
+    } catch (error) {
+      console.error(`💥 Error en actualización de DB:`, error);
+      throw error;
+    }
   }
 
   // Eliminar una plantilla

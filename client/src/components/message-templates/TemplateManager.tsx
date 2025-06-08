@@ -154,8 +154,18 @@ export function TemplateManager() {
     },
     onSuccess: (data) => {
       console.log("Plantilla actualizada exitosamente:", data);
-      // Invalidar la consulta para refrescar la lista
+      // Invalidar y refrescar inmediatamente la caché
       queryClient.invalidateQueries({ queryKey: ["/api/message-templates"] });
+      queryClient.refetchQueries({ queryKey: ["/api/message-templates"] });
+      
+      // Actualizar directamente el cache con los nuevos datos
+      queryClient.setQueryData(["/api/message-templates"], (oldData: Template[] | undefined) => {
+        if (!oldData) return oldData;
+        return oldData.map(template => 
+          template.id === data.id ? data : template
+        );
+      });
+      
       toast({
         title: "Plantilla actualizada",
         description: "La plantilla ha sido actualizada exitosamente.",
