@@ -1,0 +1,29 @@
+2025/06/08-15:38:30.191 1041 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/08-15:38:30.192 1041 Recovering log #833
+2025/06/08-15:38:30.204 1041 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000833.log 
+2025/06/08-15:38:31.981 1041 Level-0 table #844: started
+2025/06/08-15:38:32.014 1041 Level-0 table #844: 195477 bytes OK
+2025/06/08-15:38:32.029 1041 Delete type=0 #833
+2025/06/08-15:38:32.031 1048 Manual compaction at level-0 from '\x00\xbc\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xbd\x00\x00\x00' @ 0 : 0; will stop at '\x00\xbc\x00\x00\x05' @ 2645569 : 1
+2025/06/08-15:38:32.031 1048 Compacting 1@0 + 1@1 files
+2025/06/08-15:38:32.406 1048 Generated table #845@0: 32705 keys, 711012 bytes
+2025/06/08-15:38:32.407 1048 Compacted 1@0 + 1@1 files => 711012 bytes
+2025/06/08-15:38:32.414 1048 compacted to: files[ 0 1 5 0 0 0 0 ]
+2025/06/08-15:38:32.415 1048 Delete type=2 #844
+2025/06/08-15:38:32.415 1041 Manual compaction at level-0 from '\x00\xbc\x00\x00\x05' @ 2645569 : 1 .. '\x00\xbd\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/08-15:38:35.194 1042 Compacting 1@1 + 5@2 files
+2025/06/08-15:38:35.370 1042 Generated table #846@1: 27719 keys, 2188199 bytes
+2025/06/08-15:38:35.454 1042 Generated table #847@1: 3040 keys, 2152324 bytes
+2025/06/08-15:38:35.561 1042 Generated table #848@1: 23691 keys, 2227275 bytes
+2025/06/08-15:38:35.658 1042 Generated table #849@1: 35120 keys, 2174381 bytes
+2025/06/08-15:38:35.806 1042 Generated table #850@1: 107075 keys, 2260293 bytes
+2025/06/08-15:38:35.847 1042 Generated table #851@1: 25941 keys, 547712 bytes
+2025/06/08-15:38:35.847 1042 Compacted 1@1 + 5@2 files => 11550184 bytes
+2025/06/08-15:38:35.864 1042 compacted to: files[ 0 0 6 0 0 0 0 ]
+2025/06/08-15:38:35.864 1042 Delete type=2 #836
+2025/06/08-15:38:35.865 1042 Delete type=2 #837
+2025/06/08-15:38:35.865 1042 Delete type=2 #838
+2025/06/08-15:38:35.865 1042 Delete type=2 #839
+2025/06/08-15:38:35.865 1042 Delete type=2 #840
+2025/06/08-15:38:35.865 1042 Delete type=2 #841
+2025/06/08-15:38:35.865 1042 Delete type=2 #845
