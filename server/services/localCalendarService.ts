@@ -102,6 +102,7 @@ export class LocalCalendarService {
         reminderMinutes: eventData.reminderMinutes,
         eventType: eventData.eventType,
         contactPhone: eventData.contactPhone || null,
+        whatsappAccountId: eventData.whatsappAccountId || null,
         status: 'pending'
       }).returning();
 
@@ -258,11 +259,27 @@ export class LocalCalendarService {
     }
   }
 
+  // Obtener todos los eventos
+  async getAllEvents(): Promise<LocalEvent[]> {
+    try {
+      const result = await pool.query(`
+        SELECT * FROM calendar_events 
+        WHERE status != 'cancelled'
+        ORDER BY event_date ASC
+      `);
+
+      return result.rows;
+    } catch (error) {
+      console.error('❌ Error obteniendo todos los eventos:', error);
+      return [];
+    }
+  }
+
   // Obtener eventos del día
   async getTodayEvents(): Promise<LocalEvent[]> {
     try {
       const result = await pool.query(`
-        SELECT * FROM local_events 
+        SELECT * FROM calendar_events 
         WHERE DATE(event_date) = CURRENT_DATE AND status != 'cancelled'
         ORDER BY event_date ASC
       `);
