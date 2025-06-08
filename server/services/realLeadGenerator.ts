@@ -1,7 +1,7 @@
 import { DatabaseStorage } from '../storage';
 import { db } from '../db';
-import { leads, contacts, conversations } from '@shared/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { leads, contacts } from '@shared/schema';
+import { eq, and, isNull, sql } from 'drizzle-orm';
 
 export class RealLeadGenerator {
   private storage: DatabaseStorage;
@@ -95,29 +95,28 @@ export class RealLeadGenerator {
     try {
       console.log('🔄 Converting real WhatsApp conversations to leads...');
 
-      // Get all conversation data grouped by chat_id
-      const conversationQuery = `
+      // Get all conversation data using a simpler approach
+      const conversationData = await db.execute(sql`
         SELECT 
           chat_id,
-          json_agg(
-            json_build_object(
-              'id', id,
-              'message_text', message_text,
-              'is_from_user', is_from_user,
-              'timestamp', timestamp
-            ) ORDER BY timestamp
-          ) as messages
+          array_agg(message_text ORDER BY timestamp) as message_texts,
+          array_agg(is_from_user ORDER BY timestamp) as is_from_user_flags,
+          array_agg(timestamp ORDER BY timestamp) as timestamps,
+          count(*) as message_count
         FROM conversation_history 
         GROUP BY chat_id
-      `;
+      `);
 
-      const conversationData = await db.raw(conversationQuery);
       const conversations = conversationData.rows;
 
       let leadsCreated = 0;
 
       for (const conversation of conversations) {
-        const { chat_id, messages } = conversation;
+        const chat_id = conversation.chat_id as string;
+        const message_texts = conversation.message_texts as string[];
+        const is_from_user_flags = conversation.is_from_user_flags as boolean[];
+        const timestamps = conversation.timestamps as string[];
+        const message_count = conversation.message_count as number;
         
         // Skip group chats and newsletters
         if (chat_id.includes('@g.us') || chat_id.includes('@newsletter')) {
@@ -128,11 +127,18 @@ export class RealLeadGenerator {
         const phoneNumber = this.extractPhoneFromChatId(chat_id);
         if (!phoneNumber) continue;
 
+        // Convert arrays to message objects for processing
+        const messages = message_texts.map((text: string, index: number) => ({
+          message_text: text,
+          is_from_user: is_from_user_flags[index],
+          timestamp: timestamps[index]
+        }));
+
         // Check if lead already exists for this chat
         const existingLead = await db
           .select()
           .from(leads)
-          .where(eq(leads.customFields, { chatId: chat_id }))
+          .where(sql`${leads.customFields}->>'chatId' = ${chat_id}`)
           .limit(1);
 
         if (existingLead.length > 0) {
@@ -155,9 +161,7 @@ export class RealLeadGenerator {
             .insert(contacts)
             .values({
               name: `WhatsApp Contact ${phoneNumber}`,
-              phone: phoneNumber,
-              source: 'whatsapp',
-              customFields: { chatId: chat_id }
+              phone: phoneNumber
             })
             .returning();
           contactId = newContact.id;
@@ -177,18 +181,15 @@ export class RealLeadGenerator {
             contactId,
             whatsappAccountId: 1, // Default WhatsApp account
             title: leadTitle,
-            name: `WhatsApp Contact ${phoneNumber}`,
-            company: 'WhatsApp Lead',
             status: leadStatus,
             value: leadValue.toString(),
-            source: 'whatsapp',
             customFields: { 
               chatId: chat_id,
-              messageCount: messages.length,
+              messageCount: Number(message_count),
               firstMessage: messages[0]?.message_text || '',
               lastMessage: messages[messages.length - 1]?.message_text || ''
             },
-            notes: `Lead generated from WhatsApp conversation. Chat ID: ${chat_id}. ${messages.length} messages exchanged.`
+            notes: `Lead generated from WhatsApp conversation. Chat ID: ${chat_id}. ${message_count} messages exchanged.`
           })
           .returning();
 
