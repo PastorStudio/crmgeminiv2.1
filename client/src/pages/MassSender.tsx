@@ -179,6 +179,7 @@ export default function MassSender() {
   const [importedData, setImportedData] = useState<any>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   const [countryCode, setCountryCode] = useState<string>("507"); // Panamá por defecto
+  const [selectedWhatsAppAccountId, setSelectedWhatsAppAccountId] = useState<number | null>(null);
   const [isTaggingDialogOpen, setIsTaggingDialogOpen] = useState<boolean>(false);
   const [selectedTagsToAdd, setSelectedTagsToAdd] = useState<string[]>([]);
   const [newTagName, setNewTagName] = useState<string>("");
@@ -212,6 +213,12 @@ export default function MassSender() {
   // Consulta para obtener los grupos de contactos
   const { data: contactGroups = [], isLoading: loadingGroups } = useQuery<ContactGroup[]>({
     queryKey: ['/api/whatsapp/contact-groups'],
+    retry: false
+  });
+
+  // Consulta para obtener las cuentas de WhatsApp disponibles
+  const { data: whatsappAccounts = [], isLoading: loadingAccounts } = useQuery({
+    queryKey: ['/api/whatsapp-accounts'],
     retry: false
   });
   
@@ -1337,6 +1344,52 @@ export default function MassSender() {
                       value={campaignName}
                       onChange={(e) => setCampaignName(e.target.value)}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="whatsapp-account">Cuenta de WhatsApp para enviar</Label>
+                    <Select
+                      value={selectedWhatsAppAccountId?.toString() || ""}
+                      onValueChange={(value) => setSelectedWhatsAppAccountId(parseInt(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona la cuenta de WhatsApp" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {loadingAccounts ? (
+                          <SelectItem value="" disabled>
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Cargando cuentas...
+                            </div>
+                          </SelectItem>
+                        ) : whatsappAccounts?.accounts?.length > 0 ? (
+                          whatsappAccounts.accounts.map((account: any) => (
+                            <SelectItem key={account.id} value={account.id.toString()}>
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  account.currentStatus?.ready ? 'bg-green-500' : 'bg-red-500'
+                                }`} />
+                                <span className="font-medium">{account.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  ({account.ownerPhone})
+                                </span>
+                                {account.currentStatus?.ready && (
+                                  <Badge variant="outline" className="text-xs">Conectado</Badge>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="" disabled>
+                            No hay cuentas de WhatsApp disponibles
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Selecciona desde qué cuenta de WhatsApp se enviarán los mensajes de esta campaña.
+                    </p>
                   </div>
                   
                   <div className="space-y-4">
