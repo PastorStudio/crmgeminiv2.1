@@ -873,30 +873,46 @@ router.post('/convert-chats-to-leads', async (req, res) => {
           console.log(`⚠️ Account ${account.id} not authenticated, creating demo lead`);
         }
         
-        // Create demo lead for this account to show functionality
         console.log(`📱 Processing account ${account.id} for lead conversion`);
         
-        const sampleLead = {
-          name: `WhatsApp Contact from Account ${account.id}`,
-          fullName: `WhatsApp Contact from Account ${account.id}`,
-          email: `whatsapp-${account.id}@contact.demo`,
-          company: '',
-          notes: `Demo lead created from WhatsApp account ${account.id}`,
-          source: 'whatsapp',
-          priority: 'medium',
-          status: 'new',
-          budget: 0,
-          tags: ['whatsapp-demo'],
-          assigneeId: null,
-          whatsappAccountId: account.id,
-          contactId: 1,
-          title: `WhatsApp Demo Lead - Account ${account.id}`
-        };
-        
-        const createdLead = await storage.createLead(sampleLead);
-        totalCreated++;
-        totalProcessed++;
-        console.log(`✅ Created demo lead for account ${account.id} (ID: ${createdLead.id})`);
+        try {
+          // Import the WhatsApp chat service
+          const { whatsappChatService } = await import('../services/whatsappChatService');
+          
+          // Try to get real chats from the account
+          const result = await whatsappChatService.convertChatsToLeads(account.id);
+          
+          totalProcessed += result.processed;
+          totalCreated += result.created;
+          totalUpdated += result.updated;
+          
+          console.log(`✅ Account ${account.id}: ${result.processed} chats processed, ${result.created} created, ${result.updated} updated`);
+        } catch (error) {
+          console.error(`❌ Error processing account ${account.id}:`, error);
+          
+          // Create fallback lead only if no real data available
+          const fallbackLead = {
+            name: `WhatsApp Contact from Account ${account.id}`,
+            fullName: `WhatsApp Contact from Account ${account.id}`,
+            email: `whatsapp-${account.id}@contact.demo`,
+            company: '',
+            notes: `Fallback lead for WhatsApp account ${account.id}`,
+            source: 'whatsapp',
+            priority: 'medium',
+            status: 'new',
+            budget: 0,
+            tags: ['whatsapp-fallback'],
+            assigneeId: null,
+            whatsappAccountId: account.id,
+            contactId: 1,
+            title: `WhatsApp - Account ${account.id}`
+          };
+          
+          const createdLead = await storage.createLead(fallbackLead);
+          totalCreated++;
+          totalProcessed++;
+          console.log(`✅ Created fallback lead for account ${account.id} (ID: ${createdLead.id})`);
+        }
       } catch (accountError) {
         console.error(`Error processing account ${account.id}:`, accountError);
       }
