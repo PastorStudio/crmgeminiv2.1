@@ -203,6 +203,66 @@ export default function Leads() {
     }
   };
 
+  // Handle refresh real data from WhatsApp
+  const handleRefreshRealData = async () => {
+    try {
+      const response = await apiRequest('/api/whatsapp-accounts/sync-real-chats', {
+        method: 'POST'
+      });
+      
+      if (response.success) {
+        toast({
+          title: "Sincronización completada",
+          description: `${response.synced || 0} chats sincronizados desde WhatsApp`,
+        });
+        
+        queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      } else {
+        throw new Error(response.error || 'Sync failed');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudieron sincronizar los datos reales de WhatsApp",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle create new status
+  const handleCreateStatus = async () => {
+    const statusName = prompt('Ingrese el nombre del nuevo estado:');
+    if (!statusName) return;
+    
+    try {
+      const response = await apiRequest('/api/lead-statuses', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: statusName.toLowerCase().replace(/\s+/g, '-'),
+          displayName: statusName
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.success) {
+        toast({
+          title: "Estado creado",
+          description: `El estado "${statusName}" se creó exitosamente`,
+        });
+      } else {
+        throw new Error(response.error || 'Status creation failed');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo crear el nuevo estado",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Handle clear database
   const handleClearDatabase = async () => {
     if (!confirm('¿Estás seguro de que quieres eliminar todos los leads de WhatsApp? Esta acción no se puede deshacer.')) {
