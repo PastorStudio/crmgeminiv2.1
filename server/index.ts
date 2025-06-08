@@ -190,8 +190,8 @@ app.post('/api/calendar/create-event', async (req: Request, res: Response) => {
   }
 });
 
-// Get all calendar events
-app.get('/api/calendar/events', async (req: Request, res: Response) => {
+// Get all calendar events (using direct API prefix)
+app.get('/api/direct/calendar-events', async (req: Request, res: Response) => {
   try {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-cache');
@@ -206,8 +206,8 @@ app.get('/api/calendar/events', async (req: Request, res: Response) => {
   }
 });
 
-// Get today's calendar events
-app.get('/api/calendar/events/today', async (req: Request, res: Response) => {
+// Get today's calendar events (using direct API prefix)
+app.get('/api/direct/calendar-events-today', async (req: Request, res: Response) => {
   try {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-cache');
