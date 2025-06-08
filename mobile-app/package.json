@@ -7,9 +7,12 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:android": "eas build --platform android",
+    "build:android": "eas build --platform android --profile production",
+    "build:android-apk": "eas build --platform android --profile preview",
+    "build:android-production-apk": "eas build --platform android --profile apk-production",
     "build:ios": "eas build --platform ios",
-    "preview": "expo start --tunnel"
+    "preview": "expo start --tunnel",
+    "prepare-assets": "node scripts/prepare-assets.js"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^6.5.11",
