@@ -380,6 +380,10 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(chatAssignments);
   }
 
+  async getAllChatAssignments(): Promise<ChatAssignment[]> {
+    return await db.select().from(chatAssignments);
+  }
+
   async createChatAssignment(assignment: InsertChatAssignment): Promise<ChatAssignment> {
     const [newAssignment] = await db
       .insert(chatAssignments)
