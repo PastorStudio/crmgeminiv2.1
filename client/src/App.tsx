@@ -48,19 +48,16 @@ import AgentSecurity from './pages/AgentSecurity';
 import SalesFlowDesigner from './pages/SalesFlowDesigner';
 import FlowTemplates from './pages/FlowTemplates';
 import SystemStatus from './pages/SystemStatus';
-import FunctionDocumentation from './pages/FunctionDocumentation';
+import { FunctionDocumentation } from './pages/FunctionDocumentation';
 import { AuthProvider, useAuth } from '@/lib/authContext';
 import { PageTranslationProvider } from '@/components/translation/PageTranslationProvider';
-import NotificationSystem from '@/components/NotificationSystem';
-import GlobalActivityTracker from '@/components/GlobalActivityTracker';
-import { ModelNotificationProvider } from '@/lib/modelNotification';
 
 // Component definition for AppRoutes
 const AppRoutes: React.FC = () => {
   const location = useLocation()[0];
-  const { isAuthenticated, bypassAuth } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [showSidebar, setShowSidebar] = useState(true);
-  const { isLoadingGeminiKey } = useMenuLoading();
+  const { isLoading } = useMenuLoading();
 
   // Define the menu sections for the collapsible sidebar
   const menuSections = [
@@ -121,16 +118,13 @@ const AppRoutes: React.FC = () => {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
-      {/* Notification System - Always active when authenticated */}
-      {(isAuthenticated || bypassAuth) && <NotificationSystem />}
-      
       {/* Collapsible Sidebar - shows only icons, expands on hover */}
       {showSidebar && <CollapsibleSidebar sections={menuSections} />}
       
       {/* Main content area with dynamic margin based on sidebar visibility */}
       <main className={`flex-1 transition-all duration-300 ${showSidebar ? 'ml-16' : 'ml-0'}`}>
         <div className="w-full h-full">
-          {isLoadingGeminiKey && isAuthenticated ? (
+          {isLoading && isAuthenticated ? (
             <div className="flex justify-center items-center h-12">
               <Spinner className="h-6 w-6 text-blue-600" />
               <span className="ml-2 text-gray-600">Cargando configuración de la API...</span>
@@ -177,14 +171,6 @@ const AppRoutes: React.FC = () => {
       
       {/* Toast notifications */}
       <Toaster />
-      
-      {/* Model notification provider */}
-      <ModelNotificationProvider>
-        <div />
-      </ModelNotificationProvider>
-      
-      {/* Global activity tracker for security and control */}
-      {isAuthenticated && <GlobalActivityTracker />}
     </div>
   );
 };
@@ -193,9 +179,7 @@ const AppRoutes: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <PageTranslationProvider>
-        <AppRoutes />
-      </PageTranslationProvider>
+      <AppRoutes />
     </AuthProvider>
   );
 };
