@@ -190,6 +190,38 @@ app.post('/api/calendar/create-event', async (req: Request, res: Response) => {
   }
 });
 
+// Get all calendar events
+app.get('/api/calendar/events', async (req: Request, res: Response) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    const { localCalendarService } = await import('./services/localCalendarService');
+    const events = await localCalendarService.getAllEvents();
+    
+    res.json(events || []);
+  } catch (error) {
+    console.error("❌ Error fetching calendar events:", error);
+    res.status(500).json({ error: "Error fetching calendar events" });
+  }
+});
+
+// Get today's calendar events
+app.get('/api/calendar/events/today', async (req: Request, res: Response) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    const { localCalendarService } = await import('./services/localCalendarService');
+    const events = await localCalendarService.getTodayEvents();
+    
+    res.json(events || []);
+  } catch (error) {
+    console.error("❌ Error fetching today's events:", error);
+    res.status(500).json({ error: "Error fetching today's events" });
+  }
+});
+
 // ===== CONFIGURACIONES AI (BYPASS VITE) =====
 // Obtener configuraciones de AI
 app.get('/api/ai-settings', async (req: Request, res: Response) => {
