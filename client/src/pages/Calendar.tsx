@@ -1,9 +1,9 @@
-import { LocalCalendarIntegration } from '@/components/LocalCalendarIntegration';
+import CalendarManager from '@/components/CalendarManager';
 
 export default function Calendar() {
   return (
     <div className="container mx-auto p-6">
-      <LocalCalendarIntegration />
+      <CalendarManager />
     </div>
   );
 }
