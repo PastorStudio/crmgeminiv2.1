@@ -2170,20 +2170,33 @@ app.use((req, res, next) => {
       const id = parseInt(req.params.id);
       const templateData = req.body;
       
-      // Ensure tags are properly formatted as array
-      if (templateData.tags && !Array.isArray(templateData.tags)) {
-        templateData.tags = [];
-      }
+      console.log(`🔄 Actualizando plantilla ID ${id} con datos:`, templateData);
       
-      const template = await messageTemplateService.updateTemplate(id, templateData);
+      // Clean up the data to match schema
+      const cleanData = {
+        name: templateData.name,
+        description: templateData.description,
+        content: templateData.content,
+        category: templateData.category,
+        tags: Array.isArray(templateData.tags) ? templateData.tags : [],
+        isActive: templateData.isActive !== undefined ? templateData.isActive : true,
+        updatedAt: new Date()
+      };
+      
+      console.log(`📝 Datos limpios para actualización:`, cleanData);
+      
+      const template = await messageTemplateService.updateTemplate(id, cleanData);
       
       if (!template) {
+        console.log(`❌ Plantilla con ID ${id} no encontrada`);
         return res.status(404).json({ error: "Plantilla no encontrada" });
       }
       
+      console.log(`✅ Plantilla ID ${id} actualizada exitosamente:`, template);
+      
       res.json(template);
     } catch (error) {
-      console.error("Error al actualizar plantilla:", error);
+      console.error("❌ Error al actualizar plantilla:", error);
       res.status(500).json({ error: "Error al actualizar plantilla" });
     }
   });
