@@ -407,6 +407,47 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(whatsappAccounts).where(sql`${whatsappAccounts.id} = ANY(${accountIds})`);
   }
 
+  async createUserAccountAssignment(assignment: { userId: number; whatsappAccountId: number; role: string; isActive: boolean }) {
+    const [newAssignment] = await db
+      .insert(userAccountAssignments)
+      .values({
+        userId: assignment.userId,
+        whatsappAccountId: assignment.whatsappAccountId,
+        role: assignment.role,
+        isActive: assignment.isActive,
+        assignedAt: new Date()
+      })
+      .returning();
+    return newAssignment;
+  }
+
+  async removeUserAccountAssignment(userId: number, whatsappAccountId: number) {
+    await db
+      .delete(userAccountAssignments)
+      .where(and(
+        eq(userAccountAssignments.userId, userId),
+        eq(userAccountAssignments.whatsappAccountId, whatsappAccountId)
+      ));
+  }
+
+  async getAllUserAccountAssignments() {
+    return await db
+      .select({
+        id: userAccountAssignments.id,
+        userId: userAccountAssignments.userId,
+        whatsappAccountId: userAccountAssignments.whatsappAccountId,
+        role: userAccountAssignments.role,
+        isActive: userAccountAssignments.isActive,
+        assignedAt: userAccountAssignments.assignedAt,
+        userName: users.username,
+        userFullName: users.fullName,
+        accountName: whatsappAccounts.name
+      })
+      .from(userAccountAssignments)
+      .leftJoin(users, eq(userAccountAssignments.userId, users.id))
+      .leftJoin(whatsappAccounts, eq(userAccountAssignments.whatsappAccountId, whatsappAccounts.id));
+  }
+
   async getWhatsappAccount(id: number): Promise<WhatsAppAccount | undefined> {
     const [account] = await db.select().from(whatsappAccounts).where(eq(whatsappAccounts.id, id));
     return account || undefined;

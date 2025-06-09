@@ -50,7 +50,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MoreHorizontal, PlusCircle, UserPlus, UserX, Edit, Trash, Activity, Eye, Clock, BarChart3, User as UserIcon, MessageCircle, Users as UsersIcon, CheckCircle, LogIn, Pencil, Trash2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, MoreHorizontal, PlusCircle, UserPlus, UserX, Edit, Trash, Activity, Eye, Clock, BarChart3, User as UserIcon, MessageCircle, Users as UsersIcon, CheckCircle, LogIn, Pencil, Trash2, Settings } from 'lucide-react';
+import WhatsAppAccountAssignment from '@/components/admin/WhatsAppAccountAssignment';
 
 // Definir tipo para usuarios
 interface User {
@@ -601,11 +603,33 @@ export default function UserManagement() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Gestión de Agentes</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Gestión del Sistema</h1>
           <p className="text-muted-foreground">
-            Administra los agentes que atenderán los chats de WhatsApp
+            Administra usuarios y asignaciones de cuentas WhatsApp
           </p>
         </div>
+      </div>
+
+      <Tabs defaultValue="users" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <UsersIcon className="h-4 w-4" />
+            Gestión de Usuarios
+          </TabsTrigger>
+          <TabsTrigger value="assignments" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Asignaciones WhatsApp
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="users" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold">Gestión de Agentes</h2>
+              <p className="text-muted-foreground">
+                Administra los agentes que atenderán los chats de WhatsApp
+              </p>
+            </div>
         <div className="flex space-x-2">
           <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/users'] })}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1825,6 +1849,12 @@ export default function UserManagement() {
           )}
         </DialogContent>
       </Dialog>
+        </TabsContent>
+
+        <TabsContent value="assignments">
+          <WhatsAppAccountAssignment />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
