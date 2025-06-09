@@ -252,34 +252,24 @@ export function QuickPlanAssignment({
             )}
           </div>
 
-          {/* Admin Authentication */}
+          {/* Plan Assignment */}
           {selectedPlanId && (
-            <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-3">
-                <Lock className="h-4 w-4 text-red-600" />
-                <h3 className="font-medium text-sm text-red-800">Autenticación de Administrador Requerida</h3>
+                <Crown className="h-4 w-4 text-blue-600" />
+                <h3 className="font-medium text-sm text-blue-800">Confirmar Asignación de Plan</h3>
               </div>
               <div className="space-y-3">
-                <div>
-                  <Label htmlFor="admin-password" className="text-sm text-red-700">
-                    Contraseña de Administrador
-                  </Label>
-                  <Input
-                    id="admin-password"
-                    type="password"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="Ingresa tu contraseña de administrador"
-                    className="mt-1"
-                  />
-                </div>
+                <p className="text-sm text-blue-700">
+                  ¿Estás seguro de que deseas asignar el plan seleccionado a {userName}?
+                </p>
                 <div className="flex gap-2">
                   <Button
                     onClick={handleAssignPlan}
                     disabled={assignPlanMutation.isPending}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
-                    {assignPlanMutation.isPending ? 'Asignando...' : 'Asignar Plan'}
+                    {assignPlanMutation.isPending ? 'Asignando...' : 'Confirmar Asignación'}
                   </Button>
                   <Button
                     variant="outline"
