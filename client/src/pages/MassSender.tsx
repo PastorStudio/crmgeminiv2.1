@@ -321,16 +321,16 @@ export default function MassSender() {
   // Filtrar contactos basado en etiquetas seleccionadas
   const filteredContacts = React.useMemo(() => {
     if (selectedTagFilters.length === 0) {
-      return whatsappContacts;
+      return whatsappContactsQuery;
     }
     
-    return whatsappContacts.filter((contact: any) => {
+    return whatsappContactsQuery.filter((contact: any) => {
       if (!contact.tags || !Array.isArray(contact.tags)) {
         return false;
       }
       return selectedTagFilters.some(tag => contact.tags.includes(tag));
     });
-  }, [whatsappContacts, selectedTagFilters]);
+  }, [whatsappContactsQuery, selectedTagFilters]);
 
   // Función para añadir nueva etiqueta a contacto
   const handleAddContactTag = async () => {
@@ -1515,8 +1515,8 @@ export default function MassSender() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            if (whatsappContacts.length > 0) {
-                              const allContactIds = whatsappContacts.map(contact => contact.id);
+                            if (whatsappContactsQuery.length > 0) {
+                              const allContactIds = whatsappContactsQuery.map(contact => contact.id);
                               if (selectedContacts.length === allContactIds.length) {
                                 setSelectedContacts([]);
                               } else {
@@ -1525,7 +1525,7 @@ export default function MassSender() {
                             }
                           }}
                         >
-                          {selectedContacts.length === whatsappContacts.length ? 'Deseleccionar' : 'Seleccionar'} Todo
+                          {selectedContacts.length === whatsappContactsQuery.length ? 'Deseleccionar' : 'Seleccionar'} Todo
                         </Button>
                         <Button
                           variant="outline"
@@ -1614,7 +1614,7 @@ export default function MassSender() {
                               </p>
                             </div>
                           </div>
-                        ) : loadingWhatsAppContacts ? (
+                        ) : loadingWhatsAppContactsQuery ? (
                           <div className="flex items-center justify-center h-full">
                             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                             <span className="ml-2 text-sm text-muted-foreground">Cargando contactos...</span>
@@ -1681,12 +1681,12 @@ export default function MassSender() {
                           <Users className="h-8 w-8 text-muted-foreground mb-2" />
                           <div className="space-y-2">
                             <span className="text-sm text-muted-foreground">
-                              {whatsappContacts.length === 0 
+                              {whatsappContactsQuery.length === 0 
                                 ? "No hay contactos de WhatsApp disponibles"
                                 : "No hay contactos que coincidan con los filtros seleccionados"
                               }
                             </span>
-                            {whatsappContacts.length === 0 && (
+                            {whatsappContactsQuery.length === 0 && (
                               <div className="space-y-2">
                                 <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
                                   Los contactos aparecerán después de autenticar WhatsApp
