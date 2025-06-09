@@ -127,6 +127,222 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// ===== SUBSCRIPTION PLAN API ENDPOINTS (EARLY REGISTRATION) =====
+
+// Get all subscription plans
+app.get("/api/subscription-plans", async (req: Request, res: Response) => {
+  try {
+    console.log("📋 GET /api/subscription-plans - Obteniendo planes de suscripción");
+    const result = await pool.query('SELECT * FROM subscription_plans ORDER BY id');
+    const plans = result.rows;
+    res.json({ success: true, plans });
+  } catch (error) {
+    console.error("❌ Error getting subscription plans:", error);
+    res.status(500).json({ success: false, message: "Error al obtener planes de suscripción" });
+  }
+});
+
+// Create subscription plan
+app.post("/api/subscription-plans", async (req: Request, res: Response) => {
+  try {
+    const planData = req.body;
+    console.log("📝 POST /api/subscription-plans - Creando plan de suscripción:", planData);
+    
+    // Validate required fields
+    if (!planData.name || !planData.price) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Nombre y precio son requeridos" 
+      });
+    }
+
+    // Use direct SQL to avoid schema mismatch issues
+    const result = await pool.query(`
+      INSERT INTO subscription_plans 
+      (name, description, price, currency, duration_days, features, max_users, max_whatsapp_accounts, max_chats_per_month, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *
+    `, [
+      planData.name,
+      planData.description || '',
+      planData.price,
+      planData.currency || 'USD',
+      planData.durationDays || 30,
+      JSON.stringify(planData.features || []),
+      planData.maxUsers || 1,
+      planData.maxWhatsAppAccounts || 1,
+      planData.maxChatsPerMonth || 1000,
+      planData.isActive !== undefined ? planData.isActive : true
+    ]);
+
+    const newPlan = result.rows[0];
+    console.log("✅ Plan creado exitosamente:", newPlan);
+
+    res.status(201).json({ 
+      success: true, 
+      plan: newPlan,
+      message: "Plan de suscripción creado correctamente" 
+    });
+  } catch (error) {
+    console.error("❌ Error creating subscription plan:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Error al crear plan de suscripción: " + (error as Error).message 
+    });
+  }
+});
+
+// Get all user subscriptions
+app.get("/api/user-subscriptions", async (req: Request, res: Response) => {
+  try {
+    console.log("📋 GET /api/user-subscriptions - Obteniendo suscripciones de usuarios");
+    const result = await pool.query(`
+      SELECT 
+        us.id, us.user_id, us.plan_id, us.start_date, us.end_date, 
+        us.status, us.auto_renewal, us.notes,
+        sp.name as plan_name, sp.description as plan_description, 
+        sp.price as plan_price, sp.currency as plan_currency,
+        sp.duration_days as plan_duration_days, sp.features as plan_features,
+        u.username, u."fullName", u.email
+      FROM user_subscriptions us
+      INNER JOIN subscription_plans sp ON us.plan_id = sp.id
+      INNER JOIN users u ON us.user_id = u.id
+      ORDER BY us.id
+    `);
+
+    const subscriptions = result.rows.map(row => ({
+      id: row.id,
+      userId: row.user_id,
+      planId: row.plan_id,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      status: row.status,
+      autoRenewal: row.auto_renewal,
+      notes: row.notes,
+      plan: {
+        id: row.plan_id,
+        name: row.plan_name,
+        description: row.plan_description,
+        price: row.plan_price,
+        currency: row.plan_currency,
+        durationDays: row.plan_duration_days,
+        features: row.plan_features
+      },
+      user: {
+        id: row.user_id,
+        username: row.username,
+        fullName: row.fullName,
+        email: row.email
+      }
+    }));
+
+    res.json({ success: true, subscriptions });
+  } catch (error) {
+    console.error("❌ Error getting user subscriptions:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Error al obtener suscripciones de usuarios" 
+    });
+  }
+});
+
+// Assign plan to user
+app.post("/api/user-subscriptions", async (req: Request, res: Response) => {
+  try {
+    const { user_id, plan_id, end_date, notes } = req.body;
+    console.log("📝 POST /api/user-subscriptions - Asignando plan a usuario:", { user_id, plan_id, end_date, notes });
+    
+    if (!user_id || !plan_id || !end_date) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Usuario, plan y fecha de finalización son requeridos" 
+      });
+    }
+
+    // Check if user and plan exist using direct SQL
+    const userResult = await pool.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [user_id]);
+    const planResult = await pool.query('SELECT * FROM subscription_plans WHERE id = $1 LIMIT 1', [plan_id]);
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Usuario no encontrado" 
+      });
+    }
+
+    if (planResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Plan no encontrado" 
+      });
+    }
+
+    const user = userResult.rows[0];
+    const plan = planResult.rows[0];
+
+    // Create subscription using direct SQL
+    const subscriptionResult = await pool.query(`
+      INSERT INTO user_subscriptions 
+      (user_id, plan_id, end_date, status, notes, assigned_by)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [
+      user_id,
+      plan_id,
+      end_date,
+      'active',
+      notes || '',
+      1 // TODO: Get from session
+    ]);
+
+    const newSubscription = subscriptionResult.rows[0];
+    console.log("✅ Plan asignado exitosamente:", newSubscription);
+
+    res.status(201).json({ 
+      success: true, 
+      subscription: newSubscription,
+      message: `Plan ${plan.name} asignado correctamente a ${user.username}` 
+    });
+  } catch (error) {
+    console.error("❌ Error assigning plan to user:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Error al asignar plan al usuario: " + (error as Error).message 
+    });
+  }
+});
+
+// Cancel subscription
+app.delete("/api/cancel-subscription/:id", async (req: Request, res: Response) => {
+  try {
+    const subscriptionId = parseInt(req.params.id);
+    console.log("🗑️ DELETE /api/cancel-subscription - Cancelando suscripción:", subscriptionId);
+    
+    const subscriptionResult = await pool.query('SELECT * FROM user_subscriptions WHERE id = $1 LIMIT 1', [subscriptionId]);
+
+    if (subscriptionResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Suscripción no encontrada" 
+      });
+    }
+
+    await pool.query('UPDATE user_subscriptions SET status = $1 WHERE id = $2', ['cancelled', subscriptionId]);
+
+    console.log("✅ Suscripción cancelada exitosamente");
+    res.json({ 
+      success: true, 
+      message: "Suscripción cancelada correctamente" 
+    });
+  } catch (error) {
+    console.error("❌ Error canceling subscription:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Error al cancelar suscripción: " + (error as Error).message 
+    });
+  }
+});
+
 // Registrar rutas optimizadas INMEDIATAMENTE después de middleware básico
 const server = registerOptimizedRoutes(app);
 console.log('🚀 Rutas optimizadas registradas ANTES de Vite middleware');
@@ -2062,222 +2278,6 @@ app.post("/api/whatsapp/:accountId/force-ready", async (req: Request, res: Respo
     res.status(500).json({
       success: false,
       error: 'Error al activar el sistema de respuestas automáticas'
-    });
-  }
-});
-
-// ===== SUBSCRIPTION PLAN API ENDPOINTS =====
-
-// Get all subscription plans
-app.get("/api/subscription-plans", async (req: Request, res: Response) => {
-  try {
-    console.log("📋 GET /api/subscription-plans - Obteniendo planes de suscripción");
-    const result = await pool.query('SELECT * FROM subscription_plans ORDER BY id');
-    const plans = result.rows;
-    res.json({ success: true, plans });
-  } catch (error) {
-    console.error("❌ Error getting subscription plans:", error);
-    res.status(500).json({ success: false, message: "Error al obtener planes de suscripción" });
-  }
-});
-
-// Create subscription plan
-app.post("/api/subscription-plans", async (req: Request, res: Response) => {
-  try {
-    const planData = req.body;
-    console.log("📝 POST /api/subscription-plans - Creando plan de suscripción:", planData);
-    
-    // Validate required fields
-    if (!planData.name || !planData.price) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Nombre y precio son requeridos" 
-      });
-    }
-
-    // Use direct SQL to avoid schema mismatch issues
-    const result = await pool.query(`
-      INSERT INTO subscription_plans 
-      (name, description, price, currency, duration_days, features, max_users, max_whatsapp_accounts, max_chats_per_month, is_active)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING *
-    `, [
-      planData.name,
-      planData.description || '',
-      planData.price,
-      planData.currency || 'USD',
-      planData.durationDays || 30,
-      JSON.stringify(planData.features || []),
-      planData.maxUsers || 1,
-      planData.maxWhatsAppAccounts || 1,
-      planData.maxChatsPerMonth || 1000,
-      planData.isActive !== undefined ? planData.isActive : true
-    ]);
-
-    const newPlan = result.rows[0];
-    console.log("✅ Plan creado exitosamente:", newPlan);
-
-    res.status(201).json({ 
-      success: true, 
-      plan: newPlan,
-      message: "Plan de suscripción creado correctamente" 
-    });
-  } catch (error) {
-    console.error("❌ Error creating subscription plan:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Error al crear plan de suscripción: " + (error as Error).message 
-    });
-  }
-});
-
-// Get all user subscriptions
-app.get("/api/user-subscriptions", async (req: Request, res: Response) => {
-  try {
-    console.log("📋 GET /api/user-subscriptions - Obteniendo suscripciones de usuarios");
-    const result = await pool.query(`
-      SELECT 
-        us.id, us.user_id, us.plan_id, us.start_date, us.end_date, 
-        us.status, us.auto_renewal, us.notes,
-        sp.name as plan_name, sp.description as plan_description, 
-        sp.price as plan_price, sp.currency as plan_currency,
-        sp.duration_days as plan_duration_days, sp.features as plan_features,
-        u.username, u."fullName", u.email
-      FROM user_subscriptions us
-      INNER JOIN subscription_plans sp ON us.plan_id = sp.id
-      INNER JOIN users u ON us.user_id = u.id
-      ORDER BY us.id
-    `);
-
-    const subscriptions = result.rows.map(row => ({
-      id: row.id,
-      userId: row.user_id,
-      planId: row.plan_id,
-      startDate: row.start_date,
-      endDate: row.end_date,
-      status: row.status,
-      autoRenewal: row.auto_renewal,
-      notes: row.notes,
-      plan: {
-        id: row.plan_id,
-        name: row.plan_name,
-        description: row.plan_description,
-        price: row.plan_price,
-        currency: row.plan_currency,
-        durationDays: row.plan_duration_days,
-        features: row.plan_features
-      },
-      user: {
-        id: row.user_id,
-        username: row.username,
-        fullName: row.fullName,
-        email: row.email
-      }
-    }));
-
-    res.json({ success: true, subscriptions });
-  } catch (error) {
-    console.error("❌ Error getting user subscriptions:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Error al obtener suscripciones de usuarios" 
-    });
-  }
-});
-
-// Assign plan to user
-app.post("/api/user-subscriptions", async (req: Request, res: Response) => {
-  try {
-    const { user_id, plan_id, end_date, notes } = req.body;
-    console.log("📝 POST /api/user-subscriptions - Asignando plan a usuario:", { user_id, plan_id, end_date, notes });
-    
-    if (!user_id || !plan_id || !end_date) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Usuario, plan y fecha de finalización son requeridos" 
-      });
-    }
-
-    // Check if user and plan exist using direct SQL
-    const userResult = await pool.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [user_id]);
-    const planResult = await pool.query('SELECT * FROM subscription_plans WHERE id = $1 LIMIT 1', [plan_id]);
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Usuario no encontrado" 
-      });
-    }
-
-    if (planResult.rows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Plan no encontrado" 
-      });
-    }
-
-    const user = userResult.rows[0];
-    const plan = planResult.rows[0];
-
-    // Create subscription using direct SQL
-    const subscriptionResult = await pool.query(`
-      INSERT INTO user_subscriptions 
-      (user_id, plan_id, end_date, status, notes, assigned_by)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *
-    `, [
-      user_id,
-      plan_id,
-      end_date,
-      'active',
-      notes || '',
-      1 // TODO: Get from session
-    ]);
-
-    const newSubscription = subscriptionResult.rows[0];
-    console.log("✅ Plan asignado exitosamente:", newSubscription);
-
-    res.status(201).json({ 
-      success: true, 
-      subscription: newSubscription,
-      message: `Plan ${plan.name} asignado correctamente a ${user.username}` 
-    });
-  } catch (error) {
-    console.error("❌ Error assigning plan to user:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Error al asignar plan al usuario: " + (error as Error).message 
-    });
-  }
-});
-
-// Cancel subscription
-app.delete("/api/cancel-subscription/:id", async (req: Request, res: Response) => {
-  try {
-    const subscriptionId = parseInt(req.params.id);
-    console.log("🗑️ DELETE /api/cancel-subscription - Cancelando suscripción:", subscriptionId);
-    
-    const subscriptionResult = await pool.query('SELECT * FROM user_subscriptions WHERE id = $1 LIMIT 1', [subscriptionId]);
-
-    if (subscriptionResult.rows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Suscripción no encontrada" 
-      });
-    }
-
-    await pool.query('UPDATE user_subscriptions SET status = $1 WHERE id = $2', ['cancelled', subscriptionId]);
-
-    console.log("✅ Suscripción cancelada exitosamente");
-    res.json({ 
-      success: true, 
-      message: "Suscripción cancelada correctamente" 
-    });
-  } catch (error) {
-    console.error("❌ Error canceling subscription:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Error al cancelar suscripción: " + (error as Error).message 
     });
   }
 });
