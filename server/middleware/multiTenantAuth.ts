@@ -23,8 +23,23 @@ export interface AuthenticatedRequest extends Request {
  */
 export async function multiTenantAuth(req: Request, res: Response, next: NextFunction) {
   try {
-    // En desarrollo, usar usuario de prueba
-    const userId = req.session?.userId || 1;
+    // Obtener userId desde la sesión, headers o query params para testing
+    let userId = req.session?.userId || req.headers['x-user-id'] || req.query.userId;
+    
+    // Para testing, permitir override de usuario
+    if (req.query.testUser) {
+      const testUserMap: Record<string, number> = {
+        'superadmin': 3,  // DJP
+        'admin': 17,      // admin
+        'manager': 19,    // manager1
+        'agent': 20,      // agent1
+        'agent2': 21,     // agent2
+        'demo': 9         // demo
+      };
+      userId = testUserMap[req.query.testUser as string] || userId;
+    }
+    
+    userId = parseInt(userId as string) || 3; // Default a DJP (superadmin)
     
     if (!userId) {
       return res.status(401).json({ error: 'No autenticado' });
@@ -64,8 +79,8 @@ export async function multiTenantAuth(req: Request, res: Response, next: NextFun
 
     const assignedAccountIds = accountAssignments.map(a => a.whatsappAccountId);
 
-    // Determinar permisos del usuario
-    const canAccessAll = user.role === 'admin' || user.role === 'super_admin';
+    // Determinar permisos del usuario - solo superadmin y admin pueden ver todos los datos
+    const canAccessAll = user.role === 'superadmin' || user.role === 'admin';
     
     const authenticatedUser: AuthenticatedUser = {
       id: user.id,
