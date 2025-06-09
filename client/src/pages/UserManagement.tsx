@@ -71,6 +71,10 @@ interface User {
   lastLoginAt?: string;
   totalLogins?: number;
   lastActivity?: string;
+  currentPlan?: string;
+  currentPlanId?: number;
+  subscriptionEndDate?: string;
+  subscriptionStatus?: string;
 }
 
 // Definir tipo para actividades de agentes
@@ -1156,17 +1160,16 @@ export default function UserManagement() {
                       
                       {/* Columna de Plan de Suscripción */}
                       <TableCell className="text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
-                              <CreditCard className="h-3 w-3 mr-1" />
-                              Plan Básico
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            15 días restantes
-                          </div>
-                        </div>
+                        <QuickPlanAssignment
+                          userId={user.id}
+                          userName={user.username || user.fullName || 'Usuario'}
+                          currentPlanName={user.currentPlan || 'Sin plan'}
+                          currentPlanId={user.currentPlanId}
+                          onPlanChanged={() => {
+                            // Refrescar la lista de usuarios después del cambio
+                            queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+                          }}
+                        />
                       </TableCell>
                       
                       {/* Columna de Última Actividad */}

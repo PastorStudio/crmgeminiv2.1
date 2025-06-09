@@ -2490,14 +2490,80 @@ app.use((req, res, next) => {
   // Ruta original también funcional
   app.get('/api/users', async (req, res) => {
     try {
-      console.log("🔄 API users - Solicitando lista de usuarios...");
-      const users = await storage.getAllUsers();
-      const safeUsers = users.map(user => {
-        const { password, ...userWithoutPassword } = user;
-        return userWithoutPassword;
-      });
-      console.log(`✅ API users - Enviando ${safeUsers.length} usuarios`);
-      res.json(safeUsers);
+      console.log("🔄 API users - Solicitando lista de usuarios con planes de suscripción...");
+      
+      const { users, userSubscriptions, subscriptionPlans } = await import('@shared/schema');
+      const { eq, desc } = await import('drizzle-orm');
+      
+      // Get users with their active subscription plans
+      const usersWithPlans = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          email: users.email,
+          role: users.role,
+          status: users.status,
+          department: users.department,
+          avatar: users.avatar,
+          lastActivity: users.lastActivity,
+          totalLogins: users.totalLogins,
+          lastLoginAt: users.lastLoginAt,
+          currentPlan: subscriptionPlans.name,
+          currentPlanId: subscriptionPlans.id,
+          subscriptionEndDate: userSubscriptions.endDate,
+          subscriptionStatus: userSubscriptions.status
+        })
+        .from(users)
+        .leftJoin(
+          userSubscriptions, 
+          eq(users.id, userSubscriptions.userId)
+        )
+        .leftJoin(
+          subscriptionPlans,
+          eq(userSubscriptions.planId, subscriptionPlans.id)
+        )
+        .where(eq(userSubscriptions.status, 'active'))
+        .orderBy(desc(userSubscriptions.createdAt));
+
+      // Get users without active subscriptions
+      const usersWithoutPlans = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          email: users.email,
+          role: users.role,
+          status: users.status,
+          department: users.department,
+          avatar: users.avatar,
+          lastActivity: users.lastActivity,
+          totalLogins: users.totalLogins,
+          lastLoginAt: users.lastLoginAt
+        })
+        .from(users)
+        .leftJoin(userSubscriptions, eq(users.id, userSubscriptions.userId))
+        .where(eq(userSubscriptions.userId, null) || eq(userSubscriptions.status, 'cancelled'));
+
+      // Combine results and add default values for users without plans
+      const allUsers = [
+        ...usersWithPlans,
+        ...usersWithoutPlans.map(user => ({
+          ...user,
+          currentPlan: null,
+          currentPlanId: null,
+          subscriptionEndDate: null,
+          subscriptionStatus: null
+        }))
+      ];
+
+      // Remove duplicates (in case a user appears in both queries)
+      const uniqueUsers = allUsers.filter((user, index, array) => 
+        array.findIndex(u => u.id === user.id) === index
+      );
+
+      console.log(`✅ API users - Enviando ${uniqueUsers.length} usuarios con información de planes`);
+      res.json(uniqueUsers);
     } catch (error) {
       console.error("❌ API users - Error:", error);
       res.status(500).json({ error: "Error interno del servidor" });
