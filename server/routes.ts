@@ -4092,7 +4092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log("📝 Asignando plan a usuario:", { user_id, plan_id, end_date, notes });
+      console.log("📝 POST /api/user-subscriptions - Asignando plan a usuario:", { user_id, plan_id, end_date, notes });
 
       // Check if user and plan exist using direct SQL
       const userResult = await pool.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [user_id]);
@@ -4115,11 +4115,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = userResult.rows[0];
       const plan = planResult.rows[0];
 
-      // Create subscription using direct SQL
+      // **CRITICAL FIX**: Cancel any existing active subscriptions for this user first
+      console.log("🔄 Cancelando suscripciones activas previas para usuario:", user_id);
+      await pool.query(`
+        UPDATE user_subscriptions 
+        SET status = 'cancelled', updated_at = NOW()
+        WHERE user_id = $1 AND status = 'active'
+      `, [user_id]);
+
+      // Create new subscription using direct SQL
       const subscriptionResult = await pool.query(`
         INSERT INTO user_subscriptions 
-        (user_id, plan_id, end_date, status, notes, assigned_by)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        (user_id, plan_id, end_date, status, notes, assigned_by, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
         RETURNING *
       `, [
         user_id,
@@ -4127,15 +4135,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         end_date,
         'active',
         notes || '',
-        1 // TODO: Get from session
+        3 // Use DJP admin user ID
       ]);
 
       const newSubscription = subscriptionResult.rows[0];
       console.log("✅ Plan asignado exitosamente:", newSubscription);
 
+      // Update user's current plan info
+      await pool.query(`
+        UPDATE users 
+        SET current_plan = $1, plan_expires_at = $2, updated_at = NOW()
+        WHERE id = $3
+      `, [plan.name, end_date, user_id]);
+
+      console.log("✅ Usuario actualizado con nuevo plan:", plan.name);
+
       res.status(201).json({ 
         success: true, 
         subscription: newSubscription,
+        user: { ...user, current_plan: plan.name, plan_expires_at: end_date },
         message: `Plan ${plan.name} asignado correctamente a ${user.username}` 
       });
     } catch (error) {
