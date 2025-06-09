@@ -2599,9 +2599,8 @@ app.use((req, res, next) => {
         .from(users)
         .orderBy(users.id);
 
-      // Then get the most recent active subscription for each user
-      const { sql } = await import('drizzle-orm');
-      const userSubscriptionsData = await db.execute(sql`
+      // Then get the most recent active subscription for each user using direct pool query for freshest data
+      const userSubscriptionsResult = await pool.query(`
         SELECT DISTINCT ON (us.user_id)
           us.user_id,
           us.plan_id,
@@ -2616,9 +2615,11 @@ app.use((req, res, next) => {
           END as days_remaining
         FROM user_subscriptions us
         INNER JOIN subscription_plans sp ON us.plan_id = sp.id
-        WHERE us.status = 'active' AND us.end_date >= NOW()
+        WHERE us.status = 'active'
         ORDER BY us.user_id, us.created_at DESC
       `);
+      
+      const userSubscriptionsData = { rows: userSubscriptionsResult.rows };
 
       // Combine the data
       const allUsers = allUsersData.map(user => {
