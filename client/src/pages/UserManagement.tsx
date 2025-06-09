@@ -317,7 +317,7 @@ export default function UserManagement() {
       const createdUser = await response.json();
       
       // Si se seleccionó un plan de suscripción, asignarlo
-      if (userData.subscriptionPlanId && createdUser.user) {
+      if (userData.subscriptionPlanId && userData.subscriptionPlanId !== 'no-plan' && createdUser.user) {
         const subscriptionData = {
           userId: createdUser.user.id,
           planId: parseInt(userData.subscriptionPlanId),
@@ -383,7 +383,7 @@ export default function UserManagement() {
       
       // Si se cambió el plan de suscripción, gestionarlo
       if (userData.subscriptionPlanId !== undefined) {
-        if (userData.subscriptionPlanId && userData.subscriptionPlanId !== '') {
+        if (userData.subscriptionPlanId && userData.subscriptionPlanId !== '' && userData.subscriptionPlanId !== 'no-plan') {
           // Asignar nuevo plan o actualizar existente
           const subscriptionData = {
             userId: id,
@@ -1540,7 +1540,7 @@ export default function UserManagement() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">
+                          <SelectItem value="no-plan">
                             <div className="flex items-center">
                               <div className="w-3 h-3 rounded-full bg-gray-400 mr-2"></div>
                               <span>Sin plan asignado</span>
@@ -1633,7 +1633,7 @@ export default function UserManagement() {
                 </div>
 
                 {/* Mostrar información del plan seleccionado */}
-                {form.watch('subscriptionPlanId') && subscriptionPlans && (
+                {form.watch('subscriptionPlanId') && form.watch('subscriptionPlanId') !== 'no-plan' && subscriptionPlans && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     {(() => {
                       const selectedPlan = subscriptionPlans.find((p: any) => p.id.toString() === form.watch('subscriptionPlanId'));
