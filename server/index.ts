@@ -6002,6 +6002,89 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
+  // 🔐 AUTHENTICATION ROUTES (BYPASS VITE)
+  
+  // Admin password verification endpoint - Direct route that bypasses Vite
+  app.post("/api/direct/auth/verify-admin", async (req: Request, res: Response) => {
+    try {
+      const { password } = req.body;
+      const authHeader = req.headers.authorization;
+
+      console.log(`🔐 Direct auth endpoint reached`);
+
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          message: "Contraseña requerida"
+        });
+      }
+
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+          success: false,
+          message: "Token de autenticación requerido"
+        });
+      }
+
+      // Extract token
+      const token = authHeader.substring(7);
+      let currentUser;
+
+      console.log(`🔍 Token recibido: ${token.substring(0, 20)}...`);
+
+      // Handle simple auth tokens used by the login system
+      if (token.startsWith('auth-token-admin-')) {
+        console.log(`✅ Token de admin detectado`);
+        currentUser = {
+          userId: 17,
+          username: 'admin',
+          role: 'admin'
+        };
+      } else {
+        return res.status(401).json({
+          success: false,
+          message: "Token inválido"
+        });
+      }
+
+      // Only admins can verify passwords
+      if (!['admin', 'super_admin', 'superadmin'].includes(currentUser.role)) {
+        return res.status(403).json({
+          success: false,
+          message: "No tienes permisos para cambiar planes"
+        });
+      }
+
+      // Verify admin password
+      console.log(`🔐 Verificando credenciales para usuario: ${currentUser.username}`);
+      console.log(`🔐 Contraseña proporcionada: ${password}`);
+      
+      const { authService } = await import('./services/authService');
+      const user = await authService.verifyCredentials(currentUser.username, password);
+      
+      if (!user) {
+        console.log(`❌ Verificación fallida para usuario: ${currentUser.username}`);
+        return res.status(401).json({
+          success: false,
+          message: "Contraseña incorrecta"
+        });
+      }
+      
+      console.log(`✅ Verificación exitosa para usuario: ${currentUser.username}`);
+
+      res.json({
+        success: true,
+        message: "Administrador verificado correctamente"
+      });
+    } catch (error) {
+      console.error("Error en verificación de admin:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+
   // 🤖 RUTAS DIRECTAS PARA RESPUESTAS AUTOMÁTICAS (SIN VITE)
   
   // Activar respuestas automáticas - Ruta directa que bypassa Vite
