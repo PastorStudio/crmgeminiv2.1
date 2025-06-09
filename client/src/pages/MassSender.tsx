@@ -216,13 +216,15 @@ export default function MassSender() {
   // Consulta para obtener los grupos de contactos
   const { data: contactGroups = [], isLoading: loadingGroups } = useQuery<ContactGroup[]>({
     queryKey: ['/api/whatsapp/contact-groups'],
-    retry: false
+    retry: false,
+    select: (data) => Array.isArray(data) ? data : []
   });
 
   // Consulta para obtener las cuentas de WhatsApp disponibles
-  const { data: whatsappAccounts = [], isLoading: loadingAccounts } = useQuery({
+  const { data: whatsappAccounts = { accounts: [] }, isLoading: loadingAccounts } = useQuery({
     queryKey: ['/api/whatsapp-accounts'],
-    retry: false
+    retry: false,
+    select: (data) => data || { accounts: [] }
   });
   
   // Function to import all WhatsApp contacts
@@ -287,7 +289,8 @@ export default function MassSender() {
   // Consulta para obtener las etiquetas de contactos
   const { data: contactTags = [], isLoading: loadingTags } = useQuery<any[]>({
     queryKey: ['/api/whatsapp/contact-tags'],
-    retry: false
+    retry: false,
+    select: (data) => Array.isArray(data) ? data : []
   });
 
   // Consulta para obtener contactos de WhatsApp reales
@@ -304,16 +307,19 @@ export default function MassSender() {
       }
       const data = await response.json();
       
+      // Ensure data is an array
+      const contacts = Array.isArray(data) ? data : [];
+      
       // Extraer etiquetas únicas de todos los contactos
       const allTags = new Set<string>();
-      data.forEach((contact: any) => {
+      contacts.forEach((contact: any) => {
         if (contact.tags && Array.isArray(contact.tags)) {
           contact.tags.forEach((tag: string) => allTags.add(tag));
         }
       });
       setAvailableTags(Array.from(allTags));
       
-      return data;
+      return contacts;
     },
     retry: false
   });
