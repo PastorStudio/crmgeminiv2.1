@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configure your server URL here
-const BASE_URL = 'http://localhost:5000'; // Change to your actual server URL
+const BASE_URL = 'http://172.31.128.27:5000'; // Change to your actual server URL
 
 class ApiService {
   constructor() {
