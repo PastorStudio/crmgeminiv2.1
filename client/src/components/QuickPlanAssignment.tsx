@@ -111,8 +111,14 @@ export function QuickPlanAssignment({
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate multiple cache keys to ensure UI updates
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       queryClient.invalidateQueries({ queryKey: ['/api/user-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/subscription-plans'] });
+      
+      // Force refetch to update UI immediately
+      queryClient.refetchQueries({ queryKey: ['/api/users'] });
+      
       setIsOpen(false);
       setSelectedPlanId(null);
       setAdminPassword('');
