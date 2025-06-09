@@ -1,23 +1,23 @@
-2025/06/09-18:34:39.381 33e Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/06/09-18:34:39.381 33e Recovering log #329
-2025/06/09-18:34:39.383 33e Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000329.log 
-2025/06/09-18:34:41.072 33e Level-0 table #339: started
-2025/06/09-18:34:41.098 33e Level-0 table #339: 76138 bytes OK
-2025/06/09-18:34:41.122 33e Delete type=0 #329
-2025/06/09-18:34:41.123 33e Manual compaction at level-0 from '\x001\x00\x00\x00' @ 72057594037927935 : 1 .. '\x002\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/06/09-18:34:43.989 33e Compacting 1@1 + 6@2 files
-2025/06/09-18:34:44.193 33e Generated table #340@1: 38802 keys, 2187981 bytes
-2025/06/09-18:34:44.369 33e Generated table #341@1: 35280 keys, 2206410 bytes
-2025/06/09-18:34:44.486 33e Generated table #342@1: 60740 keys, 2225832 bytes
-2025/06/09-18:34:44.550 33e Generated table #343@1: 11895 keys, 2163287 bytes
-2025/06/09-18:34:44.663 33e Generated table #344@1: 29770 keys, 2184991 bytes
-2025/06/09-18:34:44.971 33e Generated table #345@1: 99829 keys, 2066636 bytes
-2025/06/09-18:34:44.971 33e Compacted 1@1 + 6@2 files => 13035137 bytes
-2025/06/09-18:34:44.978 33e compacted to: files[ 0 0 6 0 0 0 0 ]
-2025/06/09-18:34:44.978 33e Delete type=2 #331
-2025/06/09-18:34:44.979 33e Delete type=2 #332
-2025/06/09-18:34:44.979 33e Delete type=2 #333
-2025/06/09-18:34:44.979 33e Delete type=2 #334
-2025/06/09-18:34:44.979 33e Delete type=2 #335
-2025/06/09-18:34:44.979 33e Delete type=2 #336
-2025/06/09-18:34:44.979 33e Delete type=2 #339
+2025/06/09-18:45:27.134 724 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/09-18:45:27.135 724 Recovering log #338
+2025/06/09-18:45:27.166 724 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000338.log 
+2025/06/09-18:45:28.983 72b Level-0 table #348: started
+2025/06/09-18:45:29.013 72b Level-0 table #348: 311274 bytes OK
+2025/06/09-18:45:29.028 72b Delete type=0 #338
+2025/06/09-18:45:29.029 724 Manual compaction at level-0 from '\x002\x00\x00\x00' @ 72057594037927935 : 1 .. '\x003\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/09-18:45:31.413 726 Compacting 1@1 + 6@2 files
+2025/06/09-18:45:31.514 726 Generated table #349@1: 38787 keys, 2187448 bytes
+2025/06/09-18:45:31.665 726 Generated table #350@1: 36377 keys, 2208716 bytes
+2025/06/09-18:45:31.825 726 Generated table #351@1: 60156 keys, 2225013 bytes
+2025/06/09-18:45:31.909 726 Generated table #352@1: 12198 keys, 2161789 bytes
+2025/06/09-18:45:32.017 726 Generated table #353@1: 27899 keys, 2185451 bytes
+2025/06/09-18:45:32.128 726 Generated table #354@1: 102515 keys, 2124014 bytes
+2025/06/09-18:45:32.128 726 Compacted 1@1 + 6@2 files => 13092431 bytes
+2025/06/09-18:45:32.138 726 compacted to: files[ 0 0 6 0 0 0 0 ]
+2025/06/09-18:45:32.139 726 Delete type=2 #340
+2025/06/09-18:45:32.139 726 Delete type=2 #341
+2025/06/09-18:45:32.139 726 Delete type=2 #342
+2025/06/09-18:45:32.139 726 Delete type=2 #343
+2025/06/09-18:45:32.139 726 Delete type=2 #344
+2025/06/09-18:45:32.139 726 Delete type=2 #345
+2025/06/09-18:45:32.139 726 Delete type=2 #348
