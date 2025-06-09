@@ -22,7 +22,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const [location] = useLocation();
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
-  // Navigation items organized by categories
+  // Navigation items - ALL existing menu items preserved
   const navItems = [
     { href: "/", icon: "dashboard", label: "Dashboard" },
     { href: "/leads", icon: "people", label: "Leads" },
@@ -40,7 +40,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { href: "/settings", icon: "settings", label: "Settings" },
   ];
 
-  // Menu structure organized by categories
+  // Categories for grouping - ALL original menu items included
   const menuCategories: MenuCategory[] = [
     {
       id: "principal",
