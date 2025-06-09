@@ -381,11 +381,18 @@ app.post("/api/user-subscriptions", async (req: Request, res: Response) => {
     const user = userResult.rows[0];
     const plan = planResult.rows[0];
 
+    // Cancel any existing active subscription for this user
+    await pool.query(`
+      UPDATE user_subscriptions 
+      SET status = 'cancelled' 
+      WHERE user_id = $1 AND status = 'active'
+    `, [user_id]);
+
     // Create subscription using direct SQL
     const subscriptionResult = await pool.query(`
       INSERT INTO user_subscriptions 
-      (user_id, plan_id, end_date, status, notes, assigned_by)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      (user_id, plan_id, start_date, end_date, status, notes, assigned_by)
+      VALUES ($1, $2, NOW(), $3, $4, $5, $6)
       RETURNING *
     `, [
       user_id,
