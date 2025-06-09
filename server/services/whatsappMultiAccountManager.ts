@@ -668,28 +668,30 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             console.error(`❌ Error en web scraping automático:`, webScrapingError);
           }
 
-          // Procesar mensaje con sistema funcional de respuestas automáticas
+          // Procesar mensaje con sistema inteligente de respuestas automáticas
           try {
-            console.log(`🤖 INICIANDO RESPUESTA AUTOMÁTICA para cuenta ${id}`);
+            console.log(`🤖 INICIANDO RESPUESTA AUTOMÁTICA INTELIGENTE para cuenta ${id}`);
             console.log(`📝 Mensaje: "${messageBody}" | fromMe: ${message.fromMe} | Chat: ${message.from}`);
             
-            const { WorkingAutoResponseService } = await import('./workingAutoResponse');
+            const { IntelligentAutoResponder } = await import('./intelligentAutoResponder');
             
-            // Procesar mensaje para respuesta automática
-            const processed = await WorkingAutoResponseService.processIncomingMessage(
-              id, // accountId
+            // Procesar mensaje con contexto inteligente
+            const processed = await IntelligentAutoResponder.processMessage(
               message.from, // chatId
-              messageBody, // message
-              client // whatsappClient
+              message.id._serialized || String(message.id), // messageId
+              messageBody, // messageText
+              message.fromMe, // fromMe
+              id, // accountId
+              client // whatsappInstance
             );
 
             if (processed) {
-              console.log(`✅ Respuesta automática enviada para cuenta ${id}`);
+              console.log(`✅ Respuesta inteligente enviada para cuenta ${id}`);
             } else {
               console.log(`⏭️ No se envió respuesta automática para cuenta ${id}`);
             }
           } catch (error) {
-            console.error(`❌ Error en respuesta automática:`, error);
+            console.error(`❌ Error en respuesta automática inteligente:`, error);
           }
         }
       } catch (error) {
