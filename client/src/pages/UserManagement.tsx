@@ -1021,8 +1021,7 @@ export default function UserManagement() {
                   users.map((user: User) => (
                     <TableRow 
                       key={user.id}
-                      className="hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => openAgentPreview(user)}
+                      className="hover:bg-gray-50 transition-colors"
                     >
                       <TableCell className="font-medium">
                         <div className="flex items-center space-x-3">
