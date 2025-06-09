@@ -98,32 +98,17 @@ export async function apiRequest<T = any>(
   } catch (error) {
     console.error(`Error en solicitud API a ${url}:`, error);
     
-    // If it's a network error, try alternative approach
-    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      console.log(`🔄 Network error detected, attempting fallback approach...`);
-      
-      // For critical endpoints, try a simplified fetch without extra headers
-      try {
-        const fallbackRes = await fetch(finalUrl, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body,
-          mode: 'cors'
-        });
-        
-        if (fallbackRes.ok) {
-          console.log(`✅ Fallback request succeeded`);
-          return await fallbackRes.json();
-        }
-      } catch (fallbackError) {
-        console.error(`❌ Fallback also failed:`, fallbackError);
-      }
+    // For WhatsApp accounts endpoint, return empty array to prevent UI breakage
+    if (url.includes('/api/whatsapp-accounts') && method === 'GET') {
+      console.log(`🔄 Returning fallback data for WhatsApp accounts to prevent UI crash`);
+      return { 
+        success: false, 
+        accounts: [], 
+        error: 'Network connectivity issue - please refresh page' 
+      } as T;
     }
     
-    // Re-throw the original error
+    // For other endpoints, re-throw the error
     throw error;
   }
 }
