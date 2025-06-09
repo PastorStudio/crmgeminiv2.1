@@ -110,6 +110,9 @@ const userFormSchema = z.object({
   status: z.string().refine(val => ['active', 'inactive', 'suspended'].includes(val), {
     message: "El estado debe ser active, inactive o suspended"
   }),
+  subscriptionPlanId: z.string().optional(),
+  subscriptionDuration: z.string().optional(),
+  subscriptionNotes: z.string().optional(),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -189,6 +192,17 @@ export default function UserManagement() {
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
     defaultValues,
+  });
+
+  // Obtener planes de suscripción disponibles
+  const { data: subscriptionPlans } = useQuery({
+    queryKey: ['/api/subscription-plans'],
+    queryFn: async () => {
+      const response = await fetch('/api/subscription-plans');
+      if (!response.ok) throw new Error('Error cargando planes');
+      const data = await response.json();
+      return data.plans || [];
+    }
   });
 
   // Obtener lista de usuarios reales desde la base de datos PostgreSQL
@@ -285,6 +299,7 @@ export default function UserManagement() {
   // Mutación para crear usuario
   const createUserMutation = useMutation({
     mutationFn: async (userData: UserFormValues) => {
+      // Crear el usuario primero
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
@@ -299,10 +314,36 @@ export default function UserManagement() {
         throw new Error(errorData.message || 'Error al crear usuario');
       }
       
-      return response.json();
+      const createdUser = await response.json();
+      
+      // Si se seleccionó un plan de suscripción, asignarlo
+      if (userData.subscriptionPlanId && createdUser.user) {
+        const subscriptionData = {
+          userId: createdUser.user.id,
+          planId: parseInt(userData.subscriptionPlanId),
+          duration: userData.subscriptionDuration ? parseInt(userData.subscriptionDuration) : undefined,
+          notes: userData.subscriptionNotes || 'Asignado durante la creación del usuario'
+        };
+
+        const subscriptionResponse = await fetch('/api/user-subscriptions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
+          },
+          body: JSON.stringify(subscriptionData)
+        });
+
+        if (!subscriptionResponse.ok) {
+          console.warn('Error asignando plan de suscripción, pero usuario creado exitosamente');
+        }
+      }
+      
+      return createdUser;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user-subscriptions'] });
       setIsDialogOpen(false);
       form.reset(defaultValues);
       toast({
@@ -323,6 +364,7 @@ export default function UserManagement() {
   // Mutación para actualizar usuario
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, userData }: { id: number, userData: Partial<UserFormValues> }) => {
+      // Actualizar los datos del usuario primero
       const response = await fetch(`/api/users/${id}`, {
         method: 'PATCH',
         headers: {
@@ -337,10 +379,56 @@ export default function UserManagement() {
         throw new Error(errorData.message || 'Error al actualizar usuario');
       }
       
-      return response.json();
+      const updatedUser = await response.json();
+      
+      // Si se cambió el plan de suscripción, gestionarlo
+      if (userData.subscriptionPlanId !== undefined) {
+        if (userData.subscriptionPlanId && userData.subscriptionPlanId !== '') {
+          // Asignar nuevo plan o actualizar existente
+          const subscriptionData = {
+            userId: id,
+            planId: parseInt(userData.subscriptionPlanId),
+            duration: userData.subscriptionDuration ? parseInt(userData.subscriptionDuration) : undefined,
+            notes: userData.subscriptionNotes || 'Actualizado desde edición de usuario'
+          };
+
+          const subscriptionResponse = await fetch('/api/user-subscriptions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
+            },
+            body: JSON.stringify(subscriptionData)
+          });
+
+          if (!subscriptionResponse.ok) {
+            console.warn('Error actualizando plan de suscripción, pero usuario actualizado exitosamente');
+          }
+        } else {
+          // Cancelar suscripción activa si se deseleccionó el plan
+          try {
+            const cancelResponse = await fetch(`/api/user-subscriptions/user/${id}/cancel`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
+              }
+            });
+            
+            if (!cancelResponse.ok) {
+              console.warn('Error cancelando suscripción existente');
+            }
+          } catch (error) {
+            console.warn('Error cancelando suscripción:', error);
+          }
+        }
+      }
+      
+      return updatedUser;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user-subscriptions'] });
       setIsDialogOpen(false);
       setSelectedUser(null);
       form.reset(defaultValues);
@@ -1117,7 +1205,7 @@ export default function UserManagement() {
 
       {/* Diálogo para crear/editar usuario */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center">
               {selectedUser ? (
@@ -1426,6 +1514,172 @@ export default function UserManagement() {
                   </FormItem>
                 )}
               />
+
+              {/* Sección de Plan de Suscripción */}
+              <div className="space-y-4 border-t pt-4">
+                <div className="flex items-center space-x-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  </svg>
+                  <h3 className="text-sm font-medium text-gray-900">Plan de Suscripción</h3>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="subscriptionPlanId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Asignar Plan</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value || ''}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona un plan de suscripción" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-gray-400 mr-2"></div>
+                              <span>Sin plan asignado</span>
+                            </div>
+                          </SelectItem>
+                          {subscriptionPlans?.map((plan: any) => (
+                            <SelectItem key={plan.id} value={plan.id.toString()}>
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center">
+                                  <div className={`w-3 h-3 rounded-full mr-2 ${
+                                    plan.name.includes('Básico') ? 'bg-green-500' :
+                                    plan.name.includes('Pro') ? 'bg-blue-500' :
+                                    plan.name.includes('Enterprise') ? 'bg-purple-500' :
+                                    'bg-gray-500'
+                                  }`}></div>
+                                  <div>
+                                    <span className="font-medium">{plan.name}</span>
+                                    <span className="text-xs text-gray-500 ml-2">
+                                      ${plan.price}/{plan.duration_days}d
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Selecciona un plan de suscripción para definir los límites y características disponibles.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="subscriptionDuration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Duración Personalizada</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value || ''}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Usar duración del plan" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="">Usar duración del plan</SelectItem>
+                            <SelectItem value="7">7 días</SelectItem>
+                            <SelectItem value="15">15 días</SelectItem>
+                            <SelectItem value="30">30 días</SelectItem>
+                            <SelectItem value="60">60 días</SelectItem>
+                            <SelectItem value="90">90 días</SelectItem>
+                            <SelectItem value="180">180 días</SelectItem>
+                            <SelectItem value="365">365 días</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Opcional: personalizar la duración del plan
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="subscriptionNotes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notas de Suscripción</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Notas adicionales..." 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Información adicional sobre la asignación
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Mostrar información del plan seleccionado */}
+                {form.watch('subscriptionPlanId') && subscriptionPlans && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    {(() => {
+                      const selectedPlan = subscriptionPlans.find((p: any) => p.id.toString() === form.watch('subscriptionPlanId'));
+                      if (!selectedPlan) return null;
+                      
+                      return (
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-blue-900">{selectedPlan.name}</h4>
+                          <p className="text-sm text-blue-700">{selectedPlan.description}</p>
+                          <div className="grid grid-cols-2 gap-4 text-xs text-blue-600">
+                            <div>
+                              <span className="font-medium">Precio:</span> ${selectedPlan.price} {selectedPlan.currency}
+                            </div>
+                            <div>
+                              <span className="font-medium">Duración:</span> {selectedPlan.duration_days} días
+                            </div>
+                            <div>
+                              <span className="font-medium">Usuarios máx:</span> {selectedPlan.max_users}
+                            </div>
+                            <div>
+                              <span className="font-medium">Cuentas WhatsApp:</span> {selectedPlan.max_whatsapp_accounts}
+                            </div>
+                          </div>
+                          {selectedPlan.features && (
+                            <div className="mt-2">
+                              <span className="text-xs font-medium text-blue-900">Características:</span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {JSON.parse(selectedPlan.features).slice(0, 3).map((feature: string, index: number) => (
+                                  <span key={index} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                    {feature}
+                                  </span>
+                                ))}
+                                {JSON.parse(selectedPlan.features).length > 3 && (
+                                  <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                    +{JSON.parse(selectedPlan.features).length - 3} más
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
               
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)}>
