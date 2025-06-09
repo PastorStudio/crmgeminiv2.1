@@ -36,8 +36,16 @@ export function SubscriptionManager() {
   const { data: plans = [], isLoading: plansLoading } = useQuery({
     queryKey: ['/api/subscription-plans'],
     queryFn: async () => {
-      const response = await subscriptionService.getAllPlans();
-      return response;
+      const response = await fetch('/api/subscription-plans', {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'x-user-id': '3',
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch plans');
+      const data = await response.json();
+      return data.plans || [];
     }
   });
 
