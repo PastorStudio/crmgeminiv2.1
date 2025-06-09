@@ -1,0 +1,5 @@
+2025/06/09-12:04:05.010 5cae Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb/MANIFEST-000001
+2025/06/09-12:04:05.035 5cae Recovering log #4
+2025/06/09-12:04:05.049 5cae Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb/000004.log 
+2025/06/09-12:04:19.193 5ca6 Level-0 table #8: started
+2025/06/09-12:04:19.221 5ca6 Level-0 table #8: 25720 bytes OK

@@ -31,7 +31,7 @@ export class WhatsAppDemoHandler {
           
           if (demo) {
             // Generate success response with login details
-            const successMessage = demoAgentService.generateDemoCreatedMessage(demo);
+            const successMessage = demoAgentService.generateDemoCredentialsResponse(demo);
             return successMessage;
           }
         } catch (error) {
