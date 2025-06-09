@@ -41,7 +41,7 @@ export async function apiRequest<T = any>(
     ...options?.headers
   };
 
-  // Use same-origin requests to avoid CORS issues - the Express server serves both API and frontend
+  // Use relative URLs for API calls - Vite proxy handles routing
   const finalUrl = url;
     
   // Add timestamp parameter to avoid cache
@@ -98,15 +98,8 @@ export async function apiRequest<T = any>(
   } catch (error) {
     console.error(`Error en solicitud API a ${url}:`, error);
     
-    // For WhatsApp accounts endpoint, return empty array to prevent UI breakage
-    if (url.includes('/api/whatsapp-accounts') && method === 'GET') {
-      console.log(`🔄 Returning fallback data for WhatsApp accounts to prevent UI crash`);
-      return { 
-        success: false, 
-        accounts: [], 
-        error: 'Network connectivity issue - please refresh page' 
-      } as T;
-    }
+    // For critical endpoints, don't return fallback data - let the error propagate
+    // This ensures the UI shows proper error states instead of empty data
     
     // For other endpoints, re-throw the error
     throw error;
