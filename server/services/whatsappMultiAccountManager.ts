@@ -668,30 +668,29 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             console.error(`❌ Error en web scraping automático:`, webScrapingError);
           }
 
-          // Procesar mensaje con sistema inteligente de respuestas automáticas
+          // Procesar mensaje con sistema contextual de respuestas automáticas
           try {
-            console.log(`🤖 INICIANDO RESPUESTA AUTOMÁTICA INTELIGENTE para cuenta ${id}`);
+            console.log(`🤖 INICIANDO RESPUESTA CONTEXTUAL para cuenta ${id}`);
             console.log(`📝 Mensaje: "${messageBody}" | fromMe: ${message.fromMe} | Chat: ${message.from}`);
             
-            const { IntelligentAutoResponder } = await import('./intelligentAutoResponder');
+            const { ContextAwareAutoResponder } = await import('./contextAwareAutoResponder');
             
-            // Procesar mensaje con contexto inteligente
-            const processed = await IntelligentAutoResponder.processMessage(
+            // Procesar mensaje con contexto de conversación
+            const processed = await ContextAwareAutoResponder.processMessage(
+              id, // accountId
               message.from, // chatId
-              message.id._serialized || String(message.id), // messageId
               messageBody, // messageText
               message.fromMe, // fromMe
-              id, // accountId
-              client // whatsappInstance
+              client // whatsappClient
             );
 
             if (processed) {
-              console.log(`✅ Respuesta inteligente enviada para cuenta ${id}`);
+              console.log(`✅ Respuesta contextual enviada para cuenta ${id}`);
             } else {
               console.log(`⏭️ No se envió respuesta automática para cuenta ${id}`);
             }
           } catch (error) {
-            console.error(`❌ Error en respuesta automática inteligente:`, error);
+            console.error(`❌ Error en respuesta automática contextual:`, error);
           }
         }
       } catch (error) {
