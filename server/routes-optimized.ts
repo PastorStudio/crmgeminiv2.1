@@ -1648,7 +1648,19 @@ export function registerOptimizedRoutes(app: Express): Server {
         });
       }
       
-      const newSubscription = await storage.createUserSubscription(subscriptionData);
+      // Map frontend fields to database schema
+      const mappedSubscriptionData = {
+        userId: parseInt(subscriptionData.user_id),
+        planId: parseInt(subscriptionData.plan_id),
+        startDate: subscriptionData.start_date ? new Date(subscriptionData.start_date) : new Date(),
+        endDate: new Date(subscriptionData.end_date),
+        status: subscriptionData.status || 'active',
+        autoRenewal: subscriptionData.auto_renew || false,
+        assignedBy: subscriptionData.assigned_by || null,
+        notes: subscriptionData.notes || ''
+      };
+      
+      const newSubscription = await storage.createUserSubscription(mappedSubscriptionData);
       
       res.json({
         success: true,
