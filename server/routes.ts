@@ -1422,14 +1422,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Leads endpoint using direct database connection like dashboard-stats
-  app.get("/api/leads", async (req: Request, res: Response) => {
+  // Leads endpoint with user data isolation
+  app.get("/api/leads", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {
-      console.log('📋 Obteniendo leads desde la base de datos...');
+      const currentUser = (req as any).user;
+      console.log(`📋 Obteniendo leads para usuario: ${currentUser.username} (${currentUser.role})`);
       
-      // Direct query like working dashboard endpoint
-      const result = await pool.query('SELECT * FROM leads ORDER BY "createdAt" DESC');
-      console.log(`✅ Encontrados ${result.rows.length} leads`);
+      let query: string;
+      let queryParams: any[] = [];
+      
+      // Admins and superadmins can see all data
+      if (['admin', 'superadmin'].includes(currentUser.role)) {
+        query = 'SELECT * FROM leads ORDER BY "createdAt" DESC';
+        console.log('🔓 Usuario admin - acceso a todos los leads');
+      } else {
+        // Regular users only see their own data
+        query = 'SELECT * FROM leads WHERE "ownerId" = $1 ORDER BY "createdAt" DESC';
+        queryParams = [currentUser.id];
+        console.log(`🔒 Usuario regular - filtrando por ownerId: ${currentUser.id}`);
+      }
+      
+      const result = await pool.query(query, queryParams);
+      console.log(`✅ Encontrados ${result.rows.length} leads para usuario ${currentUser.username}`);
       
       // Transform for Kanban with phone support and fixed schema
       const leadsData = result.rows.map((row: any) => ({
@@ -1459,7 +1473,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nextFollowUpDate: row.nextFollowUpDate,
         customFields: row.customFields || {},
         whatsappAccountId: row.whatsappAccountId,
-        matchPercentage: row.matchPercentage || null
+        matchPercentage: row.matchPercentage || null,
+        ownerId: row.ownerId
       }));
       
       res.json(leadsData);
