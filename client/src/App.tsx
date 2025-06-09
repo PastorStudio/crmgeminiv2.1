@@ -50,6 +50,8 @@ import SystemStatus from './pages/SystemStatus';
 import WhatsAppAuth from './pages/WhatsAppAuth';
 import { FunctionDocumentation } from './pages/FunctionDocumentation';
 import NotificationSystem from './components/NotificationSystem';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { SubscriptionManager } from './components/admin/SubscriptionManager';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
@@ -658,8 +660,8 @@ const AppRoutes: React.FC = () => {
                 <Route path="/" component={() => <PrivateRoute component={Dashboard} path="/" />} />
                 <Route path="/leads" component={() => <PrivateRoute component={Leads} path="/leads" />} />
                 <Route path="/sales-pipeline" component={() => <PrivateRoute component={SalesPipeline} path="/sales-pipeline" />} />
-                <Route path="/messages" component={() => <PrivateRoute component={Messages} path="/messages" />} />
-                <Route path="/modern-messaging" component={() => <PrivateRoute component={ModernMessaging} path="/modern-messaging" />} />
+                <Route path="/messages" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="messaging"><Messages /></ProtectedRoute>} path="/messages" />} />
+                <Route path="/modern-messaging" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="messaging"><ModernMessaging /></ProtectedRoute>} path="/modern-messaging" />} />
                 <Route path="/calendar" component={() => <PrivateRoute component={Calendar} path="/calendar" />} />
                 <Route path="/tasks" component={() => <PrivateRoute component={Tasks} path="/tasks" />} />
                 <Route path="/tickets" component={() => <PrivateRoute component={TicketsSimple} path="/tickets" />} />
@@ -687,9 +689,9 @@ const AppRoutes: React.FC = () => {
                 <Route path="/ultra-whatsapp" component={() => <PrivateRoute component={UltraSimpleChat} path="/ultra-whatsapp" />} />
                 {/* Ruta de demostración eliminada - solo chats reales */}
                 <Route path="/users" component={() => <PrivateRoute component={UserManagement} path="/users" />} />
-                <Route path="/whatsapp-accounts" component={() => <PrivateRoute component={WhatsAppAccounts} path="/whatsapp-accounts" />} />
-                <Route path="/whatsapp-auth" component={() => <PrivateRoute component={WhatsAppAuth} path="/whatsapp-auth" />} />
-                <Route path="/whatsapp-connection" component={() => <PrivateRoute component={WhatsAppConnection} path="/whatsapp-connection" />} />
+                <Route path="/whatsapp-accounts" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppAccounts /></ProtectedRoute>} path="/whatsapp-accounts" />} />
+                <Route path="/whatsapp-auth" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppAuth /></ProtectedRoute>} path="/whatsapp-auth" />} />
+                <Route path="/whatsapp-connection" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppConnection /></ProtectedRoute>} path="/whatsapp-connection" />} />
                 <Route path="/agent-monitoring" component={() => <PrivateRoute component={AgentMonitoring} path="/agent-monitoring" />} />
                 <Route path="/agent-security" component={() => <PrivateRoute component={AgentSecurity} path="/agent-security" />} />
                 <Route path="/flow-templates" component={() => <PrivateRoute component={FlowTemplates} path="/flow-templates" />} />
