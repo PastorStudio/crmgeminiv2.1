@@ -1509,6 +1509,101 @@ export function registerOptimizedRoutes(app: Express): Server {
     }));
   });
 
+  // Subscription Plans endpoints
+  app.get("/api/subscription-plans", async (req: Request, res: Response) => {
+    try {
+      const plans = await storage.getAllSubscriptionPlans();
+      res.json({
+        success: true,
+        plans: plans
+      });
+    } catch (error) {
+      console.error('Error getting subscription plans:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener planes de suscripción"
+      });
+    }
+  });
+
+  app.post("/api/subscription-plans", async (req: Request, res: Response) => {
+    try {
+      const planData = req.body;
+      
+      // Validate required fields
+      if (!planData.name || !planData.price || !planData.duration_days) {
+        return res.status(400).json({
+          success: false,
+          message: "Faltan campos requeridos: name, price, duration_days"
+        });
+      }
+      
+      // Ensure features is properly formatted as JSON string if it's an array
+      if (Array.isArray(planData.features)) {
+        planData.features = JSON.stringify(planData.features);
+      }
+      
+      const newPlan = await storage.createSubscriptionPlan(planData);
+      
+      res.json({
+        success: true,
+        plan: newPlan,
+        message: "Plan creado exitosamente"
+      });
+    } catch (error) {
+      console.error('Error creating subscription plan:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al crear plan de suscripción"
+      });
+    }
+  });
+
+  // User Subscriptions endpoints
+  app.get("/api/user-subscriptions", async (req: Request, res: Response) => {
+    try {
+      const subscriptions = await storage.getAllUserSubscriptions();
+      res.json({
+        success: true,
+        subscriptions: subscriptions
+      });
+    } catch (error) {
+      console.error('Error getting user subscriptions:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener suscripciones"
+      });
+    }
+  });
+
+  app.post("/api/user-subscriptions", async (req: Request, res: Response) => {
+    try {
+      const subscriptionData = req.body;
+      
+      // Validate required fields
+      if (!subscriptionData.user_id || !subscriptionData.plan_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Faltan campos requeridos: user_id, plan_id"
+        });
+      }
+      
+      const newSubscription = await storage.createUserSubscription(subscriptionData);
+      
+      res.json({
+        success: true,
+        subscription: newSubscription,
+        message: "Suscripción creada exitosamente"
+      });
+    } catch (error) {
+      console.error('Error creating user subscription:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al crear suscripción"
+      });
+    }
+  });
+
   console.log('🚀 Rutas optimizadas registradas correctamente');
   console.log('📡 WebSocket configurado en /ws');
   
