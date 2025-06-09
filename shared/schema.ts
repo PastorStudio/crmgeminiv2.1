@@ -146,8 +146,9 @@ export const whatsappAccounts = pgTable("whatsapp_accounts", {
 // Contactos - información centralizada de contactos
 export const contacts = pgTable("contacts", {
   id: serial("id").primaryKey(),
+  ownerId: integer("ownerId").notNull().references(() => users.id), // USER ISOLATION: Owner of this contact
   name: text("name").notNull(),
-  phone: text("phone").notNull().unique(),
+  phone: text("phone").notNull(),
   email: text("email"),
   company: text("company"),
   position: text("position"),
@@ -167,6 +168,7 @@ export const leads = pgTable("leads", {
   id: serial("id").primaryKey(),
   contactId: integer("contactId").notNull(),
   whatsappAccountId: integer("whatsappAccountId").notNull(),
+  ownerId: integer("ownerId").notNull().references(() => users.id), // USER ISOLATION: Owner of this lead
   title: text("title").notNull(),
   name: text("name"), // Agregado para compatibilidad
   fullName: text("fullName"), // Agregado para compatibilidad
@@ -198,6 +200,7 @@ export const tickets = pgTable("tickets", {
   contactId: integer("contactId").notNull(),
   leadId: integer("leadId"), // Opcional, si está relacionado a un lead
   whatsappAccountId: integer("whatsappAccountId").notNull(),
+  ownerId: integer("ownerId").notNull().references(() => users.id), // USER ISOLATION: Owner of this ticket
   title: text("title").notNull(),
   description: text("description"),
   type: text("type").default("inquiry"), // inquiry, support, complaint, follow_up
@@ -220,6 +223,7 @@ export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
   contactId: integer("contactId").notNull(),
   whatsappAccountId: integer("whatsappAccountId").notNull(),
+  ownerId: integer("ownerId").notNull().references(() => users.id), // USER ISOLATION: Owner of this conversation
   leadId: integer("leadId"), // Si la conversación genera un lead
   ticketId: integer("ticketId"), // Si la conversación genera un ticket
   chatId: text("chatId").notNull(), // ID único del chat de WhatsApp
@@ -247,6 +251,7 @@ export const conversations = pgTable("conversations", {
 export const whatsappMessages = pgTable("whatsapp_messages", {
   id: serial("id").primaryKey(),
   accountId: integer("accountId").notNull(),
+  ownerId: integer("ownerId").notNull().references(() => users.id), // USER ISOLATION: Owner of this message
   chatId: text("chatId").notNull(),
   messageId: text("messageId").notNull().unique(),
   content: text("content"),
