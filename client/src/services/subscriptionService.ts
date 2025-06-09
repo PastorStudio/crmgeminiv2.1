@@ -57,11 +57,21 @@ export class SubscriptionService {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
-      const data = await response.json();
-      return data.success ? data.plans : [];
+      const text = await response.text();
+      if (!text.trim()) {
+        return [];
+      }
+      
+      try {
+        const data = JSON.parse(text);
+        return data.success ? data.plans : [];
+      } catch (parseError) {
+        console.error('JSON parsing error for subscription plans:', parseError, 'Response:', text);
+        return [];
+      }
     } catch (error) {
       console.error('Error getting subscription plans:', error);
       return [];
