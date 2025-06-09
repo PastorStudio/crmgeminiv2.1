@@ -12,6 +12,7 @@ import { eq, gte, desc, and, sql } from "drizzle-orm";
 import * as agentAssignmentRoutes from "./routes/agentAssignments";
 import { invisibleAgentIntegrator } from "./services/invisibleAgentIntegrator";
 import { realTimeNotificationService } from "./services/realTimeNotificationService";
+import { demoAgentService } from "./services/demoAgentService";
 import * as whatsappAPI from "./routes/whatsappAPI";
 import { internalAgentManager } from "./services/internalAgentManager";
 import { agentActivityTracker } from "./services/agentActivityTracker";
