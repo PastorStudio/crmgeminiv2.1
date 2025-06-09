@@ -1539,12 +1539,50 @@ export default function UserManagement() {
 
               {/* Sección de Plan de Suscripción */}
               <div className="space-y-4 border-t pt-4">
-                <div className="flex items-center space-x-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                  </svg>
-                  <h3 className="text-sm font-medium text-gray-900">Plan de Suscripción</h3>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                    <h3 className="text-sm font-medium text-gray-900">Plan de Suscripción</h3>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {plansLoading && <span className="text-blue-600">Cargando...</span>}
+                    {plansError && <span className="text-red-600">Error</span>}
+                    {subscriptionPlans && !plansLoading && (
+                      <span className="text-green-600 font-medium">
+                        {subscriptionPlans.length} planes cargados
+                      </span>
+                    )}
+                  </div>
                 </div>
+
+                {/* Lista visual de planes disponibles */}
+                {subscriptionPlans && subscriptionPlans.length > 0 && (
+                  <div className="bg-gray-50 border rounded-lg p-3 mb-4">
+                    <h4 className="text-xs font-medium text-gray-700 mb-2">
+                      Planes Disponibles ({subscriptionPlans.length}):
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {subscriptionPlans.slice(0, 6).map((plan: any) => (
+                        <div key={plan.id} className="flex items-center">
+                          <div className={`w-2 h-2 rounded-full mr-2 ${
+                            plan.name.includes('Básico') ? 'bg-green-500' :
+                            plan.name.includes('Pro') ? 'bg-blue-500' :
+                            plan.name.includes('Enterprise') ? 'bg-purple-500' :
+                            'bg-gray-500'
+                          }`}></div>
+                          <span className="truncate">{plan.name}</span>
+                        </div>
+                      ))}
+                      {subscriptionPlans.length > 6 && (
+                        <div className="text-gray-500 text-xs">
+                          +{subscriptionPlans.length - 6} más...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <FormField
                   control={form.control}
@@ -1552,70 +1590,28 @@ export default function UserManagement() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Asignar Plan</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || ''}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona un plan de suscripción" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="no-plan">
-                            <div className="flex items-center">
-                              <div className="w-3 h-3 rounded-full bg-gray-400 mr-2"></div>
-                              <span>Sin plan asignado</span>
-                            </div>
-                          </SelectItem>
-                          {plansLoading && (
-                            <SelectItem value="loading" disabled>
-                              <div className="flex items-center">
-                                <div className="w-3 h-3 rounded-full bg-blue-500 mr-2 animate-pulse"></div>
-                                <span>Cargando planes...</span>
-                              </div>
-                            </SelectItem>
-                          )}
-                          {plansError && (
-                            <SelectItem value="error" disabled>
-                              <div className="flex items-center">
-                                <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-                                <span>Error cargando planes</span>
-                              </div>
-                            </SelectItem>
-                          )}
-                          {subscriptionPlans && subscriptionPlans.length === 0 && !plansLoading && (
-                            <SelectItem value="empty" disabled>
-                              <div className="flex items-center">
-                                <div className="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
-                                <span>No hay planes disponibles</span>
-                              </div>
-                            </SelectItem>
-                          )}
+                      <FormControl>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          value={field.value || ''}
+                          onChange={(e) => field.onChange(e.target.value)}
+                        >
+                          <option value="">Selecciona un plan de suscripción</option>
+                          <option value="no-plan">Sin plan asignado</option>
                           {subscriptionPlans?.map((plan: any) => (
-                            <SelectItem key={plan.id} value={plan.id.toString()}>
-                              <div className="flex items-center justify-between w-full">
-                                <div className="flex items-center">
-                                  <div className={`w-3 h-3 rounded-full mr-2 ${
-                                    plan.name.includes('Básico') ? 'bg-green-500' :
-                                    plan.name.includes('Pro') ? 'bg-blue-500' :
-                                    plan.name.includes('Enterprise') ? 'bg-purple-500' :
-                                    'bg-gray-500'
-                                  }`}></div>
-                                  <div>
-                                    <span className="font-medium">{plan.name}</span>
-                                    <span className="text-xs text-gray-500 ml-2">
-                                      ${plan.price}/{plan.duration_days}d
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </SelectItem>
+                            <option key={plan.id} value={plan.id.toString()}>
+                              {plan.name} - ${plan.price}/{plan.duration_days}d
+                            </option>
                           ))}
-                        </SelectContent>
-                      </Select>
+                        </select>
+                      </FormControl>
                       <FormDescription>
                         Selecciona un plan de suscripción para definir los límites y características disponibles.
+                        {subscriptionPlans && (
+                          <span className="text-blue-600 font-medium ml-2">
+                            ({subscriptionPlans.length} planes disponibles)
+                          </span>
+                        )}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
