@@ -3643,7 +3643,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all subscription plans
   app.get("/api/subscription-plans", async (req: Request, res: Response) => {
     try {
-      const plans = await db.select().from(subscriptionPlans).orderBy(subscriptionPlans.id);
+      const result = await pool.query('SELECT * FROM subscription_plans ORDER BY id');
+      const plans = result.rows;
       res.json({ success: true, plans });
     } catch (error) {
       console.error("Error getting subscription plans:", error);
@@ -3705,36 +3706,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all user subscriptions
   app.get("/api/user-subscriptions", async (req: Request, res: Response) => {
     try {
-      const subscriptions = await db
-        .select({
-          id: userSubscriptions.id,
-          userId: userSubscriptions.userId,
-          planId: userSubscriptions.planId,
-          startDate: userSubscriptions.startDate,
-          endDate: userSubscriptions.endDate,
-          status: userSubscriptions.status,
-          autoRenewal: userSubscriptions.autoRenewal,
-          notes: userSubscriptions.notes,
-          plan: {
-            id: subscriptionPlans.id,
-            name: subscriptionPlans.name,
-            description: subscriptionPlans.description,
-            price: subscriptionPlans.price,
-            currency: subscriptionPlans.currency,
-            durationDays: subscriptionPlans.durationDays,
-            features: subscriptionPlans.features
-          },
-          user: {
-            id: users.id,
-            username: users.username,
-            fullName: users.fullName,
-            email: users.email
-          }
-        })
-        .from(userSubscriptions)
-        .innerJoin(subscriptionPlans, eq(userSubscriptions.planId, subscriptionPlans.id))
-        .innerJoin(users, eq(userSubscriptions.userId, users.id))
-        .orderBy(userSubscriptions.id);
+      const result = await pool.query(`
+        SELECT 
+          us.id, us.user_id, us.plan_id, us.start_date, us.end_date, 
+          us.status, us.auto_renewal, us.notes,
+          sp.name as plan_name, sp.description as plan_description, 
+          sp.price as plan_price, sp.currency as plan_currency,
+          sp.duration_days as plan_duration_days, sp.features as plan_features,
+          u.username, u."fullName", u.email
+        FROM user_subscriptions us
+        INNER JOIN subscription_plans sp ON us.plan_id = sp.id
+        INNER JOIN users u ON us.user_id = u.id
+        ORDER BY us.id
+      `);
+
+      const subscriptions = result.rows.map(row => ({
+        id: row.id,
+        userId: row.user_id,
+        planId: row.plan_id,
+        startDate: row.start_date,
+        endDate: row.end_date,
+        status: row.status,
+        autoRenewal: row.auto_renewal,
+        notes: row.notes,
+        plan: {
+          id: row.plan_id,
+          name: row.plan_name,
+          description: row.plan_description,
+          price: row.plan_price,
+          currency: row.plan_currency,
+          durationDays: row.plan_duration_days,
+          features: row.plan_features
+        },
+        user: {
+          id: row.user_id,
+          username: row.username,
+          fullName: row.fullName,
+          email: row.email
+        }
+      }));
 
       res.json({ success: true, subscriptions });
     } catch (error) {
@@ -3758,33 +3768,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if user and plan exist
-      const [user] = await db.select().from(users).where(eq(users.id, user_id)).limit(1);
-      const [plan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, plan_id)).limit(1);
+      console.log("📝 Asignando plan a usuario:", { user_id, plan_id, end_date, notes });
 
-      if (!user) {
+      // Check if user and plan exist using direct SQL
+      const userResult = await pool.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [user_id]);
+      const planResult = await pool.query('SELECT * FROM subscription_plans WHERE id = $1 LIMIT 1', [plan_id]);
+
+      if (userResult.rows.length === 0) {
         return res.status(404).json({ 
           success: false, 
           message: "Usuario no encontrado" 
         });
       }
 
-      if (!plan) {
+      if (planResult.rows.length === 0) {
         return res.status(404).json({ 
           success: false, 
           message: "Plan no encontrado" 
         });
       }
 
-      // Create subscription
-      const [newSubscription] = await db.insert(userSubscriptions).values({
-        userId: user_id,
-        planId: plan_id,
-        endDate: new Date(end_date),
-        status: 'active',
-        notes: notes || '',
-        assignedBy: 1 // TODO: Get from session
-      }).returning();
+      const user = userResult.rows[0];
+      const plan = planResult.rows[0];
+
+      // Create subscription using direct SQL
+      const subscriptionResult = await pool.query(`
+        INSERT INTO user_subscriptions 
+        (user_id, plan_id, end_date, status, notes, assigned_by)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `, [
+        user_id,
+        plan_id,
+        end_date,
+        'active',
+        notes || '',
+        1 // TODO: Get from session
+      ]);
+
+      const newSubscription = subscriptionResult.rows[0];
+      console.log("✅ Plan asignado exitosamente:", newSubscription);
 
       res.status(201).json({ 
         success: true, 
@@ -3792,10 +3815,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `Plan ${plan.name} asignado correctamente a ${user.username}` 
       });
     } catch (error) {
-      console.error("Error assigning plan to user:", error);
+      console.error("❌ Error assigning plan to user:", error);
       res.status(500).json({ 
         success: false, 
-        message: "Error al asignar plan al usuario" 
+        message: "Error al asignar plan al usuario: " + error.message 
       });
     }
   });
