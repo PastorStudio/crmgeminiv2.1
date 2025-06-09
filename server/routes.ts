@@ -460,6 +460,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Rutas de autenticación
   
+  // Ruta para verificar credenciales de administrador para cambios de plan
+  app.post("/api/auth/verify-admin", async (req: Request, res: Response) => {
+    try {
+      const { password } = req.body;
+      const currentUser = (req as any).user;
+
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          message: "Contraseña requerida"
+        });
+      }
+
+      // Solo admins y superadmins pueden cambiar planes
+      if (!['admin', 'super_admin', 'superadmin'].includes(currentUser.role)) {
+        return res.status(403).json({
+          success: false,
+          message: "No tienes permisos para cambiar planes"
+        });
+      }
+
+      // Verificar contraseña del admin actual
+      const user = await authService.verifyCredentials(currentUser.username, password);
+      
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: "Contraseña incorrecta"
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Administrador verificado correctamente"
+      });
+    } catch (error) {
+      console.error("Error en verificación de admin:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+  
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
       const { username, password } = req.body;
