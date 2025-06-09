@@ -85,12 +85,12 @@ const SubscriptionPlanCreator: React.FC<{ onPlanCreated?: () => void }> = ({ onP
           description: formData.description,
           price: parseFloat(formData.price),
           currency: formData.currency,
-          duration_days: formData.durationDays,
-          max_users: formData.maxUsers,
-          max_whatsapp_accounts: formData.maxWhatsAppAccounts,
-          max_chats_per_month: formData.maxChatsPerMonth,
+          durationDays: formData.durationDays,
+          maxUsers: formData.maxUsers,
+          maxWhatsAppAccounts: formData.maxWhatsAppAccounts,
+          maxChatsPerMonth: formData.maxChatsPerMonth,
           features: formData.features,
-          is_active: formData.isActive
+          isActive: formData.isActive
         }
       });
 
