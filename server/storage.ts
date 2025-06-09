@@ -5,6 +5,7 @@ import {
   chatAssignments,
   chatComments,
   dashboardStats,
+  userAccountAssignments,
   type User, 
   type InsertUser,
   type Lead,
@@ -16,7 +17,7 @@ import {
 
 } from "@shared/schema";
 import { db } from './db';
-import { eq, desc, or, sql } from 'drizzle-orm';
+import { eq, desc, or, sql, and } from 'drizzle-orm';
 
 // Interface for storage methods
 export interface IStorage {
