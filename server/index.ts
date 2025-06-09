@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import modernMessagingRouter from "./routes/modern-messaging";
 import { db, pool } from "./db";
-import { users, whatsappAccounts, autoResponseConfigs, agentPageVisits } from "@shared/schema";
+import { users, whatsappAccounts, autoResponseConfigs, agentPageVisits, demoUsers, subscriptionPlans, userSubscriptions } from "@shared/schema";
 import { eq, gte, desc, and, sql } from "drizzle-orm";
 import * as agentAssignmentRoutes from "./routes/agentAssignments";
 import { invisibleAgentIntegrator } from "./services/invisibleAgentIntegrator";
@@ -6160,6 +6160,244 @@ app.use((req, res, next) => {
       });
     } catch (error) {
       console.error("Error en verificación de admin:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+
+  // 🎭 DEMO MANAGEMENT ROUTES (BYPASS VITE)
+  
+  // Create demo account endpoint
+  app.post("/api/direct/demo/create", async (req: Request, res: Response) => {
+    try {
+      const { customerName, phoneNumber, chatId } = req.body;
+
+      console.log(`🎭 Creating demo for customer: ${customerName}`);
+
+      if (!customerName || !phoneNumber) {
+        return res.status(400).json({
+          success: false,
+          message: "Nombre del cliente y número de teléfono son requeridos"
+        });
+      }
+
+      // Generate unique username and password
+      const timestamp = Date.now();
+      const username = `demo_${customerName.toLowerCase().replace(/\s+/g, '_')}_${timestamp}`;
+      const password = `demo${Math.random().toString(36).substring(2, 8)}`;
+
+      // Set expiration to 1 day from now
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 1);
+
+      // Create demo user in database
+      const [demoUser] = await db.insert(demoUsers).values({
+        customerName,
+        phoneNumber,
+        username,
+        password,
+        chatId,
+        expiresAt,
+        status: 'active',
+        createdBy: 'agent'
+      }).returning();
+
+      console.log(`✅ Demo created for ${customerName}: ${username}`);
+
+      res.json({
+        success: true,
+        demo: {
+          id: demoUser.id,
+          customerName: demoUser.customerName,
+          username: demoUser.username,
+          password: demoUser.password,
+          expiresAt: demoUser.expiresAt,
+          loginUrl: `${req.protocol}://${req.get('host')}/demo-login`
+        }
+      });
+    } catch (error) {
+      console.error("Error creating demo:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+
+  // Demo login endpoint
+  app.post("/api/direct/demo/login", async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+
+      console.log(`🎭 Demo login attempt: ${username}`);
+
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Usuario y contraseña requeridos"
+        });
+      }
+
+      // Find demo user
+      const [demoUser] = await db.select()
+        .from(demoUsers)
+        .where(eq(demoUsers.username, username));
+
+      if (!demoUser) {
+        return res.status(401).json({
+          success: false,
+          message: "Credenciales inválidas"
+        });
+      }
+
+      // Check password
+      if (demoUser.password !== password) {
+        return res.status(401).json({
+          success: false,
+          message: "Credenciales inválidas"
+        });
+      }
+
+      // Check if expired
+      if (new Date() > new Date(demoUser.expiresAt)) {
+        return res.status(401).json({
+          success: false,
+          message: "Demo expirado"
+        });
+      }
+
+      // Update login stats
+      await db.update(demoUsers)
+        .set({
+          lastLoginAt: new Date(),
+          loginCount: demoUser.loginCount + 1,
+          updatedAt: new Date()
+        })
+        .where(eq(demoUsers.id, demoUser.id));
+
+      // Generate demo token
+      const token = `demo-token-${demoUser.id}-${Date.now()}`;
+
+      console.log(`✅ Demo login successful: ${username}`);
+
+      res.json({
+        success: true,
+        token,
+        user: {
+          id: demoUser.id,
+          username: demoUser.username,
+          customerName: demoUser.customerName,
+          role: 'demo',
+          expiresAt: demoUser.expiresAt
+        }
+      });
+    } catch (error) {
+      console.error("Error in demo login:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+
+  // Get all demo users
+  app.get("/api/direct/demo/list", async (req: Request, res: Response) => {
+    try {
+      const demos = await db.select()
+        .from(demoUsers)
+        .orderBy(desc(demoUsers.createdAt));
+
+      // Calculate days remaining for each demo
+      const demosWithDaysRemaining = demos.map(demo => ({
+        ...demo,
+        daysRemaining: Math.max(0, Math.ceil((new Date(demo.expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))),
+        isExpired: new Date() > new Date(demo.expiresAt)
+      }));
+
+      res.json({
+        success: true,
+        demos: demosWithDaysRemaining
+      });
+    } catch (error) {
+      console.error("Error listing demos:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+
+  // Convert demo to full user
+  app.post("/api/direct/demo/convert/:demoId", async (req: Request, res: Response) => {
+    try {
+      const { demoId } = req.params;
+      const { planId, fullName, email } = req.body;
+
+      console.log(`🎭 Converting demo ${demoId} to full user`);
+
+      // Get demo user
+      const [demoUser] = await db.select()
+        .from(demoUsers)
+        .where(eq(demoUsers.id, parseInt(demoId)));
+
+      if (!demoUser) {
+        return res.status(404).json({
+          success: false,
+          message: "Demo no encontrado"
+        });
+      }
+
+      // Create full user
+      const [newUser] = await db.insert(users).values({
+        username: demoUser.username,
+        password: demoUser.password,
+        fullName: fullName || demoUser.customerName,
+        email: email,
+        role: 'agent',
+        status: 'active'
+      }).returning();
+
+      // Create subscription if planId provided
+      if (planId) {
+        const [plan] = await db.select()
+          .from(subscriptionPlans)
+          .where(eq(subscriptionPlans.id, planId));
+
+        if (plan) {
+          const endDate = new Date();
+          endDate.setDate(endDate.getDate() + plan.durationDays);
+
+          await db.insert(userSubscriptions).values({
+            userId: newUser.id,
+            planId: plan.id,
+            endDate,
+            status: 'active',
+            assignedBy: 17 // Admin user
+          });
+        }
+      }
+
+      // Update demo user as converted
+      await db.update(demoUsers)
+        .set({
+          status: 'converted',
+          convertedToUserId: newUser.id,
+          convertedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(demoUsers.id, demoUser.id));
+
+      console.log(`✅ Demo converted to user: ${newUser.username}`);
+
+      res.json({
+        success: true,
+        user: newUser,
+        message: "Demo convertido exitosamente a usuario completo"
+      });
+    } catch (error) {
+      console.error("Error converting demo:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"

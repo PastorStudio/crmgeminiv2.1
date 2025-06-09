@@ -35,6 +35,27 @@ export const userSubscriptions = pgTable("user_subscriptions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Demo users table for trial accounts created by the agent
+export const demoUsers = pgTable("demo_users", {
+  id: serial("id").primaryKey(),
+  customerName: text("customer_name").notNull(),
+  phoneNumber: text("phone_number").notNull(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  chatId: text("chat_id"), // WhatsApp chat where demo was requested
+  requestedAt: timestamp("requested_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  status: text("status").default("active"), // active, expired, converted, cancelled
+  convertedToUserId: integer("converted_to_user_id").references(() => users.id),
+  convertedAt: timestamp("converted_at"),
+  createdBy: text("created_by").default("agent"), // agent, admin, system
+  notes: text("notes"),
+  lastLoginAt: timestamp("last_login_at"),
+  loginCount: integer("login_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Base user table with role-based access
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -923,6 +944,11 @@ export const messageTemplates = pgTable("message_templates", {
 export const insertMessageTemplateSchema = createInsertSchema(messageTemplates);
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
 export type InsertMessageTemplate = typeof insertMessageTemplateSchema._type;
+
+// Demo users schemas
+export const insertDemoUserSchema = createInsertSchema(demoUsers);
+export type DemoUser = typeof demoUsers.$inferSelect;
+export type InsertDemoUser = typeof insertDemoUserSchema._type;
 
 // Additional validation schemas (avoiding duplicates)
 export const insertContactSchema = createInsertSchema(contacts);
