@@ -358,10 +358,13 @@ const WhatsAppAccounts = () => {
     onSuccess: () => {
       toast({
         title: 'Todas las cuentas eliminadas',
-        description: 'Se han eliminado todas las cuentas y reiniciado el contador de IDs.',
+        description: 'Limpiando caché y recargando página...',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
-      setSelectedAccount(null);
+      
+      // Clear all cache and refresh page after a short delay
+      setTimeout(() => {
+        clearAllCacheAndRefresh();
+      }, 1000);
     },
     onError: () => {
       toast({
@@ -416,6 +419,21 @@ const WhatsAppAccounts = () => {
   // Manejador de envío del formulario
   const onSubmit = (data: z.infer<typeof accountSchema>) => {
     createAccountMutation.mutate(data);
+  };
+
+  // Function to clear all cache and refresh page
+  const clearAllCacheAndRefresh = () => {
+    // Clear React Query cache
+    queryClient.clear();
+    
+    // Clear localStorage
+    localStorage.clear();
+    
+    // Clear sessionStorage
+    sessionStorage.clear();
+    
+    // Force page reload
+    window.location.reload();
   };
   
   // Abrir diálogo para mostrar código QR
