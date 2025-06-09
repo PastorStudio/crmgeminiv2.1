@@ -392,7 +392,7 @@ app.post("/api/user-subscriptions", async (req: Request, res: Response) => {
       end_date,
       'active',
       notes || '',
-      1 // TODO: Get from session
+      3 // Use DJP user ID as admin
     ]);
 
     const newSubscription = subscriptionResult.rows[0];
