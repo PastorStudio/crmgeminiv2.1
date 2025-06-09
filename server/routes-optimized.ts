@@ -9,8 +9,12 @@ import {
   insertActivitySchema, 
   insertMessageSchema, 
   insertSurveySchema,
-  insertDashboardStatsSchema
+  insertDashboardStatsSchema,
+  userSubscriptions,
+  subscriptionPlans
 } from "@shared/schema";
+import { eq, and, gte } from 'drizzle-orm';
+import { db } from './db';
 import { z } from "zod";
 import { geminiLeadOrganizer } from "./services/geminiLeadOrganizer";
 
@@ -1585,12 +1589,21 @@ export function registerOptimizedRoutes(app: Express): Server {
         });
       }
       
-      // Ensure features is properly formatted as JSON string if it's an array
-      if (Array.isArray(planData.features)) {
-        planData.features = JSON.stringify(planData.features);
-      }
+      // Map frontend fields to database schema
+      const mappedPlanData = {
+        name: planData.name,
+        description: planData.description || '',
+        price: planData.price.toString(),
+        currency: planData.currency || 'USD',
+        durationDays: parseInt(planData.duration_days),
+        features: planData.features,
+        maxUsers: planData.max_users || 1,
+        maxWhatsAppAccounts: planData.max_whatsapp_accounts || 1,
+        maxChatsPerMonth: planData.max_chats_per_month || 1000,
+        isActive: planData.is_active !== undefined ? planData.is_active : true
+      };
       
-      const newPlan = await storage.createSubscriptionPlan(planData);
+      const newPlan = await storage.createSubscriptionPlan(mappedPlanData);
       
       res.json({
         success: true,
