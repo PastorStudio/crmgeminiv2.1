@@ -2525,7 +2525,12 @@ app.use((req, res, next) => {
           us.status,
           us.end_date,
           sp.name as plan_name,
-          sp.id as plan_id_actual
+          sp.id as plan_id_actual,
+          CASE 
+            WHEN us.end_date >= NOW() THEN 
+              EXTRACT(DAY FROM us.end_date - NOW())::INTEGER
+            ELSE 0 
+          END as days_remaining
         FROM user_subscriptions us
         INNER JOIN subscription_plans sp ON us.plan_id = sp.id
         WHERE us.status = 'active' AND us.end_date >= NOW()
@@ -2540,7 +2545,8 @@ app.use((req, res, next) => {
           currentPlan: subscription?.plan_name || null,
           currentPlanId: subscription?.plan_id_actual || null,
           subscriptionEndDate: subscription?.end_date || null,
-          subscriptionStatus: subscription?.status || null
+          subscriptionStatus: subscription?.status || null,
+          daysRemaining: subscription?.days_remaining || null
         };
       });
 
