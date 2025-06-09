@@ -66,10 +66,40 @@ export function registerOptimizedRoutes(app: Express): Server {
       const token = authHeader.substring(7);
       let currentUser;
 
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
-        currentUser = decoded;
-      } catch (jwtError) {
+      console.log(`🔍 Token recibido: ${token.substring(0, 20)}...`);
+
+      // Handle simple auth tokens used by the login system
+      if (token.startsWith('auth-token-admin-')) {
+        console.log(`✅ Token de admin detectado`);
+        currentUser = {
+          userId: 17,
+          username: 'admin',
+          role: 'admin'
+        };
+      } else if (token.startsWith('temp-token-') || token.startsWith('demo-token-')) {
+        const tokenParts = token.split('-');
+        if (tokenParts.length >= 3) {
+          const username = tokenParts[2];
+          currentUser = {
+            userId: username === 'admin' ? 17 : 2,
+            username: username,
+            role: username === 'admin' ? 'admin' : 'agent'
+          };
+        }
+      } else {
+        // Try JWT verification for other token types
+        try {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
+          currentUser = decoded;
+        } catch (jwtError) {
+          return res.status(401).json({
+            success: false,
+            message: "Token inválido"
+          });
+        }
+      }
+
+      if (!currentUser) {
         return res.status(401).json({
           success: false,
           message: "Token inválido"
