@@ -17,6 +17,8 @@ import { eq, and, gte } from 'drizzle-orm';
 import { db } from './db';
 import { z } from "zod";
 import { geminiLeadOrganizer } from "./services/geminiLeadOrganizer";
+import { authService } from "./services/authService";
+import jwt from 'jsonwebtoken';
 
 // SISTEMA DE RUTAS OPTIMIZADO Y LIMPIO CON GEMINI AI
 export function registerOptimizedRoutes(app: Express): Server {
@@ -39,6 +41,77 @@ export function registerOptimizedRoutes(app: Express): Server {
       res.status(400).json({ error: "Datos de lead inválidos" });
     }
   };
+
+  // Admin password verification endpoint for plan assignments
+  app.post("/api/auth/verify-admin", async (req: Request, res: Response) => {
+    try {
+      const { password } = req.body;
+      const authHeader = req.headers.authorization;
+
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          message: "Contraseña requerida"
+        });
+      }
+
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+          success: false,
+          message: "Token de autenticación requerido"
+        });
+      }
+
+      // Extract and verify the token
+      const token = authHeader.substring(7);
+      let currentUser;
+
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
+        currentUser = decoded;
+      } catch (jwtError) {
+        return res.status(401).json({
+          success: false,
+          message: "Token inválido"
+        });
+      }
+
+      // Only admins and superadmins can change plans
+      if (!['admin', 'super_admin', 'superadmin'].includes(currentUser.role)) {
+        return res.status(403).json({
+          success: false,
+          message: "No tienes permisos para cambiar planes"
+        });
+      }
+
+      // Verify admin password
+      console.log(`🔐 Verificando credenciales para usuario: ${currentUser.username}`);
+      console.log(`🔐 Contraseña proporcionada: ${password}`);
+      
+      const user = await authService.verifyCredentials(currentUser.username, password);
+      
+      if (!user) {
+        console.log(`❌ Verificación fallida para usuario: ${currentUser.username}`);
+        return res.status(401).json({
+          success: false,
+          message: "Contraseña incorrecta"
+        });
+      }
+      
+      console.log(`✅ Verificación exitosa para usuario: ${currentUser.username}`);
+
+      res.json({
+        success: true,
+        message: "Administrador verificado correctamente"
+      });
+    } catch (error) {
+      console.error("Error en verificación de admin:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
 
   // Flow Templates endpoint - Returns functional templates with nodes and edges
   app.get("/api/flow-templates", (req: Request, res: Response) => {
