@@ -95,7 +95,13 @@ export function ProtectedRoute({
               <Button variant="outline" onClick={() => window.history.back()}>
                 Volver
               </Button>
-              <Button className="flex items-center space-x-2">
+              <Button 
+                className="flex items-center space-x-2"
+                onClick={() => {
+                  const message = encodeURIComponent('Hola, buenas necesito activar mi plan para utilizar el sistema completo');
+                  window.open(`https://wa.me/15517270417?text=${message}`, '_blank');
+                }}
+              >
                 <Crown className="w-4 h-4" />
                 <span>Contactar Administrador</span>
               </Button>
