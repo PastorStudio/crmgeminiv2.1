@@ -321,7 +321,7 @@ export default function UserManagement() {
         const subscriptionData = {
           userId: createdUser.user.id,
           planId: parseInt(userData.subscriptionPlanId),
-          duration: userData.subscriptionDuration ? parseInt(userData.subscriptionDuration) : undefined,
+          duration: userData.subscriptionDuration && userData.subscriptionDuration !== 'default' ? parseInt(userData.subscriptionDuration) : undefined,
           notes: userData.subscriptionNotes || 'Asignado durante la creación del usuario'
         };
 
@@ -388,7 +388,7 @@ export default function UserManagement() {
           const subscriptionData = {
             userId: id,
             planId: parseInt(userData.subscriptionPlanId),
-            duration: userData.subscriptionDuration ? parseInt(userData.subscriptionDuration) : undefined,
+            duration: userData.subscriptionDuration && userData.subscriptionDuration !== 'default' ? parseInt(userData.subscriptionDuration) : undefined,
             notes: userData.subscriptionNotes || 'Actualizado desde edición de usuario'
           };
 
@@ -1593,7 +1593,7 @@ export default function UserManagement() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Usar duración del plan</SelectItem>
+                            <SelectItem value="default">Usar duración del plan</SelectItem>
                             <SelectItem value="7">7 días</SelectItem>
                             <SelectItem value="15">15 días</SelectItem>
                             <SelectItem value="30">30 días</SelectItem>
