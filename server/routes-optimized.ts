@@ -1509,6 +1509,53 @@ export function registerOptimizedRoutes(app: Express): Server {
     }));
   });
 
+  // Subscription status endpoint
+  app.get("/api/subscription-status", async (req: Request, res: Response) => {
+    try {
+      const userId = req.headers['x-user-id'] || '3'; // Default to superadmin for testing
+      
+      const userSubscription = await db
+        .select({
+          subscription: userSubscriptions,
+          plan: subscriptionPlans
+        })
+        .from(userSubscriptions)
+        .innerJoin(subscriptionPlans, eq(userSubscriptions.planId, subscriptionPlans.id))
+        .where(
+          and(
+            eq(userSubscriptions.userId, parseInt(userId as string)),
+            eq(userSubscriptions.status, 'active'),
+            gte(userSubscriptions.endDate, new Date())
+          )
+        )
+        .orderBy(userSubscriptions.endDate)
+        .limit(1);
+
+      if (userSubscription.length === 0) {
+        return res.json({ hasActivePlan: false });
+      }
+
+      const { subscription, plan } = userSubscription[0];
+      const now = new Date();
+      const endDate = new Date(subscription.endDate);
+      const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      res.json({
+        hasActivePlan: true,
+        planName: plan.name,
+        planFeatures: Array.isArray(plan.features) ? plan.features : JSON.parse(plan.features || '[]'),
+        maxWhatsappAccounts: plan.maxWhatsAppAccounts || 1,
+        maxUsers: plan.maxUsers || 1,
+        maxChatsPerMonth: plan.maxChatsPerMonth || 1000,
+        expiresAt: endDate.toISOString(),
+        daysRemaining: daysRemaining
+      });
+    } catch (error) {
+      console.error('Error getting subscription status:', error);
+      res.json({ hasActivePlan: false });
+    }
+  });
+
   // Subscription Plans endpoints
   app.get("/api/subscription-plans", async (req: Request, res: Response) => {
     try {
