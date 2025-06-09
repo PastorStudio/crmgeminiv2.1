@@ -22,6 +22,24 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const [location] = useLocation();
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
+  // Navigation items organized by categories
+  const navItems = [
+    { href: "/", icon: "dashboard", label: "Dashboard" },
+    { href: "/leads", icon: "people", label: "Leads" },
+    { href: "/messages", icon: "forum", label: "Messages" },
+    { href: "/mass-sender", icon: "send", label: "Envío Masivo" },
+    { href: "/message-templates", icon: "description", label: "Plantillas" },
+    { href: "/media-gallery", icon: "perm_media", label: "Galería" },
+    { href: "/calendar", icon: "event", label: "Calendar" },
+    { href: "/tasks", icon: "assignment", label: "Tasks" },
+    { href: "/analytics", icon: "leaderboard", label: "Analytics" },
+    { href: "/database", icon: "storage", label: "Base de Datos" },
+    { href: "/gemini-demo", icon: "smart_toy", label: "Gemini AI" },
+    { href: "/gemini-test", icon: "psychology", label: "IA Test" },
+    { href: "/integrations", icon: "link", label: "Integraciones" },
+    { href: "/settings", icon: "settings", label: "Settings" },
+  ];
+
   // Menu structure organized by categories
   const menuCategories: MenuCategory[] = [
     {
@@ -147,46 +165,42 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 <button
                   onClick={() => toggleCategory(category.id)}
                   className={cn(
-                    "w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg group transition-all duration-200",
+                    "w-full flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md group",
                     isCategoryActive(category) 
-                      ? "text-white bg-primary-600 shadow-md" 
-                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
-                    "border border-transparent hover:border-gray-200"
+                      ? "text-white bg-primary-600" 
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                   )}
                 >
                   <div className="flex items-center">
-                    <span className="material-icons mr-3 h-5 w-5">{category.icon}</span>
-                    <span className="font-semibold">{category.label}</span>
-                    <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
-                      {category.items.length}
-                    </span>
+                    <span className="material-icons mr-3 h-6 w-6">{category.icon}</span>
+                    {category.label}
                   </div>
                   <span 
                     className={cn(
-                      "material-icons h-4 w-4 transition-transform duration-200",
-                      isCategoryExpanded(category.id) ? "rotate-180" : "rotate-0"
+                      "material-icons h-6 w-6",
+                      isCategoryExpanded(category.id) ? "rotate-90" : "rotate-0"
                     )}
                   >
-                    expand_more
+                    chevron_right
                   </span>
                 </button>
 
                 {/* Category Items */}
                 {isCategoryExpanded(category.id) && (
-                  <div className="ml-4 space-y-1 border-l-2 border-gray-200 pl-3">
+                  <div className="ml-6 space-y-1">
                     {category.items.map((item) => (
                       <Link 
                         key={item.href} 
                         href={item.href}
                         onClick={handleLinkClick}
                         className={cn(
-                          "flex items-center px-3 py-2 text-sm font-medium rounded-md group transition-all duration-150",
+                          "flex items-center px-2 py-2 text-sm font-medium rounded-md group",
                           location === item.href 
-                            ? "text-white bg-primary-500 shadow-sm" 
-                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 hover:shadow-sm"
+                            ? "text-white bg-primary-600" 
+                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                         )}
                       >
-                        <span className="material-icons mr-3 h-4 w-4 opacity-75">{item.icon}</span>
+                        <span className="material-icons mr-3 h-6 w-6">{item.icon}</span>
                         {item.label}
                       </Link>
                     ))}
