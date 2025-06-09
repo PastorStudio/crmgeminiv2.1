@@ -24,13 +24,19 @@ export async function apiRequest<T = any>(
     'Accept': 'application/json',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
     'Pragma': 'no-cache',
+    'x-user-id': '3', // Default to superadmin for testing
     ...options?.headers
   };
 
+  // Use port 5000 directly for API calls to bypass Vite proxy
+  const directUrl = url.startsWith('/api/') 
+    ? `http://localhost:5000${url}` 
+    : url;
+    
   // Añadir parámetro timestamp para evitar caché
-  const urlWithTimestamp = url.includes('?') 
-    ? `${url}&_t=${Date.now()}` 
-    : `${url}?_t=${Date.now()}`;
+  const urlWithTimestamp = directUrl.includes('?') 
+    ? `${directUrl}&_t=${Date.now()}` 
+    : `${directUrl}?_t=${Date.now()}`;
 
   try {
     const res = await fetch(urlWithTimestamp, {
@@ -143,15 +149,21 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const url = queryKey[0] as string;
     
+    // Use port 5000 directly for API calls to bypass Vite proxy
+    const directUrl = url.startsWith('/api/') 
+      ? `http://localhost:5000${url}` 
+      : url;
+      
     // Añadir parámetro timestamp para evitar caché
-    const urlWithTimestamp = url.includes('?') 
-      ? `${url}&_t=${Date.now()}` 
-      : `${url}?_t=${Date.now()}`;
+    const urlWithTimestamp = directUrl.includes('?') 
+      ? `${directUrl}&_t=${Date.now()}` 
+      : `${directUrl}?_t=${Date.now()}`;
       
     const headers = {
       'Accept': 'application/json',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache'
+      'Pragma': 'no-cache',
+      'x-user-id': '3' // Default to superadmin for testing
     };
     
     try {

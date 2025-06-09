@@ -80,7 +80,7 @@ const SubscriptionPlanCreator: React.FC<{ onPlanCreated?: () => void }> = ({ onP
     try {
       const response = await apiRequest('/api/subscription-plans', {
         method: 'POST',
-        body: JSON.stringify({
+        body: {
           name: formData.name,
           description: formData.description,
           price: parseFloat(formData.price),
@@ -91,7 +91,7 @@ const SubscriptionPlanCreator: React.FC<{ onPlanCreated?: () => void }> = ({ onP
           max_chats_per_month: formData.maxChatsPerMonth,
           features: formData.features,
           is_active: formData.isActive
-        })
+        }
       });
 
       if (response.success) {
