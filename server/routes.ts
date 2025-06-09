@@ -3664,18 +3664,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const [newPlan] = await db.insert(subscriptionPlans).values({
-        name: planData.name,
-        description: planData.description || '',
-        price: planData.price,
-        currency: planData.currency || 'USD',
-        durationDays: planData.durationDays || 30,
-        features: planData.features || [],
-        maxUsers: planData.maxUsers || 1,
-        maxWhatsAppAccounts: planData.maxWhatsAppAccounts || 1,
-        maxChatsPerMonth: planData.maxChatsPerMonth || 1000,
-        isActive: planData.isActive !== undefined ? planData.isActive : true
-      }).returning();
+      console.log("📝 Creando plan de suscripción:", planData);
+
+      // Use direct SQL to avoid schema mismatch issues
+      const result = await pool.query(`
+        INSERT INTO subscription_plans 
+        (name, description, price, currency, duration_days, features, max_users, max_whatsapp_accounts, max_chats_per_month, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING *
+      `, [
+        planData.name,
+        planData.description || '',
+        planData.price,
+        planData.currency || 'USD',
+        planData.durationDays || 30,
+        JSON.stringify(planData.features || []),
+        planData.maxUsers || 1,
+        planData.maxWhatsAppAccounts || 1,
+        planData.maxChatsPerMonth || 1000,
+        planData.isActive !== undefined ? planData.isActive : true
+      ]);
+
+      const newPlan = result.rows[0];
+      console.log("✅ Plan creado exitosamente:", newPlan);
 
       res.status(201).json({ 
         success: true, 
@@ -3683,10 +3694,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Plan de suscripción creado correctamente" 
       });
     } catch (error) {
-      console.error("Error creating subscription plan:", error);
+      console.error("❌ Error creating subscription plan:", error);
       res.status(500).json({ 
         success: false, 
-        message: "Error al crear plan de suscripción" 
+        message: "Error al crear plan de suscripción: " + error.message 
       });
     }
   });
