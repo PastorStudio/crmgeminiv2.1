@@ -193,12 +193,35 @@ const WhatsAppAccounts = () => {
     enabled: !!accountId
   });
   
+  // Force refresh state
+  const [forceRefresh, setForceRefresh] = useState(0);
+  
   // Consulta para obtener cuentas
   const { data: accountsResponse, isLoading, error, refetch } = useQuery({
-    queryKey: ['/api/whatsapp-accounts'],
+    queryKey: ['/api/whatsapp-accounts', forceRefresh],
     queryFn: async () => {
-      return await apiRequest('/api/whatsapp-accounts');
-    }
+      // Force clear any cached responses
+      const timestamp = Date.now();
+      const url = `/api/whatsapp-accounts?_t=${timestamp}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch accounts');
+      }
+      
+      const data = await response.json();
+      console.log('Fresh accounts data:', data);
+      return data;
+    },
+    staleTime: 0,
+    cacheTime: 0,
+    refetchOnMount: 'always'
   });
 
   const accounts = accountsResponse?.accounts || [];
@@ -356,15 +379,26 @@ const WhatsAppAccounts = () => {
       });
     },
     onSuccess: () => {
+      // Clear React Query cache completely
+      queryClient.clear();
+      
+      // Clear localStorage
+      localStorage.clear();
+      
+      // Force refresh the accounts query
+      setForceRefresh(prev => prev + 1);
+      
       toast({
         title: 'Todas las cuentas eliminadas',
-        description: 'Limpiando caché y recargando página...',
+        description: 'Sistema limpiado completamente.',
       });
       
-      // Clear all cache and refresh page after a short delay
+      setSelectedAccount(null);
+      
+      // Force a hard refresh after showing the message
       setTimeout(() => {
-        clearAllCacheAndRefresh();
-      }, 1000);
+        window.location.reload();
+      }, 1500);
     },
     onError: () => {
       toast({
@@ -965,6 +999,22 @@ const WhatsAppAccounts = () => {
         <div className="flex gap-2">
           <Button onClick={() => refetch()} size="sm" variant="outline">
             <RefreshCw className="mr-2 h-4 w-4" /> Actualizar
+          </Button>
+          
+          <Button 
+            onClick={() => {
+              // Force complete cache clear and page reload
+              queryClient.clear();
+              localStorage.clear();
+              sessionStorage.clear();
+              setForceRefresh(prev => prev + 1);
+              window.location.reload();
+            }}
+            size="sm" 
+            variant="outline"
+            className="border-blue-300 text-blue-700 hover:bg-blue-50"
+          >
+            <RotateCcw className="mr-2 h-4 w-4" /> Limpiar Cache
           </Button>
           
           {/* System Cleanup Controls */}
