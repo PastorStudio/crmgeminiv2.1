@@ -6,6 +6,8 @@ import {
   chatComments,
   dashboardStats,
   userAccountAssignments,
+  subscriptionPlans,
+  userSubscriptions,
   type User, 
   type InsertUser,
   type Lead,
@@ -14,6 +16,10 @@ import {
   type WhatsAppAccount,
   type ChatAssignment,
   type InsertChatAssignment,
+  type SubscriptionPlan,
+  type InsertSubscriptionPlan,
+  type UserSubscription,
+  type InsertUserSubscription,
 
 } from "@shared/schema";
 import { db } from './db';
@@ -447,6 +453,101 @@ export class DatabaseStorage implements IStorage {
       .from(userAccountAssignments)
       .leftJoin(users, eq(userAccountAssignments.userId, users.id))
       .leftJoin(whatsappAccounts, eq(userAccountAssignments.whatsappAccountId, whatsappAccounts.id));
+  }
+
+  // Subscription Plan methods
+  async getAllSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    return await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.isActive, true));
+  }
+
+  async createSubscriptionPlan(planData: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
+    const [newPlan] = await db
+      .insert(subscriptionPlans)
+      .values(planData)
+      .returning();
+    return newPlan;
+  }
+
+  async updateSubscriptionPlan(id: number, planData: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan> {
+    const [updatedPlan] = await db
+      .update(subscriptionPlans)
+      .set({ ...planData, updatedAt: new Date() })
+      .where(eq(subscriptionPlans.id, id))
+      .returning();
+    return updatedPlan;
+  }
+
+  // User Subscription methods
+  async getUserSubscription(userId: number): Promise<UserSubscription | undefined> {
+    const [subscription] = await db
+      .select()
+      .from(userSubscriptions)
+      .where(and(
+        eq(userSubscriptions.userId, userId),
+        eq(userSubscriptions.status, 'active')
+      ))
+      .orderBy(desc(userSubscriptions.endDate))
+      .limit(1);
+    return subscription;
+  }
+
+  async getAllUserSubscriptions() {
+    return await db
+      .select({
+        id: userSubscriptions.id,
+        userId: userSubscriptions.userId,
+        planId: userSubscriptions.planId,
+        startDate: userSubscriptions.startDate,
+        endDate: userSubscriptions.endDate,
+        status: userSubscriptions.status,
+        autoRenewal: userSubscriptions.autoRenewal,
+        notes: userSubscriptions.notes,
+        createdAt: userSubscriptions.createdAt,
+        userName: users.username,
+        userFullName: users.fullName,
+        userEmail: users.email,
+        planName: subscriptionPlans.name,
+        planPrice: subscriptionPlans.price,
+        planDurationDays: subscriptionPlans.durationDays
+      })
+      .from(userSubscriptions)
+      .leftJoin(users, eq(userSubscriptions.userId, users.id))
+      .leftJoin(subscriptionPlans, eq(userSubscriptions.planId, subscriptionPlans.id))
+      .orderBy(desc(userSubscriptions.createdAt));
+  }
+
+  async createUserSubscription(subscriptionData: InsertUserSubscription): Promise<UserSubscription> {
+    const [newSubscription] = await db
+      .insert(userSubscriptions)
+      .values(subscriptionData)
+      .returning();
+    return newSubscription;
+  }
+
+  async updateUserSubscription(id: number, subscriptionData: Partial<InsertUserSubscription>): Promise<UserSubscription> {
+    const [updatedSubscription] = await db
+      .update(userSubscriptions)
+      .set({ ...subscriptionData, updatedAt: new Date() })
+      .where(eq(userSubscriptions.id, id))
+      .returning();
+    return updatedSubscription;
+  }
+
+  async cancelUserSubscription(id: number): Promise<void> {
+    await db
+      .update(userSubscriptions)
+      .set({ status: 'cancelled', updatedAt: new Date() })
+      .where(eq(userSubscriptions.id, id));
+  }
+
+  async getExpiredSubscriptions() {
+    return await db
+      .select()
+      .from(userSubscriptions)
+      .where(and(
+        eq(userSubscriptions.status, 'active'),
+        sql`${userSubscriptions.endDate} < NOW()`
+      ));
   }
 
   async getWhatsappAccount(id: number): Promise<WhatsAppAccount | undefined> {

@@ -226,6 +226,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Subscription Plans endpoints
+  app.get("/api/subscription-plans", multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const requestingUserRole = req.user?.role;
+      
+      // Only superadmin and admin can view plans
+      if (requestingUserRole !== 'superadmin' && requestingUserRole !== 'admin' && requestingUserRole !== 'super_admin') {
+        return res.status(403).json({
+          success: false,
+          message: "No tienes permisos para ver planes de suscripción"
+        });
+      }
+      
+      const plans = await storage.getAllSubscriptionPlans();
+      
+      res.json({
+        success: true,
+        plans
+      });
+    } catch (error) {
+      console.error('Error obteniendo planes:', error);
+      res.status(500).json({
+        success: false,
+        plans: []
+      });
+    }
+  });
+
+  app.post("/api/subscription-plans", multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const requestingUserRole = req.user?.role;
+      
+      // Only superadmin can create plans
+      if (requestingUserRole !== 'superadmin' && requestingUserRole !== 'super_admin') {
+        return res.status(403).json({
+          success: false,
+          message: "Solo los superadministradores pueden crear planes"
+        });
+      }
+      
+      const planData = req.body;
+      const newPlan = await storage.createSubscriptionPlan(planData);
+      
+      res.json({
+        success: true,
+        plan: newPlan,
+        message: "Plan creado exitosamente"
+      });
+    } catch (error) {
+      console.error('Error creando plan:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al crear plan de suscripción"
+      });
+    }
+  });
+
+  // User Subscriptions endpoints
+  app.get("/api/user-subscriptions", multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const requestingUserRole = req.user?.role;
+      
+      // Only superadmin and admin can view all subscriptions
+      if (requestingUserRole !== 'superadmin' && requestingUserRole !== 'admin' && requestingUserRole !== 'super_admin') {
+        return res.status(403).json({
+          success: false,
+          message: "No tienes permisos para ver suscripciones"
+        });
+      }
+      
+      const subscriptions = await storage.getAllUserSubscriptions();
+      
+      res.json({
+        success: true,
+        subscriptions
+      });
+    } catch (error) {
+      console.error('Error obteniendo suscripciones:', error);
+      res.status(500).json({
+        success: false,
+        subscriptions: []
+      });
+    }
+  });
+
+  app.post("/api/assign-subscription", multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId, planId, durationDays, notes } = req.body;
+      const requestingUserRole = req.user?.role;
+      const assignedBy = req.user?.id;
+      
+      // Only superadmin and admin can assign subscriptions
+      if (requestingUserRole !== 'superadmin' && requestingUserRole !== 'admin' && requestingUserRole !== 'super_admin') {
+        return res.status(403).json({
+          success: false,
+          message: "No tienes permisos para asignar planes"
+        });
+      }
+      
+      // Calculate end date
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + parseInt(durationDays));
+      
+      // Cancel any existing active subscription
+      const existingSubscription = await storage.getUserSubscription(parseInt(userId));
+      if (existingSubscription) {
+        await storage.cancelUserSubscription(existingSubscription.id);
+      }
+      
+      // Create new subscription
+      const subscription = await storage.createUserSubscription({
+        userId: parseInt(userId),
+        planId: parseInt(planId),
+        startDate,
+        endDate,
+        status: 'active',
+        assignedBy,
+        notes
+      });
+      
+      console.log(`✅ Plan asignado a usuario ${userId}: Plan ${planId} por ${durationDays} días`);
+      
+      res.json({
+        success: true,
+        subscription,
+        message: "Plan asignado exitosamente"
+      });
+    } catch (error) {
+      console.error('Error asignando plan:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al asignar plan de suscripción"
+      });
+    }
+  });
+
+  app.delete("/api/cancel-subscription/:subscriptionId", multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { subscriptionId } = req.params;
+      const requestingUserRole = req.user?.role;
+      
+      // Only superadmin and admin can cancel subscriptions
+      if (requestingUserRole !== 'superadmin' && requestingUserRole !== 'admin' && requestingUserRole !== 'super_admin') {
+        return res.status(403).json({
+          success: false,
+          message: "No tienes permisos para cancelar suscripciones"
+        });
+      }
+      
+      await storage.cancelUserSubscription(parseInt(subscriptionId));
+      
+      console.log(`🗑️ Suscripción ${subscriptionId} cancelada`);
+      
+      res.json({
+        success: true,
+        message: "Suscripción cancelada exitosamente"
+      });
+    } catch (error) {
+      console.error('Error cancelando suscripción:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al cancelar suscripción"
+      });
+    }
+  });
+
   // User isolated routes - strict data filtering by user permissions
   const userIsolatedRoutes = await import("./routes/userIsolatedRoutes");
   app.use("/api/isolated", userIsolatedRoutes.default);

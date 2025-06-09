@@ -3,6 +3,38 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Subscription plans table
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("USD"),
+  durationDays: integer("duration_days").notNull(),
+  features: jsonb("features"), // Array of features included
+  maxUsers: integer("max_users").default(1),
+  maxWhatsAppAccounts: integer("max_whatsapp_accounts").default(1),
+  maxChatsPerMonth: integer("max_chats_per_month").default(1000),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User subscriptions table
+export const userSubscriptions = pgTable("user_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  planId: integer("plan_id").notNull().references(() => subscriptionPlans.id),
+  startDate: timestamp("start_date").defaultNow(),
+  endDate: timestamp("end_date").notNull(),
+  status: text("status").default("active"), // active, expired, suspended, cancelled
+  autoRenewal: boolean("auto_renewal").default(false),
+  assignedBy: integer("assigned_by").references(() => users.id),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Base user table with role-based access
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -678,6 +710,8 @@ export const enhancedMessagesRelations = relations(enhancedMessagesTable, ({ one
 }));
 
 // Esquemas de inserción
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans);
+export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions);
 export const insertAiPromptSchema = createInsertSchema(aiPrompts);
 export const insertAiSettingsSchema = createInsertSchema(aiSettings);
 export const insertChatAssignmentSchema = createInsertSchema(chatAssignments);
@@ -693,6 +727,10 @@ export const insertCalendarEventSchema = createInsertSchema(calendarEvents);
 export const insertLocalEventSchema = createInsertSchema(localEvents);
 
 // Tipos de TypeScript
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = typeof insertSubscriptionPlanSchema._type;
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
+export type InsertUserSubscription = typeof insertUserSubscriptionSchema._type;
 export type AiSettings = typeof aiSettings.$inferSelect;
 export type InsertAiSettings = typeof insertAiSettingsSchema._type;
 export type User = typeof users.$inferSelect;
