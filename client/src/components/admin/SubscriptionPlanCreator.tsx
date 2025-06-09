@@ -25,6 +25,7 @@ interface PlanFormData {
 
 const SubscriptionPlanCreator: React.FC<{ onPlanCreated?: () => void }> = ({ onPlanCreated }) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<PlanFormData>({
@@ -126,6 +127,9 @@ const SubscriptionPlanCreator: React.FC<{ onPlanCreated?: () => void }> = ({ onP
         });
         setFeatureInput('');
         setIsOpen(false);
+        
+        // Invalidate React Query cache for subscription plans
+        await queryClient.invalidateQueries({ queryKey: ['/api/subscription-plans'] });
         
         if (onPlanCreated) {
           onPlanCreated();
