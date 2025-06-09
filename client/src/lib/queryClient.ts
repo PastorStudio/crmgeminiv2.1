@@ -24,7 +24,7 @@ export async function apiRequest<T = any>(
     'Accept': 'application/json',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
     'Pragma': 'no-cache',
-    'x-user-id': '3', // Default to superadmin for testing
+    'x-user-id': '17', // Default to admin for testing
     ...options?.headers
   };
 
