@@ -196,7 +196,7 @@ export default function UserManagement() {
   });
 
   // Obtener planes de suscripción disponibles
-  const { data: subscriptionPlans } = useQuery({
+  const { data: subscriptionPlans, isLoading: plansLoading, error: plansError } = useQuery({
     queryKey: ['/api/subscription-plans'],
     queryFn: async () => {
       const response = await fetch('/api/subscription-plans', {
@@ -208,8 +208,17 @@ export default function UserManagement() {
       });
       if (!response.ok) throw new Error('Failed to fetch plans');
       const data = await response.json();
+      console.log('🔍 Planes de suscripción cargados:', data.plans);
       return data.plans || [];
     }
+  });
+
+  // Debug: mostrar estado de los planes
+  console.log('📊 Estado de planes:', { 
+    subscriptionPlans, 
+    plansLoading, 
+    plansError, 
+    count: subscriptionPlans?.length 
   });
 
   // Obtener lista de usuarios reales desde la base de datos PostgreSQL
@@ -1559,6 +1568,30 @@ export default function UserManagement() {
                               <span>Sin plan asignado</span>
                             </div>
                           </SelectItem>
+                          {plansLoading && (
+                            <SelectItem value="loading" disabled>
+                              <div className="flex items-center">
+                                <div className="w-3 h-3 rounded-full bg-blue-500 mr-2 animate-pulse"></div>
+                                <span>Cargando planes...</span>
+                              </div>
+                            </SelectItem>
+                          )}
+                          {plansError && (
+                            <SelectItem value="error" disabled>
+                              <div className="flex items-center">
+                                <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                                <span>Error cargando planes</span>
+                              </div>
+                            </SelectItem>
+                          )}
+                          {subscriptionPlans && subscriptionPlans.length === 0 && !plansLoading && (
+                            <SelectItem value="empty" disabled>
+                              <div className="flex items-center">
+                                <div className="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
+                                <span>No hay planes disponibles</span>
+                              </div>
+                            </SelectItem>
+                          )}
                           {subscriptionPlans?.map((plan: any) => (
                             <SelectItem key={plan.id} value={plan.id.toString()}>
                               <div className="flex items-center justify-between w-full">
