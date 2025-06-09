@@ -1506,23 +1506,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Messages endpoint with real data
-  app.get("/api/messages", async (req: Request, res: Response) => {
+  // Messages endpoint with user data isolation
+  app.get("/api/messages", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {
-      const result = await pool.query(`
-        SELECT 
-          id,
-          "messageId",
-          "fromNumber",
-          "toNumber",
-          content,
-          direction,
-          "timestamp",
-          "whatsappAccountId"
-        FROM whatsapp_messages 
-        ORDER BY "timestamp" DESC 
-        LIMIT 50
-      `);
+      const currentUser = (req as any).user;
+      console.log(`💬 Obteniendo mensajes para usuario: ${currentUser.username} (${currentUser.role})`);
+      
+      let query: string;
+      let queryParams: any[] = [];
+      
+      // Admins and superadmins can see all messages
+      if (['admin', 'superadmin'].includes(currentUser.role)) {
+        query = `
+          SELECT 
+            id,
+            "messageId",
+            "fromNumber",
+            "toNumber",
+            content,
+            direction,
+            "timestamp",
+            "whatsappAccountId",
+            "ownerId"
+          FROM whatsapp_messages 
+          ORDER BY "timestamp" DESC 
+          LIMIT 50
+        `;
+        console.log('🔓 Usuario admin - acceso a todos los mensajes');
+      } else {
+        // Regular users only see their own messages
+        query = `
+          SELECT 
+            id,
+            "messageId",
+            "fromNumber",
+            "toNumber",
+            content,
+            direction,
+            "timestamp",
+            "whatsappAccountId",
+            "ownerId"
+          FROM whatsapp_messages 
+          WHERE "ownerId" = $1
+          ORDER BY "timestamp" DESC 
+          LIMIT 50
+        `;
+        queryParams = [currentUser.id];
+        console.log(`🔒 Usuario regular - filtrando mensajes por ownerId: ${currentUser.id}`);
+      }
+      
+      const result = await pool.query(query, queryParams);
+      console.log(`✅ Encontrados ${result.rows.length} mensajes para usuario ${currentUser.username}`);
       
       res.json(result.rows);
     } catch (error) {
@@ -1531,21 +1565,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Tickets endpoint with real data
-  app.get("/api/tickets", async (req: Request, res: Response) => {
+  // Tickets endpoint with user data isolation
+  app.get("/api/tickets", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {
-      const result = await pool.query(`
-        SELECT 
-          id,
-          title,
-          description,
-          status,
-          priority,
-          "createdAt",
-          "updatedAt"
-        FROM support_tickets 
-        ORDER BY "createdAt" DESC
-      `);
+      const currentUser = (req as any).user;
+      console.log(`🎫 Obteniendo tickets para usuario: ${currentUser.username} (${currentUser.role})`);
+      
+      let query: string;
+      let queryParams: any[] = [];
+      
+      // Admins and superadmins can see all tickets
+      if (['admin', 'superadmin'].includes(currentUser.role)) {
+        query = `
+          SELECT 
+            id,
+            title,
+            description,
+            status,
+            priority,
+            "createdAt",
+            "updatedAt",
+            "ownerId"
+          FROM tickets 
+          ORDER BY "createdAt" DESC
+        `;
+        console.log('🔓 Usuario admin - acceso a todos los tickets');
+      } else {
+        // Regular users only see their own tickets
+        query = `
+          SELECT 
+            id,
+            title,
+            description,
+            status,
+            priority,
+            "createdAt",
+            "updatedAt",
+            "ownerId"
+          FROM tickets 
+          WHERE "ownerId" = $1
+          ORDER BY "createdAt" DESC
+        `;
+        queryParams = [currentUser.id];
+        console.log(`🔒 Usuario regular - filtrando tickets por ownerId: ${currentUser.id}`);
+      }
+      
+      const result = await pool.query(query, queryParams);
+      console.log(`✅ Encontrados ${result.rows.length} tickets para usuario ${currentUser.username}`);
       
       res.json(result.rows);
     } catch (error) {
@@ -1569,16 +1635,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/leads", async (req: Request, res: Response) => {
+  app.post("/api/leads", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
     try {
-      console.log('📝 Creando nuevo lead:', req.body);
+      const currentUser = (req as any).user;
+      console.log(`📝 Creando nuevo lead para usuario: ${currentUser.username} (ID: ${currentUser.id})`);
       
-      // Direct database insertion without schema validation for now
+      // Direct database insertion with automatic ownership assignment
       const { name, phone, email, company, notes, source, priority, status, budget } = req.body;
       
       const result = await pool.query(`
-        INSERT INTO leads (name, phone, email, company, notes, source, priority, status, budget, "createdAt")
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+        INSERT INTO leads (name, phone, email, company, notes, source, priority, status, budget, "ownerId", "createdAt")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
         RETURNING *
       `, [
         name || 'Lead sin nombre',
@@ -1589,10 +1656,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         source || 'Manual',
         priority || 'medium',
         status || 'new',
-        budget || 0
+        budget || 0,
+        currentUser.id  // Automatically assign ownership to current user
       ]);
       
-      console.log('✅ Lead creado exitosamente:', result.rows[0]);
+      console.log(`✅ Lead creado exitosamente para usuario ${currentUser.username}:`, result.rows[0]);
       res.status(201).json(result.rows[0]);
     } catch (error) {
       console.error('❌ Error creando lead:', error);
