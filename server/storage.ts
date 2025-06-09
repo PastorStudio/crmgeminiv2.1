@@ -396,6 +396,17 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(whatsappAccounts);
   }
 
+  async getAllWhatsAppAccounts(): Promise<WhatsAppAccount[]> {
+    return await db.select().from(whatsappAccounts);
+  }
+
+  async getWhatsAppAccountsByIds(accountIds: number[]): Promise<WhatsAppAccount[]> {
+    if (accountIds.length === 0) {
+      return [];
+    }
+    return await db.select().from(whatsappAccounts).where(sql`${whatsappAccounts.id} = ANY(${accountIds})`);
+  }
+
   async getWhatsappAccount(id: number): Promise<WhatsAppAccount | undefined> {
     const [account] = await db.select().from(whatsappAccounts).where(eq(whatsappAccounts.id, id));
     return account || undefined;

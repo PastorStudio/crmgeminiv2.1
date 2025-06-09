@@ -80,6 +80,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/media-gallery", mediaGalleryRouter);
   app.use("/api/media", mediaServeRouter);
   
+  // WhatsApp accounts endpoint with user-based filtering
+  app.get("/api/whatsapp-accounts", multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+      
+      console.log(`🔍 Obteniendo cuentas WhatsApp para usuario ${userId} (${userRole})`);
+      
+      let accounts;
+      
+      // Superadmin and admin can see all accounts
+      if (userRole === 'superadmin' || userRole === 'admin' || userRole === 'super_admin') {
+        accounts = await storage.getAllWhatsAppAccounts();
+        console.log(`👑 Usuario ${userRole} ve todas las ${accounts.length} cuentas`);
+      } else {
+        // Regular users only see assigned accounts
+        const accessibleAccountIds = await getAccessibleAccountIds(userId);
+        accounts = await storage.getWhatsAppAccountsByIds(accessibleAccountIds);
+        console.log(`🔒 Usuario regular ve ${accounts.length} cuentas asignadas`);
+      }
+      
+      res.json({
+        success: true,
+        accounts: accounts || []
+      });
+    } catch (error) {
+      console.error('Error obteniendo cuentas WhatsApp:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error al obtener cuentas de WhatsApp',
+        accounts: []
+      });
+    }
+  });
+
   // Registrar rutas para cuentas de WhatsApp y asignaciones de chat
   app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   
@@ -96,6 +131,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sales flow designer routes
   app.use("/api/sales-flow", salesFlowRouter);
   
+  // WhatsApp account assignment endpoints for superadmin/admin
+  app.post("/api/assign-whatsapp-account", multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId, whatsappAccountId, role } = req.body;
+      const requestingUserRole = req.user?.role;
+      
+      // Only superadmin and admin can assign accounts
+      if (requestingUserRole !== 'superadmin' && requestingUserRole !== 'admin' && requestingUserRole !== 'super_admin') {
+        return res.status(403).json({
+          success: false,
+          message: "No tienes permisos para asignar cuentas de WhatsApp"
+        });
+      }
+      
+      // Create assignment
+      const assignment = await storage.createUserAccountAssignment({
+        userId: parseInt(userId),
+        whatsappAccountId: parseInt(whatsappAccountId),
+        role: role || 'operator',
+        isActive: true
+      });
+      
+      console.log(`✅ Cuenta WhatsApp ${whatsappAccountId} asignada a usuario ${userId}`);
+      
+      res.json({
+        success: true,
+        assignment,
+        message: "Cuenta asignada exitosamente"
+      });
+    } catch (error) {
+      console.error('Error asignando cuenta WhatsApp:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al asignar cuenta de WhatsApp"
+      });
+    }
+  });
+
+  app.delete("/api/assign-whatsapp-account/:userId/:accountId", multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId, accountId } = req.params;
+      const requestingUserRole = req.user?.role;
+      
+      // Only superadmin and admin can remove assignments
+      if (requestingUserRole !== 'superadmin' && requestingUserRole !== 'admin' && requestingUserRole !== 'super_admin') {
+        return res.status(403).json({
+          success: false,
+          message: "No tienes permisos para eliminar asignaciones de cuentas"
+        });
+      }
+      
+      await storage.removeUserAccountAssignment(parseInt(userId), parseInt(accountId));
+      
+      console.log(`🗑️ Asignación eliminada: Usuario ${userId} - Cuenta ${accountId}`);
+      
+      res.json({
+        success: true,
+        message: "Asignación eliminada exitosamente"
+      });
+    } catch (error) {
+      console.error('Error eliminando asignación:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al eliminar asignación"
+      });
+    }
+  });
+
+  app.get("/api/user-account-assignments", multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const requestingUserRole = req.user?.role;
+      
+      // Only superadmin and admin can view all assignments
+      if (requestingUserRole !== 'superadmin' && requestingUserRole !== 'admin' && requestingUserRole !== 'super_admin') {
+        return res.status(403).json({
+          success: false,
+          message: "No tienes permisos para ver asignaciones"
+        });
+      }
+      
+      const assignments = await storage.getAllUserAccountAssignments();
+      
+      res.json({
+        success: true,
+        assignments
+      });
+    } catch (error) {
+      console.error('Error obteniendo asignaciones:', error);
+      res.status(500).json({
+        success: false,
+        assignments: []
+      });
+    }
+  });
+
   // User isolated routes - strict data filtering by user permissions
   const userIsolatedRoutes = await import("./routes/userIsolatedRoutes");
   app.use("/api/isolated", userIsolatedRoutes.default);
