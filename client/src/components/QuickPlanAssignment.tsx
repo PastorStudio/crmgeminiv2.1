@@ -28,6 +28,7 @@ interface QuickPlanAssignmentProps {
   userName: string;
   currentPlanName?: string;
   currentPlanId?: number;
+  daysRemaining?: number;
   onPlanChanged?: () => void;
 }
 
@@ -36,6 +37,7 @@ export function QuickPlanAssignment({
   userName, 
   currentPlanName, 
   currentPlanId,
+  daysRemaining,
   onPlanChanged 
 }: QuickPlanAssignmentProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -165,8 +167,15 @@ export function QuickPlanAssignment({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-6 px-2 text-xs">
-          {currentPlanName || 'Sin plan'}
+        <Button variant="outline" size="sm" className="h-8 px-2 text-xs min-w-[100px]">
+          <div className="flex flex-col items-start">
+            <span className="font-medium">{currentPlanName || 'Sin plan'}</span>
+            {daysRemaining && (
+              <span className="text-xs text-gray-500">
+                {daysRemaining === 27233 ? 'Permanente' : `${daysRemaining} días`}
+              </span>
+            )}
+          </div>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">

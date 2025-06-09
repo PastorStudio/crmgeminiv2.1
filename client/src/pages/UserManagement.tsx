@@ -1164,6 +1164,7 @@ export default function UserManagement() {
                           userName={user.username || user.fullName || 'Usuario'}
                           currentPlanName={user.currentPlan || 'Sin plan'}
                           currentPlanId={user.currentPlanId}
+                          daysRemaining={user.daysRemaining}
                           onPlanChanged={() => {
                             // Refrescar la lista de usuarios después del cambio
                             queryClient.invalidateQueries({ queryKey: ['/api/users'] });
