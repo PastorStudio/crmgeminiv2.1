@@ -2599,31 +2599,43 @@ app.use((req, res, next) => {
         .from(users)
         .orderBy(users.id);
 
-      // Then get the most recent active subscription for each user using direct pool query for freshest data
+      // Get the most recent subscription for each user (active or expired) using direct pool query
       const userSubscriptionsResult = await pool.query(`
         SELECT DISTINCT ON (us.user_id)
           us.user_id,
           us.plan_id,
           us.status,
           us.end_date,
+          us.created_at,
           sp.name as plan_name,
           sp.id as plan_id_actual,
           CASE 
-            WHEN us.end_date >= NOW() THEN 
+            WHEN us.end_date >= NOW() AND us.status = 'active' THEN 
               EXTRACT(DAY FROM us.end_date - NOW())::INTEGER
             ELSE 0 
           END as days_remaining
         FROM user_subscriptions us
         INNER JOIN subscription_plans sp ON us.plan_id = sp.id
-        WHERE us.status = 'active'
-        ORDER BY us.user_id, us.created_at DESC
+        ORDER BY us.user_id, us.created_at DESC, us.updated_at DESC
       `);
       
+      console.log(`📊 Found ${userSubscriptionsResult.rows.length} user subscriptions`);
       const userSubscriptionsData = { rows: userSubscriptionsResult.rows };
 
-      // Combine the data
+      // Combine the data with debug logging
       const allUsers = allUsersData.map(user => {
         const subscription = userSubscriptionsData.rows.find(sub => sub.user_id === user.id);
+        
+        // Debug logging for user 23 specifically
+        if (user.id === 23) {
+          console.log(`🔍 Debug user 23:`, {
+            userId: user.id,
+            username: user.username,
+            subscriptionFound: !!subscription,
+            subscription: subscription
+          });
+        }
+        
         return {
           ...user,
           currentPlan: subscription?.plan_name || null,
@@ -2635,6 +2647,18 @@ app.use((req, res, next) => {
       });
 
       console.log(`✅ API users - Enviando ${allUsers.length} usuarios con información de planes`);
+      
+      // Additional debug for user 23
+      const user23 = allUsers.find(u => u.id === 23);
+      if (user23) {
+        console.log(`🔍 Final user 23 data:`, {
+          id: user23.id,
+          username: user23.username,
+          currentPlan: user23.currentPlan,
+          currentPlanId: user23.currentPlanId
+        });
+      }
+      
       res.json(allUsers);
     } catch (error) {
       console.error("❌ API users - Error:", error);
