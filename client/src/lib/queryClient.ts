@@ -41,24 +41,29 @@ export async function apiRequest<T = any>(
     ...options?.headers
   };
 
-  // Use port 5000 directly for API calls to bypass Vite proxy
-  const directUrl = url.startsWith('/api/') 
-    ? `http://localhost:5000${url}` 
-    : url;
+  // Use same-origin requests to avoid CORS issues - the Express server serves both API and frontend
+  const finalUrl = url;
     
-  // Añadir parámetro timestamp para evitar caché
-  const urlWithTimestamp = directUrl.includes('?') 
-    ? `${directUrl}&_t=${Date.now()}` 
-    : `${directUrl}?_t=${Date.now()}`;
+  // Add timestamp parameter to avoid cache
+  const urlWithTimestamp = finalUrl.includes('?') 
+    ? `${finalUrl}&_t=${Date.now()}` 
+    : `${finalUrl}?_t=${Date.now()}`;
 
   try {
+    console.log(`🔗 Making API request to: ${urlWithTimestamp}`);
+    console.log(`📋 Headers:`, headers);
+    
     const res = await fetch(urlWithTimestamp, {
       method,
       headers,
       body,
+      mode: 'cors',
       credentials: "include",
       cache: 'no-store'
     });
+
+    console.log(`📡 Response status: ${res.status}`);
+    console.log(`📡 Response headers:`, Object.fromEntries(res.headers.entries()));
 
     await throwIfResNotOk(res);
     
@@ -92,7 +97,33 @@ export async function apiRequest<T = any>(
     }
   } catch (error) {
     console.error(`Error en solicitud API a ${url}:`, error);
-    // Re-throw the error instead of returning fallback data
+    
+    // If it's a network error, try alternative approach
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      console.log(`🔄 Network error detected, attempting fallback approach...`);
+      
+      // For critical endpoints, try a simplified fetch without extra headers
+      try {
+        const fallbackRes = await fetch(finalUrl, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body,
+          mode: 'cors'
+        });
+        
+        if (fallbackRes.ok) {
+          console.log(`✅ Fallback request succeeded`);
+          return await fallbackRes.json();
+        }
+      } catch (fallbackError) {
+        console.error(`❌ Fallback also failed:`, fallbackError);
+      }
+    }
+    
+    // Re-throw the original error
     throw error;
   }
 }
