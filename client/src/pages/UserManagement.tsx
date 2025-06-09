@@ -1730,16 +1730,39 @@ export default function UserManagement() {
                             <div className="mt-2">
                               <span className="text-xs font-medium text-blue-900">Características:</span>
                               <div className="flex flex-wrap gap-1 mt-1">
-                                {JSON.parse(selectedPlan.features).slice(0, 3).map((feature: string, index: number) => (
-                                  <span key={index} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                                    {feature}
-                                  </span>
-                                ))}
-                                {JSON.parse(selectedPlan.features).length > 3 && (
-                                  <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                                    +{JSON.parse(selectedPlan.features).length - 3} más
-                                  </span>
-                                )}
+                                {(() => {
+                                  try {
+                                    const features = Array.isArray(selectedPlan.features) 
+                                      ? selectedPlan.features 
+                                      : typeof selectedPlan.features === 'string' 
+                                        ? JSON.parse(selectedPlan.features)
+                                        : [];
+                                    return features.slice(0, 3).map((feature: string, index: number) => (
+                                      <span key={index} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                        {feature}
+                                      </span>
+                                    ));
+                                  } catch (error) {
+                                    console.warn('Error parsing features:', error);
+                                    return null;
+                                  }
+                                })()}
+                                {(() => {
+                                  try {
+                                    const features = Array.isArray(selectedPlan.features) 
+                                      ? selectedPlan.features 
+                                      : typeof selectedPlan.features === 'string' 
+                                        ? JSON.parse(selectedPlan.features)
+                                        : [];
+                                    return features.length > 3 && (
+                                      <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                        +{features.length - 3} más
+                                      </span>
+                                    );
+                                  } catch (error) {
+                                    return null;
+                                  }
+                                })()}
                               </div>
                             </div>
                           )}
