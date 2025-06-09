@@ -52,6 +52,73 @@ import { multiTenantAuth, AuthenticatedRequest, getAccessibleAccountIds, canAcce
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Function to ensure admin and superadmin users have Enterprise plan
+async function ensureAdminEnterprisePlan(user: any) {
+  try {
+    // Check if user is admin or superadmin
+    const isPrivilegedUser = user.role === 'admin' || user.role === 'super_admin' || 
+                            user.username === 'admin' || user.username === 'DJP';
+    
+    if (!isPrivilegedUser) {
+      return; // Only apply to admin/superadmin users
+    }
+
+    console.log(`🔒 Ensuring Enterprise plan for privileged user: ${user.username}`);
+
+    // Get Enterprise plan (ID 3)
+    const [enterprisePlan] = await db.select()
+      .from(subscriptionPlans)
+      .where(eq(subscriptionPlans.id, 3))
+      .limit(1);
+
+    if (!enterprisePlan) {
+      console.error('❌ Enterprise plan not found in database');
+      return;
+    }
+
+    // Check if user already has an active Enterprise subscription
+    const [existingSubscription] = await db.select()
+      .from(userSubscriptions)
+      .where(and(
+        eq(userSubscriptions.userId, user.id),
+        eq(userSubscriptions.planId, 3),
+        eq(userSubscriptions.status, 'active')
+      ))
+      .limit(1);
+
+    if (existingSubscription) {
+      // Update existing subscription to extend far into the future
+      const futureDate = new Date();
+      futureDate.setFullYear(futureDate.getFullYear() + 10); // 10 years in the future
+
+      await db.update(userSubscriptions)
+        .set({ 
+          endDate: futureDate
+        })
+        .where(eq(userSubscriptions.id, existingSubscription.id));
+
+      console.log(`✅ Extended Enterprise plan for ${user.username} until ${futureDate.toISOString()}`);
+    } else {
+      // Create new Enterprise subscription
+      const futureDate = new Date();
+      futureDate.setFullYear(futureDate.getFullYear() + 10); // 10 years in the future
+
+      await db.insert(userSubscriptions).values({
+        userId: user.id,
+        planId: 3, // Enterprise plan
+        startDate: new Date(),
+        endDate: futureDate,
+        status: 'active'
+      });
+
+      console.log(`✅ Created Enterprise plan for ${user.username} until ${futureDate.toISOString()}`);
+    }
+
+  } catch (error) {
+    console.error('❌ Error ensuring Enterprise plan for admin user:', error);
+  }
+}
+
 // Profile update schema
 const profileUpdateSchema = z.object({
   fullName: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -603,6 +670,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Cuenta suspendida o inactiva. Contacte al administrador."
         });
       }
+      
+      // Ensure admin and superadmin users have Enterprise plan
+      await ensureAdminEnterprisePlan(user);
       
       // Generar token JWT
       const token = authService.generateToken(user);
@@ -3823,6 +3893,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         message: "Error al obtener suscripciones de usuarios" 
+      });
+    }
+  });
+
+  // Get subscription status for current user (with auto-admin Enterprise assignment)
+  app.get("/api/subscription-status", multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+      const username = req.user?.username;
+
+      if (!userId) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Usuario no autenticado" 
+        });
+      }
+
+      // Ensure admin and superadmin users have Enterprise plan
+      await ensureAdminEnterprisePlan(req.user);
+
+      // Get user's active subscription
+      const [subscription] = await db.select({
+        id: userSubscriptions.id,
+        userId: userSubscriptions.userId,
+        planId: userSubscriptions.planId,
+        startDate: userSubscriptions.startDate,
+        endDate: userSubscriptions.endDate,
+        status: userSubscriptions.status,
+        autoRenewal: userSubscriptions.autoRenewal,
+        notes: userSubscriptions.notes,
+        planName: subscriptionPlans.name,
+        planDescription: subscriptionPlans.description,
+        planPrice: subscriptionPlans.price,
+        planCurrency: subscriptionPlans.currency,
+        planDurationDays: subscriptionPlans.durationDays,
+        planFeatures: subscriptionPlans.features,
+        maxUsers: subscriptionPlans.maxUsers,
+        maxWhatsappAccounts: subscriptionPlans.maxWhatsappAccounts,
+        maxChatsPerMonth: subscriptionPlans.maxChatsPerMonth
+      })
+      .from(userSubscriptions)
+      .innerJoin(subscriptionPlans, eq(userSubscriptions.planId, subscriptionPlans.id))
+      .where(and(
+        eq(userSubscriptions.userId, userId),
+        eq(userSubscriptions.status, 'active')
+      ))
+      .orderBy(userSubscriptions.endDate)
+      .limit(1);
+
+      if (!subscription) {
+        return res.json({
+          success: true,
+          hasActiveSubscription: false,
+          subscription: null,
+          message: "No hay suscripción activa"
+        });
+      }
+
+      const now = new Date();
+      const isExpired = subscription.endDate < now;
+      const daysRemaining = Math.ceil((subscription.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      res.json({
+        success: true,
+        hasActiveSubscription: !isExpired,
+        subscription: {
+          id: subscription.id,
+          planId: subscription.planId,
+          startDate: subscription.startDate,
+          endDate: subscription.endDate,
+          status: subscription.status,
+          autoRenewal: subscription.autoRenewal,
+          notes: subscription.notes,
+          daysRemaining: Math.max(0, daysRemaining),
+          isExpired,
+          plan: {
+            name: subscription.planName,
+            description: subscription.planDescription,
+            price: subscription.planPrice,
+            currency: subscription.planCurrency,
+            durationDays: subscription.planDurationDays,
+            features: subscription.planFeatures,
+            maxUsers: subscription.maxUsers,
+            maxWhatsappAccounts: subscription.maxWhatsappAccounts,
+            maxChatsPerMonth: subscription.maxChatsPerMonth
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error("Error getting subscription status:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener estado de suscripción"
       });
     }
   });
