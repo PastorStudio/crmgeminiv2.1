@@ -20,16 +20,12 @@ export async function apiRequest<T = any>(
   const method = options?.method || 'GET';
   const body = options?.body ? JSON.stringify(options.body) : undefined;
   
-  // Get current user ID from localStorage
-  let currentUserId = '3'; // Default to DJP (superadmin)
+  // Get JWT token from localStorage
+  let token = '';
   try {
-    const storedUser = localStorage.getItem('auth_user');
-    if (storedUser) {
-      const userData = JSON.parse(storedUser);
-      currentUserId = userData.id?.toString() || '3';
-    }
+    token = localStorage.getItem('auth_token') || '';
   } catch (error) {
-    console.warn('Could not parse stored user data, using default');
+    console.warn('Could not get auth token');
   }
   
   const headers = {
@@ -37,7 +33,7 @@ export async function apiRequest<T = any>(
     'Accept': 'application/json',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
     'Pragma': 'no-cache',
-    'x-user-id': currentUserId,
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...options?.headers
   };
 
@@ -172,11 +168,19 @@ export const getQueryFn: <T>(options: {
       ? `${directUrl}&_t=${Date.now()}` 
       : `${directUrl}?_t=${Date.now()}`;
       
+    // Get JWT token from localStorage
+    let token = '';
+    try {
+      token = localStorage.getItem('auth_token') || '';
+    } catch (error) {
+      console.warn('Could not get auth token');
+    }
+    
     const headers = {
       'Accept': 'application/json',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
-      'x-user-id': '3' // Default to superadmin for testing
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
     
     try {
