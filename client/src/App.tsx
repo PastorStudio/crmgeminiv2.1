@@ -69,7 +69,7 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<any>, path: string
   
   // Rutas públicas que no requieren autenticación
   const publicRoutes = ['/login'];
-  const bypassAuth = false; // Disable bypass - require login authentication
+  const bypassAuth = true; // Enable bypass for development
   
   // Si estamos en una ruta pública, permitir acceso
   if (publicRoutes.includes(path)) {
@@ -101,24 +101,6 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<any>, path: string
   return <Component />;
 };
 
-// Componente para redirigir la ruta raíz al login
-const RootRedirect: React.FC = () => {
-  const { isAuthenticated } = useAuth();
-  const [, navigate] = useLocation();
-  
-  React.useEffect(() => {
-    // Siempre redirigir al login desde la raíz, sin importar el estado de autenticación
-    navigate('/login');
-  }, [navigate]);
-  
-  return (
-    <div className="flex justify-center items-center h-screen">
-      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      <span className="ml-2 text-gray-600">Redirigiendo al login...</span>
-    </div>
-  );
-};
-
 // Componente principal de rutas
 const AppRoutes: React.FC = () => {
   // Obtener la ruta actual para la navegación activa
@@ -129,7 +111,7 @@ const AppRoutes: React.FC = () => {
   const publicRoutes = ['/login'];
   
   // No mostrar la barra lateral en la página de login
-  const bypassAuth = false; // Disable bypass - require login authentication
+  const bypassAuth = true; // Enable bypass for development
   const showSidebar = !publicRoutes.includes(location) && (isAuthenticated || bypassAuth);
   
   // Obtener clave API de Gemini para el cliente
@@ -184,7 +166,7 @@ const AppRoutes: React.FC = () => {
                 <span className="text-xs uppercase font-semibold text-white/70">Principal</span>
               </div>
               
-              <a href="/dashboard" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/dashboard' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              <a href="/" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="3" width="7" height="7" rx="1" fill="#3B82F6"/>
                   <rect x="14" y="3" width="7" height="7" rx="1" fill="#10B981"/>
@@ -674,11 +656,8 @@ const AppRoutes: React.FC = () => {
                 {/* Ruta de login pública */}
                 <Route path="/login" component={Login} />
                 
-                {/* Ruta raíz - siempre redirige al login */}
-                <Route path="/" component={RootRedirect} />
-                
-                {/* Dashboard como ruta protegida separada */}
-                <Route path="/dashboard" component={() => <PrivateRoute component={Dashboard} path="/dashboard" />} />
+                {/* Rutas protegidas */}
+                <Route path="/" component={() => <PrivateRoute component={Dashboard} path="/" />} />
                 <Route path="/leads" component={() => <PrivateRoute component={Leads} path="/leads" />} />
                 <Route path="/sales-pipeline" component={() => <PrivateRoute component={SalesPipeline} path="/sales-pipeline" />} />
                 <Route path="/messages" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="messaging"><Messages /></ProtectedRoute>} path="/messages" />} />
