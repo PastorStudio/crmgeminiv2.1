@@ -49,6 +49,7 @@ import {
   Trash2,
   AlertTriangle,
   Zap,
+  RotateCcw,
 } from 'lucide-react';
 import { AgentConfigSection } from '@/components/AgentConfigSection';
 import { AutoResponseConfig } from '@/components/AutoResponseConfig';
