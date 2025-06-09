@@ -51,8 +51,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, MoreHorizontal, PlusCircle, UserPlus, UserX, Edit, Trash, Activity, Eye, Clock, BarChart3, User as UserIcon, MessageCircle, Users as UsersIcon, CheckCircle, LogIn, Pencil, Trash2, Settings } from 'lucide-react';
+import { Loader2, MoreHorizontal, PlusCircle, UserPlus, UserX, Edit, Trash, Activity, Eye, Clock, BarChart3, User as UserIcon, MessageCircle, Users as UsersIcon, CheckCircle, LogIn, Pencil, Trash2, Settings, CreditCard, Calendar } from 'lucide-react';
 import WhatsAppAccountAssignment from '@/components/admin/WhatsAppAccountAssignment';
+import SubscriptionPlanAssignment from '@/components/admin/SubscriptionPlanAssignment';
+import SubscriptionPlanCreator from '@/components/admin/SubscriptionPlanCreator';
 
 // Definir tipo para usuarios
 interface User {
@@ -611,7 +613,7 @@ export default function UserManagement() {
       </div>
 
       <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <UsersIcon className="h-4 w-4" />
             Gestión de Usuarios
@@ -619,6 +621,10 @@ export default function UserManagement() {
           <TabsTrigger value="assignments" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             Asignaciones WhatsApp
+          </TabsTrigger>
+          <TabsTrigger value="subscriptions" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            Planes de Suscripción
           </TabsTrigger>
         </TabsList>
 
@@ -858,8 +864,8 @@ export default function UserManagement() {
                   <TableHead>Departamento</TableHead>
                   <TableHead className="text-center">
                     <div className="flex items-center justify-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      Ingresos
+                      <CreditCard className="h-4 w-4" />
+                      Plan de Suscripción
                     </div>
                   </TableHead>
                   <TableHead className="text-center">
@@ -1013,20 +1019,18 @@ export default function UserManagement() {
                         ) : '-'}
                       </TableCell>
                       
-                      {/* Columna de Ingresos al Sistema */}
+                      {/* Columna de Plan de Suscripción */}
                       <TableCell className="text-center">
                         <div className="flex flex-col items-center gap-1">
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-mono text-xs">
-                              {user.totalLogins || 0}
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
+                              <CreditCard className="h-3 w-3 mr-1" />
+                              Plan Básico
                             </Badge>
-                            <span className="text-xs text-gray-500">veces</span>
                           </div>
-                          {user.totalLogins && user.totalLogins > 0 && (
-                            <div className="text-xs text-gray-400">
-                              Sistema activo
-                            </div>
-                          )}
+                          <div className="text-xs text-gray-400">
+                            15 días restantes
+                          </div>
                         </div>
                       </TableCell>
                       
@@ -1853,6 +1857,21 @@ export default function UserManagement() {
 
         <TabsContent value="assignments">
           <WhatsAppAccountAssignment />
+        </TabsContent>
+
+        <TabsContent value="subscriptions">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Gestión de Planes de Suscripción</h2>
+                <p className="text-muted-foreground">
+                  Administra planes de suscripción y asigna acceso a usuarios
+                </p>
+              </div>
+              <SubscriptionPlanCreator onPlanCreated={() => queryClient.invalidateQueries({ queryKey: ['/api/subscription-plans'] })} />
+            </div>
+            <SubscriptionPlanAssignment />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
