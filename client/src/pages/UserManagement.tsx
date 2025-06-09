@@ -198,10 +198,7 @@ export default function UserManagement() {
   const { data: subscriptionPlans } = useQuery({
     queryKey: ['/api/subscription-plans'],
     queryFn: async () => {
-      const response = await fetch('/api/subscription-plans');
-      if (!response.ok) throw new Error('Error cargando planes');
-      const data = await response.json();
-      return data.plans || [];
+      return await subscriptionService.getAllPlans();
     }
   });
 
