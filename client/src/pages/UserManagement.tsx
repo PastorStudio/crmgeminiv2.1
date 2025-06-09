@@ -6,6 +6,7 @@ import { queryClient } from '@/lib/queryClient';
 import { apiRequest } from '@/lib/queryClient';
 import { subscriptionService } from '@/services/subscriptionService';
 import { QuickPlanAssignment } from '@/components/QuickPlanAssignment';
+import { DemoManagement } from '@/components/DemoManagement';
 import { isSuperAdmin, canManageAdmins, hasPermission } from '@/lib/permissions';
 import {
   Table,
@@ -752,7 +753,7 @@ export default function UserManagement() {
       </div>
 
       <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <UsersIcon className="h-4 w-4" />
             Gestión de Usuarios
@@ -764,6 +765,10 @@ export default function UserManagement() {
           <TabsTrigger value="subscriptions" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             Planes de Suscripción
+          </TabsTrigger>
+          <TabsTrigger value="demos" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Gestión de Demos
           </TabsTrigger>
         </TabsList>
 
@@ -2218,6 +2223,20 @@ export default function UserManagement() {
               <SubscriptionPlanCreator onPlanCreated={() => queryClient.invalidateQueries({ queryKey: ['/api/subscription-plans'] })} />
             </div>
             <SubscriptionPlanAssignment />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="demos">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Gestión de Demos</h2>
+                <p className="text-muted-foreground">
+                  Administra las cuentas de demostración creadas automáticamente por el agente
+                </p>
+              </div>
+            </div>
+            <DemoManagement />
           </div>
         </TabsContent>
       </Tabs>
