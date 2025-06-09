@@ -148,10 +148,10 @@ Responde "QUIERO PLAN" y te ayudo a elegir el plan perfecto para tu negocio.
 
       return {
         id: demoUser.id,
-        customerName: demoUser.customer_name,
+        customerName: demoUser.customerName,
         username: demoUser.username,
         password: demoUser.password,
-        expiresAt: demoUser.expires_at,
+        expiresAt: demoUser.expiresAt,
         loginUrl: `https://${process.env.REPLIT_DEV_DOMAIN || 'localhost:5000'}/demo-login`
       };
     } catch (error) {
@@ -191,8 +191,8 @@ Responde "QUIERO PLAN" y te ayudo a elegir el plan perfecto para tu negocio.
         // Check if there was a recent demo request from this number
         const recentDemo = await db.select()
           .from(demoUsers)
-          .where(eq(demoUsers.phone_number, phoneNumber))
-          .orderBy(demoUsers.created_at)
+          .where(eq(demoUsers.phoneNumber, phoneNumber))
+          .orderBy(demoUsers.createdAt)
           .limit(1);
 
         // If no recent demo, create one

@@ -7,6 +7,7 @@ import { whatsappMultiAccountManager } from './whatsappMultiAccountManager';
 import { AutomaticLeadGenerator } from './automaticLeadGenerator';
 import { MultimediaService } from './multimediaService';
 import { WebScrapingService } from './webScrapingService';
+import { whatsappDemoHandler } from './whatsappDemoHandler';
 import { db } from '../db';
 import { whatsappAccounts, chatAssignments, externalAgents } from '@shared/schema';
 import { eq } from 'drizzle-orm';
@@ -100,56 +101,36 @@ export class EnhancedAutoResponseService {
    * Procesa un mensaje entrante y genera respuesta automática
    */
   private static async processIncomingMessage(accountId: number, message: any) {
-    console.log('❌ SISTEMA DE RESPUESTAS GENÉRICAS DESACTIVADO PERMANENTEMENTE');
-    console.log('❌ Usar únicamente agentes externos reales con OpenAI');
-    return;
-    
     try {
       // Solo procesar mensajes de clientes (no propios)
       if (message.fromMe) return;
 
-      console.log(`📨 Procesando mensaje entrante: ${message.body?.substring(0, 50)}...`);
-
       const chatId = message.from;
-      
-      // Verificar si hay asignación manual (prioridad)
-      const existingAssignment = await db.select()
-        .from(chatAssignments)
-        .where(eq(chatAssignments.chatId, chatId))
-        .limit(1);
+      const phoneNumber = message.from.replace('@c.us', '');
+      const messageText = message.body || '';
 
-      if (existingAssignment.length > 0) {
-        console.log(`ℹ️ Chat ${chatId} tiene asignación manual, omitiendo respuesta automática`);
+      console.log(`📨 Procesando mensaje: ${messageText.substring(0, 50)}... de ${phoneNumber}`);
+
+      // Prioritize demo agent handling
+      const demoResponse = await whatsappDemoHandler.processMessage(chatId, phoneNumber, messageText);
+      
+      if (demoResponse) {
+        console.log(`🎭 Demo response generated: ${demoResponse.substring(0, 50)}...`);
+        
+        // Get chat and send demo response
+        const chat = await message.getChat();
+        await chat.sendMessage(demoResponse);
+        
+        console.log(`✅ Demo response sent successfully`);
         return;
       }
 
-      // Obtener historial del chat para análisis
-      const chat = await message.getChat();
-      const messages = await chat.fetchMessages({ limit: 20 });
-      
-      // Generar lead automáticamente si cumple criterios
-      await AutomaticLeadGenerator.analyzeAndCreateLead(accountId, chatId, messages);
-      
-      // Generar respuesta usando IA
-      const response = await this.generateAIResponse(message, messages);
-      
-      if (response) {
-        // Esperar delay configurado
-        const account = await db.select()
-          .from(whatsappAccounts)
-          .where(eq(whatsappAccounts.id, accountId))
-          .limit(1);
-          
-        const delay = account[0]?.responseDelay || 3;
-        await this.delay(delay * 1000);
-        
-        // Enviar respuesta
-        await chat.sendMessage(response);
-        console.log(`✅ Respuesta automática enviada: ${response.substring(0, 50)}...`);
-      }
+      // Fall back to existing external agent system for non-demo messages
+      console.log('📝 No demo response needed, delegating to external agents');
+      return;
       
     } catch (error) {
-      console.error('❌ Error procesando mensaje entrante:', error);
+      console.error('❌ Error processing message:', error);
     }
   }
 
