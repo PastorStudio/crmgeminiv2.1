@@ -1,5 +1,3 @@
-2025/06/09-17:48:10.175 178f Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/06/09-17:48:10.176 178f Recovering log #5406
-2025/06/09-17:48:10.237 178f Level-0 table #5415: started
-2025/06/09-17:48:10.329 178f Level-0 table #5415: 1043920 bytes OK
-2025/06/09-17:48:10.340 178f Delete type=0 #5406
+2025/06/09-18:05:36.970 1d59 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/09-18:05:36.970 1d59 Recovering log #293
+2025/06/09-18:05:36.975 1d59 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000293.log 
