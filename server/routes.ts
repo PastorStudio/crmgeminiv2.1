@@ -153,6 +153,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/whatsapp-accounts/:id", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      console.log(`🗑️ Eliminando cuenta WhatsApp ID: ${accountId}`);
+      
+      // Delete specific WhatsApp account from database
+      const result = await pool.query('DELETE FROM whatsapp_accounts WHERE id = $1;', [accountId]);
+      
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Cuenta no encontrada'
+        });
+      }
+      
+      console.log(`✅ Cuenta ${accountId} eliminada exitosamente`);
+      
+      res.json({
+        success: true,
+        message: `Cuenta ${accountId} eliminada exitosamente`
+      });
+    } catch (error) {
+      console.error('Error eliminando cuenta:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al eliminar la cuenta'
+      });
+    }
+  });
+
   app.get("/api/whatsapp/ping-status/all", async (req: Request, res: Response) => {
     try {
       console.log('📡 Obteniendo estado de ping para todas las cuentas...');
