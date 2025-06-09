@@ -5,6 +5,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { apiRequest } from '@/lib/queryClient';
 import { subscriptionService } from '@/services/subscriptionService';
+import { QuickPlanAssignment } from '@/components/QuickPlanAssignment';
 import { isSuperAdmin, canManageAdmins, hasPermission } from '@/lib/permissions';
 import {
   Table,
