@@ -2498,7 +2498,8 @@ app.use((req, res, next) => {
       // Get all users with their subscription plans
       const { and, gte } = await import('drizzle-orm');
       
-      const allUsers = await db
+      // First get all users
+      const allUsersData = await db
         .select({
           id: users.id,
           username: users.username,
@@ -2510,26 +2511,38 @@ app.use((req, res, next) => {
           avatar: users.avatar,
           lastActivity: users.lastActivity,
           totalLogins: users.totalLogins,
-          lastLoginAt: users.lastLoginAt,
-          currentPlan: subscriptionPlans.name,
-          currentPlanId: subscriptionPlans.id,
-          subscriptionEndDate: userSubscriptions.endDate,
-          subscriptionStatus: userSubscriptions.status
+          lastLoginAt: users.lastLoginAt
         })
         .from(users)
-        .leftJoin(
-          userSubscriptions, 
-          and(
-            eq(users.id, userSubscriptions.userId),
-            eq(userSubscriptions.status, 'active'),
-            gte(userSubscriptions.endDate, new Date())
-          )
-        )
-        .leftJoin(
-          subscriptionPlans,
-          eq(userSubscriptions.planId, subscriptionPlans.id)
-        )
         .orderBy(users.id);
+
+      // Then get the most recent active subscription for each user
+      const { sql } = await import('drizzle-orm');
+      const userSubscriptionsData = await db.execute(sql`
+        SELECT DISTINCT ON (us.user_id)
+          us.user_id,
+          us.plan_id,
+          us.status,
+          us.end_date,
+          sp.name as plan_name,
+          sp.id as plan_id_actual
+        FROM user_subscriptions us
+        INNER JOIN subscription_plans sp ON us.plan_id = sp.id
+        WHERE us.status = 'active' AND us.end_date >= NOW()
+        ORDER BY us.user_id, us.created_at DESC
+      `);
+
+      // Combine the data
+      const allUsers = allUsersData.map(user => {
+        const subscription = userSubscriptionsData.rows.find(sub => sub.user_id === user.id);
+        return {
+          ...user,
+          currentPlan: subscription?.plan_name || null,
+          currentPlanId: subscription?.plan_id_actual || null,
+          subscriptionEndDate: subscription?.end_date || null,
+          subscriptionStatus: subscription?.status || null
+        };
+      });
 
       console.log(`✅ API users - Enviando ${allUsers.length} usuarios con información de planes`);
       res.json(allUsers);
