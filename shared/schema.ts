@@ -3,22 +3,51 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Base user table
+// Base user table with role-based access
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   fullName: text("fullName"),
   email: text("email"),
-  role: text("role").default("agent"),
+  role: text("role").default("agent"), // admin, manager, agent, readonly
   status: text("status").default("active"),
   avatar: text("avatar"),
   department: text("department"),
   supervisorId: integer("supervisorId"),
+  organizationId: integer("organizationId"), // Multi-tenant support
+  permissions: jsonb("permissions"), // Custom permissions array
+  assignedAccounts: text("assignedAccounts").array(), // WhatsApp accounts assigned to user
   settings: jsonb("settings"),
   lastLoginAt: timestamp("lastLoginAt"),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedat"),
+});
+
+// Organizations for multi-tenant support
+export const organizations = pgTable("organizations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  settings: jsonb("settings"),
+  plan: text("plan").default("basic"), // basic, premium, enterprise
+  status: text("status").default("active"),
+  maxUsers: integer("maxUsers").default(5),
+  maxAccounts: integer("maxAccounts").default(2),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
+});
+
+// User-WhatsApp account assignments
+export const userAccountAssignments = pgTable("user_account_assignments", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id),
+  whatsappAccountId: integer("whatsappAccountId").notNull().references(() => whatsappAccounts.id),
+  role: text("role").default("operator"), // owner, manager, operator, readonly
+  permissions: jsonb("permissions"), // Specific permissions for this account
+  assignedAt: timestamp("assignedAt").defaultNow(),
+  assignedBy: integer("assignedBy").references(() => users.id),
+  isActive: boolean("isActive").default(true),
 });
 
 // AI Prompts for WhatsApp accounts
@@ -36,7 +65,7 @@ export const aiPrompts = pgTable("ai_prompts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// WhatsApp Accounts
+// WhatsApp Accounts with organization support
 export const whatsappAccounts = pgTable("whatsapp_accounts", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -46,13 +75,14 @@ export const whatsappAccounts = pgTable("whatsapp_accounts", {
   sessionData: jsonb("sessiondata"),
   status: text("status").default("inactive"),
   adminId: integer("adminid"),
+  organizationId: integer("organizationId").references(() => organizations.id), // Multi-tenant support
   assignedExternalAgentId: text("assignedexternalagentid"),
   autoResponseEnabled: boolean("autoresponseenabled").default(false),
   responseDelay: integer("responsedelay").default(3),
-  disableGroupResponses: boolean("disablegroupresponses").default(false), // Disable AI responses in groups
-  customPrompt: text("customprompt"), // Custom AI prompt for this account
-  assignedPromptId: integer("assigned_prompt_id").references(() => aiPrompts.id), // Reference to AI prompt
-  keepAliveEnabled: boolean("keepaliveenabled").default(true), // Persistent connection
+  disableGroupResponses: boolean("disablegroupresponses").default(false),
+  customPrompt: text("customprompt"),
+  assignedPromptId: integer("assigned_prompt_id").references(() => aiPrompts.id),
+  keepAliveEnabled: boolean("keepaliveenabled").default(true),
   lastActivity: timestamp("lastactivity"),
   connectionAttempts: integer("connectionattempts").default(0),
   maxReconnectAttempts: integer("maxreconnectattempts").default(5),
@@ -498,18 +528,47 @@ export const localEvents = pgTable('local_events', {
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
-// Relaciones
+// Relaciones with multi-tenant support
 export const usersRelations = relations(users, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [users.organizationId],
+    references: [organizations.id]
+  }),
   supervisor: one(users, {
     fields: [users.supervisorId],
     references: [users.id],
     relationName: "supervisor"
   }),
+  subordinates: many(users, { relationName: "supervisor" }),
+  accountAssignments: many(userAccountAssignments),
+  assignedLeads: many(leads),
+  activities: many(enhancedActivities),
   assignedChats: many(chatAssignments),
   assignedTickets: many(modernTickets),
   createdTickets: many(modernTickets),
   comments: many(chatComments),
   notifications: many(notifications),
+}));
+
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  users: many(users),
+  whatsappAccounts: many(whatsappAccounts),
+}));
+
+export const userAccountAssignmentsRelations = relations(userAccountAssignments, ({ one }) => ({
+  user: one(users, {
+    fields: [userAccountAssignments.userId],
+    references: [users.id]
+  }),
+  whatsappAccount: one(whatsappAccounts, {
+    fields: [userAccountAssignments.whatsappAccountId],
+    references: [whatsappAccounts.id]
+  }),
+  assignedBy: one(users, {
+    fields: [userAccountAssignments.assignedBy],
+    references: [users.id],
+    relationName: "assignmentCreator"
+  }),
 }));
 
 export const whatsappAccountsRelations = relations(whatsappAccounts, ({ one, many }) => ({
