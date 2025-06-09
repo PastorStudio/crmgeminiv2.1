@@ -162,6 +162,9 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                   <div className="flex items-center">
                     <span className="material-icons mr-3 h-5 w-5">{category.icon}</span>
                     <span className="font-semibold">{category.label}</span>
+                    <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                      {category.items.length}
+                    </span>
                   </div>
                   <span 
                     className={cn(
