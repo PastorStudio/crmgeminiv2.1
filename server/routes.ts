@@ -47,6 +47,7 @@ import { getLeadsSimpleAPI, getLeadStatsSimpleAPI } from "./routes/leads-simple"
 import salesFlowRouter from "./routes/salesFlowRoutes";
 import flowExecutionRouter from "./routes/flowExecutionRoutes";
 import multiTenantRoutes from "./routes/multiTenantRoutes";
+import { multiTenantAuth, AuthenticatedRequest, getAccessibleAccountIds, canAccessAccount } from "./middleware/multiTenantAuth";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -94,6 +95,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Sales flow designer routes
   app.use("/api/sales-flow", salesFlowRouter);
+  
+  // User isolated routes - strict data filtering by user permissions
+  const userIsolatedRoutes = await import("./routes/userIsolatedRoutes");
+  app.use("/api/isolated", userIsolatedRoutes.default);
   // ✅ ENDPOINTS DIRECTOS PARA ASIGNACIONES Y COMENTARIOS - POSTGRESQL REAL
   const { 
     createChatAssignment, 
