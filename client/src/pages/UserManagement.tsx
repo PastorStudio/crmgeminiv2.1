@@ -318,18 +318,21 @@ export default function UserManagement() {
       
       // Si se seleccionó un plan de suscripción, asignarlo
       if (userData.subscriptionPlanId && userData.subscriptionPlanId !== 'no-plan' && createdUser.user) {
+        const duration = userData.subscriptionDuration && userData.subscriptionDuration !== 'default' ? parseInt(userData.subscriptionDuration) : 30;
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + duration);
+
         const subscriptionData = {
-          userId: createdUser.user.id,
-          planId: parseInt(userData.subscriptionPlanId),
-          duration: userData.subscriptionDuration && userData.subscriptionDuration !== 'default' ? parseInt(userData.subscriptionDuration) : undefined,
+          user_id: createdUser.user.id,
+          plan_id: parseInt(userData.subscriptionPlanId),
+          end_date: endDate.toISOString(),
           notes: userData.subscriptionNotes || 'Asignado durante la creación del usuario'
         };
 
         const subscriptionResponse = await fetch('/api/user-subscriptions', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify(subscriptionData)
         });
@@ -385,18 +388,21 @@ export default function UserManagement() {
       if (userData.subscriptionPlanId !== undefined) {
         if (userData.subscriptionPlanId && userData.subscriptionPlanId !== '' && userData.subscriptionPlanId !== 'no-plan') {
           // Asignar nuevo plan o actualizar existente
+          const duration = userData.subscriptionDuration && userData.subscriptionDuration !== 'default' ? parseInt(userData.subscriptionDuration) : 30;
+          const endDate = new Date();
+          endDate.setDate(endDate.getDate() + duration);
+
           const subscriptionData = {
-            userId: id,
-            planId: parseInt(userData.subscriptionPlanId),
-            duration: userData.subscriptionDuration && userData.subscriptionDuration !== 'default' ? parseInt(userData.subscriptionDuration) : undefined,
+            user_id: id,
+            plan_id: parseInt(userData.subscriptionPlanId),
+            end_date: endDate.toISOString(),
             notes: userData.subscriptionNotes || 'Actualizado desde edición de usuario'
           };
 
           const subscriptionResponse = await fetch('/api/user-subscriptions', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify(subscriptionData)
           });
