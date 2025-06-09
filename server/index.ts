@@ -129,12 +129,100 @@ app.use(express.urlencoded({ extended: false }));
 
 // ===== SUBSCRIPTION PLAN API ENDPOINTS (EARLY REGISTRATION) =====
 
+// CORS preflight handler for subscription endpoints
+app.options("/api/subscription-plans", (req: Request, res: Response) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
+
+app.options("/api/user-subscriptions", (req: Request, res: Response) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
+
+app.options("/api/cancel-subscription/:id", (req: Request, res: Response) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
+
 // Get all subscription plans
 app.get("/api/subscription-plans", async (req: Request, res: Response) => {
   try {
     console.log("📋 GET /api/subscription-plans - Obteniendo planes de suscripción");
+    
+    // Set CORS headers
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Content-Type', 'application/json');
+    
     const result = await pool.query('SELECT * FROM subscription_plans ORDER BY id');
-    const plans = result.rows;
+    let plans = result.rows;
+    
+    // If no plans exist, create default plans
+    if (plans.length === 0) {
+      console.log("📋 No hay planes existentes, creando planes por defecto...");
+      
+      const defaultPlans = [
+        {
+          name: 'Plan Básico',
+          description: 'Plan básico para emprendedores',
+          price: 29.99,
+          currency: 'USD',
+          duration_days: 30,
+          features: JSON.stringify(['1 cuenta WhatsApp', '1000 mensajes/mes', 'Respuestas automáticas básicas']),
+          max_users: 1,
+          max_whatsapp_accounts: 1,
+          max_chats_per_month: 1000,
+          is_active: true
+        },
+        {
+          name: 'Plan Pro',
+          description: 'Plan profesional para pequeñas empresas',
+          price: 59.99,
+          currency: 'USD',
+          duration_days: 30,
+          features: JSON.stringify(['3 cuentas WhatsApp', '5000 mensajes/mes', 'IA avanzada', 'Reportes']),
+          max_users: 3,
+          max_whatsapp_accounts: 3,
+          max_chats_per_month: 5000,
+          is_active: true
+        },
+        {
+          name: 'Plan Empresarial',
+          description: 'Plan completo para empresas grandes',
+          price: 99.99,
+          currency: 'USD',
+          duration_days: 30,
+          features: JSON.stringify(['Cuentas ilimitadas', 'Mensajes ilimitados', 'IA premium', 'Soporte 24/7']),
+          max_users: 10,
+          max_whatsapp_accounts: 999,
+          max_chats_per_month: 999999,
+          is_active: true
+        }
+      ];
+      
+      for (const plan of defaultPlans) {
+        await pool.query(`
+          INSERT INTO subscription_plans 
+          (name, description, price, currency, duration_days, features, max_users, max_whatsapp_accounts, max_chats_per_month, is_active)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `, [
+          plan.name, plan.description, plan.price, plan.currency, plan.duration_days,
+          plan.features, plan.max_users, plan.max_whatsapp_accounts, plan.max_chats_per_month, plan.is_active
+        ]);
+      }
+      
+      // Reload plans
+      const newResult = await pool.query('SELECT * FROM subscription_plans ORDER BY id');
+      plans = newResult.rows;
+      console.log("✅ Planes por defecto creados:", plans.length);
+    }
+    
     res.json({ success: true, plans });
   } catch (error) {
     console.error("❌ Error getting subscription plans:", error);
@@ -145,6 +233,10 @@ app.get("/api/subscription-plans", async (req: Request, res: Response) => {
 // Create subscription plan
 app.post("/api/subscription-plans", async (req: Request, res: Response) => {
   try {
+    // Set CORS headers
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Content-Type', 'application/json');
+    
     const planData = req.body;
     console.log("📝 POST /api/subscription-plans - Creando plan de suscripción:", planData);
     
@@ -195,6 +287,10 @@ app.post("/api/subscription-plans", async (req: Request, res: Response) => {
 // Get all user subscriptions
 app.get("/api/user-subscriptions", async (req: Request, res: Response) => {
   try {
+    // Set CORS headers
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Content-Type', 'application/json');
+    
     console.log("📋 GET /api/user-subscriptions - Obteniendo suscripciones de usuarios");
     const result = await pool.query(`
       SELECT 
@@ -249,6 +345,10 @@ app.get("/api/user-subscriptions", async (req: Request, res: Response) => {
 // Assign plan to user
 app.post("/api/user-subscriptions", async (req: Request, res: Response) => {
   try {
+    // Set CORS headers
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Content-Type', 'application/json');
+    
     const { user_id, plan_id, end_date, notes } = req.body;
     console.log("📝 POST /api/user-subscriptions - Asignando plan a usuario:", { user_id, plan_id, end_date, notes });
     
@@ -315,6 +415,10 @@ app.post("/api/user-subscriptions", async (req: Request, res: Response) => {
 // Cancel subscription
 app.delete("/api/cancel-subscription/:id", async (req: Request, res: Response) => {
   try {
+    // Set CORS headers
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Content-Type', 'application/json');
+    
     const subscriptionId = parseInt(req.params.id);
     console.log("🗑️ DELETE /api/cancel-subscription - Cancelando suscripción:", subscriptionId);
     
