@@ -683,10 +683,10 @@ const AppRoutes: React.FC = () => {
                 <Route path="/qrcode" component={() => <PrivateRoute component={QRCode} path="/qrcode" />} />
                 <Route path="/qr-viewer" component={() => <PrivateRoute component={QrViewer} path="/qr-viewer" />} />
                 <Route path="/qr-text" component={() => <PrivateRoute component={QrTextViewer} path="/qr-text" />} />
-                <Route path="/whatsapp-manager" component={() => <PrivateRoute component={WhatsAppManager} path="/whatsapp-manager" />} />
-                <Route path="/raw-qr" component={() => <PrivateRoute component={RawQrViewer} path="/raw-qr" />} />
-                <Route path="/simple-whatsapp" component={() => <PrivateRoute component={SimpleWhatsApp} path="/simple-whatsapp" />} />
-                <Route path="/ultra-whatsapp" component={() => <PrivateRoute component={UltraSimpleChat} path="/ultra-whatsapp" />} />
+                <Route path="/whatsapp-manager" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppManager /></ProtectedRoute>} path="/whatsapp-manager" />} />
+                <Route path="/raw-qr" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><RawQrViewer /></ProtectedRoute>} path="/raw-qr" />} />
+                <Route path="/simple-whatsapp" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><SimpleWhatsApp /></ProtectedRoute>} path="/simple-whatsapp" />} />
+                <Route path="/ultra-whatsapp" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><UltraSimpleChat /></ProtectedRoute>} path="/ultra-whatsapp" />} />
                 {/* Ruta de demostración eliminada - solo chats reales */}
                 <Route path="/users" component={() => <PrivateRoute component={UserManagement} path="/users" />} />
                 <Route path="/whatsapp-accounts" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppAccounts /></ProtectedRoute>} path="/whatsapp-accounts" />} />
@@ -699,6 +699,10 @@ const AppRoutes: React.FC = () => {
                 <Route path="/sales-flow-designer" component={() => <PrivateRoute component={SalesFlowDesigner} path="/sales-flow-designer" />} />
                 <Route path="/chat-assignments" component={() => <PrivateRoute component={ChatAssignments} path="/chat-assignments" />} />
                 <Route path="/profile" component={() => <PrivateRoute component={Profile} path="/profile" />} />
+                
+                {/* Subscription Management - Admin only */}
+                <Route path="/subscription-management" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="admin"><SubscriptionManager /></ProtectedRoute>} path="/subscription-management" />} />
+                
                 <Route component={() => <PrivateRoute component={NotFound} path="*" />} />
                 </Switch>
               </ErrorBoundary>
