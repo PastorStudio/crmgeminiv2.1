@@ -1,31 +1,115 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
 
 interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
 }
 
+interface MenuCategory {
+  id: string;
+  label: string;
+  icon: string;
+  items: Array<{
+    href: string;
+    icon: string;
+    label: string;
+  }>;
+}
+
 export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const [location] = useLocation();
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
-  // Navigation items
-  const navItems = [
-    { href: "/", icon: "dashboard", label: "Dashboard" },
-    { href: "/leads", icon: "people", label: "Leads" },
-    { href: "/messages", icon: "forum", label: "Messages" },
-    { href: "/mass-sender", icon: "send", label: "Envío Masivo" },
-    { href: "/message-templates", icon: "description", label: "Plantillas" },
-    { href: "/media-gallery", icon: "perm_media", label: "Galería" },
-    { href: "/calendar", icon: "event", label: "Calendar" },
-    { href: "/tasks", icon: "assignment", label: "Tasks" },
-    { href: "/analytics", icon: "leaderboard", label: "Analytics" },
-    { href: "/gemini-demo", icon: "smart_toy", label: "Gemini AI" },
-    { href: "/gemini-test", icon: "psychology", label: "IA Test" },
-    { href: "/integrations", icon: "link", label: "Integraciones" },
-    { href: "/database", icon: "storage", label: "Base de Datos" },
-    { href: "/settings", icon: "settings", label: "Settings" },
+  // Menu structure organized by categories
+  const menuCategories: MenuCategory[] = [
+    {
+      id: "principal",
+      label: "Principal",
+      icon: "home",
+      items: [
+        { href: "/", icon: "dashboard", label: "Dashboard" },
+        { href: "/analytics", icon: "leaderboard", label: "Analytics" },
+        { href: "/database", icon: "storage", label: "Base de Datos" },
+      ]
+    },
+    {
+      id: "comunicacion",
+      label: "Comunicación",
+      icon: "chat",
+      items: [
+        { href: "/messages", icon: "forum", label: "Messages" },
+        { href: "/mass-sender", icon: "send", label: "Envío Masivo" },
+        { href: "/message-templates", icon: "description", label: "Plantillas" },
+        { href: "/media-gallery", icon: "perm_media", label: "Galería" },
+      ]
+    },
+    {
+      id: "clientes",
+      label: "Clientes",
+      icon: "people",
+      items: [
+        { href: "/leads", icon: "people", label: "Leads" },
+        { href: "/contacts", icon: "contacts", label: "Contactos" },
+        { href: "/customer-support", icon: "support_agent", label: "Soporte" },
+      ]
+    },
+    {
+      id: "gestion",
+      label: "Gestión",
+      icon: "work",
+      items: [
+        { href: "/calendar", icon: "event", label: "Calendar" },
+        { href: "/tasks", icon: "assignment", label: "Tasks" },
+        { href: "/projects", icon: "folder", label: "Proyectos" },
+      ]
+    },
+    {
+      id: "inteligencia",
+      label: "Inteligencia Artificial",
+      icon: "psychology",
+      items: [
+        { href: "/gemini-demo", icon: "smart_toy", label: "Gemini AI" },
+        { href: "/gemini-test", icon: "psychology", label: "IA Test" },
+        { href: "/ai-insights", icon: "insights", label: "AI Insights" },
+      ]
+    },
+    {
+      id: "configuracion",
+      label: "Configuración",
+      icon: "settings",
+      items: [
+        { href: "/settings", icon: "settings", label: "Settings" },
+        { href: "/integrations", icon: "link", label: "Integraciones" },
+        { href: "/admin", icon: "admin_panel_settings", label: "Admin" },
+      ]
+    }
   ];
+
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories(prev => 
+      prev.includes(categoryId) 
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  const isCategoryExpanded = (categoryId: string) => expandedCategories.includes(categoryId);
+
+  const isCategoryActive = (category: MenuCategory) => {
+    return category.items.some(item => item.href === location);
+  };
+
+  // Auto-expand category containing current page
+  useEffect(() => {
+    const currentCategory = menuCategories.find(category => 
+      category.items.some(item => item.href === location)
+    );
+    if (currentCategory && !expandedCategories.includes(currentCategory.id)) {
+      setExpandedCategories(prev => [...prev, currentCategory.id]);
+    }
+  }, [location, menuCategories, expandedCategories]);
 
   // Handle closing the sidebar on mobile
   const handleLinkClick = () => {
@@ -61,22 +145,56 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
 
         {/* Navigation */}
         <div className="flex flex-col flex-grow overflow-y-auto">
-          <nav className="flex-1 px-2 py-4 space-y-1">
-            {navItems.map((item) => (
-              <Link 
-                key={item.href} 
-                href={item.href}
-                onClick={handleLinkClick}
-                className={cn(
-                  "flex items-center px-2 py-2 text-sm font-medium rounded-md group",
-                  location === item.href 
-                    ? "text-white bg-primary-600" 
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          <nav className="flex-1 px-2 py-4 space-y-2">
+            {menuCategories.map((category) => (
+              <div key={category.id} className="space-y-1">
+                {/* Category Header */}
+                <button
+                  onClick={() => toggleCategory(category.id)}
+                  className={cn(
+                    "w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg group transition-all duration-200",
+                    isCategoryActive(category) 
+                      ? "text-white bg-primary-600 shadow-md" 
+                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+                    "border border-transparent hover:border-gray-200"
+                  )}
+                >
+                  <div className="flex items-center">
+                    <span className="material-icons mr-3 h-5 w-5">{category.icon}</span>
+                    <span className="font-semibold">{category.label}</span>
+                  </div>
+                  <span 
+                    className={cn(
+                      "material-icons h-4 w-4 transition-transform duration-200",
+                      isCategoryExpanded(category.id) ? "rotate-180" : "rotate-0"
+                    )}
+                  >
+                    expand_more
+                  </span>
+                </button>
+
+                {/* Category Items */}
+                {isCategoryExpanded(category.id) && (
+                  <div className="ml-4 space-y-1 border-l-2 border-gray-200 pl-3">
+                    {category.items.map((item) => (
+                      <Link 
+                        key={item.href} 
+                        href={item.href}
+                        onClick={handleLinkClick}
+                        className={cn(
+                          "flex items-center px-3 py-2 text-sm font-medium rounded-md group transition-all duration-150",
+                          location === item.href 
+                            ? "text-white bg-primary-500 shadow-sm" 
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 hover:shadow-sm"
+                        )}
+                      >
+                        <span className="material-icons mr-3 h-4 w-4 opacity-75">{item.icon}</span>
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
                 )}
-              >
-                <span className="material-icons mr-3 h-6 w-6">{item.icon}</span>
-                {item.label}
-              </Link>
+              </div>
             ))}
           </nav>
 
