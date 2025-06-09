@@ -70,15 +70,36 @@ export class SubscriptionService {
 
   async createPlan(planData: Omit<SubscriptionPlan, 'id'>): Promise<SubscriptionPlan | null> {
     try {
-      const response = await apiRequest<{ success: boolean; plan: SubscriptionPlan; message: string }>('/api/subscription-plans', {
+      const response = await fetch('/api/subscription-plans', {
         method: 'POST',
-        body: planData
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: planData.name,
+          description: planData.description,
+          price: planData.price,
+          currency: planData.currency,
+          duration_days: planData.duration_days,
+          features: planData.features,
+          max_users: planData.max_users,
+          max_whatsapp_accounts: planData.max_whatsapp_accounts,
+          max_chats_per_month: planData.max_chats_per_month,
+          is_active: planData.is_active
+        })
       });
-      
-      if (response.success) {
-        return response.plan;
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
       }
-      throw new Error(response.message);
+
+      const data = await response.json();
+      
+      if (data.success) {
+        this.clearCache();
+        return data.plan;
+      }
+      throw new Error(data.message);
     } catch (error) {
       console.error('Error creating subscription plan:', error);
       throw error;
