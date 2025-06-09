@@ -267,6 +267,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const planData = req.body;
+      
+      // Validate required fields
+      if (!planData.name || !planData.price || !planData.duration_days) {
+        return res.status(400).json({
+          success: false,
+          message: "Faltan campos requeridos: name, price, duration_days"
+        });
+      }
+      
+      // Ensure features is properly formatted as JSON string if it's an array
+      if (Array.isArray(planData.features)) {
+        planData.features = JSON.stringify(planData.features);
+      }
+      
       const newPlan = await storage.createSubscriptionPlan(planData);
       
       res.json({
