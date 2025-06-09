@@ -49,8 +49,19 @@ export class SubscriptionService {
 
   async getAllPlans(): Promise<SubscriptionPlan[]> {
     try {
-      const response = await apiRequest<{ success: boolean; plans: SubscriptionPlan[] }>('/api/subscription-plans');
-      return response.success ? response.plans : [];
+      const response = await fetch('/api/subscription-plans', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+      
+      const data = await response.json();
+      return data.success ? data.plans : [];
     } catch (error) {
       console.error('Error getting subscription plans:', error);
       return [];
@@ -79,17 +90,27 @@ export class SubscriptionService {
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + (durationDays || 30));
 
-      const response = await apiRequest<{ success: boolean; message: string }>('/api/user-subscriptions', {
+      const response = await fetch('/api/user-subscriptions', {
         method: 'POST',
-        body: {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           user_id: userId,
           plan_id: planId,
           end_date: endDate.toISOString(),
           notes: notes || ''
-        }
+        })
       });
 
-      return response.success;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Assignment failed:', errorText);
+        return false;
+      }
+
+      const data = await response.json();
+      return data.success;
     } catch (error) {
       console.error('Error assigning plan to user:', error);
       return false;

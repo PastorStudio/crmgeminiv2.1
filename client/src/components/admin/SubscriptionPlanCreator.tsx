@@ -78,9 +78,13 @@ const SubscriptionPlanCreator: React.FC<{ onPlanCreated?: () => void }> = ({ onP
 
     setLoading(true);
     try {
-      const response = await apiRequest('/api/subscription-plans', {
+      // Direct fetch to bypass apiRequest middleware issues
+      const response = await fetch('/api/subscription-plans', {
         method: 'POST',
-        body: {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           name: formData.name,
           description: formData.description,
           price: parseFloat(formData.price),
@@ -91,13 +95,20 @@ const SubscriptionPlanCreator: React.FC<{ onPlanCreated?: () => void }> = ({ onP
           maxChatsPerMonth: formData.maxChatsPerMonth,
           features: formData.features,
           isActive: formData.isActive
-        }
+        })
       });
 
-      if (response.success) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const responseData = await response.json();
+
+      if (responseData.success) {
         toast({
           title: "Plan creado",
-          description: response.message,
+          description: responseData.message || "Plan de suscripción creado correctamente",
         });
         
         // Reset form
@@ -120,7 +131,7 @@ const SubscriptionPlanCreator: React.FC<{ onPlanCreated?: () => void }> = ({ onP
           onPlanCreated();
         }
       } else {
-        throw new Error(response.message);
+        throw new Error(responseData.message || "Error al crear el plan");
       }
     } catch (error) {
       console.error('Error creating plan:', error);
