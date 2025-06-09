@@ -65,51 +65,46 @@ async function ensureAdminEnterprisePlan(user: any) {
 
     console.log(`🔒 Ensuring Enterprise plan for privileged user: ${user.username}`);
 
-    // Get Enterprise plan (ID 3)
-    const [enterprisePlan] = await db.select()
-      .from(subscriptionPlans)
-      .where(eq(subscriptionPlans.id, 3))
-      .limit(1);
-
-    if (!enterprisePlan) {
+    // Check if Enterprise plan exists (ID 3)
+    const planResult = await pool.query('SELECT * FROM subscription_plans WHERE id = $1 LIMIT 1', [3]);
+    if (planResult.rows.length === 0) {
       console.error('❌ Enterprise plan not found in database');
       return;
     }
 
     // Check if user already has an active Enterprise subscription
-    const [existingSubscription] = await db.select()
-      .from(userSubscriptions)
-      .where(and(
-        eq(userSubscriptions.userId, user.id),
-        eq(userSubscriptions.planId, 3),
-        eq(userSubscriptions.status, 'active')
-      ))
-      .limit(1);
+    const existingResult = await pool.query(`
+      SELECT * FROM user_subscriptions 
+      WHERE user_id = $1 AND plan_id = $2 AND status = $3 
+      LIMIT 1
+    `, [user.id, 3, 'active']);
 
-    if (existingSubscription) {
+    const futureDate = new Date();
+    futureDate.setFullYear(futureDate.getFullYear() + 10); // 10 years in the future
+
+    if (existingResult.rows.length > 0) {
       // Update existing subscription to extend far into the future
-      const futureDate = new Date();
-      futureDate.setFullYear(futureDate.getFullYear() + 10); // 10 years in the future
-
-      await db.update(userSubscriptions)
-        .set({ 
-          endDate: futureDate
-        })
-        .where(eq(userSubscriptions.id, existingSubscription.id));
+      await pool.query(`
+        UPDATE user_subscriptions 
+        SET end_date = $1, updated_at = NOW()
+        WHERE id = $2
+      `, [futureDate, existingResult.rows[0].id]);
 
       console.log(`✅ Extended Enterprise plan for ${user.username} until ${futureDate.toISOString()}`);
     } else {
       // Create new Enterprise subscription
-      const futureDate = new Date();
-      futureDate.setFullYear(futureDate.getFullYear() + 10); // 10 years in the future
-
-      await db.insert(userSubscriptions).values({
-        userId: user.id,
-        planId: 3, // Enterprise plan
-        startDate: new Date(),
-        endDate: futureDate,
-        status: 'active'
-      });
+      await pool.query(`
+        INSERT INTO user_subscriptions 
+        (user_id, plan_id, start_date, end_date, status, assigned_by, notes, created_at, updated_at)
+        VALUES ($1, $2, NOW(), $3, $4, $5, $6, NOW(), NOW())
+      `, [
+        user.id,
+        3, // Enterprise plan
+        futureDate,
+        'active',
+        1, // Default admin assignment
+        'Auto-assigned Enterprise plan for admin/superadmin user'
+      ]);
 
       console.log(`✅ Created Enterprise plan for ${user.username} until ${futureDate.toISOString()}`);
     }
@@ -3893,6 +3888,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         message: "Error al obtener suscripciones de usuarios" 
+      });
+    }
+  });
+
+  // Test admin Enterprise plan assignment
+  app.post("/api/test-admin-enterprise", async (req: Request, res: Response) => {
+    try {
+      const { username } = req.body;
+      
+      if (!username) {
+        return res.status(400).json({
+          success: false,
+          message: "Username is required"
+        });
+      }
+
+      // Get user by username
+      const [user] = await db.select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found"
+        });
+      }
+
+      console.log(`🧪 Testing Enterprise plan assignment for user: ${user.username} (role: ${user.role})`);
+
+      // Apply Enterprise plan assignment
+      await ensureAdminEnterprisePlan(user);
+
+      // Check resulting subscription
+      const subscriptionResult = await pool.query(`
+        SELECT us.*, sp.name as plan_name, sp.description as plan_description
+        FROM user_subscriptions us
+        INNER JOIN subscription_plans sp ON us.plan_id = sp.id
+        WHERE us.user_id = $1 AND us.status = 'active'
+        ORDER BY us.end_date DESC
+        LIMIT 1
+      `, [user.id]);
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role
+        },
+        subscription: subscriptionResult.rows[0] || null,
+        message: "Enterprise plan assignment test completed"
+      });
+
+    } catch (error) {
+      console.error("Error testing admin Enterprise plan:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error testing Enterprise plan assignment"
       });
     }
   });
