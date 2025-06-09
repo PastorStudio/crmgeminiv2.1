@@ -2496,7 +2496,7 @@ app.use((req, res, next) => {
       const { eq, desc } = await import('drizzle-orm');
       
       // Get all users with their subscription plans
-      const { isNull, or } = await import('drizzle-orm');
+      const { and, gte } = await import('drizzle-orm');
       
       const allUsers = await db
         .select({
@@ -2519,34 +2519,20 @@ app.use((req, res, next) => {
         .from(users)
         .leftJoin(
           userSubscriptions, 
-          eq(users.id, userSubscriptions.userId)
+          and(
+            eq(users.id, userSubscriptions.userId),
+            eq(userSubscriptions.status, 'active'),
+            gte(userSubscriptions.endDate, new Date())
+          )
         )
         .leftJoin(
           subscriptionPlans,
           eq(userSubscriptions.planId, subscriptionPlans.id)
         )
-        .where(
-          or(
-            eq(userSubscriptions.status, 'active'),
-            isNull(userSubscriptions.status)
-          )
-        )
         .orderBy(users.id);
 
-      // Process results to handle users with multiple subscriptions
-      const uniqueUsers = allUsers.reduce((acc, user) => {
-        const existingUser = acc.find(u => u.id === user.id);
-        if (!existingUser) {
-          acc.push(user);
-        } else if (user.subscriptionStatus === 'active' && !existingUser.subscriptionStatus) {
-          // Replace with active subscription if current one is null
-          acc[acc.indexOf(existingUser)] = user;
-        }
-        return acc;
-      }, [] as typeof allUsers);
-
-      console.log(`✅ API users - Enviando ${uniqueUsers.length} usuarios con información de planes`);
-      res.json(uniqueUsers);
+      console.log(`✅ API users - Enviando ${allUsers.length} usuarios con información de planes`);
+      res.json(allUsers);
     } catch (error) {
       console.error("❌ API users - Error:", error);
       res.status(500).json({ error: "Error interno del servidor" });
