@@ -83,7 +83,7 @@
     "node-cron": "^4.1.0",
     "node-telegram-bot-api": "^0.66.0",
     "openai": "^4.104.0",
-    "openid-client": "^6.5.0",
+    "openid-client": "^6.5.1",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "playwright": "^1.52.0",
