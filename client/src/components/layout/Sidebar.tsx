@@ -30,8 +30,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       icon: "home",
       items: [
         { href: "/", icon: "dashboard", label: "Dashboard" },
-        { href: "/analytics", icon: "leaderboard", label: "Analytics" },
-        { href: "/database", icon: "storage", label: "Base de Datos" },
+        { href: "/leads", icon: "people", label: "Leads" },
       ]
     },
     {
@@ -46,43 +45,39 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       ]
     },
     {
-      id: "clientes",
-      label: "Clientes",
-      icon: "people",
-      items: [
-        { href: "/leads", icon: "people", label: "Leads" },
-        { href: "/contacts", icon: "contacts", label: "Contactos" },
-        { href: "/customer-support", icon: "support_agent", label: "Soporte" },
-      ]
-    },
-    {
-      id: "gestion",
-      label: "Gestión",
-      icon: "work",
+      id: "planificacion",
+      label: "Planificación",
+      icon: "event_note",
       items: [
         { href: "/calendar", icon: "event", label: "Calendar" },
         { href: "/tasks", icon: "assignment", label: "Tasks" },
-        { href: "/projects", icon: "folder", label: "Proyectos" },
       ]
     },
     {
-      id: "inteligencia",
-      label: "Inteligencia Artificial",
-      icon: "psychology",
+      id: "analisis",
+      label: "Análisis y Recursos",
+      icon: "analytics",
       items: [
+        { href: "/analytics", icon: "leaderboard", label: "Analytics" },
+        { href: "/database", icon: "storage", label: "Base de Datos" },
         { href: "/gemini-demo", icon: "smart_toy", label: "Gemini AI" },
         { href: "/gemini-test", icon: "psychology", label: "IA Test" },
-        { href: "/ai-insights", icon: "insights", label: "AI Insights" },
       ]
     },
     {
-      id: "configuracion",
-      label: "Configuración",
-      icon: "settings",
+      id: "conexion",
+      label: "Conexión",
+      icon: "link",
+      items: [
+        { href: "/integrations", icon: "link", label: "Integraciones" },
+      ]
+    },
+    {
+      id: "administracion",
+      label: "Administración",
+      icon: "admin_panel_settings",
       items: [
         { href: "/settings", icon: "settings", label: "Settings" },
-        { href: "/integrations", icon: "link", label: "Integraciones" },
-        { href: "/admin", icon: "admin_panel_settings", label: "Admin" },
       ]
     }
   ];
