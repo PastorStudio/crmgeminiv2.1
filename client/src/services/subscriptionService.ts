@@ -53,6 +53,8 @@ export class SubscriptionService {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'x-user-id': '3', // Authenticated user ID
         }
       });
       

@@ -199,7 +199,16 @@ export default function UserManagement() {
   const { data: subscriptionPlans } = useQuery({
     queryKey: ['/api/subscription-plans'],
     queryFn: async () => {
-      return await subscriptionService.getAllPlans();
+      const response = await fetch('/api/subscription-plans', {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'x-user-id': '3',
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch plans');
+      const data = await response.json();
+      return data.plans || [];
     }
   });
 
