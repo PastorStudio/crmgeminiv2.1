@@ -1,9 +1,12 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { QueryClient, QueryKey } from '@tanstack/react-query';
+
+let currentUserId = "user123";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    const text = await res.text();
+    console.error(`HTTP ${res.status}: ${text}`);
+    throw new Error(`HTTP ${res.status}: ${text}`);
   }
 }
 
@@ -18,236 +21,60 @@ export async function apiRequest<T = any>(
   options?: RequestOptions
 ): Promise<T> {
   const method = options?.method || 'GET';
-  const body = options?.body ? JSON.stringify(options.body) : undefined;
-  
-  // Get current user ID from localStorage
-  let currentUserId = '3'; // Default to DJP (superadmin)
-  try {
-    const storedUser = localStorage.getItem('auth_user');
-    if (storedUser) {
-      const userData = JSON.parse(storedUser);
-      currentUserId = userData.id?.toString() || '3';
-    }
-  } catch (error) {
-    console.warn('Could not parse stored user data, using default');
-  }
-  
   const headers = {
-    ...(body ? { 'Content-Type': 'application/json' } : {}),
-    'Accept': 'application/json',
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Pragma': 'no-cache',
+    'Content-Type': 'application/json',
     'x-user-id': currentUserId,
     ...options?.headers
   };
 
-  // Use relative URLs for API calls - Vite proxy handles routing
   const finalUrl = url;
     
-  // Add timestamp parameter to avoid cache
   const urlWithTimestamp = finalUrl.includes('?') 
     ? `${finalUrl}&_t=${Date.now()}` 
     : `${finalUrl}?_t=${Date.now()}`;
 
   try {
-    console.log(`🔗 Making API request to: ${urlWithTimestamp}`);
-    console.log(`📋 Headers:`, headers);
-    
     const res = await fetch(urlWithTimestamp, {
       method,
       headers,
-      body,
-      mode: 'cors',
-      credentials: "include",
-      cache: 'no-store'
+      body: options?.body ? JSON.stringify(options.body) : undefined,
+      credentials: "include"
     });
-
-    console.log(`📡 Response status: ${res.status}`);
-    console.log(`📡 Response headers:`, Object.fromEntries(res.headers.entries()));
 
     await throwIfResNotOk(res);
     
     const contentType = res.headers.get('content-type');
-    
-    // Si es una respuesta JSON, procesarla normalmente
-    if (contentType && contentType.includes('application/json')) {
+    if (contentType?.includes('application/json')) {
       return await res.json();
-    } 
+    }
     
-    // Si no es JSON, verificar si es HTML (interceptado por Vite)
     const text = await res.text();
-    if (text.includes('<!DOCTYPE html>')) {
-      console.error('Respuesta HTML detectada (interceptada por Vite):', url);
-      
-      // Para rutas específicas, intentar usar XMLHttpRequest como alternativa
-      if (url.includes('/api/integrations/whatsapp/')) {
-        return await makeXhrRequest<T>(urlWithTimestamp, method, headers, body);
-      }
-      
-      // Devolver objeto con error para que la UI pueda mostrar mensaje adecuado
-      return { 
-        initialized: true, 
-        ready: false, 
-        error: 'Interceptado por Vite - Intenta recargar la página' 
-      } as unknown as T;
-    } else {
-      console.error(`Invalid content type: ${contentType}, url: ${url}`);
-      // Devolver un valor compatible con la estructura esperada para evitar errores
-      return { initialized: true, ready: false, error: 'Formato de respuesta no válido' } as T;
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text as unknown as T;
     }
   } catch (error) {
     console.error(`Error en solicitud API a ${url}:`, error);
-    
-    // For critical endpoints, don't return fallback data - let the error propagate
-    // This ensures the UI shows proper error states instead of empty data
-    
-    // For other endpoints, re-throw the error
     throw error;
   }
 }
 
-// Función auxiliar para usar XMLHttpRequest como alternativa a fetch
-async function makeXhrRequest<TData = any>(
-  url: string, 
-  method: string, 
-  headers: Record<string, string>, 
-  body?: string
-): Promise<TData> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open(method, url, true);
-    
-    // Establecer cabeceras
-    Object.entries(headers).forEach(([key, value]) => {
-      xhr.setRequestHeader(key, value);
-    });
-    
-    xhr.onload = function() {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          // Verificar si la respuesta es HTML
-          if (xhr.responseText.includes('<!DOCTYPE html>')) {
-            console.error('XHR también devolvió HTML:', url);
-            resolve({ 
-              initialized: true, 
-              ready: false, 
-              error: 'Interceptado por Vite - Intenta recargar la página' 
-            } as unknown as T);
-          } else {
-            // Intentar parsear JSON
-            try {
-              const data = JSON.parse(xhr.responseText);
-              resolve(data);
-            } catch (e) {
-              console.error('Error al parsear respuesta JSON:', e);
-              resolve({ 
-                initialized: true, 
-                ready: false, 
-                error: 'Error al procesar respuesta' 
-              } as unknown as T);
-            }
-          }
-        } catch (e) {
-          reject(e);
-        }
-      } else {
-        reject(new Error(`XHR Error - Status: ${xhr.status}`));
-      }
-    };
-    
-    xhr.onerror = function() {
-      reject(new Error('XHR Network Error'));
-    };
-    
-    xhr.send(body);
-  });
-}
-
 type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
+
+export const getQueryFn = ({ on401 }: { on401: UnauthorizedBehavior }) => 
+  async ({ queryKey }: { queryKey: QueryKey }) => {
     const url = queryKey[0] as string;
     
-    // Use port 5000 directly for API calls to bypass Vite proxy
-    const directUrl = url.startsWith('/api/') 
-      ? `http://localhost:5000${url}` 
-      : url;
-      
-    // Añadir parámetro timestamp para evitar caché
-    const urlWithTimestamp = directUrl.includes('?') 
-      ? `${directUrl}&_t=${Date.now()}` 
-      : `${directUrl}?_t=${Date.now()}`;
-      
-    const headers = {
-      'Accept': 'application/json',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'x-user-id': '3' // Default to superadmin for testing
-    };
-    
     try {
-      const res = await fetch(urlWithTimestamp, {
-        credentials: "include",
-        headers,
-        cache: 'no-store'
-      });
-
-      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-        return null;
-      }
-
-      await throwIfResNotOk(res);
-      
-      const contentType = res.headers.get('content-type');
-      
-      // Si es una respuesta JSON, procesarla normalmente
-      if (contentType && contentType.includes('application/json')) {
-        return await res.json();
-      }
-      
-      // Si no es JSON, verificar si es HTML (interceptado por Vite)
-      const text = await res.text();
-      if (text.includes('<!DOCTYPE html>')) {
-        console.error('Respuesta HTML detectada en getQueryFn (interceptada por Vite):', url);
-        
-        // Para rutas específicas, intentar usar XMLHttpRequest como alternativa
-        if (url.includes('/api/integrations/whatsapp/')) {
-          return await makeXhrRequest<T>(urlWithTimestamp, 'GET', headers);
-        }
-        
-        // Devolver objeto con error para que la UI pueda mostrar mensaje adecuado
-        return { 
-          initialized: true, 
-          ready: false, 
-          error: 'Interceptado por Vite - Intenta recargar la página' 
-        } as unknown as T;
-      }
-      
-      try {
-        // Intentar parsear JSON de todas formas
-        return JSON.parse(text);
-      } catch (e) {
-        console.error('Error al parsear respuesta en getQueryFn:', e);
-        return { 
-          initialized: true, 
-          ready: false, 
-          error: 'Error al procesar respuesta' 
-        } as unknown as T;
-      }
+      const result = await apiRequest(url);
+      return result;
     } catch (error) {
-      console.error(`Error en getQueryFn a ${url}:`, error);
-      // Si es una ruta de WhatsApp, intentar con XMLHttpRequest
-      if (url.includes('/api/integrations/whatsapp/')) {
-        try {
-          return await makeXhrRequest<T>(urlWithTimestamp, 'GET', headers);
-        } catch (xhrError) {
-          console.error('Error también en XHR:', xhrError);
+      if (error instanceof Response && error.status === 401) {
+        if (on401 === "returnNull") {
+          return null;
         }
       }
-      
       throw error;
     }
   };
@@ -258,10 +85,8 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      // Configurar staleTime para un mejor rendimiento y menos solicitudes
-      staleTime: 30000, // 30 segundos antes de considerar datos obsoletos
-      // Agregar tiempo de caché para mejorar rendimiento
-      gcTime: 300000, // 5 minutos de caché
+      staleTime: 30000,
+      gcTime: 300000,
       retry: false,
     },
     mutations: {
