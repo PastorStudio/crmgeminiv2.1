@@ -2495,8 +2495,10 @@ app.use((req, res, next) => {
       const { users, userSubscriptions, subscriptionPlans } = await import('@shared/schema');
       const { eq, desc } = await import('drizzle-orm');
       
-      // Get users with their active subscription plans
-      const usersWithPlans = await db
+      // Get all users with their subscription plans
+      const { isNull, or } = await import('drizzle-orm');
+      
+      const allUsers = await db
         .select({
           id: users.id,
           username: users.username,
@@ -2523,44 +2525,25 @@ app.use((req, res, next) => {
           subscriptionPlans,
           eq(userSubscriptions.planId, subscriptionPlans.id)
         )
-        .where(eq(userSubscriptions.status, 'active'))
-        .orderBy(desc(userSubscriptions.createdAt));
+        .where(
+          or(
+            eq(userSubscriptions.status, 'active'),
+            isNull(userSubscriptions.status)
+          )
+        )
+        .orderBy(users.id);
 
-      // Get users without active subscriptions
-      const usersWithoutPlans = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          fullName: users.fullName,
-          email: users.email,
-          role: users.role,
-          status: users.status,
-          department: users.department,
-          avatar: users.avatar,
-          lastActivity: users.lastActivity,
-          totalLogins: users.totalLogins,
-          lastLoginAt: users.lastLoginAt
-        })
-        .from(users)
-        .leftJoin(userSubscriptions, eq(users.id, userSubscriptions.userId))
-        .where(eq(userSubscriptions.userId, null) || eq(userSubscriptions.status, 'cancelled'));
-
-      // Combine results and add default values for users without plans
-      const allUsers = [
-        ...usersWithPlans,
-        ...usersWithoutPlans.map(user => ({
-          ...user,
-          currentPlan: null,
-          currentPlanId: null,
-          subscriptionEndDate: null,
-          subscriptionStatus: null
-        }))
-      ];
-
-      // Remove duplicates (in case a user appears in both queries)
-      const uniqueUsers = allUsers.filter((user, index, array) => 
-        array.findIndex(u => u.id === user.id) === index
-      );
+      // Process results to handle users with multiple subscriptions
+      const uniqueUsers = allUsers.reduce((acc, user) => {
+        const existingUser = acc.find(u => u.id === user.id);
+        if (!existingUser) {
+          acc.push(user);
+        } else if (user.subscriptionStatus === 'active' && !existingUser.subscriptionStatus) {
+          // Replace with active subscription if current one is null
+          acc[acc.indexOf(existingUser)] = user;
+        }
+        return acc;
+      }, [] as typeof allUsers);
 
       console.log(`✅ API users - Enviando ${uniqueUsers.length} usuarios con información de planes`);
       res.json(uniqueUsers);
