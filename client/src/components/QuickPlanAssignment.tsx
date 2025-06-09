@@ -112,30 +112,22 @@ export function QuickPlanAssignment({
 
       return response.json();
     },
-    onSuccess: (data) => {
-      console.log("✅ Plan assignment successful, updating cache...", data);
-      
-      // Invalidate all user-related queries to force refresh
+    onSuccess: () => {
+      // Invalidate multiple cache keys to ensure UI updates
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       queryClient.invalidateQueries({ queryKey: ['/api/user-subscriptions'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/subscription-status'] });
       queryClient.invalidateQueries({ queryKey: ['/api/subscription-plans'] });
       
-      // Force immediate refetch of users data
+      // Force refetch to update UI immediately
       queryClient.refetchQueries({ queryKey: ['/api/users'] });
       
-      // Close dialog and reset state
       setIsOpen(false);
       setSelectedPlanId(null);
       setAdminPassword('');
-      
-      // Trigger parent callback to refresh user list
       onPlanChanged?.();
-      
-      // Show success message
       toast({
         title: "Plan asignado exitosamente",
-        description: `${data.message || `El plan ha sido actualizado para ${userName}`}`,
+        description: `El plan ha sido actualizado para ${userName}`,
       });
     },
     onError: (error: Error) => {

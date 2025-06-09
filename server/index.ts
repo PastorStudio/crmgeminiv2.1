@@ -2570,7 +2570,76 @@ app.use((req, res, next) => {
     }
   });
 
-  // Note: /api/users endpoint is now handled by routes-optimized.ts
+  // Ruta original también funcional
+  app.get('/api/users', async (req, res) => {
+    try {
+      console.log("🔄 API users - Solicitando lista de usuarios con planes de suscripción...");
+      
+      const { users, userSubscriptions, subscriptionPlans } = await import('@shared/schema');
+      const { eq, desc } = await import('drizzle-orm');
+      
+      // Get all users with their subscription plans
+      const { and, gte } = await import('drizzle-orm');
+      
+      // First get all users
+      const allUsersData = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          email: users.email,
+          role: users.role,
+          status: users.status,
+          department: users.department,
+          avatar: users.avatar,
+          lastActivity: users.lastActivity,
+          totalLogins: users.totalLogins,
+          lastLoginAt: users.lastLoginAt
+        })
+        .from(users)
+        .orderBy(users.id);
+
+      // Then get the most recent active subscription for each user
+      const { sql } = await import('drizzle-orm');
+      const userSubscriptionsData = await db.execute(sql`
+        SELECT DISTINCT ON (us.user_id)
+          us.user_id,
+          us.plan_id,
+          us.status,
+          us.end_date,
+          sp.name as plan_name,
+          sp.id as plan_id_actual,
+          CASE 
+            WHEN us.end_date >= NOW() THEN 
+              EXTRACT(DAY FROM us.end_date - NOW())::INTEGER
+            ELSE 0 
+          END as days_remaining
+        FROM user_subscriptions us
+        INNER JOIN subscription_plans sp ON us.plan_id = sp.id
+        WHERE us.status = 'active' AND us.end_date >= NOW()
+        ORDER BY us.user_id, us.created_at DESC
+      `);
+
+      // Combine the data
+      const allUsers = allUsersData.map(user => {
+        const subscription = userSubscriptionsData.rows.find(sub => sub.user_id === user.id);
+        return {
+          ...user,
+          currentPlan: subscription?.plan_name || null,
+          currentPlanId: subscription?.plan_id_actual || null,
+          subscriptionEndDate: subscription?.end_date || null,
+          subscriptionStatus: subscription?.status || null,
+          daysRemaining: subscription?.days_remaining || null
+        };
+      });
+
+      console.log(`✅ API users - Enviando ${allUsers.length} usuarios con información de planes`);
+      res.json(allUsers);
+    } catch (error) {
+      console.error("❌ API users - Error:", error);
+      res.status(500).json({ error: "Error interno del servidor" });
+    }
+  });
 
   // Registrar rutas de WhatsApp API
   app.get('/api/whatsapp/accounts', whatsappAPI.getWhatsAppAccounts);
