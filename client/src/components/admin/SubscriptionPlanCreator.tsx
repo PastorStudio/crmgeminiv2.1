@@ -81,8 +81,16 @@ const SubscriptionPlanCreator: React.FC<{ onPlanCreated?: () => void }> = ({ onP
       const response = await apiRequest('/api/subscription-plans', {
         method: 'POST',
         body: JSON.stringify({
-          ...formData,
-          price: parseFloat(formData.price)
+          name: formData.name,
+          description: formData.description,
+          price: parseFloat(formData.price),
+          currency: formData.currency,
+          duration_days: formData.durationDays,
+          max_users: formData.maxUsers,
+          max_whatsapp_accounts: formData.maxWhatsAppAccounts,
+          max_chats_per_month: formData.maxChatsPerMonth,
+          features: formData.features,
+          is_active: formData.isActive
         })
       });
 
