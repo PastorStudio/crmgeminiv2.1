@@ -19,12 +19,25 @@ export async function apiRequest<T = any>(
 ): Promise<T> {
   const method = options?.method || 'GET';
   const body = options?.body ? JSON.stringify(options.body) : undefined;
+  
+  // Get current user ID from localStorage
+  let currentUserId = '3'; // Default to DJP (superadmin)
+  try {
+    const storedUser = localStorage.getItem('auth_user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      currentUserId = userData.id?.toString() || '3';
+    }
+  } catch (error) {
+    console.warn('Could not parse stored user data, using default');
+  }
+  
   const headers = {
     ...(body ? { 'Content-Type': 'application/json' } : {}),
     'Accept': 'application/json',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
     'Pragma': 'no-cache',
-    'x-user-id': '17', // Default to admin for testing
+    'x-user-id': currentUserId,
     ...options?.headers
   };
 
