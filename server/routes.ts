@@ -503,14 +503,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verificar contraseña del admin actual
+      console.log(`🔐 Verificando credenciales para usuario: ${currentUser.username}`);
+      console.log(`🔐 Contraseña proporcionada: ${password}`);
+      
       const user = await authService.verifyCredentials(currentUser.username, password);
       
       if (!user) {
+        console.log(`❌ Verificación fallida para usuario: ${currentUser.username}`);
         return res.status(401).json({
           success: false,
           message: "Contraseña incorrecta"
         });
       }
+      
+      console.log(`✅ Verificación exitosa para usuario: ${currentUser.username}`);
 
       res.json({
         success: true,

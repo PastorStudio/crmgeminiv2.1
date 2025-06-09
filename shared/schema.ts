@@ -733,7 +733,13 @@ export type UserSubscription = typeof userSubscriptions.$inferSelect;
 export type InsertUserSubscription = typeof insertUserSubscriptionSchema._type;
 export type AiSettings = typeof aiSettings.$inferSelect;
 export type InsertAiSettings = typeof insertAiSettingsSchema._type;
-export type User = typeof users.$inferSelect;
+export type User = typeof users.$inferSelect & {
+  currentPlan?: string | null;
+  currentPlanId?: number | null;
+  daysRemaining?: number | null;
+  subscriptionEndDate?: Date | null;
+  subscriptionStatus?: string | null;
+};
 export type InsertUser = typeof insertUserSchema._type;
 export type ChatAssignment = typeof chatAssignments.$inferSelect;
 export type InsertChatAssignment = typeof insertChatAssignmentSchema._type;
