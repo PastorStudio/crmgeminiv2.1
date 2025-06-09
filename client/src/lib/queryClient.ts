@@ -92,8 +92,8 @@ export async function apiRequest<T = any>(
     }
   } catch (error) {
     console.error(`Error en solicitud API a ${url}:`, error);
-    // Devolver un valor compatible con la estructura esperada para evitar errores
-    return { initialized: true, ready: false, error: 'Error de conexión' } as T;
+    // Re-throw the error instead of returning fallback data
+    throw error;
   }
 }
 

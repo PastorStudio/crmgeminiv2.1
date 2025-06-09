@@ -197,8 +197,18 @@ const WhatsAppAccounts = () => {
   const { data: accountsResponse, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/whatsapp-accounts'],
     queryFn: async () => {
-      return await apiRequest('/api/whatsapp-accounts');
-    }
+      try {
+        const response = await apiRequest('/api/whatsapp-accounts');
+        console.log('📋 WhatsApp accounts response:', response);
+        return response;
+      } catch (error) {
+        console.error('❌ Error fetching WhatsApp accounts:', error);
+        // Return empty accounts array on error instead of throwing
+        return { success: false, accounts: [], error: 'Failed to fetch accounts' };
+      }
+    },
+    retry: 2,
+    refetchOnWindowFocus: false
   });
 
   const accounts = accountsResponse?.accounts || [];
