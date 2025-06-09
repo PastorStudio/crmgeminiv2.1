@@ -37,14 +37,16 @@ export class SubscriptionService {
   }
 
   async getSubscriptionStatus(userId?: number): Promise<SubscriptionStatus> {
-    try {
-      const response = await apiRequest<SubscriptionStatus>('/api/subscription-status');
-      this.subscriptionStatus = response;
-      return response;
-    } catch (error) {
-      console.error('Error getting subscription status:', error);
-      return { hasActivePlan: false };
-    }
+    // SUBSCRIPTION RESTRICTIONS DISABLED - RETURN FULL ACCESS
+    this.subscriptionStatus = {
+      hasActivePlan: true,
+      planName: "Plan Enterprise",
+      planFeatures: ["Acceso completo", "Sin restricciones"],
+      maxWhatsappAccounts: 999,
+      maxUsers: 999,
+      maxChatsPerMonth: 999999
+    };
+    return this.subscriptionStatus;
   }
 
   async getAllPlans(): Promise<SubscriptionPlan[]> {
