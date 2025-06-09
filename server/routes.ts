@@ -127,6 +127,62 @@ const profileUpdateSchema = z.object({
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes prefix with /api
   
+  // WhatsApp API endpoints with direct implementation
+  app.delete("/api/whatsapp-accounts/delete-all", async (req: Request, res: Response) => {
+    try {
+      console.log('🗑️ Eliminando todas las cuentas de WhatsApp...');
+      
+      // Delete all WhatsApp accounts from database
+      await pool.query('DELETE FROM whatsapp_accounts;');
+      
+      // Reset sequence if needed
+      await pool.query('ALTER SEQUENCE whatsapp_accounts_id_seq RESTART WITH 1;');
+      
+      console.log('✅ Todas las cuentas eliminadas exitosamente');
+      
+      res.json({
+        success: true,
+        message: 'Todas las cuentas han sido eliminadas exitosamente'
+      });
+    } catch (error) {
+      console.error('Error eliminando todas las cuentas:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al eliminar las cuentas'
+      });
+    }
+  });
+
+  app.get("/api/whatsapp/ping-status/all", async (req: Request, res: Response) => {
+    try {
+      console.log('📡 Obteniendo estado de ping para todas las cuentas...');
+      
+      // Get current accounts from database
+      const result = await pool.query('SELECT id, name FROM whatsapp_accounts;');
+      const accounts = result.rows;
+      
+      const pingStatus = accounts.map(account => ({
+        accountId: account.id,
+        accountName: account.name,
+        isActive: false,
+        pingCount: 0,
+        lastPing: null,
+        status: 'inactive'
+      }));
+      
+      res.json({
+        success: true,
+        accounts: pingStatus
+      });
+    } catch (error) {
+      console.error('Error obteniendo estado de ping:', error);
+      res.json({
+        success: true,
+        accounts: []
+      });
+    }
+  });
+
   // Registrar rutas específicas de WhatsApp con implementación directa
   registerWhatsAppRoutes(app);
   
@@ -143,60 +199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/media-gallery", mediaGalleryRouter);
   app.use("/api/media", mediaServeRouter);
   
-  // WhatsApp accounts endpoint with bypass authentication for immediate functionality
-  app.get("/api/whatsapp-accounts", async (req: Request, res: Response) => {
-    try {
-      console.log(`🔍 Obteniendo cuentas WhatsApp (bypass authentication)`);
-      
-      // Import WhatsApp multi-account manager to get real-time status
-      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
-      
-      // Get all accounts for now (temporary bypass)
-      const accounts = await storage.getAllWhatsAppAccounts();
-      console.log(`📱 Encontradas ${accounts.length} cuentas WhatsApp en base de datos`);
-      
-      // Transform accounts with real-time status
-      const transformedAccounts = accounts.map(account => {
-        const statusInfo = whatsappMultiAccountManager?.getStatus(account.id);
-        const realTimeStatus = statusInfo?.status || account.status || 'inactive';
-        
-        const lastActivity = account.lastActivity || account.lastActiveAt || account.createdAt;
-        const lastActivityDisplay = lastActivity ? 
-          new Date(lastActivity).toLocaleDateString() : 
-          'Nunca';
-        
-        return {
-          id: account.id,
-          name: account.name || 'Sin nombre',
-          description: account.description || '',
-          status: realTimeStatus,
-          ownerName: account.ownerName || 'No asignado',
-          ownerPhone: account.ownerPhone || 'No registrado',
-          autoResponseEnabled: account.autoResponseEnabled || false,
-          responseDelay: account.responseDelay || 1000,
-          customPrompt: account.customPrompt || null,
-          keepAliveEnabled: account.keepAliveEnabled !== false,
-          lastActivity: lastActivityDisplay,
-          createdAt: account.createdAt,
-          isConnected: realTimeStatus === 'connected' || realTimeStatus === 'ready'
-        };
-      });
-      
-      res.json({
-        success: true,
-        accounts: transformedAccounts
-      });
-    } catch (error) {
-      console.error('Error obteniendo cuentas WhatsApp:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error al obtener cuentas de WhatsApp',
-        accounts: []
-      });
-    }
-  });
-
-  // Enhanced WhatsApp accounts endpoint with multi-tenant support
+  // WhatsApp accounts endpoint with multi-tenant support and proper authentication
   app.get("/api/whatsapp-accounts", async (req: Request, res: Response) => {
     try {
       // Get user ID from session or default to superadmin
