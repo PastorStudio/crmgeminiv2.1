@@ -58,10 +58,8 @@ export async function apiRequest<T = any>(
 
     // Skip authentication check for WhatsApp accounts endpoints
     if (url.includes('/api/whatsapp-accounts') || url.includes('/api/whatsapp/ping-status')) {
-      // For WhatsApp endpoints, proceed without auth validation
-      if (!res.ok) {
-        console.warn(`WhatsApp API endpoint ${url} returned ${res.status}, proceeding anyway`);
-      }
+      // For WhatsApp endpoints, always proceed regardless of status
+      console.log(`WhatsApp endpoint ${url} - Status: ${res.status}`);
     } else {
       await throwIfResNotOk(res);
     }

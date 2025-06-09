@@ -20,7 +20,7 @@ import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
 import { authService } from "./services/authService";
 import { eq, and, ne, not, isNull, sql } from "drizzle-orm";
-import { users, whatsappAccounts, userWhatsappAccounts, chatAssignments, chatCategories, leads, subscriptionPlans, userSubscriptions } from "@shared/schema";
+import { users, whatsappAccounts, userWhatsappAccounts, userAccountAssignments, chatAssignments, chatCategories, leads, subscriptionPlans, userSubscriptions } from "@shared/schema";
 import { pool } from "./db";
 
 import { registerDirectAPIRoutes } from "./services/directApiServer";
@@ -195,12 +195,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Bypass authentication for WhatsApp accounts - temporary fix
+  // Enhanced WhatsApp accounts endpoint with multi-tenant support
   app.get("/api/whatsapp-accounts", async (req: Request, res: Response) => {
     try {
+      // Get user ID from session or default to superadmin
+      let userId = req.session?.userId || req.headers['x-user-id'] || req.query.userId;
+      userId = parseInt(userId as string) || 3; // Default to DJP (superadmin)
+      
+      // Get user info
+      const [user] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          role: users.role,
+        })
+        .from(users)
+        .where(eq(users.id, userId));
+
+      if (!user) {
+        return res.status(401).json({ error: 'Usuario no encontrado' });
+      }
+
       const accounts = await storage.getAllWhatsappAccounts();
       
-      const accountsWithStatus = accounts.map(account => ({
+      // If superadmin or admin, show all accounts
+      // Otherwise, filter by assignments
+      let filteredAccounts = accounts;
+      if (user.role !== 'superadmin' && user.role !== 'admin') {
+        const accountAssignments = await db
+          .select({ whatsappAccountId: userAccountAssignments.whatsappAccountId })
+          .from(userAccountAssignments)
+          .where(
+            and(
+              eq(userAccountAssignments.userId, userId),
+              eq(userAccountAssignments.isActive, true)
+            )
+          );
+        
+        const assignedAccountIds = accountAssignments.map(a => a.whatsappAccountId);
+        filteredAccounts = accounts.filter(account => assignedAccountIds.includes(account.id));
+      }
+      
+      const accountsWithStatus = filteredAccounts.map(account => ({
         ...account,
         authenticated: account.status === 'active',
         ready: account.status === 'active',
