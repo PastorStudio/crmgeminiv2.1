@@ -49,7 +49,6 @@ import {
   Trash2,
   AlertTriangle,
   Zap,
-  RotateCcw,
 } from 'lucide-react';
 import { AgentConfigSection } from '@/components/AgentConfigSection';
 import { AutoResponseConfig } from '@/components/AutoResponseConfig';
@@ -194,35 +193,12 @@ const WhatsAppAccounts = () => {
     enabled: !!accountId
   });
   
-  // Force refresh state
-  const [forceRefresh, setForceRefresh] = useState(0);
-  
   // Consulta para obtener cuentas
   const { data: accountsResponse, isLoading, error, refetch } = useQuery({
-    queryKey: ['/api/whatsapp-accounts', forceRefresh],
+    queryKey: ['/api/whatsapp-accounts'],
     queryFn: async () => {
-      // Force clear any cached responses
-      const timestamp = Date.now();
-      const url = `/api/whatsapp-accounts?_t=${timestamp}`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch accounts');
-      }
-      
-      const data = await response.json();
-      console.log('Fresh accounts data:', data);
-      return data;
-    },
-    staleTime: 0,
-    cacheTime: 0,
-    refetchOnMount: 'always'
+      return await apiRequest('/api/whatsapp-accounts');
+    }
   });
 
   const accounts = accountsResponse?.accounts || [];
@@ -380,26 +356,12 @@ const WhatsAppAccounts = () => {
       });
     },
     onSuccess: () => {
-      // Clear React Query cache completely
-      queryClient.clear();
-      
-      // Clear localStorage
-      localStorage.clear();
-      
-      // Force refresh the accounts query
-      setForceRefresh(prev => prev + 1);
-      
       toast({
         title: 'Todas las cuentas eliminadas',
-        description: 'Sistema limpiado completamente.',
+        description: 'Se han eliminado todas las cuentas y reiniciado el contador de IDs.',
       });
-      
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
       setSelectedAccount(null);
-      
-      // Force a hard refresh after showing the message
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
     },
     onError: () => {
       toast({
@@ -454,21 +416,6 @@ const WhatsAppAccounts = () => {
   // Manejador de envío del formulario
   const onSubmit = (data: z.infer<typeof accountSchema>) => {
     createAccountMutation.mutate(data);
-  };
-
-  // Function to clear all cache and refresh page
-  const clearAllCacheAndRefresh = () => {
-    // Clear React Query cache
-    queryClient.clear();
-    
-    // Clear localStorage
-    localStorage.clear();
-    
-    // Clear sessionStorage
-    sessionStorage.clear();
-    
-    // Force page reload
-    window.location.reload();
   };
   
   // Abrir diálogo para mostrar código QR
@@ -1000,22 +947,6 @@ const WhatsAppAccounts = () => {
         <div className="flex gap-2">
           <Button onClick={() => refetch()} size="sm" variant="outline">
             <RefreshCw className="mr-2 h-4 w-4" /> Actualizar
-          </Button>
-          
-          <Button 
-            onClick={() => {
-              // Force complete cache clear and page reload
-              queryClient.clear();
-              localStorage.clear();
-              sessionStorage.clear();
-              setForceRefresh(prev => prev + 1);
-              window.location.reload();
-            }}
-            size="sm" 
-            variant="outline"
-            className="border-blue-300 text-blue-700 hover:bg-blue-50"
-          >
-            <RotateCcw className="mr-2 h-4 w-4" /> Limpiar Cache
           </Button>
           
           {/* System Cleanup Controls */}

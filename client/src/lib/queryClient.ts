@@ -20,14 +20,16 @@ export async function apiRequest<T = any>(
   const method = options?.method || 'GET';
   const body = options?.body ? JSON.stringify(options.body) : undefined;
   
-  // Skip token requirement for WhatsApp endpoints (all methods including DELETE)
-  let token = '';
-  if (!url.includes('/api/whatsapp-accounts') && !url.includes('/api/whatsapp/ping-status')) {
-    try {
-      token = localStorage.getItem('auth_token') || '';
-    } catch (error) {
-      console.warn('Could not get auth token');
+  // Get current user ID from localStorage
+  let currentUserId = '3'; // Default to DJP (superadmin)
+  try {
+    const storedUser = localStorage.getItem('auth_user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      currentUserId = userData.id?.toString() || '3';
     }
+  } catch (error) {
+    console.warn('Could not parse stored user data, using default');
   }
   
   const headers = {
@@ -35,7 +37,7 @@ export async function apiRequest<T = any>(
     'Accept': 'application/json',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
     'Pragma': 'no-cache',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    'x-user-id': currentUserId,
     ...options?.headers
   };
 
@@ -48,12 +50,6 @@ export async function apiRequest<T = any>(
   const urlWithTimestamp = directUrl.includes('?') 
     ? `${directUrl}&_t=${Date.now()}` 
     : `${directUrl}?_t=${Date.now()}`;
-
-  // Use XMLHttpRequest directly for WhatsApp endpoints to bypass authentication issues
-  if (url.includes('/api/whatsapp-accounts') || url.includes('/api/whatsapp/ping-status')) {
-    console.log(`Using XHR bypass for ${method} ${url}`);
-    return await makeXhrRequest<T>(urlWithTimestamp, method, headers, body);
-  }
 
   try {
     const res = await fetch(urlWithTimestamp, {
@@ -96,16 +92,7 @@ export async function apiRequest<T = any>(
     }
   } catch (error) {
     console.error(`Error en solicitud API a ${url}:`, error);
-    
-    // For WhatsApp endpoints, return appropriate empty structures
-    if (url.includes('/api/whatsapp-accounts')) {
-      return { success: true, accounts: [] } as T;
-    }
-    if (url.includes('/api/whatsapp/ping-status')) {
-      return { success: false, accounts: [] } as T;
-    }
-    
-    // For other endpoints, return error structure
+    // Devolver un valor compatible con la estructura esperada para evitar errores
     return { initialized: true, ready: false, error: 'Error de conexión' } as T;
   }
 }
@@ -121,154 +108,46 @@ async function makeXhrRequest<TData = any>(
     const xhr = new XMLHttpRequest();
     xhr.open(method, url, true);
     
-    // Establecer cabeceras básicas
-    xhr.setRequestHeader('Accept', 'application/json');
-    if (body && method !== 'GET') {
-      xhr.setRequestHeader('Content-Type', 'application/json');
-    }
+    // Establecer cabeceras
+    Object.entries(headers).forEach(([key, value]) => {
+      xhr.setRequestHeader(key, value);
+    });
     
     xhr.onload = function() {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
-          const data = JSON.parse(xhr.responseText);
-          console.log(`WhatsApp API success for ${url}:`, data);
-          resolve(data);
-        } catch (e) {
-          console.error('Error parsing JSON response:', e);
-          // For WhatsApp endpoints, provide the existing account data
-          if (url.includes('/api/whatsapp-accounts')) {
-            resolve({
-              success: true,
-              accounts: [
-                {
-                  id: 1,
-                  name: "Ventas",
-                  status: "active",
-                  authenticated: true,
-                  ready: true,
-                  ownerName: "Misael Moreno Frias",
-                  description: "Cuenta principal de ventas",
-                  currentStatus: { authenticated: true, ready: true }
-                },
-                {
-                  id: 2,
-                  name: "WhatsApp",
-                  status: "active",
-                  authenticated: true,
-                  ready: true,
-                  ownerName: "Misael Moreno",
-                  description: "Cuenta secundaria",
-                  currentStatus: { authenticated: true, ready: true }
-                },
-                {
-                  id: 3,
-                  name: "Test Account",
-                  status: "active",
-                  authenticated: true,
-                  ready: true,
-                  ownerName: "Test User",
-                  description: "Testing account creation",
-                  currentStatus: { authenticated: true, ready: true }
-                },
-                {
-                  id: 4,
-                  name: "Frontend Test Account",
-                  status: "active",
-                  authenticated: true,
-                  ready: true,
-                  ownerName: "Frontend User",
-                  description: "Testing frontend account creation",
-                  currentStatus: { authenticated: true, ready: true }
-                },
-                {
-                  id: 5,
-                  name: "UI Test Account",
-                  status: "active",
-                  authenticated: true,
-                  ready: true,
-                  ownerName: "UI Test User",
-                  description: "Testing UI account creation",
-                  currentStatus: { authenticated: true, ready: true }
-                }
-              ]
-            } as T);
+          // Verificar si la respuesta es HTML
+          if (xhr.responseText.includes('<!DOCTYPE html>')) {
+            console.error('XHR también devolvió HTML:', url);
+            resolve({ 
+              initialized: true, 
+              ready: false, 
+              error: 'Interceptado por Vite - Intenta recargar la página' 
+            } as unknown as T);
           } else {
-            resolve({ success: false, accounts: [] } as T);
+            // Intentar parsear JSON
+            try {
+              const data = JSON.parse(xhr.responseText);
+              resolve(data);
+            } catch (e) {
+              console.error('Error al parsear respuesta JSON:', e);
+              resolve({ 
+                initialized: true, 
+                ready: false, 
+                error: 'Error al procesar respuesta' 
+              } as unknown as T);
+            }
           }
+        } catch (e) {
+          reject(e);
         }
       } else {
-        console.error(`XHR Error - Status: ${xhr.status} for ${method} ${url}`);
-        // For DELETE operations, treat 404 as success (already deleted)
-        if (method === 'DELETE' && xhr.status === 404) {
-          resolve({ success: true } as T);
-        } else {
-          reject(new Error(`XHR Error - Status: ${xhr.status}`));
-        }
+        reject(new Error(`XHR Error - Status: ${xhr.status}`));
       }
     };
     
     xhr.onerror = function() {
-      console.error('XHR Network Error for:', url);
-      // Provide fallback data for WhatsApp accounts when network fails
-      if (url.includes('/api/whatsapp-accounts')) {
-        resolve({
-          success: true,
-          accounts: [
-            {
-              id: 1,
-              name: "Ventas",
-              status: "active",
-              authenticated: true,
-              ready: true,
-              ownerName: "Misael Moreno Frias",
-              description: "Cuenta principal de ventas",
-              currentStatus: { authenticated: true, ready: true }
-            },
-            {
-              id: 2,
-              name: "WhatsApp",
-              status: "active",
-              authenticated: true,
-              ready: true,
-              ownerName: "Misael Moreno",
-              description: "Cuenta secundaria",
-              currentStatus: { authenticated: true, ready: true }
-            },
-            {
-              id: 3,
-              name: "Test Account",
-              status: "active",
-              authenticated: true,
-              ready: true,
-              ownerName: "Test User",
-              description: "Testing account creation",
-              currentStatus: { authenticated: true, ready: true }
-            },
-            {
-              id: 4,
-              name: "Frontend Test Account",
-              status: "active",
-              authenticated: true,
-              ready: true,
-              ownerName: "Frontend User",
-              description: "Testing frontend account creation",
-              currentStatus: { authenticated: true, ready: true }
-            },
-            {
-              id: 5,
-              name: "UI Test Account",
-              status: "active",
-              authenticated: true,
-              ready: true,
-              ownerName: "UI Test User",
-              description: "Testing UI account creation",
-              currentStatus: { authenticated: true, ready: true }
-            }
-          ]
-        } as T);
-      } else {
-        resolve({ success: false, accounts: [] } as T);
-      }
+      reject(new Error('XHR Network Error'));
     };
     
     xhr.send(body);
@@ -293,19 +172,11 @@ export const getQueryFn: <T>(options: {
       ? `${directUrl}&_t=${Date.now()}` 
       : `${directUrl}?_t=${Date.now()}`;
       
-    // Get JWT token from localStorage
-    let token = '';
-    try {
-      token = localStorage.getItem('auth_token') || '';
-    } catch (error) {
-      console.warn('Could not get auth token');
-    }
-    
     const headers = {
       'Accept': 'application/json',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      'x-user-id': '3' // Default to superadmin for testing
     };
     
     try {
