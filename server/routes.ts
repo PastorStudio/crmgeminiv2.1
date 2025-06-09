@@ -3969,73 +3969,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Ensure admin and superadmin users have Enterprise plan
       await ensureAdminEnterprisePlan(req.user);
 
-      // Get user's active subscription
-      const [subscription] = await db.select({
-        id: userSubscriptions.id,
-        userId: userSubscriptions.userId,
-        planId: userSubscriptions.planId,
-        startDate: userSubscriptions.startDate,
-        endDate: userSubscriptions.endDate,
-        status: userSubscriptions.status,
-        autoRenewal: userSubscriptions.autoRenewal,
-        notes: userSubscriptions.notes,
-        planName: subscriptionPlans.name,
-        planDescription: subscriptionPlans.description,
-        planPrice: subscriptionPlans.price,
-        planCurrency: subscriptionPlans.currency,
-        planDurationDays: subscriptionPlans.durationDays,
-        planFeatures: subscriptionPlans.features,
-        maxUsers: subscriptionPlans.maxUsers,
-        maxWhatsappAccounts: subscriptionPlans.maxWhatsappAccounts,
-        maxChatsPerMonth: subscriptionPlans.maxChatsPerMonth
-      })
-      .from(userSubscriptions)
-      .innerJoin(subscriptionPlans, eq(userSubscriptions.planId, subscriptionPlans.id))
-      .where(and(
-        eq(userSubscriptions.userId, userId),
-        eq(userSubscriptions.status, 'active')
-      ))
-      .orderBy(userSubscriptions.endDate)
-      .limit(1);
+      // Get user's active subscription using raw SQL
+      const subscriptionResult = await pool.query(`
+        SELECT 
+          us.id, us.user_id, us.plan_id, us.start_date, us.end_date, 
+          us.status, us.auto_renewal, us.notes,
+          sp.name as plan_name, sp.description as plan_description, 
+          sp.price as plan_price, sp.currency as plan_currency,
+          sp.duration_days as plan_duration_days, sp.features as plan_features,
+          sp.max_users, sp.max_whatsapp_accounts, sp.max_chats_per_month
+        FROM user_subscriptions us
+        INNER JOIN subscription_plans sp ON us.plan_id = sp.id
+        WHERE us.user_id = $1 AND us.status = 'active'
+        ORDER BY us.end_date DESC
+        LIMIT 1
+      `, [userId]);
 
-      if (!subscription) {
+      if (subscriptionResult.rows.length === 0) {
         return res.json({
-          success: true,
-          hasActiveSubscription: false,
-          subscription: null,
-          message: "No hay suscripción activa"
+          hasActivePlan: false
         });
       }
 
+      const subscription = subscriptionResult.rows[0];
       const now = new Date();
-      const isExpired = subscription.endDate < now;
-      const daysRemaining = Math.ceil((subscription.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const isExpired = new Date(subscription.end_date) < now;
+      const daysRemaining = Math.ceil((new Date(subscription.end_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
+      // Return the format expected by the frontend
       res.json({
-        success: true,
-        hasActiveSubscription: !isExpired,
-        subscription: {
-          id: subscription.id,
-          planId: subscription.planId,
-          startDate: subscription.startDate,
-          endDate: subscription.endDate,
-          status: subscription.status,
-          autoRenewal: subscription.autoRenewal,
-          notes: subscription.notes,
-          daysRemaining: Math.max(0, daysRemaining),
-          isExpired,
-          plan: {
-            name: subscription.planName,
-            description: subscription.planDescription,
-            price: subscription.planPrice,
-            currency: subscription.planCurrency,
-            durationDays: subscription.planDurationDays,
-            features: subscription.planFeatures,
-            maxUsers: subscription.maxUsers,
-            maxWhatsappAccounts: subscription.maxWhatsappAccounts,
-            maxChatsPerMonth: subscription.maxChatsPerMonth
-          }
-        }
+        hasActivePlan: !isExpired,
+        planName: subscription.plan_name,
+        planFeatures: Array.isArray(subscription.plan_features) ? subscription.plan_features : JSON.parse(subscription.plan_features || '[]'),
+        maxWhatsappAccounts: subscription.max_whatsapp_accounts || 1,
+        maxUsers: subscription.max_users || 1,
+        maxChatsPerMonth: subscription.max_chats_per_month || 1000,
+        expiresAt: subscription.end_date,
+        daysRemaining: Math.max(0, daysRemaining)
       });
 
     } catch (error) {
