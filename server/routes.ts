@@ -464,12 +464,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/verify-admin", async (req: Request, res: Response) => {
     try {
       const { password } = req.body;
-      const currentUser = (req as any).user;
+      const authHeader = req.headers.authorization;
 
       if (!password) {
         return res.status(400).json({
           success: false,
           message: "Contraseña requerida"
+        });
+      }
+
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+          success: false,
+          message: "Token de autenticación requerido"
+        });
+      }
+
+      // Extraer y verificar el token
+      const token = authHeader.substring(7);
+      let currentUser;
+
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
+        currentUser = decoded;
+      } catch (jwtError) {
+        return res.status(401).json({
+          success: false,
+          message: "Token inválido"
         });
       }
 
