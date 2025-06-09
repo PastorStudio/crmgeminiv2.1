@@ -28,6 +28,7 @@ import RawQrViewer from './pages/RawQrViewer';
 import Login from './pages/Login';
 import UserManagement from './pages/UserManagement';
 import WhatsAppAccounts from './pages/WhatsAppAccounts';
+import WhatsAppAccountsSimple from './pages/WhatsAppAccountsSimple';
 import ChatAssignments from './pages/ChatAssignments';
 import Profile from './pages/Profile';
 import WhatsAppManager from './pages/WhatsAppManager';
@@ -689,7 +690,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/ultra-whatsapp" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><UltraSimpleChat /></ProtectedRoute>} path="/ultra-whatsapp" />} />
                 {/* Ruta de demostración eliminada - solo chats reales */}
                 <Route path="/users" component={() => <PrivateRoute component={UserManagement} path="/users" />} />
-                <Route path="/whatsapp-accounts" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppAccounts /></ProtectedRoute>} path="/whatsapp-accounts" />} />
+                <Route path="/whatsapp-accounts" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppAccountsSimple /></ProtectedRoute>} path="/whatsapp-accounts" />} />
                 <Route path="/whatsapp-auth" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppAuth /></ProtectedRoute>} path="/whatsapp-auth" />} />
                 <Route path="/whatsapp-connection" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppConnection /></ProtectedRoute>} path="/whatsapp-connection" />} />
                 <Route path="/agent-monitoring" component={() => <PrivateRoute component={AgentMonitoring} path="/agent-monitoring" />} />
