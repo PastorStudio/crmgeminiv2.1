@@ -6,14 +6,13 @@ import { databaseAdapter } from "./databaseAdapter";
 import { 
   insertUserSchema, 
   insertLeadSchema, 
-  insertActivitySchema, 
-  insertMessageSchema, 
-  insertSurveySchema,
-  insertDashboardStatsSchema,
+  insertTicketSchema,
   userSubscriptions,
-  subscriptionPlans
+  subscriptionPlans,
+  users,
+  demoUsers
 } from "@shared/schema";
-import { eq, and, gte } from 'drizzle-orm';
+import { eq, and, gte, desc } from 'drizzle-orm';
 import { db } from './db';
 import { z } from "zod";
 import { geminiLeadOrganizer } from "./services/geminiLeadOrganizer";
@@ -1775,6 +1774,118 @@ export function registerOptimizedRoutes(app: Express): Server {
       res.status(500).json({
         success: false,
         message: "Error al crear suscripción"
+      });
+    }
+  });
+
+  // Demo Management API endpoints
+  app.get("/api/direct/demo/list", async (_req: Request, res: Response) => {
+    try {
+      const demos = await db.select().from(demoUsers).orderBy(desc(demoUsers.createdAt));
+      
+      const enrichedDemos = demos.map(demo => {
+        const now = new Date();
+        const expirationDate = new Date(demo.expiresAt);
+        const timeDiff = expirationDate.getTime() - now.getTime();
+        const daysRemaining = Math.max(0, Math.ceil(timeDiff / (1000 * 3600 * 24)));
+        const isExpired = now > expirationDate;
+
+        return {
+          ...demo,
+          daysRemaining,
+          isExpired,
+          loginCount: demo.loginCount || 0
+        };
+      });
+
+      res.json({
+        success: true,
+        demos: enrichedDemos
+      });
+    } catch (error) {
+      console.error('Error fetching demos:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al cargar demos'
+      });
+    }
+  });
+
+  app.post("/api/direct/demo/convert/:id", async (req: Request, res: Response) => {
+    try {
+      const demoId = parseInt(req.params.id);
+      const { planId, fullName, email } = req.body;
+
+      // Get demo user
+      const [demo] = await db.select().from(demoUsers).where(eq(demoUsers.id, demoId));
+      if (!demo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Demo no encontrado'
+        });
+      }
+
+      // Create full user account
+      const [newUser] = await db.insert(users).values({
+        username: demo.username,
+        password: demo.password,
+        fullName: fullName || demo.customerName,
+        email: email || `${demo.username}@demo.com`,
+        role: 'agent'
+      }).returning();
+
+      // If plan specified, create subscription
+      if (planId) {
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 30); // Default 30 days
+
+        await db.insert(userSubscriptions).values({
+          userId: newUser.id,
+          planId: parseInt(planId),
+          endDate
+        });
+      }
+
+      // Update demo status
+      await db.update(demoUsers)
+        .set({
+          status: 'converted',
+          convertedToUserId: newUser.id,
+          convertedAt: new Date()
+        })
+        .where(eq(demoUsers.id, demoId));
+
+      res.json({
+        success: true,
+        message: 'Demo convertido exitosamente',
+        user: newUser
+      });
+    } catch (error) {
+      console.error('Error converting demo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al convertir demo'
+      });
+    }
+  });
+
+  app.delete("/api/direct/demo/:id", async (req: Request, res: Response) => {
+    try {
+      const demoId = parseInt(req.params.id);
+      
+      await db.update(demoUsers)
+        .set({ status: 'cancelled' })
+        .where(eq(demoUsers.id, demoId));
+
+      res.json({
+        success: true,
+        message: 'Demo cancelado exitosamente'
+      });
+    } catch (error) {
+      console.error('Error deleting demo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al cancelar demo'
       });
     }
   });
