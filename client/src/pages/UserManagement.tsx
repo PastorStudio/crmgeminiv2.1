@@ -348,7 +348,9 @@ export default function UserManagement() {
         const subscriptionResponse = await fetch('/api/user-subscriptions', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'x-user-id': '3'
           },
           body: JSON.stringify(subscriptionData)
         });
@@ -418,7 +420,9 @@ export default function UserManagement() {
           const subscriptionResponse = await fetch('/api/user-subscriptions', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'x-user-id': '3'
             },
             body: JSON.stringify(subscriptionData)
           });
