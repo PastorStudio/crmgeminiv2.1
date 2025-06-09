@@ -157,28 +157,23 @@ export class SubscriptionService {
   }
 
   hasAccess(feature: string): boolean {
-    if (!this.subscriptionStatus?.hasActivePlan) {
-      return false;
-    }
-
-    const features = this.subscriptionStatus.planFeatures || [];
-    return features.some(f => f.toLowerCase().includes(feature.toLowerCase()));
+    return true; // UNRESTRICTED ACCESS
   }
 
   canAccessWhatsApp(): boolean {
-    return this.subscriptionStatus?.hasActivePlan || false;
+    return true; // UNRESTRICTED ACCESS
   }
 
   canAccessMessaging(): boolean {
-    return this.subscriptionStatus?.hasActivePlan || false;
+    return true; // UNRESTRICTED ACCESS
   }
 
   getMaxWhatsAppAccounts(): number {
-    return this.subscriptionStatus?.maxWhatsappAccounts || 0;
+    return 999; // UNLIMITED
   }
 
   getMaxUsers(): number {
-    return this.subscriptionStatus?.maxUsers || 0;
+    return 999; // UNLIMITED
   }
 
   isExpiringSoon(): boolean {
