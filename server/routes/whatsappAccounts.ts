@@ -12,31 +12,52 @@ const router = Router();
 // Obtener todas las cuentas de WhatsApp
 router.get('/', async (req, res) => {
   try {
+    console.log('📋 GET /api/whatsapp-accounts - Obteniendo cuentas');
+    
+    // Set proper headers
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Content-Type', 'application/json');
+    
     const accounts = await storage.getAllWhatsappAccounts();
+    console.log(`✅ Cuentas encontradas: ${accounts.length}`);
     
     // Obtener el estado actual de cada cuenta desde el administrador de múltiples cuentas
     const accountsWithStatus = accounts.map(account => {
-      const statusInfo = whatsappMultiAccountManager.getStatus(account.id);
-      // Assume connection is active if account exists and has been configured
-      const isActive = account.autoResponseEnabled || account.status === 'active';
-      return {
-        ...account,
-        authenticated: isActive,
-        ready: isActive,
-        status: isActive ? 'active' : 'inactive',
-        currentStatus: statusInfo || { authenticated: isActive, ready: isActive }
-      };
+      try {
+        const statusInfo = whatsappMultiAccountManager.getStatus(account.id);
+        // Assume connection is active if account exists and has been configured
+        const isActive = account.autoResponseEnabled || account.status === 'active';
+        return {
+          ...account,
+          authenticated: isActive,
+          ready: isActive,
+          status: isActive ? 'active' : 'inactive',
+          currentStatus: statusInfo || { authenticated: isActive, ready: isActive }
+        };
+      } catch (error) {
+        console.warn(`⚠️ Error obteniendo estado de cuenta ${account.id}:`, error);
+        return {
+          ...account,
+          authenticated: false,
+          ready: false,
+          status: 'inactive',
+          currentStatus: { authenticated: false, ready: false }
+        };
+      }
     });
+    
+    console.log(`✅ Enviando ${accountsWithStatus.length} cuentas con estado`);
     
     res.json({
       success: true,
       accounts: accountsWithStatus
     });
   } catch (error) {
-    console.error('Error al obtener cuentas de WhatsApp:', error);
+    console.error('❌ Error al obtener cuentas de WhatsApp:', error);
     res.status(500).json({ 
       success: false,
       error: 'Error al obtener cuentas de WhatsApp',
+      details: error instanceof Error ? error.message : 'Error desconocido',
       accounts: [] // Always provide empty array as fallback
     });
   }
@@ -83,9 +104,12 @@ const accountSchema = z.object({
 // Crear una nueva cuenta de WhatsApp
 router.post('/', async (req, res) => {
   try {
+    console.log('🆕 Creando nueva cuenta de WhatsApp:', req.body);
+    
     // Validar datos de entrada
     const validation = accountSchema.safeParse(req.body);
     if (!validation.success) {
+      console.error('❌ Datos inválidos:', validation.error.format());
       return res.status(400).json({ 
         error: 'Datos inválidos', 
         details: validation.error.format() 
@@ -103,13 +127,32 @@ router.post('/', async (req, res) => {
       autoResponseEnabled: validation.data.autoResponseEnabled || false,
       responseDelay: validation.data.responseDelay || 3,
       status: 'inactive',
-      sessionData: null
+      sessionData: null,
+      organizationId: 1 // Default organization
     });
     
-    res.status(201).json(newAccount);
+    console.log('✅ Cuenta creada exitosamente:', newAccount);
+    
+    // Inicializar la cuenta en el manager de WhatsApp
+    try {
+      const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+      await whatsappMultiAccountManager.initializeAccount(newAccount.id);
+      console.log(`🔄 Cuenta ${newAccount.id} inicializada en WhatsApp manager`);
+    } catch (initError) {
+      console.warn('⚠️ Error inicializando cuenta en WhatsApp manager:', initError);
+    }
+    
+    res.status(201).json({
+      success: true,
+      account: newAccount
+    });
   } catch (error) {
-    console.error('Error al crear cuenta de WhatsApp:', error);
-    res.status(500).json({ error: 'Error al crear cuenta de WhatsApp' });
+    console.error('❌ Error al crear cuenta de WhatsApp:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Error al crear cuenta de WhatsApp',
+      details: error instanceof Error ? error.message : 'Error desconocido'
+    });
   }
 });
 

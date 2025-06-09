@@ -244,25 +244,29 @@ const WhatsAppAccounts = () => {
       });
     },
     onSuccess: (data) => {
+      console.log('✅ Account creation response:', data);
+      
       toast({
         title: 'Cuenta creada',
         description: 'La cuenta de WhatsApp se ha creado correctamente.',
         variant: 'default',
       });
       
+      // Handle response structure {success: true, account: {...}}
+      const account = data?.account || data;
+      
       // Guardar el ID de la cuenta recién creada para mostrar automáticamente el QR
-      if (data && data.id) {
-        setNewlyCreatedAccountId(data.id);
+      if (account && account.id) {
+        console.log('🆕 Setting newly created account:', account.id);
+        setNewlyCreatedAccountId(account.id);
         
-        // Usar directamente los datos devueltos por la API en lugar de buscar en accounts
-        setSelectedAccount(data);
+        // Usar directamente los datos devueltos por la API
+        setSelectedAccount(account);
         setQrDialogOpen(true);
-        
-        // También refrescar las cuentas para actualizar la lista
-        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
-      } else {
-        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
       }
+      
+      // Always refresh the accounts list
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
       
       setAddDialogOpen(false);
       form.reset();
