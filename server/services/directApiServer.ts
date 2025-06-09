@@ -131,35 +131,23 @@ export function registerDirectAPIRoutes(app: Express): void {
   // Ruta para forzar conexión real de WhatsApp
   app.post('/api/direct/whatsapp/force-real-auth', async (req, res) => {
     try {
-      console.log('🔄 Checking for existing WhatsApp accounts...');
-      
-      const existingAccounts = await storage.getAllWhatsappAccounts();
-      
-      if (existingAccounts.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'No WhatsApp accounts found. Please create an account first.'
-        });
-      }
-      
-      const accountId = existingAccounts[0].id;
-      console.log(`🔄 Forzando autenticación real para cuenta ${accountId}...`);
+      console.log('🔄 Forzando autenticación real de WhatsApp...');
       
       // Force initialize with real authentication
-      await whatsappMultiAccountManager.initializeAccount(accountId);
+      await whatsappMultiAccountManager.initializeAccount(1);
       
       // Force QR generation for real connection
-      const qrResult = await whatsappMultiAccountManager.forceRefreshQR(accountId);
+      const qrResult = await whatsappMultiAccountManager.forceRefreshQR(1);
       
       // Activate aggressive keep-alive
-      whatsappMultiAccountManager.activateKeepAlive(accountId);
+      whatsappMultiAccountManager.activateKeepAlive(1);
       
-      const instance = whatsappMultiAccountManager.getInstance(accountId);
+      const instance = whatsappMultiAccountManager.getInstance(1);
       const status = instance ? instance.status : { authenticated: false, ready: false };
       
       res.json({ 
         success: true,
-        message: `Sistema configurado para datos reales - Cuenta ${accountId}`,
+        message: 'Sistema configurado para datos reales',
         status,
         qrGenerated: qrResult
       });
@@ -209,21 +197,10 @@ export function registerDirectAPIRoutes(app: Express): void {
   // Endpoint para obtener chats
   app.get('/api/direct/whatsapp/chats', async (req, res) => {
     try {
-      console.log('🔄 API directa: Checking for existing WhatsApp accounts...');
-      
-      const existingAccounts = await storage.getAllWhatsappAccounts();
-      
-      if (existingAccounts.length === 0) {
-        console.log('📭 No WhatsApp accounts found');
-        res.json([]);
-        return;
-      }
-      
-      const accountId = existingAccounts[0].id;
-      console.log(`🔄 API directa: Obteniendo chats desde cuenta ${accountId}...`);
+      console.log('🔄 API directa: Obteniendo chats desde WhatsApp...');
       
       // Verificar autenticación real de WhatsApp
-      const instance = whatsappMultiAccountManager.getInstance(accountId);
+      const instance = whatsappMultiAccountManager.getInstance(1);
       if (instance && instance.client && instance.status.authenticated && instance.status.ready) {
         try {
           console.log('🔄 Obteniendo datos auténticos de WhatsApp...');
@@ -237,7 +214,7 @@ export function registerDirectAPIRoutes(app: Express): void {
               timestamp: chat.timestamp || Date.now() / 1000,
               unreadCount: chat.unreadCount || 0,
               lastMessage: chat.lastMessage?.body || '',
-              accountId: accountId
+              accountId: 1
             }));
             console.log(`✅ DATOS REALES: ${processedChats.length} chats auténticos de WhatsApp`);
             res.json(processedChats);
@@ -252,9 +229,9 @@ export function registerDirectAPIRoutes(app: Express): void {
       
       // Verificar si necesita inicialización o reconexión
       if (instance && !instance.status.authenticated) {
-        console.log(`🔄 Intentando reconexión automática para cuenta ${accountId}...`);
+        console.log('🔄 Intentando reconexión automática...');
         try {
-          await whatsappMultiAccountManager.initializeAccount(accountId);
+          await whatsappMultiAccountManager.initializeAccount(1);
         } catch (error) {
           console.log('❌ Error en reconexión:', error);
         }

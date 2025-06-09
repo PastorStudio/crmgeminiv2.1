@@ -726,13 +726,27 @@ export class DatabaseStorage implements IStorage {
 
   async initializeData(): Promise<void> {
     try {
-      // System is now ready for manual WhatsApp account creation
+      // Initialize basic data if needed
       const existingAccounts = await this.getWhatsAppAccounts();
-      console.log(`📊 System initialized with ${existingAccounts.length} existing WhatsApp accounts`);
-      
-      // No automatic account creation - users must create accounts manually
       if (existingAccounts.length === 0) {
-        console.log('📭 No WhatsApp accounts found - system ready for manual account creation');
+        // Create a default WhatsApp account for testing
+        await this.createWhatsAppAccount({
+          name: 'Demo WhatsApp',
+          description: 'Cuenta de demostración',
+          ownerName: 'Sistema Demo',
+          ownerPhone: '+1234567890',
+          status: 'disconnected',
+          adminId: 1,
+          autoResponseEnabled: false,
+          responseDelay: 1000
+        });
+      }
+      
+      // Asegurar que la cuenta 1 tenga asignado el agente Smartplanner IA permanentemente
+      const account1 = await this.getWhatsappAccount(1);
+      if (account1 && account1.assignedExternalAgentId !== '3') {
+        await this.setWhatsappAgentConfig(1, '3', true);
+        console.log('🔧 Asignación persistente restaurada: Cuenta 1 -> Smartplanner IA (ID: 3)');
       }
     } catch (error) {
       console.error('Error initializing data:', error);

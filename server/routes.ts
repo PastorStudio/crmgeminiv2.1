@@ -20,7 +20,7 @@ import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
 import { authService } from "./services/authService";
 import { eq, and, ne, not, isNull, sql } from "drizzle-orm";
-import { users, whatsappAccounts, userWhatsappAccounts, userAccountAssignments, chatAssignments, chatCategories, leads, subscriptionPlans, userSubscriptions } from "@shared/schema";
+import { users, whatsappAccounts, userWhatsappAccounts, chatAssignments, chatCategories, leads, subscriptionPlans, userSubscriptions } from "@shared/schema";
 import { pool } from "./db";
 
 import { registerDirectAPIRoutes } from "./services/directApiServer";
@@ -39,7 +39,6 @@ import { registerTemplateVariablesRoutes } from "./services/templateVariablesRou
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import chatAssignmentsRouter from "./routes/chatAssignments";
 import ticketsRouter from "./routes/tickets";
-import cleanupRouter from "./routes/cleanup";
 // Referencias de APIs corregidas removidas para optimización
 import { translateText, detectLanguage } from "./routes/translation";
 // Referencias de problemas corregidos removidas para optimización
@@ -127,92 +126,6 @@ const profileUpdateSchema = z.object({
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes prefix with /api
   
-  // WhatsApp API endpoints with direct implementation
-  app.delete("/api/whatsapp-accounts/delete-all", async (req: Request, res: Response) => {
-    try {
-      console.log('🗑️ Eliminando todas las cuentas de WhatsApp...');
-      
-      // Delete all WhatsApp accounts from database
-      await pool.query('DELETE FROM whatsapp_accounts;');
-      
-      // Reset sequence if needed
-      await pool.query('ALTER SEQUENCE whatsapp_accounts_id_seq RESTART WITH 1;');
-      
-      console.log('✅ Todas las cuentas eliminadas exitosamente');
-      
-      res.json({
-        success: true,
-        message: 'Todas las cuentas han sido eliminadas exitosamente'
-      });
-    } catch (error) {
-      console.error('Error eliminando todas las cuentas:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error al eliminar las cuentas'
-      });
-    }
-  });
-
-  app.delete("/api/whatsapp-accounts/:id", async (req: Request, res: Response) => {
-    try {
-      const accountId = parseInt(req.params.id);
-      console.log(`🗑️ Eliminando cuenta WhatsApp ID: ${accountId}`);
-      
-      // Delete specific WhatsApp account from database
-      const result = await pool.query('DELETE FROM whatsapp_accounts WHERE id = $1;', [accountId]);
-      
-      if (result.rowCount === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'Cuenta no encontrada'
-        });
-      }
-      
-      console.log(`✅ Cuenta ${accountId} eliminada exitosamente`);
-      
-      res.json({
-        success: true,
-        message: `Cuenta ${accountId} eliminada exitosamente`
-      });
-    } catch (error) {
-      console.error('Error eliminando cuenta:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error al eliminar la cuenta'
-      });
-    }
-  });
-
-  app.get("/api/whatsapp/ping-status/all", async (req: Request, res: Response) => {
-    try {
-      console.log('📡 Obteniendo estado de ping para todas las cuentas...');
-      
-      // Get current accounts from database
-      const result = await pool.query('SELECT id, name FROM whatsapp_accounts;');
-      const accounts = result.rows;
-      
-      const pingStatus = accounts.map(account => ({
-        accountId: account.id,
-        accountName: account.name,
-        isActive: false,
-        pingCount: 0,
-        lastPing: null,
-        status: 'inactive'
-      }));
-      
-      res.json({
-        success: true,
-        accounts: pingStatus
-      });
-    } catch (error) {
-      console.error('Error obteniendo estado de ping:', error);
-      res.json({
-        success: true,
-        accounts: []
-      });
-    }
-  });
-
   // Registrar rutas específicas de WhatsApp con implementación directa
   registerWhatsAppRoutes(app);
   
@@ -229,100 +142,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/media-gallery", mediaGalleryRouter);
   app.use("/api/media", mediaServeRouter);
   
-  // WhatsApp accounts endpoint with multi-tenant support and proper authentication
-  app.get("/api/whatsapp-accounts", async (req: Request, res: Response) => {
+  // WhatsApp accounts endpoint with user-based filtering
+  app.get("/api/whatsapp-accounts", multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      // Get user ID from session or default to superadmin
-      let userId = req.session?.userId || req.headers['x-user-id'] || req.query.userId;
-      userId = parseInt(userId as string) || 3; // Default to DJP (superadmin)
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
       
-      // Get user info
-      const [user] = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          role: users.role,
-        })
-        .from(users)
-        .where(eq(users.id, userId));
-
-      if (!user) {
-        return res.status(401).json({ error: 'Usuario no encontrado' });
+      console.log(`🔍 Obteniendo cuentas WhatsApp para usuario ${userId} (${userRole})`);
+      
+      let accounts;
+      
+      // Superadmin and admin can see all accounts
+      if (userRole === 'superadmin' || userRole === 'admin' || userRole === 'super_admin') {
+        accounts = await storage.getAllWhatsAppAccounts();
+        console.log(`👑 Usuario ${userRole} ve todas las ${accounts.length} cuentas`);
+      } else {
+        // Regular users only see assigned accounts
+        const accessibleAccountIds = await getAccessibleAccountIds(userId);
+        accounts = await storage.getWhatsAppAccountsByIds(accessibleAccountIds);
+        console.log(`🔒 Usuario regular ve ${accounts.length} cuentas asignadas`);
       }
-
-      const accounts = await storage.getAllWhatsappAccounts();
-      
-      // If superadmin or admin, show all accounts
-      // Otherwise, filter by assignments
-      let filteredAccounts = accounts;
-      if (user.role !== 'superadmin' && user.role !== 'admin') {
-        const accountAssignments = await db
-          .select({ whatsappAccountId: userAccountAssignments.whatsappAccountId })
-          .from(userAccountAssignments)
-          .where(
-            and(
-              eq(userAccountAssignments.userId, userId),
-              eq(userAccountAssignments.isActive, true)
-            )
-          );
-        
-        const assignedAccountIds = accountAssignments.map(a => a.whatsappAccountId);
-        filteredAccounts = accounts.filter(account => assignedAccountIds.includes(account.id));
-      }
-      
-      const accountsWithStatus = filteredAccounts.map(account => ({
-        ...account,
-        authenticated: account.status === 'active',
-        ready: account.status === 'active',
-        status: account.status || 'inactive',
-        currentStatus: { 
-          authenticated: account.status === 'active', 
-          ready: account.status === 'active' 
-        }
-      }));
       
       res.json({
         success: true,
-        accounts: accountsWithStatus
+        accounts: accounts || []
       });
     } catch (error) {
-      console.error('Error al obtener cuentas de WhatsApp:', error);
-      res.status(500).json({ 
+      console.error('Error obteniendo cuentas WhatsApp:', error);
+      res.status(500).json({
         success: false,
         error: 'Error al obtener cuentas de WhatsApp',
         accounts: []
       });
-    }
-  });
-
-  // Bypass authentication for WhatsApp account creation
-  app.post("/api/whatsapp-accounts", async (req: Request, res: Response) => {
-    try {
-      const { name, description, ownerName, ownerPhone } = req.body;
-      
-      if (!name || name.trim().length < 3) {
-        return res.status(400).json({ 
-          error: 'El nombre debe tener al menos 3 caracteres' 
-        });
-      }
-      
-      const newAccount = await storage.createWhatsAppAccount({
-        name: name.trim(),
-        description: description || null,
-        ownerName: ownerName || null,
-        ownerPhone: ownerPhone || null,
-        adminId: null,
-        assignedExternalAgentId: null,
-        autoResponseEnabled: false,
-        responseDelay: 3,
-        status: 'inactive',
-        sessionData: null
-      });
-      
-      res.status(201).json(newAccount);
-    } catch (error) {
-      console.error('Error al crear cuenta de WhatsApp:', error);
-      res.status(500).json({ error: 'Error al crear cuenta de WhatsApp' });
     }
   });
 
@@ -1571,28 +1422,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Leads endpoint with user data isolation
-  app.get("/api/leads", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
+  // Leads endpoint using direct database connection like dashboard-stats
+  app.get("/api/leads", async (req: Request, res: Response) => {
     try {
-      const currentUser = (req as any).user;
-      console.log(`📋 Obteniendo leads para usuario: ${currentUser.username} (${currentUser.role})`);
+      console.log('📋 Obteniendo leads desde la base de datos...');
       
-      let query: string;
-      let queryParams: any[] = [];
-      
-      // Admins and superadmins can see all data
-      if (['admin', 'superadmin'].includes(currentUser.role)) {
-        query = 'SELECT * FROM leads ORDER BY "createdAt" DESC';
-        console.log('🔓 Usuario admin - acceso a todos los leads');
-      } else {
-        // Regular users only see their own data
-        query = 'SELECT * FROM leads WHERE "ownerId" = $1 ORDER BY "createdAt" DESC';
-        queryParams = [currentUser.id];
-        console.log(`🔒 Usuario regular - filtrando por ownerId: ${currentUser.id}`);
-      }
-      
-      const result = await pool.query(query, queryParams);
-      console.log(`✅ Encontrados ${result.rows.length} leads para usuario ${currentUser.username}`);
+      // Direct query like working dashboard endpoint
+      const result = await pool.query('SELECT * FROM leads ORDER BY "createdAt" DESC');
+      console.log(`✅ Encontrados ${result.rows.length} leads`);
       
       // Transform for Kanban with phone support and fixed schema
       const leadsData = result.rows.map((row: any) => ({
@@ -1622,8 +1459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nextFollowUpDate: row.nextFollowUpDate,
         customFields: row.customFields || {},
         whatsappAccountId: row.whatsappAccountId,
-        matchPercentage: row.matchPercentage || null,
-        ownerId: row.ownerId
+        matchPercentage: row.matchPercentage || null
       }));
       
       res.json(leadsData);
@@ -1655,57 +1491,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Messages endpoint with user data isolation
-  app.get("/api/messages", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
+  // Messages endpoint with real data
+  app.get("/api/messages", async (req: Request, res: Response) => {
     try {
-      const currentUser = (req as any).user;
-      console.log(`💬 Obteniendo mensajes para usuario: ${currentUser.username} (${currentUser.role})`);
-      
-      let query: string;
-      let queryParams: any[] = [];
-      
-      // Admins and superadmins can see all messages
-      if (['admin', 'superadmin'].includes(currentUser.role)) {
-        query = `
-          SELECT 
-            id,
-            "messageId",
-            "fromNumber",
-            "toNumber",
-            content,
-            direction,
-            "timestamp",
-            "whatsappAccountId",
-            "ownerId"
-          FROM whatsapp_messages 
-          ORDER BY "timestamp" DESC 
-          LIMIT 50
-        `;
-        console.log('🔓 Usuario admin - acceso a todos los mensajes');
-      } else {
-        // Regular users only see their own messages
-        query = `
-          SELECT 
-            id,
-            "messageId",
-            "fromNumber",
-            "toNumber",
-            content,
-            direction,
-            "timestamp",
-            "whatsappAccountId",
-            "ownerId"
-          FROM whatsapp_messages 
-          WHERE "ownerId" = $1
-          ORDER BY "timestamp" DESC 
-          LIMIT 50
-        `;
-        queryParams = [currentUser.id];
-        console.log(`🔒 Usuario regular - filtrando mensajes por ownerId: ${currentUser.id}`);
-      }
-      
-      const result = await pool.query(query, queryParams);
-      console.log(`✅ Encontrados ${result.rows.length} mensajes para usuario ${currentUser.username}`);
+      const result = await pool.query(`
+        SELECT 
+          id,
+          "messageId",
+          "fromNumber",
+          "toNumber",
+          content,
+          direction,
+          "timestamp",
+          "whatsappAccountId"
+        FROM whatsapp_messages 
+        ORDER BY "timestamp" DESC 
+        LIMIT 50
+      `);
       
       res.json(result.rows);
     } catch (error) {
@@ -1714,53 +1516,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Tickets endpoint with user data isolation
-  app.get("/api/tickets", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
+  // Tickets endpoint with real data
+  app.get("/api/tickets", async (req: Request, res: Response) => {
     try {
-      const currentUser = (req as any).user;
-      console.log(`🎫 Obteniendo tickets para usuario: ${currentUser.username} (${currentUser.role})`);
-      
-      let query: string;
-      let queryParams: any[] = [];
-      
-      // Admins and superadmins can see all tickets
-      if (['admin', 'superadmin'].includes(currentUser.role)) {
-        query = `
-          SELECT 
-            id,
-            title,
-            description,
-            status,
-            priority,
-            "createdAt",
-            "updatedAt",
-            "ownerId"
-          FROM tickets 
-          ORDER BY "createdAt" DESC
-        `;
-        console.log('🔓 Usuario admin - acceso a todos los tickets');
-      } else {
-        // Regular users only see their own tickets
-        query = `
-          SELECT 
-            id,
-            title,
-            description,
-            status,
-            priority,
-            "createdAt",
-            "updatedAt",
-            "ownerId"
-          FROM tickets 
-          WHERE "ownerId" = $1
-          ORDER BY "createdAt" DESC
-        `;
-        queryParams = [currentUser.id];
-        console.log(`🔒 Usuario regular - filtrando tickets por ownerId: ${currentUser.id}`);
-      }
-      
-      const result = await pool.query(query, queryParams);
-      console.log(`✅ Encontrados ${result.rows.length} tickets para usuario ${currentUser.username}`);
+      const result = await pool.query(`
+        SELECT 
+          id,
+          title,
+          description,
+          status,
+          priority,
+          "createdAt",
+          "updatedAt"
+        FROM support_tickets 
+        ORDER BY "createdAt" DESC
+      `);
       
       res.json(result.rows);
     } catch (error) {
@@ -1784,17 +1554,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/leads", authService.authenticate.bind(authService), async (req: Request, res: Response) => {
+  app.post("/api/leads", async (req: Request, res: Response) => {
     try {
-      const currentUser = (req as any).user;
-      console.log(`📝 Creando nuevo lead para usuario: ${currentUser.username} (ID: ${currentUser.id})`);
+      console.log('📝 Creando nuevo lead:', req.body);
       
-      // Direct database insertion with automatic ownership assignment
+      // Direct database insertion without schema validation for now
       const { name, phone, email, company, notes, source, priority, status, budget } = req.body;
       
       const result = await pool.query(`
-        INSERT INTO leads (name, phone, email, company, notes, source, priority, status, budget, "ownerId", "createdAt")
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+        INSERT INTO leads (name, phone, email, company, notes, source, priority, status, budget, "createdAt")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
         RETURNING *
       `, [
         name || 'Lead sin nombre',
@@ -1805,11 +1574,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         source || 'Manual',
         priority || 'medium',
         status || 'new',
-        budget || 0,
-        currentUser.id  // Automatically assign ownership to current user
+        budget || 0
       ]);
       
-      console.log(`✅ Lead creado exitosamente para usuario ${currentUser.username}:`, result.rows[0]);
+      console.log('✅ Lead creado exitosamente:', result.rows[0]);
       res.status(201).json(result.rows[0]);
     } catch (error) {
       console.error('❌ Error creando lead:', error);
