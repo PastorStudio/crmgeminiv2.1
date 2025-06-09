@@ -20,7 +20,7 @@ export async function apiRequest<T = any>(
   const method = options?.method || 'GET';
   const body = options?.body ? JSON.stringify(options.body) : undefined;
   
-  // Skip token requirement for WhatsApp endpoints
+  // Skip token requirement for WhatsApp endpoints (all methods including DELETE)
   let token = '';
   if (!url.includes('/api/whatsapp-accounts') && !url.includes('/api/whatsapp/ping-status')) {
     try {
@@ -51,6 +51,7 @@ export async function apiRequest<T = any>(
 
   // Use XMLHttpRequest directly for WhatsApp endpoints to bypass authentication issues
   if (url.includes('/api/whatsapp-accounts') || url.includes('/api/whatsapp/ping-status')) {
+    console.log(`Using XHR bypass for ${method} ${url}`);
     return await makeXhrRequest<T>(urlWithTimestamp, method, headers, body);
   }
 
@@ -196,7 +197,13 @@ async function makeXhrRequest<TData = any>(
           }
         }
       } else {
-        reject(new Error(`XHR Error - Status: ${xhr.status}`));
+        console.error(`XHR Error - Status: ${xhr.status} for ${method} ${url}`);
+        // For DELETE operations, treat 404 as success (already deleted)
+        if (method === 'DELETE' && xhr.status === 404) {
+          resolve({ success: true } as T);
+        } else {
+          reject(new Error(`XHR Error - Status: ${xhr.status}`));
+        }
       }
     };
     

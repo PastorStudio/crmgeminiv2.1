@@ -39,6 +39,7 @@ import { registerTemplateVariablesRoutes } from "./services/templateVariablesRou
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import chatAssignmentsRouter from "./routes/chatAssignments";
 import ticketsRouter from "./routes/tickets";
+import cleanupRouter from "./routes/cleanup";
 // Referencias de APIs corregidas removidas para optimización
 import { translateText, detectLanguage } from "./routes/translation";
 // Referencias de problemas corregidos removidas para optimización
