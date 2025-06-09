@@ -199,17 +199,37 @@ export default function UserManagement() {
   const { data: subscriptionPlans, isLoading: plansLoading, error: plansError } = useQuery({
     queryKey: ['/api/subscription-plans'],
     queryFn: async () => {
-      const response = await fetch('/api/subscription-plans', {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'x-user-id': '3',
+      try {
+        const response = await fetch('/api/subscription-plans', {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
+          }
+        });
+        
+        if (!response.ok) {
+          console.error('Error response:', response.status, response.statusText);
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-      });
-      if (!response.ok) throw new Error('Failed to fetch plans');
-      const data = await response.json();
-      console.log('🔍 Planes de suscripción cargados:', data.plans);
-      return data.plans || [];
+        
+        const text = await response.text();
+        if (!text.trim()) {
+          return [];
+        }
+        
+        try {
+          const data = JSON.parse(text);
+          console.log('🔍 Planes de suscripción cargados:', data.plans);
+          return data.plans || [];
+        } catch (parseError) {
+          console.error('JSON parsing error:', parseError, 'Response:', text);
+          return [];
+        }
+      } catch (error) {
+        console.error('Error fetching subscription plans:', error);
+        return [];
+      }
     }
   });
 

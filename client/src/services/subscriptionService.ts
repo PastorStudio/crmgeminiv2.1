@@ -86,6 +86,8 @@ export class SubscriptionService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'x-user-id': '3',
         },
         body: JSON.stringify({
           name: planData.name,
@@ -127,6 +129,8 @@ export class SubscriptionService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'x-user-id': '3',
         },
         body: JSON.stringify({
           user_id: userId,
