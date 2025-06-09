@@ -24,7 +24,7 @@ export default function Login() {
     try {
       const success = await login(username, password);
       if (success) {
-        navigate('/');
+        navigate('/dashboard');
       } else {
         setError('Credenciales inválidas. Verifica tu usuario y contraseña.');
       }
