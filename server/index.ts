@@ -420,6 +420,87 @@ app.post("/api/user-subscriptions", async (req: Request, res: Response) => {
   }
 });
 
+// Alternative endpoint for assign-subscription (used by SubscriptionPlanAssignment component)
+app.post("/api/assign-subscription", async (req: Request, res: Response) => {
+  try {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Content-Type', 'application/json');
+    
+    const { userId, planId, durationDays, notes } = req.body;
+    console.log("📝 POST /api/assign-subscription - Asignando plan:", { userId, planId, durationDays, notes });
+    
+    if (!userId || !planId || !durationDays) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Usuario, plan y duración son requeridos" 
+      });
+    }
+
+    // Check if user and plan exist using direct SQL
+    const userResult = await pool.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [userId]);
+    const planResult = await pool.query('SELECT * FROM subscription_plans WHERE id = $1 LIMIT 1', [planId]);
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Usuario no encontrado" 
+      });
+    }
+
+    if (planResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Plan no encontrado" 
+      });
+    }
+
+    const user = userResult.rows[0];
+    const plan = planResult.rows[0];
+
+    // Cancel any existing active subscription for this user
+    await pool.query(`
+      UPDATE user_subscriptions 
+      SET status = 'cancelled' 
+      WHERE user_id = $1 AND status = 'active'
+    `, [userId]);
+
+    // Calculate end date
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + parseInt(durationDays));
+
+    // Create subscription using direct SQL
+    const subscriptionResult = await pool.query(`
+      INSERT INTO user_subscriptions 
+      (user_id, plan_id, start_date, end_date, status, notes, assigned_by)
+      VALUES ($1, $2, NOW(), $3, $4, $5, $6)
+      RETURNING *
+    `, [
+      userId,
+      planId,
+      endDate,
+      'active',
+      notes || '',
+      3 // Use DJP user ID as admin
+    ]);
+
+    const newSubscription = subscriptionResult.rows[0];
+    console.log("✅ Plan asignado exitosamente via assign-subscription:", newSubscription);
+
+    res.status(201).json({ 
+      success: true, 
+      subscription: newSubscription,
+      message: `Plan ${plan.name} asignado correctamente a ${user.username}` 
+    });
+  } catch (error) {
+    console.error("❌ Error in assign-subscription:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Error al asignar plan al usuario: " + (error as Error).message 
+    });
+  }
+});
+
 // Cancel subscription
 app.delete("/api/cancel-subscription/:id", async (req: Request, res: Response) => {
   try {
