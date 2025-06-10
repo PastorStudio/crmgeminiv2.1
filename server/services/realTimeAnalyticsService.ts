@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { realTimeAnalytics, leads, whatsapp_accounts, users, tickets, contacts, messages } from "@shared/schema";
+import { realTimeAnalytics, leads, whatsappAccounts, users, tickets, contacts, whatsappMessages } from "@shared/schema";
 import { desc, count, sum, eq, gte, sql } from "drizzle-orm";
 
 /**
@@ -39,8 +39,8 @@ export class RealTimeAnalyticsService {
       // Get total messages in last 5 minutes (use whatsapp_messages table)
       const totalMessagesResult = await db
         .select({ count: count() })
-        .from(messages)
-        .where(gte(messages.createdAt, fiveMinutesAgo));
+        .from(whatsappMessages)
+        .where(gte(whatsappMessages.createdAt, fiveMinutesAgo));
 
       // Get new leads today
       const today = new Date();
