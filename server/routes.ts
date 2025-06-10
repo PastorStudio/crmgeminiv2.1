@@ -49,6 +49,7 @@ import flowExecutionRouter from "./routes/flowExecutionRoutes";
 import multiTenantRoutes from "./routes/multiTenantRoutes";
 import { multiTenantAuth, AuthenticatedRequest, getAccessibleAccountIds, canAccessAccount } from "./middleware/multiTenantAuth";
 import { demoUserManager } from "./services/demoUserManager";
+import promptTestRoutes from "./routes/promptTestRoutes";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
