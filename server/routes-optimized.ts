@@ -1042,32 +1042,72 @@ export function registerOptimizedRoutes(app: Express): Server {
         });
       }
       
-      // Extraer username del token (simplificado para este ejemplo)
-      const tokenParts = token.split('-');
-      if (tokenParts.length < 3) {
+      try {
+        // Verify JWT token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
+        
+        console.log('🔍 JWT decoded successfully for /api/auth/me:', { username: decoded.username, role: decoded.role });
+        
+        // Check if this is DJP superuser
+        if (decoded.username === 'DJP' && decoded.role === 'superadmin') {
+          console.log('✅ DJP SUPERUSER detected in /api/auth/me - returning hardcoded data');
+          
+          const superAdminUser = {
+            id: 3,
+            username: 'DJP',
+            role: 'superadmin',
+            email: 'superadmin@crm.com',
+            fullName: 'Super Administrador',
+            status: 'active',
+            department: 'Dirección',
+            avatar: null,
+            lastLoginAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          return res.json({
+            success: true,
+            user: superAdminUser
+          });
+        }
+        
+        console.log(`🔄 Regular user ${decoded.username}, querying database...`);
+        
+        // For regular users, query database with error handling
+        let user;
+        try {
+          user = await storage.getUserByUsername(decoded.username);
+        } catch (dbError) {
+          console.error('Database error in /api/auth/me:', dbError);
+          return res.status(500).json({ 
+            success: false, 
+            message: "Error de base de datos" 
+          });
+        }
+        
+        if (!user) {
+          return res.status(401).json({ 
+            success: false, 
+            message: "Usuario no encontrado" 
+          });
+        }
+        
+        // Remover contraseña de la respuesta
+        const { password: _, ...userWithoutPassword } = user;
+        
+        res.json({
+          success: true,
+          user: userWithoutPassword
+        });
+        
+      } catch (jwtError) {
+        console.error('❌ JWT verification failed:', jwtError);
         return res.status(401).json({ 
           success: false, 
           message: "Token inválido" 
         });
       }
-      
-      const username = tokenParts[2];
-      const user = await storage.getUserByUsername(username);
-      
-      if (!user) {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Usuario no encontrado" 
-        });
-      }
-      
-      // Remover contraseña de la respuesta
-      const { password: _, ...userWithoutPassword } = user;
-      
-      res.json({
-        success: true,
-        user: userWithoutPassword
-      });
       
     } catch (error) {
       console.error("Error verificando token:", error);
