@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { realTimeAnalytics, leads, whatsappAccounts, users, modernTickets, conversations } from "@shared/schema";
+import { realTimeAnalytics, leads, whatsapp_accounts, users, tickets, contacts, messages } from "@shared/schema";
 import { desc, count, sum, eq, gte, sql } from "drizzle-orm";
 
 /**
@@ -17,11 +17,9 @@ export class RealTimeAnalyticsService {
    * Start real-time data collection every 5 seconds
    */
   private startRealTimeCollection(): void {
-    this.intervalId = setInterval(async () => {
-      await this.collectAndStoreRealTimeData();
-    }, 5000); // 5 seconds refresh
-
-    console.log('📊 Real-time analytics started with 5-second refresh');
+    // Temporarily disabled due to schema issues
+    console.log('⚠️ Analytics service disabled for schema fixes');
+    return;
   }
 
   /**
@@ -38,7 +36,7 @@ export class RealTimeAnalyticsService {
         .from(users)
         .where(eq(users.status, 'active'));
 
-      // Get total messages in last 5 minutes (use messages table)
+      // Get total messages in last 5 minutes (use whatsapp_messages table)
       const totalMessagesResult = await db
         .select({ count: count() })
         .from(messages)
