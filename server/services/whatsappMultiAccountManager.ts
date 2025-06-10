@@ -673,11 +673,10 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             console.log(`🎯 INICIANDO PROCESADOR UNIFICADO para cuenta ${id}`);
             console.log(`📝 Mensaje: "${messageBody}" | fromMe: ${message.fromMe} | Chat: ${message.from}`);
             
-            const { UnifiedMessageProcessor } = await import('./unifiedMessageProcessor');
-            const unifiedProcessor = UnifiedMessageProcessor.getInstance();
+            const { unifiedMessageProcessor } = await import('./unifiedMessageProcessor');
             
             // Asegurar inicialización del procesador
-            await unifiedProcessor.initialize();
+            await unifiedMessageProcessor.initialize();
             
             // Obtener nombre del contacto si está disponible
             let contactName = 'Usuario';
@@ -689,7 +688,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             }
             
             // Procesar mensaje con el procesador unificado (prioriza prompts asignados)
-            const unifiedResult = await unifiedProcessor.processMessage({
+            const unifiedResult = await unifiedMessageProcessor.processMessage({
               chatId: message.from,
               accountId: id,
               from: message.from,
