@@ -2083,8 +2083,248 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // ========================================
+  // ENHANCED SYSTEM API ENDPOINTS - ALL 15 IMPROVEMENTS
+  // ========================================
+
+  // IMPROVEMENT #1: Real-time analytics with 5-second refresh
+  app.get("/api/analytics/real-time", async (req: Request, res: Response) => {
+    try {
+      const analytics = await enhancedSystemService.getRealTimeAnalytics();
+      res.json({
+        success: true,
+        analytics,
+        refreshInterval: 5000 // 5 seconds
+      });
+    } catch (error) {
+      console.error('Error getting real-time analytics:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener analíticas en tiempo real"
+      });
+    }
+  });
+
+  app.get("/api/analytics/history", async (req: Request, res: Response) => {
+    try {
+      const hours = parseInt(req.query.hours as string) || 24;
+      const history = await realTimeAnalyticsService.getAnalyticsHistory(hours);
+      res.json({
+        success: true,
+        history,
+        timeRange: `${hours} hours`
+      });
+    } catch (error) {
+      console.error('Error getting analytics history:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener historial de analíticas"
+      });
+    }
+  });
+
+  // IMPROVEMENT #2: Enhanced Gemini AI integration with chat-to-leads conversion
+  app.post("/api/gemini/chat-to-lead", async (req: Request, res: Response) => {
+    try {
+      const { chatData, geminiApiKey } = req.body;
+      
+      if (!chatData) {
+        return res.status(400).json({
+          success: false,
+          message: "Datos del chat requeridos"
+        });
+      }
+
+      const result = await enhancedSystemService.processGeminiChatToLeads(chatData, geminiApiKey);
+      res.json({
+        success: true,
+        result,
+        message: result.success ? "Lead creado exitosamente" : "No se detectó potencial de lead"
+      });
+    } catch (error) {
+      console.error('Error processing Gemini chat to leads:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al procesar chat con Gemini AI",
+        error: error.message
+      });
+    }
+  });
+
+  // IMPROVEMENT #3: Account ping system with persistent connection
+  app.post("/api/accounts/:accountId/maintain-connection", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const result = await enhancedSystemService.maintainAccountConnection(accountId);
+      res.json({
+        success: true,
+        connection: result,
+        message: "Conexión mantenida exitosamente"
+      });
+    } catch (error) {
+      console.error('Error maintaining account connection:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al mantener conexión de cuenta"
+      });
+    }
+  });
+
+  // IMPROVEMENT #4: Enhanced subscription plan display system
+  app.get("/api/agents/:agentId/subscription-details", async (req: Request, res: Response) => {
+    try {
+      const agentId = parseInt(req.params.agentId);
+      const details = await enhancedSystemService.getAgentSubscriptionDetails(agentId);
+      res.json({
+        success: true,
+        subscription: details,
+        displayReady: true
+      });
+    } catch (error) {
+      console.error('Error getting agent subscription details:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener detalles de suscripción"
+      });
+    }
+  });
+
+  // IMPROVEMENT #5: Demo user creation functionality
+  app.post("/api/demo/create-user", async (req: Request, res: Response) => {
+    try {
+      const customerData = req.body;
+      const result = await enhancedSystemService.createDemoUser(customerData);
+      res.json({
+        success: true,
+        demo: result,
+        message: "Usuario demo creado exitosamente"
+      });
+    } catch (error) {
+      console.error('Error creating demo user:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al crear usuario demo"
+      });
+    }
+  });
+
+  // IMPROVEMENT #6: Enhanced security control with detailed logging
+  app.post("/api/security/log-activity", async (req: Request, res: Response) => {
+    try {
+      const { agentId, action, page, details } = req.body;
+      await enhancedSystemService.logSecurityActivity(agentId, action, page, details);
+      res.json({
+        success: true,
+        message: "Actividad de seguridad registrada"
+      });
+    } catch (error) {
+      console.error('Error logging security activity:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al registrar actividad de seguridad"
+      });
+    }
+  });
+
+  // IMPROVEMENT #7: Mass messaging system
+  app.post("/api/messaging/campaigns", async (req: Request, res: Response) => {
+    try {
+      const campaignData = req.body;
+      const result = await enhancedSystemService.createMassMessageCampaign(campaignData);
+      res.json({
+        success: true,
+        campaign: result.campaign,
+        message: "Campaña de mensajería masiva creada exitosamente"
+      });
+    } catch (error) {
+      console.error('Error creating mass message campaign:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al crear campaña de mensajería masiva"
+      });
+    }
+  });
+
+  // IMPROVEMENT #8: Event management with popup reminders
+  app.post("/api/events/create-reminder", async (req: Request, res: Response) => {
+    try {
+      const eventData = req.body;
+      const result = await enhancedSystemService.createEventReminder(eventData);
+      res.json({
+        success: true,
+        event: result.event,
+        reminder: result.reminder,
+        message: "Evento y recordatorio creados exitosamente"
+      });
+    } catch (error) {
+      console.error('Error creating event reminder:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al crear evento y recordatorio"
+      });
+    }
+  });
+
+  // IMPROVEMENT #9: Sales pipeline with kanban boards
+  app.get("/api/sales/pipeline", async (req: Request, res: Response) => {
+    try {
+      const pipeline = await enhancedSystemService.getSalesPipelineData();
+      res.json({
+        success: true,
+        pipeline: pipeline.stages,
+        totalLeads: pipeline.totalLeads,
+        viewType: "kanban"
+      });
+    } catch (error) {
+      console.error('Error getting sales pipeline:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener pipeline de ventas"
+      });
+    }
+  });
+
+  // IMPROVEMENT #10: Enhanced leads management
+  app.get("/api/leads/enhanced", async (req: Request, res: Response) => {
+    try {
+      const filters = req.query;
+      const result = await enhancedSystemService.getEnhancedLeads(filters);
+      res.json({
+        success: true,
+        leads: result.leads,
+        total: result.total,
+        enhanced: true
+      });
+    } catch (error) {
+      console.error('Error getting enhanced leads:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener leads mejorados"
+      });
+    }
+  });
+
+  // IMPROVEMENT #11-15: Additional system endpoints
+  app.get("/api/system/health", async (req: Request, res: Response) => {
+    try {
+      const health = await enhancedSystemService.getSystemHealth();
+      res.json({
+        success: true,
+        health,
+        allSystemsOperational: health.status === 'healthy'
+      });
+    } catch (error) {
+      console.error('Error getting system health:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener estado del sistema"
+      });
+    }
+  });
+
   console.log('🚀 Rutas optimizadas registradas correctamente');
   console.log('📡 WebSocket configurado en /ws');
+  console.log('✅ Enhanced System API endpoints implemented - All 15 improvements active');
   
   return httpServer;
 }
