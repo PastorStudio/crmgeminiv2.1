@@ -52,15 +52,39 @@ export function QuickPlanAssignment({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch subscription plans using the standard apiRequest function
+  // Fetch subscription plans using custom fetch with proper authentication
   const { data: plansData, isLoading: plansLoading, error: plansError } = useQuery({
     queryKey: ['/api/subscription-plans'],
-    enabled: isOpen, // Only fetch when dialog is open
+    queryFn: async () => {
+      const response = await fetch('/api/subscription-plans', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch plans: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('API Response for plans:', data);
+      return data;
+    },
+    enabled: true, // Always fetch plans
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2
   });
 
   const plans: SubscriptionPlan[] = Array.isArray((plansData as PlansResponse)?.plans) ? (plansData as PlansResponse).plans : [];
+
+  // Debug logging
+  console.log('QuickPlanAssignment - Plans data:', plansData);
+  console.log('QuickPlanAssignment - Plans array:', plans);
+  console.log('QuickPlanAssignment - Plans loading:', plansLoading);
+  console.log('QuickPlanAssignment - Plans error:', plansError);
 
   // Plan assignment mutation
   const assignPlanMutation = useMutation({
