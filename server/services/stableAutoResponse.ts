@@ -1,12 +1,13 @@
 /**
  * Sistema de respuestas automáticas estable
- * No depende de conexiones activas de WhatsApp para mantener configuraciones
+ * Integrado con sistema de prompts asignados a cada cuenta
  */
 
 import OpenAI from 'openai';
 import { db } from '../db';
-import { whatsappAccounts } from '@shared/schema';
+import { whatsappAccounts, aiPrompts } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { promptBasedAutoResponseManager } from './promptBasedAutoResponse';
 
 // Configurar OpenAI con la clave del sistema
 const openai = new OpenAI({
@@ -17,6 +18,8 @@ interface StableAutoResponseConfig {
   accountId: number;
   agentName: string;
   enabled: boolean;
+  promptId?: number;
+  promptName?: string;
   lastProcessedMessageId?: string;
 }
 
