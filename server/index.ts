@@ -2836,66 +2836,32 @@ app.use((req, res, next) => {
   // Ruta original también funcional
   app.get('/api/users', async (req, res) => {
     try {
-      console.log("🔄 API users - Solicitando lista de usuarios con planes de suscripción...");
+      console.log("🔄 API users - Solicitando lista de usuarios...");
       
-      // Use direct SQL query to avoid schema issues
-      const { sql } = await import('drizzle-orm');
-      const result = await db.execute(sql`
-        SELECT 
-          u.id,
-          u.username,
-          u."fullName",
-          u.email,
-          u.role,
-          u.status,
-          u.department,
-          u.avatar,
-          u."lastLoginAt",
-          u."createdAt",
-          u."updatedAt"
-        FROM users u
-        ORDER BY u.id
-      `);
-
-      // Get subscription data separately
-      const subscriptionResult = await db.execute(sql`
-        SELECT DISTINCT ON (us.user_id)
-          us.user_id,
-          us.plan_id,
-          us.status,
-          us.end_date,
-          sp.name as plan_name,
-          sp.id as plan_id_actual,
-          CASE 
-            WHEN us.end_date >= NOW() THEN 
-              EXTRACT(DAY FROM us.end_date - NOW())::INTEGER
-            ELSE 0 
-          END as days_remaining
-        FROM user_subscriptions us
-        INNER JOIN subscription_plans sp ON us.plan_id = sp.id
-        WHERE us.status = 'active' AND us.end_date >= NOW()
-        ORDER BY us.user_id, us.created_at DESC
-      `);
-
-      // Combine the data
-      const allUsers = result.rows.map(user => {
-        const subscription = subscriptionResult.rows.find(sub => sub.user_id === user.id);
-        return {
+      // Get storage instance and use it directly
+      const storage = new DatabaseStorage();
+      const allUsers = await storage.getAllUsers();
+      
+      // Filter out DJP user and add frontend-required properties
+      const filteredUsers = allUsers
+        .filter(user => user.username !== 'DJP')
+        .map(user => ({
           ...user,
-          currentPlan: subscription?.plan_name || null,
-          currentPlanId: subscription?.plan_id_actual || null,
-          subscriptionEndDate: subscription?.end_date || null,
-          subscriptionStatus: subscription?.status || null,
-          daysRemaining: subscription?.days_remaining || null
-        };
-      });
+          totalLogins: 0,
+          lastActivity: user.lastLoginAt,
+          currentPlan: 'Sin plan',
+          currentPlanId: null,
+          subscriptionEndDate: null,
+          subscriptionStatus: null,
+          daysRemaining: null
+        }));
 
-      console.log(`✅ API users - Enviando ${allUsers.length} usuarios con información de planes`);
-      res.json(allUsers);
+      console.log(`✅ API users - Found ${filteredUsers.length} users via storage`);
+      res.json(filteredUsers);
     } catch (error) {
       console.error("❌ API users - Error completo:", error);
-      console.error("❌ API users - Stack trace:", error.stack);
-      console.error("❌ API users - Mensaje:", error.message);
+      console.error("❌ API users - Stack trace:", error?.stack);
+      console.error("❌ API users - Mensaje:", error?.message);
       res.status(500).json({ error: "Error al obtener usuarios" });
     }
   });
