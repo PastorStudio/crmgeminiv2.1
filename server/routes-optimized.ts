@@ -10,7 +10,11 @@ import {
   userSubscriptions,
   subscriptionPlans,
   users,
-  demoUsers
+  demoUsers,
+  leads,
+  whatsappAccounts,
+  contacts,
+  whatsappMessages
 } from "@shared/schema";
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { db } from './db';
@@ -1412,8 +1416,9 @@ export function registerOptimizedRoutes(app: Express): Server {
         return sum + (isNaN(value) ? 0 : value);
       }, 0);
       
-      // Use agent page visits as message proxy since activities aren't available
-      const totalMessages = Math.floor(Math.random() * 100) + 50; // Realistic message count
+      // Get actual message count from database
+      const messages = await db.select().from(whatsappMessages);
+      const totalMessages = messages.length;
       
       // WhatsApp accounts as pipeline indicator
       const whatsappAccounts = await storage.getAllWhatsappAccounts();
