@@ -2833,20 +2833,30 @@ app.use((req, res, next) => {
     }
   });
 
-  // Ruta original también funcional
+  // Simple users endpoint that works reliably
   app.get('/api/users', async (req, res) => {
     try {
-      console.log("🔄 API users - Solicitando lista de usuarios...");
+      console.log("🔄 API users - Getting users from database...");
       
-      // Get storage instance and use it directly
-      const storage = new DatabaseStorage();
-      const allUsers = await storage.getAllUsers();
+      // Import required schema tables
+      const { users } = await import('@shared/schema');
       
-      // Filter out DJP user and add frontend-required properties
+      // Get all users and filter out DJP in application logic
+      const allUsers = await db.select().from(users);
+
+      // Filter and map users for frontend
       const filteredUsers = allUsers
         .filter(user => user.username !== 'DJP')
         .map(user => ({
-          ...user,
+          id: user.id,
+          username: user.username,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role,
+          status: user.status || 'active',
+          department: user.department,
+          avatar: user.avatar,
+          lastLoginAt: user.lastLoginAt,
           totalLogins: 0,
           lastActivity: user.lastLoginAt,
           currentPlan: 'Sin plan',
@@ -2856,12 +2866,10 @@ app.use((req, res, next) => {
           daysRemaining: null
         }));
 
-      console.log(`✅ API users - Found ${filteredUsers.length} users via storage`);
+      console.log(`✅ API users - Returning ${filteredUsers.length} users`);
       res.json(filteredUsers);
     } catch (error) {
-      console.error("❌ API users - Error completo:", error);
-      console.error("❌ API users - Stack trace:", error?.stack);
-      console.error("❌ API users - Mensaje:", error?.message);
+      console.error("❌ API users - Error:", error.message);
       res.status(500).json({ error: "Error al obtener usuarios" });
     }
   });
