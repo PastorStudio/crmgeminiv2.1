@@ -239,12 +239,16 @@ export default function UserManagement() {
     }
   });
 
+  // Extract plans properly from the response
+  const actualPlans = Array.isArray(subscriptionPlans) ? subscriptionPlans : subscriptionPlans?.plans || [];
+  
   // Debug: mostrar estado de los planes
   console.log('📊 Estado de planes:', { 
     subscriptionPlans, 
+    actualPlans,
     plansLoading, 
     plansError, 
-    count: subscriptionPlans?.length 
+    count: actualPlans?.length 
   });
 
   // Obtener lista de usuarios reales desde la base de datos PostgreSQL
@@ -1591,13 +1595,13 @@ export default function UserManagement() {
                 </div>
 
                 {/* Lista visual de planes disponibles */}
-                {subscriptionPlans && subscriptionPlans.length > 0 && (
+                {actualPlans && actualPlans.length > 0 && (
                   <div className="bg-gray-50 border rounded-lg p-3 mb-4">
                     <h4 className="text-xs font-medium text-gray-700 mb-2">
-                      Planes Disponibles ({subscriptionPlans.length}):
+                      Planes Disponibles ({actualPlans.length}):
                     </h4>
                     <div className="grid grid-cols-2 gap-2 text-xs">
-                      {subscriptionPlans.slice(0, 6).map((plan: any) => (
+                      {actualPlans.slice(0, 6).map((plan: any) => (
                         <div key={plan.id} className="flex items-center">
                           <div className={`w-2 h-2 rounded-full mr-2 ${
                             plan.name.includes('Básico') ? 'bg-green-500' :
@@ -1608,9 +1612,9 @@ export default function UserManagement() {
                           <span className="truncate">{plan.name}</span>
                         </div>
                       ))}
-                      {subscriptionPlans.length > 6 && (
+                      {actualPlans.length > 6 && (
                         <div className="text-gray-500 text-xs">
-                          +{subscriptionPlans.length - 6} más...
+                          +{actualPlans.length - 6} más...
                         </div>
                       )}
                     </div>
@@ -1631,7 +1635,7 @@ export default function UserManagement() {
                         >
                           <option value="">Selecciona un plan de suscripción</option>
                           <option value="no-plan">Sin plan asignado</option>
-                          {subscriptionPlans?.map((plan: any) => (
+                          {actualPlans?.map((plan: any) => (
                             <option key={plan.id} value={plan.id.toString()}>
                               {plan.name} - ${plan.price}/{plan.duration_days}d
                             </option>
@@ -1640,9 +1644,9 @@ export default function UserManagement() {
                       </FormControl>
                       <FormDescription>
                         Selecciona un plan de suscripción para definir los límites y características disponibles.
-                        {subscriptionPlans && (
+                        {actualPlans && (
                           <span className="text-blue-600 font-medium ml-2">
-                            ({subscriptionPlans.length} planes disponibles)
+                            ({actualPlans.length} planes disponibles)
                           </span>
                         )}
                       </FormDescription>
@@ -1708,10 +1712,10 @@ export default function UserManagement() {
                 </div>
 
                 {/* Mostrar información del plan seleccionado */}
-                {form.watch('subscriptionPlanId') && form.watch('subscriptionPlanId') !== 'no-plan' && subscriptionPlans && (
+                {form.watch('subscriptionPlanId') && form.watch('subscriptionPlanId') !== 'no-plan' && actualPlans && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     {(() => {
-                      const selectedPlan = subscriptionPlans.find((p: any) => p.id.toString() === form.watch('subscriptionPlanId'));
+                      const selectedPlan = actualPlans.find((p: any) => p.id.toString() === form.watch('subscriptionPlanId'));
                       if (!selectedPlan) return null;
                       
                       return (

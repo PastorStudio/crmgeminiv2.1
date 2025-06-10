@@ -64,11 +64,11 @@ export function QuickPlanAssignment({
         },
         credentials: 'include'
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch plans: ${response.status} ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       console.log('API Response for plans:', data);
       return data;
@@ -78,7 +78,16 @@ export function QuickPlanAssignment({
     retry: 2
   });
 
-  const plans: SubscriptionPlan[] = Array.isArray((plansData as PlansResponse)?.plans) ? (plansData as PlansResponse).plans : [];
+  // Extract plans array from the response - handle both direct array and wrapped response
+  let plans: SubscriptionPlan[] = [];
+
+  if (Array.isArray(plansData)) {
+    // Direct array response
+    plans = plansData;
+  } else if (plansData && typeof plansData === 'object' && 'plans' in plansData && Array.isArray((plansData as PlansResponse).plans)) {
+    // Wrapped response
+    plans = (plansData as PlansResponse).plans;
+  }
 
   // Debug logging
   console.log('QuickPlanAssignment - Plans data:', plansData);
@@ -95,7 +104,7 @@ export function QuickPlanAssignment({
       // Calculate end date based on plan duration
       const selectedPlan = plans.find((p: SubscriptionPlan) => p.id === planId);
       const durationDays = selectedPlan?.duration_days || 30;
-      
+
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + durationDays);
 
@@ -129,10 +138,10 @@ export function QuickPlanAssignment({
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       queryClient.invalidateQueries({ queryKey: ['/api/user-subscriptions'] });
       queryClient.invalidateQueries({ queryKey: ['/api/subscription-plans'] });
-      
+
       // Force refetch to update UI immediately
       queryClient.refetchQueries({ queryKey: ['/api/users'] });
-      
+
       setIsOpen(false);
       setSelectedPlanId(null);
       setAdminPassword('');
@@ -228,7 +237,7 @@ export function QuickPlanAssignment({
                   const Icon = getPlanIcon(plan.name);
                   const isSelected = selectedPlanId === plan.id;
                   const isCurrent = currentPlanId === plan.id;
-                  
+
                   return (
                     <Card 
                       key={plan.id} 
@@ -256,11 +265,11 @@ export function QuickPlanAssignment({
                             <Badge variant="default" className="text-xs">Actual</Badge>
                           )}
                         </div>
-                        
+
                         <p className="text-xs text-gray-600 mb-3 line-clamp-2">
                           {plan.description}
                         </p>
-                        
+
                         <div className="space-y-1">
                           <div className="text-xs text-gray-500">
                             {plan.max_users} usuarios • {plan.max_whatsapp_accounts} cuentas WA
