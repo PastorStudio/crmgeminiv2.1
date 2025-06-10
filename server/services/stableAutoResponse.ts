@@ -218,11 +218,41 @@ class StableAutoResponseManager {
   }
 
   /**
-   * Genera una respuesta usando OpenAI con prompt prioritario
+   * Obtiene la configuración de idioma de la cuenta
+   */
+  private async getAccountLanguageSettings(accountId: number): Promise<{ targetLanguage: string; translateToSpanish: boolean }> {
+    try {
+      const accountResult = await db.select({
+        languageSettings: whatsappAccounts.languageSettings
+      })
+      .from(whatsappAccounts)
+      .where(eq(whatsappAccounts.id, accountId))
+      .limit(1);
+
+      if (accountResult.length > 0 && accountResult[0].languageSettings) {
+        const settings = JSON.parse(accountResult[0].languageSettings);
+        return {
+          targetLanguage: settings.targetLanguage || 'es',
+          translateToSpanish: settings.translateToSpanish !== false
+        };
+      }
+
+      return { targetLanguage: 'es', translateToSpanish: true };
+    } catch (error) {
+      console.error('Error obteniendo configuración de idioma:', error);
+      return { targetLanguage: 'es', translateToSpanish: true };
+    }
+  }
+
+  /**
+   * Genera una respuesta usando OpenAI con prompt prioritario y configuración de idioma
    */
   private async generateStableResponse(message: string, agentName: string, accountId: number): Promise<string | null> {
     try {
       console.log(`🤖 Generando respuesta estable para cuenta ${accountId} con ${agentName}: "${message.substring(0, 50)}..."`);
+
+      // Obtener configuración de idioma
+      const languageConfig = await this.getAccountLanguageSettings(accountId);
 
       // PRIORIDAD 1: Usar prompt asignado a la cuenta específica
       let systemPrompt = await this.getAccountPrompt(accountId);
@@ -233,19 +263,24 @@ class StableAutoResponseManager {
         console.log(`⚠️ Usando prompt genérico para cuenta ${accountId} - no hay prompt asignado`);
       }
 
+      // Añadir instrucciones de idioma al prompt
+      const languageInstruction = `
+IMPORTANTE: Responde en ${languageConfig.targetLanguage === 'en' ? 'inglés' : languageConfig.targetLanguage === 'fr' ? 'francés' : languageConfig.targetLanguage === 'pt' ? 'portugués' : 'español'}.
+${languageConfig.translateToSpanish && languageConfig.targetLanguage !== 'es' ? 'Al final de tu respuesta, incluye la traducción al español precedida por "Traducción ES:" en una nueva línea.' : ''}`;
+
       const response = await openai.chat.completions.create({
         model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages: [
           {
             role: "system",
-            content: systemPrompt
+            content: systemPrompt + "\n\n" + languageInstruction
           },
           {
             role: "user",
             content: message
           }
         ],
-        max_tokens: 300,
+        max_tokens: 400,
         temperature: 0.7
       });
 
