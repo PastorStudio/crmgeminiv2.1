@@ -42,6 +42,7 @@ import { fullSystemActivator } from './services/fullSystemActivator';
 import { RealWhatsAppActivator } from './services/realWhatsAppActivator';
 import { notificationService } from './services/notificationService';
 import { aiResponseService } from './services/aiAutonomousResponse';
+import { conversationAnalysisService } from './services/conversationAnalysis';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
