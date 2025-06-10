@@ -673,7 +673,11 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             console.log(`🎯 INICIANDO PROCESADOR UNIFICADO para cuenta ${id}`);
             console.log(`📝 Mensaje: "${messageBody}" | fromMe: ${message.fromMe} | Chat: ${message.from}`);
             
-            const { unifiedMessageProcessor } = await import('./unifiedMessageProcessor');
+            const { UnifiedMessageProcessor } = await import('./unifiedMessageProcessor');
+            const unifiedProcessor = UnifiedMessageProcessor.getInstance();
+            
+            // Asegurar inicialización del procesador
+            await unifiedProcessor.initialize();
             
             // Obtener nombre del contacto si está disponible
             let contactName = 'Usuario';
@@ -684,8 +688,8 @@ class WhatsAppMultiAccountManager extends EventEmitter {
               console.log('ℹ️ No se pudo obtener información del contacto');
             }
             
-            // Procesar mensaje con el procesador unificado (prioriza prompts)
-            const unifiedResult = await unifiedMessageProcessor.processMessage({
+            // Procesar mensaje con el procesador unificado (prioriza prompts asignados)
+            const unifiedResult = await unifiedProcessor.processMessage({
               chatId: message.from,
               accountId: id,
               from: message.from,
@@ -696,10 +700,11 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
             if (unifiedResult.success && unifiedResult.response) {
               console.log(`✅ RESPUESTA GENERADA POR PROCESADOR UNIFICADO (${unifiedResult.source}): ${unifiedResult.response.substring(0, 50)}...`);
+              console.log(`🎯 Agente usado: ${unifiedResult.agentName || 'Desconocido'}`);
               
               // Enviar la respuesta usando WhatsApp
               await client.sendMessage(message.from, unifiedResult.response);
-              console.log(`📤 Respuesta enviada por WhatsApp para cuenta ${id}`);
+              console.log(`📤 Respuesta enviada por WhatsApp para cuenta ${id} usando prompt asignado`);
               return; // Salir aquí - ya se procesó con el procesador unificado
             } else {
               console.log(`⏭️ Procesador unificado no generó respuesta para cuenta ${id}`);
