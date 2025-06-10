@@ -2838,33 +2838,27 @@ app.use((req, res, next) => {
     try {
       console.log("🔄 API users - Solicitando lista de usuarios con planes de suscripción...");
       
-      const { users, userSubscriptions, subscriptionPlans } = await import('@shared/schema');
-      const { eq, desc } = await import('drizzle-orm');
-      
-      // Get all users with their subscription plans
-      const { and, gte } = await import('drizzle-orm');
-      
-      // First get all users
-      const allUsersData = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          fullName: users.fullName,
-          email: users.email,
-          role: users.role,
-          status: users.status,
-          department: users.department,
-          avatar: users.avatar,
-          lastActivity: users.lastActivity,
-          totalLogins: users.totalLogins,
-          lastLoginAt: users.lastLoginAt
-        })
-        .from(users)
-        .orderBy(users.id);
-
-      // Then get the most recent active subscription for each user
+      // Use direct SQL query to avoid schema issues
       const { sql } = await import('drizzle-orm');
-      const userSubscriptionsData = await db.execute(sql`
+      const result = await db.execute(sql`
+        SELECT 
+          u.id,
+          u.username,
+          u."fullName",
+          u.email,
+          u.role,
+          u.status,
+          u.department,
+          u.avatar,
+          u."lastLoginAt",
+          u."createdAt",
+          u."updatedAt"
+        FROM users u
+        ORDER BY u.id
+      `);
+
+      // Get subscription data separately
+      const subscriptionResult = await db.execute(sql`
         SELECT DISTINCT ON (us.user_id)
           us.user_id,
           us.plan_id,
@@ -2884,8 +2878,8 @@ app.use((req, res, next) => {
       `);
 
       // Combine the data
-      const allUsers = allUsersData.map(user => {
-        const subscription = userSubscriptionsData.rows.find(sub => sub.user_id === user.id);
+      const allUsers = result.rows.map(user => {
+        const subscription = subscriptionResult.rows.find(sub => sub.user_id === user.id);
         return {
           ...user,
           currentPlan: subscription?.plan_name || null,
@@ -2899,8 +2893,10 @@ app.use((req, res, next) => {
       console.log(`✅ API users - Enviando ${allUsers.length} usuarios con información de planes`);
       res.json(allUsers);
     } catch (error) {
-      console.error("❌ API users - Error:", error);
-      res.status(500).json({ error: "Error interno del servidor" });
+      console.error("❌ API users - Error completo:", error);
+      console.error("❌ API users - Stack trace:", error.stack);
+      console.error("❌ API users - Mensaje:", error.message);
+      res.status(500).json({ error: "Error al obtener usuarios" });
     }
   });
 
