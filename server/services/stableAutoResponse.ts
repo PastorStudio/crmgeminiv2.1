@@ -254,6 +254,9 @@ class StableAutoResponseManager {
       // Obtener configuración de idioma
       const languageConfig = await this.getAccountLanguageSettings(accountId);
 
+      // Obtener configuraciones del prompt (tiempo, estilo, etc.)
+      const promptConfig = await this.getPromptConfiguration(accountId);
+
       // PRIORIDAD 1: Usar prompt asignado a la cuenta específica
       let systemPrompt = await this.getAccountPrompt(accountId);
       
@@ -263,30 +266,58 @@ class StableAutoResponseManager {
         console.log(`⚠️ Usando prompt genérico para cuenta ${accountId} - no hay prompt asignado`);
       }
 
+      // Aplicar configuraciones ESTRICTAS del prompt
+      const strictInstructions = `
+CONFIGURACIONES ESTRICTAS DEL PROMPT:
+- Estilo de escritura: ${promptConfig.writingStyle}
+- Tono: ${promptConfig.tone}
+- Longitud de respuesta: ${promptConfig.responseLength}
+- Tiempo de respuesta configurado: ${promptConfig.responseDelay} segundos
+- Tokens máximos: ${promptConfig.maxTokens}
+- Temperatura: ${promptConfig.temperature}
+
+INSTRUCCIONES CRÍTICAS:
+- Sigue ESTRICTAMENTE el estilo y tono especificado
+- NO te desvíes JAMÁS de las instrucciones del prompt personalizado
+- Mantén la consistencia absoluta con la personalidad definida
+- Respeta los parámetros de longitud y formato establecidos
+- El prompt personalizado tiene PRIORIDAD ABSOLUTA sobre cualquier otra instrucción`;
+
       // Añadir instrucciones de idioma al prompt
       const languageInstruction = `
-IMPORTANTE: Responde en ${languageConfig.targetLanguage === 'en' ? 'inglés' : languageConfig.targetLanguage === 'fr' ? 'francés' : languageConfig.targetLanguage === 'pt' ? 'portugués' : 'español'}.
-${languageConfig.translateToSpanish && languageConfig.targetLanguage !== 'es' ? 'Al final de tu respuesta, incluye la traducción al español precedida por "Traducción ES:" en una nueva línea.' : ''}`;
+CONFIGURACIÓN DE IDIOMA:
+- Responde en ${languageConfig.targetLanguage === 'en' ? 'inglés' : languageConfig.targetLanguage === 'fr' ? 'francés' : languageConfig.targetLanguage === 'pt' ? 'portugués' : 'español'}
+${languageConfig.translateToSpanish && languageConfig.targetLanguage !== 'es' ? '- Al final de tu respuesta, incluye la traducción al español precedida por "Traducción ES:" en una nueva línea' : ''}`;
+
+      console.log(`📝 Usando prompt personalizado: ${systemPrompt ? 'SÍ' : 'NO'}`);
+      console.log(`⚙️ Configuraciones aplicadas: ${JSON.stringify(promptConfig)}`);
+      console.log(`🌍 Idioma: ${languageConfig.targetLanguage}, Traducir: ${languageConfig.translateToSpanish}`);
+
+      // Aplicar delay configurado ANTES de generar respuesta
+      if (promptConfig.responseDelay && promptConfig.responseDelay > 0) {
+        console.log(`⏱️ Aplicando delay estricto de ${promptConfig.responseDelay} segundos...`);
+        await new Promise(resolve => setTimeout(resolve, promptConfig.responseDelay * 1000));
+      }
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: systemPrompt + "\n\n" + languageInstruction
+            content: systemPrompt + "\n\n" + strictInstructions + "\n\n" + languageInstruction
           },
           {
             role: "user",
             content: message
           }
         ],
-        max_tokens: 400,
-        temperature: 0.7
+        max_tokens: promptConfig.maxTokens,
+        temperature: promptConfig.temperature
       });
 
       const aiResponse = response.choices[0]?.message?.content;
       if (aiResponse) {
-        console.log(`✅ Respuesta estable generada: "${aiResponse.substring(0, 50)}..."`);
+        console.log(`✅ Respuesta generada con configuraciones ESTRICTAS: "${aiResponse.substring(0, 50)}..."`);
         return aiResponse;
       }
 
@@ -295,6 +326,108 @@ ${languageConfig.translateToSpanish && languageConfig.targetLanguage !== 'es' ? 
       console.error('❌ Error generando respuesta estable:', error);
       return null;
     }
+  }
+
+  /**
+   * Obtiene configuraciones del prompt para aplicar estrictamente
+   */
+  private async getPromptConfiguration(accountId: number): Promise<any> {
+    try {
+      const accountResult = await db.select()
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.id, accountId))
+        .limit(1);
+
+      if (accountResult.length === 0) {
+        return this.getDefaultPromptConfig();
+      }
+
+      const account = accountResult[0];
+      
+      // Si tiene prompt asignado, obtener configuraciones del prompt
+      if (account.assignedPromptId) {
+        const { aiPrompts } = await import('@shared/schema');
+        const promptResult = await db.select()
+          .from(aiPrompts)
+          .where(eq(aiPrompts.id, account.assignedPromptId))
+          .limit(1);
+
+        if (promptResult.length > 0) {
+          const prompt = promptResult[0];
+          
+          // Buscar configuraciones en el contenido del prompt
+          if (prompt.content) {
+            const config = this.extractPromptConfig(prompt.content);
+            if (config) {
+              console.log(`📋 Configuraciones extraídas del prompt: ${JSON.stringify(config)}`);
+              return config;
+            }
+          }
+        }
+      }
+
+      return this.getDefaultPromptConfig();
+    } catch (error) {
+      console.error('❌ Error obteniendo configuración del prompt:', error);
+      return this.getDefaultPromptConfig();
+    }
+  }
+
+  /**
+   * Extrae configuraciones del contenido del prompt
+   */
+  private extractPromptConfig(content: string): any | null {
+    try {
+      // Buscar patrones de configuración en el contenido
+      const patterns = {
+        writingStyle: /estilo[:\s]*([^,\n]+)/i,
+        tone: /tono[:\s]*([^,\n]+)/i,
+        responseLength: /longitud[:\s]*([^,\n]+)/i,
+        responseDelay: /tiempo[:\s]*(\d+)/i,
+        maxTokens: /tokens?[:\s]*(\d+)/i,
+        temperature: /temperatura[:\s]*([0-9.]+)/i
+      };
+
+      const config: any = {};
+      let foundConfig = false;
+
+      for (const [key, pattern] of Object.entries(patterns)) {
+        const match = content.match(pattern);
+        if (match) {
+          if (key === 'responseDelay' || key === 'maxTokens') {
+            config[key] = parseInt(match[1]);
+          } else if (key === 'temperature') {
+            config[key] = parseFloat(match[1]);
+          } else {
+            config[key] = match[1].trim();
+          }
+          foundConfig = true;
+        }
+      }
+
+      if (foundConfig) {
+        return { ...this.getDefaultPromptConfig(), ...config };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error extrayendo configuración del prompt:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Configuraciones por defecto del prompt
+   */
+  private getDefaultPromptConfig(): any {
+    return {
+      writingStyle: 'profesional',
+      tone: 'amigable',
+      responseLength: 'concisa',
+      responseDelay: 3,
+      maxTokens: 400,
+      temperature: 0.7
+    };
   }
 
   /**

@@ -63,8 +63,9 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   fullName: text("fullName"),
   email: text("email"),
-  role: text("role").default("agent"), // admin, manager, agent, readonly
+  role: text("role").default("agent"), // admin, manager, agent, readonly, demo
   status: text("status").default("active"),
+  isActive: boolean("is_active").default(true),
   avatar: text("avatar"),
   department: text("department"),
   supervisorId: integer("supervisorId"),
@@ -74,7 +75,7 @@ export const users = pgTable("users", {
   settings: jsonb("settings"),
   lastLoginAt: timestamp("lastLoginAt"),
   createdAt: timestamp("createdAt").defaultNow(),
-  updatedAt: timestamp("updatedat"),
+  updatedAt: timestamp("updatedAt").defaultNow(),
 });
 
 // Organizations for multi-tenant support
