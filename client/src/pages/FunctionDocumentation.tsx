@@ -408,3 +408,5 @@ export function FunctionDocumentation() {
     </div>
   );
 }
+
+export default FunctionDocumentation;
