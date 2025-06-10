@@ -668,10 +668,50 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             console.error(`❌ Error en web scraping automático:`, webScrapingError);
           }
 
-          // Procesar mensaje con sistema contextual de respuestas automáticas
+          // 🎯 USAR PROCESADOR UNIFICADO DE MENSAJES PRIMERO
           try {
-            console.log(`🤖 INICIANDO RESPUESTA CONTEXTUAL para cuenta ${id}`);
+            console.log(`🎯 INICIANDO PROCESADOR UNIFICADO para cuenta ${id}`);
             console.log(`📝 Mensaje: "${messageBody}" | fromMe: ${message.fromMe} | Chat: ${message.from}`);
+            
+            const { unifiedMessageProcessor } = await import('./unifiedMessageProcessor');
+            
+            // Obtener nombre del contacto si está disponible
+            let contactName = 'Usuario';
+            try {
+              const contact = await message.getContact();
+              contactName = contact.name || contact.pushname || contact.number || 'Usuario';
+            } catch (contactError) {
+              console.log('ℹ️ No se pudo obtener información del contacto');
+            }
+            
+            // Procesar mensaje con el procesador unificado (prioriza prompts)
+            const unifiedResult = await unifiedMessageProcessor.processMessage({
+              chatId: message.from,
+              accountId: id,
+              from: message.from,
+              body: messageBody,
+              contactName: contactName,
+              fromMe: message.fromMe
+            });
+
+            if (unifiedResult.success && unifiedResult.response) {
+              console.log(`✅ RESPUESTA GENERADA POR PROCESADOR UNIFICADO (${unifiedResult.source}): ${unifiedResult.response.substring(0, 50)}...`);
+              
+              // Enviar la respuesta usando WhatsApp
+              await client.sendMessage(message.from, unifiedResult.response);
+              console.log(`📤 Respuesta enviada por WhatsApp para cuenta ${id}`);
+              return; // Salir aquí - ya se procesó con el procesador unificado
+            } else {
+              console.log(`⏭️ Procesador unificado no generó respuesta para cuenta ${id}`);
+            }
+          } catch (unifiedError) {
+            console.error(`❌ Error en procesador unificado:`, unifiedError);
+            console.log(`🔄 Fallback a sistema contextual...`);
+          }
+
+          // FALLBACK: Procesar mensaje con sistema contextual de respuestas automáticas
+          try {
+            console.log(`🤖 INICIANDO RESPUESTA CONTEXTUAL (fallback) para cuenta ${id}`);
             
             const { ContextAwareAutoResponder } = await import('./contextAwareAutoResponder');
             
