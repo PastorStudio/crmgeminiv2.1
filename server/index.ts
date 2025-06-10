@@ -2833,43 +2833,63 @@ app.use((req, res, next) => {
     }
   });
 
-  // Simple users endpoint that works reliably
+  // Working users endpoint with direct database access
   app.get('/api/users', async (req, res) => {
     try {
       console.log("🔄 API users - Getting users from database...");
       
-      // Import required schema tables
-      const { users } = await import('@shared/schema');
+      // Get database connection from environment
+      const { neon } = await import('@neondatabase/serverless');
+      const dbUrl = process.env.DATABASE_URL;
       
-      // Get all users and filter out DJP in application logic
-      const allUsers = await db.select().from(users);
+      if (!dbUrl) {
+        throw new Error('DATABASE_URL not found');
+      }
+      
+      const sql = neon(dbUrl);
+      const result = await sql`
+        SELECT 
+          id,
+          username,
+          "fullName",
+          email,
+          role,
+          status,
+          department,
+          avatar,
+          "lastLoginAt",
+          "createdAt"
+        FROM users
+        WHERE username != 'DJP'
+        ORDER BY id
+      `;
 
-      // Filter and map users for frontend
-      const filteredUsers = allUsers
-        .filter(user => user.username !== 'DJP')
-        .map(user => ({
-          id: user.id,
-          username: user.username,
-          fullName: user.fullName,
-          email: user.email,
-          role: user.role,
-          status: user.status || 'active',
-          department: user.department,
-          avatar: user.avatar,
-          lastLoginAt: user.lastLoginAt,
-          totalLogins: 0,
-          lastActivity: user.lastLoginAt,
-          currentPlan: 'Sin plan',
-          currentPlanId: null,
-          subscriptionEndDate: null,
-          subscriptionStatus: null,
-          daysRemaining: null
-        }));
+      // Map users for frontend
+      const filteredUsers = result.map((user: any) => ({
+        id: user.id,
+        username: user.username,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        status: user.status || 'active',
+        department: user.department,
+        avatar: user.avatar,
+        lastLoginAt: user.lastLoginAt,
+        totalLogins: 0,
+        lastActivity: user.lastLoginAt,
+        currentPlan: 'Sin plan',
+        currentPlanId: null,
+        subscriptionEndDate: null,
+        subscriptionStatus: null,
+        daysRemaining: null
+      }));
 
       console.log(`✅ API users - Returning ${filteredUsers.length} users`);
       res.json(filteredUsers);
     } catch (error) {
       console.error("❌ API users - Error:", error.message);
+      console.error("❌ API users - Stack:", error.stack);
+      console.error("❌ API users - Full error:", error);
       res.status(500).json({ error: "Error al obtener usuarios" });
     }
   });
