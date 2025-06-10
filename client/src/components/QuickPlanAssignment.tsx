@@ -60,7 +60,7 @@ export function QuickPlanAssignment({
     retry: 2
   });
 
-  const plans: SubscriptionPlan[] = Array.isArray((plansData as any)?.plans) ? (plansData as any).plans : [];
+  const plans: SubscriptionPlan[] = Array.isArray((plansData as PlansResponse)?.plans) ? (plansData as PlansResponse).plans : [];
 
   // Plan assignment mutation
   const assignPlanMutation = useMutation({
@@ -196,7 +196,7 @@ export function QuickPlanAssignment({
               </div>
             ) : !plans || plans.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No hay planes disponibles
+                No hay planes disponibles ({plans?.length || 0} planes cargados)
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
