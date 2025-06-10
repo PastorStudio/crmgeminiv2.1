@@ -52,46 +52,36 @@ class EnhancedPromptAutoResponseManager {
     try {
       console.log('🔄 Cargando configuraciones de prompts activas...');
       
-      // Buscar cuentas con respuestas automáticas habilitadas y prompts asignados
-      const accounts = await db
-        .select()
-        .from(whatsappAccounts);
+      // Usar consulta SQL directa para evitar problemas de esquema
+      const { pool } = await import('../db');
+      const result = await pool.query(`
+        SELECT wa.id, wa.name, wa.autoresponseenabled, wa.assigned_prompt_id, wa.customprompt, wa.target_language,
+               ap.name as prompt_name, ap.content as prompt_content, ap.provider, ap.temperature
+        FROM whatsapp_accounts wa
+        LEFT JOIN ai_prompts ap ON wa.assigned_prompt_id = ap.id
+        WHERE wa.autoresponseenabled = true AND wa.assigned_prompt_id IS NOT NULL
+      `);
 
       this.activeConfigs.clear();
 
-      for (const account of accounts) {
-        // Solo procesar cuentas con respuestas automáticas habilitadas y prompts asignados
-        if (account.autoResponseEnabled && account.assignedPromptId) {
-          try {
-            // Obtener detalles del prompt asignado
-            const [prompt] = await db
-              .select()
-              .from(aiPrompts)
-              .where(eq(aiPrompts.id, account.assignedPromptId));
+      for (const row of result.rows) {
+        if (row.prompt_content) {
+          const config: PromptConfig = {
+            accountId: row.id,
+            promptId: row.assigned_prompt_id,
+            promptName: row.prompt_name,
+            promptContent: row.prompt_content,
+            customPrompt: row.customprompt || undefined,
+            enabled: row.autoresponseenabled || false,
+            targetLanguage: row.target_language || 'es',
+            provider: row.provider || 'openai',
+            temperature: row.temperature || 0.7
+          };
 
-            if (prompt) {
-              const config: PromptConfig = {
-                accountId: account.id,
-                promptId: prompt.id,
-                promptName: prompt.name,
-                promptContent: prompt.content,
-                customPrompt: account.customPrompt || undefined,
-                enabled: account.autoResponseEnabled || false,
-                targetLanguage: account.targetLanguage || 'es',
-                provider: prompt.provider || 'openai',
-                temperature: prompt.temperature || 0.7
-              };
-
-              this.activeConfigs.set(account.id, config);
-              console.log(`✅ Cuenta ${account.id} configurada con prompt "${prompt.name}" (ID: ${prompt.id})`);
-            } else {
-              console.log(`⚠️ Cuenta ${account.id} tiene prompt asignado (ID: ${account.assignedPromptId}) pero no se encontró`);
-            }
-          } catch (error) {
-            console.log(`❌ Error cargando prompt para cuenta ${account.id}:`, error);
-          }
-        } else if (account.autoResponseEnabled && !account.assignedPromptId) {
-          console.log(`⚠️ Cuenta ${account.id} (${account.name}) tiene respuestas automáticas habilitadas pero no tiene prompt asignado`);
+          this.activeConfigs.set(row.id, config);
+          console.log(`✅ Cuenta ${row.id} configurada con prompt "${row.prompt_name}" (ID: ${row.assigned_prompt_id})`);
+        } else {
+          console.log(`⚠️ Cuenta ${row.id} tiene prompt asignado (ID: ${row.assigned_prompt_id}) pero no se encontró el contenido`);
         }
       }
 
@@ -108,13 +98,13 @@ class EnhancedPromptAutoResponseManager {
     try {
       console.log(`🚀 Activando prompt ${promptId} para cuenta ${accountId}...`);
       
-      // Actualizar base de datos
-      await db.update(whatsappAccounts)
-        .set({ 
-          autoResponseEnabled: true,
-          assignedPromptId: promptId 
-        })
-        .where(eq(whatsappAccounts.id, accountId));
+      // Actualizar base de datos usando consulta SQL directa
+      const { pool } = await import('../db');
+      await pool.query(`
+        UPDATE whatsapp_accounts 
+        SET autoresponseenabled = true, assigned_prompt_id = $1 
+        WHERE id = $2
+      `, [promptId, accountId]);
 
       // Recargar configuraciones
       await this.loadActivePromptConfigurations();
