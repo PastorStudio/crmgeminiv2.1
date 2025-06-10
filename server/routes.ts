@@ -3952,6 +3952,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get subscription for specific user
+  app.get("/api/user-subscriptions/user/:userId", multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      
+      if (!userId || isNaN(userId)) {
+        return res.status(400).json({
+          success: false,
+          message: "ID de usuario inválido"
+        });
+      }
+
+      console.log(`📊 Obteniendo suscripción para usuario ${userId}`);
+
+      // Get active subscription for the user
+      const subscriptionResult = await pool.query(`
+        SELECT 
+          us.*,
+          sp.name as plan_name,
+          sp.description as plan_description,
+          sp.price,
+          sp.currency,
+          sp.duration_days,
+          sp.features,
+          sp.max_users,
+          sp.max_whatsapp_accounts,
+          sp.max_chats_per_month
+        FROM user_subscriptions us
+        INNER JOIN subscription_plans sp ON us.plan_id = sp.id
+        WHERE us.user_id = $1 AND us.status = 'active'
+        ORDER BY us.end_date DESC
+        LIMIT 1
+      `, [userId]);
+
+      if (subscriptionResult.rows.length === 0) {
+        return res.json({
+          success: true,
+          subscription: null,
+          message: "Usuario sin suscripción activa"
+        });
+      }
+
+      const subscription = subscriptionResult.rows[0];
+      
+      res.json({
+        success: true,
+        subscription,
+        message: "Suscripción obtenida exitosamente"
+      });
+
+    } catch (error) {
+      console.error("Error obteniendo suscripción del usuario:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+
   // Get subscription status for current user (with auto-admin Enterprise assignment)
   app.get("/api/subscription-status", multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {

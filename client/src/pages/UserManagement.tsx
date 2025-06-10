@@ -74,6 +74,7 @@ interface User {
   lastActivity?: string;
   currentPlan?: string;
   currentPlanId?: number;
+  daysRemaining?: number;
   subscriptionEndDate?: string;
   subscriptionStatus?: string;
 }
@@ -278,7 +279,7 @@ export default function UserManagement() {
           // FILTRAR USUARIO DJP PARA OCULTARLO DE LA LISTA (mantener acceso total)
           const filteredUsers = data.filter((user: any) => user.username !== 'DJP');
           
-          // Obtener estadísticas de actividad para cada usuario
+          // Obtener estadísticas de actividad y suscripción para cada usuario
           const usersWithActivity = await Promise.all(
             filteredUsers.map(async (user: any) => {
               try {
@@ -294,6 +295,42 @@ export default function UserManagement() {
                     lastActivity = activityData.activities?.[0]?.timestamp || null;
                   }
                 }
+
+                // Obtener suscripción actual del usuario
+                let currentPlan = null;
+                let currentPlanId = null;
+                let daysRemaining = null;
+                let subscriptionStatus = null;
+                let subscriptionEndDate = null;
+
+                try {
+                  const subscriptionResponse = await fetch(`/api/user-subscriptions/user/${user.id}`);
+                  if (subscriptionResponse.ok) {
+                    const subscriptionData = await subscriptionResponse.json();
+                    if (subscriptionData.success && subscriptionData.subscription) {
+                      currentPlan = subscriptionData.subscription.plan_name;
+                      currentPlanId = subscriptionData.subscription.plan_id;
+                      subscriptionStatus = subscriptionData.subscription.status;
+                      subscriptionEndDate = subscriptionData.subscription.end_date;
+                      
+                      // Calcular días restantes
+                      if (subscriptionData.subscription.end_date) {
+                        const endDate = new Date(subscriptionData.subscription.end_date);
+                        const now = new Date();
+                        const diffTime = endDate.getTime() - now.getTime();
+                        daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        // Si es negativo, la suscripción expiró
+                        if (daysRemaining < 0) {
+                          daysRemaining = 0;
+                          subscriptionStatus = 'expired';
+                        }
+                      }
+                    }
+                  }
+                } catch (subError) {
+                  console.warn('Error obteniendo suscripción del usuario:', user.id, subError);
+                }
                 
                 return {
                   ...user,
@@ -302,10 +339,15 @@ export default function UserManagement() {
                              user.role === 'admin' ? 'administracion' : 
                              user.role === 'supervisor' ? 'supervision' : 'atencion_cliente',
                   totalLogins,
-                  lastActivity
+                  lastActivity,
+                  currentPlan: currentPlan || 'Sin plan',
+                  currentPlanId,
+                  daysRemaining,
+                  subscriptionStatus,
+                  subscriptionEndDate
                 };
               } catch (error) {
-                console.warn('Error obteniendo actividades del usuario:', user.id, error);
+                console.warn('Error obteniendo datos del usuario:', user.id, error);
                 return {
                   ...user,
                   status: 'active',
@@ -313,7 +355,12 @@ export default function UserManagement() {
                              user.role === 'admin' ? 'administracion' : 
                              user.role === 'supervisor' ? 'supervision' : 'atencion_cliente',
                   totalLogins: 0,
-                  lastActivity: null
+                  lastActivity: null,
+                  currentPlan: 'Sin plan',
+                  currentPlanId: null,
+                  daysRemaining: null,
+                  subscriptionStatus: null,
+                  subscriptionEndDate: null
                 };
               }
             })
@@ -327,7 +374,12 @@ export default function UserManagement() {
             status: 'active',
             department: user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
                        user.role === 'admin' ? 'administracion' : 
-                       user.role === 'supervisor' ? 'supervision' : 'atencion_cliente'
+                       user.role === 'supervisor' ? 'supervision' : 'atencion_cliente',
+            currentPlan: 'Sin plan',
+            currentPlanId: null,
+            daysRemaining: null,
+            subscriptionStatus: null,
+            subscriptionEndDate: null
           }));
         } else {
           console.error('❌ Respuesta inválida del servidor:', data);
@@ -1176,7 +1228,9 @@ export default function UserManagement() {
                           daysRemaining={user.daysRemaining}
                           onPlanChanged={() => {
                             // Refrescar la lista de usuarios después del cambio
+                            console.log('🔄 Plan cambiado, refrescando datos de usuarios...');
                             queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+                            refetch(); // Forzar refetch inmediato
                           }}
                         />
                       </TableCell>
