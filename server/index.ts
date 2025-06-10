@@ -6323,6 +6323,49 @@ app.use((req, res, next) => {
 
   // 🔐 AUTHENTICATION ROUTES (BYPASS VITE)
   
+  // Test endpoint for unified message processor - Direct route that bypasses Vite
+  app.post('/api/unified-processor/test-response', async (req: Request, res: Response) => {
+    try {
+      const { accountId, message } = req.body;
+      
+      if (!accountId || !message) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'accountId y message son requeridos' 
+        });
+      }
+
+      console.log(`🧪 Test: Procesando mensaje para cuenta ${accountId}: "${message}"`);
+
+      const { unifiedMessageProcessor } = await import('./services/unifiedMessageProcessor');
+
+      // Procesar mensaje usando el procesador unificado
+      const result = await unifiedMessageProcessor.processMessage({
+        chatId: 'test-chat',
+        accountId: accountId,
+        from: 'test-contact',
+        body: message,
+        contactName: 'Usuario Test',
+        fromMe: false
+      });
+
+      return res.json({
+        success: result.success,
+        response: result.response,
+        agentName: result.agentName,
+        source: result.source,
+        hasPrompt: unifiedMessageProcessor.hasPromptForAccount(accountId)
+      });
+
+    } catch (error) {
+      console.error('❌ Error en test de procesador unificado:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Error interno del servidor' 
+      });
+    }
+  });
+  
   // Admin password verification endpoint - Direct route that bypasses Vite
   app.post("/api/direct/auth/verify-admin", async (req: Request, res: Response) => {
     try {
