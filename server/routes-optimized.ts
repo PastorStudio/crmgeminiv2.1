@@ -22,7 +22,8 @@ import { z } from "zod";
 import { geminiLeadOrganizer } from "./services/geminiLeadOrganizer";
 import { authService } from "./services/authService";
 import { enhancedSystemService } from "./services/enhancedSystemService";
-import { realTimeAnalyticsService } from "./services/realTimeAnalyticsService";
+// import { realTimeAnalyticsService } from "./services/realTimeAnalyticsService"; // Disabled due to schema issues
+import { realDashboardService } from "./services/realDashboardService";
 import jwt from 'jsonwebtoken';
 
 // SISTEMA DE RUTAS OPTIMIZADO Y LIMPIO CON GEMINI AI
@@ -1392,61 +1393,21 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
-  // Dashboard metrics endpoint - real business analytics
+  // Real dashboard metrics endpoint - displays actual database data
   app.get("/api/dashboard-metrics", async (req: Request, res: Response) => {
     try {
-      console.log('📈 Generando métricas de análisis del negocio...');
+      console.log('📈 Getting real dashboard metrics from database...');
       
-      // Get real leads data from storage
-      const leads = await storage.getAllLeads();
-      const totalLeads = leads.length;
+      const metrics = await realDashboardService.getDashboardMetrics();
       
-      // This month's performance
-      const currentMonth = new Date();
-      currentMonth.setDate(1);
-      currentMonth.setHours(0, 0, 0, 0);
+      if (!metrics.success) {
+        return res.status(500).json({ error: metrics.error });
+      }
       
-      const newLeadsThisMonth = leads.filter(lead => 
-        new Date(lead.createdAt) >= currentMonth
-      ).length;
-      
-      // Revenue from actual leads
-      const totalRevenue = leads.reduce((sum, lead) => {
-        const value = parseFloat(lead.value || '0');
-        return sum + (isNaN(value) ? 0 : value);
-      }, 0);
-      
-      // Get actual message count from database
-      const messages = await db.select().from(whatsappMessages);
-      const totalMessages = messages.length;
-      
-      // WhatsApp accounts as pipeline indicator
-      const whatsappAccounts = await storage.getAllWhatsappAccounts();
-      const totalAccounts = whatsappAccounts.length;
-      
-      // Performance metrics
-      const conversionRate = totalLeads > 0 ? Math.round((newLeadsThisMonth / totalLeads) * 100) : 0;
-      const averageLeadValue = totalLeads > 0 ? Math.round(totalRevenue / totalLeads) : 0;
-      
-      const metrics = {
-        totalLeads,
-        newLeadsThisMonth,
-        totalRevenue: Math.round(totalRevenue),
-        totalMessages,
-        totalAccounts,
-        conversionRate,
-        averageLeadValue,
-        performanceMetrics: {
-          conversionRate,
-          averageValue: averageLeadValue,
-          monthlyGrowth: Math.max(0, Math.round(Math.random() * 20) - 5) // Simple growth indicator
-        }
-      };
-      
-      console.log('✅ Métricas generadas:', { totalLeads, newLeadsThisMonth, totalRevenue: Math.round(totalRevenue) });
+      console.log('✅ Real metrics retrieved:', metrics.data.totals);
       
       res.setHeader('Content-Type', 'application/json');
-      res.json(metrics);
+      res.json(metrics.data);
     } catch (error) {
       console.error('❌ Error generando métricas:', error);
       res.status(500).json({ 
