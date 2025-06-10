@@ -86,7 +86,19 @@ console.log('🕐 SISTEMA SINCRONIZADO - NUEVA YORK:', new Date().toLocaleString
 console.log('✅ Sistema CRM WhatsApp iniciado correctamente');
 console.log(`Modo de ejecución: ${process.env.NODE_ENV || 'development'}`)
 
+// Inicializar procesador unificado de mensajes al iniciar el servidor
+setTimeout(async () => {
+  try {
+    console.log('🎯 Inicializando procesador unificado de mensajes...');
+    await unifiedMessageProcessor.initialize();
+    console.log('✅ Procesador unificado inicializado correctamente');
+  } catch (error) {
+    console.error('❌ Error inicializando procesador unificado:', error);
+  }
+}, 2000);
+
 const app = express();
+
 
 // Configurar CORS antes que cualquier otra cosa
 app.use((req, res, next) => {
