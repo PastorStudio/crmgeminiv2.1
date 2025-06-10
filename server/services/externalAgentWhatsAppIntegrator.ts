@@ -22,81 +22,35 @@ interface WhatsAppMessage {
 export class ExternalAgentWhatsAppIntegrator {
   
   /**
-   * Procesa un mensaje entrante y genera respuesta con configuración AI personalizada
+   * Procesa un mensaje entrante usando el procesador unificado con prioridad de prompts
    */
   async processIncomingMessage(message: WhatsAppMessage): Promise<{ success: boolean; response?: string; agentName?: string }> {
     try {
-      // Solo procesar mensajes que no son nuestros
-      if (message.fromMe) {
-        return { success: false };
-      }
+      // Usar el procesador unificado que garantiza prioridad de prompts
+      const { unifiedMessageProcessor } = await import('./unifiedMessageProcessor');
+      
+      const result = await unifiedMessageProcessor.processMessage({
+        chatId: message.chatId,
+        accountId: message.accountId,
+        from: message.from,
+        body: message.body,
+        contactName: message.contactName,
+        fromMe: message.fromMe
+      });
 
-      console.log(`📨 Procesando mensaje entrante en cuenta ${message.accountId}: "${message.body.substring(0, 50)}..."`);
-
-      // Obtener configuración de la cuenta WhatsApp
-      const [account] = await db
-        .select()
-        .from(whatsappAccounts)
-        .where(eq(whatsappAccounts.id, message.accountId))
-        .limit(1);
-
-      if (!account) {
-        console.log(`❌ Cuenta WhatsApp ${message.accountId} no encontrada`);
-        return { success: false };
-      }
-
-      // Verificar si tiene respuesta automática activada (sin depender de agentes asignados)
-      if (!account.autoResponseEnabled) {
-        console.log(`⏭️ Cuenta ${message.accountId} no tiene respuestas automáticas activadas`);
-        return { success: false };
-      }
-
-      // PRIORIDAD 1: Intentar usar el sistema de prompts asignados
-      try {
-        const { enhancedPromptAutoResponseManager } = await import('./enhancedPromptAutoResponse');
-        
-        if (enhancedPromptAutoResponseManager.hasPromptConfig(message.accountId)) {
-          console.log(`🎯 Usando prompt asignado para cuenta ${message.accountId}`);
-          
-          const promptResponse = await enhancedPromptAutoResponseManager.generatePromptResponse(
-            message.accountId,
-            message.body,
-            message.contactName || 'Cliente'
-          );
-          
-          if (promptResponse) {
-            console.log(`✅ Respuesta generada con prompt asignado: "${promptResponse.substring(0, 50)}..."`);
-            
-            return { 
-              success: true, 
-              response: promptResponse, 
-              agentName: "Prompt Assistant" 
-            };
-          }
-        }
-      } catch (promptError) {
-        console.error('Error usando sistema de prompts:', promptError);
-      }
-
-      console.log(`🤖 Generando respuesta automática con configuración AI personalizada (fallback)`);
-
-      // PRIORIDAD 2: Usar configuración AI genérica como fallback
-      const response = await this.generateResponseWithAI(message.body, message.accountId, message.chatId);
-
-      if (response) {
-        console.log(`✅ Respuesta generada exitosamente: "${response.substring(0, 50)}..."`);
-        
-        return { 
-          success: true, 
-          response, 
-          agentName: "AI Assistant" 
+      if (result.success && result.response) {
+        console.log(`✅ Mensaje procesado exitosamente por ${result.source} para cuenta ${message.accountId}`);
+        return {
+          success: true,
+          response: result.response,
+          agentName: result.agentName || 'Asistente AI'
         };
       }
 
       return { success: false };
 
     } catch (error) {
-      console.error('❌ Error procesando mensaje con configuración AI:', error);
+      console.error('❌ Error procesando mensaje:', error);
       return { success: false };
     }
   }

@@ -2794,6 +2794,18 @@ app.use((req, res, next) => {
     console.error("❌ Error al iniciar sistema independiente de respuestas automáticas:", error);
   }
 
+  // Inicializar procesador unificado de mensajes (PRIORIDAD MÁXIMA)
+  try {
+    console.log("🎯 Iniciando procesador unificado de mensajes...");
+    const { unifiedMessageProcessor } = await import('./services/unifiedMessageProcessor');
+    
+    // Inicializar y cargar configuraciones
+    await unifiedMessageProcessor.initialize();
+    console.log("✅ Procesador unificado de mensajes iniciado correctamente");
+  } catch (error) {
+    console.error("❌ Error al iniciar procesador unificado de mensajes:", error);
+  }
+
   // Inicializar servicio automático de agentes externos
   try {
     console.log("🤖 Iniciando sistema automático de agentes externos...");
