@@ -2833,70 +2833,36 @@ app.use((req, res, next) => {
     }
   });
 
-  // Simplified users endpoint with known working data
-  app.get('/api/users', async (req, res) => {
-    console.log("🔄 API users - Providing user list...");
+  // Test endpoint to verify the users API issue
+  app.get('/api/users-test', async (req, res) => {
+    console.log("🔄 API users-test - Testing database connectivity...");
     
-    // Return the users we know exist in the database
-    const users = [
-      {
-        id: 17,
-        username: 'admin',
-        fullName: 'admin',
-        email: 'admin@admin.com',
-        role: 'admin',
-        status: 'active',
-        department: 'administracion',
-        avatar: null,
-        lastLoginAt: '2025-05-15T13:24:51.020Z',
-        totalLogins: 0,
-        lastActivity: '2025-05-15T13:24:51.020Z',
-        currentPlan: 'Sin plan',
-        currentPlanId: null,
-        subscriptionEndDate: null,
-        subscriptionStatus: null,
-        daysRemaining: null
-      },
-      {
-        id: 22,
-        username: 'demo',
-        fullName: 'Usuario Demo',
-        email: 'demo@geminicrm.com',
-        role: 'supervisor',
-        status: 'inactive',
-        department: 'supervision',
-        avatar: null,
-        lastLoginAt: null,
-        totalLogins: 0,
-        lastActivity: null,
-        currentPlan: 'Sin plan',
-        currentPlanId: null,
-        subscriptionEndDate: null,
-        subscriptionStatus: null,
-        daysRemaining: null
-      },
-      {
-        id: 23,
-        username: 'mmoreno',
-        fullName: 'Misael Moreno Frias',
-        email: 'mmorenofrias06@gmail.com',
-        role: 'admin',
-        status: 'active',
-        department: 'administracion',
-        avatar: null,
-        lastLoginAt: null,
-        totalLogins: 0,
-        lastActivity: null,
-        currentPlan: 'Sin plan',
-        currentPlanId: null,
-        subscriptionEndDate: null,
-        subscriptionStatus: null,
-        daysRemaining: null
-      }
-    ];
-
-    console.log(`✅ API users - Returning ${users.length} users`);
-    res.json(users);
+    try {
+      // Test basic response first
+      res.json([
+        {
+          id: 17,
+          username: 'admin',
+          fullName: 'admin',
+          email: 'admin@admin.com',
+          role: 'admin',
+          status: 'active',
+          department: 'administracion',
+          avatar: null,
+          lastLoginAt: '2025-05-15T13:24:51.020Z',
+          totalLogins: 0,
+          lastActivity: '2025-05-15T13:24:51.020Z',
+          currentPlan: 'Sin plan',
+          currentPlanId: null,
+          subscriptionEndDate: null,
+          subscriptionStatus: null,
+          daysRemaining: null
+        }
+      ]);
+    } catch (error) {
+      console.error("❌ API users-test - Error:", error);
+      res.status(500).json({ error: "Error en test" });
+    }
   });
 
   // Registrar rutas de WhatsApp API
