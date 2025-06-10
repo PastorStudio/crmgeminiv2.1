@@ -32,17 +32,17 @@ export class RealTimeAnalyticsService {
       const now = new Date();
       const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
 
-      // Get active agents count
+      // Get active agents count (use status field instead of isActive)
       const activeAgentsResult = await db
         .select({ count: count() })
         .from(users)
-        .where(eq(users.isActive, true));
+        .where(eq(users.status, 'active'));
 
-      // Get total messages in last 5 minutes
+      // Get total messages in last 5 minutes (use messages table)
       const totalMessagesResult = await db
         .select({ count: count() })
-        .from(conversations)
-        .where(gte(conversations.lastMessageAt, fiveMinutesAgo));
+        .from(messages)
+        .where(gte(messages.createdAt, fiveMinutesAgo));
 
       // Get new leads today
       const today = new Date();
@@ -58,23 +58,23 @@ export class RealTimeAnalyticsService {
         .from(leads)
         .where(eq(leads.isConverted, true));
 
-      // Get active chats
+      // Get active chats (use contacts table as proxy)
       const activeChatsResult = await db
         .select({ count: count() })
-        .from(conversations)
-        .where(eq(conversations.status, 'active'));
+        .from(contacts)
+        .where(eq(contacts.isActive, true));
 
       // Get open tickets
       const openTicketsResult = await db
         .select({ count: count() })
-        .from(modernTickets)
-        .where(eq(modernTickets.status, 'open'));
+        .from(tickets)
+        .where(eq(tickets.status, 'open'));
 
       // Get active accounts
       const activeAccountsResult = await db
         .select({ count: count() })
-        .from(whatsappAccounts)
-        .where(eq(whatsappAccounts.status, 'active'));
+        .from(whatsapp_accounts)
+        .where(eq(whatsapp_accounts.status, 'active'));
 
       // Calculate total revenue (sum of converted leads value)
       const revenueResult = await db
