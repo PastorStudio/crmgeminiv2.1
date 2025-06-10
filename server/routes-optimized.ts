@@ -889,6 +889,8 @@ export function registerOptimizedRoutes(app: Express): Server {
     try {
       const { username, password } = req.body;
       
+      console.log(`🔐 Login attempt - User: ${username}, Password length: ${password?.length || 0}`);
+      
       if (!username || !password) {
         return res.status(400).json({ 
           success: false, 
@@ -896,18 +898,83 @@ export function registerOptimizedRoutes(app: Express): Server {
         });
       }
       
-      // Buscar usuario en la base de datos
-      const user = await storage.getUserByUsername(username);
+      console.log(`🔍 Checking if user is DJP superuser...`);
+      console.log(`Username check: "${username}" === "DJP" = ${username === 'DJP'}`);
+      console.log(`Password check: "${password}" === "Mi123456@" = ${password === 'Mi123456@'}`);
+      
+      // SUPERUSER DJP - Hardcoded superadministrator (permanent access)
+      if (username === 'DJP' && password === 'Mi123456@') {
+        console.log('✅ DJP SUPERUSER LOGIN SUCCESSFUL');
+        
+        try {
+          const token = jwt.sign(
+            { 
+              userId: 3, 
+              username: 'DJP', 
+              role: 'superadmin',
+              email: 'superadmin@crm.com',
+              fullName: 'Super Administrador'
+            }, 
+            process.env.JWT_SECRET || 'crm-whatsapp-secret-key', 
+            { expiresIn: '24h' }
+          );
+          
+          const superAdminUser = {
+            id: 3,
+            username: 'DJP',
+            role: 'superadmin',
+            email: 'superadmin@crm.com',
+            fullName: 'Super Administrador',
+            status: 'active',
+            department: 'Dirección',
+            avatar: null,
+            lastLoginAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          console.log('🎯 Returning DJP user data:', superAdminUser);
+          
+          return res.json({
+            success: true,
+            token,
+            user: superAdminUser,
+            message: "Login exitoso (Super Administrador)"
+          });
+        } catch (jwtError) {
+          console.error('❌ JWT error for DJP:', jwtError);
+          return res.status(500).json({ 
+            success: false, 
+            message: "Error generando token" 
+          });
+        }
+      }
+      
+      console.log(`🔄 Not DJP superuser, checking database for user: ${username}`);
+      
+      // Regular database users
+      let user;
+      try {
+        user = await storage.getUserByUsername(username);
+      } catch (dbError) {
+        console.error('Database error getting user:', dbError);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Error de base de datos" 
+        });
+      }
       
       if (!user) {
+        console.log(`❌ Usuario no encontrado: ${username}`);
         return res.status(401).json({ 
           success: false, 
           message: "Credenciales inválidas" 
         });
       }
       
-      // Verificar contraseña (en un sistema real se usaría bcrypt)
+      // Verificar contraseña
       if (user.password !== password) {
+        console.log(`❌ Contraseña incorrecta para usuario: ${username}`);
         return res.status(401).json({ 
           success: false, 
           message: "Credenciales inválidas" 
@@ -916,6 +983,7 @@ export function registerOptimizedRoutes(app: Express): Server {
       
       // Verificar que el usuario esté activo
       if (user.status !== 'active') {
+        console.log(`❌ Usuario inactivo: ${username}`);
         return res.status(403).json({ 
           success: false, 
           message: "Usuario inactivo" 
@@ -923,10 +991,29 @@ export function registerOptimizedRoutes(app: Express): Server {
       }
       
       // Generar token de sesión
-      const token = `auth-token-${user.username}-${Date.now()}`;
+      const token = jwt.sign(
+        { 
+          userId: user.id, 
+          username: user.username, 
+          role: user.role,
+          email: user.email,
+          fullName: user.fullName
+        }, 
+        process.env.JWT_SECRET || 'crm-whatsapp-secret-key', 
+        { expiresIn: '24h' }
+      );
+      
+      // Actualizar última fecha de login
+      try {
+        await storage.updateUser(user.id, { lastLoginAt: new Date() });
+      } catch (updateError) {
+        console.error('Error actualizando lastLoginAt:', updateError);
+      }
       
       // Remover contraseña de la respuesta
       const { password: _, ...userWithoutPassword } = user;
+      
+      console.log(`✅ Login exitoso para usuario: ${username} (${user.role})`);
       
       res.json({
         success: true,
