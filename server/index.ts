@@ -8729,6 +8729,23 @@ Responde de manera conversacional, profesional y útil según tu especializació
     console.error('❌ Error iniciando servicio de recordatorios de calendario:', error);
   }
 
+  // ===== INICIALIZACIÓN DEL SISTEMA DE USUARIOS DEMO =====
+  console.log('🎭 Iniciando sistema de gestión de usuarios demo...');
+  try {
+    const { demoUserManager } = await import('./services/demoUserManager');
+    
+    // Inicializar el sistema y limpiar usuarios expirados
+    await demoUserManager.initialize();
+    
+    // Programar limpieza automática cada hora
+    demoUserManager.startAutomaticCleanup();
+    
+    console.log('✅ Sistema de usuarios demo iniciado correctamente');
+    console.log('⏰ Limpieza automática programada cada hora');
+  } catch (error) {
+    console.error('❌ Error iniciando sistema de usuarios demo:', error);
+  }
+
   // ===== SISTEMA DE NOTIFICACIONES INTEGRADO =====
   console.log('🔔 Sistema de notificaciones integrado en servidor principal');
 
