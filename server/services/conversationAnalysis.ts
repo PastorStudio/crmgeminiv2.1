@@ -5,7 +5,7 @@
 
 import OpenAI from 'openai';
 import { db } from '../db';
-import { whatsappMessages, whatsappContacts } from '@shared/schema';
+import { whatsappMessages, whatsappContacts, whatsappAccounts } from '@shared/schema';
 import { eq, desc, and, gt } from 'drizzle-orm';
 
 const openai = new OpenAI({
@@ -71,7 +71,6 @@ class ConversationAnalysisService {
   private async analyzeRecentConversations(): Promise<void> {
     try {
       // Get all active WhatsApp accounts
-      const { whatsappAccounts } = await import('@shared/schema');
       const activeAccounts = await db.select()
         .from(whatsappAccounts)
         .where(eq(whatsappAccounts.status, 'connected'));
@@ -95,7 +94,7 @@ class ConversationAnalysisService {
       const newMessages = await db.select()
         .from(whatsappMessages)
         .where(and(
-          eq(whatsappMessages.whatsappAccountId, accountId),
+          eq(whatsappMessages.accountId, accountId),
           gt(whatsappMessages.id, parseInt(lastProcessedId))
         ))
         .orderBy(desc(whatsappMessages.timestamp))
@@ -144,7 +143,7 @@ class ConversationAnalysisService {
       const allMessages = await db.select()
         .from(whatsappMessages)
         .where(and(
-          eq(whatsappMessages.whatsappAccountId, accountId),
+          eq(whatsappMessages.accountId, accountId),
           eq(whatsappMessages.chatId, chatId)
         ))
         .orderBy(desc(whatsappMessages.timestamp))
@@ -152,7 +151,7 @@ class ConversationAnalysisService {
 
       const conversationText = allMessages
         .reverse()
-        .map(msg => `${msg.isFromMe ? 'Agente' : 'Cliente'}: ${msg.body}`)
+        .map(msg => `${msg.from_me ? 'Agente' : 'Cliente'}: ${msg.content}`)
         .join('\n');
 
       if (!conversationText.trim()) return;
