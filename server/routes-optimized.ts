@@ -2304,7 +2304,7 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
-  // IMPROVEMENT #11-15: Additional system endpoints
+  // IMPROVEMENT #11-15: Additional system endpoints including prompt-based auto-response
   app.get("/api/system/health", async (req: Request, res: Response) => {
     try {
       const health = await enhancedSystemService.getSystemHealth();
@@ -2318,6 +2318,90 @@ export function registerOptimizedRoutes(app: Express): Server {
       res.status(500).json({
         success: false,
         message: "Error al obtener estado del sistema"
+      });
+    }
+  });
+
+  // Enhanced prompt-based auto-response system endpoints
+  app.post("/api/accounts/:accountId/assign-prompt", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { promptId } = req.body;
+      
+      if (!promptId) {
+        return res.status(400).json({
+          success: false,
+          message: "ID del prompt requerido"
+        });
+      }
+
+      const { enhancedPromptAutoResponseManager } = await import('./services/enhancedPromptAutoResponse');
+      const activated = await enhancedPromptAutoResponseManager.activatePromptForAccount(accountId, promptId);
+      
+      if (activated) {
+        console.log(`✅ Prompt ${promptId} asignado exitosamente a cuenta ${accountId}`);
+        res.json({
+          success: true,
+          message: `Prompt asignado y respuestas automáticas activadas para cuenta ${accountId}`,
+          promptBased: true
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "Error asignando prompt a la cuenta"
+        });
+      }
+    } catch (error) {
+      console.error('Error assigning prompt to account:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al asignar prompt a cuenta"
+      });
+    }
+  });
+
+  app.get("/api/accounts/:accountId/prompt-status", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const { enhancedPromptAutoResponseManager } = await import('./services/enhancedPromptAutoResponse');
+      
+      const config = enhancedPromptAutoResponseManager.getPromptConfig(accountId);
+      const hasPrompt = enhancedPromptAutoResponseManager.hasPromptConfig(accountId);
+      
+      res.json({
+        success: true,
+        accountId,
+        hasPromptAssigned: hasPrompt,
+        promptConfig: config,
+        usingPromptBasedResponse: hasPrompt && config?.enabled
+      });
+    } catch (error) {
+      console.error('Error getting account prompt status:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener estado del prompt"
+      });
+    }
+  });
+
+  app.get("/api/prompt-system/status", async (req: Request, res: Response) => {
+    try {
+      const { enhancedPromptAutoResponseManager } = await import('./services/enhancedPromptAutoResponse');
+      const status = await enhancedPromptAutoResponseManager.verifySystemStatus();
+      const activeConfigs = enhancedPromptAutoResponseManager.getActiveConfigurations();
+      
+      res.json({
+        success: true,
+        promptSystem: status,
+        activeConfigurations: activeConfigs,
+        totalConfiguredAccounts: activeConfigs.length,
+        systemOperational: status.status === 'active'
+      });
+    } catch (error) {
+      console.error('Error getting prompt system status:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener estado del sistema de prompts"
       });
     }
   });
