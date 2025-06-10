@@ -189,6 +189,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/tickets", ticketsRouter);
   app.use("/api/web-scraping", webScrapingRouter);
   
+  // Registrar rutas de test de prompts
+  app.use("/api", promptTestRoutes);
+  
   // Registrar rutas del sistema autónomo
   app.use("/api/autonomous", autonomousApiRouter);
   
