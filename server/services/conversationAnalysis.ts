@@ -5,7 +5,7 @@
 
 import OpenAI from 'openai';
 import { db } from '../db';
-import { whatsappMessages, whatsappContacts, whatsappAccounts } from '@shared/schema';
+import { whatsappMessages, whatsappAccounts, contacts } from '@shared/schema';
 import { eq, desc, and, gt } from 'drizzle-orm';
 
 const openai = new OpenAI({
@@ -241,49 +241,51 @@ Importante: Solo incluye información que esté explícitamente mencionada. Si n
     try {
       if (!insights.contactInfo) return;
 
+      const phoneNumber = chatId.split('@')[0];
+      
       // Check if contact exists
       const existingContact = await db.select()
-        .from(whatsappContacts)
-        .where(and(
-          eq(whatsappContacts.whatsappAccountId, accountId),
-          eq(whatsappContacts.chatId, chatId)
-        ))
+        .from(contacts)
+        .where(eq(contacts.phone, phoneNumber))
         .limit(1);
 
       const contactInfo = insights.contactInfo;
       const updateData: any = {};
 
-      // Prepare update data
+      // Prepare update data for contacts table
       if (contactInfo.name) updateData.name = contactInfo.name;
-      if (contactInfo.interests?.length) updateData.interests = JSON.stringify(contactInfo.interests);
       if (contactInfo.location) updateData.location = contactInfo.location;
-      if (contactInfo.age) updateData.age = contactInfo.age;
-      if (contactInfo.profession) updateData.profession = contactInfo.profession;
-      if (contactInfo.preferences?.length) updateData.preferences = JSON.stringify(contactInfo.preferences);
+      if (contactInfo.profession) updateData.position = contactInfo.profession;
 
-      // Add conversation insights
-      updateData.lastAnalysis = new Date();
-      updateData.sentiment = insights.sentiment;
-      updateData.priority = insights.priority;
-      updateData.topics = JSON.stringify(insights.topics);
+      // Store additional AI insights in customFields
+      const customFields: any = {};
+      if (contactInfo.interests?.length) customFields.interests = contactInfo.interests;
+      if (contactInfo.age) customFields.age = contactInfo.age;
+      if (contactInfo.preferences?.length) customFields.preferences = contactInfo.preferences;
+      customFields.sentiment = insights.sentiment;
+      customFields.priority = insights.priority;
+      customFields.topics = insights.topics;
+      customFields.lastAnalysis = new Date().toISOString();
+
+      updateData.customFields = customFields;
+      updateData.updatedAt = new Date();
 
       if (existingContact.length > 0) {
         // Update existing contact
-        await db.update(whatsappContacts)
+        await db.update(contacts)
           .set(updateData)
-          .where(eq(whatsappContacts.id, existingContact[0].id));
+          .where(eq(contacts.id, existingContact[0].id));
         
-        console.log(`📝 Información de contacto actualizada para ${chatId}`);
+        console.log(`📝 Información de contacto actualizada para ${phoneNumber}`);
       } else {
         // Create new contact record
-        await db.insert(whatsappContacts).values({
-          whatsappAccountId: accountId,
-          chatId,
-          phoneNumber: chatId.split('@')[0],
+        await db.insert(contacts).values({
+          phone: phoneNumber,
+          source: 'whatsapp_ai_analysis',
           ...updateData
         });
         
-        console.log(`📝 Nuevo contacto creado para ${chatId}`);
+        console.log(`📝 Nuevo contacto creado para ${phoneNumber}`);
       }
 
     } catch (error) {
