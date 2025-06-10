@@ -8348,7 +8348,8 @@ Responde exactamente con este formato JSON:
     }
   });
 
-  // Original route for compatibility
+
+
   app.post('/api/test-gemini-integration', async (req: Request, res: Response) => {
     try {
       console.log('🔍 Testing Gemini AI integration...');
