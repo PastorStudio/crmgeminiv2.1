@@ -48,6 +48,7 @@ import salesFlowRouter from "./routes/salesFlowRoutes";
 import flowExecutionRouter from "./routes/flowExecutionRoutes";
 import multiTenantRoutes from "./routes/multiTenantRoutes";
 import { multiTenantAuth, AuthenticatedRequest, getAccessibleAccountIds, canAccessAccount } from "./middleware/multiTenantAuth";
+import { demoUserManager } from "./services/demoUserManager";
 
 // Configurar middleware para upload de archivos
 const upload = multer({ storage: multer.memoryStorage() });
@@ -6668,6 +6669,205 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // =============================================================================
+  // DEMO USER MANAGEMENT API ENDPOINTS
+  // =============================================================================
+
+  // Create demo user endpoint
+  app.post('/api/demo-users/create', async (req: Request, res: Response) => {
+    try {
+      const { customerName, phoneNumber, email, companyName, chatId } = req.body;
+
+      if (!customerName || !customerName.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'El nombre del cliente es requerido'
+        });
+      }
+
+      console.log(`🎭 Creando usuario demo para: ${customerName}`);
+
+      const demoUser = await demoUserManager.createDemoUser({
+        customerName: customerName.trim(),
+        phoneNumber: phoneNumber || '',
+        email: email || '',
+        companyName: companyName || '',
+        chatId: chatId || ''
+      });
+
+      console.log(`✅ Usuario demo creado exitosamente: ${demoUser.username}`);
+
+      res.json({
+        success: true,
+        message: 'Usuario demo creado exitosamente',
+        demoUser: {
+          id: demoUser.id,
+          username: demoUser.username,
+          password: demoUser.password,
+          customerName: demoUser.customerName,
+          loginUrl: demoUser.loginUrl,
+          expiresAt: demoUser.expiresAt,
+          status: demoUser.status
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error creando usuario demo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al crear usuario demo'
+      });
+    }
+  });
+
+  // Get active demo users
+  app.get('/api/demo-users/active', async (req: Request, res: Response) => {
+    try {
+      const activeDemoUsers = await demoUserManager.getActiveDemoUsers();
+      
+      res.json({
+        success: true,
+        demoUsers: activeDemoUsers
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo usuarios demo activos:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener usuarios demo activos'
+      });
+    }
+  });
+
+  // Deactivate demo user
+  app.post('/api/demo-users/:id/deactivate', async (req: Request, res: Response) => {
+    try {
+      const demoUserId = parseInt(req.params.id);
+      
+      if (isNaN(demoUserId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de usuario demo inválido'
+        });
+      }
+
+      const success = await demoUserManager.deactivateDemoUser(demoUserId);
+      
+      if (success) {
+        res.json({
+          success: true,
+          message: 'Usuario demo desactivado exitosamente'
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: 'Usuario demo no encontrado'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error desactivando usuario demo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al desactivar usuario demo'
+      });
+    }
+  });
+
+  // Get demo user statistics
+  app.get('/api/demo-users/stats', async (req: Request, res: Response) => {
+    try {
+      const stats = await demoUserManager.getDemoUserStats();
+      
+      res.json({
+        success: true,
+        stats
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo estadísticas de usuarios demo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener estadísticas'
+      });
+    }
+  });
+
+  // Demo user login verification endpoint
+  app.post('/api/demo-users/verify', async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Usuario y contraseña son requeridos'
+        });
+      }
+
+      const user = await demoUserManager.verifyDemoUser(username, password);
+      
+      if (user) {
+        // Generate JWT token for demo user session
+        const token = jwt.sign(
+          { 
+            userId: user.id, 
+            username: user.username, 
+            role: user.role,
+            isDemo: true,
+            demoUserId: user.demoUserId,
+            expiresAt: user.expiresAt
+          }, 
+          process.env.JWT_SECRET || 'crm-whatsapp-secret-key', 
+          { expiresIn: '24h' }
+        );
+
+        res.json({
+          success: true,
+          message: 'Usuario demo verificado exitosamente',
+          token,
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            fullName: user.fullName,
+            role: user.role,
+            isDemo: true,
+            expiresAt: user.expiresAt
+          }
+        });
+      } else {
+        res.status(401).json({
+          success: false,
+          message: 'Credenciales inválidas o usuario demo expirado'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error verificando usuario demo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al verificar usuario demo'
+      });
+    }
+  });
+
+  // Cleanup expired demo users endpoint
+  app.post('/api/demo-users/cleanup', async (req: Request, res: Response) => {
+    try {
+      const cleanedCount = await demoUserManager.cleanupExpiredDemoUsers();
+      
+      res.json({
+        success: true,
+        message: `${cleanedCount} usuarios demo expirados fueron desactivados`,
+        cleanedCount
+      });
+    } catch (error) {
+      console.error('❌ Error en limpieza de usuarios demo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error en limpieza de usuarios demo'
+      });
+    }
+  });
+
+  // =============================================================================
 
   // System refresh endpoint for Dashboard
   app.post('/api/system/refresh', async (req: Request, res: Response) => {
