@@ -23,6 +23,11 @@ interface SubscriptionPlan {
   is_active: boolean;
 }
 
+interface PlansResponse {
+  success: boolean;
+  plans: SubscriptionPlan[];
+}
+
 interface QuickPlanAssignmentProps {
   userId: number;
   userName: string;
@@ -47,27 +52,15 @@ export function QuickPlanAssignment({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch subscription plans
-  const { data: plans = [], isLoading: plansLoading } = useQuery({
+  // Fetch subscription plans using the standard apiRequest function
+  const { data: plansData, isLoading: plansLoading, error: plansError } = useQuery({
     queryKey: ['/api/subscription-plans'],
-    queryFn: async () => {
-      const response = await fetch('/api/subscription-plans', {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
-        }
-      });
-      
-      if (!response.ok) throw new Error('Failed to fetch plans');
-      
-      const text = await response.text();
-      if (!text.trim()) return [];
-      
-      const data = JSON.parse(text);
-      return data.plans || [];
-    }
+    enabled: isOpen, // Only fetch when dialog is open
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2
   });
+
+  const plans: SubscriptionPlan[] = Array.isArray((plansData as any)?.plans) ? (plansData as any).plans : [];
 
   // Plan assignment mutation
   const assignPlanMutation = useMutation({
@@ -76,7 +69,7 @@ export function QuickPlanAssignment({
       console.log(`Assigning plan ${planId} to user ${userId}`);
 
       // Calculate end date based on plan duration
-      const selectedPlan = plans.find(p => p.id === planId);
+      const selectedPlan = plans.find((p: SubscriptionPlan) => p.id === planId);
       const durationDays = selectedPlan?.duration_days || 30;
       
       const endDate = new Date();
@@ -197,6 +190,14 @@ export function QuickPlanAssignment({
             <h3 className="font-medium text-sm text-gray-700 mb-4">Seleccionar Nuevo Plan:</h3>
             {plansLoading ? (
               <div className="text-center py-8">Cargando planes...</div>
+            ) : plansError ? (
+              <div className="text-center py-8 text-red-600">
+                Error cargando planes: {plansError.message}
+              </div>
+            ) : !plans || plans.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No hay planes disponibles
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {plans.map((plan: SubscriptionPlan) => {
