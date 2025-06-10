@@ -107,19 +107,58 @@ router.get('/messages/:chatId', async (req, res) => {
 // Get users for assignments
 router.get('/users', async (req, res) => {
   try {
-    const allUsers = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        email: users.email,
-        fullName: users.fullName,
-        role: users.role
-      })
-      .from(users);
+    console.log("🔄 Simple messaging users - Getting user list...");
+    
+    // Use direct database connection to avoid schema issues
+    const { neon } = await import('@neondatabase/serverless');
+    const dbUrl = process.env.DATABASE_URL;
+    
+    if (!dbUrl) {
+      throw new Error('DATABASE_URL not found');
+    }
+    
+    const sql = neon(dbUrl);
+    const result = await sql`
+      SELECT 
+        id,
+        username,
+        "fullName",
+        email,
+        role,
+        status,
+        department,
+        avatar,
+        "lastLoginAt",
+        "createdAt"
+      FROM users
+      WHERE username != 'DJP'
+      ORDER BY id
+    `;
 
-    res.json(allUsers);
+    // Map users for frontend
+    const formattedUsers = result.map((user: any) => ({
+      id: user.id,
+      username: user.username,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      status: user.status || 'active',
+      department: user.department,
+      avatar: user.avatar,
+      lastLoginAt: user.lastLoginAt,
+      totalLogins: 0,
+      lastActivity: user.lastLoginAt,
+      currentPlan: 'Sin plan',
+      currentPlanId: null,
+      subscriptionEndDate: null,
+      subscriptionStatus: null,
+      daysRemaining: null
+    }));
+
+    console.log(`✅ Simple messaging users - Returning ${formattedUsers.length} users`);
+    res.json(formattedUsers);
   } catch (error) {
-    console.error('Error fetching users:', error);
+    console.error('❌ Simple messaging users - Error:', error);
     res.status(500).json({ error: 'Error al obtener usuarios' });
   }
 });
