@@ -8609,6 +8609,24 @@ Responde de manera conversacional, profesional y útil según tu especializació
     console.error('❌ Error iniciando sistema de web scraping automático:', error);
   }
 
+  // Inicializar sistema de análisis de conversaciones
+  try {
+    console.log('🤖 Iniciando sistema de análisis de conversaciones con IA...');
+    const { conversationAnalysisService } = await import('./services/conversationAnalysis');
+    await conversationAnalysisService.start();
+    console.log('✅ Sistema de análisis de conversaciones iniciado - análisis cada 5 segundos');
+  } catch (error) {
+    console.error('❌ Error iniciando análisis de conversaciones:', error);
+  }
+
+  // API endpoints para análisis de conversaciones
+  const { getAnalysisStatus, startAnalysis, stopAnalysis, getAccountInsights } = await import('./services/conversationAnalysisEndpoints');
+  
+  app.get('/api/conversation-analysis/status', getAnalysisStatus);
+  app.post('/api/conversation-analysis/start', startAnalysis);
+  app.post('/api/conversation-analysis/stop', stopAnalysis);
+  app.get('/api/conversation-analysis/account/:accountId/insights', getAccountInsights);
+
   // Endpoints para control de web scraping automático
   app.post('/api/web-scraping/activate/:accountId', async (req: Request, res: Response) => {
     try {
