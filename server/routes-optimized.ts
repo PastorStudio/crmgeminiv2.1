@@ -17,6 +17,8 @@ import { db } from './db';
 import { z } from "zod";
 import { geminiLeadOrganizer } from "./services/geminiLeadOrganizer";
 import { authService } from "./services/authService";
+import { enhancedSystemService } from "./services/enhancedSystemService";
+import { realTimeAnalyticsService } from "./services/realTimeAnalyticsService";
 import jwt from 'jsonwebtoken';
 
 // SISTEMA DE RUTAS OPTIMIZADO Y LIMPIO CON GEMINI AI
