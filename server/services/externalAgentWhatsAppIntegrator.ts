@@ -51,9 +51,36 @@ export class ExternalAgentWhatsAppIntegrator {
         return { success: false };
       }
 
-      console.log(`🤖 Generando respuesta automática con configuración AI personalizada`);
+      // PRIORIDAD 1: Intentar usar el sistema de prompts asignados
+      try {
+        const { enhancedPromptAutoResponseManager } = await import('./enhancedPromptAutoResponse');
+        
+        if (enhancedPromptAutoResponseManager.hasPromptConfig(message.accountId)) {
+          console.log(`🎯 Usando prompt asignado para cuenta ${message.accountId}`);
+          
+          const promptResponse = await enhancedPromptAutoResponseManager.generatePromptResponse(
+            message.accountId,
+            message.body,
+            message.contactName || 'Cliente'
+          );
+          
+          if (promptResponse) {
+            console.log(`✅ Respuesta generada con prompt asignado: "${promptResponse.substring(0, 50)}..."`);
+            
+            return { 
+              success: true, 
+              response: promptResponse, 
+              agentName: "Prompt Assistant" 
+            };
+          }
+        }
+      } catch (promptError) {
+        console.error('Error usando sistema de prompts:', promptError);
+      }
 
-      // Generar respuesta usando la configuración AI personalizada
+      console.log(`🤖 Generando respuesta automática con configuración AI personalizada (fallback)`);
+
+      // PRIORIDAD 2: Usar configuración AI genérica como fallback
       const response = await this.generateResponseWithAI(message.body, message.accountId, message.chatId);
 
       if (response) {
