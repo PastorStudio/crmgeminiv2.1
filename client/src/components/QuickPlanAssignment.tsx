@@ -113,13 +113,13 @@ export function QuickPlanAssignment({
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'x-user-id': 'user123'
+          'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`
         },
         body: JSON.stringify({
           user_id: userId,
           plan_id: planId,
           end_date: endDate.toISOString(),
-          notes: `Plan asignado directamente por administrador`
+          notes: `Plan asignado directamente por administrador a las ${new Date().toLocaleString()}`
         })
       });
 

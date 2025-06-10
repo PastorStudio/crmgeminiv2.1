@@ -304,29 +304,30 @@ export default function UserManagement() {
                 let subscriptionEndDate = null;
 
                 try {
-                  const subscriptionResponse = await fetch(`/api/user-subscriptions/user/${user.id}`);
+                  const subscriptionResponse = await fetch(`/api/user-subscriptions/user/${user.id}`, {
+                    headers: {
+                      'Authorization': `Bearer ${localStorage.getItem('crm_auth_token')}`,
+                      'Content-Type': 'application/json'
+                    }
+                  });
+                  
                   if (subscriptionResponse.ok) {
                     const subscriptionData = await subscriptionResponse.json();
+                    console.log(`🔍 Suscripción para usuario ${user.id}:`, subscriptionData);
+                    
                     if (subscriptionData.success && subscriptionData.subscription) {
                       currentPlan = subscriptionData.subscription.plan_name;
                       currentPlanId = subscriptionData.subscription.plan_id;
                       subscriptionStatus = subscriptionData.subscription.status;
                       subscriptionEndDate = subscriptionData.subscription.end_date;
+                      daysRemaining = subscriptionData.subscription.days_remaining;
                       
-                      // Calcular días restantes
-                      if (subscriptionData.subscription.end_date) {
-                        const endDate = new Date(subscriptionData.subscription.end_date);
-                        const now = new Date();
-                        const diffTime = endDate.getTime() - now.getTime();
-                        daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        
-                        // Si es negativo, la suscripción expiró
-                        if (daysRemaining < 0) {
-                          daysRemaining = 0;
-                          subscriptionStatus = 'expired';
-                        }
-                      }
+                      console.log(`✅ Usuario ${user.username} tiene plan: ${currentPlan} (${daysRemaining} días restantes)`);
+                    } else {
+                      console.log(`📝 Usuario ${user.username} sin plan activo`);
                     }
+                  } else {
+                    console.warn(`❌ Error HTTP ${subscriptionResponse.status} obteniendo suscripción del usuario:`, user.id);
                   }
                 } catch (subError) {
                   console.warn('Error obteniendo suscripción del usuario:', user.id, subError);

@@ -135,6 +135,10 @@ export const whatsappAccounts = pgTable("whatsapp_accounts", {
   disableGroupResponses: boolean("disablegroupresponses").default(false),
   customPrompt: text("customprompt"),
   assignedPromptId: integer("assigned_prompt_id").references(() => aiPrompts.id),
+  // Language and translation settings
+  targetLanguage: text("target_language").default("es"), // Primary response language
+  translateToSpanish: boolean("translate_to_spanish").default(true), // Show Spanish translation
+  languageSettings: jsonb("language_settings"), // Additional language configuration
   keepAliveEnabled: boolean("keepaliveenabled").default(true),
   lastActivity: timestamp("lastactivity"),
   connectionAttempts: integer("connectionattempts").default(0),
