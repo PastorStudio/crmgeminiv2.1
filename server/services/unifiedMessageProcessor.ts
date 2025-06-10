@@ -22,7 +22,7 @@ interface ProcessingResult {
   source: 'prompt' | 'ai' | 'none';
 }
 
-export class UnifiedMessageProcessor {
+class UnifiedMessageProcessor {
   private static instance: UnifiedMessageProcessor;
   private promptConfigs: Map<number, any> = new Map();
   private initialized = false;
@@ -244,6 +244,14 @@ Nombre del contacto: ${context.contactName || 'Usuario'}`;
    */
   getAccountConfig(accountId: number): any {
     return this.promptConfigs.get(accountId);
+  }
+
+  /**
+   * Forzar recarga de configuraciones de prompts
+   */
+  async reloadPromptConfigurations(): Promise<void> {
+    console.log('🔄 Forzando recarga de configuraciones de prompts...');
+    await this.loadPromptConfigurations();
   }
 }
 
