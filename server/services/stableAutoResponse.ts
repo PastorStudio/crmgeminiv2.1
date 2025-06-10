@@ -7,7 +7,7 @@ import OpenAI from 'openai';
 import { db } from '../db';
 import { whatsappAccounts, aiPrompts } from '@shared/schema';
 import { eq } from 'drizzle-orm';
-import { promptBasedAutoResponseManager } from './promptBasedAutoResponse';
+import { enhancedPromptAutoResponseManager } from './enhancedPromptAutoResponse';
 
 // Configurar OpenAI con la clave del sistema
 const openai = new OpenAI({
