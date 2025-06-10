@@ -184,7 +184,7 @@ export class DatabaseAdapter {
    */
   async ensureTestData(): Promise<void> {
     try {
-      const existingLeads = await db.select().from(leads);
+      const existingLeads = await db.select().from(leads).limit(1);
       
       if (existingLeads.length === 0) {
         console.log('📊 Creando datos de prueba para Gemini AI...');
