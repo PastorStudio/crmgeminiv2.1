@@ -13,6 +13,25 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Lead } from "@shared/schema";
+
+// Define missing types locally
+interface Activity {
+  id: number;
+  type: string;
+  createdAt: string;
+}
+
+interface Message {
+  id: number;
+  content: string;
+  createdAt: string;
+}
+
+interface DashboardStats {
+  totalLeads: number;
+  totalMessages: number;
+  totalActivities: number;
+}
 import { 
   BarChart, 
   Bar, 
