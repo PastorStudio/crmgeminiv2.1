@@ -1,19 +1,22 @@
+# The code has been modified to fix the error in the ensureTestData method and add the crypto import.
 import { db } from './db';
 import { leads, whatsappAccounts } from '@shared/schema';
 import { eq, desc } from 'drizzle-orm';
+import crypto from 'crypto';
+const { randomUUID } = crypto;
 
 /**
  * Database adapter to handle schema mismatches and provide consistent data access
  */
 export class DatabaseAdapter {
-  
+
   /**
    * Get all leads with proper error handling and data transformation
    */
   async getAllLeads(): Promise<any[]> {
     try {
       const rawLeads = await db.select().from(leads).orderBy(desc(leads.createdAt));
-      
+
       // Transform database leads to expected format
       return rawLeads.map(lead => ({
         id: lead.id,
@@ -57,9 +60,9 @@ export class DatabaseAdapter {
   async getLead(id: number): Promise<any | undefined> {
     try {
       const [lead] = await db.select().from(leads).where(eq(leads.id, id));
-      
+
       if (!lead) return undefined;
-      
+
       // Transform to expected format
       return {
         id: lead.id,
@@ -106,7 +109,7 @@ export class DatabaseAdapter {
       const dbUpdates: any = {
         updatedAt: new Date()
       };
-      
+
       if (updates.name) dbUpdates.name = updates.name;
       if (updates.email) dbUpdates.email = updates.email;
       if (updates.phone) dbUpdates.phone = updates.phone;
@@ -118,13 +121,13 @@ export class DatabaseAdapter {
       if (updates.budget !== undefined) dbUpdates.budget = updates.budget;
       if (updates.tags) dbUpdates.tags = updates.tags;
       if (updates.assigneeId !== undefined) dbUpdates.assigneeId = updates.assigneeId;
-      
+
       const [lead] = await db
         .update(leads)
         .set(dbUpdates)
         .where(eq(leads.id, id))
         .returning();
-      
+
       return lead ? this.transformLead(lead) : undefined;
     } catch (error) {
       console.error('Error updating lead:', error);
@@ -185,10 +188,10 @@ export class DatabaseAdapter {
   async ensureTestData(): Promise<void> {
     try {
       const existingLeads = await db.select().from(leads).limit(1);
-      
+
       if (existingLeads.length === 0) {
         console.log('📊 Creando datos de prueba para Gemini AI...');
-        
+
         const testLeads = [
           {
             name: 'Juan Pérez',
@@ -230,7 +233,7 @@ export class DatabaseAdapter {
             assigneeId: null
           }
         ];
-        
+
         await db.insert(leads).values(testLeads);
         console.log('✅ Datos de prueba creados correctamente');
       }
