@@ -39,12 +39,45 @@ router.post('/', async (req, res) => {
   try {
     const validatedData = createAccountSchema.parse(req.body);
     
+    // Get user identification from request
+    let userId = null;
+    let currentUser = 'Sistema';
+    
+    // Try to get user from session
+    if (req.session && req.session.user) {
+      userId = req.session.user.id;
+      currentUser = req.session.user.name || req.session.user.email || `Usuario ${userId}`;
+    }
+    // Try to get user from custom header
+    else if (req.headers['x-user-id']) {
+      userId = parseInt(req.headers['x-user-id'] as string);
+      currentUser = req.headers['x-user-name'] as string || `Usuario ${userId}`;
+    }
+    // Create a user session based on owner name
+    else {
+      userId = Math.floor(Math.random() * 1000) + 1;
+      currentUser = validatedData.ownerName;
+      
+      // Initialize session if it doesn't exist
+      if (!req.session) {
+        req.session = {} as any;
+      }
+      req.session.user = {
+        id: userId,
+        name: currentUser,
+        email: `${validatedData.ownerName.toLowerCase().replace(/\s+/g, '')}@demo.com`
+      };
+    }
+
+    console.log(`👤 Usuario identificado: ${currentUser} (ID: ${userId})`);
+    
     const newAccount = await storage.createWhatsAppAccount({
       name: validatedData.name,
       description: validatedData.description || '',
       ownerName: validatedData.ownerName,
       ownerPhone: validatedData.ownerPhone,
       status: 'inactive',
+      userId: userId,
       autoResponseEnabled: false,
       responseDelay: 3,
       disableGroupResponses: false,
@@ -55,9 +88,12 @@ router.post('/', async (req, res) => {
       maxReconnectAttempts: 5,
     });
 
+    console.log(`✅ Cuenta de WhatsApp creada para usuario ${currentUser} con ID: ${newAccount.id}`);
+
     res.json({
       success: true,
-      account: newAccount
+      account: newAccount,
+      user: currentUser
     });
   } catch (error) {
     console.error('Error creating WhatsApp account:', error);
@@ -107,16 +143,65 @@ router.get('/:id/qrcode', async (req, res) => {
       });
     }
 
-    // Return a placeholder QR code for now
-    res.json({
-      success: true,
-      qrcode: "2@l+eDYKX6QPa6dLDhOCxxG9yVZrg7cIKxONIDe7DWA5U3NKHoHMZ1B4Lk6nOmQpIrYu8bV2xW4e0jXnCf/V7w==,XU3NKHoHMZ1B4Lk6nOmQpIrYu8bV2xW4e0jXnCf/V7w==,DemoQRCode"
-    });
+    // Get real QR code from WhatsApp Web client
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+    
+    try {
+      // First try to get QR with image
+      const qrData = await whatsappMultiAccountManager.getQRWithImage(id);
+      
+      if (qrData && qrData.qrcode) {
+        console.log(`✅ QR code obtenido para cuenta ${id}`);
+        res.json({
+          success: true,
+          qrcode: qrData.qrcode,
+          qrDataUrl: qrData.qrDataUrl,
+          status: 'ready'
+        });
+        return;
+      }
+
+      // If no QR available, try to get latest QR
+      const latestQR = await whatsappMultiAccountManager.getLatestQR(id);
+      
+      if (latestQR) {
+        console.log(`✅ QR code texto obtenido para cuenta ${id}`);
+        res.json({
+          success: true,
+          qrcode: latestQR,
+          qrDataUrl: null,
+          status: 'ready'
+        });
+        return;
+      }
+
+      // If still no QR, initialize the account
+      console.log(`🔄 Inicializando cuenta WhatsApp ${id} para generar QR`);
+      await whatsappMultiAccountManager.initializeAccount(id);
+      
+      res.json({
+        success: true,
+        qrcode: null,
+        message: 'Inicializando cuenta WhatsApp. Solicite el QR nuevamente en unos segundos.',
+        status: 'initializing'
+      });
+      
+    } catch (qrError) {
+      console.error('Error getting QR from WhatsApp manager:', qrError);
+      
+      res.json({
+        success: false,
+        error: 'Error al obtener código QR de WhatsApp Web',
+        details: qrError instanceof Error ? qrError.message : 'Unknown error',
+        status: 'error'
+      });
+    }
   } catch (error) {
     console.error('Error getting QR code:', error);
     res.status(500).json({
       success: false,
-      error: 'Error al obtener código QR'
+      error: 'Error al obtener código QR',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
