@@ -226,45 +226,49 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// Eliminar todas las cuentas de WhatsApp
-router.delete('/delete-all', async (req, res) => {
-  try {
-    console.log('🗑️ Iniciando eliminación completa de todas las cuentas de WhatsApp...');
-    
-    // Obtener todas las cuentas antes de eliminarlas
-    const allAccounts = await storage.getAllWhatsappAccounts();
-    
-    // Desconectar todas las cuentas activas
-    for (const account of allAccounts) {
-      try {
-        await whatsappMultiAccountManager.disconnectAccount(account.id);
-        console.log(`✅ Cuenta ${account.id} (${account.name}) desconectada`);
-      } catch (error) {
-        console.error(`⚠️ Error desconectando cuenta ${account.id}:`, error);
-      }
-    }
-    
-    // Eliminar todas las cuentas de la base de datos
-    await storage.deleteAllWhatsappAccounts();
-    
-    // Limpiar carpetas de sesión
-    await cleanAllSessionFolders();
-    
-    console.log('✅ Todas las cuentas eliminadas y contador de IDs reiniciado');
-    
-    res.json({ 
-      success: true, 
-      message: 'Todas las cuentas han sido eliminadas y el contador de IDs reiniciado',
-      deletedCount: allAccounts.length
-    });
-  } catch (error) {
-    console.error('❌ Error al eliminar todas las cuentas:', error);
-    res.status(500).json({ error: 'Error al eliminar todas las cuentas de WhatsApp' });
-  }
-});
-
 // Eliminar una cuenta de WhatsApp
 router.delete('/:id', async (req, res) => {
+  // Check if this is actually a delete-all request
+  if (req.params.id === 'delete-all') {
+    try {
+      console.log('🗑️ Iniciando eliminación completa de todas las cuentas de WhatsApp...');
+      
+      // Obtener todas las cuentas antes de eliminarlas
+      const allAccounts = await storage.getAllWhatsappAccounts();
+      
+      // Desconectar todas las cuentas activas
+      for (const account of allAccounts) {
+        try {
+          await whatsappMultiAccountManager.disconnectAccount(account.id);
+          console.log(`✅ Cuenta ${account.id} (${account.name}) desconectada`);
+        } catch (error) {
+          console.error(`⚠️ Error desconectando cuenta ${account.id}:`, error);
+        }
+      }
+      
+      // Eliminar todas las cuentas de la base de datos
+      await storage.deleteAllWhatsappAccounts();
+      
+      // Limpiar carpetas de sesión
+      await cleanAllSessionFolders();
+      
+      console.log('✅ Todas las cuentas eliminadas y contador de IDs reiniciado');
+      
+      return res.json({ 
+        success: true, 
+        message: 'Todas las cuentas han sido eliminadas y el contador de IDs reiniciado',
+        deletedCount: allAccounts.length
+      });
+    } catch (error) {
+      console.error('❌ Error al eliminar todas las cuentas:', error);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Error al eliminar todas las cuentas de WhatsApp' 
+      });
+    }
+  }
+  
+  // Handle single account deletion
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
