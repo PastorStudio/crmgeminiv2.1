@@ -1187,7 +1187,7 @@ const WhatsAppAccounts = () => {
             const existingAccount = accounts.find(acc => {
               if (typeof acc.id === 'string') {
                 const numericPart = parseInt(acc.id.replace(/[^0-9]/g, ''));
-                console.log(`🔍 Position ${position}: Checking account ${acc.id}, numericPart: ${numericPart}, match: ${numericPart === position}`);
+                // console.log(`🔍 Position ${position}: Checking account ${acc.id}, numericPart: ${numericPart}, match: ${numericPart === position}`);
                 return numericPart === position;
               }
               return acc.id === position;
