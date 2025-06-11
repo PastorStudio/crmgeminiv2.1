@@ -89,6 +89,16 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("lastLoginAt"),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedat").defaultNow(),
+  // User letter assignment for account IDs
+  userLetter: text("user_letter").unique(), // Assigned letter: "a", "b", "c"... for account ID suffixes
+});
+
+// User letter assignments - ensures each user gets a unique letter
+export const userLetterAssignments = pgTable("user_letter_assignments", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id).unique(),
+  assignedLetter: text("assigned_letter").notNull().unique(), // "a", "b", "c"...
+  assignedAt: timestamp("assigned_at").defaultNow(),
 });
 
 // Organizations for multi-tenant support
@@ -132,9 +142,11 @@ export const aiPrompts = pgTable("ai_prompts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// WhatsApp Accounts with organization support
+// WhatsApp Accounts with organization support and alphanumeric IDs
 export const whatsappAccounts = pgTable("whatsapp_accounts", {
-  id: serial("id").primaryKey(),
+  id: text("id").primaryKey(), // Changed to text for alphanumeric IDs like "1a", "2b", etc.
+  numericId: integer("numeric_id").notNull(), // Sequence number within user: 1, 2, 3...
+  userSuffix: text("user_suffix").notNull(), // User letter: "a", "b", "c"...
   name: text("name").notNull(),
   description: text("description"),
   ownerName: text("ownername"),
