@@ -350,6 +350,8 @@ export class DatabaseStorage implements IStorage {
         autoResponseEnabled: account.autoResponseEnabled || false,
         assignedExternalAgentId: account.assignedExternalAgentId || null,
         responseDelay: account.responseDelay || 3,
+        userId: account.userId || null, // CRITICAL: Include user ID for data isolation
+        organizationId: account.organizationId || null,
         createdAt: new Date(),
         lastActiveAt: new Date()
       }).returning();
@@ -375,6 +377,8 @@ export class DatabaseStorage implements IStorage {
           autoResponseEnabled: account.autoResponseEnabled || false,
           assignedExternalAgentId: account.assignedExternalAgentId || null,
           responseDelay: account.responseDelay || 3,
+          userId: account.userId || null, // CRITICAL: Include user ID for data isolation
+          organizationId: account.organizationId || null,
           createdAt: new Date(),
           lastActiveAt: new Date()
         })
