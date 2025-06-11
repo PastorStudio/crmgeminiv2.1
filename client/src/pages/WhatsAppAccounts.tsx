@@ -242,7 +242,7 @@ const WhatsAppAccounts = () => {
       }
     },
     enabled: !!selectedAccount && qrDialogOpen && 
-             ['inactive', 'pending_auth'].includes(selectedAccount.status || ''),
+             (!selectedAccount.authenticated || !selectedAccount.ready),
     refetchInterval: qrDialogOpen ? 120000 : false // Refrescar cada 2 minutos si el diálogo está abierto
   });
   

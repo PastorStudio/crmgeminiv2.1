@@ -785,7 +785,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene código QR optimizado para producción
    */
-  async getLatestQR(accountId: number): Promise<string | null> {
+  async getLatestQR(accountId: string): Promise<string | null> {
     try {
       // Primero verificar el cache en memoria
       const cachedQR = this.getCachedQR(accountId);
@@ -823,7 +823,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene el código QR con imagen base64 para una cuenta específica
    */
-  async getQRWithImage(accountId: number): Promise<{ qrcode: string; qrDataUrl?: string } | null> {
+  async getQRWithImage(accountId: string): Promise<{ qrcode: string; qrDataUrl?: string } | null> {
     try {
       const cachedQR = this.getCachedQR(accountId);
       if (cachedQR && cachedQR.dataUrl) {
