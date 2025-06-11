@@ -191,6 +191,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/tickets", ticketsRouter);
   app.use("/api/web-scraping", webScrapingRouter);
   
+  // Demo routes with complete data isolation
+  app.use("/api/demo", demoRoutes);
+  
   // Registrar rutas de test de prompts
   app.use("/api", promptTestRoutes);
   
@@ -645,6 +648,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Check if it's a demo user first
+      if (username.startsWith('demo_')) {
+        console.log(`🎭 Intento de login de usuario demo: ${username}`);
+        
+        const demoUser = await demoUserManager.verifyDemoUser(username, password);
+        if (demoUser) {
+          console.log(`✅ Usuario demo autenticado: ${username}`);
+          
+          // Generate token for demo user
+          const token = jwt.sign(
+            { 
+              userId: demoUser.id, 
+              username: demoUser.username, 
+              role: 'demo',
+              isDemo: true,
+              demoUserId: demoUser.demoId
+            },
+            process.env.JWT_SECRET || 'crm-whatsapp-secret-key',
+            { expiresIn: "24h" }
+          );
+          
+          return res.json({
+            success: true,
+            message: "Login exitoso - Modo Demo",
+            token,
+            user: {
+              id: demoUser.id,
+              username: demoUser.username,
+              role: 'demo',
+              fullName: demoUser.fullName || demoUser.customerName,
+              avatar: null,
+              isDemo: true,
+              expiresAt: demoUser.expiresAt
+            }
+          });
+        }
+      }
+
       // Para usuarios normales, seguir el flujo habitual
       const user = await authService.verifyCredentials(username, password);
       
