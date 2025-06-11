@@ -118,7 +118,7 @@ interface PingStatus {
 
 // Tipo para cuenta de WhatsApp con estado
 type WhatsAppAccount = {
-  id: number;
+  id: string;
   name: string;
   description?: string | null;
   ownerName?: string | null;
@@ -453,7 +453,7 @@ const WhatsAppAccounts = () => {
   
   // Session recovery mutation
   const recoverSessionMutation = useMutation({
-    mutationFn: async (accountId: number) => {
+    mutationFn: async (accountId: string) => {
       return await apiRequest(`/api/whatsapp-accounts/${accountId}/recover-session`, {
         method: 'POST'
       });
@@ -467,11 +467,11 @@ const WhatsAppAccounts = () => {
         
         if (data.action === 'retry_connection') {
           // Retry connection with same account
-          initializeAccountMutation.mutate(accountId);
+          initializeAccountMutation.mutate(String(accountId));
         } else if (data.action === 'fresh_connection') {
           // Account cleaned, ready for fresh QR
           refetch();
-          if (selectedAccount?.id === accountId) {
+          if (selectedAccount?.id === String(accountId)) {
             refetchQr();
           }
         }
@@ -494,7 +494,7 @@ const WhatsAppAccounts = () => {
 
   // Clean session mutation
   const cleanSessionMutation = useMutation({
-    mutationFn: async (accountId: number) => {
+    mutationFn: async (accountId: string) => {
       return await apiRequest(`/api/whatsapp-accounts/${accountId}/clean-session`, {
         method: 'POST'
       });
@@ -506,7 +506,7 @@ const WhatsAppAccounts = () => {
           description: "La cuenta está lista para una nueva conexión",
         });
         refetch();
-        if (selectedAccount?.id === accountId) {
+        if (selectedAccount?.id === String(accountId)) {
           refetchQr();
         }
       } else {
@@ -543,7 +543,7 @@ const WhatsAppAccounts = () => {
   };
 
   // Auto-create leads when account connects
-  const handleAutoCreateLeads = async (accountId: number) => {
+  const handleAutoCreateLeads = async (accountId: string) => {
     try {
       console.log('🎯 Auto-creating leads for account:', accountId);
       const response = await apiRequest(`/api/whatsapp/auto-create-leads/${accountId}`, {
