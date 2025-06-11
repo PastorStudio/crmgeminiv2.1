@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
 import { db } from '../db';
 import { users, userAccountAssignments, whatsappAccounts, organizations } from '@shared/schema';
 import { eq, and, inArray, or } from 'drizzle-orm';
@@ -24,39 +23,23 @@ export interface AuthenticatedRequest extends Request {
  */
 export async function multiTenantAuth(req: Request, res: Response, next: NextFunction) {
   try {
-    let userId: number;
+    // Obtener userId desde la sesión, headers o query params para testing
+    let userId = req.session?.userId || req.headers['x-user-id'] || req.query.userId;
     
-    // Check for JWT token first
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.slice(7);
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
-        userId = decoded.userId || decoded.id;
-        console.log(`🔐 JWT Authentication: User ID ${userId} from token`);
-      } catch (error) {
-        console.error('JWT verification failed:', error);
-        return res.status(401).json({ error: 'Token inválido' });
-      }
-    } else {
-      // Fallback to session, headers or query params for testing
-      userId = req.session?.userId || req.headers['x-user-id'] || req.query.userId;
-      
-      // Para testing, permitir override de usuario
-      if (req.query.testUser) {
-        const testUserMap: Record<string, number> = {
-          'superadmin': 3,  // DJP
-          'admin': 17,      // admin
-          'manager': 19,    // manager1
-          'agent': 20,      // agent1
-          'agent2': 21,     // agent2
-          'demo': 9         // demo
-        };
-        userId = testUserMap[req.query.testUser as string] || userId;
-      }
-      
-      userId = parseInt(userId as string) || 3; // Default a DJP (superadmin)
+    // Para testing, permitir override de usuario
+    if (req.query.testUser) {
+      const testUserMap: Record<string, number> = {
+        'superadmin': 3,  // DJP
+        'admin': 17,      // admin
+        'manager': 19,    // manager1
+        'agent': 20,      // agent1
+        'agent2': 21,     // agent2
+        'demo': 9         // demo
+      };
+      userId = testUserMap[req.query.testUser as string] || userId;
     }
+    
+    userId = parseInt(userId as string) || 3; // Default a DJP (superadmin)
     
     if (!userId) {
       return res.status(401).json({ error: 'No autenticado' });

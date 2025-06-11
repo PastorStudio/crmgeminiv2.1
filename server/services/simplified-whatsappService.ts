@@ -319,16 +319,8 @@ class SimplifiedWhatsAppService extends EventEmitter implements IWhatsAppService
     }
     
     try {
-      // Get first available WhatsApp account dynamically
-      const { storage } = await import('../storage');
-      const accounts = await storage.getAllWhatsappAccounts();
-      
-      if (accounts.length === 0) {
-        console.log('⚠️ No WhatsApp accounts available for message fetching');
-        return []; // Return empty array when no accounts exist
-      }
-      
-      const accountId = accounts[0].id;
+      // Consultamos la base de datos para obtener los mensajes reales
+      const accountId = 1; // ID de la cuenta principal de WhatsApp
       
       // Realizamos una llamada al microservicio de base de datos para obtener los mensajes reales
       const response = await fetch(`http://localhost:5003/messages/${accountId}/${chatId}`);

@@ -618,7 +618,7 @@ function ChatCommentsIndicator({ chatId }: { chatId: string }) {
 
 function WhatsAppAccountBadge({ accountId }: { accountId: number }) {
   const { data: accounts = [] } = useQuery({
-    queryKey: ['/api/whatsapp-accounts'],
+    queryKey: ['/api/whatsapp/accounts'],
     staleTime: 30000, // Cache por 30 segundos
   });
 
@@ -1462,12 +1462,10 @@ export function WhatsAppTwoColumn() {
   const queryClient = useQueryClient();
 
   // Fetch WhatsApp accounts
-  const { data: accountsResponse, isLoading: loadingAccounts } = useQuery({
-    queryKey: ['/api/whatsapp-accounts'],
+  const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
+    queryKey: ['/api/whatsapp/accounts'],
     refetchInterval: 5000 // Refresh every 5 seconds to check status
   });
-  
-  const accounts = accountsResponse?.accounts || [];
 
   // Fetch external agents for AI selection
   const { data: externalAgentsResponse } = useQuery({
@@ -1715,7 +1713,7 @@ export function WhatsAppTwoColumn() {
         } else if (notification.type === 'chat_categorized') {
           queryClient.invalidateQueries({ queryKey: ['/api/chat-categories'] });
         } else if (notification.type === 'account_status') {
-          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/accounts'] });
         }
       } catch (error) {
         console.error('Error processing notification:', error);
@@ -3725,11 +3723,9 @@ function ContactInfoPanel({ chat, setCommentsDialogOpen, chatAnalysis }: {
     queryKey: ['/api/external-agents'],
   });
   
-  const { data: accountsResponse } = useQuery({
-    queryKey: ['/api/whatsapp-accounts']
+  const { data: accounts } = useQuery({
+    queryKey: ['/api/whatsapp/accounts']
   });
-  
-  const accounts = accountsResponse?.accounts || [];
   
   // Función para obtener el nombre del agente asignado del sistema
   const getSystemAgentName = () => {

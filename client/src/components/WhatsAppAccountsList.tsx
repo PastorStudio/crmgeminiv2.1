@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Plus, Settings, User, Calendar } from 'lucide-react';
+import { RefreshCw, Plus, Settings } from 'lucide-react';
 
 interface WhatsAppAccount {
   id: number;
@@ -14,10 +14,6 @@ interface WhatsAppAccount {
   authenticated?: boolean;
   ready?: boolean;
   autoResponseEnabled?: boolean;
-  userId?: number;
-  createdByUser?: string;
-  createdByUserFullName?: string;
-  createdAt?: string;
 }
 
 export function WhatsAppAccountsList() {
@@ -153,22 +149,6 @@ export function WhatsAppAccountsList() {
                       {account.ownerPhone && (
                         <p className="text-sm">Teléfono: {account.ownerPhone}</p>
                       )}
-                      
-                      {/* Creator information */}
-                      <div className="flex items-center gap-4 mt-2 pt-2 border-t">
-                        {account.createdByUserFullName && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <User className="w-3 h-3" />
-                            <span>Creado por: {account.createdByUserFullName}</span>
-                          </div>
-                        )}
-                        {account.createdAt && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Calendar className="w-3 h-3" />
-                            <span>Creado: {new Date(account.createdAt).toLocaleDateString('es-ES')}</span>
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </div>
                   
@@ -176,11 +156,6 @@ export function WhatsAppAccountsList() {
                     {getStatusBadge(account)}
                     {account.autoResponseEnabled && (
                       <Badge variant="outline">Auto-respuesta</Badge>
-                    )}
-                    {account.createdByUser && (
-                      <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
-                        Mi cuenta
-                      </Badge>
                     )}
                     <Button variant="outline" size="sm">
                       <Settings className="w-4 h-4 mr-2" />

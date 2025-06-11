@@ -1092,16 +1092,9 @@ app.post('/api/test-ai', async (req: Request, res: Response) => {
     
     const { intelligentResponseService } = await import('./services/intelligentResponseService');
     
-    // Get first available account for testing, or skip if none exist
-    const accounts = await storage.getAllWhatsappAccounts();
-    if (accounts.length === 0) {
-      console.log('⚠️ No WhatsApp accounts available for testing');
-      return;
-    }
-    
     const testContext = {
       chatId: 'test-chat',
-      accountId: accounts[0].id,
+      accountId: 1,
       userMessage: 'Hola, necesito información sobre sus servicios de internet'
     };
     
@@ -1449,24 +1442,13 @@ app.post('/api/external-agents-direct', async (req: Request, res: Response) => {
     const extractedName = extractAgentName(agentUrl);
     console.log(`👤 Nombre extraído del agente: ${extractedName}`);
     
-    // Check if any WhatsApp accounts exist before creating database entries
-    const accounts = await storage.getAllWhatsappAccounts();
-    if (accounts.length === 0) {
-      console.log('⚠️ No WhatsApp accounts exist - agent stored in memory only');
-      return res.json({
-        success: true,
-        agent: { id: nanoid(), name: extractedName, agentUrl, isActive: true },
-        message: 'Agente externo creado en memoria - se guardará en BD cuando se cree una cuenta WhatsApp'
-      });
-    }
-    
     const { externalAgents } = await import('@shared/schema');
     
     const [newAgent] = await db
       .insert(externalAgents)
       .values({
         chatId: `default-${Date.now()}`,
-        accountId: accounts[0].id,
+        accountId: 1,
         agentName: extractedName,
         agentUrl,
         provider: 'chatgpt',
@@ -2153,24 +2135,13 @@ app.post('/api/bypass/create-external-agent', async (req: Request, res: Response
     const extractedName = extractAgentName(agentUrl);
     console.log(`👤 Nombre extraído del agente (bypass): ${extractedName}`);
     
-    // Check if any WhatsApp accounts exist before creating database entries
-    const accounts = await storage.getAllWhatsappAccounts();
-    if (accounts.length === 0) {
-      console.log('⚠️ No WhatsApp accounts exist - agent stored in memory only');
-      return res.json({
-        success: true,
-        agent: { id: nanoid(), name: extractedName, agentUrl, isActive: true },
-        message: 'Agente externo creado en memoria'
-      });
-    }
-    
     const { externalAgents } = await import('@shared/schema');
     
     const [newAgent] = await db
       .insert(externalAgents)
       .values({
         chatId: `default-${Date.now()}`,
-        accountId: accounts[0].id,
+        accountId: 1,
         agentName: extractedName,
         agentUrl,
         provider: 'chatgpt',
@@ -8812,16 +8783,6 @@ Responde de manera conversacional, profesional y útil según tu especializació
     console.log('⏰ Limpieza automática programada cada hora');
   } catch (error) {
     console.error('❌ Error iniciando sistema de usuarios demo:', error);
-  }
-
-  // ===== LIMPIEZA DE CONFIGURACIONES PHANTOM =====
-  console.log('🧹 Sincronizando configuraciones de WhatsApp con base de datos...');
-  try {
-    const { WhatsAppAccountConfigManager } = await import('./externalAgentsSimple');
-    await WhatsAppAccountConfigManager.syncWithDatabase();
-    console.log('✅ Configuraciones sincronizadas correctamente');
-  } catch (error) {
-    console.error('❌ Error sincronizando configuraciones:', error);
   }
 
   // ===== SISTEMA DE NOTIFICACIONES INTEGRADO =====
