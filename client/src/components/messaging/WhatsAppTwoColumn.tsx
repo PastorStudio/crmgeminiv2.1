@@ -1462,10 +1462,12 @@ export function WhatsAppTwoColumn() {
   const queryClient = useQueryClient();
 
   // Fetch WhatsApp accounts
-  const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
+  const { data: accountsResponse, isLoading: loadingAccounts } = useQuery({
     queryKey: ['/api/whatsapp-accounts'],
     refetchInterval: 5000 // Refresh every 5 seconds to check status
   });
+  
+  const accounts = accountsResponse?.accounts || [];
 
   // Fetch external agents for AI selection
   const { data: externalAgentsResponse } = useQuery({
@@ -3723,9 +3725,11 @@ function ContactInfoPanel({ chat, setCommentsDialogOpen, chatAnalysis }: {
     queryKey: ['/api/external-agents'],
   });
   
-  const { data: accounts } = useQuery({
+  const { data: accountsResponse } = useQuery({
     queryKey: ['/api/whatsapp-accounts']
   });
+  
+  const accounts = accountsResponse?.accounts || [];
   
   // Función para obtener el nombre del agente asignado del sistema
   const getSystemAgentName = () => {

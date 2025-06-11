@@ -42,7 +42,7 @@ export const WhatsAppConnectionStatus: React.FC = () => {
       const response = await fetch('/api/whatsapp-accounts');
       if (response.ok) {
         const data = await response.json();
-        setAccounts(data);
+        setAccounts(data.accounts || []);
       }
     } catch (error) {
       console.error('Error obteniendo cuentas:', error);
