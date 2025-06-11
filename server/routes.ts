@@ -7169,11 +7169,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Enhanced WhatsApp Accounts Endpoint with Proper User Access Control
-  app.get('/api/whatsapp/accounts', async (req: Request, res: Response) => {
+  app.get('/api/whatsapp/accounts', multiTenantAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       console.log('🔄 Obteniendo cuentas de WhatsApp...');
       
-      const accounts = await storage.getAllWhatsappAccounts();
+      const currentUser = req.user;
+      if (!currentUser) {
+        return res.status(401).json({
+          success: false,
+          error: 'Usuario no autenticado',
+          accounts: []
+        });
+      }
+
+      // Check if user status is active
+      const userRecord = await storage.getUser(currentUser.id);
+      if (!userRecord || userRecord.status !== 'active') {
+        return res.status(403).json({
+          success: false,
+          error: 'Usuario inactivo - contacte al administrador',
+          accounts: []
+        });
+      }
+
+      console.log(`🔐 Usuario autenticado: ${currentUser.username} (ID: ${currentUser.id}, Role: ${currentUser.role})`);
+      
+      let accounts;
+      
+      // Only superadmin (DJP) can see all accounts
+      if (currentUser.role === 'superadmin' || currentUser.role === 'super_admin') {
+        console.log('🔓 Superadmin access: showing all accounts');
+        accounts = await storage.getAllWhatsappAccounts();
+      } else {
+        console.log(`🔒 User access: showing only accounts for user ${currentUser.id}`);
+        accounts = await storage.getWhatsappAccountsByUserId(currentUser.id);
+      }
+      
       console.log(`✅ Cuentas obtenidas: ${accounts.length}`);
       
       const transformedAccounts = accounts.map(account => {

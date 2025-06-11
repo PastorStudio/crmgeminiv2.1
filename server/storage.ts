@@ -63,6 +63,7 @@ export interface IStorage {
   getWhatsAppAccounts(): Promise<WhatsAppAccount[]>;
   createWhatsAppAccount(account: InsertWhatsAppAccount): Promise<WhatsAppAccount>;
   getAllWhatsappAccounts(): Promise<WhatsAppAccount[]>;
+  getWhatsappAccountsByUserId(userId: number): Promise<WhatsAppAccount[]>;
   getWhatsappAccount(id: number): Promise<WhatsAppAccount | undefined>;
   updateWhatsappAccount(id: number, updates: Partial<WhatsAppAccount>): Promise<WhatsAppAccount | undefined>;
   deleteWhatsappAccount(id: number): Promise<boolean>;
