@@ -20,7 +20,7 @@ import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
 import { authService } from "./services/authService";
 import { eq, and, ne, not, isNull, sql } from "drizzle-orm";
-import { users, whatsappAccounts, userWhatsappAccounts, chatAssignments, chatCategories, leads, subscriptionPlans, userSubscriptions } from "@shared/schema";
+import { users, whatsappAccounts, userWhatsappAccounts, chatAssignments, chatCategories, leads, subscriptionPlans, userSubscriptions, demoUsers } from "@shared/schema";
 import { pool } from "./db";
 
 import { registerDirectAPIRoutes } from "./services/directApiServer";
@@ -886,6 +886,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
       success: true,
       message: "Sesión cerrada correctamente"
     });
+  });
+
+  // Demo login endpoint
+  app.post("/api/demo/login", async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Usuario y contraseña son requeridos"
+        });
+      }
+
+      console.log(`🎯 Intento de login demo: ${username}`);
+
+      // Find demo user
+      const [demoUser] = await db
+        .select()
+        .from(demoUsers)
+        .where(and(
+          eq(demoUsers.username, username),
+          eq(demoUsers.password, password)
+        ));
+
+      if (!demoUser) {
+        return res.status(401).json({
+          success: false,
+          message: "Credenciales de demo inválidas"
+        });
+      }
+
+      // Check if demo is expired
+      const now = new Date();
+      if (new Date(demoUser.expiresAt) < now) {
+        return res.status(401).json({
+          success: false,
+          message: "Demo expirado"
+        });
+      }
+
+      // Update last login
+      await db
+        .update(demoUsers)
+        .set({
+          lastLoginAt: now,
+          loginCount: demoUser.loginCount + 1
+        })
+        .where(eq(demoUsers.id, demoUser.id));
+
+      // Generate JWT token for demo user
+      const token = jwt.sign(
+        { 
+          userId: demoUser.id,
+          username: demoUser.username,
+          role: 'demo',
+          customerName: demoUser.customerName
+        }, 
+        process.env.JWT_SECRET || 'crm-whatsapp-secret-key', 
+        { expiresIn: '72h' }
+      );
+
+      console.log(`✅ Demo login exitoso: ${demoUser.customerName}`);
+
+      res.json({
+        success: true,
+        message: `Acceso demo iniciado para ${demoUser.customerName}`,
+        token,
+        user: {
+          id: demoUser.id,
+          username: demoUser.username,
+          customerName: demoUser.customerName,
+          role: 'demo',
+          expiresAt: demoUser.expiresAt
+        }
+      });
+    } catch (error) {
+      console.error('Error en demo login:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
   });
   
   // Database status endpoint
