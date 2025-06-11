@@ -2201,11 +2201,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard stats endpoint - pulling from real WhatsApp CRM data
   app.get("/api/dashboard-stats", async (req: Request, res: Response) => {
     try {
-      console.log('📊 Calculando métricas reales del dashboard...');
+      console.log('📊 Getting real dashboard metrics from database...');
       
-      // Get real leads count from database
-      const leadsResult = await pool.query('SELECT COUNT(*) as count FROM leads');
+      // Get authentic database counts - no cached data
+      const [leadsResult, accountsResult, messagesResult, contactsResult, usersResult] = await Promise.all([
+        pool.query('SELECT COUNT(*) as count FROM leads'),
+        pool.query('SELECT COUNT(*) as count FROM whatsapp_accounts'),
+        pool.query('SELECT COUNT(*) as count FROM messages'),
+        pool.query('SELECT COUNT(*) as count FROM contacts'),
+        pool.query('SELECT COUNT(*) as count FROM users')
+      ]);
+      
       const totalLeads = parseInt(leadsResult.rows[0].count) || 0;
+      const whatsappAccounts = parseInt(accountsResult.rows[0].count) || 0;
+      const totalMessages = parseInt(messagesResult.rows[0].count) || 0;
+      const totalContacts = parseInt(contactsResult.rows[0].count) || 0;
+      const totalUsers = parseInt(usersResult.rows[0].count) || 0;
       
       // Calculate this month's leads
       const firstDayOfMonth = new Date();
@@ -2218,63 +2229,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       const newLeadsThisMonth = parseInt(monthlyLeadsResult.rows[0].count) || 0;
       
-      // Get WhatsApp accounts count
-      const accountsResult = await pool.query('SELECT COUNT(*) as count FROM whatsapp_accounts');
-      const whatsappAccounts = parseInt(accountsResult.rows[0].count) || 0;
-      
-      // Get agent activities count for this month
-      const activitiesResult = await pool.query(
-        'SELECT COUNT(*) as count FROM agent_page_visits WHERE timestamp >= $1',
-        [firstDayOfMonth]
-      );
-      const agentActivities = parseInt(activitiesResult.rows[0].count) || 0;
-      
-      // Calculate revenue from leads with budget data
+      // Calculate revenue from leads with actual budget data
       const revenueResult = await pool.query(
         'SELECT COALESCE(SUM(CAST(value AS NUMERIC)), 0) as total FROM leads WHERE value IS NOT NULL AND value != \'\''
       );
       const revenue = parseFloat(revenueResult.rows[0].total) || 0;
       
-      // Get users count (active agents)
-      const usersResult = await pool.query('SELECT COUNT(*) as count FROM users');
-      const activeAgents = parseInt(usersResult.rows[0].count) || 0;
-      
-      // Get real messages count
-      const messagesResult = await pool.query('SELECT COUNT(*) as count FROM messages');
-      const totalMessages = parseInt(messagesResult.rows[0].count) || 0;
-      
-      // Get real contacts count
-      const contactsResult = await pool.query('SELECT COUNT(*) as count FROM contacts');
-      const totalContacts = parseInt(contactsResult.rows[0].count) || 0;
-      
       const realStats = {
         id: 1,
         totalLeads,
         newLeadsThisMonth,
-        activeLeads: totalLeads, // Use actual count, not estimates
-        convertedLeads: 0, // Query actual converted leads
+        activeLeads: totalLeads,
+        convertedLeads: 0,
         totalSales: revenue,
         salesThisMonth: revenue,
-        pendingActivities: 0, // Query actual pending activities
-        completedActivities: 0, // Query actual completed activities
+        pendingActivities: 0,
+        completedActivities: 0,
         performanceMetrics: {
-          responseTime: 0, // Real response time data
-          conversionRate: 0, // Real conversion rate
-          customerSatisfaction: 0 // Real satisfaction data
+          responseTime: 0,
+          conversionRate: 0,
+          customerSatisfaction: 0
         },
         accounts: whatsappAccounts,
         messages: totalMessages,
         contacts: totalContacts,
         leads: totalLeads,
+        users: totalUsers,
         revenue: revenue,
         updatedAt: new Date().toISOString()
       };
       
-      console.log(`✅ Métricas reales calculadas: ${totalLeads} leads, ${newLeadsThisMonth} nuevos este mes, ${whatsappAccounts} cuentas WhatsApp`);
+      console.log(`✅ Real metrics retrieved: { leads: ${totalLeads}, accounts: ${whatsappAccounts}, users: ${totalUsers}, contacts: ${totalContacts}, messages: ${totalMessages}, revenue: ${revenue} }`);
       
       res.json(realStats);
     } catch (error) {
-      console.error('❌ Error calculando métricas reales:', error);
+      console.error('❌ Error getting real dashboard metrics:', error);
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
     }
   });
