@@ -1,4 +1,3 @@
-# The code has been modified to fix the error in the ensureTestData method and add the crypto import.
 import { db } from './db';
 import { leads, whatsappAccounts } from '@shared/schema';
 import { eq, desc } from 'drizzle-orm';
