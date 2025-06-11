@@ -137,10 +137,10 @@ export function DemoManagement() {
     try {
       const response = await apiRequest('/api/demo/login', {
         method: 'POST',
-        body: JSON.stringify({
+        body: {
           username: demo.username,
           password: demo.password
-        })
+        }
       });
 
       if (response.success && response.token) {

@@ -1,0 +1,69 @@
+2025/06/11-17:53:05.030 4be5 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/11-17:53:05.031 4be5 Recovering log #4402
+2025/06/11-17:53:05.036 4be5 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/004402.log 
+2025/06/11-17:53:05.036 4be5 Delete type=2 #4401
+2025/06/11-17:53:05.515 4be9 Level-0 table #4407: started
+2025/06/11-17:53:05.526 4be9 Level-0 table #4407: 94806 bytes OK
+2025/06/11-17:53:05.572 4be9 Delete type=0 #4402
+2025/06/11-17:53:05.573 4be9 Manual compaction at level-0 from ' \xed\x05\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xee\x05\x00\x00\x00' @ 0 : 0; will stop at ' \xef\x05\x00\x00\xc8\x0d\x00l\x00o\x00c\x00a\x00l\x00_\x00s\x00t\x00o\x00r\x00a\x00g\x00e' @ 708066 : 1
+2025/06/11-17:53:05.573 4be9 Compacting 1@0 + 1@1 files
+2025/06/11-17:53:05.609 4be9 Generated table #4408@0: 26148 keys, 239555 bytes
+2025/06/11-17:53:05.609 4be9 Compacted 1@0 + 1@1 files => 239555 bytes
+2025/06/11-17:53:05.614 4be9 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/06/11-17:53:05.614 4be9 Delete type=2 #4407
+2025/06/11-17:53:05.615 4be3 Manual compaction at level-0 from ' \xef\x05\x00\x00\xc8\x0d\x00l\x00o\x00c\x00a\x00l\x00_\x00s\x00t\x00o\x00r\x00a\x00g\x00e' @ 708066 : 1 .. ' \xee\x05\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/11-17:53:05.622 4be9 Level-0 table #4410: started
+2025/06/11-17:53:05.627 4be9 Level-0 table #4410: 1909 bytes OK
+2025/06/11-17:53:05.638 4be9 Delete type=2 #4404
+2025/06/11-17:53:05.639 4be9 Delete type=0 #4406
+2025/06/11-17:53:05.639 4be3 Manual compaction at level-0 from ' \xeb\x05\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xec\x05\x00\x00\x00' @ 0 : 0; will stop at ' \xeb\x05\x05\x02\x03\x00\x00\x00\x00\x00\x00\xf0?' @ 710865 : 0
+2025/06/11-17:53:05.640 4be3 Compacting 1@0 + 1@1 files
+2025/06/11-17:53:05.676 4be3 Generated table #4411@0: 26064 keys, 238018 bytes
+2025/06/11-17:53:05.677 4be3 Compacted 1@0 + 1@1 files => 238018 bytes
+2025/06/11-17:53:05.681 4be3 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/06/11-17:53:05.682 4be3 Delete type=2 #4410
+2025/06/11-17:53:05.682 4be3 Manual compaction at level-0 from ' \xeb\x05\x05\x02\x03\x00\x00\x00\x00\x00\x00\xf0?' @ 710865 : 0 .. ' \xec\x05\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/11-17:53:05.682 4bea Level-0 table #4413: started
+2025/06/11-17:53:05.694 4bea Level-0 table #4413: 4373 bytes OK
+2025/06/11-17:53:05.704 4bea Delete type=2 #4408
+2025/06/11-17:53:05.704 4bea Delete type=0 #4409
+2025/06/11-17:53:05.705 4be3 Manual compaction at level-0 from ' \xee\x05\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xef\x05\x00\x00\x00' @ 0 : 0; will stop at ' \xf0\x05\x00\x00\xc8\x08\x00w\x00a\x00m\x00_\x00m\x00e\x00t\x00a' @ 711032 : 1
+2025/06/11-17:53:05.705 4be3 Compacting 1@0 + 1@1 files
+2025/06/11-17:53:05.747 4be3 Generated table #4414@0: 26180 keys, 240292 bytes
+2025/06/11-17:53:05.747 4be3 Compacted 1@0 + 1@1 files => 240292 bytes
+2025/06/11-17:53:05.755 4be3 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/06/11-17:53:05.755 4be3 Delete type=2 #4413
+2025/06/11-17:53:05.757 4be3 Manual compaction at level-0 from ' \xf0\x05\x00\x00\xc8\x08\x00w\x00a\x00m\x00_\x00m\x00e\x00t\x00a' @ 711032 : 1 .. ' \xef\x05\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/11-17:53:05.757 4be3 Level-0 table #4416: started
+2025/06/11-17:53:05.760 4be3 Level-0 table #4416: 870 bytes OK
+2025/06/11-17:53:05.769 4be3 Delete type=2 #4411
+2025/06/11-17:53:05.770 4be3 Delete type=0 #4412
+2025/06/11-17:53:05.770 4be3 Manual compaction at level-0 from ' \xea\x05\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xeb\x05\x00\x00\x00' @ 0 : 0; will stop at ' \xf0\x05\x00\x00\xc8\x11\x00w\x00o\x00r\x00k\x00e\x00r\x00_\x00w\x00a\x00m\x00_\x00e\x00v\x00e\x00n\x00t\x00s' @ 711202 : 1
+2025/06/11-17:53:05.770 4be3 Compacting 1@0 + 1@1 files
+2025/06/11-17:53:05.798 4be3 Generated table #4417@0: 26164 keys, 239807 bytes
+2025/06/11-17:53:05.798 4be3 Compacted 1@0 + 1@1 files => 239807 bytes
+2025/06/11-17:53:05.805 4be3 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/06/11-17:53:05.805 4be3 Delete type=2 #4416
+2025/06/11-17:53:05.805 4be3 Manual compaction at level-0 from ' \xf0\x05\x00\x00\xc8\x11\x00w\x00o\x00r\x00k\x00e\x00r\x00_\x00w\x00a\x00m\x00_\x00e\x00v\x00e\x00n\x00t\x00s' @ 711202 : 1 .. ' \xeb\x05\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/11-17:53:05.805 4be3 Level-0 table #4419: started
+2025/06/11-17:53:05.808 4be3 Level-0 table #4419: 508 bytes OK
+2025/06/11-17:53:05.815 4be3 Delete type=2 #4414
+2025/06/11-17:53:05.815 4be3 Delete type=0 #4415
+2025/06/11-17:53:05.815 4be3 Manual compaction at level-0 from ' \xef\x05\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xf0\x05\x00\x00\x00' @ 0 : 0; will stop at ' \xef\x05\x00\x00\xc8\x0d\x00l\x00o\x00c\x00a\x00l\x00_\x00s\x00t\x00o\x00r\x00a\x00g\x00e' @ 711267 : 0
+2025/06/11-17:53:05.815 4be3 Compacting 1@0 + 1@1 files
+2025/06/11-17:53:05.838 4be3 Generated table #4420@0: 26143 keys, 239478 bytes
+2025/06/11-17:53:05.839 4be3 Compacted 1@0 + 1@1 files => 239478 bytes
+2025/06/11-17:53:05.847 4be3 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/06/11-17:53:05.847 4be3 Delete type=2 #4419
+2025/06/11-17:53:05.848 4be3 Manual compaction at level-0 from ' \xef\x05\x00\x00\xc8\x0d\x00l\x00o\x00c\x00a\x00l\x00_\x00s\x00t\x00o\x00r\x00a\x00g\x00e' @ 711267 : 0 .. ' \xf0\x05\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/11-17:53:05.850 4be9 Level-0 table #4422: started
+2025/06/11-17:53:05.865 4be9 Level-0 table #4422: 12938 bytes OK
+2025/06/11-17:53:05.876 4be9 Delete type=2 #4417
+2025/06/11-17:53:05.877 4be9 Delete type=0 #4418
+2025/06/11-17:53:05.878 4be3 Manual compaction at level-0 from ' \xde\x05\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xdf\x05\x00\x00\x00' @ 0 : 0; will stop at ' \xde\x05\x0a\x02\x03\x00\x00\x00\x00\x00\x00\x00@' @ 711955 : 0
+2025/06/11-17:53:05.878 4be3 Compacting 1@0 + 1@1 files
+2025/06/11-17:53:05.913 4be3 Generated table #4423@0: 25459 keys, 212685 bytes
+2025/06/11-17:53:05.913 4be3 Compacted 1@0 + 1@1 files => 212685 bytes
+2025/06/11-17:53:05.919 4be3 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/06/11-17:53:05.920 4be3 Delete type=2 #4422
+2025/06/11-17:53:05.920 4bea Manual compaction at level-0 from ' \xde\x05\x0a\x02\x03\x00\x00\x00\x00\x00\x00\x00@' @ 711955 : 0 .. ' \xdf\x05\x00\x00\x00' @ 0 : 0; will stop at (end)
