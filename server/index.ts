@@ -8769,21 +8769,29 @@ Responde de manera conversacional, profesional y útil según tu especializació
     console.error('❌ Error iniciando servicio de recordatorios de calendario:', error);
   }
 
-  // ===== INICIALIZACIÓN DEL SISTEMA DE USUARIOS DEMO =====
-  console.log('🎭 Iniciando sistema de gestión de usuarios demo...');
+  // ===== INICIALIZACIÓN DEL SISTEMA DE USUARIOS DEMO MEJORADO =====
+  console.log('🎭 Iniciando sistema mejorado de gestión de usuarios demo...');
   try {
     const { demoUserManager } = await import('./services/demoUserManager');
+    const { automaticDemoCleanup } = await import('./services/automaticDemoCleanup');
+    const { enhancedDemoDetector } = await import('./services/enhancedDemoDetector');
     
-    // Inicializar el sistema y limpiar usuarios expirados
+    // Inicializar el sistema base
     await demoUserManager.initialize();
     
-    // Programar limpieza automática cada hora
-    demoUserManager.startAutomaticCleanup();
+    // Iniciar servicio de limpieza automática precisa (cada hora)
+    automaticDemoCleanup.start();
     
-    console.log('✅ Sistema de usuarios demo iniciado correctamente');
-    console.log('⏰ Limpieza automática programada cada hora');
+    // Iniciar detección automática de demos en WhatsApp
+    enhancedDemoDetector.startAutomaticCleanup();
+    
+    console.log('✅ Sistema mejorado de usuarios demo iniciado correctamente');
+    console.log('⏰ Limpieza automática precisa programada cada hora');
+    console.log('🎯 Detección automática de demos en WhatsApp activada');
+    console.log('📋 Password estándar: demo123456 para todos los demos');
+    console.log('⏳ Período de prueba: exactamente 3 días (72 horas)');
   } catch (error) {
-    console.error('❌ Error iniciando sistema de usuarios demo:', error);
+    console.error('❌ Error iniciando sistema mejorado de usuarios demo:', error);
   }
 
   // ===== SISTEMA DE NOTIFICACIONES INTEGRADO =====
