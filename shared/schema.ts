@@ -86,8 +86,8 @@ export const users = pgTable("users", {
   permissions: jsonb("permissions"), // Custom permissions array
   assignedAccounts: text("assignedAccounts").array(), // WhatsApp accounts assigned to user
   settings: jsonb("settings"),
-  lastLoginAt: timestamp("lastloginat"),
-  createdAt: timestamp("createdat").defaultNow(),
+  lastLoginAt: timestamp("lastLoginAt"),
+  createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedat").defaultNow(),
 });
 
