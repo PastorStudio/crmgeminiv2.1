@@ -686,7 +686,7 @@ export function WhatsAppTwoColumn() {
   const [assignmentChatId, setAssignmentChatId] = useState<string>('');
   const [assignmentAccountId, setAssignmentAccountId] = useState<number>(1);
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('all');
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [translatorEnabled, setTranslatorEnabled] = useState(false);
   const [smartBotsEnabled, setSmartBotsEnabled] = useState(false);
@@ -2698,10 +2698,49 @@ export function WhatsAppTwoColumn() {
     }
   }, [queryClient, selectedAccounts]);
 
-  const filteredChats = sortedChats.filter(chat => 
-    chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Define filter categories
+  const filterCategories = [
+    { id: 'all', label: 'Todos', icon: '💬' },
+    { id: 'unread', label: 'No leídos', icon: '🔴' },
+    { id: 'groups', label: 'Grupos', icon: '👥' },
+    { id: 'individual', label: 'Individuales', icon: '👤' },
+    { id: 'sales', label: 'Ventas', icon: '💰' },
+    { id: 'support', label: 'Soporte', icon: '🛠️' },
+    { id: 'leads', label: 'Leads', icon: '🎯' },
+    { id: 'urgent', label: 'Urgente', icon: '⚡' }
+  ];
+
+  const filteredChats = useMemo(() => {
+    return sortedChats.filter(chat => {
+      switch (selectedFilter) {
+        case 'unread':
+          return chat.unreadCount > 0;
+        case 'groups':
+          return chat.isGroup;
+        case 'individual':
+          return !chat.isGroup;
+        case 'sales':
+          return chat.name.toLowerCase().includes('venta') || 
+                 chat.lastMessage.toLowerCase().includes('precio') ||
+                 chat.lastMessage.toLowerCase().includes('comprar');
+        case 'support':
+          return chat.name.toLowerCase().includes('soporte') || 
+                 chat.lastMessage.toLowerCase().includes('ayuda') ||
+                 chat.lastMessage.toLowerCase().includes('problema');
+        case 'leads':
+          return chat.name.toLowerCase().includes('lead') || 
+                 chat.lastMessage.toLowerCase().includes('información') ||
+                 chat.lastMessage.toLowerCase().includes('interesado');
+        case 'urgent':
+          return chat.unreadCount > 5 || 
+                 chat.lastMessage.toLowerCase().includes('urgente') ||
+                 chat.lastMessage.toLowerCase().includes('emergencia');
+        case 'all':
+        default:
+          return true;
+      }
+    });
+  }, [sortedChats, selectedFilter]);
 
   if (loadingAccounts) {
     return (
@@ -2740,14 +2779,59 @@ export function WhatsAppTwoColumn() {
           </div>
         </div>
 
-        {/* Search */}
+        {/* Category Filters */}
         <div className="p-3 border-b border-gray-200 flex-shrink-0">
-          <Input
-            placeholder="Buscar conversaciones..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full"
-          />
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-gray-600">Filtrar conversaciones</span>
+            <Badge variant="secondary" className="text-xs">
+              {filteredChats.length} chat{filteredChats.length !== 1 ? 's' : ''}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-4 gap-1">
+            {filterCategories.map(category => {
+              const categoryCount = sortedChats.filter(chat => {
+                switch (category.id) {
+                  case 'unread': return chat.unreadCount > 0;
+                  case 'groups': return chat.isGroup;
+                  case 'individual': return !chat.isGroup;
+                  case 'sales': return chat.name.toLowerCase().includes('venta') || 
+                    chat.lastMessage.toLowerCase().includes('precio') ||
+                    chat.lastMessage.toLowerCase().includes('comprar');
+                  case 'support': return chat.name.toLowerCase().includes('soporte') || 
+                    chat.lastMessage.toLowerCase().includes('ayuda') ||
+                    chat.lastMessage.toLowerCase().includes('problema');
+                  case 'leads': return chat.name.toLowerCase().includes('lead') || 
+                    chat.lastMessage.toLowerCase().includes('información') ||
+                    chat.lastMessage.toLowerCase().includes('interesado');
+                  case 'urgent': return chat.unreadCount > 5 || 
+                    chat.lastMessage.toLowerCase().includes('urgente') ||
+                    chat.lastMessage.toLowerCase().includes('emergencia');
+                  case 'all': 
+                  default: return true;
+                }
+              }).length;
+
+              return (
+                <Button
+                  key={category.id}
+                  size="sm"
+                  variant={selectedFilter === category.id ? "default" : "outline"}
+                  className={`text-xs h-8 px-2 relative ${
+                    selectedFilter === category.id 
+                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                  onClick={() => setSelectedFilter(category.id)}
+                >
+                  <span className="mr-1">{category.icon}</span>
+                  {category.label}
+                  {categoryCount > 0 && category.id !== 'all' && (
+                    <span className="ml-1 text-xs opacity-75">({categoryCount})</span>
+                  )}
+                </Button>
+              );
+            })}
+          </div>
         </div>
 
 
