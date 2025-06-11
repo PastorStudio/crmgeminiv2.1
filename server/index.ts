@@ -6522,6 +6522,12 @@ app.use((req, res, next) => {
 
   // Demo login endpoint
   app.post("/api/direct/demo/login", async (req: Request, res: Response) => {
+    // Set proper headers for direct API response
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
     try {
       const { username, password } = req.body;
 
