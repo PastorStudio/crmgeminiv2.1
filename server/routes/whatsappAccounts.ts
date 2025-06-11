@@ -306,18 +306,35 @@ router.delete('/:id', async (req, res) => {
       return res.status(400).json({ error: 'ID inválido' });
     }
     
+    console.log(`🗑️ Iniciando eliminación de cuenta WhatsApp ID: ${id}`);
+    
     // Primero desconectar la cuenta si está activa
-    await whatsappMultiAccountManager.disconnectAccount(id);
+    try {
+      await whatsappMultiAccountManager.disconnectAccount(id);
+      console.log(`✅ Cuenta ${id} desconectada del manager`);
+    } catch (disconnectError) {
+      console.warn(`⚠️ Error desconectando cuenta ${id}:`, disconnectError);
+    }
+    
+    // Eliminar dependencias antes de eliminar la cuenta
+    await storage.deleteAccountDependencies(id);
+    console.log(`✅ Dependencias de cuenta ${id} eliminadas`);
     
     // Luego eliminar de la base de datos
     await storage.deleteWhatsappAccount(id);
+    console.log(`✅ Cuenta ${id} eliminada de la base de datos`);
     
     // Sincronizar carpetas de sesión con los nuevos IDs
-    await syncSessionFolders();
+    try {
+      await syncSessionFolders();
+      console.log(`✅ Carpetas de sesión sincronizadas`);
+    } catch (syncError) {
+      console.warn('⚠️ Error sincronizando carpetas:', syncError);
+    }
     
     res.json({ success: true });
   } catch (error) {
-    console.error('Error al eliminar cuenta de WhatsApp:', error);
+    console.error('❌ Error al eliminar cuenta de WhatsApp:', error);
     res.status(500).json({ error: 'Error al eliminar cuenta de WhatsApp' });
   }
 });
