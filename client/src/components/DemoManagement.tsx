@@ -479,10 +479,11 @@ export function DemoManagement() {
 interface DemoTableProps {
   demos: DemoUser[];
   onConvert?: (demo: DemoUser) => void;
+  onLogin?: (demo: DemoUser) => void;
   showConvertedInfo?: boolean;
 }
 
-function DemoTable({ demos, onConvert, showConvertedInfo }: DemoTableProps) {
+function DemoTable({ demos, onConvert, onLogin, showConvertedInfo }: DemoTableProps) {
   if (demos.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
@@ -503,7 +504,7 @@ function DemoTable({ demos, onConvert, showConvertedInfo }: DemoTableProps) {
           <TableHead>Expira</TableHead>
           <TableHead>Logins</TableHead>
           {showConvertedInfo && <TableHead>Convertido</TableHead>}
-          {onConvert && <TableHead>Acciones</TableHead>}
+          {(onConvert || onLogin) && <TableHead>Acciones</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -562,17 +563,32 @@ function DemoTable({ demos, onConvert, showConvertedInfo }: DemoTableProps) {
                 )}
               </TableCell>
             )}
-            {onConvert && (
+            {(onConvert || onLogin) && (
               <TableCell>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onConvert(demo)}
-                  className="flex items-center space-x-1"
-                >
-                  <ArrowRight className="h-3 w-3" />
-                  <span>Convertir</span>
-                </Button>
+                <div className="flex items-center space-x-2">
+                  {onLogin && !demo.isExpired && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => onLogin(demo)}
+                      className="flex items-center space-x-1"
+                    >
+                      <LogIn className="h-3 w-3" />
+                      <span>Iniciar Sesión</span>
+                    </Button>
+                  )}
+                  {onConvert && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onConvert(demo)}
+                      className="flex items-center space-x-1"
+                    >
+                      <ArrowRight className="h-3 w-3" />
+                      <span>Convertir</span>
+                    </Button>
+                  )}
+                </div>
               </TableCell>
             )}
           </TableRow>
