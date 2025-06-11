@@ -6,6 +6,7 @@ import {
   chatComments,
   dashboardStats,
   userAccountAssignments,
+  userLetterAssignments,
   subscriptionPlans,
   userSubscriptions,
   type User, 
@@ -64,10 +65,14 @@ export interface IStorage {
   createWhatsAppAccount(account: InsertWhatsAppAccount): Promise<WhatsAppAccount>;
   getAllWhatsappAccounts(): Promise<WhatsAppAccount[]>;
   getWhatsappAccountsByUserId(userId: number): Promise<WhatsAppAccount[]>;
-  getWhatsappAccount(id: number): Promise<WhatsAppAccount | undefined>;
-  updateWhatsappAccount(id: number, updates: Partial<WhatsAppAccount>): Promise<WhatsAppAccount | undefined>;
-  deleteWhatsappAccount(id: number): Promise<boolean>;
+  getWhatsappAccount(id: string): Promise<WhatsAppAccount | undefined>;
+  updateWhatsappAccount(id: string, updates: Partial<WhatsAppAccount>): Promise<WhatsAppAccount | undefined>;
+  deleteWhatsappAccount(id: string): Promise<boolean>;
   deleteAllWhatsappAccounts(): Promise<boolean>;
+  
+  // User letter assignment methods
+  getUserLetter(userId: number): Promise<string>;
+  assignUserLetter(userId: number): Promise<string>;
   
   // Chat assignments methods
   getChatAssignments(): Promise<ChatAssignment[]>;
@@ -320,40 +325,46 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWhatsAppAccount(account: InsertWhatsAppAccount): Promise<WhatsAppAccount> {
-    // Buscar el primer ID disponible
-    const existingAccounts = await db.select({ id: whatsappAccounts.id }).from(whatsappAccounts).orderBy(whatsappAccounts.id);
+    if (!account.userId) {
+      throw new Error('User ID is required for account creation');
+    }
+
+    // Get or assign user letter
+    const userLetter = await this.getUserLetter(account.userId);
     
-    let nextAvailableId = 1;
+    // Get existing accounts for this user to determine next sequence number
+    const userAccounts = await db.select({ numericId: whatsappAccounts.numericId })
+      .from(whatsappAccounts)
+      .where(eq(whatsappAccounts.userId, account.userId))
+      .orderBy(whatsappAccounts.numericId);
     
-    if (existingAccounts.length === 0) {
-      // No hay cuentas, usar ID 1
-      nextAvailableId = 1;
-      console.log(`🔍 Primera cuenta - asignando ID: ${nextAvailableId}`);
-    } else {
-      // Buscar el primer ID disponible comenzando desde 1
-      const usedIds = existingAccounts.map(acc => acc.id).sort((a, b) => a - b);
-      nextAvailableId = 1;
-      
-      // Buscar el primer hueco en la secuencia
+    // Find next available sequence number for this user
+    let nextNumericId = 1;
+    if (userAccounts.length > 0) {
+      const usedIds = userAccounts.map(acc => acc.numericId).sort((a, b) => a - b);
       for (let candidateId = 1; candidateId <= usedIds.length + 1; candidateId++) {
         if (!usedIds.includes(candidateId)) {
-          nextAvailableId = candidateId;
+          nextNumericId = candidateId;
           break;
         }
       }
-      
-      console.log(`🔍 Buscando ID disponible: IDs existentes [${usedIds.join(', ')}], asignando ID: ${nextAvailableId}`);
     }
     
-    // Usar inserción directa con Drizzle especificando el ID
+    // Create alphanumeric ID: numeric + user letter (e.g., "1a", "2b")
+    const alphanumericId = `${nextNumericId}${userLetter}`;
+    
+    console.log(`🔍 Creating account for user ${account.userId} with letter '${userLetter}' - ID: ${alphanumericId}`);
+    
     try {
       const [newAccount] = await db.insert(whatsappAccounts).values({
-        id: nextAvailableId,
+        id: alphanumericId,
+        numericId: nextNumericId,
+        userSuffix: userLetter,
         name: account.name,
         description: account.description || null,
         ownerName: account.ownerName || null,
         ownerPhone: account.ownerPhone || null,
-        userId: account.userId || null, // CRITICAL: Include userId for proper data isolation
+        userId: account.userId,
         status: account.status || 'inactive',
         autoResponseEnabled: account.autoResponseEnabled || false,
         assignedExternalAgentId: account.assignedExternalAgentId || null,
@@ -362,33 +373,11 @@ export class DatabaseStorage implements IStorage {
         lastActiveAt: new Date()
       }).returning();
       
-      console.log(`✅ Cuenta de WhatsApp creada con ID reutilizado: ${nextAvailableId}`);
-      
-      // Actualizar la secuencia para evitar conflictos futuros
-      const maxId = Math.max(nextAvailableId, ...existingAccounts.map(acc => acc.id));
-      await db.execute(sql`SELECT setval('whatsapp_accounts_id_seq', ${maxId}, true)`);
-      
+      console.log(`✅ WhatsApp account created with alphanumeric ID: ${alphanumericId}`);
       return newAccount;
     } catch (error) {
-      console.error('❌ Error creando cuenta con ID específico:', error);
-      // Fallback: usar inserción normal sin ID específico
-      const [newAccount] = await db
-        .insert(whatsappAccounts)
-        .values({
-          name: account.name,
-          description: account.description || null,
-          ownerName: account.ownerName || null,
-          ownerPhone: account.ownerPhone || null,
-          userId: account.userId || null, // CRITICAL: Include userId for proper data isolation
-          status: account.status || 'inactive',
-          autoResponseEnabled: account.autoResponseEnabled || false,
-          assignedExternalAgentId: account.assignedExternalAgentId || null,
-          responseDelay: account.responseDelay || 3,
-          createdAt: new Date(),
-          lastActiveAt: new Date()
-        })
-        .returning();
-      return newAccount;
+      console.error('❌ Error creating WhatsApp account:', error);
+      throw error;
     }
   }
 
@@ -565,12 +554,12 @@ export class DatabaseStorage implements IStorage {
       ));
   }
 
-  async getWhatsappAccount(id: number): Promise<WhatsAppAccount | undefined> {
+  async getWhatsappAccount(id: string): Promise<WhatsAppAccount | undefined> {
     const [account] = await db.select().from(whatsappAccounts).where(eq(whatsappAccounts.id, id));
     return account || undefined;
   }
 
-  async updateWhatsappAccount(id: number, updates: Partial<WhatsAppAccount>): Promise<WhatsAppAccount | undefined> {
+  async updateWhatsappAccount(id: string, updates: Partial<WhatsAppAccount>): Promise<WhatsAppAccount | undefined> {
     const [account] = await db
       .update(whatsappAccounts)
       .set(updates)
@@ -579,11 +568,56 @@ export class DatabaseStorage implements IStorage {
     return account || undefined;
   }
 
-  async deleteWhatsappAccount(id: number): Promise<boolean> {
+  async deleteWhatsappAccount(id: string): Promise<boolean> {
     const result = await db
       .delete(whatsappAccounts)
       .where(eq(whatsappAccounts.id, id));
     return (result.rowCount || 0) > 0;
+  }
+
+  // User letter assignment methods
+  async getUserLetter(userId: number): Promise<string> {
+    // Check if user already has a letter assigned
+    const [existingAssignment] = await db
+      .select()
+      .from(userLetterAssignments)
+      .where(eq(userLetterAssignments.userId, userId));
+    
+    if (existingAssignment) {
+      return existingAssignment.assignedLetter;
+    }
+    
+    // Assign new letter if none exists
+    return await this.assignUserLetter(userId);
+  }
+
+  async assignUserLetter(userId: number): Promise<string> {
+    // Get all assigned letters to find the next available one
+    const assignedLetters = await db
+      .select({ letter: userLetterAssignments.assignedLetter })
+      .from(userLetterAssignments);
+    
+    const usedLetters = new Set(assignedLetters.map(a => a.letter));
+    
+    // Find next available letter (a-z)
+    let nextLetter = 'a';
+    for (let i = 0; i < 26; i++) {
+      const candidateLetter = String.fromCharCode(97 + i); // 'a' is char code 97
+      if (!usedLetters.has(candidateLetter)) {
+        nextLetter = candidateLetter;
+        break;
+      }
+    }
+    
+    // Assign the letter to the user
+    await db.insert(userLetterAssignments).values({
+      userId,
+      assignedLetter: nextLetter,
+      assignedAt: new Date()
+    });
+    
+    console.log(`📝 Assigned letter '${nextLetter}' to user ${userId}`);
+    return nextLetter;
   }
 
   async deleteAllWhatsappAccounts(): Promise<boolean> {
