@@ -1,3 +1,2 @@
-2025/06/10-20:58:59.465 17ab Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/shared_proto_db/metadata/MANIFEST-000001
-2025/06/10-20:58:59.466 17ab Recovering log #3
-2025/06/10-20:58:59.466 17ab Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/shared_proto_db/metadata/000003.log 
+2025/06/11-14:22:59.310 544c Creating DB /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/shared_proto_db/metadata since it was missing.
+2025/06/11-14:22:59.331 544c Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/shared_proto_db/metadata/MANIFEST-000001
