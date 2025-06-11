@@ -281,6 +281,64 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Obtener código QR para autenticación de WhatsApp
+router.get('/:id/qrcode', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+
+    console.log(`📱 Solicitando código QR para cuenta ${id}`);
+    
+    // Verificar que la cuenta existe
+    const account = await storage.getWhatsappAccount(id);
+    if (!account) {
+      console.log(`❌ Cuenta ${id} no existe en el sistema`);
+      return res.status(404).json({ error: 'Cuenta no encontrada' });
+    }
+
+    // Verificar ownership de la cuenta
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
+        const userId = decoded.userId || decoded.id;
+        
+        if (account.userId !== userId) {
+          return res.status(403).json({ error: 'Acceso denegado a esta cuenta' });
+        }
+      } catch (error) {
+        return res.status(401).json({ error: 'Token inválido' });
+      }
+    }
+
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+    
+    // Forzar inicialización si no está hecha
+    await whatsappMultiAccountManager.initializeAccount(id);
+    
+    // Intentar obtener QR
+    const qr = whatsappMultiAccountManager.getQRCode(id);
+    
+    if (!qr) {
+      console.log(`⚠️ Código QR no disponible para cuenta ${id}`);
+      return res.status(404).json({ error: 'Código QR no disponible' });
+    }
+
+    console.log(`✅ Código QR obtenido para cuenta ${id}`);
+    res.json({
+      success: true,
+      qr: qr,
+      accountId: id
+    });
+  } catch (error) {
+    console.error('Error al obtener código QR:', error);
+    res.status(500).json({ error: 'Error al obtener código QR' });
+  }
+});
+
 /**
  * Sincroniza las carpetas de sesión con los IDs actualizados
  * Esta función se llama después de eliminar una cuenta y reorganizar los IDs
