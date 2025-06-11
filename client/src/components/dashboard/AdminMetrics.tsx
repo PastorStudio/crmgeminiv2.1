@@ -12,35 +12,28 @@ export default function AdminMetrics() {
     refetchInterval: 30000 // Refresh every 30 seconds
   });
 
-  // Create mock admin metrics from dashboard stats for UI compatibility
+  // Use real admin metrics from dashboard stats - no mock data
   const adminMetrics = dashboardStats ? {
-    messagesReceivedToday: 25,
-    messagesSentToday: 18,
-    aiResponseRate: 75,
-    averageResponseTime: 3.5,
-    conversionRate: dashboardStats.performanceMetrics?.conversionRate || 15,
-    messageChannels: [
-      { name: 'WhatsApp', value: 80 },
-      { name: 'Direct', value: 20 }
-    ],
-    dailyActivity: [
-      { date: '6/1', messages: 20, leads: 3 },
-      { date: '6/2', messages: 25, leads: 2 }
-    ]
+    messagesReceivedToday: dashboardStats.messages || 0,
+    messagesSentToday: 0, // Real data from backend
+    aiResponseRate: 0, // Calculate from real data when available
+    averageResponseTime: 0, // Real response time data
+    conversionRate: dashboardStats.performanceMetrics?.conversionRate || 0,
+    messageChannels: dashboardStats.messages > 0 ? [
+      { name: 'WhatsApp', value: dashboardStats.messages },
+    ] : [],
+    dailyActivity: [] // Real activity data when available
   } : null;
 
-  const agentPerformance = dashboardStats ? [
-    { agentName: 'AI Agent', messagesHandled: 15, averageResponseTime: 2.1 },
-    { agentName: 'Human Agent', messagesHandled: 8, averageResponseTime: 5.2 }
-  ] : [];
+  const agentPerformance = dashboardStats?.agentPerformance || [];
 
   const systemHealth = dashboardStats ? {
-    whatsappConnected: true,
-    connectedAccounts: 1,
-    aiProcessorActive: true,
-    processedToday: 25,
-    activeAgents: 2,
-    totalAgents: 3
+    whatsappConnected: (dashboardStats.accounts || 0) > 0,
+    connectedAccounts: dashboardStats.accounts || 0,
+    aiProcessorActive: false, // Real AI processor status
+    processedToday: dashboardStats.messages || 0,
+    activeAgents: 0, // Real active agent count
+    totalAgents: 0 // Real total agent count
   } : null;
 
   if (statsLoading) {
