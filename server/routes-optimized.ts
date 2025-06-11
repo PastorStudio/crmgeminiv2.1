@@ -1296,11 +1296,19 @@ export function registerOptimizedRoutes(app: Express): Server {
   });
 
   // ***** RUTAS DE LEADS OPTIMIZADAS *****
-  app.get("/api/leads", async (_req: Request, res: Response) => {
+  app.get("/api/leads", async (req: Request, res: Response) => {
     try {
-      const leads = await storage.getAllLeads();
+      // Extract user ID for data isolation
+      const userIdParam = req.headers['x-user-id'] || req.query.userId || '3'; // Default to DJP user
+      const userId = parseInt(userIdParam as string) || 3;
+      
+      console.log(`📋 GET /api/leads - Obteniendo leads para usuario ${userId}`);
+      
+      // Get leads filtered by user - SECURITY FIX: Implement user data isolation
+      const leads = await storage.getLeadsByUserId(userId);
       res.json(leads);
     } catch (error) {
+      console.error("Error al obtener leads:", error);
       res.status(500).json({ error: "Error al obtener leads" });
     }
   });

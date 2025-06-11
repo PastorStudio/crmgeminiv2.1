@@ -111,9 +111,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUser(id: number, updates: Partial<User>): Promise<User | undefined> {
+    // Add updatedAt timestamp when updating user
+    const updateData = {
+      ...updates,
+      updatedAt: new Date()
+    };
+    
     const [user] = await db
       .update(users)
-      .set(updates)
+      .set(updateData)
       .where(eq(users.id, id))
       .returning();
     return user || undefined;
@@ -838,6 +844,12 @@ export class DatabaseStorage implements IStorage {
       console.error('Error getting leads:', error);
       return [];
     }
+  }
+
+  // CRITICAL SECURITY METHOD: Filter leads by user ID for data isolation
+  async getLeadsByUserId(userId: number): Promise<Lead[]> {
+    console.log(`🔒 Filtering leads for user ID: ${userId}`);
+    return await db.select().from(leads).where(eq(leads.assignedTo, userId)).orderBy(desc(leads.createdAt));
   }
 
   async createLead(insertLead: InsertLead): Promise<Lead> {
