@@ -15,57 +15,45 @@ export class RealWhatsAppActivator {
       const accounts = await storage.getAllWhatsappAccounts();
 
       if (accounts.length === 0) {
-        console.log('⚠️ No WhatsApp accounts found in database, creating default account...');
+        console.log('⚠️ No WhatsApp accounts found in database');
+        return;
+      }
 
-        // Create a default account if none exists
-        const defaultAccount = await storage.createWhatsappAccount({
-          name: 'Default Account',
-          description: 'Default WhatsApp account',
-          userId: 1,
-          status: 'inactive'
-        });
+      // Initialize all available accounts
+      for (const account of accounts) {
+        try {
+          console.log(`🔄 Inicializando cuenta ${account.id} (${account.name})...`);
+          
+          const success = await whatsappMultiAccountManager.initializeAccount(account.id);
 
-        console.log('✅ Default WhatsApp account created:', defaultAccount.id);
+          if (success) {
+            console.log(`✅ WhatsApp account ${account.id} initialized for real data`);
 
-        // Initialize the new account
-        const success = await whatsappMultiAccountManager.initializeAccount(defaultAccount.id);
+            // Wait a moment before forcing QR
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
-        if (success) {
-          console.log(`✅ WhatsApp account ${defaultAccount.id} initialized for real data`);
+            // Force QR generation for authentication
+            try {
+              await whatsappMultiAccountManager.forceRefreshQR(account.id);
+              console.log(`✅ QR forzado para cuenta ${account.id}`);
+            } catch (qrError) {
+              console.log(`⚠️ Error generando QR para cuenta ${account.id}:`, qrError.message);
+            }
 
-          // Force QR generation for authentication
-          await whatsappMultiAccountManager.forceRefreshQR(defaultAccount.id);
-          console.log('✅ QR code generated for authentication');
-
-          // Activate persistent connection
-          whatsappMultiAccountManager.activateKeepAlive(defaultAccount.id);
-          console.log('✅ Persistent connection activated');
-
-          console.log('🚀 Real WhatsApp system activated - ready for authentic data');
-        } else {
-          console.log(`⚠️ Failed to initialize WhatsApp account ${defaultAccount.id}`);
-        }
-      } else {
-        // Use first existing account
-        const firstAccount = accounts[0];
-        const success = await whatsappMultiAccountManager.initializeAccount(firstAccount.id);
-
-        if (success) {
-          console.log(`✅ WhatsApp account ${firstAccount.id} initialized for real data`);
-
-          // Force QR generation for authentication
-          await whatsappMultiAccountManager.forceRefreshQR(firstAccount.id);
-          console.log('✅ QR code generated for authentication');
-
-          // Activate persistent connection
-          whatsappMultiAccountManager.activateKeepAlive(firstAccount.id);
-          console.log('✅ Persistent connection activated');
-
-          console.log('🚀 Real WhatsApp system activated with existing accounts');
-        } else {
-          console.log(`⚠️ Failed to initialize WhatsApp account ${firstAccount.id}`);
+            // Activate persistent connection
+            whatsappMultiAccountManager.activateKeepAlive(account.id);
+            console.log('✅ Persistent connection activated');
+          } else {
+            console.log(`⚠️ Failed to initialize WhatsApp account ${account.id}`);
+          }
+        } catch (accountError) {
+          console.error(`❌ Error procesando cuenta ${account.id}:`, accountError);
         }
       }
+
+      console.log('🚀 Real WhatsApp system activated with existing accounts');
+      console.log('📱 WhatsApp requiere autenticación - escanear código QR para datos reales');
+      
     } catch (error) {
       console.error('❌ Error activating real WhatsApp connections:', error);
     }
