@@ -4524,7 +4524,8 @@ app.use((req, res, next) => {
   }
 
   // Registrar rutas de WhatsApp accounts sin autenticación
-  app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
+  // DISABLED - Using router from line 3076 with user filtering security fix
+  // app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   
   // Registrar rutas del sistema de mensajería moderno que usa datos reales de WhatsApp
   app.use("/api/modern-messaging", modernMessagingRouter);
