@@ -86,9 +86,9 @@ export const users = pgTable("users", {
   permissions: jsonb("permissions"), // Custom permissions array
   assignedAccounts: text("assignedAccounts").array(), // WhatsApp accounts assigned to user
   settings: jsonb("settings"),
-  lastLoginAt: timestamp("lastloginat"),
-  createdAt: timestamp("createdat").defaultNow(),
-  updatedAt: timestamp("updatedat").defaultNow(),
+  lastLoginAt: timestamp("lastLoginAt"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
 });
 
 // Organizations for multi-tenant support
@@ -187,7 +187,7 @@ export const leads = pgTable("leads", {
   uuid: text("uuid").notNull().unique(), // Unique identifier for external references
   contactId: integer("contactId").notNull(),
   whatsappAccountId: integer("whatsappAccountId").notNull(),
-  chatId: text("chatid"), // WhatsApp chat reference
+  chatId: text("chatId"), // WhatsApp chat reference
   title: text("title").notNull(),
   name: text("name").notNull(),
   fullName: text("fullName"),

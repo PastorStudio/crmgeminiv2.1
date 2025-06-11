@@ -13,8 +13,7 @@ const router = Router();
 router.get('/', async (req, res) => {
   try {
     // Extract user ID from authentication headers or query params
-    const userIdParam = req.headers['x-user-id'] || req.query.userId || '3'; // Default to DJP user for testing
-    const userId = parseInt(userIdParam as string) || 3; // Ensure valid integer, default to DJP user
+    const userId = req.headers['x-user-id'] || req.query.userId || '3'; // Default to DJP user for testing
     
     console.log(`📋 GET /api/whatsapp-accounts - Obteniendo cuentas para usuario ${userId}`);
     
@@ -23,7 +22,7 @@ router.get('/', async (req, res) => {
     res.header('Content-Type', 'application/json');
     
     // Get accounts filtered by user ID - CRITICAL SECURITY FIX
-    const accounts = await storage.getWhatsappAccountsByUserId(userId);
+    const accounts = await storage.getWhatsappAccountsByUserId(parseInt(userId as string));
     console.log(`✅ Cuentas encontradas para usuario ${userId}: ${accounts.length}`);
     
     // Obtener el estado actual de cada cuenta desde el administrador de múltiples cuentas
@@ -118,12 +117,6 @@ router.post('/', async (req, res) => {
   try {
     console.log('🆕 Creando nueva cuenta de WhatsApp:', req.body);
     
-    // Extract user ID from authentication headers or query params
-    const userIdParam = req.headers['x-user-id'] || req.query.userId || '3';
-    const userId = parseInt(userIdParam as string) || 3;
-    
-    console.log(`🔐 Creando cuenta para usuario ID: ${userId}`);
-    
     // Validar datos de entrada
     const validation = accountSchema.safeParse(req.body);
     if (!validation.success) {
@@ -134,7 +127,7 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Crear cuenta en la base de datos con userId
+    // Crear cuenta en la base de datos
     const newAccount = await storage.createWhatsAppAccount({
       name: validation.data.name,
       description: validation.data.description || null,
@@ -146,8 +139,7 @@ router.post('/', async (req, res) => {
       responseDelay: validation.data.responseDelay || 3,
       status: 'inactive',
       sessionData: null,
-      organizationId: 1, // Default organization
-      userId: userId // CRITICAL: Assign to the authenticated user
+      organizationId: 1 // Default organization
     });
     
     console.log('✅ Cuenta creada exitosamente:', newAccount);
@@ -1068,56 +1060,6 @@ router.post('/sync-real-chats', async (req, res) => {
       error: 'Failed to sync real chats',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
-  }
-});
-
-// Eliminar cuenta de WhatsApp con verificación de usuario
-router.delete('/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const userIdParam = req.headers['x-user-id'] || req.query.userId || '3';
-    const userId = parseInt(userIdParam as string) || 3;
-    
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'ID inválido' });
-    }
-    
-    // CRITICAL SECURITY CHECK: Verify user owns this account before deletion
-    const account = await storage.getWhatsappAccount(id);
-    if (!account) {
-      return res.status(404).json({ error: 'Cuenta no encontrada' });
-    }
-
-    if (account.userId !== userId) {
-      return res.status(403).json({ error: 'Acceso denegado: no puedes eliminar esta cuenta' });
-    }
-
-    console.log(`🗑️ Eliminando cuenta WhatsApp ID ${id} para usuario ${userId}`);
-    
-    // Shutdown WhatsApp client for this account before deletion
-    try {
-      whatsappMultiAccountManager.disconnectAccount(id);
-    } catch (error) {
-      console.log(`⚠️ Cliente WhatsApp ya estaba desconectado para cuenta ${id}`);
-    }
-
-    // Delete the account from database
-    const deleted = await storage.deleteWhatsappAccount(id);
-    
-    if (deleted) {
-      console.log(`✅ Cuenta WhatsApp ID ${id} eliminada exitosamente`);
-      res.json({ 
-        success: true, 
-        message: 'Cuenta de WhatsApp eliminada exitosamente',
-        deletedAccountId: id
-      });
-    } else {
-      res.status(500).json({ error: 'No se pudo eliminar la cuenta' });
-    }
-
-  } catch (error) {
-    console.error('Error eliminando cuenta WhatsApp:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
