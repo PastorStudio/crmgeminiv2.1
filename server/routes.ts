@@ -3182,8 +3182,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Usar el convertidor de chats mejorado
       const { WhatsAppChatConverter } = await import('./services/whatsappChatConverter');
       
-      // Convertir chats a leads para la cuenta especificada o usar cuenta por defecto
-      const accountId = req.body.accountId || 1;
+      // Get available accounts dynamically - don't use hardcoded defaults
+      const accounts = await storage.getAllWhatsappAccounts();
+      if (accounts.length === 0) {
+        return res.json({
+          success: false,
+          message: 'No WhatsApp accounts available - create an account first',
+          converted: 0
+        });
+      }
+      
+      const accountId = req.body.accountId || accounts[0].id;
       const result = await WhatsAppChatConverter.convertChatsToLeads(accountId);
       
       return res.json({
@@ -7409,7 +7418,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/external-agents/:agentId/test', async (req: Request, res: Response) => {
     try {
       const { agentId } = req.params;
-      const { message = "Hola, esta es una prueba del sistema de agentes", chatId = "test-chat", accountId = 1 } = req.body;
+      // Get first available account dynamically for testing
+      const accounts = await storage.getAllWhatsappAccounts();
+      const defaultAccountId = accounts.length > 0 ? accounts[0].id : null;
+      
+      const { message = "Hola, esta es una prueba del sistema de agentes", chatId = "test-chat", accountId = defaultAccountId } = req.body;
+      
+      if (!accountId) {
+        return res.json({
+          success: false,
+          message: 'No WhatsApp accounts available for testing - create an account first'
+        });
+      }
       
       const { externalAgentService } = await import('./services/externalAgentService');
       
