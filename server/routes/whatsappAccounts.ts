@@ -127,6 +127,18 @@ router.post('/', async (req, res) => {
   try {
     console.log('🆕 Creando nueva cuenta de WhatsApp:', req.body);
     
+    // Authentication - extract user ID from token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "Token de acceso requerido" });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
+    const userId = decoded.userId || decoded.id;
+    
+    console.log(`🆕 Usuario ${decoded.username} (ID: ${userId}) creando nueva cuenta`);
+    
     // Validar datos de entrada
     const validation = accountSchema.safeParse(req.body);
     if (!validation.success) {
@@ -137,13 +149,14 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Crear cuenta en la base de datos
+    // Crear cuenta en la base de datos - ASSIGN TO CURRENT USER
     const newAccount = await storage.createWhatsAppAccount({
       name: validation.data.name,
       description: validation.data.description || null,
       ownerName: validation.data.ownerName || null,
       ownerPhone: validation.data.ownerPhone || null,
       adminId: validation.data.adminId || null,
+      userId: userId, // CRITICAL: Assign account to current user
       assignedExternalAgentId: validation.data.assignedExternalAgentId || null,
       autoResponseEnabled: validation.data.autoResponseEnabled || false,
       responseDelay: validation.data.responseDelay || 3,
