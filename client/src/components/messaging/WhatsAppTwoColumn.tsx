@@ -2712,29 +2712,33 @@ export function WhatsAppTwoColumn() {
 
   const filteredChats = useMemo(() => {
     return sortedChats.filter(chat => {
+      const chatName = (chat.name || '').toLowerCase();
+      const lastMessage = (chat.lastMessage || '').toLowerCase();
+      const unreadCount = chat.unreadCount || 0;
+
       switch (selectedFilter) {
         case 'unread':
-          return chat.unreadCount > 0;
+          return unreadCount > 0;
         case 'groups':
-          return chat.isGroup;
+          return chat.isGroup === true;
         case 'individual':
-          return !chat.isGroup;
+          return chat.isGroup !== true;
         case 'sales':
-          return chat.name.toLowerCase().includes('venta') || 
-                 chat.lastMessage.toLowerCase().includes('precio') ||
-                 chat.lastMessage.toLowerCase().includes('comprar');
+          return chatName.includes('venta') || chatName.includes('ventas') ||
+                 lastMessage.includes('precio') || lastMessage.includes('comprar') ||
+                 lastMessage.includes('costo') || lastMessage.includes('vender');
         case 'support':
-          return chat.name.toLowerCase().includes('soporte') || 
-                 chat.lastMessage.toLowerCase().includes('ayuda') ||
-                 chat.lastMessage.toLowerCase().includes('problema');
+          return chatName.includes('soporte') || chatName.includes('support') ||
+                 lastMessage.includes('ayuda') || lastMessage.includes('problema') ||
+                 lastMessage.includes('error') || lastMessage.includes('falla');
         case 'leads':
-          return chat.name.toLowerCase().includes('lead') || 
-                 chat.lastMessage.toLowerCase().includes('información') ||
-                 chat.lastMessage.toLowerCase().includes('interesado');
+          return chatName.includes('lead') || chatName.includes('prospecto') ||
+                 lastMessage.includes('información') || lastMessage.includes('interesado') ||
+                 lastMessage.includes('cotización') || lastMessage.includes('consulta');
         case 'urgent':
-          return chat.unreadCount > 5 || 
-                 chat.lastMessage.toLowerCase().includes('urgente') ||
-                 chat.lastMessage.toLowerCase().includes('emergencia');
+          return unreadCount > 5 || 
+                 lastMessage.includes('urgente') || lastMessage.includes('emergencia') ||
+                 lastMessage.includes('importante') || lastMessage.includes('rapido');
         case 'all':
         default:
           return true;
@@ -2790,22 +2794,26 @@ export function WhatsAppTwoColumn() {
           <div className="grid grid-cols-4 gap-1">
             {filterCategories.map(category => {
               const categoryCount = sortedChats.filter(chat => {
+                const chatName = (chat.name || '').toLowerCase();
+                const lastMessage = (chat.lastMessage || '').toLowerCase();
+                const unreadCount = chat.unreadCount || 0;
+
                 switch (category.id) {
-                  case 'unread': return chat.unreadCount > 0;
-                  case 'groups': return chat.isGroup;
-                  case 'individual': return !chat.isGroup;
-                  case 'sales': return chat.name.toLowerCase().includes('venta') || 
-                    chat.lastMessage.toLowerCase().includes('precio') ||
-                    chat.lastMessage.toLowerCase().includes('comprar');
-                  case 'support': return chat.name.toLowerCase().includes('soporte') || 
-                    chat.lastMessage.toLowerCase().includes('ayuda') ||
-                    chat.lastMessage.toLowerCase().includes('problema');
-                  case 'leads': return chat.name.toLowerCase().includes('lead') || 
-                    chat.lastMessage.toLowerCase().includes('información') ||
-                    chat.lastMessage.toLowerCase().includes('interesado');
-                  case 'urgent': return chat.unreadCount > 5 || 
-                    chat.lastMessage.toLowerCase().includes('urgente') ||
-                    chat.lastMessage.toLowerCase().includes('emergencia');
+                  case 'unread': return unreadCount > 0;
+                  case 'groups': return chat.isGroup === true;
+                  case 'individual': return chat.isGroup !== true;
+                  case 'sales': return chatName.includes('venta') || chatName.includes('ventas') ||
+                    lastMessage.includes('precio') || lastMessage.includes('comprar') ||
+                    lastMessage.includes('costo') || lastMessage.includes('vender');
+                  case 'support': return chatName.includes('soporte') || chatName.includes('support') ||
+                    lastMessage.includes('ayuda') || lastMessage.includes('problema') ||
+                    lastMessage.includes('error') || lastMessage.includes('falla');
+                  case 'leads': return chatName.includes('lead') || chatName.includes('prospecto') ||
+                    lastMessage.includes('información') || lastMessage.includes('interesado') ||
+                    lastMessage.includes('cotización') || lastMessage.includes('consulta');
+                  case 'urgent': return unreadCount > 5 || 
+                    lastMessage.includes('urgente') || lastMessage.includes('emergencia') ||
+                    lastMessage.includes('importante') || lastMessage.includes('rapido');
                   case 'all': 
                   default: return true;
                 }
