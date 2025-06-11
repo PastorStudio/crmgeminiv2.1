@@ -320,49 +320,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWhatsAppAccount(account: InsertWhatsAppAccount): Promise<WhatsAppAccount> {
-    // Implementar sistema de offset por usuario para evitar colisiones
-    // Usuario 1: cuentas 10-19, Usuario 2: cuentas 20-29, Usuario 3: cuentas 30-39, etc.
-    const userId = account.userId;
-    if (!userId) {
-      throw new Error('User ID is required for account creation');
-    }
+    // Buscar el primer ID disponible
+    const existingAccounts = await db.select({ id: whatsappAccounts.id }).from(whatsappAccounts).orderBy(whatsappAccounts.id);
     
-    const userOffset = userId * 10; // Cada usuario tiene un rango de 10 cuentas
-    const userMinId = userOffset;
-    const userMaxId = userOffset + 9;
+    let nextAvailableId = 1;
     
-    console.log(`🔍 Usuario ${userId} - Rango de IDs: ${userMinId}-${userMaxId}`);
-    
-    // Obtener cuentas existentes solo del rango del usuario actual
-    const existingUserAccounts = await db
-      .select({ id: whatsappAccounts.id })
-      .from(whatsappAccounts)
-      .where(eq(whatsappAccounts.userId, userId))
-      .orderBy(whatsappAccounts.id);
-    
-    let nextAvailableId = userMinId;
-    
-    if (existingUserAccounts.length === 0) {
-      // Primera cuenta del usuario
-      nextAvailableId = userMinId;
-      console.log(`🔍 Primera cuenta del usuario ${userId} - asignando ID: ${nextAvailableId}`);
+    if (existingAccounts.length === 0) {
+      // No hay cuentas, usar ID 1
+      nextAvailableId = 1;
+      console.log(`🔍 Primera cuenta - asignando ID: ${nextAvailableId}`);
     } else {
-      // Buscar el primer ID disponible en el rango del usuario
-      const usedIds = existingUserAccounts.map(acc => acc.id).sort((a, b) => a - b);
+      // Buscar el primer ID disponible comenzando desde 1
+      const usedIds = existingAccounts.map(acc => acc.id).sort((a, b) => a - b);
+      nextAvailableId = 1;
       
-      // Buscar el primer hueco en la secuencia del usuario
-      for (let candidateId = userMinId; candidateId <= userMaxId; candidateId++) {
+      // Buscar el primer hueco en la secuencia
+      for (let candidateId = 1; candidateId <= usedIds.length + 1; candidateId++) {
         if (!usedIds.includes(candidateId)) {
           nextAvailableId = candidateId;
           break;
         }
       }
       
-      if (nextAvailableId > userMaxId) {
-        throw new Error(`Usuario ${userId} ha alcanzado el límite máximo de cuentas (10)`);
-      }
-      
-      console.log(`🔍 Usuario ${userId} - IDs existentes [${usedIds.join(', ')}], asignando ID: ${nextAvailableId}`);
+      console.log(`🔍 Buscando ID disponible: IDs existentes [${usedIds.join(', ')}], asignando ID: ${nextAvailableId}`);
     }
     
     // Usar inserción directa con Drizzle especificando el ID
@@ -373,7 +353,6 @@ export class DatabaseStorage implements IStorage {
         description: account.description || null,
         ownerName: account.ownerName || null,
         ownerPhone: account.ownerPhone || null,
-        userId: account.userId || null, // CRITICAL: Include user assignment
         status: account.status || 'inactive',
         autoResponseEnabled: account.autoResponseEnabled || false,
         assignedExternalAgentId: account.assignedExternalAgentId || null,
@@ -382,7 +361,11 @@ export class DatabaseStorage implements IStorage {
         lastActiveAt: new Date()
       }).returning();
       
-      console.log(`✅ Cuenta de WhatsApp creada con ID del usuario: ${nextAvailableId}`);
+      console.log(`✅ Cuenta de WhatsApp creada con ID reutilizado: ${nextAvailableId}`);
+      
+      // Actualizar la secuencia para evitar conflictos futuros
+      const maxId = Math.max(nextAvailableId, ...existingAccounts.map(acc => acc.id));
+      await db.execute(sql`SELECT setval('whatsapp_accounts_id_seq', ${maxId}, true)`);
       
       return newAccount;
     } catch (error) {
@@ -395,7 +378,6 @@ export class DatabaseStorage implements IStorage {
           description: account.description || null,
           ownerName: account.ownerName || null,
           ownerPhone: account.ownerPhone || null,
-          userId: account.userId || null, // CRITICAL: Include user assignment in fallback too
           status: account.status || 'inactive',
           autoResponseEnabled: account.autoResponseEnabled || false,
           assignedExternalAgentId: account.assignedExternalAgentId || null,
