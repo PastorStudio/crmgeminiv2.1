@@ -578,5 +578,113 @@ export function registerDirectAPIRoutes(app: Express): void {
     }
   });
 
+  // Demo creation endpoint with sequential numbering
+  app.post("/api/direct/demo/create", async (req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    try {
+      const { customerName } = req.body;
+
+      if (!customerName) {
+        return res.status(400).json({
+          success: false,
+          message: "Nombre del cliente requerido"
+        });
+      }
+
+      const { db } = await import('../db');
+      const { demoUsers } = await import('@shared/schema');
+      const { max } = await import('drizzle-orm');
+      const bcrypt = await import('bcrypt');
+
+      // Get next sequential demo number
+      const result = await db
+        .select({ maxNumber: max(demoUsers.demoNumber) })
+        .from(demoUsers);
+      
+      const nextNumber = (result[0]?.maxNumber || 0) + 1;
+      
+      if (nextNumber > 1000) {
+        return res.status(400).json({
+          success: false,
+          message: "Límite de demos alcanzado (máximo 1000)"
+        });
+      }
+
+      // Format demo number with leading zeros
+      const formattedNumber = nextNumber.toString().padStart(5, '0');
+      
+      // Clean customer name for username
+      const cleanName = customerName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+      
+      const username = `demo_${cleanName}_${formattedNumber}`;
+      const password = 'demo123456';
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 3); // 3 days from now
+
+      // Create demo user
+      const [demoUser] = await db
+        .insert(demoUsers)
+        .values({
+          customerName,
+          phoneNumber: '',
+          username,
+          password: hashedPassword,
+          demoNumber: nextNumber,
+          expiresAt,
+          status: 'active',
+          loginCount: 0,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+
+      // Also create in users table for compatibility
+      const { users } = await import('@shared/schema');
+      await db
+        .insert(users)
+        .values({
+          username,
+          email: `${username}@demo.local`,
+          password: hashedPassword,
+          firstName: customerName.split(' ')[0] || customerName,
+          lastName: customerName.split(' ').slice(1).join(' ') || '',
+          role: 'demo',
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+
+      console.log(`✅ Created demo user: ${username} (Demo #${formattedNumber})`);
+
+      res.json({
+        success: true,
+        demoUser: {
+          id: demoUser.id,
+          username,
+          customerName,
+          demoNumber: nextNumber,
+          password, // Return plain password for immediate use
+          expiresAt: demoUser.expiresAt
+        }
+      });
+    } catch (error) {
+      console.error("Error creating demo user:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+
   console.log('Rutas de API directa registradas correctamente');
 }
