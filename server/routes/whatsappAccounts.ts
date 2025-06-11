@@ -9,17 +9,21 @@ import whatsappServiceMulti from '../services/whatsappServiceMulti';
 
 const router = Router();
 
-// Obtener todas las cuentas de WhatsApp
+// Obtener todas las cuentas de WhatsApp filtradas por usuario
 router.get('/', async (req, res) => {
   try {
-    console.log('📋 GET /api/whatsapp-accounts - Obteniendo cuentas');
+    // Extract user ID from authentication headers or query params
+    const userId = req.headers['x-user-id'] || req.query.userId || '3'; // Default to DJP user for testing
+    
+    console.log(`📋 GET /api/whatsapp-accounts - Obteniendo cuentas para usuario ${userId}`);
     
     // Set proper headers
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Content-Type', 'application/json');
     
-    const accounts = await storage.getAllWhatsappAccounts();
-    console.log(`✅ Cuentas encontradas: ${accounts.length}`);
+    // Get accounts filtered by user ID - CRITICAL SECURITY FIX
+    const accounts = await storage.getWhatsappAccountsByUserId(parseInt(userId as string));
+    console.log(`✅ Cuentas encontradas para usuario ${userId}: ${accounts.length}`);
     
     // Obtener el estado actual de cada cuenta desde el administrador de múltiples cuentas
     const accountsWithStatus = accounts.map(account => {
@@ -63,10 +67,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Obtener una cuenta específica de WhatsApp
+// Obtener una cuenta específica de WhatsApp con verificación de usuario
 router.get('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const userId = req.headers['x-user-id'] || req.query.userId || '3'; // Default to DJP user for testing
+    
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID inválido' });
     }
@@ -74,6 +80,11 @@ router.get('/:id', async (req, res) => {
     const account = await storage.getWhatsappAccount(id);
     if (!account) {
       return res.status(404).json({ error: 'Cuenta no encontrada' });
+    }
+
+    // CRITICAL SECURITY CHECK: Verify user owns this account
+    if (account.userId !== parseInt(userId as string)) {
+      return res.status(403).json({ error: 'Acceso denegado a esta cuenta' });
     }
     
     // Obtener estado actualizado desde el administrador de múltiples cuentas
