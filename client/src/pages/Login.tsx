@@ -214,7 +214,18 @@ export default function Login() {
                 </Button>
               </form>
 
-              <div className="mt-6 text-center">
+              <div className="mt-6 text-center space-y-3">
+                <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3">
+                  <p className="text-sm text-blue-200 font-medium mb-2">
+                    🔧 Cuentas Demo Disponibles
+                  </p>
+                  <p className="text-xs text-blue-300 mb-1">
+                    Usuario: demo_ana_martinez_00001 a demo_sofia_torres_00005
+                  </p>
+                  <p className="text-xs text-blue-300">
+                    Contraseña: demo123456
+                  </p>
+                </div>
                 <p className="text-sm text-gray-400">
                   ¿No tienes acceso? Contacta al administrador del sistema
                 </p>
