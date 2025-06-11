@@ -312,8 +312,8 @@ async function syncSessionFolders() {
     console.log("Sincronizando carpetas de sesión con IDs reorganizados...");
     
     // Importar módulos necesarios
-    const path = await import('path');
-    const fs = await import('fs');
+    const { join } = await import('path');
+    const { existsSync, mkdirSync, readdirSync, rmSync, renameSync } = await import('fs');
     
     // Definir directorio de cuentas
     const TEMP_DIR = path.join(process.cwd(), 'temp');
@@ -404,8 +404,8 @@ async function cleanAllSessionFolders() {
     console.log("🧹 Limpiando todas las carpetas de sesión...");
     
     // Importar módulos necesarios
-    const path = await import('path');
-    const fs = await import('fs');
+    const { join } = await import('path');
+    const { existsSync, rmSync } = await import('fs');
     
     // Definir directorio de cuentas
     const TEMP_DIR = path.join(process.cwd(), 'temp');
