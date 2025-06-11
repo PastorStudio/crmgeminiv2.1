@@ -188,7 +188,7 @@ router.post('/', async (req, res) => {
     }
     
     // Crear cuenta en la base de datos con el user ID asignado
-    const newAccount = await storage.createWhatsAppAccount({
+    const accountData = {
       name: validation.data.name,
       description: validation.data.description || null,
       ownerName: validation.data.ownerName || null,
@@ -201,7 +201,10 @@ router.post('/', async (req, res) => {
       sessionData: null,
       organizationId: 1, // Default organization
       userId: userId // CRITICAL: Assign the account to the current user
-    });
+    };
+
+    console.log(`🔒 Account data with user ID: ${JSON.stringify({ userId: accountData.userId })}`);
+    const newAccount = await storage.createWhatsAppAccount(accountData);
     
     console.log('✅ Cuenta creada exitosamente:', newAccount);
     
