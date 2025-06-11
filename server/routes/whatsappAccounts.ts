@@ -339,6 +339,56 @@ router.get('/:id/qrcode', async (req, res) => {
   }
 });
 
+// Activar respuestas automáticas sin requerir agente externo
+router.post('/:id/toggle-auto-response', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+
+    // Verificar autenticación y ownership
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "Token de acceso requerido" });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
+    const userId = decoded.userId || decoded.id;
+
+    // Obtener cuenta y verificar ownership
+    const account = await storage.getWhatsappAccount(id);
+    if (!account) {
+      return res.status(404).json({ error: 'Cuenta no encontrada' });
+    }
+
+    if (account.userId !== userId) {
+      return res.status(403).json({ error: 'Acceso denegado a esta cuenta' });
+    }
+
+    const { enabled } = req.body;
+    
+    // Actualizar estado de respuestas automáticas
+    const updatedAccount = await storage.updateWhatsappAccount(id, {
+      autoResponseEnabled: enabled,
+      assignedExternalAgentId: enabled ? "Smart Assistant" : null,
+      status: enabled ? 'active' : 'inactive'
+    });
+
+    console.log(`${enabled ? '✅ Activando' : '❌ Desactivando'} respuestas automáticas para cuenta ${id}`);
+
+    res.json({
+      success: true,
+      message: `Respuestas automáticas ${enabled ? 'activadas' : 'desactivadas'} correctamente`,
+      account: updatedAccount
+    });
+  } catch (error) {
+    console.error('Error al cambiar estado de respuestas automáticas:', error);
+    res.status(500).json({ error: 'Error al cambiar estado de respuestas automáticas' });
+  }
+});
+
 /**
  * Sincroniza las carpetas de sesión con los IDs actualizados
  * Esta función se llama después de eliminar una cuenta y reorganizar los IDs
