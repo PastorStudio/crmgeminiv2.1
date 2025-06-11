@@ -376,12 +376,19 @@ export function registerDirectAPIRoutes(app: Express): void {
 
   // Manual demo creation endpoint
   app.post("/api/direct/demo/create-manual", async (req: Request, res: Response) => {
+    // Add CORS headers for direct API calls
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
     try {
+      console.log(`🎭 [DEMO CREATION] Request received:`, req.body);
       const { customerName, phoneNumber } = req.body;
 
-      console.log(`🎭 Creating manual demo for customer: ${customerName}`);
+      console.log(`🎭 Creating manual demo for customer: ${customerName}, phone: ${phoneNumber}`);
 
       if (!customerName || !phoneNumber) {
+        console.log(`❌ [DEMO CREATION] Missing required fields: customerName=${customerName}, phoneNumber=${phoneNumber}`);
         return res.status(400).json({
           success: false,
           message: "Nombre del cliente y número de teléfono son requeridos"
@@ -433,10 +440,12 @@ export function registerDirectAPIRoutes(app: Express): void {
         }
       });
     } catch (error) {
-      console.error("❌ Error creating manual demo:", error);
+      console.error("❌ [DEMO CREATION] Error creating manual demo:", error);
+      console.error("❌ [DEMO CREATION] Stack trace:", (error as Error).stack);
       res.status(500).json({
         success: false,
-        message: "Error interno del servidor al crear demo"
+        message: "Error interno del servidor al crear demo",
+        error: (error as Error).message
       });
     }
   });
