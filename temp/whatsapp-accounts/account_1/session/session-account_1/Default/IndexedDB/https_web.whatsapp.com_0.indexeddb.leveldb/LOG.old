@@ -1,7 +1,25 @@
-2025/06/11-19:18:46.718 16ac Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/06/11-19:18:46.718 16ac Recovering log #516
-2025/06/11-19:18:46.733 16ac Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000516.log 
-2025/06/11-19:18:48.308 16ac Level-0 table #527: started
-2025/06/11-19:18:48.331 16ac Level-0 table #527: 292931 bytes OK
-2025/06/11-19:18:48.336 16ac Delete type=0 #516
-2025/06/11-19:18:48.337 16ac Manual compaction at level-0 from '\x00t\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00u\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/11-19:20:59.820 1d5f Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/11-19:20:59.820 1d5f Recovering log #542
+2025/06/11-19:20:59.827 1d5f Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000542.log 
+2025/06/11-19:21:01.503 1d68 Level-0 table #553: started
+2025/06/11-19:21:01.520 1d68 Level-0 table #553: 142069 bytes OK
+2025/06/11-19:21:01.531 1d68 Delete type=0 #542
+2025/06/11-19:21:01.534 1d5f Manual compaction at level-0 from '\x00w\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00x\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/11-19:21:04.668 1d5f Compacting 1@1 + 7@2 files
+2025/06/11-19:21:05.135 1d5f Generated table #554@1: 40978 keys, 2191786 bytes
+2025/06/11-19:21:05.393 1d5f Generated table #555@1: 36400 keys, 2208666 bytes
+2025/06/11-19:21:05.566 1d5f Generated table #556@1: 59645 keys, 2223537 bytes
+2025/06/11-19:21:05.693 1d5f Generated table #557@1: 10221 keys, 2156585 bytes
+2025/06/11-19:21:05.767 1d5f Generated table #558@1: 26525 keys, 2192823 bytes
+2025/06/11-19:21:05.847 1d5f Generated table #559@1: 102619 keys, 2253988 bytes
+2025/06/11-19:21:05.869 1d5f Generated table #560@1: 8012 keys, 170895 bytes
+2025/06/11-19:21:05.869 1d5f Compacted 1@1 + 7@2 files => 13398280 bytes
+2025/06/11-19:21:05.882 1d5f compacted to: files[ 0 0 7 0 0 0 0 ]
+2025/06/11-19:21:05.882 1d5f Delete type=2 #544
+2025/06/11-19:21:05.882 1d5f Delete type=2 #545
+2025/06/11-19:21:05.882 1d5f Delete type=2 #546
+2025/06/11-19:21:05.882 1d5f Delete type=2 #547
+2025/06/11-19:21:05.882 1d5f Delete type=2 #548
+2025/06/11-19:21:05.883 1d5f Delete type=2 #549
+2025/06/11-19:21:05.883 1d5f Delete type=2 #550
+2025/06/11-19:21:05.883 1d5f Delete type=2 #553
