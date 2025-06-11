@@ -110,7 +110,7 @@ export function DemoManagement() {
     }) => {
       return apiRequest('/api/direct/demo/create-manual', {
         method: 'POST',
-        body: JSON.stringify({ customerName, phoneNumber })
+        body: { customerName, phoneNumber }
       });
     },
     onSuccess: () => {
