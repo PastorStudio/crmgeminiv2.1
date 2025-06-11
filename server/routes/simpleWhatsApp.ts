@@ -55,8 +55,42 @@ router.post('/', async (req, res) => {
     }
     // Create a user session based on owner name
     else {
-      userId = Math.floor(Math.random() * 1000) + 1;
       currentUser = validatedData.ownerName;
+      
+      // Try to find an existing user or create a new one
+      try {
+        // First, try to find an existing user by username
+        const existingUser = await storage.getUserByUsername(validatedData.ownerName.toLowerCase().replace(/\s+/g, ''));
+        
+        if (existingUser) {
+          userId = parseInt(existingUser.id);
+          console.log(`✅ Usuario existente encontrado: ${existingUser.username} (ID: ${userId})`);
+        } else {
+          // Create new user in database
+          const newUser = await storage.createUser({
+            username: validatedData.ownerName.toLowerCase().replace(/\s+/g, ''),
+            email: `${validatedData.ownerName.toLowerCase().replace(/\s+/g, '')}@demo.com`,
+            password: 'demo123456',
+            fullName: validatedData.ownerName,
+            role: 'user',
+            status: 'active',
+            department: 'whatsapp'
+          });
+          
+          userId = parseInt(newUser.id);
+          console.log(`✅ Nuevo usuario creado: ${newUser.username} (ID: ${userId})`);
+        }
+      } catch (userError) {
+        console.error('Error manejando usuario:', userError);
+        // Fallback: use the first available user ID
+        const firstUser = await storage.getAllUsers();
+        if (firstUser && firstUser.length > 0) {
+          userId = parseInt(firstUser[0].id);
+          console.log(`⚠️ Usando usuario existente como fallback: ${firstUser[0].username} (ID: ${userId})`);
+        } else {
+          throw new Error('No se puede crear cuenta sin usuarios válidos en el sistema');
+        }
+      }
       
       // Initialize session if it doesn't exist
       if (!req.session) {
