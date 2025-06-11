@@ -205,26 +205,25 @@ class UnifiedMessageProcessor {
       
       // Analizar si es un nuevo contacto o conversación existente
       const isExistingConversation = conversationHistory.length > 0;
-      const recentBotMessages = conversationHistory
-        .filter(msg => msg.from_me === true)
-        .slice(0, 3);
+      const allBotMessages = conversationHistory.filter(msg => msg.from_me === true);
       
-      // Detectar si ya se saludó anteriormente
-      const hasGreeted = recentBotMessages.some(msg => 
-        this.containsGreeting(msg.content)
-      );
+      // Detectar si ya se saludó anteriormente (revisar TODOS los mensajes del bot)
+      const hasGreeted = allBotMessages.length > 0;
 
       // Construir contexto conversacional
       let conversationContext = '';
       if (isExistingConversation) {
-        const recentMessages = conversationHistory.slice(0, 5).reverse();
+        const recentMessages = conversationHistory.slice(0, 8).reverse();
         conversationContext = `
-Historial de conversación reciente:
+Historial de conversación:
 ${recentMessages.map(msg => 
-  `${msg.from_me ? 'Tú' : context.contactName || 'Cliente'}: ${msg.content}`
+  `${msg.from_me ? 'Asistente' : context.contactName || 'Cliente'}: ${msg.content}`
 ).join('\n')}
 
-IMPORTANTE: Esta es una conversación CONTINUA. ${hasGreeted ? 'Ya saludaste anteriormente, NO vuelvas a saludar.' : 'Es el primer contacto, puedes saludar apropiadamente.'} Continúa la conversación de manera natural basándote en el historial.`;
+CONTEXTO CRÍTICO: Esta conversación ya está en curso. NO es un primer contacto. Continúa la conversación de manera completamente natural sin saludos, presentaciones o frases de bienvenida.`;
+      } else {
+        conversationContext = `
+CONTEXTO: Este es el PRIMER mensaje de esta conversación. Puedes iniciar con un saludo natural y apropiado.`;
       }
 
       // Construir prompt completo con contexto
@@ -240,12 +239,14 @@ Contexto del contacto:
 
 ${conversationContext}
 
-REGLAS CRÍTICAS:
-1. Si ya existe historial de conversación, NO saludes nuevamente
-2. Continúa la conversación de manera natural basándote en el contexto
-3. Mantén la coherencia con mensajes anteriores
-4. Responde específicamente al último mensaje del usuario
-5. Mantén siempre el tono y personalidad definida en el prompt principal`;
+REGLAS DE CONVERSACIÓN NATURAL:
+1. PROHIBIDO: Saludar si ya existe historial de mensajes (verificar arriba)
+2. PROHIBIDO: Usar "Hola", "Buenos días", "¿Cómo estás?" en conversaciones continuas
+3. OBLIGATORIO: Responder directamente al último mensaje del cliente
+4. OBLIGATORIO: Mantener coherencia con el contexto de la conversación
+5. OBLIGATORIO: Actuar como una persona real en conversación fluida
+6. Si es primer contacto (sin historial): saludo natural y breve
+7. Si hay historial: continuar conversación sin ceremonias ni presentaciones`;
 
       // Llamar a OpenAI
       const response = await this.callOpenAI(systemPrompt, context.body, config.temperature);
@@ -459,7 +460,6 @@ REGLAS CRÍTICAS:
           "accountId", "chatId", "messageId", from_me, content, 
           timestamp, "hasMedia", "createdAt"
         ) VALUES ($1, $2, $3, $4, $5, NOW(), false, NOW())
-        ON CONFLICT ("messageId") DO NOTHING
       `, [accountId, chatId, messageId, fromMe, content]);
       
     } catch (error) {
