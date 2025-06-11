@@ -26,12 +26,13 @@ export function WhatsAppAccountsList() {
       setLoading(true);
       setError(null);
       
-      // Use correct endpoint that works
-      const response = await fetch('/api/whatsapp/accounts', {
+      // Use direct fetch to bypass API client issues
+      const response = await fetch('/api/whatsapp-accounts', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'x-user-id': '3'
         },
         credentials: 'include'
       });

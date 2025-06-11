@@ -129,8 +129,6 @@ type WhatsAppAccount = {
   lastActiveAt?: string | null;
   sessionData?: any;
   pingStatus?: PingStatus;
-  createdByUser?: string;
-  createdByUserId?: number;
   currentStatus?: {
     initialized: boolean;
     ready: boolean;
@@ -1254,10 +1252,6 @@ const WhatsAppAccounts = () => {
               </CardHeader>
               <CardContent className="pb-2">
                 <div className="grid grid-cols-2 gap-1 text-sm my-2">
-                  <div className="text-muted-foreground">Creado por:</div>
-                  <div className="font-medium text-blue-600">
-                    {account.createdByUser || 'Usuario desconocido'}
-                  </div>
                   <div className="text-muted-foreground">Propietario:</div>
                   <div>{account.ownerName || 'No especificado'}</div>
                   <div className="text-muted-foreground">Teléfono:</div>
