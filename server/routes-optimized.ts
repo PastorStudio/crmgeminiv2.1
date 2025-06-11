@@ -24,6 +24,7 @@ import { authService } from "./services/authService";
 import { enhancedSystemService } from "./services/enhancedSystemService";
 // import { realTimeAnalyticsService } from "./services/realTimeAnalyticsService"; // Disabled due to schema issues
 import { realDashboardService } from "./services/realDashboardService";
+import { demoUserManager } from "./services/demoUserManager";
 import jwt from 'jsonwebtoken';
 
 // SISTEMA DE RUTAS OPTIMIZADO Y LIMPIO CON GEMINI AI
