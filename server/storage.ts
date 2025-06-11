@@ -407,6 +407,12 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(whatsappAccounts);
   }
 
+  // CRITICAL SECURITY METHOD: Filter WhatsApp accounts by user ID for data isolation
+  async getWhatsappAccountsByUserId(userId: number): Promise<WhatsAppAccount[]> {
+    console.log(`🔒 Filtering WhatsApp accounts for user ID: ${userId}`);
+    return await db.select().from(whatsappAccounts).where(eq(whatsappAccounts.userId, userId));
+  }
+
   async getWhatsAppAccountsByIds(accountIds: number[]): Promise<WhatsAppAccount[]> {
     if (accountIds.length === 0) {
       return [];
