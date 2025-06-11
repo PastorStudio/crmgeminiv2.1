@@ -8,6 +8,24 @@ import { whatsappMultiAccountManager } from '../services/whatsappMultiAccountMan
 import whatsappServiceMulti from '../services/whatsappServiceMulti';
 import jwt from 'jsonwebtoken';
 
+// Authentication middleware
+const authenticateToken = (req: any, res: any, next: any) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de acceso requerido' });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err: any, user: any) => {
+    if (err) {
+      return res.status(403).json({ error: 'Token inválido' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
 const router = Router();
 
 // Obtener todas las cuentas de WhatsApp filtradas por usuario
@@ -33,6 +51,10 @@ router.get('/', async (req, res) => {
     const accounts = await storage.getWhatsappAccountsByUserId(userId);
     console.log(`✅ Cuentas encontradas para usuario ${userId}: ${accounts.length}`);
     
+    // Get user information to display creator username
+    const user = await storage.getUser(userId);
+    const creatorUsername = user ? user.username : decoded.username;
+    
     // Obtener el estado actual de cada cuenta desde el administrador de múltiples cuentas
     const accountsWithStatus = accounts.map(account => {
       try {
@@ -44,7 +66,9 @@ router.get('/', async (req, res) => {
           authenticated: isActive,
           ready: isActive,
           status: isActive ? 'active' : 'inactive',
-          currentStatus: statusInfo || { authenticated: isActive, ready: isActive }
+          currentStatus: statusInfo || { authenticated: isActive, ready: isActive },
+          createdByUser: creatorUsername,
+          createdByUserId: userId
         };
       } catch (error) {
         console.warn(`⚠️ Error obteniendo estado de cuenta ${account.id}:`, error);
@@ -53,7 +77,9 @@ router.get('/', async (req, res) => {
           authenticated: false,
           ready: false,
           status: 'inactive',
-          currentStatus: { authenticated: false, ready: false }
+          currentStatus: { authenticated: false, ready: false },
+          createdByUser: creatorUsername,
+          createdByUserId: userId
         };
       }
     });
@@ -121,9 +147,19 @@ const accountSchema = z.object({
 });
 
 // Crear una nueva cuenta de WhatsApp
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     console.log('🆕 Creando nueva cuenta de WhatsApp:', req.body);
+    
+    // Get user information from token
+    const decoded = req.user as any;
+    const userId = decoded.id || decoded.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        error: 'Usuario no autenticado'
+      });
+    }
     
     // Validar datos de entrada
     const validation = accountSchema.safeParse(req.body);
@@ -135,7 +171,7 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Crear cuenta en la base de datos
+    // Crear cuenta en la base de datos con ID de usuario para tracking de propiedad
     const newAccount = await storage.createWhatsAppAccount({
       name: validation.data.name,
       description: validation.data.description || null,
@@ -147,7 +183,8 @@ router.post('/', async (req, res) => {
       responseDelay: validation.data.responseDelay || 3,
       status: 'inactive',
       sessionData: null,
-      organizationId: 1 // Default organization
+      organizationId: 1, // Default organization
+      userId: userId // Include user ID for ownership tracking
     });
     
     console.log('✅ Cuenta creada exitosamente:', newAccount);
