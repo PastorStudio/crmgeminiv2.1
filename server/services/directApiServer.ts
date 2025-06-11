@@ -464,9 +464,17 @@ export function registerDirectAPIRoutes(app: Express): void {
       const enrichedDemos = demos.map(demo => {
         const now = new Date();
         const expirationDate = new Date(demo.expiresAt);
-        const timeDiff = expirationDate.getTime() - now.getTime();
-        const daysRemaining = Math.max(0, Math.ceil(timeDiff / (1000 * 3600 * 24)));
         const isExpired = now > expirationDate;
+        
+        // Calculate days remaining correctly for 3-day limit
+        let daysRemaining = 0;
+        if (!isExpired) {
+          const timeDiff = expirationDate.getTime() - now.getTime();
+          daysRemaining = Math.max(0, Math.floor(timeDiff / (1000 * 3600 * 24)));
+          
+          // Ensure it never exceeds 3 days
+          daysRemaining = Math.min(daysRemaining, 3);
+        }
 
         return {
           ...demo,
