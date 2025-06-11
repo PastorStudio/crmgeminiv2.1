@@ -35,7 +35,12 @@ import {
   Volume2,
   FileText,
   ExternalLink,
-  Image
+  Image,
+  User,
+  ChevronDown,
+  ChevronRight,
+  Brain,
+  Zap
 } from 'lucide-react';
 
 // Interfaz para los chats de WhatsApp
