@@ -325,7 +325,7 @@ export const conversations = pgTable("conversations", {
 // WhatsApp Messages table for independent auto-response
 export const whatsappMessages = pgTable("whatsapp_messages", {
   id: serial("id").primaryKey(),
-  accountId: integer("accountId").notNull(),
+  accountId: text("accountId").notNull(),
   chatId: text("chatId").notNull(),
   messageId: text("messageId").notNull().unique(),
   content: text("content"),

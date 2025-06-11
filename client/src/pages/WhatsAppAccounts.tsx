@@ -293,7 +293,7 @@ const WhatsAppAccounts = () => {
   
   // Mutation para inicializar cuenta
   const initializeAccountMutation = useMutation({
-    mutationFn: async (accountId: number) => {
+    mutationFn: async (accountId: string) => {
       return await apiRequest(`/api/whatsapp-accounts/${accountId}/initialize`, {
         method: 'POST'
       });
@@ -317,7 +317,7 @@ const WhatsAppAccounts = () => {
   
   // Mutation para desconectar cuenta
   const disconnectAccountMutation = useMutation({
-    mutationFn: async (accountId: number) => {
+    mutationFn: async (accountId: string) => {
       return await apiRequest(`/api/whatsapp-accounts/${accountId}/disconnect`, {
         method: 'POST'
       });
