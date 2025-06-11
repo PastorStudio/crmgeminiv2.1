@@ -49,6 +49,7 @@ import flowExecutionRouter from "./routes/flowExecutionRoutes";
 import multiTenantRoutes from "./routes/multiTenantRoutes";
 import { multiTenantAuth, AuthenticatedRequest, getAccessibleAccountIds, canAccessAccount } from "./middleware/multiTenantAuth";
 import { ensureDemoDataIsolation, filterDataForDemoUser } from "./middleware/demoDataIsolation";
+import { optionalJWT } from "./middleware/jwtAuth";
 import demoRoutes from "./routes/demoRoutes";
 import { demoUserManager } from "./services/demoUserManager";
 import promptTestRoutes from "./routes/promptTestRoutes";
@@ -7295,7 +7296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Enhanced WhatsApp Accounts Endpoint with Complete Data Isolation for Demo Users
-  app.get('/api/whatsapp/accounts', ensureDemoDataIsolation, async (req: AuthenticatedRequest, res: Response) => {
+  app.get('/api/whatsapp/accounts', optionalJWT, ensureDemoDataIsolation, async (req: AuthenticatedRequest, res: Response) => {
     try {
       console.log('🔄 Obteniendo cuentas de WhatsApp...');
       
