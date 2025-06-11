@@ -78,48 +78,18 @@ const whatsappServiceMulti = {
    * @param accountId ID de la cuenta de WhatsApp
    */
   async getLatestQR(accountId?: number): Promise<string | null> {
-    try {
-      // Si no se proporciona ID, usar la primera cuenta disponible
-      if (accountId === undefined) {
-        const accounts = whatsappMultiAccountManager.getActiveAccounts();
-        if (accounts.length > 0) {
-          accountId = accounts[0].id;
-        } else {
-          console.error('No hay cuentas de WhatsApp disponibles para generar QR');
-          return null;
-        }
+    // Si no se proporciona ID, usar la primera cuenta disponible
+    if (accountId === undefined) {
+      const accounts = whatsappMultiAccountManager.getActiveAccounts();
+      if (accounts.length > 0) {
+        return await whatsappMultiAccountManager.getLatestQR(accounts[0].id);
+      } else {
+        console.error('No hay cuentas de WhatsApp disponibles para generar QR');
+        return null;
       }
-
-      console.log(`🔍 Obteniendo QR REAL para cuenta ${accountId}`);
-
-      // Intentar obtener QR real del administrador de cuentas
-      const qrData = await whatsappMultiAccountManager.getLatestQR(accountId);
-      
-      if (qrData && qrData.length > 50) {
-        console.log(`✅ REAL QR code obtenido para cuenta ${accountId}: ${qrData.substring(0, 50)}...`);
-        return qrData;
-      }
-
-      // Si no hay QR disponible, forzar inicialización REAL
-      console.log(`🔄 Inicializando cuenta ${accountId} para generar QR REAL de WhatsApp Web`);
-      await whatsappMultiAccountManager.initializeAccount(accountId);
-      
-      // Esperar tiempo adecuado para que WhatsApp Web genere QR real
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      // Intentar obtener QR real nuevamente
-      const newQrData = await whatsappMultiAccountManager.getLatestQR(accountId);
-      if (newQrData && newQrData.length > 50) {
-        console.log(`✅ NUEVO QR REAL generado para cuenta ${accountId}: ${newQrData.substring(0, 50)}...`);
-        return newQrData;
-      }
-
-      console.warn(`⚠️ No se pudo generar QR REAL para cuenta ${accountId} - solo devolver QR auténticos`);
-      return null;
-    } catch (error) {
-      console.error(`❌ Error obteniendo QR REAL para cuenta ${accountId}:`, error);
-      return null;
     }
+    
+    return await whatsappMultiAccountManager.getLatestQR(accountId);
   },
   
   /**

@@ -466,36 +466,37 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   private setupClientEvents(instance: WhatsAppInstance): void {
     const { client, id, name, qrCodePath } = instance;
 
-    // Evento QR mejorado con captura real de QR
+    // Evento QR mejorado con control de timing
     client.on('qr', async (qr) => {
       try {
-        console.log(`📱 REAL QR CODE RECEIVED for account ${id}: ${qr.substring(0, 50)}...`);
+        // Verificar si ya tenemos un QR válido reciente (evitar regeneración frecuente)
+        const cached = this.getCachedQR(id);
+        if (cached && Date.now() - cached.generatedAt < 15 * 60 * 1000) { // 15 minutos
+          console.log(`⏭️ QR reciente ya disponible para cuenta ${id}, omitiendo regeneración`);
+          return;
+        }
+
+        console.log(`📱 Código QR recibido para cuenta ${id}: ${qr.substring(0, 50)}...`);
         
-        // Validar formato del código QR real
-        if (qr && qr.length > 10) {
-          // Actualizar estado de la instancia con QR real
-          instance.status.qrCode = qr;
+        // Validar formato del código QR
+        if (qr && qr.startsWith('2@')) {
+          // Usar el gestor mejorado de QR
+          await improvedQRManager.generateQRCode(id, qr);
           
-          // Generar imagen QR
-          const qrDataUrl = await this.generateQRImage(qr);
-          instance.status.qrDataUrl = qrDataUrl;
+          const remainingMinutes = improvedQRManager.getRemainingValidityMinutes(id);
+          console.log(`✅ Código QR generado para cuenta ${id} (válido por ${remainingMinutes} minutos)`);
           
-          // Guardar en cache con QR real
+          // Mantener compatibilidad con el cache actual con timestamp actualizado
           this.qrCodeCache.set(id, {
             text: qr,
-            dataUrl: qrDataUrl,
+            dataUrl: await this.generateQRImage(qr),
             generatedAt: Date.now()
           });
-          
-          // Guardar en archivo para persistencia
-          this.saveQRToFile(qr, qrCodePath);
-          
-          console.log(`✅ REAL QR CODE cached for account ${id} - Length: ${qr.length}`);
         } else {
-          console.warn(`⚠ Invalid QR code format received for account ${id}`);
+          console.warn(`⚠ Código QR inválido recibido para cuenta ${id}`);
         }
       } catch (error) {
-        console.error(`❌ Error processing real QR code for account ${id}:`, error);
+        console.error(`❌ Error procesando código QR para cuenta ${id}:`, error);
       }
     });
 
@@ -782,43 +783,39 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
-   * Obtiene código QR real de WhatsApp Web - NO USAR DATOS FICTICIOS
+   * Obtiene código QR optimizado para producción
    */
   async getLatestQR(accountId: number): Promise<string | null> {
     try {
-      // CRÍTICO: Solo devolver QR codes reales de WhatsApp Web
+      // Primero verificar el cache en memoria
+      const cachedQR = this.getCachedQR(accountId);
+      if (cachedQR) {
+        console.log(`Usando QR almacenado en memoria para cuenta ID ${accountId}`);
+        return cachedQR.text;
+      }
+
       const instance = this.instances.get(accountId);
       if (!instance) {
         console.error(`Cuenta WhatsApp ID ${accountId} no inicializada`);
         return null;
       }
 
-      // Verificar cache en memoria con QR real
-      const cachedQR = this.getCachedQR(accountId);
-      if (cachedQR && cachedQR.text && cachedQR.text.length > 50) {
-        console.log(`✅ REAL QR code encontrado en cache para cuenta ${accountId}: ${cachedQR.text.substring(0, 50)}...`);
-        return cachedQR.text;
-      }
-
-      // Verificar estado de la instancia con QR real
-      if (instance.status.qrCode && instance.status.qrCode.length > 50) {
-        console.log(`✅ REAL QR code encontrado en instancia para cuenta ${accountId}: ${instance.status.qrCode.substring(0, 50)}...`);
+      // Verificar estado de la instancia
+      if (instance.status.qrCode) {
         this.cacheQRCode(accountId, instance.status.qrCode, instance.status.qrDataUrl);
         return instance.status.qrCode;
       }
 
-      // Leer desde archivo solo si contiene QR real
+      // Leer desde archivo de manera segura
       const qrFromFile = this.readQRFromFile(instance.qrCodePath);
-      if (qrFromFile && qrFromFile.length > 50) {
-        console.log(`✅ REAL QR code encontrado en archivo para cuenta ${accountId}: ${qrFromFile.substring(0, 50)}...`);
+      if (qrFromFile) {
         this.cacheQRCode(accountId, qrFromFile);
         return qrFromFile;
       }
 
-      console.log(`⚠️ No hay QR code real disponible para cuenta ${accountId} - iniciando generación`);
       return null;
     } catch (error) {
-      console.error(`Error obteniendo QR real para cuenta ${accountId}:`, error);
+      console.error(`Error obteniendo QR para cuenta ${accountId}:`, error);
       return null;
     }
   }

@@ -4,7 +4,7 @@ import { registerOptimizedRoutes } from "./routes-optimized";
 import { setupVite, serveStatic, log } from "./vite";
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
-import simpleWhatsAppRouter from "./routes/simpleWhatsApp";
+import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import modernMessagingRouter from "./routes/modern-messaging";
 import { db, pool } from "./db";
 import { users, whatsappAccounts, autoResponseConfigs, agentPageVisits, demoUsers, subscriptionPlans, userSubscriptions } from "@shared/schema";
@@ -3073,10 +3073,7 @@ app.use((req, res, next) => {
   app.use('/api/modern-messaging', modernMessagingRouter);
 
   // WhatsApp accounts routes
-  app.use('/api/whatsapp-accounts', (req, res, next) => {
-    console.log(`🔍 WhatsApp Router Middleware - ${req.method} ${req.originalUrl} - ID: "${req.params.id || 'none'}"`);
-    next();
-  }, simpleWhatsAppRouter);
+  app.use('/api/whatsapp-accounts', whatsappAccountsRouter);
 
   // Import and register new routes for leads management
   const leadsRouter = (await import('./routes/leads')).default;
@@ -4527,7 +4524,7 @@ app.use((req, res, next) => {
   }
 
   // Registrar rutas de WhatsApp accounts sin autenticación
-  app.use("/api/whatsapp-accounts", simpleWhatsAppRouter);
+  app.use("/api/whatsapp-accounts", whatsappAccountsRouter);
   
   // Registrar rutas del sistema de mensajería moderno que usa datos reales de WhatsApp
   app.use("/api/modern-messaging", modernMessagingRouter);

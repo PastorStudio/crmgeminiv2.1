@@ -84,10 +84,6 @@ export interface IStorage {
   
   // Additional required methods
   initializeData(): Promise<void>;
-  
-  // User management methods for fixing authentication
-  ensureUserExists(userId: number, username?: string): Promise<User>;
-  createDefaultUser(username: string, password: string): Promise<User>;
 }
 
 // Database storage implementation
@@ -357,7 +353,6 @@ export class DatabaseStorage implements IStorage {
         ownerName: account.ownerName || null,
         ownerPhone: account.ownerPhone || null,
         status: account.status || 'inactive',
-        userId: account.userId || null,
         autoResponseEnabled: account.autoResponseEnabled || false,
         assignedExternalAgentId: account.assignedExternalAgentId || null,
         responseDelay: account.responseDelay || 3,
@@ -383,7 +378,6 @@ export class DatabaseStorage implements IStorage {
           ownerName: account.ownerName || null,
           ownerPhone: account.ownerPhone || null,
           status: account.status || 'inactive',
-          userId: account.userId || null,
           autoResponseEnabled: account.autoResponseEnabled || false,
           assignedExternalAgentId: account.assignedExternalAgentId || null,
           responseDelay: account.responseDelay || 3,
@@ -853,22 +847,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   // CRITICAL SECURITY METHOD: Filter leads by user ID for data isolation
-  async getLeadsByUserId(userId: number): Promise<any[]> {
+  async getLeadsByUserId(userId: number): Promise<Lead[]> {
     console.log(`🔒 Filtering leads for user ID: ${userId}`);
-    // Use simple query with only basic columns that exist in database
-    try {
-      const result = await db.execute(sql`
-        SELECT id, name, email, phone, company, status, source, notes, 
-               "assignedTo", "whatsappAccountId", "createdAt" 
-        FROM leads 
-        WHERE "assignedTo" = ${userId} 
-        ORDER BY "createdAt" DESC
-      `);
-      return result.rows;
-    } catch (error) {
-      console.error('Error querying leads:', error);
-      return [];
-    }
+    return await db.select().from(leads).where(eq(leads.assignedTo, userId)).orderBy(desc(leads.createdAt));
   }
 
   async createLead(insertLead: InsertLead): Promise<Lead> {
@@ -935,123 +916,6 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error updating lead status:', error);
       return undefined;
-    }
-  }
-
-  async ensureUserExists(userId: number, username?: string): Promise<User> {
-    try {
-      // Check if user exists by ID
-      const existingUser = await this.getUser(userId);
-      if (existingUser) {
-        return existingUser;
-      }
-
-      // Create user if it doesn't exist
-      const newUser = await this.createUser({
-        username: username || `user_${userId}`,
-        password: 'defaultPassword123',
-        fullName: username || `User ${userId}`,
-        email: `${username || `user${userId}`}@example.com`,
-        role: 'agent',
-        status: 'active',
-        isActive: true
-      });
-
-      console.log(`✅ Created new user: ${newUser.username} (ID: ${newUser.id})`);
-      return newUser;
-    } catch (error) {
-      console.error(`❌ Error ensuring user exists for ID ${userId}:`, error);
-      throw error;
-    }
-  }
-
-  async createDefaultUser(username: string, password: string): Promise<User> {
-    try {
-      const newUser = await this.createUser({
-        username,
-        password,
-        fullName: username,
-        email: `${username}@example.com`,
-        role: 'agent',
-        status: 'active',
-        isActive: true
-      });
-
-      console.log(`✅ Created default user: ${newUser.username} (ID: ${newUser.id})`);
-      return newUser;
-    } catch (error) {
-      console.error(`❌ Error creating default user ${username}:`, error);
-      throw error;
-    }
-  }
-
-  async initializeData(): Promise<void> {
-    try {
-      // Initialize basic data if needed
-      const existingAccounts = await this.getWhatsAppAccounts();
-      if (existingAccounts.length === 0) {
-        // Create a default WhatsApp account for testing
-        await this.createWhatsAppAccount({
-          name: 'Demo WhatsApp',
-          description: 'Cuenta de demostración',
-          ownerName: 'Sistema Demo',
-          ownerPhone: '+1234567890',
-          status: 'disconnected',
-          adminId: 1,
-          autoResponseEnabled: false,
-          responseDelay: 1000
-        });
-      }
-
-      // Ensure default users exist
-      const existingUsers = await this.getAllUsers();
-      if (existingUsers.length === 0) {
-        console.log('Creating default users...');
-        
-        // Create admin user with ID 1
-        await this.createUser({
-          username: 'admin',
-          password: 'admin123',
-          fullName: 'Administrator',
-          email: 'admin@example.com',
-          role: 'admin',
-          status: 'active',
-          isActive: true
-        });
-        
-        // Create agent user with ID 2
-        await this.createUser({
-          username: 'agent1',
-          password: 'agent123',
-          fullName: 'Agent 1',
-          email: 'agent1@example.com',
-          role: 'agent',
-          status: 'active',
-          isActive: true
-        });
-        
-        // Create demo user with ID 3 for DJP
-        await this.createUser({
-          username: 'djp',
-          password: 'djp123',
-          fullName: 'DJP User',
-          email: 'djp@example.com',
-          role: 'agent',
-          status: 'active',
-          isActive: true
-        });
-        
-        console.log('Default users created successfully');
-      }
-      
-      // Asegurar que la cuenta 1 tenga asignado el agente Smartplanner IA permanentemente
-      const account1 = await this.getWhatsappAccount(1);
-      if (account1 && account1.assignedExternalAgentId !== '3') {
-        await this.setWhatsappAgentConfig(1, '3', true);
-        console.log('🔧 Asignación persistente restaurada: Cuenta 1 -> Smartplanner IA (ID: 3)');
-      }
-    } catch (error) {
-      console.error('Error initializing data:', error);
     }
   }
 }

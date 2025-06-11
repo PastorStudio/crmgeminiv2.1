@@ -6,33 +6,17 @@ import { storage } from '../storage';
 import { z } from 'zod';
 import { whatsappMultiAccountManager } from '../services/whatsappMultiAccountManager';
 import whatsappServiceMulti from '../services/whatsappServiceMulti';
-import jwt from 'jsonwebtoken';
-import fs from 'fs';
-import path from 'path';
-
-// Simplified auth - removed token validation temporarily
-const authenticateToken = (req: any, res: any, next: any) => {
-  // Bypass authentication for now
-  req.user = { id: 1, username: 'demo' };
-  next();
-};
 
 const router = Router();
 
 // Obtener todas las cuentas de WhatsApp filtradas por usuario
 router.get('/', async (req, res) => {
   try {
-    // CRITICAL SECURITY: Extract real authenticated user from JWT token
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: "Token de acceso requerido" });
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any;
-    const userId = decoded.id;
+    // Extract user ID from authentication headers or query params
+    const userIdParam = req.headers['x-user-id'] || req.query.userId || '3'; // Default to DJP user for testing
+    const userId = parseInt(userIdParam as string) || 3; // Ensure valid integer, default to DJP user
     
-    console.log(`📋 GET /api/whatsapp-accounts - Usuario autenticado: ${decoded.username} (ID: ${userId})`);
+    console.log(`📋 GET /api/whatsapp-accounts - Obteniendo cuentas para usuario ${userId}`);
     
     // Set proper headers
     res.header('Access-Control-Allow-Origin', '*');
@@ -41,10 +25,6 @@ router.get('/', async (req, res) => {
     // Get accounts filtered by user ID - CRITICAL SECURITY FIX
     const accounts = await storage.getWhatsappAccountsByUserId(userId);
     console.log(`✅ Cuentas encontradas para usuario ${userId}: ${accounts.length}`);
-    
-    // Get user information to display creator username
-    const user = await storage.getUser(userId);
-    const creatorUsername = user ? user.username : decoded.username;
     
     // Obtener el estado actual de cada cuenta desde el administrador de múltiples cuentas
     const accountsWithStatus = accounts.map(account => {
@@ -57,9 +37,7 @@ router.get('/', async (req, res) => {
           authenticated: isActive,
           ready: isActive,
           status: isActive ? 'active' : 'inactive',
-          currentStatus: statusInfo || { authenticated: isActive, ready: isActive },
-          createdByUser: creatorUsername,
-          createdByUserId: userId
+          currentStatus: statusInfo || { authenticated: isActive, ready: isActive }
         };
       } catch (error) {
         console.warn(`⚠️ Error obteniendo estado de cuenta ${account.id}:`, error);
@@ -68,9 +46,7 @@ router.get('/', async (req, res) => {
           authenticated: false,
           ready: false,
           status: 'inactive',
-          currentStatus: { authenticated: false, ready: false },
-          createdByUser: creatorUsername,
-          createdByUserId: userId
+          currentStatus: { authenticated: false, ready: false }
         };
       }
     });
@@ -142,9 +118,6 @@ router.post('/', async (req, res) => {
   try {
     console.log('🆕 Creando nueva cuenta de WhatsApp:', req.body);
     
-    // Get user information - using demo user for now
-    const userId = 1; // Default user ID for demo
-    
     // Validar datos de entrada
     const validation = accountSchema.safeParse(req.body);
     if (!validation.success) {
@@ -155,7 +128,7 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Crear cuenta en la base de datos con ID de usuario para tracking de propiedad
+    // Crear cuenta en la base de datos
     const newAccount = await storage.createWhatsAppAccount({
       name: validation.data.name,
       description: validation.data.description || null,
@@ -167,8 +140,7 @@ router.post('/', async (req, res) => {
       responseDelay: validation.data.responseDelay || 3,
       status: 'inactive',
       sessionData: null,
-      organizationId: 1, // Default organization
-      userId: userId // Include user ID for ownership tracking
+      organizationId: 1 // Default organization
     });
     
     console.log('✅ Cuenta creada exitosamente:', newAccount);
@@ -226,49 +198,45 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
+// Eliminar todas las cuentas de WhatsApp
+router.delete('/delete-all', async (req, res) => {
+  try {
+    console.log('🗑️ Iniciando eliminación completa de todas las cuentas de WhatsApp...');
+    
+    // Obtener todas las cuentas antes de eliminarlas
+    const allAccounts = await storage.getAllWhatsappAccounts();
+    
+    // Desconectar todas las cuentas activas
+    for (const account of allAccounts) {
+      try {
+        await whatsappMultiAccountManager.disconnectAccount(account.id);
+        console.log(`✅ Cuenta ${account.id} (${account.name}) desconectada`);
+      } catch (error) {
+        console.error(`⚠️ Error desconectando cuenta ${account.id}:`, error);
+      }
+    }
+    
+    // Eliminar todas las cuentas de la base de datos
+    await storage.deleteAllWhatsappAccounts();
+    
+    // Limpiar carpetas de sesión
+    await cleanAllSessionFolders();
+    
+    console.log('✅ Todas las cuentas eliminadas y contador de IDs reiniciado');
+    
+    res.json({ 
+      success: true, 
+      message: 'Todas las cuentas han sido eliminadas y el contador de IDs reiniciado',
+      deletedCount: allAccounts.length
+    });
+  } catch (error) {
+    console.error('❌ Error al eliminar todas las cuentas:', error);
+    res.status(500).json({ error: 'Error al eliminar todas las cuentas de WhatsApp' });
+  }
+});
+
 // Eliminar una cuenta de WhatsApp
 router.delete('/:id', async (req, res) => {
-  // Check if this is actually a delete-all request
-  if (req.params.id === 'delete-all') {
-    try {
-      console.log('🗑️ Iniciando eliminación completa de todas las cuentas de WhatsApp...');
-      
-      // Obtener todas las cuentas antes de eliminarlas
-      const allAccounts = await storage.getAllWhatsappAccounts();
-      
-      // Desconectar todas las cuentas activas
-      for (const account of allAccounts) {
-        try {
-          await whatsappMultiAccountManager.disconnectAccount(account.id);
-          console.log(`✅ Cuenta ${account.id} (${account.name}) desconectada`);
-        } catch (error) {
-          console.error(`⚠️ Error desconectando cuenta ${account.id}:`, error);
-        }
-      }
-      
-      // Eliminar todas las cuentas de la base de datos
-      await storage.deleteAllWhatsappAccounts();
-      
-      // Limpiar carpetas de sesión
-      await cleanAllSessionFolders();
-      
-      console.log('✅ Todas las cuentas eliminadas y contador de IDs reiniciado');
-      
-      return res.json({ 
-        success: true, 
-        message: 'Todas las cuentas han sido eliminadas y el contador de IDs reiniciado',
-        deletedCount: allAccounts.length
-      });
-    } catch (error) {
-      console.error('❌ Error al eliminar todas las cuentas:', error);
-      return res.status(500).json({ 
-        success: false,
-        error: 'Error al eliminar todas las cuentas de WhatsApp' 
-      });
-    }
-  }
-  
-  // Handle single account deletion
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -300,12 +268,12 @@ async function syncSessionFolders() {
     console.log("Sincronizando carpetas de sesión con IDs reorganizados...");
     
     // Importar módulos necesarios
-    const { join } = await import('path');
-    const { existsSync, mkdirSync, readdirSync, rmSync, renameSync } = await import('fs');
+    const path = require('path');
+    const fs = require('fs');
     
     // Definir directorio de cuentas
-    const TEMP_DIR = join(process.cwd(), 'temp');
-    const ACCOUNTS_DIR = join(TEMP_DIR, 'whatsapp-accounts');
+    const TEMP_DIR = path.join(process.cwd(), 'temp');
+    const ACCOUNTS_DIR = path.join(TEMP_DIR, 'whatsapp-accounts');
     
     // Obtener todas las cuentas con sus IDs actualizados
     const accounts = await storage.getAllWhatsappAccounts();
@@ -313,24 +281,23 @@ async function syncSessionFolders() {
     
     // Para cada cuenta, asegurar que su carpeta tenga el nombre correcto
     for (const account of accounts) {
-      const expectedFolderPath = join(ACCOUNTS_DIR, `account_${account.id}`);
+      const expectedFolderPath = path.join(ACCOUNTS_DIR, `account_${account.id}`);
       
       // Buscar posibles carpetas antiguas para esta cuenta 
       for (let i = 1; i <= 10; i++) {
         // Evitar revisar la carpeta con el ID correcto
         if (i === account.id) continue;
         
-        const oldFolderPath = join(ACCOUNTS_DIR, `account_${i}`);
+        const oldFolderPath = path.join(ACCOUNTS_DIR, `account_${i}`);
         
         // Si existe una carpeta con nombre antiguo y no existe la nueva
-        if (existsSync(oldFolderPath) && !existsSync(expectedFolderPath)) {
+        if (fs.existsSync(oldFolderPath) && !fs.existsSync(expectedFolderPath)) {
           // Intentar determinar si esta carpeta pertenece a esta cuenta
-          const oldSessionFile = join(oldFolderPath, 'session_status.json');
+          const oldSessionFile = path.join(oldFolderPath, 'session_status.json');
           
-          if (existsSync(oldSessionFile)) {
+          if (fs.existsSync(oldSessionFile)) {
             try {
-              const { readFileSync } = await import('fs');
-              const sessionData = JSON.parse(readFileSync(oldSessionFile, 'utf8'));
+              const sessionData = JSON.parse(fs.readFileSync(oldSessionFile, 'utf8'));
               
               // Si la carpeta pertenece a esta cuenta o no hay forma de saberlo
               // (en el peor caso, es mejor reasignar la carpeta)
@@ -391,6 +358,10 @@ async function syncSessionFolders() {
 async function cleanAllSessionFolders() {
   try {
     console.log("🧹 Limpiando todas las carpetas de sesión...");
+    
+    // Importar módulos necesarios
+    const path = require('path');
+    const fs = require('fs');
     
     // Definir directorio de cuentas
     const TEMP_DIR = path.join(process.cwd(), 'temp');
