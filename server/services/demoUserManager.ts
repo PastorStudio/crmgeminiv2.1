@@ -4,7 +4,7 @@
  */
 
 import { db } from '../db';
-import { demoUsers, users } from '@shared/schema';
+import { demoUsers, users, whatsappAccounts, userAccountAssignments } from '@shared/schema';
 import { eq, lt } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 
@@ -28,7 +28,7 @@ interface DemoUserResult {
 
 class DemoUserManager {
   /**
-   * Crea un usuario demo con credenciales temporales por 1 día
+   * Crea un usuario demo con credenciales temporales y cuenta WhatsApp aislada
    */
   async createDemoUser(config: DemoUserConfig): Promise<DemoUserResult> {
     try {
@@ -83,6 +83,9 @@ class DemoUserManager {
         createdAt: new Date(),
         updatedAt: new Date()
       }).returning();
+
+      // Crear cuenta WhatsApp aislada para el usuario demo
+      await this.createIsolatedWhatsAppAccount(realUser.id, config.customerName);
 
       console.log(`✅ Usuario demo creado: ${username} (ID: ${demoUser.id})`);
       console.log(`⏰ Expira el: ${expiresAt.toLocaleString()}`);
@@ -161,6 +164,48 @@ class DemoUserManager {
     } catch (error) {
       console.error('❌ Error verificando usuario demo:', error);
       return null;
+    }
+  }
+
+  /**
+   * Crea cuenta WhatsApp aislada para usuario demo
+   */
+  async createIsolatedWhatsAppAccount(userId: number, customerName: string): Promise<any> {
+    try {
+      console.log(`📱 Creando cuenta WhatsApp aislada para usuario demo ID: ${userId}`);
+
+      // Crear cuenta WhatsApp específica para el usuario demo
+      const [demoAccount] = await db.insert(whatsappAccounts).values({
+        name: `Demo - ${customerName}`,
+        description: `Cuenta demo privada para ${customerName}`,
+        userId: userId, // Asociar directamente al usuario
+        status: 'inactive',
+        autoResponseEnabled: true,
+        responseDelay: 3,
+        disableGroupResponses: false,
+        customPrompt: 'Eres un asistente de atención al cliente profesional y amigable para una empresa de demostración. Responde de manera útil, cordial y profesional. Proporciona información sobre nuestros servicios y productos de demostración.',
+        targetLanguage: 'es',
+        translateToSpanish: true,
+        keepAliveEnabled: true,
+        createdAt: new Date(),
+        lastActivity: new Date()
+      }).returning();
+
+      // Crear asignación de cuenta al usuario
+      await db.insert(userAccountAssignments).values({
+        userId: userId,
+        whatsappAccountId: demoAccount.id,
+        role: 'owner',
+        isActive: true,
+        assignedAt: new Date()
+      });
+
+      console.log(`✅ Cuenta WhatsApp demo creada: ID ${demoAccount.id} para usuario ${userId}`);
+      return demoAccount;
+
+    } catch (error) {
+      console.error('❌ Error creando cuenta WhatsApp demo:', error);
+      throw new Error('Error al crear cuenta WhatsApp demo');
     }
   }
 
