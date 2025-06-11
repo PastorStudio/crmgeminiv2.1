@@ -6,6 +6,7 @@ import { storage } from '../storage';
 import { z } from 'zod';
 import { whatsappMultiAccountManager } from '../services/whatsappMultiAccountManager';
 import whatsappServiceMulti from '../services/whatsappServiceMulti';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
 
@@ -19,7 +20,6 @@ router.get('/', async (req, res) => {
     }
 
     const token = authHeader.substring(7);
-    const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any;
     const userId = decoded.id;
     
@@ -275,8 +275,8 @@ async function syncSessionFolders() {
     console.log("Sincronizando carpetas de sesión con IDs reorganizados...");
     
     // Importar módulos necesarios
-    const path = require('path');
-    const fs = require('fs');
+    const path = await import('path');
+    const fs = await import('fs');
     
     // Definir directorio de cuentas
     const TEMP_DIR = path.join(process.cwd(), 'temp');
@@ -367,8 +367,8 @@ async function cleanAllSessionFolders() {
     console.log("🧹 Limpiando todas las carpetas de sesión...");
     
     // Importar módulos necesarios
-    const path = require('path');
-    const fs = require('fs');
+    const path = await import('path');
+    const fs = await import('fs');
     
     // Definir directorio de cuentas
     const TEMP_DIR = path.join(process.cwd(), 'temp');
