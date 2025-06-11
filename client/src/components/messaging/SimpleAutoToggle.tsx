@@ -32,19 +32,33 @@ export function SimpleAutoToggle({ accountId }: SimpleAutoToggleProps) {
   };
 
   const toggleAutoResponse = async () => {
+    // Verificar si Auto A.E. está activo antes de activar respuestas automáticas
+    if (!isEnabled) {
+      const autoFunctions = (window as any).getAutoFunctionsStatus?.();
+      if (autoFunctions?.autoAE) {
+        toast({
+          title: "Conflicto Detectado",
+          description: "Auto A.E. está activo. Desactívalo primero para usar respuestas automáticas de la cuenta.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
     setIsLoading(true);
     
     try {
-      // Use simplified endpoint that doesn't require external agents
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/whatsapp-accounts/${accountId}/toggle-auto-response`, {
+      const endpoint = isEnabled 
+        ? `/api/auto-response/deactivate/${accountId}`
+        : `/api/auto-response/activate/${accountId}`;
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          enabled: !isEnabled
+          agentName: "Smart Assistant"
         })
       });
 

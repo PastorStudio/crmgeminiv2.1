@@ -127,18 +127,6 @@ router.post('/', async (req, res) => {
   try {
     console.log('🆕 Creando nueva cuenta de WhatsApp:', req.body);
     
-    // Authentication - extract user ID from token
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: "Token de acceso requerido" });
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
-    const userId = decoded.userId || decoded.id;
-    
-    console.log(`🆕 Usuario ${decoded.username} (ID: ${userId}) creando nueva cuenta`);
-    
     // Validar datos de entrada
     const validation = accountSchema.safeParse(req.body);
     if (!validation.success) {
@@ -149,14 +137,13 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Crear cuenta en la base de datos - ASSIGN TO CURRENT USER
+    // Crear cuenta en la base de datos
     const newAccount = await storage.createWhatsAppAccount({
       name: validation.data.name,
       description: validation.data.description || null,
       ownerName: validation.data.ownerName || null,
       ownerPhone: validation.data.ownerPhone || null,
       adminId: validation.data.adminId || null,
-      userId: userId, // CRITICAL: Assign account to current user
       assignedExternalAgentId: validation.data.assignedExternalAgentId || null,
       autoResponseEnabled: validation.data.autoResponseEnabled || false,
       responseDelay: validation.data.responseDelay || 3,
@@ -278,114 +265,6 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error al eliminar cuenta de WhatsApp:', error);
     res.status(500).json({ error: 'Error al eliminar cuenta de WhatsApp' });
-  }
-});
-
-// Obtener código QR para autenticación de WhatsApp
-router.get('/:id/qrcode', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'ID inválido' });
-    }
-
-    console.log(`📱 Solicitando código QR para cuenta ${id}`);
-    
-    // Verificar que la cuenta existe
-    const account = await storage.getWhatsappAccount(id);
-    if (!account) {
-      console.log(`❌ Cuenta ${id} no existe en el sistema`);
-      return res.status(404).json({ error: 'Cuenta no encontrada' });
-    }
-
-    // Verificar ownership de la cuenta
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
-        const userId = decoded.userId || decoded.id;
-        
-        if (account.userId !== userId) {
-          return res.status(403).json({ error: 'Acceso denegado a esta cuenta' });
-        }
-      } catch (error) {
-        return res.status(401).json({ error: 'Token inválido' });
-      }
-    }
-
-    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
-    
-    // Forzar inicialización si no está hecha
-    await whatsappMultiAccountManager.initializeAccount(id);
-    
-    // Intentar obtener QR
-    const qr = whatsappMultiAccountManager.getQRCode(id);
-    
-    if (!qr) {
-      console.log(`⚠️ Código QR no disponible para cuenta ${id}`);
-      return res.status(404).json({ error: 'Código QR no disponible' });
-    }
-
-    console.log(`✅ Código QR obtenido para cuenta ${id}`);
-    res.json({
-      success: true,
-      qr: qr,
-      accountId: id
-    });
-  } catch (error) {
-    console.error('Error al obtener código QR:', error);
-    res.status(500).json({ error: 'Error al obtener código QR' });
-  }
-});
-
-// Activar respuestas automáticas sin requerir agente externo
-router.post('/:id/toggle-auto-response', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'ID inválido' });
-    }
-
-    // Verificar autenticación y ownership
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: "Token de acceso requerido" });
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
-    const userId = decoded.userId || decoded.id;
-
-    // Obtener cuenta y verificar ownership
-    const account = await storage.getWhatsappAccount(id);
-    if (!account) {
-      return res.status(404).json({ error: 'Cuenta no encontrada' });
-    }
-
-    if (account.userId !== userId) {
-      return res.status(403).json({ error: 'Acceso denegado a esta cuenta' });
-    }
-
-    const { enabled } = req.body;
-    
-    // Actualizar estado de respuestas automáticas
-    const updatedAccount = await storage.updateWhatsappAccount(id, {
-      autoResponseEnabled: enabled,
-      assignedExternalAgentId: enabled ? "Smart Assistant" : null,
-      status: enabled ? 'active' : 'inactive'
-    });
-
-    console.log(`${enabled ? '✅ Activando' : '❌ Desactivando'} respuestas automáticas para cuenta ${id}`);
-
-    res.json({
-      success: true,
-      message: `Respuestas automáticas ${enabled ? 'activadas' : 'desactivadas'} correctamente`,
-      account: updatedAccount
-    });
-  } catch (error) {
-    console.error('Error al cambiar estado de respuestas automáticas:', error);
-    res.status(500).json({ error: 'Error al cambiar estado de respuestas automáticas' });
   }
 });
 
