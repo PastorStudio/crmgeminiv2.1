@@ -27,11 +27,11 @@ export const authenticateUser = (req: Request, res: Response, next: NextFunction
     }
 
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
     
-    // Attach authenticated user info to request
+    // Attach authenticated user info to request - handle both id and userId formats
     req.authenticatedUser = {
-      id: decoded.id,
+      id: decoded.id || decoded.userId,
       username: decoded.username,
       role: decoded.role
     };
