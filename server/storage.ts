@@ -847,9 +847,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   // CRITICAL SECURITY METHOD: Filter leads by user ID for data isolation
-  async getLeadsByUserId(userId: number): Promise<Lead[]> {
+  async getLeadsByUserId(userId: number): Promise<any[]> {
     console.log(`🔒 Filtering leads for user ID: ${userId}`);
-    return await db.select().from(leads).where(eq(leads.assignedTo, userId)).orderBy(desc(leads.createdAt));
+    // Use simple query with only basic columns that exist in database
+    try {
+      const result = await db.execute(sql`
+        SELECT id, name, email, phone, company, status, source, notes, 
+               "assignedTo", "whatsappAccountId", "createdAt" 
+        FROM leads 
+        WHERE "assignedTo" = ${userId} 
+        ORDER BY "createdAt" DESC
+      `);
+      return result.rows;
+    } catch (error) {
+      console.error('Error querying leads:', error);
+      return [];
+    }
   }
 
   async createLead(insertLead: InsertLead): Promise<Lead> {
