@@ -6477,10 +6477,10 @@ app.use((req, res, next) => {
         });
       }
 
-      // Generate unique username and password
+      // Generate unique username and standard password
       const timestamp = Date.now();
       const username = `demo_${customerName.toLowerCase().replace(/\s+/g, '_')}_${timestamp}`;
-      const password = `demo${Math.random().toString(36).substring(2, 8)}`;
+      const password = "demo123456"; // Standard demo password
 
       // Set expiration to 1 day from now
       const expiresAt = new Date();
@@ -6546,8 +6546,9 @@ app.use((req, res, next) => {
         });
       }
 
-      // Check password
-      if (demoUser.password !== password) {
+      // Check password using bcrypt since passwords are hashed
+      const isPasswordValid = await bcrypt.compare(password, demoUser.password);
+      if (!isPasswordValid) {
         return res.status(401).json({
           success: false,
           message: "Credenciales inválidas"
