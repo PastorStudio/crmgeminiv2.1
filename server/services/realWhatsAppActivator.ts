@@ -10,32 +10,56 @@ export class RealWhatsAppActivator {
     console.log('🔄 Activating real WhatsApp connections...');
     
     try {
-      // Force initialization of account 1 with real authentication
-      const success = await whatsappMultiAccountManager.initializeAccount(1);
+      // Get available accounts dynamically instead of hardcoding account 1
+      const { storage } = await import('../storage');
+      const accounts = await storage.getAllWhatsappAccounts();
       
-      if (success) {
-        console.log('✅ WhatsApp account 1 initialized for real data');
-        
-        // Force QR generation for authentication
-        await whatsappMultiAccountManager.forceRefreshQR(1);
-        console.log('✅ QR code generated for authentication');
-        
-        // Activate persistent connection
-        whatsappMultiAccountManager.activateKeepAlive(1);
-        console.log('✅ Persistent connection activated');
-        
-        // Mark system as ready for real data
-        console.log('🚀 Real WhatsApp system activated - ready for authentic data');
-      } else {
-        console.log('⚠️ Failed to initialize WhatsApp account 1');
+      if (accounts.length === 0) {
+        console.log('📱 No WhatsApp accounts available - system ready for new account creation');
+        return;
       }
+      
+      // Initialize all available accounts
+      for (const account of accounts) {
+        const success = await whatsappMultiAccountManager.initializeAccount(account.id);
+        
+        if (success) {
+          console.log(`✅ WhatsApp account ${account.id} initialized for real data`);
+          
+          // Force QR generation for authentication
+          await whatsappMultiAccountManager.forceRefreshQR(account.id);
+          console.log(`✅ QR code generated for account ${account.id}`);
+          
+          // Activate persistent connection
+          whatsappMultiAccountManager.activateKeepAlive(account.id);
+          console.log(`✅ Persistent connection activated for account ${account.id}`);
+        } else {
+          console.log(`⚠️ Failed to initialize WhatsApp account ${account.id}`);
+        }
+      }
+      
+      console.log('🚀 Real WhatsApp system activated with authentic user accounts');
     } catch (error) {
       console.error('❌ Error activating real WhatsApp connections:', error);
     }
   }
   
   static async checkAuthenticationStatus(): Promise<any> {
-    const instance = whatsappMultiAccountManager.getInstance(1);
+    // Get first available account dynamically
+    const { storage } = await import('../storage');
+    const accounts = await storage.getAllWhatsappAccounts();
+    
+    if (accounts.length === 0) {
+      return {
+        authenticated: false,
+        ready: false,
+        initialized: false,
+        hasClient: false,
+        message: 'No WhatsApp accounts available'
+      };
+    }
+    
+    const instance = whatsappMultiAccountManager.getInstance(accounts[0].id);
     
     if (instance) {
       return {
