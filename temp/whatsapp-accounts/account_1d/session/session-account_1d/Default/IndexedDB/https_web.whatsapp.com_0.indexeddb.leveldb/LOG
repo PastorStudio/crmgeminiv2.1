@@ -1,0 +1,4 @@
+2025/06/11-11:30:20.061 581 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1d/session/session-account_1d/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/11-11:30:20.061 581 Recovering log #33
+2025/06/11-11:30:20.068 581 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1d/session/session-account_1d/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000033.log 
+2025/06/11-11:30:20.069 581 Delete type=2 #32
