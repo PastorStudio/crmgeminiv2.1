@@ -206,4 +206,110 @@ router.get('/:id/qrcode', async (req, res) => {
   }
 });
 
+// Delete all WhatsApp accounts
+router.delete('/delete-all', async (req, res) => {
+  try {
+    console.log('🗑️ Iniciando eliminación completa de todas las cuentas de WhatsApp...');
+    
+    // Get all accounts before deleting them
+    const allAccounts = await storage.getWhatsAppAccounts();
+    
+    if (!allAccounts || allAccounts.length === 0) {
+      return res.json({ 
+        success: true, 
+        message: 'No hay cuentas para eliminar',
+        deletedCount: 0
+      });
+    }
+
+    // Import WhatsApp manager
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+    
+    // Disconnect all active accounts
+    for (const account of allAccounts) {
+      try {
+        await whatsappMultiAccountManager.disconnectAccount(account.id);
+        console.log(`✅ Cuenta ${account.id} (${account.name}) desconectada`);
+      } catch (error) {
+        console.error(`⚠️ Error desconectando cuenta ${account.id}:`, error);
+      }
+    }
+    
+    // Delete all accounts from database
+    await storage.deleteAllWhatsappAccounts();
+    
+    // Clean session folders
+    try {
+      const { join } = await import('path');
+      const { existsSync, rmSync } = await import('fs');
+      
+      const TEMP_DIR = join(process.cwd(), 'temp');
+      const ACCOUNTS_DIR = join(TEMP_DIR, 'whatsapp-accounts');
+      
+      if (existsSync(ACCOUNTS_DIR)) {
+        rmSync(ACCOUNTS_DIR, { recursive: true, force: true });
+        console.log('🧹 Carpetas de sesión eliminadas');
+      }
+    } catch (cleanError) {
+      console.warn('⚠️ Error limpiando carpetas de sesión:', cleanError);
+    }
+    
+    console.log('✅ Todas las cuentas eliminadas correctamente');
+    
+    res.json({ 
+      success: true, 
+      message: 'Todas las cuentas han sido eliminadas correctamente',
+      deletedCount: allAccounts.length
+    });
+  } catch (error) {
+    console.error('❌ Error al eliminar todas las cuentas:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Error al eliminar todas las cuentas de WhatsApp',
+      details: error instanceof Error ? error.message : 'Error desconocido'
+    });
+  }
+});
+
+// Delete specific WhatsApp account
+router.delete('/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'ID inválido' 
+      });
+    }
+    
+    // Import WhatsApp manager
+    const { whatsappMultiAccountManager } = await import('../services/whatsappMultiAccountManager');
+    
+    // First disconnect the account if it's active
+    try {
+      await whatsappMultiAccountManager.disconnectAccount(id);
+      console.log(`✅ Cuenta ${id} desconectada antes de eliminar`);
+    } catch (disconnectError) {
+      console.warn(`⚠️ Error desconectando cuenta ${id}:`, disconnectError);
+    }
+    
+    // Then delete from database
+    await storage.deleteWhatsappAccount(id);
+    
+    console.log(`✅ Cuenta ${id} eliminada de la base de datos`);
+    
+    res.json({ 
+      success: true,
+      message: `Cuenta ${id} eliminada correctamente`
+    });
+  } catch (error) {
+    console.error('❌ Error al eliminar cuenta de WhatsApp:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Error al eliminar cuenta de WhatsApp',
+      details: error instanceof Error ? error.message : 'Error desconocido'
+    });
+  }
+});
+
 export default router;
