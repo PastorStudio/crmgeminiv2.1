@@ -12,11 +12,18 @@ const router = Router();
 // Obtener todas las cuentas de WhatsApp filtradas por usuario
 router.get('/', async (req, res) => {
   try {
-    // Extract user ID from authentication headers or query params
-    const userIdParam = req.headers['x-user-id'] || req.query.userId || '3'; // Default to DJP user for testing
-    const userId = parseInt(userIdParam as string) || 3; // Ensure valid integer, default to DJP user
+    // CRITICAL SECURITY: Extract real authenticated user from JWT token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "Token de acceso requerido" });
+    }
+
+    const token = authHeader.substring(7);
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any;
+    const userId = decoded.id;
     
-    console.log(`📋 GET /api/whatsapp-accounts - Obteniendo cuentas para usuario ${userId}`);
+    console.log(`📋 GET /api/whatsapp-accounts - Usuario autenticado: ${decoded.username} (ID: ${userId})`);
     
     // Set proper headers
     res.header('Access-Control-Allow-Origin', '*');

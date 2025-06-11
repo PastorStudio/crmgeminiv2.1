@@ -1,96 +1,73 @@
-/**
- * Authentication middleware for user-based data isolation
- * Ensures each user can only access their own WhatsApp accounts and data
- */
 import { Request, Response, NextFunction } from 'express';
-import { storage } from '../storage';
+import jwt from 'jsonwebtoken';
 
-export interface AuthenticatedRequest extends Request {
-  user?: {
-    id: number;
-    username: string;
-    role: string;
-    organizationId?: number;
-  };
+// Extend Request interface to include authenticated user
+declare global {
+  namespace Express {
+    interface Request {
+      authenticatedUser?: {
+        id: number;
+        username: string;
+        role: string;
+      };
+    }
+  }
 }
 
-/**
- * Middleware to extract and validate user authentication
- * For now, using a simple user ID from headers until proper auth is implemented
- */
-export const authenticateUser = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const authenticateUser = (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Temporary: Extract user ID from headers or query params
-    // In production, this should come from JWT tokens or session data
-    const userId = req.headers['x-user-id'] || req.query.userId || '1'; // Default to user 1 for testing
+    const authHeader = req.headers.authorization;
     
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required - user ID not provided'
+    // Check for Bearer token
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ 
+        error: "Token de acceso requerido",
+        message: "Debe proporcionar un token de autenticación válido"
       });
     }
 
-    // Get user information from database
-    const user = await storage.getUser(parseInt(userId as string));
+    const token = authHeader.substring(7);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any;
     
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid user credentials'
-      });
-    }
-
-    // Attach user to request object
-    req.user = {
-      id: user.id,
-      username: user.username,
-      role: user.role || 'agent',
-      organizationId: user.organizationId || undefined
+    // Attach authenticated user info to request
+    req.authenticatedUser = {
+      id: decoded.id,
+      username: decoded.username,
+      role: decoded.role
     };
-
-    console.log(`🔐 User authenticated: ${user.username} (ID: ${user.id})`);
+    
+    console.log(`🔐 Usuario autenticado: ${decoded.username} (ID: ${decoded.id})`);
     next();
   } catch (error) {
-    console.error('❌ Authentication error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Authentication system error'
+    console.error('Error de autenticación:', error);
+    return res.status(401).json({ 
+      error: "Token inválido",
+      message: "El token de autenticación ha expirado o es inválido"
     });
   }
 };
 
-/**
- * Middleware to ensure user can only access their own WhatsApp accounts
- */
-export const requireUserAccess = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  if (!req.user) {
-    return res.status(401).json({
-      success: false,
-      error: 'User authentication required'
-    });
+export const optionalAuth = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any;
+      
+      req.authenticatedUser = {
+        id: decoded.id,
+        username: decoded.username,
+        role: decoded.role
+      };
+      
+      console.log(`🔐 Usuario autenticado (opcional): ${decoded.username} (ID: ${decoded.id})`);
+    }
+    
+    next();
+  } catch (error) {
+    // For optional auth, we continue even if token is invalid
+    console.warn('Token inválido en autenticación opcional:', error);
+    next();
   }
-  
-  next();
-};
-
-/**
- * Middleware to check if user has admin privileges
- */
-export const requireAdminAccess = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  if (!req.user) {
-    return res.status(401).json({
-      success: false,
-      error: 'Authentication required'
-    });
-  }
-
-  if (req.user.role !== 'admin' && req.user.role !== 'manager') {
-    return res.status(403).json({
-      success: false,
-      error: 'Admin privileges required'
-    });
-  }
-
-  next();
 };
