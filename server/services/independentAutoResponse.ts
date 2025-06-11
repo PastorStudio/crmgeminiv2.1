@@ -7,7 +7,7 @@ import { db } from '../db';
 import { whatsappAccounts, whatsappMessages, externalAgents } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import OpenAI from 'openai';
-import { chatGPTStreamer } from './chatgptPlusService';
+import { chatgptPlusDirectService } from './chatgptPlusDirectService';
 
 interface IndependentConfig {
   accountId: number;
@@ -160,10 +160,10 @@ class IndependentAutoResponseService {
    */
   private async generateAIResponse(messageText: string, agentName: string): Promise<string | null> {
     try {
-      console.log(`🤖 Generando respuesta con ChatGPT Plus para agente: ${agentName}`);
+      console.log(`🤖 Generando respuesta con ChatGPT Plus Web para agente: ${agentName}`);
       
-      // Use ChatGPT Plus streaming service instead of OpenAI API
-      const response = await chatGPTStreamer.generateResponse(messageText, agentName);
+      // Use ChatGPT Plus web service instead of OpenAI API
+      const response = await chatgptPlusWebService.generateResponse(messageText, agentName);
       
       if (response && response.trim().length > 0) {
         console.log(`✅ Respuesta generada exitosamente: ${response.substring(0, 50)}...`);
