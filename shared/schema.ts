@@ -187,7 +187,7 @@ export const leads = pgTable("leads", {
   uuid: text("uuid").notNull().unique(), // Unique identifier for external references
   contactId: integer("contactId").notNull(),
   whatsappAccountId: integer("whatsappAccountId").notNull(),
-  chatId: text("chatId"), // WhatsApp chat reference
+  chatId: text("chatid"), // WhatsApp chat reference
   title: text("title").notNull(),
   name: text("name").notNull(),
   fullName: text("fullName"),
