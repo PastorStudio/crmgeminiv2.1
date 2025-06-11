@@ -269,27 +269,47 @@ router.delete('/delete-all', async (req, res) => {
     // Obtener todas las cuentas antes de eliminarlas
     const allAccounts = await storage.getAllWhatsappAccounts();
     
-    // Desconectar todas las cuentas activas
+    // 1. Detener todos los servicios automáticos que procesan mensajes
+    try {
+      const { independentAutoResponseService } = await import('../services/independentAutoResponse');
+      const { trulyIndependentAutoResponseSystem } = await import('../services/trulyIndependentAutoResponse');
+      
+      console.log('🛑 Deteniendo servicios de respuesta automática...');
+      independentAutoResponseService.stop();
+      trulyIndependentAutoResponseSystem.stop();
+    } catch (error) {
+      console.log('⚠️ Algunos servicios de respuesta automática no están disponibles');
+    }
+    
+    // 2. Desconectar todas las cuentas activas
     for (const account of allAccounts) {
       try {
         await whatsappMultiAccountManager.disconnectAccount(account.id);
         console.log(`✅ Cuenta ${account.id} (${account.name}) desconectada`);
       } catch (error) {
-        console.error(`⚠️ Error desconectando cuenta ${account.id}:`, error);
+        console.log(`⚠️ Cuenta ${account.id} no inicializada`);
       }
     }
     
-    // Eliminar todas las cuentas de la base de datos
+    // 3. Limpiar todas las dependencias en cascada
+    try {
+      await storage.cleanupAccountDependencies(allAccounts.map(acc => acc.id));
+      console.log('✅ Dependencias eliminadas en cascada');
+    } catch (error) {
+      console.log('⚠️ Error limpiando dependencias:', error.message);
+    }
+    
+    // 4. Eliminar todas las cuentas de la base de datos
     await storage.deleteAllWhatsappAccounts();
     
-    // Limpiar carpetas de sesión
+    // 5. Limpiar carpetas de sesión
     await cleanAllSessionFolders();
     
-    console.log('✅ Todas las cuentas eliminadas y contador de IDs reiniciado');
+    console.log('✅ Todas las cuentas eliminadas y secuencia de ID reiniciada desde 1');
     
     res.json({ 
       success: true, 
-      message: 'Todas las cuentas han sido eliminadas y el contador de IDs reiniciado',
+      message: 'Todas las cuentas han sido eliminadas exitosamente',
       deletedCount: allAccounts.length
     });
   } catch (error) {
@@ -439,9 +459,9 @@ async function cleanAllSessionFolders() {
   try {
     console.log("🧹 Limpiando todas las carpetas de sesión...");
     
-    // Importar módulos necesarios
-    const path = require('path');
-    const fs = require('fs');
+    // Importar módulos necesarios usando import
+    const path = await import('path');
+    const fs = await import('fs');
     
     // Definir directorio de cuentas
     const TEMP_DIR = path.join(process.cwd(), 'temp');
