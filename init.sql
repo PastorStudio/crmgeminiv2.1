@@ -188,7 +188,22 @@ INSERT INTO users (username, password, email, role)
 VALUES ('agent', crypt('agent123', gen_salt('bf')), 'agent@crm.local', 'agent')
 ON CONFLICT (username) DO NOTHING;
 
--- No default WhatsApp accounts - users must create their own individual accounts
+-- Insert default WhatsApp account
+INSERT INTO whatsapp_accounts (
+    name, 
+    description, 
+    owner_name, 
+    owner_phone, 
+    status, 
+    auto_response_enabled
+) VALUES (
+    'Cuenta Principal',
+    'Cuenta principal de WhatsApp Business para CRM',
+    'Administrador',
+    '+1234567890',
+    'disconnected',
+    true
+) ON CONFLICT DO NOTHING;
 
 -- Insert default flow templates
 INSERT INTO flow_templates (

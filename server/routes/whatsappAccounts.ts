@@ -6,9 +6,6 @@ import { storage } from '../storage';
 import { z } from 'zod';
 import { whatsappMultiAccountManager } from '../services/whatsappMultiAccountManager';
 import whatsappServiceMulti from '../services/whatsappServiceMulti';
-import jwt from 'jsonwebtoken';
-import path from 'path';
-import fs from 'fs';
 
 const router = Router();
 
@@ -22,8 +19,9 @@ router.get('/', async (req, res) => {
     }
 
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
-    const userId = decoded.userId || decoded.id;
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any;
+    const userId = decoded.id;
     
     console.log(`📋 GET /api/whatsapp-accounts - Usuario autenticado: ${decoded.username} (ID: ${userId})`);
     
@@ -36,36 +34,17 @@ router.get('/', async (req, res) => {
     console.log(`✅ Cuentas encontradas para usuario ${userId}: ${accounts.length}`);
     
     // Obtener el estado actual de cada cuenta desde el administrador de múltiples cuentas
-    const accountsWithStatus = await Promise.all(accounts.map(async account => {
+    const accountsWithStatus = accounts.map(account => {
       try {
         const statusInfo = whatsappMultiAccountManager.getStatus(account.id);
         // Assume connection is active if account exists and has been configured
         const isActive = account.autoResponseEnabled || account.status === 'active';
-        
-        // Get user information for the account owner
-        let createdByUser = 'Usuario desconocido';
-        let createdByUserFullName = 'Usuario desconocido';
-        
-        if (account.userId) {
-          try {
-            const user = await storage.getUser(account.userId);
-            if (user) {
-              createdByUser = user.username;
-              createdByUserFullName = user.fullName || user.username;
-            }
-          } catch (userError) {
-            console.warn(`⚠️ Error obteniendo usuario ${account.userId}:`, userError);
-          }
-        }
-        
         return {
           ...account,
           authenticated: isActive,
           ready: isActive,
           status: isActive ? 'active' : 'inactive',
-          currentStatus: statusInfo || { authenticated: isActive, ready: isActive },
-          createdByUser,
-          createdByUserFullName
+          currentStatus: statusInfo || { authenticated: isActive, ready: isActive }
         };
       } catch (error) {
         console.warn(`⚠️ Error obteniendo estado de cuenta ${account.id}:`, error);
@@ -74,12 +53,10 @@ router.get('/', async (req, res) => {
           authenticated: false,
           ready: false,
           status: 'inactive',
-          currentStatus: { authenticated: false, ready: false },
-          createdByUser: 'Usuario desconocido',
-          createdByUserFullName: 'Usuario desconocido'
+          currentStatus: { authenticated: false, ready: false }
         };
       }
-    }));
+    });
     
     console.log(`✅ Enviando ${accountsWithStatus.length} cuentas con estado`);
     
@@ -148,18 +125,6 @@ router.post('/', async (req, res) => {
   try {
     console.log('🆕 Creando nueva cuenta de WhatsApp:', req.body);
     
-    // CRITICAL SECURITY: Extract real authenticated user from JWT token
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: "Token de acceso requerido" });
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
-    const userId = decoded.userId || decoded.id;
-    
-    console.log(`🆕 Usuario autenticado creando cuenta: ${decoded.username} (ID: ${userId})`);
-    
     // Validar datos de entrada
     const validation = accountSchema.safeParse(req.body);
     if (!validation.success) {
@@ -170,14 +135,13 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Crear cuenta en la base de datos con userId del usuario autenticado
+    // Crear cuenta en la base de datos
     const newAccount = await storage.createWhatsAppAccount({
       name: validation.data.name,
       description: validation.data.description || null,
       ownerName: validation.data.ownerName || null,
       ownerPhone: validation.data.ownerPhone || null,
       adminId: validation.data.adminId || null,
-      userId: userId, // CRITICAL: Assign to authenticated user
       assignedExternalAgentId: validation.data.assignedExternalAgentId || null,
       autoResponseEnabled: validation.data.autoResponseEnabled || false,
       responseDelay: validation.data.responseDelay || 3,
@@ -186,15 +150,7 @@ router.post('/', async (req, res) => {
       organizationId: 1 // Default organization
     });
     
-    console.log(`✅ Cuenta creada exitosamente para usuario ${decoded.username}:`, newAccount);
-    
-    // Obtener información del usuario para mostrar en la cuenta
-    const user = await storage.getUser(userId);
-    const accountWithUserInfo = {
-      ...newAccount,
-      createdByUser: user ? user.username : decoded.username,
-      createdByUserFullName: user ? user.fullName : decoded.username
-    };
+    console.log('✅ Cuenta creada exitosamente:', newAccount);
     
     // Inicializar la cuenta en el manager de WhatsApp
     try {
@@ -207,8 +163,7 @@ router.post('/', async (req, res) => {
     
     res.status(201).json({
       success: true,
-      account: accountWithUserInfo,
-      message: `Cuenta creada exitosamente para ${decoded.username}`
+      account: newAccount
     });
   } catch (error) {
     console.error('❌ Error al crear cuenta de WhatsApp:', error);
@@ -319,7 +274,9 @@ async function syncSessionFolders() {
   try {
     console.log("Sincronizando carpetas de sesión con IDs reorganizados...");
     
-    // Using imported path and fs modules
+    // Importar módulos necesarios
+    const path = require('path');
+    const fs = require('fs');
     
     // Definir directorio de cuentas
     const TEMP_DIR = path.join(process.cwd(), 'temp');
@@ -409,7 +366,9 @@ async function cleanAllSessionFolders() {
   try {
     console.log("🧹 Limpiando todas las carpetas de sesión...");
     
-    // Using imported path and fs modules
+    // Importar módulos necesarios
+    const path = require('path');
+    const fs = require('fs');
     
     // Definir directorio de cuentas
     const TEMP_DIR = path.join(process.cwd(), 'temp');

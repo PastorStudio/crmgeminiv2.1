@@ -101,17 +101,15 @@ export function LocalCalendarIntegration() {
   });
 
   // Get WhatsApp accounts
-  const { data: whatsappAccountsResponse } = useQuery({
-    queryKey: ['/api/whatsapp-accounts'],
+  const { data: whatsappAccounts } = useQuery({
+    queryKey: ['/api/whatsapp/accounts'],
     queryFn: async () => {
-      const response = await fetch('/api/whatsapp-accounts');
+      const response = await fetch('/api/whatsapp/accounts');
       if (!response.ok) throw new Error('Failed to fetch WhatsApp accounts');
       const data = await response.json();
-      return data;
+      return Array.isArray(data) ? data : [];
     }
   });
-  
-  const whatsappAccounts = whatsappAccountsResponse?.accounts || [];
 
   // Create event mutation
   const createEventMutation = useMutation({

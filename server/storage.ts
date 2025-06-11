@@ -63,7 +63,6 @@ export interface IStorage {
   getWhatsAppAccounts(): Promise<WhatsAppAccount[]>;
   createWhatsAppAccount(account: InsertWhatsAppAccount): Promise<WhatsAppAccount>;
   getAllWhatsappAccounts(): Promise<WhatsAppAccount[]>;
-  getWhatsappAccountsByUserId(userId: number): Promise<WhatsAppAccount[]>;
   getWhatsappAccount(id: number): Promise<WhatsAppAccount | undefined>;
   updateWhatsappAccount(id: number, updates: Partial<WhatsAppAccount>): Promise<WhatsAppAccount | undefined>;
   deleteWhatsappAccount(id: number): Promise<boolean>;
@@ -353,7 +352,6 @@ export class DatabaseStorage implements IStorage {
         description: account.description || null,
         ownerName: account.ownerName || null,
         ownerPhone: account.ownerPhone || null,
-        userId: account.userId || null, // CRITICAL: Include userId for proper data isolation
         status: account.status || 'inactive',
         autoResponseEnabled: account.autoResponseEnabled || false,
         assignedExternalAgentId: account.assignedExternalAgentId || null,
@@ -379,7 +377,6 @@ export class DatabaseStorage implements IStorage {
           description: account.description || null,
           ownerName: account.ownerName || null,
           ownerPhone: account.ownerPhone || null,
-          userId: account.userId || null, // CRITICAL: Include userId for proper data isolation
           status: account.status || 'inactive',
           autoResponseEnabled: account.autoResponseEnabled || false,
           assignedExternalAgentId: account.assignedExternalAgentId || null,
@@ -741,8 +738,28 @@ export class DatabaseStorage implements IStorage {
 
   async initializeData(): Promise<void> {
     try {
-      // No longer auto-create demo accounts - users must create their own individual WhatsApp accounts
-      console.log('✅ Sistema inicializado sin cuentas automáticas - usuarios deben crear sus propias cuentas');
+      // Initialize basic data if needed
+      const existingAccounts = await this.getWhatsAppAccounts();
+      if (existingAccounts.length === 0) {
+        // Create a default WhatsApp account for testing
+        await this.createWhatsAppAccount({
+          name: 'Demo WhatsApp',
+          description: 'Cuenta de demostración',
+          ownerName: 'Sistema Demo',
+          ownerPhone: '+1234567890',
+          status: 'disconnected',
+          adminId: 1,
+          autoResponseEnabled: false,
+          responseDelay: 1000
+        });
+      }
+      
+      // Asegurar que la cuenta 1 tenga asignado el agente Smartplanner IA permanentemente
+      const account1 = await this.getWhatsappAccount(1);
+      if (account1 && account1.assignedExternalAgentId !== '3') {
+        await this.setWhatsappAgentConfig(1, '3', true);
+        console.log('🔧 Asignación persistente restaurada: Cuenta 1 -> Smartplanner IA (ID: 3)');
+      }
     } catch (error) {
       console.error('Error initializing data:', error);
     }
@@ -912,88 +929,6 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error updating lead status:', error);
       return undefined;
-    }
-  }
-
-  // Dashboard metrics methods for real-time data
-  async getLeadCount(): Promise<number> {
-    try {
-      const result = await db.execute(sql`SELECT COUNT(*) as count FROM leads`);
-      return parseInt(result.rows[0].count as string) || 0;
-    } catch (error) {
-      console.error('Error getting lead count:', error);
-      return 0;
-    }
-  }
-
-  async getWhatsappAccountCount(): Promise<number> {
-    try {
-      const result = await db.execute(sql`SELECT COUNT(*) as count FROM whatsapp_accounts`);
-      return parseInt(result.rows[0].count as string) || 0;
-    } catch (error) {
-      console.error('Error getting WhatsApp account count:', error);
-      return 0;
-    }
-  }
-
-  async getMessageCount(): Promise<number> {
-    try {
-      const result = await db.execute(sql`SELECT COUNT(*) as count FROM messages`);
-      return parseInt(result.rows[0].count as string) || 0;
-    } catch (error) {
-      console.error('Error getting message count:', error);
-      return 0;
-    }
-  }
-
-  async getContactCount(): Promise<number> {
-    try {
-      const result = await db.execute(sql`SELECT COUNT(*) as count FROM contacts`);
-      return parseInt(result.rows[0].count as string) || 0;
-    } catch (error) {
-      console.error('Error getting contact count:', error);
-      return 0;
-    }
-  }
-
-  async getUserCount(): Promise<number> {
-    try {
-      const result = await db.execute(sql`SELECT COUNT(*) as count FROM users`);
-      return parseInt(result.rows[0].count as string) || 0;
-    } catch (error) {
-      console.error('Error getting user count:', error);
-      return 0;
-    }
-  }
-
-  async getLeadsThisMonth(): Promise<number> {
-    try {
-      const firstDayOfMonth = new Date();
-      firstDayOfMonth.setDate(1);
-      firstDayOfMonth.setHours(0, 0, 0, 0);
-      
-      const result = await db.execute(sql`
-        SELECT COUNT(*) as count FROM leads 
-        WHERE "createdAt" >= ${firstDayOfMonth.toISOString()}
-      `);
-      return parseInt(result.rows[0].count as string) || 0;
-    } catch (error) {
-      console.error('Error getting leads this month:', error);
-      return 0;
-    }
-  }
-
-  async getTotalRevenue(): Promise<number> {
-    try {
-      const result = await db.execute(sql`
-        SELECT COALESCE(SUM(CAST(value AS NUMERIC)), 0) as total 
-        FROM leads 
-        WHERE value IS NOT NULL AND value != ''
-      `);
-      return parseFloat(result.rows[0].total as string) || 0;
-    } catch (error) {
-      console.error('Error getting total revenue:', error);
-      return 0;
     }
   }
 }

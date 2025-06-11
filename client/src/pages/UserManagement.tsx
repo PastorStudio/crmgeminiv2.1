@@ -536,32 +536,18 @@ export default function UserManagement() {
       return updatedUser;
     },
     onSuccess: (data) => {
-      // Invalidar y refrescar inmediatamente
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       queryClient.invalidateQueries({ queryKey: ['/api/user-subscriptions'] });
-      
-      // Forzar refetch inmediato
-      refetch();
-      
-      // Solo cerrar el diálogo si estaba abierto (edición completa)
-      if (isDialogOpen) {
-        setIsDialogOpen(false);
-        setSelectedUser(null);
-        form.reset(defaultValues);
-      }
-      
+      setIsDialogOpen(false);
+      setSelectedUser(null);
+      form.reset(defaultValues);
       toast({
         title: "Usuario actualizado",
         description: data.message || "El usuario ha sido actualizado exitosamente",
       });
     },
-    onError: (error: Error, variables, context) => {
+    onError: (error: Error) => {
       console.error('Error al actualizar usuario:', error);
-      
-      // Revertir cualquier actualización optimista en caso de error
-      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
-      refetch();
-      
       toast({
         title: "Error",
         description: error.message || "No se pudo actualizar el usuario",
@@ -1286,18 +1272,6 @@ export default function UserManagement() {
                               onClick={() => {
                                 // Cambiar estado (activar/desactivar)
                                 const newStatus = user.status === 'active' ? 'inactive' : 'active';
-                                
-                                // Actualización optimista inmediata
-                                queryClient.setQueryData(['/api/users'], (oldData: any) => {
-                                  if (oldData && Array.isArray(oldData)) {
-                                    return oldData.map((u: any) => 
-                                      u.id === user.id ? { ...u, status: newStatus } : u
-                                    );
-                                  }
-                                  return oldData;
-                                });
-                                
-                                // Ejecutar mutación
                                 updateUserMutation.mutate({ 
                                   id: user.id, 
                                   userData: { status: newStatus } 
