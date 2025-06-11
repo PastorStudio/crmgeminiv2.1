@@ -113,8 +113,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       
-      // Autenticación dinámca contra la base de datos
-      const response = await fetch('/api/auth/login', {
+      // Detectar si es un usuario demo y usar el endpoint correspondiente
+      const isDemoUser = username.startsWith('demo_');
+      const endpoint = isDemoUser ? '/api/direct/demo/login-auth' : '/api/auth/login';
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
