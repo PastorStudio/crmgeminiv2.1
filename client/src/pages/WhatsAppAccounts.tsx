@@ -1583,7 +1583,7 @@ const WhatsAppAccounts = () => {
           </DialogHeader>
           
           <ExternalAgentConfigForm 
-            accountId={selectedAccountForAgent?.id || 0}
+            accountId={selectedAccountForAgent?.id || ""}
             onSuccess={() => {
               setAgentConfigDialogOpen(false);
               queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
@@ -1596,7 +1596,7 @@ const WhatsAppAccounts = () => {
 };
 
 // Componente para configurar agente externo
-const ExternalAgentConfigForm = ({ accountId, onSuccess }: { accountId: number; onSuccess: () => void }) => {
+const ExternalAgentConfigForm = ({ accountId, onSuccess }: { accountId: string; onSuccess: () => void }) => {
   const { toast } = useToast();
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [autoResponseEnabled, setAutoResponseEnabled] = useState(false);

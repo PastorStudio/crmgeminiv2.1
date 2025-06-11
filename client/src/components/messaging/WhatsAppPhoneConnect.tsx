@@ -16,7 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import { Smartphone, CheckCircle, XCircle, ArrowRightCircle } from 'lucide-react';
 
 export interface PhoneConnectProps {
-  accountId: number;
+  accountId: string;
   onSuccess?: () => void;
 }
 
