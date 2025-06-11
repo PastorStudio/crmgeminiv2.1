@@ -142,16 +142,18 @@ export class AIProviderService {
       throw new Error('Qwen API key not configured');
     }
 
-    // Qwen3 API implementation
+    // Qwen3 API implementation using OpenRouter
     try {
-      const response = await fetch('https://api.qwen.alibaba.com/v1/chat/completions', {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.qwenApiKey}`
+          'Authorization': `Bearer ${this.config.qwenApiKey}`,
+          'HTTP-Referer': 'https://geminicrm.online',
+          'X-Title': 'WhatsApp CRM AI'
         },
         body: JSON.stringify({
-          model: 'qwen-turbo',
+          model: 'qwen/qwen-2.5-72b-instruct',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: message }
@@ -162,7 +164,8 @@ export class AIProviderService {
       });
 
       if (!response.ok) {
-        throw new Error(`Qwen API error: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`Qwen API error: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
