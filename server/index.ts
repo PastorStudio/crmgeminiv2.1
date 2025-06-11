@@ -8621,6 +8621,15 @@ Responde de manera conversacional, profesional y útil según tu especializació
     }
   });
 
+  // Cargar rutas de intervenciones manuales
+  try {
+    const interventionRoutes = (await import('./routes/interventionRoutes')).default;
+    app.use('/api/interventions', interventionRoutes);
+    console.log('🔒 Rutas de intervención manual registradas exitosamente');
+  } catch (error) {
+    console.error('❌ Error cargando rutas de intervención:', error);
+  }
+
   // Inicializar el monitor de auto-respuestas para mensajes entrantes
   try {
     const { autoResponseMonitor } = await import('./services/autoResponseMonitor');

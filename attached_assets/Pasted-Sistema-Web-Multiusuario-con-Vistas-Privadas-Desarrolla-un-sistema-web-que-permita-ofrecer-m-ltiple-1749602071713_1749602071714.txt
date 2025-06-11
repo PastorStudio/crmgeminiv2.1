@@ -1,0 +1,69 @@
+Sistema Web Multiusuario con Vistas Privadas
+
+Desarrolla un sistema web que permita ofrecer múltiples entornos personalizados para cada cliente, utilizando un único backend centralizado. Cada usuario debe acceder a su información específica de manera privada y segura.
+
+Especificaciones técnicas necesarias:
+1. Autenticación y Autorización:
+
+Implementa un sistema seguro de inicio de sesión.
+
+Cada usuario tiene credenciales únicas (usuario y contraseña).
+
+Usa tokens JWT o sesiones seguras para gestionar la autenticación y mantener la sesión de usuario activa.
+
+2. Entorno privado del usuario (Frontend):
+
+Al iniciar sesión, cada usuario debe ser dirigido a un dashboard o entorno visual exclusivo.
+
+Todo el contenido mostrado debe ser filtrado y accesible exclusivamente para el usuario autenticado.
+
+Usa frameworks modernos como React, Angular o Vue para gestionar vistas privadas basadas en estado del usuario.
+
+3. Backend único (centralizado):
+
+Utiliza una sola API RESTful o GraphQL que gestione la lógica de negocio y la interacción con la base de datos.
+
+La API debe identificar al usuario autenticado mediante headers o tokens JWT en cada petición.
+
+Restringe automáticamente el acceso a datos según el usuario autenticado.
+
+4. Base de Datos:
+
+Usa una base de datos relacional (PostgreSQL o MySQL) o NoSQL (MongoDB) donde cada registro esté claramente asociado con el identificador único del usuario (user_id).
+
+Garantiza que las consultas SQL o NoSQL siempre filtren automáticamente por el usuario autenticado.
+
+5. Seguridad y Privacidad:
+
+Implementa mecanismos robustos de validación y sanitización de entradas.
+
+Evita cualquier posibilidad de acceso cruzado o filtración de información entre usuarios.
+
+Configura CORS adecuadamente para asegurar comunicaciones seguras.
+
+6. Arquitectura sugerida:
+
+diff
+Copiar
+- Frontend
+  ├─ Entorno Usuario A
+  ├─ Entorno Usuario B
+  └─ ...
+- Backend (único API)
+  ├─ Autenticación y Sesiones
+  ├─ Gestión y Validación de Usuarios
+  └─ Lógica de Negocios específica por usuario
+- Base de Datos
+  └─ Registros claramente asociados con user_id
+7. Escalabilidad:
+
+Diseña la aplicación para que sea fácilmente escalable horizontalmente en el backend y verticalmente en la base de datos.
+
+Ejemplo de caso de uso simple:
+El usuario inicia sesión.
+
+El sistema valida sus credenciales.
+
+El usuario es dirigido automáticamente a su entorno privado, mostrando solo su contenido y opciones específicas.
+
+Este esquema garantiza que cada usuario interactúe únicamente con sus propios datos, manteniendo privacidad total con una estructura eficiente y organizada.
