@@ -147,19 +147,12 @@ const accountSchema = z.object({
 });
 
 // Crear una nueva cuenta de WhatsApp
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     console.log('🆕 Creando nueva cuenta de WhatsApp:', req.body);
     
-    // Get user information from token
-    const decoded = req.user as any;
-    const userId = decoded.id || decoded.userId;
-    
-    if (!userId) {
-      return res.status(401).json({
-        error: 'Usuario no autenticado'
-      });
-    }
+    // Get user information - using demo user for now
+    const userId = 1; // Default user ID for demo
     
     // Validar datos de entrada
     const validation = accountSchema.safeParse(req.body);
@@ -316,8 +309,8 @@ async function syncSessionFolders() {
     const { existsSync, mkdirSync, readdirSync, rmSync, renameSync } = await import('fs');
     
     // Definir directorio de cuentas
-    const TEMP_DIR = path.join(process.cwd(), 'temp');
-    const ACCOUNTS_DIR = path.join(TEMP_DIR, 'whatsapp-accounts');
+    const TEMP_DIR = join(process.cwd(), 'temp');
+    const ACCOUNTS_DIR = join(TEMP_DIR, 'whatsapp-accounts');
     
     // Obtener todas las cuentas con sus IDs actualizados
     const accounts = await storage.getAllWhatsappAccounts();
@@ -325,23 +318,24 @@ async function syncSessionFolders() {
     
     // Para cada cuenta, asegurar que su carpeta tenga el nombre correcto
     for (const account of accounts) {
-      const expectedFolderPath = path.join(ACCOUNTS_DIR, `account_${account.id}`);
+      const expectedFolderPath = join(ACCOUNTS_DIR, `account_${account.id}`);
       
       // Buscar posibles carpetas antiguas para esta cuenta 
       for (let i = 1; i <= 10; i++) {
         // Evitar revisar la carpeta con el ID correcto
         if (i === account.id) continue;
         
-        const oldFolderPath = path.join(ACCOUNTS_DIR, `account_${i}`);
+        const oldFolderPath = join(ACCOUNTS_DIR, `account_${i}`);
         
         // Si existe una carpeta con nombre antiguo y no existe la nueva
-        if (fs.existsSync(oldFolderPath) && !fs.existsSync(expectedFolderPath)) {
+        if (existsSync(oldFolderPath) && !existsSync(expectedFolderPath)) {
           // Intentar determinar si esta carpeta pertenece a esta cuenta
-          const oldSessionFile = path.join(oldFolderPath, 'session_status.json');
+          const oldSessionFile = join(oldFolderPath, 'session_status.json');
           
-          if (fs.existsSync(oldSessionFile)) {
+          if (existsSync(oldSessionFile)) {
             try {
-              const sessionData = JSON.parse(fs.readFileSync(oldSessionFile, 'utf8'));
+              const { readFileSync } = await import('fs');
+              const sessionData = JSON.parse(readFileSync(oldSessionFile, 'utf8'));
               
               // Si la carpeta pertenece a esta cuenta o no hay forma de saberlo
               // (en el peor caso, es mejor reasignar la carpeta)
