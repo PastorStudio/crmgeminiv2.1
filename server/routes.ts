@@ -7294,12 +7294,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Enhanced WhatsApp Accounts Endpoint with Proper User Access Control
-  app.get('/api/whatsapp/accounts', async (req: Request, res: Response) => {
+  // Enhanced WhatsApp Accounts Endpoint with Complete Data Isolation for Demo Users
+  app.get('/api/whatsapp/accounts', ensureDemoDataIsolation, async (req: AuthenticatedRequest, res: Response) => {
     try {
       console.log('🔄 Obteniendo cuentas de WhatsApp...');
       
-      const accounts = await storage.getAllWhatsappAccounts();
+      let accounts;
+      
+      // Check if user is a demo user and apply data isolation
+      if (req.user && req.user.role === 'demo') {
+        console.log(`🔒 Usuario demo detectado: ${req.user.username} - aplicando aislamiento de datos`);
+        
+        // Get only accounts owned by or assigned to this demo user
+        const userAccounts = await db.select({
+          id: whatsappAccounts.id,
+          name: whatsappAccounts.name,
+          description: whatsappAccounts.description,
+          status: whatsappAccounts.status,
+          userId: whatsappAccounts.userId,
+          autoResponseEnabled: whatsappAccounts.autoResponseEnabled,
+          responseDelay: whatsappAccounts.responseDelay,
+          customPrompt: whatsappAccounts.customPrompt,
+          keepAliveEnabled: whatsappAccounts.keepAliveEnabled,
+          lastActivity: whatsappAccounts.lastActivity,
+          createdAt: whatsappAccounts.createdAt
+        })
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.userId, req.user.id));
+        
+        // Also get accounts assigned through user assignments
+        const assignedAccounts = await db.select({
+          id: whatsappAccounts.id,
+          name: whatsappAccounts.name,
+          description: whatsappAccounts.description,
+          status: whatsappAccounts.status,
+          userId: whatsappAccounts.userId,
+          autoResponseEnabled: whatsappAccounts.autoResponseEnabled,
+          responseDelay: whatsappAccounts.responseDelay,
+          customPrompt: whatsappAccounts.customPrompt,
+          keepAliveEnabled: whatsappAccounts.keepAliveEnabled,
+          lastActivity: whatsappAccounts.lastActivity,
+          createdAt: whatsappAccounts.createdAt
+        })
+        .from(whatsappAccounts)
+        .innerJoin(userAccountAssignments, eq(userAccountAssignments.whatsappAccountId, whatsappAccounts.id))
+        .where(and(
+          eq(userAccountAssignments.userId, req.user.id),
+          eq(userAccountAssignments.isActive, true)
+        ));
+        
+        // Combine and deduplicate accounts
+        const allUserAccounts = [...userAccounts, ...assignedAccounts];
+        const uniqueAccounts = allUserAccounts.filter((account, index, self) => 
+          index === self.findIndex(a => a.id === account.id)
+        );
+        
+        accounts = uniqueAccounts;
+        console.log(`🔒 Usuario demo ${req.user.username} tiene acceso a ${accounts.length} cuentas aisladas`);
+      } else {
+        // For non-demo users, get all accounts
+        accounts = await storage.getAllWhatsappAccounts();
+      }
+      
       console.log(`✅ Cuentas obtenidas: ${accounts.length}`);
       
       const transformedAccounts = accounts.map(account => {
@@ -7324,13 +7380,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           keepAliveEnabled: account.keepAliveEnabled !== false,
           lastActivity: lastActivityDisplay,
           createdAt: account.createdAt,
-          isConnected: realTimeStatus === 'connected' || realTimeStatus === 'ready'
+          isConnected: realTimeStatus === 'connected' || realTimeStatus === 'ready',
+          isDemoAccount: req.user?.role === 'demo'
         };
       });
 
       res.json({
         success: true,
-        accounts: transformedAccounts
+        accounts: transformedAccounts,
+        totalAccounts: transformedAccounts.length,
+        isDemo: req.user?.role === 'demo' || false
       });
     } catch (error) {
       console.error('Error fetching WhatsApp accounts:', error);

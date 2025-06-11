@@ -7,6 +7,7 @@ import { db } from '../db';
 import { whatsappAccounts, whatsappMessages, externalAgents } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import OpenAI from 'openai';
+import { chatGPTStreamer } from './chatgptPlusService';
 
 interface IndependentConfig {
   accountId: number;
@@ -155,37 +156,37 @@ class IndependentAutoResponseService {
   }
 
   /**
-   * Genera respuesta usando IA
+   * Genera respuesta usando ChatGPT Plus con streaming
    */
   private async generateAIResponse(messageText: string, agentName: string): Promise<string | null> {
     try {
-      const prompt = `Eres ${agentName}, un asistente de atención al cliente profesional y amigable.
-Responde al siguiente mensaje de manera útil y concisa:
-
-Mensaje: "${messageText}"
-
-Respuesta:`;
-
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: "Eres un asistente de atención al cliente profesional. Responde de manera útil, amigable y concisa."
-          },
-          {
-            role: "user",
-            content: messageText
-          }
-        ],
-        max_tokens: 150,
-        temperature: 0.7
-      });
-
-      return response.choices[0]?.message?.content || null;
+      console.log(`🤖 Generando respuesta con ChatGPT Plus para agente: ${agentName}`);
+      
+      // Use ChatGPT Plus streaming service instead of OpenAI API
+      const response = await chatGPTStreamer.generateResponse(messageText, agentName);
+      
+      if (response && response.trim().length > 0) {
+        console.log(`✅ Respuesta generada exitosamente: ${response.substring(0, 50)}...`);
+        return response;
+      }
+      
+      console.log('⚠️ ChatGPT Plus no generó respuesta, usando respuesta por defecto');
+      return 'Gracias por tu mensaje. Te responderemos pronto.';
+      
     } catch (error) {
-      console.error('❌ Error generando respuesta IA:', error);
-      return null;
+      console.error('❌ Error generando respuesta con ChatGPT Plus:', error);
+      
+      // Fallback to simple response instead of failing
+      const fallbackResponses = [
+        'Gracias por contactarnos. Tu mensaje es importante para nosotros.',
+        'Hemos recibido tu mensaje y te responderemos pronto.',
+        'Estamos aquí para ayudarte. Un representante se pondrá en contacto contigo.',
+        'Tu consulta ha sido recibida. Te responderemos en breve.'
+      ];
+      
+      const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+      console.log(`🔄 Usando respuesta de respaldo: ${randomResponse}`);
+      return randomResponse;
     }
   }
 
