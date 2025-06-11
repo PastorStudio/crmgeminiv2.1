@@ -19,36 +19,36 @@ export class RealWhatsAppActivator {
         return;
       }
 
-      // Initialize all available accounts
-      for (const account of accounts) {
-        try {
-          console.log(`🔄 Inicializando cuenta ${account.id} (${account.name})...`);
-          
-          const success = await whatsappMultiAccountManager.initializeAccount(account.id);
+      console.log(`📱 Found ${accounts.length} WhatsApp accounts in database`);
 
-          if (success) {
-            console.log(`✅ WhatsApp account ${account.id} initialized for real data`);
-
-            // Wait a moment before forcing QR
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            // Force QR generation for authentication
-            try {
-              await whatsappMultiAccountManager.forceRefreshQR(account.id);
-              console.log(`✅ QR forzado para cuenta ${account.id}`);
-            } catch (qrError) {
-              console.log(`⚠️ Error generando QR para cuenta ${account.id}:`, qrError.message);
-            }
-
-            // Activate persistent connection
-            whatsappMultiAccountManager.activateKeepAlive(account.id);
-            console.log('✅ Persistent connection activated');
-          } else {
-            console.log(`⚠️ Failed to initialize WhatsApp account ${account.id}`);
-          }
-        } catch (accountError) {
-          console.error(`❌ Error procesando cuenta ${account.id}:`, accountError);
+      // Initialize only the first account to avoid overload
+      const firstAccount = accounts[0];
+      try {
+        console.log(`🔄 Inicializando cuenta ${firstAccount.id} (${firstAccount.name})...`);
+        
+        // Check if account is already initialized
+        const instance = whatsappMultiAccountManager.getInstance(firstAccount.id);
+        if (instance && instance.status.initialized) {
+          console.log(`✅ Account ${firstAccount.id} already initialized`);
+          return;
         }
+        
+        const success = await whatsappMultiAccountManager.initializeAccount(firstAccount.id);
+
+        if (success) {
+          console.log(`✅ WhatsApp account ${firstAccount.id} initialized for real data`);
+
+          // Wait a moment before forcing QR
+          await new Promise(resolve => setTimeout(resolve, 3000));
+
+          // Activate persistent connection
+          whatsappMultiAccountManager.activateKeepAlive(firstAccount.id);
+          console.log('✅ Persistent connection activated');
+        } else {
+          console.log(`⚠️ Failed to initialize WhatsApp account ${firstAccount.id}`);
+        }
+      } catch (accountError) {
+        console.error(`❌ Error procesando cuenta ${firstAccount.id}:`, accountError);
       }
 
       console.log('🚀 Real WhatsApp system activated with existing accounts');

@@ -73,6 +73,11 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
   constructor() {
     super();
+    
+    // Increase max listeners to prevent memory leak warnings
+    this.setMaxListeners(20);
+    process.setMaxListeners(20);
+    
     this.loadAccountsFromDatabase();
 
     // Limpiar cache cada 10 minutos
@@ -349,14 +354,20 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     try {
       console.log(`🔄 Inicializando cuenta WhatsApp ID ${accountId}...`);
 
-      // Verificar si ya existe una instancia
+      // Verificar si ya existe una instancia y está funcionando
       const existingInstance = this.instances.get(accountId);
+      if (existingInstance && existingInstance.client && existingInstance.status.initialized) {
+        console.log(`✅ Account ${accountId} already initialized and working`);
+        return true;
+      }
+
+      // Limpiar instancia anterior si existe
       if (existingInstance && existingInstance.client) {
         try {
-          // Intentar destruir la instancia anterior
           await existingInstance.client.destroy();
+          console.log(`🔄 Cliente anterior destruido para cuenta ${accountId}`);
         } catch (destroyError) {
-          console.log(`🔄 Cliente destruido para cuenta ${accountId}`);
+          console.log(`🔄 Error destruyendo cliente anterior: ${destroyError.message}`);
         }
         this.instances.delete(accountId);
       }
@@ -443,17 +454,30 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       // Configurar eventos del cliente
       this.setupClientEvents(client, accountId);
 
-      // Inicializar el cliente con timeout
+      // Inicializar el cliente con timeout más corto
       const initPromise = client.initialize();
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Initialization timeout')), 30000)
+        setTimeout(() => reject(new Error('Initialization timeout')), 45000)
       );
 
-      await Promise.race([initPromise, timeoutPromise]);
-
-      newInstance.status.initialized = true;
-      console.log(`✅ Cuenta WhatsApp ${accountId} inicializada correctamente`);
-      return true;
+      try {
+        await Promise.race([initPromise, timeoutPromise]);
+        newInstance.status.initialized = true;
+        console.log(`✅ Cuenta WhatsApp ${accountId} inicializada correctamente`);
+        return true;
+      } catch (initError) {
+        console.error(`❌ Error en inicialización: ${initError.message}`);
+        // Limpiar instancia fallida
+        try {
+          if (newInstance.client) {
+            await newInstance.client.destroy();
+          }
+        } catch (cleanupError) {
+          console.log(`⚠️ Error limpiando instancia fallida: ${cleanupError.message}`);
+        }
+        this.instances.delete(accountId);
+        return false;
+      }
 
     } catch (error) {
       console.error(`Error inicializando cuenta WhatsApp ID ${accountId}:`, error);
