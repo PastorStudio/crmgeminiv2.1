@@ -48,6 +48,8 @@ import salesFlowRouter from "./routes/salesFlowRoutes";
 import flowExecutionRouter from "./routes/flowExecutionRoutes";
 import multiTenantRoutes from "./routes/multiTenantRoutes";
 import { multiTenantAuth, AuthenticatedRequest, getAccessibleAccountIds, canAccessAccount } from "./middleware/multiTenantAuth";
+import demoRoutes from "./routes/demoRoutes";
+import { ensureDemoDataIsolation } from "./middleware/demoDataIsolation";
 import { demoUserManager } from "./services/demoUserManager";
 import promptTestRoutes from "./routes/promptTestRoutes";
 
