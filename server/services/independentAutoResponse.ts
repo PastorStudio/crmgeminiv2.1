@@ -156,32 +156,44 @@ class IndependentAutoResponseService {
   }
 
   /**
-   * Genera respuesta usando ChatGPT Plus con streaming
+   * Genera respuesta usando el proveedor de IA configurado
    */
   private async generateAIResponse(messageText: string, agentName: string): Promise<string | null> {
     try {
-      console.log(`🤖 Generando respuesta con ChatGPT Plus Web para agente: ${agentName}`);
+      console.log(`🤖 Generando respuesta con proveedor de IA para agente: ${agentName}`);
       
-      // Use ChatGPT Plus direct service instead of OpenAI API
-      const response = await chatgptPlusDirectService.generateResponse(messageText, agentName);
+      // Import AI provider service
+      const { aiProviderService } = await import('./aiProviderService');
+      
+      // Generate response using configured provider
+      const response = await aiProviderService.generateResponse(messageText, agentName);
       
       if (response && response.trim().length > 0) {
         console.log(`✅ Respuesta generada exitosamente: ${response.substring(0, 50)}...`);
         return response;
       }
       
-      console.log('⚠️ ChatGPT Plus no generó respuesta, usando respuesta por defecto');
+      console.log('⚠️ No se generó respuesta, usando respuesta por defecto');
       return 'Gracias por tu mensaje. Te responderemos pronto.';
       
     } catch (error) {
-      console.error('❌ Error generando respuesta con ChatGPT Plus:', error);
+      console.error('❌ Error generando respuesta con IA:', error);
+      
+      // Check if error is related to billing/quota
+      if (error.message && (error.message.includes('quota') || error.message.includes('billing'))) {
+        console.log('💳 Error de cuota/facturación detectado');
+      }
       
       // Fallback to simple response instead of failing
       const fallbackResponses = [
         'Gracias por contactarnos. Tu mensaje es importante para nosotros.',
         'Hemos recibido tu mensaje y te responderemos pronto.',
         'Estamos aquí para ayudarte. Un representante se pondrá en contacto contigo.',
-        'Tu consulta ha sido recibida. Te responderemos en breve.'
+        'Tu consulta ha sido recibida. Te responderemos en breve.',
+        'Apreciamos tu contacto. Te responderemos lo antes posible.',
+        'Hemos recibido tu mensaje y te atenderemos a la brevedad.',
+        'Tu consulta es importante para nosotros. Te atenderemos pronto.',
+        'Gracias por contactarnos. Un representante se pondrá en contacto contigo.'
       ];
       
       const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
