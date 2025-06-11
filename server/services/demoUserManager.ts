@@ -34,18 +34,30 @@ class DemoUserManager {
     try {
       console.log(`🎭 Creando usuario demo para: ${config.customerName}`);
 
+      // Verificar si ya existe un usuario demo activo para este cliente
+      const existingDemo = await db.select()
+        .from(demoUsers)
+        .where(eq(demoUsers.customerName, config.customerName))
+        .where(eq(demoUsers.status, 'active'))
+        .limit(1);
+
+      if (existingDemo.length > 0) {
+        console.log(`⚠️ Usuario demo ya existe para: ${config.customerName}`);
+        throw new Error('Ya existe un demo activo para este cliente');
+      }
+
       // Generar credenciales únicas
       const timestamp = Date.now();
-      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      const randomSuffix = Math.random().toString(36).substring(2, 6);
       const username = `demo_${config.customerName.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${randomSuffix}`;
-      const password = `demo${Math.random().toString(36).substring(2, 10)}`;
+      const password = 'demo123456'; // Contraseña estándar para todos los demos
       
       // Encriptar contraseña
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Establecer expiración a 1 día (24 horas)
+      // Establecer expiración a 3 días (72 horas)
       const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 1);
+      expiresAt.setDate(expiresAt.getDate() + 3);
 
       // Crear registro en demo_users
       const [demoUser] = await db.insert(demoUsers).values({

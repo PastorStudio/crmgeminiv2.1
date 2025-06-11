@@ -6,6 +6,7 @@
 
 import { pool } from '../db';
 import { interventionManager } from './interventionManager';
+import { enhancedDemoDetector } from './enhancedDemoDetector';
 
 interface MessageContext {
   chatId: string;
@@ -142,6 +143,24 @@ class UnifiedMessageProcessor {
       }
 
       console.log(`📨 Procesando mensaje en cuenta ${context.accountId}: "${context.body.substring(0, 50)}..."`);
+
+      // PRIORIDAD 0: Verificar si es una solicitud de demo automática
+      const demoResponse = await enhancedDemoDetector.processMessage(
+        context.body, 
+        context.chatId, 
+        context.accountId, 
+        context.from
+      );
+
+      if (demoResponse) {
+        console.log(`🎭 Demo request detectado y procesado para cuenta ${context.accountId}`);
+        return {
+          success: true,
+          response: demoResponse,
+          agentName: 'Demo Assistant',
+          source: 'prompt'
+        };
+      }
 
       // PRIORIDAD 1: Verificar si hay prompt asignado
       if (this.promptConfigs.has(context.accountId)) {
