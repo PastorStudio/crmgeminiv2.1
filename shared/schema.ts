@@ -35,6 +35,19 @@ export const userSubscriptions = pgTable("user_subscriptions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Chat interventions table for managing manual intervention pauses
+export const chatInterventions = pgTable("chat_interventions", {
+  id: text("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  accountId: integer("account_id").notNull().references(() => whatsappAccounts.id),
+  chatId: text("chat_id").notNull(),
+  interventionAt: timestamp("intervention_at").defaultNow(),
+  pauseUntil: timestamp("pause_until").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Demo users table for trial accounts created by the agent
 export const demoUsers = pgTable("demo_users", {
   id: serial("id").primaryKey(),

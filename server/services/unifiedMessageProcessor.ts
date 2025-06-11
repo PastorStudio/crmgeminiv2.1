@@ -5,10 +5,12 @@
  */
 
 import { pool } from '../db';
+import { interventionManager } from './interventionManager';
 
 interface MessageContext {
   chatId: string;
   accountId: number;
+  userId?: number;
   from: string;
   body: string;
   contactName?: string;
@@ -92,9 +94,51 @@ class UnifiedMessageProcessor {
    */
   async processMessage(context: MessageContext): Promise<ProcessingResult> {
     try {
-      // No procesar mensajes propios
-      if (context.fromMe) {
+      // Obtener userId si no está proporcionado
+      if (!context.userId) {
+        const userQuery = await pool.query(
+          'SELECT user_id FROM whatsapp_accounts WHERE id = $1',
+          [context.accountId]
+        );
+        if (userQuery.rows.length > 0) {
+          context.userId = userQuery.rows[0].user_id;
+        }
+      }
+
+      // Si es mensaje manual (fromMe = true), registrar intervención
+      if (context.fromMe && context.userId) {
+        await interventionManager.registerIntervention({
+          userId: context.userId,
+          accountId: context.accountId,
+          chatId: context.chatId,
+          fromMe: context.fromMe,
+          timestamp: new Date()
+        });
+        console.log(`🔒 Intervención manual registrada - Chat ${context.chatId} pausado por 30 minutos`);
         return { success: false, source: 'none' };
+      }
+
+      // Verificar si hay intervención activa para este chat
+      if (context.userId) {
+        const isInterventionActive = await interventionManager.isInterventionActive(
+          context.userId,
+          context.accountId,
+          context.chatId
+        );
+
+        if (isInterventionActive) {
+          const interventionInfo = await interventionManager.getInterventionInfo(
+            context.userId,
+            context.accountId,
+            context.chatId
+          );
+          
+          if (interventionInfo) {
+            const remainingTime = Math.ceil((interventionInfo.pauseUntil.getTime() - new Date().getTime()) / (1000 * 60));
+            console.log(`🔒 Chat ${context.chatId} en pausa por intervención - ${remainingTime} minutos restantes`);
+            return { success: false, source: 'none' };
+          }
+        }
       }
 
       console.log(`📨 Procesando mensaje en cuenta ${context.accountId}: "${context.body.substring(0, 50)}..."`);
