@@ -335,10 +335,11 @@ export default function UserManagement() {
                 
                 return {
                   ...user,
-                  status: 'active',
-                  department: user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
-                             user.role === 'admin' ? 'administracion' : 
-                             user.role === 'supervisor' ? 'supervision' : 'atencion_cliente',
+                  status: user.status || 'active', // Use real status from database
+                  department: user.department || 
+                             (user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
+                              user.role === 'admin' ? 'administracion' : 
+                              user.role === 'supervisor' ? 'supervision' : 'atencion_cliente'),
                   totalLogins,
                   lastActivity,
                   currentPlan: currentPlan || 'Sin plan',
@@ -351,10 +352,11 @@ export default function UserManagement() {
                 console.warn('Error obteniendo datos del usuario:', user.id, error);
                 return {
                   ...user,
-                  status: 'active',
-                  department: user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
-                             user.role === 'admin' ? 'administracion' : 
-                             user.role === 'supervisor' ? 'supervision' : 'atencion_cliente',
+                  status: user.status || 'active', // Use real status from database
+                  department: user.department || 
+                             (user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
+                              user.role === 'admin' ? 'administracion' : 
+                              user.role === 'supervisor' ? 'supervision' : 'atencion_cliente'),
                   totalLogins: 0,
                   lastActivity: null,
                   currentPlan: 'Sin plan',
@@ -372,10 +374,11 @@ export default function UserManagement() {
           console.log('✅ Frontend: Usuarios reales cargados desde DB:', data.users.length);
           return data.users.map((user: any) => ({
             ...user,
-            status: 'active',
-            department: user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
-                       user.role === 'admin' ? 'administracion' : 
-                       user.role === 'supervisor' ? 'supervision' : 'atencion_cliente',
+            status: user.status || 'active', // Use real status from database
+            department: user.department || 
+                       (user.role === 'super_admin' || user.role === 'superadmin' ? 'administracion' : 
+                        user.role === 'admin' ? 'administracion' : 
+                        user.role === 'supervisor' ? 'supervision' : 'atencion_cliente'),
             currentPlan: 'Sin plan',
             currentPlanId: null,
             daysRemaining: null,
