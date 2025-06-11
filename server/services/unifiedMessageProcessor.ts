@@ -181,22 +181,62 @@ class UnifiedMessageProcessor {
 
       console.log(`🎯 Generando respuesta con prompt "${config.promptName}" para cuenta ${context.accountId}`);
 
-      // Construir prompt completo
+      // Obtener historial de conversación para contexto
+      const conversationHistory = await this.getConversationHistory(context.accountId, context.chatId);
+      
+      // Analizar si es un nuevo contacto o conversación existente
+      const isExistingConversation = conversationHistory.length > 0;
+      const recentBotMessages = conversationHistory
+        .filter(msg => msg.from_me === true)
+        .slice(0, 3);
+      
+      // Detectar si ya se saludó anteriormente
+      const hasGreeted = recentBotMessages.some(msg => 
+        this.containsGreeting(msg.content)
+      );
+
+      // Construir contexto conversacional
+      let conversationContext = '';
+      if (isExistingConversation) {
+        const recentMessages = conversationHistory.slice(0, 5).reverse();
+        conversationContext = `
+Historial de conversación reciente:
+${recentMessages.map(msg => 
+  `${msg.from_me ? 'Tú' : context.contactName || 'Cliente'}: ${msg.content}`
+).join('\n')}
+
+IMPORTANTE: Esta es una conversación CONTINUA. ${hasGreeted ? 'Ya saludaste anteriormente, NO vuelvas a saludar.' : 'Es el primer contacto, puedes saludar apropiadamente.'} Continúa la conversación de manera natural basándote en el historial.`;
+      }
+
+      // Construir prompt completo con contexto
       const systemPrompt = `${config.promptContent}
 
 ${config.customPrompt ? `Instrucciones adicionales: ${config.customPrompt}` : ''}
 
-Contexto:
+Contexto del contacto:
 - Nombre del contacto: ${context.contactName || 'Usuario'}
 - Idioma objetivo: ${config.targetLanguage}
-- Mantén siempre el tono y personalidad definida en el prompt principal.
-- Responde directamente al mensaje del usuario de manera útil y profesional.`;
+- Conversación existente: ${isExistingConversation ? 'SÍ' : 'NO'}
+- Ya saludaste antes: ${hasGreeted ? 'SÍ' : 'NO'}
+
+${conversationContext}
+
+REGLAS CRÍTICAS:
+1. Si ya existe historial de conversación, NO saludes nuevamente
+2. Continúa la conversación de manera natural basándote en el contexto
+3. Mantén la coherencia con mensajes anteriores
+4. Responde específicamente al último mensaje del usuario
+5. Mantén siempre el tono y personalidad definida en el prompt principal`;
 
       // Llamar a OpenAI
       const response = await this.callOpenAI(systemPrompt, context.body, config.temperature);
 
       if (response) {
-        console.log(`✅ Respuesta generada con prompt "${config.promptName}": "${response.substring(0, 50)}..."`);
+        // Guardar mensaje en historial
+        await this.saveMessageToHistory(context.accountId, context.chatId, context.body, false);
+        await this.saveMessageToHistory(context.accountId, context.chatId, response, true);
+        
+        console.log(`✅ Respuesta generada con prompt "${config.promptName}" (contexto: ${isExistingConversation ? 'continuo' : 'nuevo'}): "${response.substring(0, 50)}..."`);
         return {
           success: true,
           response: response,
@@ -217,15 +257,54 @@ Contexto:
    */
   private async processWithGenericAI(context: MessageContext): Promise<ProcessingResult> {
     try {
+      // Obtener historial para contexto conversacional
+      const conversationHistory = await this.getConversationHistory(context.accountId, context.chatId);
+      const isExistingConversation = conversationHistory.length > 0;
+      
+      // Verificar si ya se saludó
+      const recentBotMessages = conversationHistory
+        .filter(msg => msg.from_me === true)
+        .slice(0, 3);
+      const hasGreeted = recentBotMessages.some(msg => this.containsGreeting(msg.content));
+
+      // Construir contexto conversacional
+      let conversationContext = '';
+      if (isExistingConversation) {
+        const recentMessages = conversationHistory.slice(0, 5).reverse();
+        conversationContext = `
+Historial de conversación reciente:
+${recentMessages.map(msg => 
+  `${msg.from_me ? 'Tú' : context.contactName || 'Cliente'}: ${msg.content}`
+).join('\n')}
+
+IMPORTANTE: Esta es una conversación CONTINUA. ${hasGreeted ? 'Ya saludaste anteriormente, NO vuelvas a saludar.' : 'Es el primer contacto, puedes saludar apropiadamente.'} Continúa la conversación de manera natural.`;
+      }
+
       const systemPrompt = `Eres un asistente virtual profesional y útil. 
 Responde de manera amable y profesional a las consultas de los usuarios.
 Mantén las respuestas concisas y relevantes.
-Nombre del contacto: ${context.contactName || 'Usuario'}`;
+
+Contexto del contacto:
+- Nombre del contacto: ${context.contactName || 'Usuario'}
+- Conversación existente: ${isExistingConversation ? 'SÍ' : 'NO'}
+- Ya saludaste antes: ${hasGreeted ? 'SÍ' : 'NO'}
+
+${conversationContext}
+
+REGLAS CRÍTICAS:
+1. Si ya existe historial de conversación, NO saludes nuevamente
+2. Continúa la conversación de manera natural basándote en el contexto
+3. Responde específicamente al último mensaje del usuario
+4. Mantén coherencia con mensajes anteriores`;
 
       const response = await this.callOpenAI(systemPrompt, context.body, 0.7);
 
       if (response) {
-        console.log(`✅ Respuesta generada con IA genérica: "${response.substring(0, 50)}..."`);
+        // Guardar mensaje en historial
+        await this.saveMessageToHistory(context.accountId, context.chatId, context.body, false);
+        await this.saveMessageToHistory(context.accountId, context.chatId, response, true);
+        
+        console.log(`✅ Respuesta generada con IA genérica (contexto: ${isExistingConversation ? 'continuo' : 'nuevo'}): "${response.substring(0, 50)}..."`);
         return {
           success: true,
           response: response,
@@ -296,6 +375,77 @@ Nombre del contacto: ${context.contactName || 'Usuario'}`;
   async reloadPromptConfigurations(): Promise<void> {
     console.log('🔄 Forzando recarga de configuraciones de prompts...');
     await this.loadPromptConfigurations();
+  }
+
+  /**
+   * Obtener historial de conversación reciente
+   */
+  private async getConversationHistory(accountId: number, chatId: string): Promise<any[]> {
+    try {
+      const result = await pool.query(`
+        SELECT "accountId", "chatId", from_me, content, timestamp
+        FROM whatsapp_messages 
+        WHERE "accountId" = $1 AND "chatId" = $2
+        ORDER BY timestamp DESC
+        LIMIT 10
+      `, [accountId, chatId]);
+      
+      return result.rows;
+    } catch (error) {
+      console.error('❌ Error obteniendo historial de conversación:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Detectar si un mensaje contiene saludos
+   */
+  private containsGreeting(content: string): boolean {
+    const greetingPatterns = [
+      /hola\b/i,
+      /buenos días/i,
+      /buenas tardes/i,
+      /buenas noches/i,
+      /hello\b/i,
+      /hi\b/i,
+      /good morning/i,
+      /good afternoon/i,
+      /good evening/i,
+      /bienvenido/i,
+      /welcome/i,
+      /¿en qué puedo ayudarte/i,
+      /how can I help/i,
+      /cómo puedo asistirte/i,
+      /gracias por contactarnos/i,
+      /thank you for contacting/i,
+      /es un placer saludarte/i,
+      /nice to meet you/i,
+      /un gusto conocerte/i,
+      /me presento/i,
+      /soy .* y estoy aquí para/i
+    ];
+
+    return greetingPatterns.some(pattern => pattern.test(content));
+  }
+
+  /**
+   * Guardar mensaje en el historial
+   */
+  private async saveMessageToHistory(accountId: number, chatId: string, content: string, fromMe: boolean): Promise<void> {
+    try {
+      const messageId = `${chatId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      
+      await pool.query(`
+        INSERT INTO whatsapp_messages (
+          "accountId", "chatId", "messageId", from_me, content, 
+          timestamp, "hasMedia", "createdAt"
+        ) VALUES ($1, $2, $3, $4, $5, NOW(), false, NOW())
+        ON CONFLICT ("messageId") DO NOTHING
+      `, [accountId, chatId, messageId, fromMe, content]);
+      
+    } catch (error) {
+      console.error('❌ Error guardando mensaje en historial:', error);
+    }
   }
 }
 
