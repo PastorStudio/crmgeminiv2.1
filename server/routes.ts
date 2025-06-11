@@ -8572,5 +8572,9 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
   // Multi-tenant routes for user-based data isolation
   app.use('/api/tenant', multiTenantRoutes);
 
+  // ChatGPT Plus test and monitoring routes
+  const chatgptPlusTestRoutes = await import('./routes/chatgptPlusTest');
+  app.use('/api/chatgpt-plus', chatgptPlusTestRoutes.default);
+
   return httpServer;
 }
