@@ -782,39 +782,43 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
-   * Obtiene código QR optimizado para producción
+   * Obtiene código QR real de WhatsApp Web - NO USAR DATOS FICTICIOS
    */
   async getLatestQR(accountId: number): Promise<string | null> {
     try {
-      // Primero verificar el cache en memoria
-      const cachedQR = this.getCachedQR(accountId);
-      if (cachedQR) {
-        console.log(`Usando QR almacenado en memoria para cuenta ID ${accountId}`);
-        return cachedQR.text;
-      }
-
+      // CRÍTICO: Solo devolver QR codes reales de WhatsApp Web
       const instance = this.instances.get(accountId);
       if (!instance) {
         console.error(`Cuenta WhatsApp ID ${accountId} no inicializada`);
         return null;
       }
 
-      // Verificar estado de la instancia
-      if (instance.status.qrCode) {
+      // Verificar cache en memoria con QR real
+      const cachedQR = this.getCachedQR(accountId);
+      if (cachedQR && cachedQR.text && cachedQR.text.length > 50) {
+        console.log(`✅ REAL QR code encontrado en cache para cuenta ${accountId}: ${cachedQR.text.substring(0, 50)}...`);
+        return cachedQR.text;
+      }
+
+      // Verificar estado de la instancia con QR real
+      if (instance.status.qrCode && instance.status.qrCode.length > 50) {
+        console.log(`✅ REAL QR code encontrado en instancia para cuenta ${accountId}: ${instance.status.qrCode.substring(0, 50)}...`);
         this.cacheQRCode(accountId, instance.status.qrCode, instance.status.qrDataUrl);
         return instance.status.qrCode;
       }
 
-      // Leer desde archivo de manera segura
+      // Leer desde archivo solo si contiene QR real
       const qrFromFile = this.readQRFromFile(instance.qrCodePath);
-      if (qrFromFile) {
+      if (qrFromFile && qrFromFile.length > 50) {
+        console.log(`✅ REAL QR code encontrado en archivo para cuenta ${accountId}: ${qrFromFile.substring(0, 50)}...`);
         this.cacheQRCode(accountId, qrFromFile);
         return qrFromFile;
       }
 
+      console.log(`⚠️ No hay QR code real disponible para cuenta ${accountId} - iniciando generación`);
       return null;
     } catch (error) {
-      console.error(`Error obteniendo QR para cuenta ${accountId}:`, error);
+      console.error(`Error obteniendo QR real para cuenta ${accountId}:`, error);
       return null;
     }
   }

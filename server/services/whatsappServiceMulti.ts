@@ -90,32 +90,34 @@ const whatsappServiceMulti = {
         }
       }
 
-      // Intentar obtener QR del cache o del cliente directamente
+      console.log(`🔍 Obteniendo QR REAL para cuenta ${accountId}`);
+
+      // Intentar obtener QR real del administrador de cuentas
       const qrData = await whatsappMultiAccountManager.getLatestQR(accountId);
       
-      if (qrData) {
-        console.log(`✅ QR code obtenido para cuenta ${accountId}: ${qrData.substring(0, 50)}...`);
+      if (qrData && qrData.length > 50) {
+        console.log(`✅ REAL QR code obtenido para cuenta ${accountId}: ${qrData.substring(0, 50)}...`);
         return qrData;
       }
 
-      // Si no hay QR disponible, forzar inicialización
-      console.log(`🔄 Inicializando cuenta ${accountId} para generar QR`);
+      // Si no hay QR disponible, forzar inicialización REAL
+      console.log(`🔄 Inicializando cuenta ${accountId} para generar QR REAL de WhatsApp Web`);
       await whatsappMultiAccountManager.initializeAccount(accountId);
       
-      // Esperar un momento para que se genere el QR
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Esperar tiempo adecuado para que WhatsApp Web genere QR real
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
-      // Intentar obtener QR nuevamente
+      // Intentar obtener QR real nuevamente
       const newQrData = await whatsappMultiAccountManager.getLatestQR(accountId);
-      if (newQrData) {
-        console.log(`✅ Nuevo QR code generado para cuenta ${accountId}`);
+      if (newQrData && newQrData.length > 50) {
+        console.log(`✅ NUEVO QR REAL generado para cuenta ${accountId}: ${newQrData.substring(0, 50)}...`);
         return newQrData;
       }
 
-      console.warn(`⚠️ No se pudo generar QR para cuenta ${accountId}`);
+      console.warn(`⚠️ No se pudo generar QR REAL para cuenta ${accountId} - solo devolver QR auténticos`);
       return null;
     } catch (error) {
-      console.error(`❌ Error obteniendo QR para cuenta ${accountId}:`, error);
+      console.error(`❌ Error obteniendo QR REAL para cuenta ${accountId}:`, error);
       return null;
     }
   },
