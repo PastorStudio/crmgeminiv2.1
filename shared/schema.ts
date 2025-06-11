@@ -52,9 +52,10 @@ export const chatInterventions = pgTable("chat_interventions", {
 export const demoUsers = pgTable("demo_users", {
   id: serial("id").primaryKey(),
   customerName: text("customer_name").notNull(),
-  phoneNumber: text("phone_number").notNull(),
+  phoneNumber: text("phone_number").default(""),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  demoNumber: integer("demo_number").notNull().unique(), // Sequential number 1-1000
   chatId: text("chat_id"), // WhatsApp chat where demo was requested
   requestedAt: timestamp("requested_at").defaultNow(),
   expiresAt: timestamp("expires_at").notNull(),
