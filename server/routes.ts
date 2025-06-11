@@ -2203,37 +2203,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('📊 Getting real dashboard metrics from database...');
       
-      // Get authentic database counts - no cached data
-      const [leadsResult, accountsResult, messagesResult, contactsResult, usersResult] = await Promise.all([
-        pool.query('SELECT COUNT(*) as count FROM leads'),
-        pool.query('SELECT COUNT(*) as count FROM whatsapp_accounts'),
-        pool.query('SELECT COUNT(*) as count FROM messages'),
-        pool.query('SELECT COUNT(*) as count FROM contacts'),
-        pool.query('SELECT COUNT(*) as count FROM users')
-      ]);
-      
-      const totalLeads = parseInt(leadsResult.rows[0].count) || 0;
-      const whatsappAccounts = parseInt(accountsResult.rows[0].count) || 0;
-      const totalMessages = parseInt(messagesResult.rows[0].count) || 0;
-      const totalContacts = parseInt(contactsResult.rows[0].count) || 0;
-      const totalUsers = parseInt(usersResult.rows[0].count) || 0;
+      // Get authentic database counts using storage methods
+      const totalLeads = await storage.getLeadCount();
+      const whatsappAccounts = await storage.getWhatsappAccountCount();
+      const totalMessages = await storage.getMessageCount();
+      const totalContacts = await storage.getContactCount();
+      const totalUsers = await storage.getUserCount();
       
       // Calculate this month's leads
-      const firstDayOfMonth = new Date();
-      firstDayOfMonth.setDate(1);
-      firstDayOfMonth.setHours(0, 0, 0, 0);
+      const newLeadsThisMonth = await storage.getLeadsThisMonth();
       
-      const monthlyLeadsResult = await pool.query(
-        'SELECT COUNT(*) as count FROM leads WHERE "createdAt" >= $1',
-        [firstDayOfMonth]
-      );
-      const newLeadsThisMonth = parseInt(monthlyLeadsResult.rows[0].count) || 0;
-      
-      // Calculate revenue from leads with actual budget data
-      const revenueResult = await pool.query(
-        'SELECT COALESCE(SUM(CAST(value AS NUMERIC)), 0) as total FROM leads WHERE value IS NOT NULL AND value != \'\''
-      );
-      const revenue = parseFloat(revenueResult.rows[0].total) || 0;
+      // Calculate revenue from leads
+      const revenue = await storage.getTotalRevenue();
       
       const realStats = {
         id: 1,
