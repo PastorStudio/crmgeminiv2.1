@@ -8785,6 +8785,16 @@ Responde de manera conversacional, profesional y útil según tu especializació
     console.error('❌ Error iniciando sistema de usuarios demo:', error);
   }
 
+  // ===== LIMPIEZA DE CONFIGURACIONES PHANTOM =====
+  console.log('🧹 Sincronizando configuraciones de WhatsApp con base de datos...');
+  try {
+    const { WhatsAppAccountConfigManager } = await import('./externalAgentsSimple');
+    await WhatsAppAccountConfigManager.syncWithDatabase();
+    console.log('✅ Configuraciones sincronizadas correctamente');
+  } catch (error) {
+    console.error('❌ Error sincronizando configuraciones:', error);
+  }
+
   // ===== SISTEMA DE NOTIFICACIONES INTEGRADO =====
   console.log('🔔 Sistema de notificaciones integrado en servidor principal');
 

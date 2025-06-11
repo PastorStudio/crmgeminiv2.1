@@ -227,4 +227,35 @@ export class WhatsAppAccountConfigManager {
   static getAllConfigs(): WhatsAppAccountConfig[] {
     return Array.from(whatsappAccountConfigs.values());
   }
+
+  // Limpiar configuraciones en memoria para cuentas que no existen en BD
+  static async syncWithDatabase(): Promise<void> {
+    try {
+      const { db } = await import('./db');
+      const { whatsappAccounts } = await import('@shared/schema');
+      
+      // Obtener todas las cuentas que realmente existen en la BD
+      const existingAccounts = await db.select({ id: whatsappAccounts.id }).from(whatsappAccounts);
+      const existingAccountIds = new Set(existingAccounts.map(acc => acc.id));
+      
+      // Limpiar configuraciones en memoria para cuentas que no existen
+      const configAccountIds = Array.from(whatsappAccountConfigs.keys());
+      for (const accountId of configAccountIds) {
+        if (!existingAccountIds.has(accountId)) {
+          whatsappAccountConfigs.delete(accountId);
+          console.log(`🧹 Configuración limpiada para cuenta inexistente: ${accountId}`);
+        }
+      }
+      
+      console.log(`✅ Sincronización completada - ${existingAccountIds.size} cuentas activas`);
+    } catch (error) {
+      console.error('Error sincronizando configuraciones:', error);
+    }
+  }
+
+  // Limpiar todas las configuraciones (para testing y reset)
+  static clearAllConfigs(): void {
+    whatsappAccountConfigs.clear();
+    console.log('🧹 Todas las configuraciones de WhatsApp limpiadas');
+  }
 }
