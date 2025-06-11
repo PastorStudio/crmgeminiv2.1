@@ -11,9 +11,9 @@ import { WhatsAppChat, WhatsAppMessage, WhatsAppStatus } from './whatsappInterfa
 const whatsappServiceMulti = {
   /**
    * Inicializa una cuenta de WhatsApp
-   * @param accountId ID de la cuenta de WhatsApp
+   * @param accountId ID de la cuenta de WhatsApp (alphanumeric)
    */
-  async initializeAccount(accountId: number): Promise<boolean> {
+  async initializeAccount(accountId: string): Promise<boolean> {
     try {
       return await whatsappMultiAccountManager.initializeAccount(accountId);
     } catch (error) {
@@ -24,12 +24,12 @@ const whatsappServiceMulti = {
 
   /**
    * Envía un mensaje a través de una cuenta específica de WhatsApp
-   * @param accountId ID de la cuenta de WhatsApp
+   * @param accountId ID de la cuenta de WhatsApp (alphanumeric)
    * @param to Destinatario del mensaje
    * @param body Contenido del mensaje
    * @param options Opciones adicionales para el mensaje
    */
-  async sendMessage(accountId: number, to: string, body: string, options: any = {}): Promise<any> {
+  async sendMessage(accountId: string, to: string, body: string, options: any = {}): Promise<any> {
     try {
       const result = await whatsappMultiAccountManager.sendMessage(accountId, to, body, options);
       
@@ -51,9 +51,9 @@ const whatsappServiceMulti = {
   
   /**
    * Obtiene el estado de una cuenta de WhatsApp
-   * @param accountId ID de la cuenta de WhatsApp
+   * @param accountId ID de la cuenta de WhatsApp (alphanumeric)
    */
-  getStatus(accountId?: number): WhatsAppStatus {
+  getStatus(accountId?: string): WhatsAppStatus {
     // Si no se proporciona ID, usar la primera cuenta disponible
     // Esta compatibilidad es para las partes del código que aún no se han adaptado a múltiples cuentas
     if (accountId === undefined) {
