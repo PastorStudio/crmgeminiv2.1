@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Bot, CheckCircle, XCircle, Loader2, Save } from 'lucide-react';
 
 interface AgentConfigSectionProps {
-  accountId: number;
+  accountId: string;
 }
 
 interface ExternalAgent {
