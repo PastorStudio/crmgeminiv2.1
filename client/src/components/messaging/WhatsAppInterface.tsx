@@ -31,7 +31,11 @@ import {
   FileImage,
   Mic,
   Paperclip,
-  Smile
+  Smile,
+  Volume2,
+  FileText,
+  ExternalLink,
+  Image
 } from 'lucide-react';
 
 // Interfaz para los chats de WhatsApp
@@ -90,28 +94,7 @@ interface Message {
   aiGenerated?: boolean;
 }
 
-import {
-  Search,
-  Send,
-  Paperclip,
-  User,
-  Phone,
-  Video,
-  MoreVertical,
-  Smile,
-  Mic,
-  Image,
-  ChevronDown,
-  ChevronRight,
-  Check,
-  CheckCheck,
-  Clock,
-  AlertCircle,
-  RefreshCw,
-  MessageSquare,
-  Brain, // Reemplazamos BrainCircuit por Brain
-  Zap
-} from 'lucide-react';
+// Remove duplicate imports - icons are imported above
 
 interface WhatsAppInterfaceProps {
   selectedLeadId?: number;
@@ -703,17 +686,86 @@ export function WhatsAppInterface({ selectedLeadId, onSelectLead }: WhatsAppInte
                           {msg.hasMedia && (
                             <div className="mb-2">
                               {msg.mediaUrl ? (
-                                <img 
-                                  src={msg.mediaUrl} 
-                                  alt={msg.caption || 'Imagen'} 
-                                  className="rounded mb-1 w-full object-cover"
-                                />
+                                <div className="rounded overflow-hidden">
+                                  {/* Determine media type and render appropriately */}
+                                  {(() => {
+                                    const mediaType = msg.type || 'image';
+                                    const isImage = mediaType === 'image' || (msg.mediaUrl && (msg.mediaUrl.includes('.jpg') || msg.mediaUrl.includes('.jpeg') || msg.mediaUrl.includes('.png') || msg.mediaUrl.includes('.gif') || msg.mediaUrl.includes('.webp')));
+                                    const isVideo = mediaType === 'video' || (msg.mediaUrl && (msg.mediaUrl.includes('.mp4') || msg.mediaUrl.includes('.mov') || msg.mediaUrl.includes('.avi') || msg.mediaUrl.includes('.webm')));
+                                    const isAudio = mediaType === 'audio' || mediaType === 'ptt' || (msg.mediaUrl && (msg.mediaUrl.includes('.mp3') || msg.mediaUrl.includes('.wav') || msg.mediaUrl.includes('.ogg') || msg.mediaUrl.includes('.m4a')));
+                                    const isDocument = mediaType === 'document' || (!isImage && !isVideo && !isAudio);
+
+                                    if (isImage) {
+                                      return (
+                                        <img 
+                                          src={msg.mediaUrl} 
+                                          alt={msg.caption || 'Imagen'} 
+                                          className="rounded mb-1 w-full max-w-xs object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                          onClick={() => window.open(msg.mediaUrl, '_blank')}
+                                        />
+                                      );
+                                    } else if (isVideo) {
+                                      return (
+                                        <video 
+                                          controls 
+                                          className="rounded mb-1 w-full max-w-xs"
+                                          preload="metadata"
+                                        >
+                                          <source src={msg.mediaUrl} type="video/mp4" />
+                                          Tu navegador no soporta la reproducción de videos.
+                                        </video>
+                                      );
+                                    } else if (isAudio) {
+                                      return (
+                                        <div className="bg-gray-50 rounded-lg p-3 flex items-center gap-3 max-w-xs">
+                                          <div className="flex-shrink-0">
+                                            {mediaType === 'ptt' ? (
+                                              <Mic size={20} className="text-blue-500" />
+                                            ) : (
+                                              <Volume2 size={20} className="text-blue-500" />
+                                            )}
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <audio controls className="w-full">
+                                              <source src={msg.mediaUrl} type="audio/mpeg" />
+                                              Tu navegador no soporta la reproducción de audio.
+                                            </audio>
+                                            {mediaType === 'ptt' && (
+                                              <div className="text-xs text-gray-500 mt-1">Nota de voz</div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    } else if (isDocument) {
+                                      return (
+                                        <div className="bg-gray-50 rounded-lg p-3 flex items-center gap-3 max-w-xs cursor-pointer hover:bg-gray-100 transition-colors"
+                                             onClick={() => window.open(msg.mediaUrl, '_blank')}>
+                                          <FileText size={20} className="text-blue-500 flex-shrink-0" />
+                                          <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium text-gray-700 truncate">
+                                              {msg.filename || 'Documento'}
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                              {msg.filesize ? `${(msg.filesize / 1024 / 1024).toFixed(1)} MB` : 'Toca para abrir'}
+                                            </div>
+                                          </div>
+                                          <ExternalLink size={16} className="text-gray-400 flex-shrink-0" />
+                                        </div>
+                                      );
+                                    }
+                                    
+                                    return null;
+                                  })()}
+                                </div>
                               ) : (
                                 <div className="bg-gray-100 rounded flex items-center justify-center h-32 w-full">
-                                  <Image size={30} className="text-gray-400" />
+                                  <div className="text-center">
+                                    <Image size={30} className="text-gray-400 mx-auto mb-2" />
+                                    <div className="text-xs text-gray-500">Multimedia no disponible</div>
+                                  </div>
                                 </div>
                               )}
-                              {msg.caption && <div className="text-xs mt-1">{msg.caption}</div>}
+                              {msg.caption && <div className="text-xs mt-2 text-gray-600">{msg.caption}</div>}
                             </div>
                           )}
                           
