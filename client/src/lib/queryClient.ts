@@ -21,9 +21,13 @@ export async function apiRequest<T = any>(
   options?: RequestOptions
 ): Promise<T> {
   const method = options?.method || 'GET';
+  
+  // Get JWT token from localStorage
+  const token = localStorage.getItem('crm_auth_token');
+  
   const headers = {
     'Content-Type': 'application/json',
-    'x-user-id': currentUserId,
+    ...(token && { 'Authorization': `Bearer ${token}` }),
     ...options?.headers
   };
 
