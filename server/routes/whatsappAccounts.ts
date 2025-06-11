@@ -276,9 +276,7 @@ async function syncSessionFolders() {
   try {
     console.log("Sincronizando carpetas de sesión con IDs reorganizados...");
     
-    // Importar módulos necesarios
-    const path = require('path');
-    const fs = require('fs');
+    // Using imported path and fs modules
     
     // Definir directorio de cuentas
     const TEMP_DIR = path.join(process.cwd(), 'temp');
@@ -368,9 +366,7 @@ async function cleanAllSessionFolders() {
   try {
     console.log("🧹 Limpiando todas las carpetas de sesión...");
     
-    // Importar módulos necesarios
-    const path = require('path');
-    const fs = require('fs');
+    // Using imported path and fs modules
     
     // Definir directorio de cuentas
     const TEMP_DIR = path.join(process.cwd(), 'temp');
