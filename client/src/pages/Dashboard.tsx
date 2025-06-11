@@ -5,6 +5,7 @@ import DashboardStats from "@/components/dashboard/DashboardStats";
 import AdminMetrics from "@/components/dashboard/AdminMetrics";
 import UpcomingActivities from "@/components/dashboard/UpcomingActivities";
 import RecentConversations from "@/components/dashboard/RecentConversations";
+import { UserDataIsolationStatus } from "@/components/UserDataIsolationStatus";
 
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";

@@ -1242,7 +1242,15 @@ const WhatsAppAccounts = () => {
                     <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs border border-blue-300">
                       {account.id}
                     </div>
-                    <CardTitle className="text-xl">{account.name}</CardTitle>
+                    <div className="flex flex-col">
+                      <CardTitle className="text-xl">{account.name}</CardTitle>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">Creado por:</span>
+                        <Badge variant="outline" className="text-xs">
+                          {account.createdByUserFullName || account.createdByUser || 'Usuario desconocido'}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
                   {renderStatusBadge(account.status, account.currentStatus?.authenticated)}
                 </div>
