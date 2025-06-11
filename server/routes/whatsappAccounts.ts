@@ -6,6 +6,9 @@ import { storage } from '../storage';
 import { z } from 'zod';
 import { whatsappMultiAccountManager } from '../services/whatsappMultiAccountManager';
 import whatsappServiceMulti from '../services/whatsappServiceMulti';
+import jwt from 'jsonwebtoken';
+import path from 'path';
+import fs from 'fs';
 
 const router = Router();
 
@@ -19,7 +22,6 @@ router.get('/', async (req, res) => {
     }
 
     const token = authHeader.substring(7);
-    const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
     const userId = decoded.userId || decoded.id;
     
