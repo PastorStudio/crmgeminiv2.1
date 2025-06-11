@@ -3073,7 +3073,10 @@ app.use((req, res, next) => {
   app.use('/api/modern-messaging', modernMessagingRouter);
 
   // WhatsApp accounts routes
-  app.use('/api/whatsapp-accounts', simpleWhatsAppRouter);
+  app.use('/api/whatsapp-accounts', (req, res, next) => {
+    console.log(`🔍 WhatsApp Router Middleware - ${req.method} ${req.originalUrl} - ID: "${req.params.id || 'none'}"`);
+    next();
+  }, simpleWhatsAppRouter);
 
   // Import and register new routes for leads management
   const leadsRouter = (await import('./routes/leads')).default;
