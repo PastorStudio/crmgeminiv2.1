@@ -374,5 +374,113 @@ export function registerDirectAPIRoutes(app: Express): void {
     }
   });
 
+  // Manual demo creation endpoint
+  app.post("/api/direct/demo/create-manual", async (req: Request, res: Response) => {
+    try {
+      const { customerName, phoneNumber } = req.body;
+
+      console.log(`🎭 Creating manual demo for customer: ${customerName}`);
+
+      if (!customerName || !phoneNumber) {
+        return res.status(400).json({
+          success: false,
+          message: "Nombre del cliente y número de teléfono son requeridos"
+        });
+      }
+
+      // Import necessary modules
+      const { db } = await import('../db');
+      const { demoUsers } = await import('@shared/schema');
+
+      // Generate unique username and password
+      const timestamp = Date.now();
+      const username = `demo_${customerName.toLowerCase().replace(/\s+/g, '_')}_${timestamp}`;
+      const password = `demo123456`; // Standard demo password
+
+      // Set expiration to 3 days from now
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 3);
+
+      // Create demo user in database
+      const [demoUser] = await db.insert(demoUsers).values({
+        customerName,
+        phoneNumber,
+        username,
+        password,
+        chatId: null,
+        requestedAt: new Date(),
+        expiresAt,
+        status: 'active',
+        createdBy: 'manual_admin',
+        notes: 'Demo creado manualmente por administrador',
+        lastLoginAt: null,
+        loginCount: 0
+      }).returning();
+
+      console.log(`✅ Manual demo created successfully: ${username}`);
+
+      res.json({
+        success: true,
+        message: "Demo creado exitosamente",
+        demo: {
+          id: demoUser.id,
+          customerName: demoUser.customerName,
+          phoneNumber: demoUser.phoneNumber,
+          username: demoUser.username,
+          password: demoUser.password,
+          expiresAt: demoUser.expiresAt,
+          status: demoUser.status
+        }
+      });
+    } catch (error) {
+      console.error("❌ Error creating manual demo:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al crear demo"
+      });
+    }
+  });
+
+  // Demo list endpoint
+  app.get("/api/direct/demo/list", async (req: Request, res: Response) => {
+    try {
+      console.log("📋 Fetching demo users list...");
+      
+      const { db } = await import('../db');
+      const { demoUsers } = await import('@shared/schema');
+      const { desc } = await import('drizzle-orm');
+
+      const demos = await db.select().from(demoUsers).orderBy(desc(demoUsers.requestedAt));
+      
+      const enrichedDemos = demos.map(demo => {
+        const now = new Date();
+        const expirationDate = new Date(demo.expiresAt);
+        const timeDiff = expirationDate.getTime() - now.getTime();
+        const daysRemaining = Math.max(0, Math.ceil(timeDiff / (1000 * 3600 * 24)));
+        const isExpired = now > expirationDate;
+
+        return {
+          ...demo,
+          daysRemaining,
+          isExpired,
+          loginCount: demo.loginCount || 0
+        };
+      });
+
+      console.log(`✅ Returning ${enrichedDemos.length} demo users`);
+
+      res.json({
+        success: true,
+        demos: enrichedDemos
+      });
+    } catch (error) {
+      console.error('❌ Error fetching demos:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al cargar demos'
+      });
+    }
+  });
+
   console.log('Rutas de API directa registradas correctamente');
 }
