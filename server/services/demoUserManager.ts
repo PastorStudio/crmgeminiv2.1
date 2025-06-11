@@ -330,6 +330,23 @@ class DemoUserManager {
   }
 
   /**
+   * Inicializa el sistema de gestión de usuarios demo
+   */
+  async initialize(): Promise<void> {
+    console.log('🎭 Inicializando sistema de gestión de usuarios demo...');
+    
+    try {
+      // Ejecutar limpieza inicial de usuarios expirados
+      await this.cleanupExpiredDemoUsers();
+      
+      console.log('✅ Sistema de usuarios demo inicializado correctamente');
+    } catch (error) {
+      console.error('❌ Error inicializando sistema de usuarios demo:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Programa limpieza automática cada hora
    */
   startAutomaticCleanup(): void {

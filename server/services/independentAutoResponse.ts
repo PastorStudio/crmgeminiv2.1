@@ -200,10 +200,9 @@ class IndependentAutoResponseService {
         chatId,
         messageId: `auto_${Date.now()}`,
         content: response,
-        fromMe: true,
+        from_me: true,
         timestamp: new Date(),
-        type: 'text',
-        status: 'sent'
+        hasMedia: false
       });
     } catch (error) {
       console.error('❌ Error guardando respuesta:', error);

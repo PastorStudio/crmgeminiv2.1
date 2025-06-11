@@ -1,2 +1,6 @@
-2025/06/11-18:54:40.580 283 Creating DB /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb since it was missing.
-2025/06/11-18:54:40.598 283 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/11-18:56:27.973 657 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/11-18:56:27.974 657 Recovering log #82
+2025/06/11-18:56:27.986 657 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000082.log 
+2025/06/11-18:56:27.986 657 Delete type=2 #72
+2025/06/11-18:56:27.986 657 Delete type=2 #85
+2025/06/11-18:56:27.986 657 Delete type=2 #87
