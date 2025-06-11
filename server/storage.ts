@@ -912,6 +912,88 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
   }
+
+  // Dashboard metrics methods for real-time data
+  async getLeadCount(): Promise<number> {
+    try {
+      const result = await db.execute(sql`SELECT COUNT(*) as count FROM leads`);
+      return parseInt(result.rows[0].count as string) || 0;
+    } catch (error) {
+      console.error('Error getting lead count:', error);
+      return 0;
+    }
+  }
+
+  async getWhatsappAccountCount(): Promise<number> {
+    try {
+      const result = await db.execute(sql`SELECT COUNT(*) as count FROM whatsapp_accounts`);
+      return parseInt(result.rows[0].count as string) || 0;
+    } catch (error) {
+      console.error('Error getting WhatsApp account count:', error);
+      return 0;
+    }
+  }
+
+  async getMessageCount(): Promise<number> {
+    try {
+      const result = await db.execute(sql`SELECT COUNT(*) as count FROM messages`);
+      return parseInt(result.rows[0].count as string) || 0;
+    } catch (error) {
+      console.error('Error getting message count:', error);
+      return 0;
+    }
+  }
+
+  async getContactCount(): Promise<number> {
+    try {
+      const result = await db.execute(sql`SELECT COUNT(*) as count FROM contacts`);
+      return parseInt(result.rows[0].count as string) || 0;
+    } catch (error) {
+      console.error('Error getting contact count:', error);
+      return 0;
+    }
+  }
+
+  async getUserCount(): Promise<number> {
+    try {
+      const result = await db.execute(sql`SELECT COUNT(*) as count FROM users`);
+      return parseInt(result.rows[0].count as string) || 0;
+    } catch (error) {
+      console.error('Error getting user count:', error);
+      return 0;
+    }
+  }
+
+  async getLeadsThisMonth(): Promise<number> {
+    try {
+      const firstDayOfMonth = new Date();
+      firstDayOfMonth.setDate(1);
+      firstDayOfMonth.setHours(0, 0, 0, 0);
+      
+      const result = await db.execute(sql`
+        SELECT COUNT(*) as count FROM leads 
+        WHERE "createdAt" >= ${firstDayOfMonth.toISOString()}
+      `);
+      return parseInt(result.rows[0].count as string) || 0;
+    } catch (error) {
+      console.error('Error getting leads this month:', error);
+      return 0;
+    }
+  }
+
+  async getTotalRevenue(): Promise<number> {
+    try {
+      const result = await db.execute(sql`
+        SELECT COALESCE(SUM(CAST(value AS NUMERIC)), 0) as total 
+        FROM leads 
+        WHERE value IS NOT NULL AND value != ''
+      `);
+      return parseFloat(result.rows[0].total as string) || 0;
+    } catch (error) {
+      console.error('Error getting total revenue:', error);
+      return 0;
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();
