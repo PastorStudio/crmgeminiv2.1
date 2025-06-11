@@ -65,25 +65,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('Error parsing stored user data:', err);
         localStorage.removeItem(USER_KEY);
       }
-    } else {
-      // Create a temporary user for development bypass
-      const tempUser = {
-        id: 999,
-        username: 'demo',
-        fullName: 'Demo User',
-        role: 'admin',
-        status: 'active'
-      };
-      setUser(tempUser);
-      setToken('temp-token-dev');
     }
     
     setIsLoading(false);
   }, []);
 
-  // Verificar token con el servidor (deshabilitado temporalmente para bypass)
+  // Verificar token con el servidor (skip para tokens demo)
   useEffect(() => {
-    if (token && !token.startsWith('temp-token-')) {
+    if (token && !token.startsWith('temp-token-') && !token.startsWith('demo-token-')) {
       fetch('/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`
