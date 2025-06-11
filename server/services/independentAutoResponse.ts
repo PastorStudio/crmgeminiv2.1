@@ -162,8 +162,8 @@ class IndependentAutoResponseService {
     try {
       console.log(`🤖 Generando respuesta con ChatGPT Plus Web para agente: ${agentName}`);
       
-      // Use ChatGPT Plus web service instead of OpenAI API
-      const response = await chatgptPlusWebService.generateResponse(messageText, agentName);
+      // Use ChatGPT Plus direct service instead of OpenAI API
+      const response = await chatgptPlusDirectService.generateResponse(messageText, agentName);
       
       if (response && response.trim().length > 0) {
         console.log(`✅ Respuesta generada exitosamente: ${response.substring(0, 50)}...`);
