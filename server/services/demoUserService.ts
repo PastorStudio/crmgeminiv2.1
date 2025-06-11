@@ -1,7 +1,8 @@
 import { db } from '../db';
-import { demoUsers, users } from '@shared/schema';
+import { demoUsers, users, whatsappAccounts, userAccountAssignments } from '@shared/schema';
 import { eq, max } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
+import { createDemoWhatsAppAccount } from '../middleware/demoDataIsolation';
 
 export class DemoUserService {
   private static readonly PASSWORD = 'demo123456';
@@ -65,7 +66,7 @@ export class DemoUserService {
         .returning();
 
       // Also create in users table for compatibility
-      await db
+      const [user] = await db
         .insert(users)
         .values({
           username,
@@ -77,14 +78,19 @@ export class DemoUserService {
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date()
-        });
+        })
+        .returning();
 
-      console.log(`✅ Created demo user: ${username} (Demo #${demoNumber})`);
+      // Create isolated WhatsApp account for this demo user
+      const demoWhatsAppAccount = await createDemoWhatsAppAccount(user.id, customerName);
+
+      console.log(`✅ Created demo user: ${username} (Demo #${demoNumber}) with isolated WhatsApp account ID: ${demoWhatsAppAccount.id}`);
 
       return {
         username,
         password: this.PASSWORD,
-        demoUser
+        demoUser,
+        whatsappAccount: demoWhatsAppAccount
       };
     } catch (error) {
       console.error('Error creating demo user:', error);
