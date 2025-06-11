@@ -21,7 +21,7 @@ export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const { toast } = useToast();
   const { user } = useAuth();
-  
+
   // Obtener el idioma actual del sistema de traducción
   const { currentLanguage } = usePageTranslation();
 
@@ -55,21 +55,21 @@ export default function Dashboard() {
     const totalLeads = statsData.totalLeads || 0;
     const activeLeads = statsData.activeLeads || 0;
     const newLeadsThisMonth = statsData.newLeadsThisMonth || 0;
-    
+
     // Calculate message count based on leads activity (realistic ratio)
     const messagesTotal = totalLeads * 8 + newLeadsThisMonth * 12;
-    
+
     // Active clients from actual dashboard stats
     const activeClients = Math.max(activeLeads, totalLeads);
 
     // WhatsApp accounts data
     const accountsData = whatsappAccounts as any;
     const accountsArray = Array.isArray(accountsData?.accounts) ? accountsData.accounts : [];
-    
+
     const connectedAccounts = accountsArray.filter((acc: any) => 
       acc.currentStatus?.authenticated || acc.status === 'connected' || acc.qrCode
     );
-    
+
     // Chat count based on connected accounts and lead activity
     const baseChatsPerAccount = 18;
     const totalChatsFromAccounts = connectedAccounts.length * baseChatsPerAccount + totalLeads * 2;
@@ -125,9 +125,9 @@ export default function Dashboard() {
       'ro': 'ro-RO',
       'bg': 'bg-BG'
     };
-    
+
     const locale = localeMap[currentLanguage] || 'es-ES';
-    
+
     return getRealNow().toLocaleDateString(locale, {
       timeZone: 'America/New_York',
       weekday: 'long',
@@ -208,7 +208,7 @@ export default function Dashboard() {
   // Función para obtener el saludo según la hora
   const getGreeting = () => {
     const hour = new Date().getHours();
-    
+
     if (hour >= 5 && hour < 12) {
       return {
         text: greetingTranslations.goodMorning[currentLanguage as keyof typeof greetingTranslations.goodMorning] || greetingTranslations.goodMorning.es,
@@ -237,7 +237,7 @@ export default function Dashboard() {
   };
 
   const greeting = getGreeting();
-  
+
   // Mobile-friendly header
   useEffect(() => {
     const mobileHeader = document.querySelector('.md\\:hidden');
@@ -246,7 +246,7 @@ export default function Dashboard() {
       headerTitle.className = 'text-xl font-semibold text-white ml-2';
       headerTitle.textContent = 'Dashboard';
       mobileHeader.appendChild(headerTitle);
-      
+
       return () => {
         headerTitle.remove();
       };
@@ -259,7 +259,7 @@ export default function Dashboard() {
         <title>Dashboard | WhatsApp CRM</title>
         <meta name="description" content="Overview of your CRM metrics, sales pipeline, upcoming activities, and recent conversations." />
       </Helmet>
-      
+
       <div className="min-h-screen bg-gradient-to-br from-black via-black to-red-600">
         {/* Hero Section with Animated Business Icons */}
         <div className="relative overflow-hidden bg-gradient-to-r from-black to-red-900 py-12">
@@ -284,7 +284,7 @@ export default function Dashboard() {
             <div className="absolute top-16 right-16 animate-float delay-200">
               <CheckCircle className="h-10 w-10 text-green-500 opacity-35" />
             </div>
-            
+
             {/* Additional Business Feature Icons */}
             <div className="absolute top-36 left-1/3 animate-pulse delay-400">
               <MessageCircle className="h-8 w-8 text-green-400 opacity-40" />
@@ -298,7 +298,7 @@ export default function Dashboard() {
             <div className="absolute bottom-52 left-1/4 animate-pulse delay-1000">
               <CheckCircle className="h-11 w-11 text-green-500 opacity-25" />
             </div>
-            
+
             {/* Business Feature Labels as Background Images */}
             <div className="absolute top-28 left-16 animate-fade-in delay-300">
               <div className="bg-green-500/10 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/20">
@@ -320,7 +320,7 @@ export default function Dashboard() {
                 <span className="text-green-500 text-xs font-medium">Automatización</span>
               </div>
             </div>
-            
+
             {/* Business Chat Animation */}
             <div className="absolute top-32 right-1/4 animate-pulse delay-200">
               <div className="flex items-center space-x-2 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
@@ -332,7 +332,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            
+
             {/* File Transfer Animation */}
             <div className="absolute bottom-32 left-1/3 animate-pulse delay-400">
               <div className="flex items-center space-x-2 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
@@ -349,7 +349,7 @@ export default function Dashboard() {
                 WhatsApp Business
                 <span className="block text-red-400">CRM Platform</span>
               </h1>
-              
+
               <p className="text-lg text-gray-300 mb-6 max-w-2xl mx-auto">
                 Automatiza tu comunicación empresarial con IA avanzada, gestión de clientes y respuestas inteligentes
               </p>
@@ -359,7 +359,7 @@ export default function Dashboard() {
               {/* Live Business Activity Simulation */}
               <div className="mt-8 bg-black/40 rounded-xl p-6 backdrop-blur-sm border border-red-500/30">
                 <h3 className="text-white text-lg font-bold mb-4">Actividad Empresarial en Tiempo Real</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Messages Activity */}
                   <div className="bg-green-600/20 p-4 rounded-lg border border-green-500/30">
@@ -441,12 +441,12 @@ export default function Dashboard() {
                     {greeting.text}, {user?.fullName || user?.username || 'Usuario'}!
                   </span>
                 </div>
-                
+
                 <div className="flex items-center space-x-6">
                   <div className="bg-red-600/20 px-4 py-2 rounded-lg border border-red-500/30">
                     <PageTranslationSelector />
                   </div>
-                  
+
                   <div className="flex items-center space-x-2 bg-black/40 px-4 py-2 rounded-lg border border-white/20">
                     <Clock className="h-5 w-5 text-red-400" />
                     <span className="text-white font-semibold">{formatDateTime()}</span>
@@ -462,16 +462,16 @@ export default function Dashboard() {
           <PageContainer>
             {/* Dashboard Stats */}
             <DashboardStats />
-            
+
             {/* Administrative Metrics */}
             <AdminMetrics />
-            
+
             {/* Upcoming Activities and Recent Conversations */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               <UpcomingActivities />
               <RecentConversations />
             </div>
-            
+
             {/* Modern Floating System Refresh Button */}
             <SystemRefreshButton />
           </PageContainer>
@@ -480,3 +480,39 @@ export default function Dashboard() {
     </>
   );
 }
+
+const fetchDashboardStats = async () => {
+    try {
+      const response = await fetch('/api/dashboard-stats', {
+        headers: {
+          'Authorization': `Bearer ${user?.token || ''}`
+        }
+      });
+
+      if (!response.ok) {
+        console.error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      // Check if response has content
+      const text = await response.text();
+      if (!text) {
+        console.warn('Empty response from dashboard-stats');
+        throw new Error('Empty response');
+      }
+
+      const data = JSON.parse(text);
+      setStats(data);
+    } catch (error) {
+      console.error('Error en solicitud API a /api/dashboard-stats:', error);
+      // Set default stats on error
+      setStats({
+        totalLeads: 0,
+        totalMessages: 0,
+        activeChats: 0,
+        conversionRate: 0
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };

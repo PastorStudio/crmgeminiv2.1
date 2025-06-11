@@ -35,14 +35,14 @@ export interface IStorage {
   createUser(insertUser: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
-  
+
   // Lead methods
   getLeads(): Promise<Lead[]>;
   getAllLeads(): Promise<Lead[]>;
   createLead(insertLead: InsertLead): Promise<Lead>;
   updateLead(id: number, updates: Partial<Lead>): Promise<Lead | undefined>;
   deleteLead(id: number): Promise<boolean>;
-  
+
   // Activity methods
   getActivitiesByUser(userId: number): Promise<any[]>;
   getActivitiesByLead(leadId: number): Promise<any[]>;
@@ -59,7 +59,7 @@ export interface IStorage {
   createSurvey(survey: any): Promise<any>;
   updateSurveyResponses(id: number, responses: any): Promise<any | undefined>;
   getRecentMessages(limit?: number): Promise<any[]>;
-  
+
   // WhatsApp accounts methods
   getWhatsAppAccounts(): Promise<WhatsAppAccount[]>;
   createWhatsAppAccount(account: InsertWhatsAppAccount): Promise<WhatsAppAccount>;
@@ -69,25 +69,25 @@ export interface IStorage {
   updateWhatsappAccount(id: string, updates: Partial<WhatsAppAccount>): Promise<WhatsAppAccount | undefined>;
   deleteWhatsappAccount(id: string): Promise<boolean>;
   deleteAllWhatsappAccounts(): Promise<boolean>;
-  
+
   // User letter assignment methods
   getUserLetter(userId: number): Promise<string>;
   assignUserLetter(userId: number): Promise<string>;
-  
+
   // Chat assignments methods
   getChatAssignments(): Promise<ChatAssignment[]>;
   createChatAssignment(assignment: InsertChatAssignment): Promise<ChatAssignment>;
-  
+
   // WhatsApp agent configuration methods
   setWhatsappAgentConfig(accountId: number, agentId: string, autoResponse: boolean): Promise<boolean>;
   getWhatsappAgentConfig(accountId: number): Promise<{agentId: string | null, autoResponse: boolean} | null>;
   toggleWhatsappAutoResponse(accountId: number): Promise<boolean>;
   updateWhatsappAccountAgentConfig(accountId: number, config: {assignedExternalAgentId?: string | null, autoResponseEnabled?: boolean, responseDelay?: number}): Promise<boolean>;
-  
+
   // Dashboard stats methods
   getDashboardStats(): Promise<any | undefined>;
   updateDashboardStats(stats: any): Promise<any>;
-  
+
   // Additional required methods
   initializeData(): Promise<void>;
 }
@@ -122,7 +122,7 @@ export class DatabaseStorage implements IStorage {
       ...updates,
       updatedAt: new Date()
     };
-    
+
     const [user] = await db
       .update(users)
       .set(updateData)
@@ -331,13 +331,13 @@ export class DatabaseStorage implements IStorage {
 
     // Get or assign user letter
     const userLetter = await this.getUserLetter(account.userId);
-    
+
     // Get existing accounts for this user to determine next sequence number
     const userAccounts = await db.select({ numericId: whatsappAccounts.numericId })
       .from(whatsappAccounts)
       .where(eq(whatsappAccounts.userId, account.userId))
       .orderBy(whatsappAccounts.numericId);
-    
+
     // Find next available sequence number for this user
     let nextNumericId = 1;
     if (userAccounts.length > 0) {
@@ -349,12 +349,12 @@ export class DatabaseStorage implements IStorage {
         }
       }
     }
-    
+
     // Create alphanumeric ID: numeric + user letter (e.g., "1a", "2b")
     const alphanumericId = `${nextNumericId}${userLetter}`;
-    
+
     console.log(`🔍 Creating account for user ${account.userId} with letter '${userLetter}' - ID: ${alphanumericId}`);
-    
+
     try {
       const [newAccount] = await db.insert(whatsappAccounts).values({
         id: alphanumericId,
@@ -372,7 +372,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: new Date(),
         lastActiveAt: new Date()
       }).returning();
-      
+
       console.log(`✅ WhatsApp account created with alphanumeric ID: ${alphanumericId}`);
       return newAccount;
     } catch (error) {
@@ -582,11 +582,11 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(userLetterAssignments)
       .where(eq(userLetterAssignments.userId, userId));
-    
+
     if (existingAssignment) {
       return existingAssignment.assignedLetter;
     }
-    
+
     // Assign new letter if none exists
     return await this.assignUserLetter(userId);
   }
@@ -596,9 +596,9 @@ export class DatabaseStorage implements IStorage {
     const assignedLetters = await db
       .select({ letter: userLetterAssignments.assignedLetter })
       .from(userLetterAssignments);
-    
+
     const usedLetters = new Set(assignedLetters.map(a => a.letter));
-    
+
     // Find next available letter (a-z)
     let nextLetter = 'a';
     for (let i = 0; i < 26; i++) {
@@ -608,14 +608,14 @@ export class DatabaseStorage implements IStorage {
         break;
       }
     }
-    
+
     // Assign the letter to the user
     await db.insert(userLetterAssignments).values({
       userId,
       assignedLetter: nextLetter,
       assignedAt: new Date()
     });
-    
+
     console.log(`📝 Assigned letter '${nextLetter}' to user ${userId}`);
     return nextLetter;
   }
@@ -624,10 +624,10 @@ export class DatabaseStorage implements IStorage {
     try {
       // Eliminar todas las cuentas
       await db.delete(whatsappAccounts);
-      
+
       // Reiniciar la secuencia de ID desde 1
       await db.execute(`ALTER SEQUENCE whatsapp_accounts_id_seq RESTART WITH 1`);
-      
+
       console.log('✅ Todas las cuentas eliminadas y secuencia de ID reiniciada desde 1');
       return true;
     } catch (error) {
@@ -643,13 +643,13 @@ export class DatabaseStorage implements IStorage {
         assignedExternalAgentId: agentId,
         autoResponseEnabled: autoResponse
       };
-      
+
       const result = await db
         .update(whatsappAccounts)
         .set(updates)
         .where(eq(whatsappAccounts.id, accountId))
         .returning();
-        
+
       console.log(`✅ Configuración persistente guardada - Cuenta: ${accountId}, Agente: ${agentId}, Auto-respuesta: ${autoResponse}`);
       return result.length > 0;
     } catch (error) {
@@ -667,9 +667,9 @@ export class DatabaseStorage implements IStorage {
         })
         .from(whatsappAccounts)
         .where(eq(whatsappAccounts.id, accountId));
-        
+
       if (!account) return null;
-      
+
       return {
         agentId: account.agentId,
         autoResponse: account.autoResponse || false
@@ -685,16 +685,16 @@ export class DatabaseStorage implements IStorage {
       // Get current config
       const config = await this.getWhatsappAgentConfig(accountId);
       if (!config) return false;
-      
+
       // Toggle auto response but keep agent assignment
       const newAutoResponse = !config.autoResponse;
-      
+
       const result = await db
         .update(whatsappAccounts)
         .set({ autoResponseEnabled: newAutoResponse })
         .where(eq(whatsappAccounts.id, accountId))
         .returning();
-        
+
       console.log(`🔄 Auto-respuesta cambiada - Cuenta: ${accountId}, Estado: ${newAutoResponse}, Agente mantiene: ${config.agentId}`);
       return result.length > 0;
     } catch (error) {
@@ -706,25 +706,25 @@ export class DatabaseStorage implements IStorage {
   async updateWhatsappAccountAgentConfig(accountId: number, config: {assignedExternalAgentId?: string | null, autoResponseEnabled?: boolean, responseDelay?: number}): Promise<boolean> {
     try {
       const updateData: any = {};
-      
+
       if (config.assignedExternalAgentId !== undefined) {
         updateData.assignedExternalAgentId = config.assignedExternalAgentId;
       }
-      
+
       if (config.autoResponseEnabled !== undefined) {
         updateData.autoResponseEnabled = config.autoResponseEnabled;
       }
-      
+
       if (config.responseDelay !== undefined) {
         updateData.responseDelay = config.responseDelay;
       }
-      
+
       const result = await db
         .update(whatsappAccounts)
         .set(updateData)
         .where(eq(whatsappAccounts.id, accountId))
         .returning();
-        
+
       console.log(`✅ Configuración de agente actualizada - Cuenta: ${accountId}`, updateData);
       return result.length > 0;
     } catch (error) {
@@ -747,7 +747,7 @@ export class DatabaseStorage implements IStorage {
     try {
       // Verificar si hay estadísticas existentes
       const existingStats = await this.getDashboardStats();
-      
+
       if (existingStats) {
         // Actualizar las estadísticas existentes
         const [stats] = await db
@@ -1005,7 +1005,7 @@ export class DatabaseStorage implements IStorage {
       const firstDayOfMonth = new Date();
       firstDayOfMonth.setDate(1);
       firstDayOfMonth.setHours(0, 0, 0, 0);
-      
+
       const result = await db.execute(sql`
         SELECT COUNT(*) as count FROM leads 
         WHERE "createdAt" >= ${firstDayOfMonth.toISOString()}
