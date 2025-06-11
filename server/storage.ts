@@ -353,6 +353,7 @@ export class DatabaseStorage implements IStorage {
         description: account.description || null,
         ownerName: account.ownerName || null,
         ownerPhone: account.ownerPhone || null,
+        userId: account.userId || null, // CRITICAL: Include user assignment
         status: account.status || 'inactive',
         autoResponseEnabled: account.autoResponseEnabled || false,
         assignedExternalAgentId: account.assignedExternalAgentId || null,
@@ -378,6 +379,7 @@ export class DatabaseStorage implements IStorage {
           description: account.description || null,
           ownerName: account.ownerName || null,
           ownerPhone: account.ownerPhone || null,
+          userId: account.userId || null, // CRITICAL: Include user assignment in fallback too
           status: account.status || 'inactive',
           autoResponseEnabled: account.autoResponseEnabled || false,
           assignedExternalAgentId: account.assignedExternalAgentId || null,
