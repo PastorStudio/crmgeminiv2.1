@@ -13,7 +13,8 @@ const router = Router();
 router.get('/', async (req, res) => {
   try {
     // Extract user ID from authentication headers or query params
-    const userId = req.headers['x-user-id'] || req.query.userId || '3'; // Default to DJP user for testing
+    const userIdParam = req.headers['x-user-id'] || req.query.userId || '3'; // Default to DJP user for testing
+    const userId = parseInt(userIdParam as string) || 3; // Ensure valid integer, default to DJP user
     
     console.log(`📋 GET /api/whatsapp-accounts - Obteniendo cuentas para usuario ${userId}`);
     
@@ -22,7 +23,7 @@ router.get('/', async (req, res) => {
     res.header('Content-Type', 'application/json');
     
     // Get accounts filtered by user ID - CRITICAL SECURITY FIX
-    const accounts = await storage.getWhatsappAccountsByUserId(parseInt(userId as string));
+    const accounts = await storage.getWhatsappAccountsByUserId(userId);
     console.log(`✅ Cuentas encontradas para usuario ${userId}: ${accounts.length}`);
     
     // Obtener el estado actual de cada cuenta desde el administrador de múltiples cuentas
