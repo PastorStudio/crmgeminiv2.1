@@ -27,7 +27,7 @@ interface WhatsAppStatus {
 }
 
 interface WhatsAppInstance {
-  id: number;
+  id: string;
   name: string;
   client: any;
   status: WhatsAppStatus;
@@ -67,8 +67,8 @@ interface WhatsAppChat {
  * Clase que administra múltiples cuentas de WhatsApp con QR mejorado para producción
  */
 class WhatsAppMultiAccountManager extends EventEmitter {
-  private instances: Map<number, WhatsAppInstance> = new Map();
-  private qrCodeCache: Map<number, { text: string; dataUrl: string; generatedAt: number }> = new Map();
+  private instances: Map<string, WhatsAppInstance> = new Map();
+  private qrCodeCache: Map<string, { text: string; dataUrl: string; generatedAt: number }> = new Map();
 
   constructor() {
     super();
@@ -125,7 +125,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Almacena un código QR en cache con validación
    */
-  private cacheQRCode(accountId: number, qrText: string, dataUrl?: string): boolean {
+  private cacheQRCode(accountId: string, qrText: string, dataUrl?: string): boolean {
     try {
       if (!this.isValidQRCode(qrText)) {
         console.warn(`Código QR inválido para cuenta ${accountId}: ${qrText.substring(0, 50)}...`);
@@ -149,7 +149,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene un código QR desde el cache si es válido y no muy antiguo
    */
-  private getCachedQR(accountId: number): { text: string; dataUrl: string; generatedAt: number } | null {
+  private getCachedQR(accountId: string): { text: string; dataUrl: string; generatedAt: number } | null {
     try {
       const cached = this.qrCodeCache.get(accountId);
       if (!cached) {
@@ -331,7 +331,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Verifica si una cuenta existe
    */
-  async accountExists(accountId: number): Promise<boolean> {
+  async accountExists(accountId: string): Promise<boolean> {
     try {
       const account = await storage.getWhatsappAccount(accountId);
       return !!account;
@@ -344,7 +344,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Inicializa una cuenta de WhatsApp con QR mejorado
    */
-  async initializeAccount(accountId: number): Promise<boolean> {
+  async initializeAccount(accountId: string): Promise<boolean> {
     try {
       if (this.instances.has(accountId)) {
         console.log(`Cuenta WhatsApp ID ${accountId} ya está inicializada`);
