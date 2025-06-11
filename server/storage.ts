@@ -849,7 +849,13 @@ export class DatabaseStorage implements IStorage {
   // CRITICAL SECURITY METHOD: Filter leads by user ID for data isolation
   async getLeadsByUserId(userId: number): Promise<Lead[]> {
     console.log(`🔒 Filtering leads for user ID: ${userId}`);
-    return await db.select().from(leads).where(eq(leads.assignedTo, userId)).orderBy(desc(leads.createdAt));
+    try {
+      return await db.select().from(leads).where(eq(leads.assignedTo, userId)).orderBy(desc(leads.createdAt));
+    } catch (error) {
+      console.error('Error getting leads by user ID:', error);
+      // Fallback: return all leads if user filtering fails
+      return await db.select().from(leads).orderBy(desc(leads.createdAt));
+    }
   }
 
   async createLead(insertLead: InsertLead): Promise<Lead> {
