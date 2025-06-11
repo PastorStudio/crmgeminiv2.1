@@ -491,5 +491,92 @@ export function registerDirectAPIRoutes(app: Express): void {
     }
   });
 
+  // Demo login endpoint that properly bypasses Vite
+  app.post("/api/direct/demo/login-auth", async (req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    try {
+      const { username, password } = req.body;
+
+      console.log(`🎭 Demo login attempt: ${username}`);
+
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Usuario y contraseña requeridos"
+        });
+      }
+
+      const { db } = await import('../db');
+      const { demoUsers } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      const bcrypt = await import('bcrypt');
+
+      // Find demo user
+      const [demoUser] = await db.select()
+        .from(demoUsers)
+        .where(eq(demoUsers.username, username));
+
+      if (!demoUser) {
+        return res.status(401).json({
+          success: false,
+          message: "Credenciales inválidas"
+        });
+      }
+
+      // Check password using bcrypt since passwords are hashed
+      const isPasswordValid = await bcrypt.compare(password, demoUser.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          success: false,
+          message: "Credenciales inválidas"
+        });
+      }
+
+      // Check if expired
+      if (new Date() > new Date(demoUser.expiresAt)) {
+        return res.status(401).json({
+          success: false,
+          message: "Demo expirado"
+        });
+      }
+
+      // Update login stats
+      await db.update(demoUsers)
+        .set({
+          lastLoginAt: new Date(),
+          loginCount: demoUser.loginCount + 1,
+          updatedAt: new Date()
+        })
+        .where(eq(demoUsers.id, demoUser.id));
+
+      // Generate demo token
+      const token = `demo-token-${demoUser.id}-${Date.now()}`;
+
+      console.log(`✅ Demo login successful: ${username}`);
+
+      res.json({
+        success: true,
+        token,
+        user: {
+          id: demoUser.id,
+          username: demoUser.username,
+          customerName: demoUser.customerName,
+          role: 'demo',
+          expiresAt: demoUser.expiresAt
+        }
+      });
+    } catch (error) {
+      console.error("Error in demo login:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+
   console.log('Rutas de API directa registradas correctamente');
 }
