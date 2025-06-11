@@ -118,6 +118,12 @@ router.post('/', async (req, res) => {
   try {
     console.log('🆕 Creando nueva cuenta de WhatsApp:', req.body);
     
+    // Extract user ID from authentication headers or query params
+    const userIdParam = req.headers['x-user-id'] || req.query.userId || '3';
+    const userId = parseInt(userIdParam as string) || 3;
+    
+    console.log(`🔐 Creando cuenta para usuario ID: ${userId}`);
+    
     // Validar datos de entrada
     const validation = accountSchema.safeParse(req.body);
     if (!validation.success) {
@@ -128,7 +134,7 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Crear cuenta en la base de datos
+    // Crear cuenta en la base de datos con userId
     const newAccount = await storage.createWhatsAppAccount({
       name: validation.data.name,
       description: validation.data.description || null,
@@ -140,7 +146,8 @@ router.post('/', async (req, res) => {
       responseDelay: validation.data.responseDelay || 3,
       status: 'inactive',
       sessionData: null,
-      organizationId: 1 // Default organization
+      organizationId: 1, // Default organization
+      userId: userId // CRITICAL: Assign to the authenticated user
     });
     
     console.log('✅ Cuenta creada exitosamente:', newAccount);

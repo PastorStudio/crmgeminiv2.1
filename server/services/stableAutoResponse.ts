@@ -129,6 +129,9 @@ class StableAutoResponseManager {
    */
   private async checkConfigurationsStatus(): Promise<void> {
     try {
+      // Recargar configuraciones desde la base de datos para asegurar consistencia
+      await this.reloadConfigurations();
+      
       console.log(`📊 Verificando estado estable - ${this.configs.size} cuentas configuradas`);
       
       for (const [accountId, config] of this.configs) {
@@ -140,6 +143,33 @@ class StableAutoResponseManager {
       // Las configuraciones permanecen activas independientemente del estado de WhatsApp
     } catch (error) {
       console.error('⚠️ Error en verificación estable - manteniendo configuraciones activas:', error);
+    }
+  }
+
+  /**
+   * Recarga configuraciones desde la base de datos
+   */
+  private async reloadConfigurations(): Promise<void> {
+    try {
+      // Limpiar configuraciones actuales
+      this.configs.clear();
+      
+      // Cargar cuentas activas desde la base de datos
+      const activeAccounts = await db.select()
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.autoResponseEnabled, true));
+
+      for (const account of activeAccounts) {
+        if (account.assignedExternalAgentId) {
+          this.configs.set(account.id, {
+            accountId: account.id,
+            agentName: account.assignedExternalAgentId,
+            enabled: true
+          });
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error recargando configuraciones:', error);
     }
   }
 
