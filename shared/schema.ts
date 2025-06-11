@@ -89,16 +89,6 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("lastLoginAt"),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedat").defaultNow(),
-  // User letter assignment for account IDs
-  userLetter: text("user_letter").unique(), // Assigned letter: "a", "b", "c"... for account ID suffixes
-});
-
-// User letter assignments - ensures each user gets a unique letter
-export const userLetterAssignments = pgTable("user_letter_assignments", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id).unique(),
-  assignedLetter: text("assigned_letter").notNull().unique(), // "a", "b", "c"...
-  assignedAt: timestamp("assigned_at").defaultNow(),
 });
 
 // Organizations for multi-tenant support
@@ -142,11 +132,9 @@ export const aiPrompts = pgTable("ai_prompts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// WhatsApp Accounts with organization support and alphanumeric IDs
+// WhatsApp Accounts with organization support
 export const whatsappAccounts = pgTable("whatsapp_accounts", {
-  id: text("id").primaryKey(), // Changed to text for alphanumeric IDs like "1a", "2b", etc.
-  numericId: integer("numeric_id").notNull(), // Sequence number within user: 1, 2, 3...
-  userSuffix: text("user_suffix").notNull(), // User letter: "a", "b", "c"...
+  id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
   ownerName: text("ownername"),
@@ -155,7 +143,7 @@ export const whatsappAccounts = pgTable("whatsapp_accounts", {
   status: text("status").default("inactive"),
   adminId: integer("adminid"),
   userId: integer("user_id").notNull().references(() => users.id), // User-based data isolation
-  organizationId: integer("organizationid").references(() => organizations.id), // Multi-tenant support
+  organizationId: integer("organizationId").references(() => organizations.id), // Multi-tenant support
   assignedExternalAgentId: text("assignedexternalagentid"),
   autoResponseEnabled: boolean("autoresponseenabled").default(false),
   responseDelay: integer("responsedelay").default(3),
@@ -325,7 +313,7 @@ export const conversations = pgTable("conversations", {
 // WhatsApp Messages table for independent auto-response
 export const whatsappMessages = pgTable("whatsapp_messages", {
   id: serial("id").primaryKey(),
-  accountId: text("accountId").notNull(),
+  accountId: integer("accountId").notNull(),
   chatId: text("chatId").notNull(),
   messageId: text("messageId").notNull().unique(),
   content: text("content"),

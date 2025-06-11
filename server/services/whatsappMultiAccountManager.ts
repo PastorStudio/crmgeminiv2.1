@@ -23,12 +23,11 @@ interface WhatsAppStatus {
     lastPing: number;
     pingCount: number;
     nextPing: number;
-    nextPing: number;
   };
 }
 
 interface WhatsAppInstance {
-  id: string;
+  id: number;
   name: string;
   client: any;
   status: WhatsAppStatus;
@@ -68,18 +67,13 @@ interface WhatsAppChat {
  * Clase que administra múltiples cuentas de WhatsApp con QR mejorado para producción
  */
 class WhatsAppMultiAccountManager extends EventEmitter {
-  private instances: Map<string, WhatsAppInstance> = new Map();
-  private qrCodeCache: Map<string, { text: string; dataUrl: string; generatedAt: number }> = new Map();
+  private instances: Map<number, WhatsAppInstance> = new Map();
+  private qrCodeCache: Map<number, { text: string; dataUrl: string; generatedAt: number }> = new Map();
 
   constructor() {
     super();
-    
-    // Increase max listeners to prevent memory leak warnings
-    this.setMaxListeners(20);
-    process.setMaxListeners(20);
-    
     this.loadAccountsFromDatabase();
-
+    
     // Limpiar cache cada 10 minutos
     setInterval(() => {
       this.cleanExpiredQRCache();
@@ -93,14 +87,14 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     if (!qrText || typeof qrText !== 'string') {
       return false;
     }
-
+    
     // Los códigos QR de WhatsApp tienen un formato específico
     const isValidFormat = qrText.length > 20 && (
       qrText.startsWith('1@') || 
       qrText.startsWith('2@') ||
       qrText.includes('@')
     );
-
+    
     return isValidFormat;
   }
 
@@ -120,7 +114,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           light: '#FFFFFF'
         }
       });
-
+      
       return qrDataUrl;
     } catch (error) {
       console.error('Error generando imagen QR:', error);
@@ -131,7 +125,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Almacena un código QR en cache con validación
    */
-  private cacheQRCode(accountId: string, qrText: string, dataUrl?: string): boolean {
+  private cacheQRCode(accountId: number, qrText: string, dataUrl?: string): boolean {
     try {
       if (!this.isValidQRCode(qrText)) {
         console.warn(`Código QR inválido para cuenta ${accountId}: ${qrText.substring(0, 50)}...`);
@@ -155,7 +149,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene un código QR desde el cache si es válido y no muy antiguo
    */
-  private getCachedQR(accountId: string): { text: string; dataUrl: string; generatedAt: number } | null {
+  private getCachedQR(accountId: number): { text: string; dataUrl: string; generatedAt: number } | null {
     try {
       const cached = this.qrCodeCache.get(accountId);
       if (!cached) {
@@ -220,7 +214,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       }
 
       const qrText = fs.readFileSync(filePath, 'utf8').trim();
-
+      
       if (this.isValidQRCode(qrText)) {
         return qrText;
       } else {
@@ -240,18 +234,18 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     let cleaned = 0;
     const now = Date.now();
     const maxAge = 20 * 60 * 1000; // 20 minutos - tiempo extendido para conexión
-
+    
     Array.from(this.qrCodeCache.entries()).forEach(([accountId, qrData]) => {
       if (now - qrData.generatedAt > maxAge) {
         this.qrCodeCache.delete(accountId);
         cleaned++;
       }
     });
-
+    
     if (cleaned > 0) {
       console.log(`Limpiados ${cleaned} códigos QR expirados del cache`);
     }
-
+    
     return cleaned;
   }
 
@@ -262,14 +256,14 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     try {
       const accounts = await storage.getAllWhatsappAccounts();
       console.log(`Encontradas ${accounts.length} cuentas de WhatsApp en la base de datos`);
-
+      
       for (const account of accounts) {
         if (account.status === 'active' || account.status === 'pending_auth') {
           console.log(`Inicializando cuenta WhatsApp: ${account.name} (ID: ${account.id})`);
           await this.initializeAccount(account.id);
         }
       }
-
+      
       console.log('Cuentas de WhatsApp cargadas desde la base de datos');
     } catch (error) {
       console.error('Error cargando cuentas desde la base de datos:', error);
@@ -337,7 +331,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Verifica si una cuenta existe
    */
-  async accountExists(accountId: string): Promise<boolean> {
+  async accountExists(accountId: number): Promise<boolean> {
     try {
       const account = await storage.getWhatsappAccount(accountId);
       return !!account;
@@ -350,31 +344,16 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Inicializa una cuenta de WhatsApp con QR mejorado
    */
-  async initializeAccount(accountId: number | string): Promise<boolean> {
+  async initializeAccount(accountId: number): Promise<boolean> {
     try {
-      console.log(`🔄 Inicializando cuenta WhatsApp ID ${accountId}...`);
-
-      // Verificar si ya existe una instancia y está funcionando
-      const existingInstance = this.instances.get(accountId);
-      if (existingInstance && existingInstance.client && existingInstance.status.initialized) {
-        console.log(`✅ Account ${accountId} already initialized and working`);
+      if (this.instances.has(accountId)) {
+        console.log(`Cuenta WhatsApp ID ${accountId} ya está inicializada`);
         return true;
       }
 
-      // Limpiar instancia anterior si existe
-      if (existingInstance && existingInstance.client) {
-        try {
-          await existingInstance.client.destroy();
-          console.log(`🔄 Cliente anterior destruido para cuenta ${accountId}`);
-        } catch (destroyError) {
-          console.log(`🔄 Error destruyendo cliente anterior: ${destroyError.message}`);
-        }
-        this.instances.delete(accountId);
-      }
-
-      const accountData = await storage.getWhatsappAccount(accountId);
-      if (!accountData) {
-        console.error(`❌ Cuenta WhatsApp ID ${accountId} no encontrada en la base de datos`);
+      const account = await storage.getWhatsappAccount(accountId);
+      if (!account) {
+        console.error(`Cuenta WhatsApp ID ${accountId} no encontrada en la base de datos`);
         return false;
       }
 
@@ -415,74 +394,68 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         ]
       };
 
+      // Crear cliente WhatsApp con configuración de persistencia mejorada
       const client = new Client({
         authStrategy: new LocalAuth({
           clientId: `account_${accountId}`,
           dataPath: sessionPath
         }),
         puppeteer: {
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
-            '--disable-gpu',
-            '--disable-extensions',
-            '--disable-plugins'
-          ]
+          ...puppeteerOptions,
+          timeout: 180000, // Increased timeout
+          ignoreHTTPSErrors: true,
+        },
+        qrMaxRetries: 999, // Maximum retries to prevent disconnection
+        restartOnAuthFail: true,
+        takeoverOnConflict: true,
+        authTimeoutMs: 0, // No timeout to maintain connection
+        takeoverTimeoutMs: 30000, // 30 segundos para takeover más rápido
+        webVersionCache: {
+          type: 'remote',
+          remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
         }
       });
 
-      const newInstance = {
-        client,
-        status: {
-          initialized: false,
-          ready: false,
-          authenticated: false,
-          qrCode: null
-        },
-        lastActivity: new Date(),
-        retryCount: 0
+      // Estado inicial
+      const status: WhatsAppStatus = {
+        initialized: false,
+        ready: false,
+        authenticated: false,
+        error: undefined,
+        qrCode: undefined
       };
 
-      this.instances.set(accountId, newInstance);
+      // Crear instancia
+      const instance: WhatsAppInstance = {
+        id: accountId,
+        name: account.name,
+        client,
+        status,
+        sessionPath,
+        qrCodePath,
+        connectionTimers: {
+          connectionCheck: null,
+          keepAlive: null
+        },
+        lastReconnectAttempt: 0
+      };
 
-      // Configurar eventos del cliente
-      this.setupClientEvents(client, accountId);
+      // Configurar eventos mejorados para QR
+      this.setupClientEvents(instance);
 
-      // Inicializar el cliente con timeout más corto
-      const initPromise = client.initialize();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Initialization timeout')), 45000)
-      );
+      // Almacenar instancia
+      this.instances.set(accountId, instance);
 
-      try {
-        await Promise.race([initPromise, timeoutPromise]);
-        newInstance.status.initialized = true;
-        console.log(`✅ Cuenta WhatsApp ${accountId} inicializada correctamente`);
-        return true;
-      } catch (initError) {
-        console.error(`❌ Error en inicialización: ${initError.message}`);
-        // Limpiar instancia fallida
-        try {
-          if (newInstance.client) {
-            await newInstance.client.destroy();
-          }
-        } catch (cleanupError) {
-          console.log(`⚠️ Error limpiando instancia fallida: ${cleanupError.message}`);
-        }
-        this.instances.delete(accountId);
-        return false;
-      }
+      // Inicializar cliente
+      console.log(`Iniciando cliente WhatsApp para cuenta ID ${accountId} (${account.name})`);
+      await client.initialize();
+      
+      instance.status.initialized = true;
+      console.log(`Cliente WhatsApp inicializado para cuenta ID ${accountId}`);
 
+      return true;
     } catch (error) {
       console.error(`Error inicializando cuenta WhatsApp ID ${accountId}:`, error);
-      // Limpiar instancia fallida
-      this.instances.delete(accountId);
       return false;
     }
   }
@@ -490,100 +463,282 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Configura eventos para un cliente con QR mejorado para producción
    */
-  private setupClientEvents(client: any, accountId: number | string): void {
-    client.on('qr', async (qr: string) => {
-      console.log(`📱 Código QR recibido para cuenta ${accountId}: ${qr.substring(0, 50)}...`);
+  private setupClientEvents(instance: WhatsAppInstance): void {
+    const { client, id, name, qrCodePath } = instance;
 
-      const instance = this.instances.get(accountId);
-      if (instance) {
-        instance.status.qrCode = qr;
-      }
-
-      // Generar imagen QR usando el manager mejorado
+    // Evento QR mejorado con control de timing
+    client.on('qr', async (qr) => {
       try {
-        await improvedQRManager.generateQRCode(Number(accountId), qr);
-        console.log(`✓ Código QR generado para cuenta ${accountId} (válido por 25 minutos)`);
-      } catch (error) {
-        console.error(`Error generando QR para cuenta ${accountId}:`, error);
-      }
-    });
+        // Verificar si ya tenemos un QR válido reciente (evitar regeneración frecuente)
+        const cached = this.getCachedQR(id);
+        if (cached && Date.now() - cached.generatedAt < 15 * 60 * 1000) { // 15 minutos
+          console.log(`⏭️ QR reciente ya disponible para cuenta ${id}, omitiendo regeneración`);
+          return;
+        }
 
-    client.on('ready', async () => {
-      console.log(`✅ Cliente WhatsApp ${accountId} está listo`);
-
-      const instance = this.instances.get(accountId);
-      if (instance) {
-        instance.status.ready = true;
-        instance.status.authenticated = true;
-        instance.status.qrCode = null; // Limpiar QR después de autenticación
-      }
-
-      // Actualizar estado en base de datos
-      try {
-        await storage.updateWhatsappAccount(accountId, {
-          status: 'active',
-          sessionData: {
-            authenticated: true,
-            ready: true,
-            connectedAt: new Date().toISOString()
-          }
-        });
-      } catch (error) {
-        console.error(`Error actualizando estado de cuenta ${accountId}:`, error);
-      }
-    });
-
-    client.on('authenticated', () => {
-      console.log(`🔐 Cliente WhatsApp ${accountId} autenticado`);
-
-      const instance = this.instances.get(accountId);
-      if (instance) {
-        instance.status.authenticated = true;
-      }
-    });
-
-    client.on('disconnected', async (reason: string) => {
-      console.log(`🔴 Cliente WhatsApp ${accountId} desconectado: ${reason}`);
-
-      const instance = this.instances.get(accountId);
-      if (instance) {
-        instance.status.ready = false;
-        instance.status.authenticated = false;
-      }
-
-      // Actualizar estado en base de datos
-      try {
-        await storage.updateWhatsappAccount(accountId, {
-          status: 'inactive',
-          sessionData: {
-            authenticated: false,
-            ready: false,
-            disconnectedAt: new Date().toISOString(),
-            reason: reason
-          }
-        });
-      } catch (error) {
-        console.error(`Error actualizando estado de desconexión:`, error);
-      }
-    });
-
-    client.on('auth_failure', async (message: string) => {
-      console.error(`❌ Error de autenticación WhatsApp ${accountId}: ${message}`);
-
-      const instance = this.instances.get(accountId);
-      if (instance) {
-        instance.status.authenticated = false;
-        instance.status.ready = false;
-      }
-
-      // Limpiar sesión fallida
-      try {
-        const sessionPath = path.join(process.cwd(), 'temp', 'whatsapp-accounts', `account_${accountId}`);
-        if (fs.existsSync(sessionPath)) {
-          fs.rmSync(sessionPath, { recursive: true, force: true });
+        console.log(`📱 Código QR recibido para cuenta ${id}: ${qr.substring(0, 50)}...`);
+        
+        // Validar formato del código QR
+        if (qr && qr.startsWith('2@')) {
+          // Usar el gestor mejorado de QR
+          await improvedQRManager.generateQRCode(id, qr);
+          
+          const remainingMinutes = improvedQRManager.getRemainingValidityMinutes(id);
+          console.log(`✅ Código QR generado para cuenta ${id} (válido por ${remainingMinutes} minutos)`);
+          
+          // Mantener compatibilidad con el cache actual con timestamp actualizado
+          this.qrCodeCache.set(id, {
+            text: qr,
+            dataUrl: await this.generateQRImage(qr),
+            generatedAt: Date.now()
+          });
+        } else {
+          console.warn(`⚠ Código QR inválido recibido para cuenta ${id}`);
         }
       } catch (error) {
-        console.error(`Error limpiando sesión:`, error);
+        console.error(`❌ Error procesando código QR para cuenta ${id}:`, error);
+      }
+    });
+
+    // Evento de autenticación exitosa
+    client.on('authenticated', () => {
+      console.log(`✅ Cuenta WhatsApp ${id} (${name}) autenticada correctamente`);
+      console.log(`🔔 Activando listeners de mensajes para cuenta ${id}`);
+      instance.status.authenticated = true;
+      instance.status.qrCode = undefined;
+      instance.status.ready = true;
+      
+      // Limpiar cache de QR
+      this.qrCodeCache.delete(id);
+      
+      // ✨ ACTIVAR CONEXIÓN PERMANENTE AUTOMÁTICAMENTE ✨
+      console.log(`🛡️ Iniciando conexión PERMANENTE para cuenta ${id} (${name})`);
+      this.activatePermanentConnection(instance);
+    });
+
+    // Evento cuando está listo
+    client.on('ready', () => {
+      console.log(`Cliente WhatsApp ${id} (${name}) listo para usar`);
+      instance.status.ready = true;
+      this.activatePermanentConnection(instance);
+    });
+
+    // Evento de desconexión con sistema de recuperación de sesión
+    client.on('disconnected', async (reason) => {
+      console.log(`🚨 Cliente WhatsApp ${id} (${name}) desconectado: ${reason}`);
+      instance.status.authenticated = false;
+      instance.status.ready = false;
+      
+      // Solo usar recuperación para LOGOUT - otros tipos no necesitan recuperación
+      if (reason === 'LOGOUT') {
+        console.log(`🔄 Iniciando recuperación de sesión para cuenta ${id} (${name})`);
+        
+        try {
+          const { sessionRecovery } = await import('./whatsappSessionRecovery');
+          const recoveryResult = await sessionRecovery.attemptRecovery(id);
+          
+          if (recoveryResult === 'recovered') {
+            console.log(`✅ Sesión recuperada para cuenta ${id}, lista para nueva conexión`);
+            // No intentar reconexión automática - esperar que el usuario use el QR
+          } else if (recoveryResult === 'cleanup_needed') {
+            console.log(`🧹 Limpieza de sesión completada para cuenta ${id}`);
+            await sessionRecovery.cleanupSession(id);
+            console.log(`⏳ Cuenta ${id} preparada para nueva autenticación con QR`);
+          } else {
+            console.log(`❌ Recuperación fallida para cuenta ${id}, requiere limpieza manual`);
+            await sessionRecovery.cleanupSession(id);
+          }
+        } catch (error) {
+          console.error(`❌ Error en recuperación de sesión para cuenta ${id}:`, error);
+          // Como respaldo, limpiar la sesión
+          try {
+            const { sessionRecovery } = await import('./whatsappSessionRecovery');
+            await sessionRecovery.cleanupSession(id);
+          } catch (cleanupError) {
+            console.error(`❌ Error en limpieza de respaldo:`, cleanupError);
+          }
+        }
+      } else {
+        console.log(`ℹ️ Desconexión por ${reason} - no requiere recuperación de sesión`);
+      }
+      
+      // Limpiar timers de keep-alive para evitar intentos fallidos
+      if (instance.connectionTimers.keepAlive) {
+        clearInterval(instance.connectionTimers.keepAlive);
+        instance.connectionTimers.keepAlive = null;
+      }
+    });
+
+    // Evento de mensajes entrantes para sistema de tickets y análisis AI
+    client.on('message', async (message) => {
+      try {
+        console.log(`🔔 EVENTO MESSAGE ACTIVADO en cuenta ${id}`);
+        console.log(`📊 Datos del mensaje:`, {
+          fromMe: message.fromMe,
+          type: message.type,
+          hasMedia: message.hasMedia,
+          body: message.body?.substring(0, 50) || '[Sin texto]',
+          chatId: message.from
+        });
+        
+        // Almacenar conversación para análisis AI
+        await this.storeConversationForAnalysis(id, message);
+        
+        // Solo procesar mensajes entrantes (no enviados por nosotros)
+        // Validación estricta: debe ser fromMe=false Y el chat debe ser diferente al número de la cuenta
+        if (!message.fromMe && message.from !== client.info?.wid?._serialized) {
+          console.log(`📨 Nuevo mensaje ENTRANTE recibido en cuenta ${id}: ${message.body?.substring(0, 50) || '[Sin texto]'}...`);
+          console.log(`🔍 Tipo de mensaje: ${message.type}, hasMedia: ${message.hasMedia}`);
+          
+          let messageBody = message.body || '';
+          
+          // Transcripción automática de notas de voz
+          // Detectar múltiples tipos de audio de WhatsApp
+          const isVoiceMessage = message.type === 'ptt' || 
+                                 message.type === 'audio';
+          
+          console.log(`🎵 ¿Es mensaje de voz? ${isVoiceMessage} (tipo: ${message.type}, hasMedia: ${message.hasMedia})`);
+          
+          if (isVoiceMessage) {
+            console.log(`🎤 NOTA DE VOZ DETECTADA (tipo: ${message.type}), iniciando transcripción automática...`);
+            
+            try {
+              const media = await message.downloadMedia();
+              if (media) {
+                // Importar el servicio de almacenamiento de notas de voz
+                const { voiceNoteStorage } = await import('./voiceNoteStorage');
+                
+                // Convertir el archivo de audio a buffer
+                const audioBuffer = Buffer.from(media.data, 'base64');
+                
+                // Guardar la nota de voz con transcripción automática
+                const voiceNote = await voiceNoteStorage.saveVoiceNote(
+                  message.id._serialized,
+                  message.from,
+                  id,
+                  audioBuffer,
+                  message.timestamp * 1000
+                );
+                
+                if (voiceNote && voiceNote.transcription) {
+                  console.log(`✅ Nota de voz guardada y transcrita: "${voiceNote.transcription}"`);
+                  messageBody = voiceNote.transcription;
+                  
+                  // Emitir evento de transcripción para la interfaz
+                  setTimeout(() => {
+                    this.emit('transcription_complete', {
+                      chatId: message.from,
+                      accountId: id,
+                      originalMessageId: message.id._serialized,
+                      transcription: voiceNote.transcription,
+                      timestamp: Date.now()
+                    });
+                  }, 1000);
+                } else {
+                  console.log(`💾 Nota de voz guardada sin transcripción automática`);
+                  messageBody = '[Nota de voz guardada - transcripción pendiente]';
+                }
+              } else {
+                console.log('⚠️ OpenAI API key no disponible para transcripción');
+                messageBody = '[Nota de voz recibida - transcripción no disponible]';
+              }
+            } catch (error) {
+              console.error('❌ Error transcribiendo nota de voz:', error);
+              messageBody = '[Nota de voz recibida - error en transcripción]';
+            }
+          }
+          
+          // 🕷️ SISTEMA DE WEB SCRAPING AUTOMÁTICO
+          try {
+            console.log(`🕷️ Enviando mensaje al sistema de web scraping automático...`);
+            const { MessageInterceptorService } = await import('./messageInterceptorService');
+            
+            await MessageInterceptorService.interceptMessage(id, {
+              id: message.id._serialized || String(message.id),
+              body: messageBody,
+              from: message.from,
+              to: message.to,
+              timestamp: message.timestamp || Math.floor(Date.now() / 1000),
+              hasMedia: message.hasMedia || false,
+              type: message.type || 'text'
+            });
+            
+            console.log(`✅ Mensaje procesado por web scraping automático`);
+          } catch (webScrapingError) {
+            console.error(`❌ Error en web scraping automático:`, webScrapingError);
+          }
+
+          // 🎯 USAR PROCESADOR UNIFICADO DE MENSAJES PRIMERO
+          try {
+            console.log(`🎯 INICIANDO PROCESADOR UNIFICADO para cuenta ${id}`);
+            console.log(`📝 Mensaje: "${messageBody}" | fromMe: ${message.fromMe} | Chat: ${message.from}`);
+            
+            const { unifiedMessageProcessor } = await import('./unifiedMessageProcessor');
+            
+            // Asegurar inicialización del procesador
+            await unifiedMessageProcessor.initialize();
+            
+            // Obtener nombre del contacto si está disponible
+            let contactName = 'Usuario';
+            try {
+              const contact = await message.getContact();
+              contactName = contact.name || contact.pushname || contact.number || 'Usuario';
+            } catch (contactError) {
+              console.log('ℹ️ No se pudo obtener información del contacto');
+            }
+            
+            // Procesar mensaje con el procesador unificado (prioriza prompts asignados)
+            const unifiedResult = await unifiedMessageProcessor.processMessage({
+              chatId: message.from,
+              accountId: id,
+              from: message.from,
+              body: messageBody,
+              contactName: contactName,
+              fromMe: message.fromMe
+            });
+
+            if (unifiedResult.success && unifiedResult.response) {
+              console.log(`✅ RESPUESTA GENERADA POR PROCESADOR UNIFICADO (${unifiedResult.source}): ${unifiedResult.response.substring(0, 50)}...`);
+              console.log(`🎯 Agente usado: ${unifiedResult.agentName || 'Desconocido'}`);
+              
+              // Enviar la respuesta usando WhatsApp
+              await client.sendMessage(message.from, unifiedResult.response);
+              console.log(`📤 Respuesta enviada por WhatsApp para cuenta ${id} usando prompt asignado`);
+              return; // Salir aquí - ya se procesó con el procesador unificado
+            } else {
+              console.log(`⏭️ Procesador unificado no generó respuesta para cuenta ${id}`);
+            }
+          } catch (unifiedError) {
+            console.error(`❌ Error en procesador unificado:`, unifiedError);
+            console.log(`🔄 Fallback a sistema contextual...`);
+          }
+
+          // FALLBACK: Procesar mensaje con sistema contextual de respuestas automáticas
+          try {
+            console.log(`🤖 INICIANDO RESPUESTA CONTEXTUAL (fallback) para cuenta ${id}`);
+            
+            const { ContextAwareAutoResponder } = await import('./contextAwareAutoResponder');
+            
+            // Procesar mensaje con contexto de conversación
+            const processed = await ContextAwareAutoResponder.processMessage(
+              id, // accountId
+              message.from, // chatId
+              messageBody, // messageText
+              message.fromMe, // fromMe
+              client // whatsappClient
+            );
+
+            if (processed) {
+              console.log(`✅ Respuesta contextual enviada para cuenta ${id}`);
+            } else {
+              console.log(`⏭️ No se envió respuesta automática para cuenta ${id}`);
+            }
+          } catch (error) {
+            console.error(`❌ Error en respuesta automática contextual:`, error);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error procesando mensaje para tickets automáticos:`, error);
       }
     });
   }
@@ -591,13 +746,13 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Fuerza la generación de un nuevo código QR limpiando el cache
    */
-  async forceRefreshQR(accountId: string): Promise<boolean> {
+  async forceRefreshQR(accountId: number): Promise<boolean> {
     try {
       console.log(`🔄 Forzando actualización de QR para cuenta ${accountId}`);
-
+      
       // Limpiar cache completamente
       this.qrCodeCache.delete(accountId);
-
+      
       const instance = this.instances.get(accountId);
       if (!instance || !instance.client) {
         console.log(`❌ Instancia no encontrada para cuenta ${accountId}`);
@@ -608,14 +763,14 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       try {
         await instance.client.destroy();
         console.log(`🔄 Cliente destruido para cuenta ${accountId}`);
-
+        
         // Esperar un momento y luego reinicializar sincrónicamente
         await new Promise(resolve => setTimeout(resolve, 1000));
-
+        
         // Reinicializar inmediatamente de forma síncrona
         await this.initializeAccount(accountId);
         console.log(`✅ QR forzado para cuenta ${accountId}`);
-
+        
         return true;
       } catch (error) {
         console.error(`❌ Error forzando refresh QR:`, error);
@@ -630,7 +785,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene código QR optimizado para producción
    */
-  async getLatestQR(accountId: string): Promise<string | null> {
+  async getLatestQR(accountId: number): Promise<string | null> {
     try {
       // Primero verificar el cache en memoria
       const cachedQR = this.getCachedQR(accountId);
@@ -668,7 +823,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene el código QR con imagen base64 para una cuenta específica
    */
-  async getQRWithImage(accountId: string): Promise<{ qrcode: string; qrDataUrl?: string } | null> {
+  async getQRWithImage(accountId: number): Promise<{ qrcode: string; qrDataUrl?: string } | null> {
     try {
       const cachedQR = this.getCachedQR(accountId);
       if (cachedQR && cachedQR.dataUrl) {
@@ -736,7 +891,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Verifica estado de conexión
    */
-  private async checkConnection(accountId: string): Promise<void> {
+  private async checkConnection(accountId: number): Promise<void> {
     try {
       const instance = this.instances.get(accountId);
       if (!instance || !instance.client) return;
@@ -754,7 +909,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Mantiene conexión activa
    */
-  private async keepConnectionAlive(accountId: string): Promise<void> {
+  private async keepConnectionAlive(accountId: number): Promise<void> {
     try {
       const instance = this.instances.get(accountId);
       if (!instance || !instance.client) return;
@@ -771,7 +926,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Intenta recuperar conexión perdida
    */
-  private async attemptConnectionRecovery(accountId: string): Promise<boolean> {
+  private async attemptConnectionRecovery(accountId: number): Promise<boolean> {
     try {
       const instance = this.instances.get(accountId);
       if (!instance) return false;
@@ -796,7 +951,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       // Recrear instancia
       this.instances.delete(accountId);
       const success = await this.initializeAccount(accountId);
-
+      
       if (success) {
         console.log(`Reconexión exitosa para cuenta ID ${accountId}`);
         return true;
@@ -813,7 +968,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene estado de una cuenta
    */
-  getStatus(accountId: string): WhatsAppStatus {
+  getStatus(accountId: number): WhatsAppStatus {
     const instance = this.instances.get(accountId);
     if (!instance) {
       return {
@@ -829,14 +984,14 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene instancia de cuenta
    */
-  getInstance(accountId: string): WhatsAppInstance | undefined {
+  getInstance(accountId: number): WhatsAppInstance | undefined {
     return this.instances.get(accountId);
   }
 
   /**
    * Envía mensaje
    */
-  async sendMessage(accountId: string, to: string, body: string): Promise<any> {
+  async sendMessage(accountId: number, to: string, body: string): Promise<any> {
     try {
       const instance = this.instances.get(accountId);
       if (!instance || !instance.client) {
@@ -874,14 +1029,14 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       // Verificar estado de conexión real
       const clientState = await instance.client.getState();
       console.log(`📸 Estado del cliente ${accountId}: ${clientState}`);
-
+      
       if (clientState !== 'CONNECTED') {
         console.warn(`Cliente WhatsApp ID ${accountId} no conectado (${clientState}) para foto de perfil`);
         return null;
       }
 
       console.log(`📸 Obteniendo foto de perfil para ${contactId} desde cuenta ${accountId}`);
-
+      
       // Obtener la URL de la foto de perfil con timeout
       const profilePicUrl = await Promise.race([
         instance.client.getProfilePicUrl(contactId),
@@ -889,7 +1044,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           setTimeout(() => reject(new Error('Timeout')), 10000)
         )
       ]);
-
+      
       if (profilePicUrl) {
         console.log(`✅ Foto de perfil obtenida para ${contactId}: ${profilePicUrl.substring(0, 100)}...`);
         return profilePicUrl;
@@ -1040,7 +1195,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         // Actualizar conversación existente
         const conversation = existingConversation[0];
         const currentMessages = conversation.messages ? JSON.parse(conversation.messages) : [];
-
+        
         currentMessages.push({
           id: message.id._serialized,
           body: messageText,
@@ -1096,7 +1251,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     if (!instance) return;
 
     console.log(`🔄 Ejecutando reconexión automática para cuenta ${accountId}...`);
-
+    
     try {
       // Reinicializar cliente
       instance.client.initialize().then(() => {
@@ -1116,9 +1271,9 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene cuentas activas
    */
-  getActiveAccounts(): { id: string, name: string, status: string }[] {
-    const activeAccounts: { id: string, name: string, status: string }[] = [];
-
+  getActiveAccounts(): { id: number, name: string, status: string }[] {
+    const activeAccounts: { id: number, name: string, status: string }[] = [];
+    
     Array.from(this.instances.entries()).forEach(([id, instance]) => {
       activeAccounts.push({
         id,
@@ -1126,7 +1281,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         status: instance.status.authenticated ? 'connected' : 'disconnected'
       });
     });
-
+    
     return activeAccounts;
   }
 
@@ -1159,7 +1314,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
         // Realizar ping PERSISTENTE verificando estado del cliente
         const isConnected = await this.performAggressivePing(instance);
-
+        
         if (isConnected) {
           instance.status.pingStatus!.lastPing = Date.now();
           instance.status.pingStatus!.pingCount++;
@@ -1185,7 +1340,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     try {
       // Verificar si el cliente está listo
       if (!instance.client) return false;
-
+      
       // Método 1: Verificar estado del cliente
       try {
         const info = await instance.client.getState();
@@ -1218,10 +1373,10 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
   private async forceReconnect(instance: WhatsAppInstance): Promise<void> {
     console.log(`🔧 FORZANDO reconexión para cuenta ${instance.id}`);
-
+    
     try {
       // No detener el keep-alive - mantener activo durante la reconexión
-
+      
       // Método 1: Reinicializar cliente si existe
       if (instance.client) {
         try {
@@ -1236,10 +1391,10 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       // Método 2: Crear nuevo cliente si el anterior falló
       console.log(`🔄 Creando nuevo cliente para cuenta ${instance.id}`);
       await this.initializeAccount(instance.id);
-
+      
     } catch (error) {
       console.error(`❌ Error en reconexión forzada cuenta ${instance.id}:`, error);
-
+      
       // Programar reintento en 30 segundos - NUNCA RENDIRSE
       setTimeout(() => {
         console.log(`🔄 Reintentando reconexión para cuenta ${instance.id}...`);
@@ -1252,10 +1407,10 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
   private activatePermanentConnection(instance: WhatsAppInstance): void {
     console.log(`🛡️ ACTIVANDO conexión PERMANENTE ULTRA-AGRESIVA para cuenta ${instance.id}`);
-
+    
     // Activar keep-alive ultra agresivo cada 15 segundos
     this.startKeepAlive(instance);
-
+    
     // Configurar verificaciones CONTINUAS de estado cada 3 segundos
     const statusCheck = setInterval(async () => {
       try {
@@ -1263,7 +1418,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           console.log(`⚠️ Cuenta ${instance.id} perdió autenticación, usando recuperación de sesión...`);
           // Usar sistema de recuperación de sesión en lugar de reconexión inmediata
         }
-
+        
         // Verificación adicional de conexión real
         const isConnected = await this.performAggressivePing(instance);
         if (!isConnected && instance.client) {
@@ -1278,7 +1433,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
 
     // Almacenar el timer para limpieza posterior si es necesario
     instance.connectionTimers.connectionCheck = statusCheck;
-
+    
     // Timer adicional de supervivencia cada 30 segundos
     const survivalCheck = setInterval(async () => {
       try {
@@ -1292,18 +1447,18 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         await this.forceReconnect(instance);
       }
     }, 30000);
-
+    
     // Almacenar también el timer de supervivencia
     if (!instance.connectionTimers.keepAlive) {
       instance.connectionTimers.keepAlive = survivalCheck;
     }
-
+    
     console.log(`✅ Conexión PERMANENTE ULTRA-AGRESIVA activada para cuenta ${instance.id}`);
   }
 
   private async handlePingFailure(instance: WhatsAppInstance): Promise<void> {
     console.log(`🔧 Manejando fallo de ping para cuenta ${instance.id}`);
-
+    
     // Marcar como inactivo temporalmente
     if (instance.status.pingStatus) {
       instance.status.pingStatus.isActive = false;
@@ -1313,7 +1468,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
     try {
       await instance.client.pupPage?.reload();
       console.log(`🔄 Página recargada para cuenta ${instance.id}`);
-
+      
       // Esperar un poco y reactivar
       setTimeout(() => {
         if (instance.status.pingStatus) {
@@ -1392,7 +1547,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
    */
   getAllPingStatus(): any[] {
     const allStatus: any[] = [];
-
+    
     this.instances.forEach((instance, accountId) => {
       const pingStatus = this.getPingStatus(accountId);
       allStatus.push({
@@ -1401,7 +1556,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
         pingStatus
       });
     });
-
+    
     return allStatus;
   }
 }

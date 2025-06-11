@@ -118,7 +118,7 @@ interface PingStatus {
 
 // Tipo para cuenta de WhatsApp con estado
 type WhatsAppAccount = {
-  id: string;
+  id: number;
   name: string;
   description?: string | null;
   ownerName?: string | null;
@@ -213,14 +213,6 @@ const WhatsAppAccounts = () => {
   });
 
   const accounts = accountsResponse?.accounts || [];
-  
-  // Debug accounts data
-  useEffect(() => {
-    console.log('🔍 Accounts data updated:', { 
-      count: accounts.length, 
-      accounts: accounts.map(acc => ({ id: acc.id, name: acc.name, userId: acc.userId })) 
-    });
-  }, [accounts]);
 
   // Consulta para obtener estado de ping de todas las cuentas
   const { data: pingStatusData } = useQuery({
@@ -250,7 +242,7 @@ const WhatsAppAccounts = () => {
       }
     },
     enabled: !!selectedAccount && qrDialogOpen && 
-             (!selectedAccount.currentStatus?.authenticated || !selectedAccount.currentStatus?.ready),
+             ['inactive', 'pending_auth'].includes(selectedAccount.status || ''),
     refetchInterval: qrDialogOpen ? 120000 : false // Refrescar cada 2 minutos si el diálogo está abierto
   });
   
@@ -301,7 +293,7 @@ const WhatsAppAccounts = () => {
   
   // Mutation para inicializar cuenta
   const initializeAccountMutation = useMutation({
-    mutationFn: async (accountId: string) => {
+    mutationFn: async (accountId: number) => {
       return await apiRequest(`/api/whatsapp-accounts/${accountId}/initialize`, {
         method: 'POST'
       });
@@ -325,7 +317,7 @@ const WhatsAppAccounts = () => {
   
   // Mutation para desconectar cuenta
   const disconnectAccountMutation = useMutation({
-    mutationFn: async (accountId: string) => {
+    mutationFn: async (accountId: number) => {
       return await apiRequest(`/api/whatsapp-accounts/${accountId}/disconnect`, {
         method: 'POST'
       });
@@ -349,7 +341,7 @@ const WhatsAppAccounts = () => {
   
   // Mutation para eliminar cuenta
   const deleteAccountMutation = useMutation({
-    mutationFn: async (accountId: string) => {
+    mutationFn: async (accountId: number) => {
       return await apiRequest(`/api/whatsapp-accounts/${accountId}`, {
         method: 'DELETE'
       });
@@ -461,7 +453,7 @@ const WhatsAppAccounts = () => {
   
   // Session recovery mutation
   const recoverSessionMutation = useMutation({
-    mutationFn: async (accountId: string) => {
+    mutationFn: async (accountId: number) => {
       return await apiRequest(`/api/whatsapp-accounts/${accountId}/recover-session`, {
         method: 'POST'
       });
@@ -475,11 +467,11 @@ const WhatsAppAccounts = () => {
         
         if (data.action === 'retry_connection') {
           // Retry connection with same account
-          initializeAccountMutation.mutate(String(accountId));
+          initializeAccountMutation.mutate(accountId);
         } else if (data.action === 'fresh_connection') {
           // Account cleaned, ready for fresh QR
           refetch();
-          if (selectedAccount?.id === String(accountId)) {
+          if (selectedAccount?.id === accountId) {
             refetchQr();
           }
         }
@@ -502,7 +494,7 @@ const WhatsAppAccounts = () => {
 
   // Clean session mutation
   const cleanSessionMutation = useMutation({
-    mutationFn: async (accountId: string) => {
+    mutationFn: async (accountId: number) => {
       return await apiRequest(`/api/whatsapp-accounts/${accountId}/clean-session`, {
         method: 'POST'
       });
@@ -514,7 +506,7 @@ const WhatsAppAccounts = () => {
           description: "La cuenta está lista para una nueva conexión",
         });
         refetch();
-        if (selectedAccount?.id === String(accountId)) {
+        if (selectedAccount?.id === accountId) {
           refetchQr();
         }
       } else {
@@ -551,7 +543,7 @@ const WhatsAppAccounts = () => {
   };
 
   // Auto-create leads when account connects
-  const handleAutoCreateLeads = async (accountId: string) => {
+  const handleAutoCreateLeads = async (accountId: number) => {
     try {
       console.log('🎯 Auto-creating leads for account:', accountId);
       const response = await apiRequest(`/api/whatsapp/auto-create-leads/${accountId}`, {
@@ -1183,15 +1175,7 @@ const WhatsAppAccounts = () => {
           {/* Generar 10 posiciones fijas */}
           {Array.from({ length: 10 }, (_, index) => {
             const position = index + 1;
-            // For alphanumeric IDs like "1d", extract the numeric part to match positions
-            const existingAccount = accounts.find(acc => {
-              if (typeof acc.id === 'string') {
-                const numericPart = parseInt(acc.id.replace(/[^0-9]/g, ''));
-                // console.log(`🔍 Position ${position}: Checking account ${acc.id}, numericPart: ${numericPart}, match: ${numericPart === position}`);
-                return numericPart === position;
-              }
-              return acc.id === position;
-            });
+            const existingAccount = accounts.find(acc => acc.id === position);
             const isOccupied = !!existingAccount;
             
             return (
@@ -1599,7 +1583,7 @@ const WhatsAppAccounts = () => {
           </DialogHeader>
           
           <ExternalAgentConfigForm 
-            accountId={selectedAccountForAgent?.id || ""}
+            accountId={selectedAccountForAgent?.id || 0}
             onSuccess={() => {
               setAgentConfigDialogOpen(false);
               queryClient.invalidateQueries({ queryKey: ['/api/whatsapp-accounts'] });
@@ -1612,7 +1596,7 @@ const WhatsAppAccounts = () => {
 };
 
 // Componente para configurar agente externo
-const ExternalAgentConfigForm = ({ accountId, onSuccess }: { accountId: string; onSuccess: () => void }) => {
+const ExternalAgentConfigForm = ({ accountId, onSuccess }: { accountId: number; onSuccess: () => void }) => {
   const { toast } = useToast();
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [autoResponseEnabled, setAutoResponseEnabled] = useState(false);

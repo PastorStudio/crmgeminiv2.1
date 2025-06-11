@@ -433,7 +433,10 @@ async function cleanAllSessionFolders() {
 // Inicializar una cuenta de WhatsApp
 router.post('/:id/initialize', async (req, res) => {
   try {
-    const id = req.params.id; // Accept alphanumeric ID directly
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
     
     // Verificar que la cuenta existe
     const account = await storage.getWhatsappAccount(id);
@@ -441,7 +444,7 @@ router.post('/:id/initialize', async (req, res) => {
       return res.status(404).json({ error: 'Cuenta no encontrada' });
     }
     
-    // Inicializar la cuenta usando el alphanumeric ID
+    // Inicializar la cuenta
     const success = await whatsappServiceMulti.initializeAccount(id);
     if (!success) {
       return res.status(500).json({ error: 'Error al inicializar cuenta' });
@@ -466,7 +469,10 @@ router.post('/:id/initialize', async (req, res) => {
 // Obtener código QR para una cuenta
 router.get('/:id/qrcode', async (req, res) => {
   try {
-    const id = req.params.id; // Accept alphanumeric ID directly
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
     
     // Obtener código QR
     const qrCode = await whatsappServiceMulti.getLatestQR(id);
@@ -485,7 +491,10 @@ router.get('/:id/qrcode', async (req, res) => {
 // Obtener estado de una cuenta
 router.get('/:id/status', async (req, res) => {
   try {
-    const id = req.params.id; // Accept alphanumeric ID directly
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
     
     // Obtener estado actualizado
     const status = whatsappServiceMulti.getStatus(id);
@@ -497,73 +506,50 @@ router.get('/:id/status', async (req, res) => {
   }
 });
 
-// Obtener código QR de una cuenta (main endpoint)
+// Obtener código QR de una cuenta
 router.get('/:id/qrcode', async (req, res) => {
   try {
-    const id = req.params.id; // Accept alphanumeric ID directly
-
-    console.log(`🔄 Solicitando código QR para cuenta ${id}`);
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
 
     // Obtener cuenta de la base de datos
     const account = await storage.getWhatsappAccount(id);
     if (!account) {
-      console.log(`❌ Cuenta ${id} no encontrada`);
       return res.status(404).json({ error: 'Cuenta no encontrada' });
     }
 
-    // Verificar si la cuenta ya está autenticada
-    const instance = whatsappMultiAccountManager.getInstance(id);
-    if (instance && instance.status.authenticated) {
+    // Obtener código QR del administrador de múltiples cuentas
+    const qrData = await whatsappMultiAccountManager.getQRWithImage(id);
+    
+    if (!qrData) {
+      // Intentar inicializar la cuenta si no tiene QR
+      await whatsappMultiAccountManager.initializeAccount(id);
+      const newQrData = await whatsappMultiAccountManager.getQRWithImage(id);
+      
+      if (!newQrData) {
+        return res.status(202).json({ 
+          message: 'Generando código QR, inténtelo de nuevo en unos segundos' 
+        });
+      }
+      
       return res.json({
         success: true,
-        authenticated: true,
-        message: 'Cuenta ya autenticada'
+        qrcode: newQrData.qrcode,
+        qrDataUrl: newQrData.qrDataUrl
       });
     }
 
-    // Intentar obtener QR existente
-    let qrData = await whatsappMultiAccountManager.getQRWithImage(id);
-    
-    if (!qrData) {
-      console.log(`🔄 No hay QR disponible, inicializando cuenta ${id}...`);
-      
-      // Inicializar la cuenta
-      const initialized = await whatsappMultiAccountManager.initializeAccount(id);
-      
-      if (!initialized) {
-        console.log(`❌ Error inicializando cuenta ${id}`);
-        return res.status(500).json({ error: 'Error inicializando cuenta' });
-      }
-
-      // Esperar un momento para que se genere el QR
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Intentar obtener QR nuevamente
-      qrData = await whatsappMultiAccountManager.getQRWithImage(id);
-      
-      if (!qrData) {
-        console.log(`⚠️ QR aún no disponible para cuenta ${id}`);
-        return res.status(202).json({ 
-          message: 'Generando código QR, inténtelo de nuevo en unos segundos',
-          status: 'generating'
-        });
-      }
-    }
-
-    console.log(`✅ QR obtenido para cuenta ${id}`);
     res.json({
       success: true,
       qrcode: qrData.qrcode,
-      qrDataUrl: qrData.qrDataUrl,
-      expiresIn: qrData.expiresIn || '25 minutos'
+      qrDataUrl: qrData.qrDataUrl
     });
 
   } catch (error) {
-    console.error(`❌ Error al obtener código QR para cuenta ${req.params.id}:`, error);
-    res.status(500).json({ 
-      error: 'Error al obtener código QR',
-      details: error.message 
-    });
+    console.error('Error al obtener código QR:', error);
+    res.status(500).json({ error: 'Error al obtener código QR' });
   }
 });
 

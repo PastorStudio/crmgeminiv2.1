@@ -4703,11 +4703,11 @@ app.use((req, res, next) => {
       const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
       
       // Verificar si la cuenta está inicializada
-      if (!whatsappMultiAccountManager.accountExists(accountId)) {
-        await whatsappMultiAccountManager.initializeAccount(accountId);
+      if (!whatsappMultiAccountManager.accountExists(parseInt(accountId))) {
+        await whatsappMultiAccountManager.initializeAccount(parseInt(accountId));
       }
 
-      const qrWithImage = await whatsappMultiAccountManager.getQRWithImage(accountId);
+      const qrWithImage = await whatsappMultiAccountManager.getQRWithImage(parseInt(accountId));
       
       if (qrWithImage && qrWithImage.qrcode) {
         console.log(`✅ QR encontrado para cuenta ${accountId}`);
