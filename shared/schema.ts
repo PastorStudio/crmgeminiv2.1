@@ -142,6 +142,7 @@ export const whatsappAccounts = pgTable("whatsapp_accounts", {
   sessionData: jsonb("sessiondata"),
   status: text("status").default("inactive"),
   adminId: integer("adminid"),
+  userId: integer("user_id").notNull().references(() => users.id), // User-based data isolation
   organizationId: integer("organizationId").references(() => organizations.id), // Multi-tenant support
   assignedExternalAgentId: text("assignedexternalagentid"),
   autoResponseEnabled: boolean("autoresponseenabled").default(false),
