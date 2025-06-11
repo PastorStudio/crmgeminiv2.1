@@ -78,18 +78,46 @@ const whatsappServiceMulti = {
    * @param accountId ID de la cuenta de WhatsApp
    */
   async getLatestQR(accountId?: number): Promise<string | null> {
-    // Si no se proporciona ID, usar la primera cuenta disponible
-    if (accountId === undefined) {
-      const accounts = whatsappMultiAccountManager.getActiveAccounts();
-      if (accounts.length > 0) {
-        return await whatsappMultiAccountManager.getLatestQR(accounts[0].id);
-      } else {
-        console.error('No hay cuentas de WhatsApp disponibles para generar QR');
-        return null;
+    try {
+      // Si no se proporciona ID, usar la primera cuenta disponible
+      if (accountId === undefined) {
+        const accounts = whatsappMultiAccountManager.getActiveAccounts();
+        if (accounts.length > 0) {
+          accountId = accounts[0].id;
+        } else {
+          console.error('No hay cuentas de WhatsApp disponibles para generar QR');
+          return null;
+        }
       }
+
+      // Intentar obtener QR del cache o del cliente directamente
+      const qrData = await whatsappMultiAccountManager.getLatestQR(accountId);
+      
+      if (qrData) {
+        console.log(`✅ QR code obtenido para cuenta ${accountId}: ${qrData.substring(0, 50)}...`);
+        return qrData;
+      }
+
+      // Si no hay QR disponible, forzar inicialización
+      console.log(`🔄 Inicializando cuenta ${accountId} para generar QR`);
+      await whatsappMultiAccountManager.initializeAccount(accountId);
+      
+      // Esperar un momento para que se genere el QR
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Intentar obtener QR nuevamente
+      const newQrData = await whatsappMultiAccountManager.getLatestQR(accountId);
+      if (newQrData) {
+        console.log(`✅ Nuevo QR code generado para cuenta ${accountId}`);
+        return newQrData;
+      }
+
+      console.warn(`⚠️ No se pudo generar QR para cuenta ${accountId}`);
+      return null;
+    } catch (error) {
+      console.error(`❌ Error obteniendo QR para cuenta ${accountId}:`, error);
+      return null;
     }
-    
-    return await whatsappMultiAccountManager.getLatestQR(accountId);
   },
   
   /**
