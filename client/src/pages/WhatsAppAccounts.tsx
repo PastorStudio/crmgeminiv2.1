@@ -213,6 +213,14 @@ const WhatsAppAccounts = () => {
   });
 
   const accounts = accountsResponse?.accounts || [];
+  
+  // Debug accounts data
+  useEffect(() => {
+    console.log('🔍 Accounts data updated:', { 
+      count: accounts.length, 
+      accounts: accounts.map(acc => ({ id: acc.id, name: acc.name, userId: acc.userId })) 
+    });
+  }, [accounts]);
 
   // Consulta para obtener estado de ping de todas las cuentas
   const { data: pingStatusData } = useQuery({
@@ -1175,7 +1183,15 @@ const WhatsAppAccounts = () => {
           {/* Generar 10 posiciones fijas */}
           {Array.from({ length: 10 }, (_, index) => {
             const position = index + 1;
-            const existingAccount = accounts.find(acc => acc.id === position);
+            // For alphanumeric IDs like "1d", extract the numeric part to match positions
+            const existingAccount = accounts.find(acc => {
+              if (typeof acc.id === 'string') {
+                const numericPart = parseInt(acc.id.replace(/[^0-9]/g, ''));
+                console.log(`🔍 Position ${position}: Checking account ${acc.id}, numericPart: ${numericPart}, match: ${numericPart === position}`);
+                return numericPart === position;
+              }
+              return acc.id === position;
+            });
             const isOccupied = !!existingAccount;
             
             return (
