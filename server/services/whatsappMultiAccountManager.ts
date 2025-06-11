@@ -746,7 +746,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Fuerza la generación de un nuevo código QR limpiando el cache
    */
-  async forceRefreshQR(accountId: number): Promise<boolean> {
+  async forceRefreshQR(accountId: string): Promise<boolean> {
     try {
       console.log(`🔄 Forzando actualización de QR para cuenta ${accountId}`);
       
@@ -891,7 +891,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Verifica estado de conexión
    */
-  private async checkConnection(accountId: number): Promise<void> {
+  private async checkConnection(accountId: string): Promise<void> {
     try {
       const instance = this.instances.get(accountId);
       if (!instance || !instance.client) return;
@@ -909,7 +909,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Mantiene conexión activa
    */
-  private async keepConnectionAlive(accountId: number): Promise<void> {
+  private async keepConnectionAlive(accountId: string): Promise<void> {
     try {
       const instance = this.instances.get(accountId);
       if (!instance || !instance.client) return;
@@ -926,7 +926,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Intenta recuperar conexión perdida
    */
-  private async attemptConnectionRecovery(accountId: number): Promise<boolean> {
+  private async attemptConnectionRecovery(accountId: string): Promise<boolean> {
     try {
       const instance = this.instances.get(accountId);
       if (!instance) return false;
@@ -968,7 +968,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene estado de una cuenta
    */
-  getStatus(accountId: number): WhatsAppStatus {
+  getStatus(accountId: string): WhatsAppStatus {
     const instance = this.instances.get(accountId);
     if (!instance) {
       return {
@@ -984,14 +984,14 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene instancia de cuenta
    */
-  getInstance(accountId: number): WhatsAppInstance | undefined {
+  getInstance(accountId: string): WhatsAppInstance | undefined {
     return this.instances.get(accountId);
   }
 
   /**
    * Envía mensaje
    */
-  async sendMessage(accountId: number, to: string, body: string): Promise<any> {
+  async sendMessage(accountId: string, to: string, body: string): Promise<any> {
     try {
       const instance = this.instances.get(accountId);
       if (!instance || !instance.client) {
@@ -1271,8 +1271,8 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   /**
    * Obtiene cuentas activas
    */
-  getActiveAccounts(): { id: number, name: string, status: string }[] {
-    const activeAccounts: { id: number, name: string, status: string }[] = [];
+  getActiveAccounts(): { id: string, name: string, status: string }[] {
+    const activeAccounts: { id: string, name: string, status: string }[] = [];
     
     Array.from(this.instances.entries()).forEach(([id, instance]) => {
       activeAccounts.push({
