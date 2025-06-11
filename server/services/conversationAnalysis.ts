@@ -86,7 +86,7 @@ class ConversationAnalysisService {
   /**
    * Analyzes conversations for a specific WhatsApp account
    */
-  private async analyzeAccountConversations(accountId: string): Promise<void> {
+  private async analyzeAccountConversations(accountId: number): Promise<void> {
     try {
       const lastProcessedId = this.lastProcessedMessageId.get(`account_${accountId}`) || '0';
 
