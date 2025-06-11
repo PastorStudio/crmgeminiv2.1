@@ -75,9 +75,9 @@ const whatsappServiceMulti = {
   
   /**
    * Obtiene el código QR más reciente para una cuenta de WhatsApp
-   * @param accountId ID de la cuenta de WhatsApp
+   * @param accountId ID de la cuenta de WhatsApp (alphanumeric)
    */
-  async getLatestQR(accountId?: number): Promise<string | null> {
+  async getLatestQR(accountId?: string): Promise<string | null> {
     // Si no se proporciona ID, usar la primera cuenta disponible
     if (accountId === undefined) {
       const accounts = whatsappMultiAccountManager.getActiveAccounts();
@@ -94,9 +94,9 @@ const whatsappServiceMulti = {
   
   /**
    * Obtiene los chats disponibles para una cuenta de WhatsApp
-   * @param accountId ID de la cuenta de WhatsApp
+   * @param accountId ID de la cuenta de WhatsApp (alphanumeric)
    */
-  async getChats(accountId?: number): Promise<WhatsAppChat[]> {
+  async getChats(accountId?: string): Promise<WhatsAppChat[]> {
     // Si no se proporciona ID, usar la primera cuenta disponible
     if (accountId === undefined) {
       const accounts = whatsappMultiAccountManager.getActiveAccounts();
@@ -113,35 +113,35 @@ const whatsappServiceMulti = {
   
   /**
    * Obtiene los mensajes de un chat para una cuenta de WhatsApp
-   * @param accountId ID de la cuenta de WhatsApp
+   * @param accountId ID de la cuenta de WhatsApp (alphanumeric)
    * @param chatId ID del chat
    * @param limit Límite de mensajes a obtener
    */
-  async getChatMessages(accountId: number, chatId: string, limit: number = 50): Promise<WhatsAppMessage[]> {
+  async getChatMessages(accountId: string, chatId: string, limit: number = 50): Promise<WhatsAppMessage[]> {
     return await whatsappMultiAccountManager.getChatMessages(accountId, chatId, limit);
   },
   
   /**
    * Desconecta una cuenta de WhatsApp
-   * @param accountId ID de la cuenta de WhatsApp
+   * @param accountId ID de la cuenta de WhatsApp (alphanumeric)
    */
-  async disconnectAccount(accountId: number): Promise<boolean> {
+  async disconnectAccount(accountId: string): Promise<boolean> {
     return await whatsappMultiAccountManager.disconnectAccount(accountId);
   },
   
   /**
    * Obtiene información resumida de todas las cuentas activas
    */
-  getActiveAccounts(): { id: number, name: string, status: string }[] {
+  getActiveAccounts(): { id: string, name: string, status: string }[] {
     return whatsappMultiAccountManager.getActiveAccounts();
   },
   
   /**
    * Método para procesar mensajes entrantes y manejar respuestas automáticas
    * @param message Mensaje entrante
-   * @param accountId ID de la cuenta de WhatsApp
+   * @param accountId ID de la cuenta de WhatsApp (alphanumeric)
    */
-  async processIncomingMessage(message: any, accountId?: number): Promise<void> {
+  async processIncomingMessage(message: any, accountId?: string): Promise<void> {
     try {
       console.log(`📨 Procesando mensaje entrante: "${message.body?.substring(0, 50)}..."`);
       
