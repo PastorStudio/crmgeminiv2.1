@@ -242,7 +242,7 @@ const WhatsAppAccounts = () => {
       }
     },
     enabled: !!selectedAccount && qrDialogOpen && 
-             (!selectedAccount.authenticated || !selectedAccount.ready),
+             (!selectedAccount.currentStatus?.authenticated || !selectedAccount.currentStatus?.ready),
     refetchInterval: qrDialogOpen ? 120000 : false // Refrescar cada 2 minutos si el diálogo está abierto
   });
   
@@ -341,7 +341,7 @@ const WhatsAppAccounts = () => {
   
   // Mutation para eliminar cuenta
   const deleteAccountMutation = useMutation({
-    mutationFn: async (accountId: number) => {
+    mutationFn: async (accountId: string) => {
       return await apiRequest(`/api/whatsapp-accounts/${accountId}`, {
         method: 'DELETE'
       });
