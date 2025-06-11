@@ -1,6 +1,6 @@
 import { QueryClient, QueryKey } from '@tanstack/react-query';
 
-let currentUserId = "user123";
+let currentUserId = "3"; // Default to DJP user ID
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {

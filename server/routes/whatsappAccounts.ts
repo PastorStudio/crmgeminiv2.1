@@ -9,11 +9,52 @@ import whatsappServiceMulti from '../services/whatsappServiceMulti';
 
 const router = Router();
 
+// Helper function to transform account with status information
+function transformAccountWithStatus(account: any) {
+  try {
+    const statusInfo = whatsappMultiAccountManager.getStatus(account.id);
+    return {
+      ...account,
+      status: statusInfo.status,
+      isConnected: statusInfo.isConnected,
+      lastSeen: statusInfo.lastSeen,
+      qrCode: statusInfo.qrCode || null,
+      sessionStatus: statusInfo.sessionStatus || 'disconnected'
+    };
+  } catch (error) {
+    console.log(`⚠️ Error getting status for account ${account.id}:`, error);
+    return {
+      ...account,
+      status: 'disconnected',
+      isConnected: false,
+      lastSeen: null,
+      qrCode: null,
+      sessionStatus: 'disconnected'
+    };
+  }
+}
+
 // Obtener todas las cuentas de WhatsApp filtradas por usuario
 router.get('/', async (req, res) => {
   try {
     // Extract user ID from authentication headers or query params
-    const userId = req.headers['x-user-id'] || req.query.userId || '3'; // Default to DJP user for testing
+    const userIdParam = req.headers['x-user-id'] || req.query.userId || '3'; // Default to DJP user for testing
+    
+    // Handle string user IDs like "user123" - extract numeric part or use default
+    let userId: number;
+    if (typeof userIdParam === 'string' && userIdParam.startsWith('user')) {
+      // For demo users like "user123", map to a default user ID
+      console.log(`⚠️ Demo user ID detected: ${userIdParam}, mapping to default user ID 3`);
+      userId = 3;
+    } else {
+      userId = parseInt(userIdParam as string);
+      
+      // Validate user ID
+      if (isNaN(userId) || userId <= 0) {
+        console.log(`⚠️ Invalid user ID provided: ${userIdParam}, using default user ID 3`);
+        userId = 3;
+      }
+    }
     
     console.log(`📋 GET /api/whatsapp-accounts - Obteniendo cuentas para usuario ${userId}`);
     
@@ -22,7 +63,7 @@ router.get('/', async (req, res) => {
     res.header('Content-Type', 'application/json');
     
     // Get accounts filtered by user ID - CRITICAL SECURITY FIX
-    const accounts = await storage.getWhatsappAccountsByUserId(parseInt(userId as string));
+    const accounts = await storage.getWhatsappAccountsByUserId(userId);
     console.log(`✅ Cuentas encontradas para usuario ${userId}: ${accounts.length}`);
     
     // Obtener el estado actual de cada cuenta desde el administrador de múltiples cuentas
@@ -117,6 +158,25 @@ router.post('/', async (req, res) => {
   try {
     console.log('🆕 Creando nueva cuenta de WhatsApp:', req.body);
     
+    // Extract user ID from authentication headers or query params
+    const userIdParam = req.headers['x-user-id'] || req.query.userId || '3';
+    
+    // Handle string user IDs like "user123" - extract numeric part or use default
+    let userId: number;
+    if (typeof userIdParam === 'string' && userIdParam.startsWith('user')) {
+      console.log(`⚠️ Demo user ID detected: ${userIdParam}, mapping to default user ID 3`);
+      userId = 3;
+    } else {
+      userId = parseInt(userIdParam as string);
+      
+      if (isNaN(userId) || userId <= 0) {
+        console.log(`⚠️ Invalid user ID provided: ${userIdParam}, using default user ID 3`);
+        userId = 3;
+      }
+    }
+    
+    console.log(`🔒 Creating WhatsApp account for user ID: ${userId}`);
+    
     // Validar datos de entrada
     const validation = accountSchema.safeParse(req.body);
     if (!validation.success) {
@@ -127,7 +187,7 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Crear cuenta en la base de datos
+    // Crear cuenta en la base de datos con el user ID asignado
     const newAccount = await storage.createWhatsAppAccount({
       name: validation.data.name,
       description: validation.data.description || null,
@@ -139,7 +199,8 @@ router.post('/', async (req, res) => {
       responseDelay: validation.data.responseDelay || 3,
       status: 'inactive',
       sessionData: null,
-      organizationId: 1 // Default organization
+      organizationId: 1, // Default organization
+      userId: userId // CRITICAL: Assign the account to the current user
     });
     
     console.log('✅ Cuenta creada exitosamente:', newAccount);
