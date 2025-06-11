@@ -433,10 +433,7 @@ async function cleanAllSessionFolders() {
 // Inicializar una cuenta de WhatsApp
 router.post('/:id/initialize', async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'ID inválido' });
-    }
+    const id = req.params.id; // Accept alphanumeric ID directly
     
     // Verificar que la cuenta existe
     const account = await storage.getWhatsappAccount(id);
@@ -444,7 +441,7 @@ router.post('/:id/initialize', async (req, res) => {
       return res.status(404).json({ error: 'Cuenta no encontrada' });
     }
     
-    // Inicializar la cuenta
+    // Inicializar la cuenta usando el alphanumeric ID
     const success = await whatsappServiceMulti.initializeAccount(id);
     if (!success) {
       return res.status(500).json({ error: 'Error al inicializar cuenta' });
@@ -469,10 +466,7 @@ router.post('/:id/initialize', async (req, res) => {
 // Obtener código QR para una cuenta
 router.get('/:id/qrcode', async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'ID inválido' });
-    }
+    const id = req.params.id; // Accept alphanumeric ID directly
     
     // Obtener código QR
     const qrCode = await whatsappServiceMulti.getLatestQR(id);
@@ -491,10 +485,7 @@ router.get('/:id/qrcode', async (req, res) => {
 // Obtener estado de una cuenta
 router.get('/:id/status', async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'ID inválido' });
-    }
+    const id = req.params.id; // Accept alphanumeric ID directly
     
     // Obtener estado actualizado
     const status = whatsappServiceMulti.getStatus(id);
@@ -506,13 +497,10 @@ router.get('/:id/status', async (req, res) => {
   }
 });
 
-// Obtener código QR de una cuenta
+// Obtener código QR de una cuenta (main endpoint)
 router.get('/:id/qrcode', async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'ID inválido' });
-    }
+    const id = req.params.id; // Accept alphanumeric ID directly
 
     // Obtener cuenta de la base de datos
     const account = await storage.getWhatsappAccount(id);
