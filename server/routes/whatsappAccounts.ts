@@ -20,8 +20,8 @@ router.get('/', async (req, res) => {
 
     const token = authHeader.substring(7);
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any;
-    const userId = decoded.id;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'crm-whatsapp-secret-key') as any;
+    const userId = decoded.userId || decoded.id;
     
     console.log(`📋 GET /api/whatsapp-accounts - Usuario autenticado: ${decoded.username} (ID: ${userId})`);
     
