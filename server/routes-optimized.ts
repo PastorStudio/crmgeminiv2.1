@@ -25,6 +25,7 @@ import { enhancedSystemService } from "./services/enhancedSystemService";
 // import { realTimeAnalyticsService } from "./services/realTimeAnalyticsService"; // Disabled due to schema issues
 import { realDashboardService } from "./services/realDashboardService";
 import { demoUserManager } from "./services/demoUserManager";
+import { automaticDemoCleanup } from "./services/automaticDemoCleanup";
 import jwt from 'jsonwebtoken';
 
 // SISTEMA DE RUTAS OPTIMIZADO Y LIMPIO CON GEMINI AI
@@ -53,7 +54,7 @@ export function registerOptimizedRoutes(app: Express): Server {
   // DEMO USER MANAGEMENT ROUTES
   // ============================================
 
-  // Create demo user
+  // Create demo user with duplicate prevention
   app.post('/api/demo-users/create', async (req: Request, res: Response) => {
     try {
       const { customerName, phoneNumber, email, companyName, chatId } = req.body;
@@ -65,10 +66,19 @@ export function registerOptimizedRoutes(app: Express): Server {
         });
       }
 
-      console.log(`🎭 Creando usuario demo para: ${customerName}`);
+      // Validate customer name format
+      const cleanName = customerName.trim();
+      if (cleanName.length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: "El nombre debe tener al menos 2 caracteres"
+        });
+      }
+
+      console.log(`🎭 Creando usuario demo para: ${cleanName}`);
 
       const demoUser = await demoUserManager.createDemoUser({
-        customerName: customerName.trim(),
+        customerName: cleanName,
         phoneNumber: phoneNumber || '',
         email: email || '',
         companyName: companyName || '',
@@ -79,19 +89,29 @@ export function registerOptimizedRoutes(app: Express): Server {
 
       res.json({
         success: true,
-        message: 'Usuario demo creado exitosamente',
+        message: 'Usuario demo creado exitosamente - válido por 3 días',
         demoUser: {
           id: demoUser.id,
           username: demoUser.username,
-          password: demoUser.password,
+          password: 'demo123456', // Always return standard password
           customerName: demoUser.customerName,
           loginUrl: demoUser.loginUrl,
           expiresAt: demoUser.expiresAt,
-          status: demoUser.status
+          status: demoUser.status,
+          validDays: 3
         }
       });
     } catch (error) {
       console.error('❌ Error creando usuario demo:', error);
+      
+      if (error.message.includes('Ya existe un demo activo')) {
+        return res.status(409).json({
+          success: false,
+          message: 'Ya existe un demo activo para este cliente. Cada cliente puede tener solo un demo a la vez.',
+          errorCode: 'DUPLICATE_DEMO'
+        });
+      }
+      
       res.status(500).json({
         success: false,
         message: 'Error al crear usuario demo'
@@ -202,7 +222,7 @@ export function registerOptimizedRoutes(app: Express): Server {
   // Cleanup expired demo users
   app.post('/api/demo-users/cleanup', async (req: Request, res: Response) => {
     try {
-      const cleanedCount = await demoUserManager.cleanupExpiredDemoUsers();
+      const cleanedCount = await automaticDemoCleanup.forceCleanup();
       res.json({
         success: true,
         message: `${cleanedCount} usuarios demo expirados limpiados`,
@@ -213,6 +233,51 @@ export function registerOptimizedRoutes(app: Express): Server {
       res.status(500).json({
         success: false,
         message: 'Error en limpieza de usuarios demo'
+      });
+    }
+  });
+
+  // Get automatic cleanup service status
+  app.get('/api/demo-users/cleanup-status', async (req: Request, res: Response) => {
+    try {
+      const status = automaticDemoCleanup.getStatus();
+      const stats = await demoUserManager.getDemoUserStats();
+      
+      res.json({
+        success: true,
+        cleanupService: status,
+        demoStats: stats
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo estado de limpieza:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error obteniendo estado de limpieza'
+      });
+    }
+  });
+
+  // Check specific demo expiration status
+  app.get('/api/demo-users/:id/expiration', async (req: Request, res: Response) => {
+    try {
+      const demoId = parseInt(req.params.id);
+      if (isNaN(demoId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de demo inválido'
+        });
+      }
+
+      const result = await automaticDemoCleanup.checkDemoExpiration(demoId);
+      res.json({
+        success: true,
+        ...result
+      });
+    } catch (error) {
+      console.error('❌ Error verificando expiración de demo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error verificando expiración de demo'
       });
     }
   });
