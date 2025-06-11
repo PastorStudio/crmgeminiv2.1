@@ -1064,4 +1064,54 @@ router.post('/sync-real-chats', async (req, res) => {
   }
 });
 
+// Eliminar cuenta de WhatsApp con verificación de usuario
+router.delete('/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const userIdParam = req.headers['x-user-id'] || req.query.userId || '3';
+    const userId = parseInt(userIdParam as string) || 3;
+    
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+    
+    // CRITICAL SECURITY CHECK: Verify user owns this account before deletion
+    const account = await storage.getWhatsappAccount(id);
+    if (!account) {
+      return res.status(404).json({ error: 'Cuenta no encontrada' });
+    }
+
+    if (account.userId !== userId) {
+      return res.status(403).json({ error: 'Acceso denegado: no puedes eliminar esta cuenta' });
+    }
+
+    console.log(`🗑️ Eliminando cuenta WhatsApp ID ${id} para usuario ${userId}`);
+    
+    // Shutdown WhatsApp client for this account before deletion
+    try {
+      whatsappMultiAccountManager.disconnectAccount(id);
+    } catch (error) {
+      console.log(`⚠️ Cliente WhatsApp ya estaba desconectado para cuenta ${id}`);
+    }
+
+    // Delete the account from database
+    const deleted = await storage.deleteWhatsappAccount(id);
+    
+    if (deleted) {
+      console.log(`✅ Cuenta WhatsApp ID ${id} eliminada exitosamente`);
+      res.json({ 
+        success: true, 
+        message: 'Cuenta de WhatsApp eliminada exitosamente',
+        deletedAccountId: id
+      });
+    } else {
+      res.status(500).json({ error: 'No se pudo eliminar la cuenta' });
+    }
+
+  } catch (error) {
+    console.error('Error eliminando cuenta WhatsApp:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 export default router;
