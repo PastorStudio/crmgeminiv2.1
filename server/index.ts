@@ -6422,9 +6422,10 @@ app.use((req, res, next) => {
 
     } catch (error) {
       console.error('❌ Demo login error:', error);
-      res.status(500).json({
+      console.error('❌ Error stack:', error.stack);
+      res.status(401).json({
         success: false,
-        message: 'Internal server error during demo authentication'
+        message: 'Credenciales inválidas'
       });
     }
   });
