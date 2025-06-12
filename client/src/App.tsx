@@ -564,6 +564,24 @@ const AppRoutes: React.FC = () => {
                 AI Integration
               </a>
               
+              <a href="/enhanced-auto-response" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/enhanced-auto-response' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="4" width="18" height="14" rx="3" fill="#10B981"/>
+                  <circle cx="8" cy="9" r="1.5" fill="white"/>
+                  <circle cx="16" cy="9" r="1.5" fill="white"/>
+                  <path d="M6 13h12v2H6z" fill="white"/>
+                  <rect x="18" y="6" width="3" height="3" rx="1" fill="#F59E0B"/>
+                  <path d="M19 7h1M19.5 6.5v1" stroke="white" strokeWidth="0.5"/>
+                </svg>
+                <span className="relative">
+                  Respuestas Avanzadas
+                  <span className="absolute top-0 right-0 -mt-2 -mr-2 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                  </span>
+                </span>
+              </a>
+              
               <a href="/function-documentation" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/function-documentation' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="3" width="18" height="18" rx="3" fill="#DC2626"/>
@@ -682,6 +700,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/mass-sender" component={() => <PrivateRoute component={MassSender} path="/mass-sender" />} />
                 <Route path="/integrations" component={() => <PrivateRoute component={Integrations} path="/integrations" />} />
                 <Route path="/auto-response-settings" component={() => <PrivateRoute component={AutoResponseSettings} path="/auto-response-settings" />} />
+                <Route path="/enhanced-auto-response" component={() => <PrivateRoute component={EnhancedAutoResponse} path="/enhanced-auto-response" />} />
                 <Route path="/external-agents" component={() => <PrivateRoute component={ExternalAgents} path="/external-agents" />} />
                 <Route path="/internal-agents" component={() => <PrivateRoute component={InternalAgents} path="/internal-agents" />} />
                 <Route path="/agent-analysis" component={() => <PrivateRoute component={AgentAnalysis} path="/agent-analysis" />} />
