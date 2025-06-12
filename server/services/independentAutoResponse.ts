@@ -141,17 +141,20 @@ class IndependentAutoResponseService {
 
       console.log(`🤖 Procesando mensaje independiente - Cuenta: ${accountId}, Chat: ${message.chatId}`);
 
-      // NOTA: La detección de demo se maneja en unifiedMessageProcessor.ts con enhancedDemoDetector
-      // No procesamos demos aquí para evitar duplicación
+      // Verificar si el mensaje solicita una demostración
+      const demoResponse = await this.checkForDemoRequest(message.content, message.chatId, accountId);
+      if (demoResponse) {
+        console.log(`🎭 Creando usuario demo para ${message.chatId}`);
+        console.log(`📤 Respuesta de demo para ${message.chatId}: "${demoResponse.substring(0, 50)}..."`);
+        await this.saveResponse(accountId, message.chatId, demoResponse);
+        return;
+      }
 
-      // Generar respuesta normal de IA
-      const response = await this.generateAIResponse(message.content, config.agentName);
+      // Generar respuesta normal de IA usando Gemini como proveedor principal
+      const response = await this.generateAIResponseWithGemini(message.content, config.agentName);
       
       if (response) {
-        // Simular envío de respuesta (aquí se conectaría con WhatsApp real)
         console.log(`📤 Respuesta generada para ${message.chatId}: "${response.substring(0, 50)}..."`);
-        
-        // Guardar la respuesta en la base de datos
         await this.saveResponse(accountId, message.chatId, response);
       }
     } catch (error) {
@@ -405,6 +408,177 @@ class IndependentAutoResponseService {
       console.log(`🔄 Usando respuesta de respaldo: ${randomResponse}`);
       return randomResponse;
     }
+  }
+
+  /**
+   * Verifica si el mensaje solicita una demostración y crea usuario demo automáticamente
+   */
+  private async checkForDemoRequest(messageText: string, chatId: string, accountId: number): Promise<string | null> {
+    try {
+      const lowerText = messageText.toLowerCase();
+      
+      // Palabras clave que indican solicitud de demo
+      const demoKeywords = [
+        'demo', 'demostración', 'demonstración', 'prueba', 'gratis', 'free',
+        'test', 'trial', 'probar', 'acceso', 'usuario', 'contraseña',
+        'credenciales', 'login', 'ingresar', 'sistema', 'plataforma'
+      ];
+      
+      // Verificar si el mensaje contiene palabras clave de demo
+      const containsDemoKeywords = demoKeywords.some(keyword => lowerText.includes(keyword));
+      
+      if (containsDemoKeywords) {
+        console.log(`🎭 Solicitud de demo detectada en mensaje: ${messageText.substring(0, 50)}...`);
+        
+        // Extraer nombre del cliente del número de teléfono o usar un nombre por defecto
+        const phoneNumber = chatId.replace('@c.us', '');
+        const customerName = `Cliente_${phoneNumber.substring(-4)}`;
+        
+        try {
+          // Importar el gestor de usuarios demo
+          const { demoUserManager } = await import('./demoUserManager');
+          
+          // Crear usuario demo
+          const demoUser = await demoUserManager.createDemoUser({
+            customerName,
+            phoneNumber,
+            email: `${customerName.toLowerCase()}@demo.local`,
+            companyName: '',
+            chatId
+          });
+          
+          // Generar respuesta con credenciales
+          const demoResponse = `🎉 ¡Tu demo ha sido creado exitosamente!
+
+🔑 **CREDENCIALES DE ACCESO:**
+👤 **Usuario:** \`${demoUser.username}\`
+🔒 **Contraseña:** \`demo123456\`
+
+🌐 **Acceso al sistema:**
+${demoUser.loginUrl}
+
+⏰ **Válido por 3 días** (hasta ${new Date(demoUser.expiresAt).toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })})
+
+🚀 **¿Qué puedes hacer?**
+• Gestionar contactos y leads
+• Enviar mensajes automáticos  
+• Ver análisis en tiempo real
+• Gestionar múltiples cuentas de WhatsApp
+• Usar plantillas de mensajes
+• Panel de administración completo
+
+💡 **Para empezar:**
+1. Ve a la URL de arriba
+2. Ingresa tu usuario y contraseña
+3. ¡Explora todas las funciones!
+
+¿Tienes alguna pregunta sobre tu demo? ¡Estoy aquí para ayudarte! 🚀`;
+          
+          return demoResponse;
+          
+        } catch (demoError) {
+          console.error('❌ Error creando usuario demo:', demoError);
+          
+          // Verificar si ya existe un demo para este cliente
+          if (demoError.message && demoError.message.includes('Ya existe un demo activo')) {
+            return `⚠️ Ya tienes un demo activo creado anteriormente. 
+
+Si olvidaste tus credenciales, contacta al administrador para recuperarlas.
+
+¿Necesitas ayuda con algo más? ¡Estoy aquí para ayudarte! 😊`;
+          }
+          
+          return `❌ Disculpa, hubo un problema creando tu demo. 
+
+Un representante se pondrá en contacto contigo para configurar tu acceso manualmente.
+
+¡Gracias por tu interés en nuestro sistema! 🙏`;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('❌ Error verificando solicitud de demo:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Genera respuesta usando Gemini como proveedor principal
+   */
+  private async generateAIResponseWithGemini(messageText: string, agentName: string): Promise<string | null> {
+    try {
+      console.log(`🤖 Generando respuesta con Gemini para agente: ${agentName}`);
+      
+      // Importar servicio de Gemini directamente
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      
+      // Obtener clave API de Gemini
+      const { pool } = await import('../db');
+      const result = await pool.query('SELECT gemini_api_key FROM ai_settings WHERE id = 1');
+      
+      if (result.rows.length === 0 || !result.rows[0].gemini_api_key) {
+        throw new Error('No Gemini API key found');
+      }
+      
+      const apiKey = result.rows[0].gemini_api_key;
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+      
+      const prompt = `Eres ${agentName}, un asistente virtual profesional de atención al cliente en español.
+
+Responde de manera amable, profesional y útil al siguiente mensaje del cliente:
+
+"${messageText}"
+
+Instrucciones:
+- Responde en español
+- Sé amable y profesional
+- Ofrece ayuda adicional
+- Mantén la respuesta concisa pero completa
+- Si mencionan demo, prueba o acceso, indica que pueden solicitar una demostración`;
+
+      const result_ai = await model.generateContent(prompt);
+      const response = await result_ai.response;
+      const text = response.text();
+      
+      if (text && text.trim().length > 0) {
+        console.log(`✅ Respuesta generada exitosamente con Gemini: ${text.substring(0, 50)}...`);
+        return text.trim();
+      }
+      
+      throw new Error('Empty response from Gemini');
+      
+    } catch (error) {
+      console.error('❌ Error generando respuesta con Gemini:', error);
+      return this.getFallbackResponse();
+    }
+  }
+
+  /**
+   * Obtiene una respuesta de fallback cuando la IA falla
+   */
+  private getFallbackResponse(): string {
+    const fallbackResponses = [
+      'Gracias por contactarnos. Tu mensaje es importante para nosotros.',
+      'Hemos recibido tu mensaje y te responderemos pronto.',
+      'Estamos aquí para ayudarte. Un representante se pondrá en contacto contigo.',
+      'Tu consulta ha sido recibida. Te responderemos en breve.',
+      'Apreciamos tu contacto. Te responderemos lo antes posible.',
+      'Hemos recibido tu mensaje y te atenderemos a la brevedad.',
+      'Tu consulta es importante para nosotros. Te atenderemos pronto.',
+      'Tu mensaje es importante para nosotros. Te contactaremos pronto.',
+      'Estamos aquí para ayudarte. Un representante te responderá.'
+    ];
+    
+    const randomIndex = Math.floor(Math.random() * fallbackResponses.length);
+    return fallbackResponses[randomIndex];
   }
 
   /**
