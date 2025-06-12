@@ -8,6 +8,7 @@ import { whatsappAccounts, whatsappMessages, externalAgents } from '@shared/sche
 import { eq, and, desc } from 'drizzle-orm';
 import OpenAI from 'openai';
 import { chatgptPlusDirectService } from './chatgptPlusDirectService';
+import { realtimeDemoCreator } from './realtimeDemoCreator';
 
 interface IndependentConfig {
   accountId: number;
@@ -140,15 +141,30 @@ class IndependentAutoResponseService {
 
       console.log(`🤖 Procesando mensaje independiente - Cuenta: ${accountId}, Chat: ${message.chatId}`);
 
-      // Generar respuesta usando IA
+      // PRIMERO: Verificar si el mensaje contiene un nombre completo para crear demo automático
+      const demoResult = await realtimeDemoCreator.processMessage(
+        message.content, 
+        message.chatId, 
+        message.id || `msg_${Date.now()}`,
+        accountId
+      );
+
+      if (demoResult.shouldRespond && demoResult.responseMessage) {
+        // Si se creó un demo, enviar las credenciales inmediatamente
+        console.log(`🎉 Demo creado automáticamente para chat: ${message.chatId}`);
+        console.log(`📤 Enviando credenciales: "${demoResult.responseMessage.substring(0, 50)}..."`);
+        
+        // Guardar respuesta de demo en la base de datos
+        await this.saveResponse(accountId, message.chatId, demoResult.responseMessage);
+        return; // No generar respuesta adicional con IA
+      }
+
+      // Si no se creó demo, continuar con respuesta normal de IA
       const response = await this.generateAIResponse(message.content, config.agentName);
       
       if (response) {
         // Simular envío de respuesta (aquí se conectaría con WhatsApp real)
         console.log(`📤 Respuesta generada para ${message.chatId}: "${response.substring(0, 50)}..."`);
-        
-        // Detectar si la respuesta incluye creación de demo
-        await this.handleDemoCreation(response, message.chatId, accountId);
         
         // Guardar la respuesta en la base de datos
         await this.saveResponse(accountId, message.chatId, response);
