@@ -21,6 +21,7 @@ export class RealtimeDemoCreator {
   private static instance: RealtimeDemoCreator;
   private namePattern = /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*$/;
   private processedMessages = new Set<string>();
+  private waitingForName = new Map<string, boolean>(); // chatId -> isWaitingForName
 
   static getInstance(): RealtimeDemoCreator {
     if (!RealtimeDemoCreator.instance) {
@@ -30,7 +31,24 @@ export class RealtimeDemoCreator {
   }
 
   /**
-   * Detecta si un mensaje contiene un nombre completo válido
+   * Detecta si un cliente está solicitando una demo
+   */
+  private detectDemoRequest(message: string): boolean {
+    const cleanMessage = message.toLowerCase().trim();
+    
+    const demoKeywords = [
+      'demo', 'prueba', 'probar', 'test', 'gratuito', 'gratis',
+      'cuenta de prueba', 'acceso de prueba', 'usuario de prueba',
+      'quiero probar', 'me interesa probar', 'puedo probar',
+      'cómo funciona', 'como funciona', 'información',
+      'más información', 'mas información'
+    ];
+
+    return demoKeywords.some(keyword => cleanMessage.includes(keyword));
+  }
+
+  /**
+   * Detecta si un mensaje contiene un nombre completo válido (en respuesta a solicitud de nombre)
    */
   private detectFullName(message: string): string | null {
     const cleanMessage = message.trim();
@@ -216,7 +234,7 @@ export class RealtimeDemoCreator {
   }
 
   /**
-   * Procesa un mensaje de WhatsApp y crea automáticamente un demo si detecta un nombre
+   * Procesa un mensaje de WhatsApp con el flujo correcto de solicitud -> pregunta -> creación
    */
   async processMessage(
     message: string, 
@@ -231,52 +249,87 @@ export class RealtimeDemoCreator {
       return { shouldRespond: false };
     }
 
-    console.log(`🔍 Analizando mensaje para creación automática de demo: "${message}"`);
+    console.log(`🔍 Analizando mensaje para gestión de demo: "${message}"`);
 
-    const detectedName = this.detectFullName(message);
-    if (!detectedName) {
-      console.log('❌ No se detectó nombre completo válido');
-      return { shouldRespond: false };
-    }
+    // Verificar si estamos esperando el nombre de este chat
+    const isWaitingForName = this.waitingForName.get(chatId) || false;
 
-    console.log(`✅ Nombre completo detectado: ${detectedName}`);
-    
-    // Marcar mensaje como procesado
-    this.processedMessages.add(messageKey);
-
-    // Verificar si ya existe un usuario demo para este chat
-    const existingDemoResult = await pool.query(`
-      SELECT username FROM demo_users 
-      WHERE full_name ILIKE $1 AND status = 'active'
-      ORDER BY created_at DESC LIMIT 1
-    `, [`%${detectedName}%`]);
-
-    if (existingDemoResult.rows.length > 0) {
-      console.log(`⚠️ Ya existe usuario demo para: ${detectedName}`);
-      return {
-        shouldRespond: true,
-        responseMessage: `Hola ${detectedName}! Parece que ya tienes una cuenta demo creada. Si tienes problemas para acceder, contacta con soporte.`
-      };
-    }
-
-    // Crear usuario demo
-    const demoResult = await this.createDemoUser(detectedName, chatId);
-    
-    if (demoResult.success) {
-      const welcomeMessage = this.generateWelcomeMessage(demoResult);
-      console.log(`📤 Enviando credenciales de demo a ${detectedName}`);
+    if (isWaitingForName) {
+      // El cliente debería estar proporcionando su nombre
+      const detectedName = this.detectFullName(message);
       
-      return {
-        shouldRespond: true,
-        responseMessage: welcomeMessage
-      };
+      if (detectedName) {
+        console.log(`✅ Nombre recibido: ${detectedName}`);
+        
+        // Marcar que ya no esperamos el nombre
+        this.waitingForName.delete(chatId);
+        this.processedMessages.add(messageKey);
+
+        // Verificar si ya existe un usuario demo
+        const existingDemoResult = await pool.query(`
+          SELECT username FROM demo_users 
+          WHERE full_name ILIKE $1 AND status = 'active'
+          ORDER BY created_at DESC LIMIT 1
+        `, [`%${detectedName}%`]);
+
+        if (existingDemoResult.rows.length > 0) {
+          console.log(`⚠️ Ya existe usuario demo para: ${detectedName}`);
+          return {
+            shouldRespond: true,
+            responseMessage: `Hola ${detectedName}! Parece que ya tienes una cuenta demo creada. Si tienes problemas para acceder, contacta con soporte.`
+          };
+        }
+
+        // Crear usuario demo
+        const demoResult = await this.createDemoUser(detectedName, chatId);
+        
+        if (demoResult.success) {
+          const welcomeMessage = this.generateWelcomeMessage(demoResult);
+          console.log(`📤 Enviando credenciales de demo a ${detectedName}`);
+          
+          return {
+            shouldRespond: true,
+            responseMessage: welcomeMessage
+          };
+        } else {
+          console.error(`❌ Error en creación de demo para ${detectedName}:`, demoResult.error);
+          return {
+            shouldRespond: true,
+            responseMessage: "Lo siento, hubo un error al crear tu cuenta demo. Por favor, inténtalo más tarde o contacta con soporte."
+          };
+        }
+      } else {
+        // No se detectó nombre válido, pedir de nuevo
+        console.log('❌ Nombre no válido, solicitando nuevamente');
+        return {
+          shouldRespond: true,
+          responseMessage: "Por favor, proporciona tu nombre completo (nombre y apellido) para crear tu cuenta demo. Ejemplo: Juan Pérez"
+        };
+      }
     } else {
-      console.error(`❌ Error en creación de demo para ${detectedName}:`, demoResult.error);
-      return {
-        shouldRespond: true,
-        responseMessage: "Lo siento, hubo un error al crear tu cuenta demo. Por favor, inténtalo más tarde o contacta con soporte."
-      };
+      // No estamos esperando nombre, verificar si solicita demo
+      const isDemoRequest = this.detectDemoRequest(message);
+      
+      if (isDemoRequest) {
+        console.log(`✅ Solicitud de demo detectada en chat: ${chatId}`);
+        
+        // Marcar que esperamos el nombre de este chat
+        this.waitingForName.set(chatId, true);
+        this.processedMessages.add(messageKey);
+        
+        return {
+          shouldRespond: true,
+          responseMessage: `¡Excelente! Me encantaría crear una cuenta demo para ti. 
+
+Para proceder, necesito tu nombre completo (nombre y apellido). 
+
+Por favor, responde con tu nombre completo para generar tus credenciales de acceso.`
+        };
+      }
     }
+
+    // No es solicitud de demo ni estamos esperando nombre
+    return { shouldRespond: false };
   }
 
   /**
