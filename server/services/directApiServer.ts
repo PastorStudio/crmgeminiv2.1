@@ -519,47 +519,44 @@ export function registerDirectAPIRoutes(app: Express): void {
       }
 
       const { db } = await import('../db');
-      const { demoUsers } = await import('@shared/schema');
-      const { eq } = await import('drizzle-orm');
+      const { users } = await import('@shared/schema');
+      const { eq, and } = await import('drizzle-orm');
       const bcrypt = await import('bcrypt');
 
-      // Find demo user
+      console.log(`🔍 Searching for demo user: ${username}`);
+
+      // Find demo user in users table
       const [demoUser] = await db.select()
-        .from(demoUsers)
-        .where(eq(demoUsers.username, username));
+        .from(users)
+        .where(and(
+          eq(users.username, username),
+          eq(users.role, 'demo'),
+          eq(users.status, 'active')
+        ));
+
+      console.log(`🔍 Query completed. Found user:`, !!demoUser);
 
       if (!demoUser) {
+        console.log(`❌ Demo user not found: ${username}`);
         return res.status(401).json({
           success: false,
           message: "Credenciales inválidas"
         });
       }
+
+      console.log(`✅ Demo user found: ${username}`);
 
       // Check password using bcrypt since passwords are hashed
       const isPasswordValid = await bcrypt.compare(password, demoUser.password);
+      console.log(`🔐 Password validation result: ${isPasswordValid}`);
+      
       if (!isPasswordValid) {
+        console.log(`❌ Invalid password for demo user: ${username}`);
         return res.status(401).json({
           success: false,
           message: "Credenciales inválidas"
         });
       }
-
-      // Check if expired
-      if (new Date() > new Date(demoUser.expiresAt)) {
-        return res.status(401).json({
-          success: false,
-          message: "Demo expirado"
-        });
-      }
-
-      // Update login stats
-      await db.update(demoUsers)
-        .set({
-          lastLoginAt: new Date(),
-          loginCount: demoUser.loginCount + 1,
-          updatedAt: new Date()
-        })
-        .where(eq(demoUsers.id, demoUser.id));
 
       // Generate demo token
       const token = `demo-token-${demoUser.id}-${Date.now()}`;
@@ -572,9 +569,10 @@ export function registerDirectAPIRoutes(app: Express): void {
         user: {
           id: demoUser.id,
           username: demoUser.username,
-          customerName: demoUser.customerName,
-          role: 'demo',
-          expiresAt: demoUser.expiresAt
+          fullName: demoUser.fullName || 'Demo User',
+          email: demoUser.email,
+          role: demoUser.role,
+          isDemoUser: true
         }
       });
     } catch (error) {
