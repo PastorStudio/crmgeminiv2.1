@@ -199,23 +199,17 @@ Responde en formato JSON con la siguiente estructura:
 
 Importante: Solo incluye información que esté explícitamente mencionada. Si no hay información específica, omite esos campos.`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: "Eres un analista experto en conversaciones de atención al cliente. Extrae información valiosa y relevante de las conversaciones."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        max_tokens: 800,
-        temperature: 0.3
+      // Use the multi-provider AI service instead of direct OpenAI
+      const { AIProviderService } = await import('./aiProviderService');
+      const aiProvider = new AIProviderService();
+      
+      const aiResponse = await aiProvider.generateResponse(prompt, {
+        model: 'gpt-4o',
+        maxTokens: 800,
+        temperature: 0.3,
+        systemPrompt: "Eres un analista experto en conversaciones de atención al cliente. Extrae información valiosa y relevante de las conversaciones."
       });
 
-      const aiResponse = response.choices[0]?.message?.content;
       if (!aiResponse) return null;
 
       // Parse JSON response

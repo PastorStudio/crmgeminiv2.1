@@ -147,9 +147,7 @@ Puedes escribir: "Mi nombre es [tu nombre]"`;
         
         return `⚠️ Ya tienes un demo activo creado anteriormente.
 
-🔐 **TUS CREDENCIALES EXISTENTES:**
-👤 Usuario: \`${existingDemo.username}\`
-🔑 Contraseña: \`demo123456\`
+👤 **Usuario:** \`${existingDemo.username}\`
 
 ⏰ **Válido hasta:** ${new Date(existingDemo.expiresAt).toLocaleDateString('es-ES', {
           year: 'numeric',
@@ -159,7 +157,7 @@ Puedes escribir: "Mi nombre es [tu nombre]"`;
           minute: '2-digit'
         })}
 
-¡Puedes seguir usando tu demo existente! 🚀`;
+Si olvidaste tu contraseña, contacta al administrador para recuperarla.`;
       }
 
       // Create new demo user
