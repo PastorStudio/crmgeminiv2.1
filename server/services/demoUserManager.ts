@@ -50,7 +50,18 @@ class DemoUserManager {
       const timestamp = Date.now();
       const randomSuffix = Math.random().toString(36).substring(2, 6);
       const username = `demo_${config.customerName.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${randomSuffix}`;
-      const password = 'demo123456'; // Contraseña estándar para todos los demos
+      
+      // Generar contraseña aleatoria de 8 caracteres
+      const generateRandomPassword = () => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let password = '';
+        for (let i = 0; i < 8; i++) {
+          password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return password;
+      };
+      
+      const password = generateRandomPassword();
       
       // Encriptar contraseña
       const hashedPassword = await bcrypt.hash(password, 10);
