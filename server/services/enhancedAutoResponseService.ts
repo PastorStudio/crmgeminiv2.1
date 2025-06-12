@@ -130,11 +130,11 @@ class EnhancedAutoResponseService {
    * Iniciar procesamiento continuo
    */
   private startContinuousProcessing(): void {
-    this.processingInterval = setInterval(async () => {
-      await this.processAllNewMessages();
-    }, 10000); // Procesar cada 10 segundos
-
-    console.log('⏰ Iniciando procesamiento continuo cada 10 segundos...');
+    // Temporalmente deshabilitado para evitar errores SQL
+    console.log('⏰ Procesamiento continuo temporalmente deshabilitado para depuración');
+    // this.processingInterval = setInterval(async () => {
+    //   await this.processAllNewMessages();
+    // }, 10000); // Procesar cada 10 segundos
   }
 
   /**
@@ -157,15 +157,19 @@ class EnhancedAutoResponseService {
    */
   private async processNewMessagesForAccount(accountId: number, config: AutoResponseConfig): Promise<void> {
     try {
-      const newMessages = await db.select()
-        .from(whatsappMessages)
-        .where(and(
-          eq(whatsappMessages.accountId, accountId),
-          eq(whatsappMessages.isFromUser, true),
-          gt(whatsappMessages.timestamp, config.lastProcessed)
-        ))
-        .orderBy(desc(whatsappMessages.timestamp))
-        .limit(10);
+      // Use raw SQL query to avoid Drizzle syntax issues
+      const { pool } = await import('../db');
+      const result = await pool.query(`
+        SELECT id, "chatId", content, "isFromUser", timestamp, "messageType"
+        FROM whatsapp_messages 
+        WHERE "accountId" = $1 
+        AND "isFromUser" = true 
+        AND timestamp > $2
+        ORDER BY timestamp DESC 
+        LIMIT 10
+      `, [accountId, config.lastProcessed]);
+      
+      const newMessages = result.rows;
 
       for (const message of newMessages) {
         // Verificar si hay intervención manual activa para este chat
@@ -306,17 +310,18 @@ class EnhancedAutoResponseService {
         return this.conversationHistory.get(chatId) || [];
       }
 
-      // Cargar historial desde base de datos
-      const messages = await db.select()
-        .from(whatsappMessages)
-        .where(and(
-          eq(whatsappMessages.chatId, chatId),
-          eq(whatsappMessages.accountId, accountId)
-        ))
-        .orderBy(whatsappMessages.timestamp)
-        .limit(20); // Últimos 20 mensajes
+      // Cargar historial desde base de datos usando SQL raw
+      const { pool } = await import('../db');
+      const result = await pool.query(`
+        SELECT id, content, "isFromUser", timestamp
+        FROM whatsapp_messages 
+        WHERE "chatId" = $1 
+        AND "accountId" = $2
+        ORDER BY timestamp ASC 
+        LIMIT 20
+      `, [chatId, accountId]);
 
-      const history: ConversationMessage[] = messages.map(msg => ({
+      const history: ConversationMessage[] = result.rows.map(msg => ({
         id: msg.id.toString(),
         content: msg.content,
         isFromUser: msg.isFromUser,
@@ -378,17 +383,18 @@ Asistente:`;
       // Verificar si hay mensajes enviados por agentes humanos en los últimos 5 minutos
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
       
-      const recentAgentMessages = await db.select()
-        .from(whatsappMessages)
-        .where(and(
-          eq(whatsappMessages.chatId, chatId),
-          eq(whatsappMessages.accountId, accountId),
-          eq(whatsappMessages.isFromUser, false),
-          gt(whatsappMessages.timestamp, fiveMinutesAgo)
-        ))
-        .limit(1);
+      // Usar SQL raw para evitar errores de sintaxis
+      const { pool } = await import('../db');
+      const result = await pool.query(`
+        SELECT id FROM whatsapp_messages 
+        WHERE "chatId" = $1 
+        AND "accountId" = $2 
+        AND "isFromUser" = false 
+        AND timestamp > $3
+        LIMIT 1
+      `, [chatId, accountId, fiveMinutesAgo]);
 
-      if (recentAgentMessages.length > 0) {
+      if (result.rows.length > 0) {
         // Activar intervención manual por 30 minutos
         this.manualInterventions.add(chatId);
         console.log(`🛑 Intervención manual detectada para chat ${chatId} - Respuestas automáticas pausadas`);
