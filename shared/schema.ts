@@ -566,6 +566,7 @@ export const aiSettings = pgTable('ai_settings', {
   geminiApiKey: text('gemini_api_key'),
   openaiApiKey: text('openai_api_key'),
   qwenApiKey: text('qwen_api_key'),
+  deepseekApiKey: text('deepseek_api_key'),
   customPrompt: text('custom_prompt').default('Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.'),
   temperature: real('temperature').default(0.7),
   enableAIResponses: boolean('enable_ai_responses').default(false),
