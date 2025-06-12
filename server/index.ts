@@ -7795,6 +7795,11 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
         startDemoMaintenanceScheduler();
         console.log('✅ Sistema de mantenimiento de demos iniciado - verificaciones cada 6 horas');
         
+        // Inicializar sistema de análisis inteligente de conversaciones
+        console.log('🧠 Iniciando sistema de análisis de conversaciones...');
+        conversationAnalysisService.start();
+        console.log('✅ Sistema de análisis de conversaciones iniciado - análisis cada 5 segundos');
+        
       } catch (error) {
         console.error('❌ Error inicializando sistemas de respuestas automáticas:', error);
       }
