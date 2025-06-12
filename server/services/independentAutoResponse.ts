@@ -147,12 +147,213 @@ class IndependentAutoResponseService {
         // Simular envío de respuesta (aquí se conectaría con WhatsApp real)
         console.log(`📤 Respuesta generada para ${message.chatId}: "${response.substring(0, 50)}..."`);
         
+        // Detectar si la respuesta incluye creación de demo
+        await this.handleDemoCreation(response, message.chatId, accountId);
+        
         // Guardar la respuesta en la base de datos
         await this.saveResponse(accountId, message.chatId, response);
       }
     } catch (error) {
       console.error('❌ Error procesando mensaje individual:', error);
     }
+  }
+
+  /**
+   * Maneja la creación automática de usuarios demo cuando se detecta el mensaje específico
+   */
+  private async handleDemoCreation(response: string, chatId: string, accountId: number): Promise<void> {
+    try {
+      // Detectar si la respuesta contiene el mensaje específico de creación de demo
+      const demoKeywords = [
+        "Perfecto Stephanie! 🎉",
+        "Estoy creando tu demo personalizado",
+        "Tu acceso incluirá:",
+        "Usuario único y contraseña estándar",
+        "Acceso completo por 3 días"
+      ];
+
+      const containsDemoMessage = demoKeywords.some(keyword => 
+        response.includes(keyword)
+      );
+
+      if (containsDemoMessage) {
+        console.log(`🎯 Detectado mensaje de creación de demo para chat: ${chatId}`);
+        
+        // Extraer nombre del cliente del chatId o usar datos del contacto
+        const clientName = await this.extractClientName(chatId);
+        const demoUser = await this.createDemoUser(clientName, chatId);
+        
+        if (demoUser) {
+          // Enviar mensaje de seguimiento con credenciales reales
+          const credentialsMessage = this.buildCredentialsMessage(demoUser, clientName);
+          
+          // Enviar el mensaje con las credenciales
+          console.log(`📧 Enviando credenciales de demo a ${chatId}: ${credentialsMessage.substring(0, 100)}...`);
+          
+          // Guardar el mensaje de credenciales
+          await this.saveResponse(accountId, chatId, credentialsMessage);
+          
+          console.log(`✅ Usuario demo creado exitosamente: ${demoUser.username}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error manejando creación de demo:', error);
+    }
+  }
+
+  /**
+   * Extrae el nombre del cliente desde el contacto o genera uno
+   */
+  private async extractClientName(chatId: string): Promise<string> {
+    try {
+      // Intentar obtener información del contacto desde la base de datos
+      const { DatabaseAdapter } = await import('../databaseAdapter');
+      const db = new DatabaseAdapter();
+      
+      // Buscar en la tabla de contactos
+      const contact = await db.pool.query(`
+        SELECT name, phone FROM contacts WHERE phone = $1 LIMIT 1
+      `, [chatId.replace('@c.us', '')]);
+
+      if (contact.rows.length > 0 && contact.rows[0].name) {
+        return contact.rows[0].name;
+      }
+
+      // Si no hay nombre guardado, generar uno basado en el número
+      const phoneNumber = chatId.replace('@c.us', '').replace('@g.us', '');
+      return `Cliente_${phoneNumber.slice(-4)}`;
+    } catch (error) {
+      console.error('Error extrayendo nombre del cliente:', error);
+      const phoneNumber = chatId.replace('@c.us', '').replace('@g.us', '');
+      return `Cliente_${phoneNumber.slice(-4)}`;
+    }
+  }
+
+  /**
+   * Crea un usuario demo en la base de datos
+   */
+  private async createDemoUser(clientName: string, chatId: string): Promise<any> {
+    try {
+      const { DatabaseAdapter } = await import('../databaseAdapter');
+      const db = new DatabaseAdapter();
+      
+      // Generar credenciales únicas
+      const timestamp = Date.now();
+      const randomSuffix = Math.floor(Math.random() * 1000);
+      const username = `demo_${clientName.toLowerCase().replace(/[^a-z0-9]/g, '')}_${randomSuffix}`;
+      const password = 'demo123'; // Contraseña estándar para demos
+      
+      // Calcular fecha de expiración (3 días)
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + 3);
+      
+      // Obtener el siguiente número de demo disponible
+      const demoNumberResult = await db.pool.query(`
+        SELECT COALESCE(MAX(demo_number), 0) + 1 as next_demo_number FROM demo_users
+      `);
+      const demoNumber = demoNumberResult.rows[0].next_demo_number;
+      
+      // Crear el usuario demo en la tabla demo_users
+      const demoUserResult = await db.pool.query(`
+        INSERT INTO demo_users (customer_name, phone_number, username, password, demo_number, chat_id, expires_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, customer_name, username, demo_number, expires_at
+      `, [
+        clientName,
+        chatId.replace('@c.us', '').replace('@g.us', ''),
+        username,
+        password,
+        demoNumber,
+        chatId,
+        expirationDate
+      ]);
+
+      if (demoUserResult.rows.length > 0) {
+        const demoUser = demoUserResult.rows[0];
+        
+        // También crear un usuario regular para el sistema con permisos demo
+        const userResult = await db.pool.query(`
+          INSERT INTO users (username, "fullName", email, password, role, status, department)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          RETURNING id, username, "fullName", email, role
+        `, [
+          username,
+          clientName,
+          `${username}@demo.geminicrm.com`,
+          password, // Sin hash para simplicidad en demos
+          'demo',
+          'active',
+          'demo'
+        ]);
+
+        const user = userResult.rows[0];
+        
+        // Registrar en demo_tracking la asociación
+        await db.pool.query(`
+          INSERT INTO demo_tracking (user_id, demo_user_id, chat_id, phone_number, client_name, expires_at)
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `, [
+          user.id,
+          demoUser.id,
+          chatId,
+          chatId.replace('@c.us', '').replace('@g.us', ''),
+          clientName,
+          expirationDate
+        ]);
+
+        return {
+          id: user.id,
+          username: username,
+          fullName: clientName,
+          demo_expiration: expirationDate,
+          demo_number: demoNumber,
+          password: password // Solo para el mensaje de credenciales
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('❌ Error creando usuario demo:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Construye el mensaje con las credenciales del demo
+   */
+  private buildCredentialsMessage(demoUser: any, clientName: string): string {
+    const expirationDate = new Date(demoUser.demo_expiration);
+    const formattedDate = expirationDate.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    return `🎉 ¡Perfecto ${clientName}! Tu demo personalizado está listo
+
+🔑 **TUS CREDENCIALES DE ACCESO:**
+📧 Usuario: ${demoUser.username}
+🔒 Contraseña: demo123
+🌐 URL: https://geminicrm.com/login
+
+⏰ **DETALLES DE TU ACCESO:**
+✅ Duración: 3 días completos
+📅 Expira: ${formattedDate}
+🚀 Acceso total a todas las funciones premium
+
+🎯 **LO QUE PUEDES HACER:**
+• Configurar respuestas automáticas con IA
+• Gestionar múltiples cuentas de WhatsApp
+• Envío masivo de mensajes
+• Análisis avanzados y reportes
+• Panel de administración completo
+
+💡 **EMPEZAR AHORA:**
+1. Ve a la URL de arriba
+2. Ingresa tu usuario y contraseña
+3. ¡Explora todas las funciones!
+
+¿Alguna pregunta sobre tu demo? ¡Estoy aquí para ayudarte! 🚀`;
   }
 
   /**

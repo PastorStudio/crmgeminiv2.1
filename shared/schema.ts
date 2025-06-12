@@ -70,6 +70,20 @@ export const demoUsers = pgTable("demo_users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Demo tracking table for associating demo users with WhatsApp chats
+export const demoTracking = pgTable("demo_tracking", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  demoUserId: integer("demo_user_id").references(() => demoUsers.id),
+  chatId: text("chat_id").notNull(),
+  phoneNumber: text("phone_number").notNull(),
+  clientName: text("client_name"),
+  accountId: integer("account_id").references(() => whatsappAccounts.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  status: text("status").default("active"), // active, expired, converted
+});
+
 // Base user table with role-based access
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
