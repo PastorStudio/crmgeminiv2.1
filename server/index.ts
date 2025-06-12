@@ -6336,18 +6336,16 @@ app.use((req, res, next) => {
         });
       }
 
-      // Query demo user from database with bcrypt verification
+      // First, get the user from users table
       const userQuery = `
-        SELECT u.id, u.username, u."fullName", u.email, u.password, u.role, u.status,
-               du.expires_at, du.demo_number, du.customer_name
-        FROM users u
-        JOIN demo_tracking dt ON u.id = dt.user_id
-        JOIN demo_users du ON dt.demo_user_id = du.id
-        WHERE u.username = $1 AND u.role = 'demo' AND u.status = 'active'
+        SELECT id, username, "fullName", email, password, role, status
+        FROM users 
+        WHERE username = $1 AND role = 'demo' AND status = 'active'
       `;
 
       const userResult = await pool.query(userQuery, [username]);
-
+      console.log('🔍 Database query result rows:', userResult.rows.length);
+      
       if (userResult.rows.length === 0) {
         console.log('❌ Demo user not found:', username);
         return res.status(401).json({
@@ -6357,9 +6355,23 @@ app.use((req, res, next) => {
       }
 
       const user = userResult.rows[0];
+      console.log('✅ Demo user found in database:', user.username);
+      console.log('🔐 Password hash from DB:', user.password.substring(0, 20) + '...');
 
-      // Check if demo has expired
-      if (new Date() > new Date(user.expires_at)) {
+      // Get demo details
+      const demoQuery = `
+        SELECT du.expires_at, du.demo_number, du.customer_name
+        FROM demo_tracking dt
+        JOIN demo_users du ON dt.demo_user_id = du.id
+        WHERE dt.user_id = $1
+      `;
+
+      const demoResult = await pool.query(demoQuery, [user.id]);
+      const demoData = demoResult.rows[0] || {};
+      console.log('📋 Demo data found:', demoData.demo_number || 'none');
+
+      // Check if demo has expired (use demoData if available, otherwise allow login)
+      if (demoData.expires_at && new Date() > new Date(demoData.expires_at)) {
         console.log('❌ Demo user expired:', username);
         return res.status(401).json({
           success: false,
@@ -6369,7 +6381,12 @@ app.use((req, res, next) => {
 
       // Verify password with bcrypt
       const bcrypt = require('bcrypt');
+      console.log('🔐 About to verify password for user:', username);
+      console.log('🔐 Provided password:', password);
+      console.log('🔐 Hash from database:', user.password);
+      
       const isValidPassword = await bcrypt.compare(password, user.password);
+      console.log('🔐 Password validation result:', isValidPassword);
 
       if (!isValidPassword) {
         console.log('❌ Invalid password for demo user:', username);
@@ -6386,12 +6403,12 @@ app.use((req, res, next) => {
       const authUser = {
         id: user.id,
         username: user.username,
-        fullName: user.fullName || user.customer_name,
+        fullName: user.fullName || demoData.customer_name,
         email: user.email,
         role: user.role,
         isDemoUser: true,
-        demoNumber: user.demo_number,
-        expiresAt: user.expires_at
+        demoNumber: demoData.demo_number,
+        expiresAt: demoData.expires_at
       };
 
       console.log('✅ Demo user authenticated successfully:', username);
