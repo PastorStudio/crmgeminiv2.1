@@ -13,6 +13,7 @@ interface AIConfig {
   geminiApiKey: string;
   openaiApiKey: string;
   qwenApiKey: string;
+  deepseekApiKey: string;
   customPrompt: string;
   temperature: number;
 }
@@ -38,6 +39,7 @@ export class AIProviderService {
         geminiApiKey: dbConfig.gemini_api_key || '',
         openaiApiKey: dbConfig.openai_api_key || '',
         qwenApiKey: dbConfig.qwen_api_key || '',
+        deepseekApiKey: dbConfig.deepseek_api_key || process.env.DEEPSEEK_API_KEY || '',
         customPrompt: dbConfig.custom_prompt || '',
         temperature: dbConfig.temperature || 0.7
       };
@@ -72,6 +74,11 @@ export class AIProviderService {
     if (this.config.qwenApiKey && this.config.qwenApiKey !== 'placeholder') {
       console.log('✅ Qwen3 API key configured');
     }
+
+    // DeepSeek initialization
+    if (this.config.deepseekApiKey && this.config.deepseekApiKey !== 'placeholder') {
+      console.log('✅ DeepSeek API key configured');
+    }
   }
 
   async generateResponse(message: string, agentName: string = 'Asistente AI'): Promise<string> {
@@ -95,6 +102,9 @@ export class AIProviderService {
         
         case 'qwen3':
           return await this.generateQwenResponse(message, systemPrompt);
+        
+        case 'deepseek':
+          return await this.generateDeepSeekResponse(message, systemPrompt);
         
         default:
           console.log(`⚠️ Provider ${this.config.selectedProvider} not supported, using fallback`);
@@ -172,6 +182,44 @@ export class AIProviderService {
       return data.choices[0]?.message?.content || 'Lo siento, no pude generar una respuesta.';
     } catch (error) {
       console.error('❌ Error with Qwen API:', error);
+      throw error;
+    }
+  }
+
+  private async generateDeepSeekResponse(message: string, systemPrompt: string): Promise<string> {
+    if (!this.config?.deepseekApiKey) {
+      throw new Error('DeepSeek API key not configured');
+    }
+
+    // DeepSeek API implementation
+    try {
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.config.deepseekApiKey}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: message }
+          ],
+          temperature: this.config.temperature,
+          max_tokens: 500,
+          stream: false
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data.choices[0]?.message?.content || 'Lo siento, no pude generar una respuesta.';
+    } catch (error) {
+      console.error('❌ Error with DeepSeek API:', error);
       throw error;
     }
   }
