@@ -5,6 +5,7 @@
 
 import { demoUserManager } from "./demoUserManager";
 import { DemoAgentService } from "./demoAgentService";
+import { notificationService } from "./notificationService";
 
 interface DemoConversationState {
   chatId: string;
@@ -175,6 +176,14 @@ Puedes escribir: "Mi nombre es [tu nombre]"`;
       this.conversationStates.set(conversationKey, state);
 
       console.log(`✅ Demo creado exitosamente para: ${state.customerName}`);
+
+      // Send notification for new demo creation
+      notificationService.notifyDemoCreated(
+        state.customerName,
+        state.accountId,
+        state.chatId,
+        demoUser
+      );
 
       return this.demoAgent.generateDemoCredentialsResponse(demoUser);
       

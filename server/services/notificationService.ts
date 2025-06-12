@@ -8,7 +8,7 @@ import { EventEmitter } from 'events';
 
 export interface NotificationMessage {
   id: string;
-  type: 'new_message' | 'status_change' | 'system_alert';
+  type: 'new_message' | 'status_change' | 'system_alert' | 'demo_created';
   chatId: string;
   accountId: number;
   title: string;
@@ -135,6 +135,31 @@ class NotificationService extends EventEmitter {
 
       this.broadcast(notification);
     }
+  }
+
+  /**
+   * Notifica creación de nuevo demo
+   */
+  notifyDemoCreated(customerName: string, accountId: number, chatId: string, demoData: any) {
+    const notification: NotificationMessage = {
+      id: `demo_${accountId}_${Date.now()}`,
+      type: 'demo_created',
+      chatId,
+      accountId,
+      title: '🎉 Nuevo Demo Creado',
+      message: `Demo creado para ${customerName}`,
+      timestamp: Date.now(),
+      urgent: true,
+      data: {
+        customerName,
+        username: demoData.username,
+        phoneNumber: demoData.phoneNumber,
+        expiresAt: demoData.expiresAt,
+        loginUrl: demoData.loginUrl
+      }
+    };
+
+    this.broadcast(notification);
   }
 
   /**

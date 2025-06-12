@@ -459,7 +459,7 @@ export function registerDirectAPIRoutes(app: Express): void {
       const { demoUsers } = await import('@shared/schema');
       const { desc } = await import('drizzle-orm');
 
-      const demos = await db.select().from(demoUsers).orderBy(desc(demoUsers.requestedAt));
+      const demos = await db.select().from(demoUsers).orderBy(desc(demoUsers.createdAt));
       
       const enrichedDemos = demos.map(demo => {
         const now = new Date();
