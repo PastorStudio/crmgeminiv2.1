@@ -6315,7 +6315,7 @@ app.use((req, res, next) => {
     }
   });
 
-  // ===== DEMO USER AUTHENTICATION =====
+  // ===== DEMO USER AUTHENTICATION (BEFORE VITE SETUP) =====
   app.post('/api/direct/demo/login-auth', async (req: Request, res: Response) => {
     try {
       const { username, password } = req.body;
