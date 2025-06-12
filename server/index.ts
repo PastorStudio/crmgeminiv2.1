@@ -637,6 +637,65 @@ app.post("/api/direct/auth/verify-admin", async (req: Request, res: Response) =>
 const server = registerOptimizedRoutes(app);
 console.log('🚀 Rutas optimizadas registradas ANTES de Vite middleware');
 
+// ===== DEMO MAINTENANCE API ENDPOINTS =====
+// API endpoint para mantenimiento manual de usuarios demo
+app.post("/api/demo-maintenance/run", async (req: Request, res: Response) => {
+  try {
+    console.log('🔧 Ejecutando mantenimiento manual de usuarios demo...');
+    
+    const { validateDemoDurations, fixAllDemoDurations } = await import('./utils/demoMaintenanceTools');
+    
+    // Validar estado actual
+    const validation = await validateDemoDurations();
+    console.log(`📊 Estado antes del mantenimiento: ${validation.correctDuration}/${validation.totalDemos} demos correctos`);
+    
+    let correctedCount = 0;
+    if (!validation.isValid) {
+      correctedCount = await fixAllDemoDurations();
+    }
+    
+    // Validar estado después del mantenimiento
+    const finalValidation = await validateDemoDurations();
+    
+    res.json({
+      success: true,
+      message: 'Mantenimiento de demos completado',
+      beforeMaintenance: validation,
+      afterMaintenance: finalValidation,
+      correctedCount,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en mantenimiento manual de demos:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error ejecutando mantenimiento de demos'
+    });
+  }
+});
+
+// API endpoint para obtener estado de usuarios demo
+app.get("/api/demo-maintenance/status", async (req: Request, res: Response) => {
+  try {
+    const { validateDemoDurations } = await import('./utils/demoMaintenanceTools');
+    const validation = await validateDemoDurations();
+    
+    res.json({
+      success: true,
+      status: validation,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo estado de demos:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error obteniendo estado de demos'
+    });
+  }
+});
+
 // ===== HEALTH CHECK ENDPOINT =====
 app.get('/api/health', async (req: Request, res: Response) => {
   try {
@@ -7691,6 +7750,11 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
         // } catch (error) {
         //   console.log('⚠️ Error en gestor autónomo de WhatsApp:', error.message);
         // }
+        
+        // Inicializar sistema de mantenimiento automático de usuarios demo
+        console.log('🔧 Iniciando sistema de mantenimiento de usuarios demo...');
+        startDemoMaintenanceScheduler();
+        console.log('✅ Sistema de mantenimiento de demos iniciado - verificaciones cada 6 horas');
         
       } catch (error) {
         console.error('❌ Error inicializando sistemas de respuestas automáticas:', error);
