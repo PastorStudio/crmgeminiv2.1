@@ -6315,13 +6315,13 @@ app.use((req, res, next) => {
     }
   });
 
-  // ===== DEMO USER AUTHENTICATION (BEFORE VITE SETUP) =====
-  const { authenticateDemoUser } = await import('./demo-auth.js');
-  
+  // ===== DEMO USER AUTHENTICATION (WORKING SOLUTION) =====
   app.post('/api/direct/demo/login-auth', async (req: Request, res: Response) => {
+    const bcrypt = require('bcrypt');
+    
     try {
       const { username, password } = req.body;
-      console.log('🔐 Demo user login attempt:', username);
+      console.log('🔐 Demo authentication request for:', username);
 
       if (!username || !password) {
         return res.status(400).json({
@@ -6337,14 +6337,58 @@ app.use((req, res, next) => {
         });
       }
 
-      // Use standalone authentication service
-      const authResult = await authenticateDemoUser(username, password);
+      console.log('🔍 Querying database for demo user:', username);
       
-      if (authResult.success) {
-        res.json(authResult);
-      } else {
-        res.status(401).json(authResult);
+      // Direct database query
+      const userResult = await pool.query(
+        'SELECT id, username, "fullName", email, password, role, status FROM users WHERE username = $1 AND role = $2 AND status = $3',
+        [username, 'demo', 'active']
+      );
+
+      console.log('🔍 Found', userResult.rows.length, 'users');
+
+      if (userResult.rows.length === 0) {
+        console.log('❌ No demo user found');
+        return res.status(401).json({
+          success: false,
+          message: 'Credenciales inválidas'
+        });
       }
+
+      const user = userResult.rows[0];
+      console.log('✅ User found:', user.username);
+      console.log('🔐 Verifying password...');
+
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      console.log('🔐 Password valid:', isValidPassword);
+
+      if (!isValidPassword) {
+        console.log('❌ Invalid password');
+        return res.status(401).json({
+          success: false,
+          message: 'Credenciales inválidas'
+        });
+      }
+
+      console.log('✅ Demo user authenticated successfully');
+
+      const authUser = {
+        id: user.id,
+        username: user.username,
+        fullName: user.fullName || 'Demo User',
+        email: user.email,
+        role: user.role,
+        isDemoUser: true
+      };
+
+      const token = `demo-token-${user.username}-${Date.now()}`;
+
+      res.json({
+        success: true,
+        user: authUser,
+        token: token,
+        message: 'Demo login successful'
+      });
 
     } catch (error) {
       console.error('❌ Demo login error:', error);
