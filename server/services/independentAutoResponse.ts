@@ -216,17 +216,18 @@ class IndependentAutoResponseService {
    */
   private async extractClientName(chatId: string): Promise<string> {
     try {
-      // Intentar obtener información del contacto desde la base de datos
-      const { DatabaseAdapter } = await import('../databaseAdapter');
-      const db = new DatabaseAdapter();
+      // Usar la conexión directa a la base de datos
+      const { db } = await import('../db');
+      const { contacts } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
       
       // Buscar en la tabla de contactos
-      const contact = await db.pool.query(`
-        SELECT name, phone FROM contacts WHERE phone = $1 LIMIT 1
-      `, [chatId.replace('@c.us', '')]);
+      const contact = await db.select().from(contacts)
+        .where(eq(contacts.phone, chatId.replace('@c.us', '')))
+        .limit(1);
 
-      if (contact.rows.length > 0 && contact.rows[0].name) {
-        return contact.rows[0].name;
+      if (contact.length > 0 && contact[0].name) {
+        return contact[0].name;
       }
 
       // Si no hay nombre guardado, generar uno basado en el número
@@ -244,9 +245,10 @@ class IndependentAutoResponseService {
    */
   private async createDemoUser(clientName: string, chatId: string): Promise<any> {
     try {
-      const { DatabaseAdapter } = await import('../databaseAdapter');
+      const { db } = await import('../db');
+      const { demoUsers, users, demoTracking } = await import('@shared/schema');
+      const { max } = await import('drizzle-orm');
       const bcrypt = await import('bcrypt');
-      const db = new DatabaseAdapter();
       
       // Generar credenciales únicas
       const timestamp = Date.now();
@@ -260,58 +262,47 @@ class IndependentAutoResponseService {
       expirationDate.setDate(expirationDate.getDate() + 3);
       
       // Obtener el siguiente número de demo disponible
-      const demoNumberResult = await db.pool.query(`
-        SELECT COALESCE(MAX(demo_number), 0) + 1 as next_demo_number FROM demo_users
-      `);
-      const demoNumber = demoNumberResult.rows[0].next_demo_number;
+      const demoNumberResult = await db.select({ 
+        nextDemoNumber: max(demoUsers.demoNumber) 
+      }).from(demoUsers);
+      const demoNumber = (demoNumberResult[0]?.nextDemoNumber || 0) + 1;
       
       // Crear el usuario demo en la tabla demo_users
-      const demoUserResult = await db.pool.query(`
-        INSERT INTO demo_users (customer_name, phone_number, username, password, demo_number, chat_id, expires_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id, customer_name, username, demo_number, expires_at
-      `, [
-        clientName,
-        chatId.replace('@c.us', '').replace('@g.us', ''),
-        username,
-        password,
-        demoNumber,
-        chatId,
-        expirationDate
-      ]);
+      const demoUserResult = await db.insert(demoUsers).values({
+        customerName: clientName,
+        phoneNumber: chatId.replace('@c.us', '').replace('@g.us', ''),
+        username: username,
+        password: password, // Contraseña sin hash en demo_users para referencia
+        demoNumber: demoNumber,
+        chatId: chatId,
+        expiresAt: expirationDate
+      }).returning();
 
-      if (demoUserResult.rows.length > 0) {
-        const demoUser = demoUserResult.rows[0];
+      if (demoUserResult.length > 0) {
+        const demoUser = demoUserResult[0];
         
         // También crear un usuario regular para el sistema con permisos demo
-        const userResult = await db.pool.query(`
-          INSERT INTO users (username, "fullName", email, password, role, status, department)
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
-          RETURNING id, username, "fullName", email, role
-        `, [
-          username,
-          clientName,
-          `${username}@demo.geminicrm.com`,
-          hashedPassword, // Hash con bcrypt para seguridad
-          'demo',
-          'active',
-          'demo'
-        ]);
+        const userResult = await db.insert(users).values({
+          username: username,
+          fullName: clientName,
+          email: `${username}@demo.geminicrm.com`,
+          password: hashedPassword, // Hash con bcrypt para seguridad
+          role: 'demo',
+          status: 'active',
+          department: 'demo'
+        }).returning();
 
-        const user = userResult.rows[0];
+        const user = userResult[0];
         
         // Registrar en demo_tracking la asociación
-        await db.pool.query(`
-          INSERT INTO demo_tracking (user_id, demo_user_id, chat_id, phone_number, client_name, expires_at)
-          VALUES ($1, $2, $3, $4, $5, $6)
-        `, [
-          user.id,
-          demoUser.id,
-          chatId,
-          chatId.replace('@c.us', '').replace('@g.us', ''),
-          clientName,
-          expirationDate
-        ]);
+        await db.insert(demoTracking).values({
+          userId: user.id,
+          demoUserId: demoUser.id,
+          chatId: chatId,
+          phoneNumber: chatId.replace('@c.us', '').replace('@g.us', ''),
+          clientName: clientName,
+          expiresAt: expirationDate
+        });
 
         return {
           id: user.id,
