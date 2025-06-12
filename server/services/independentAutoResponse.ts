@@ -163,18 +163,28 @@ class IndependentAutoResponseService {
    */
   private async handleDemoCreation(response: string, chatId: string, accountId: number): Promise<void> {
     try {
-      // Detectar si la respuesta contiene el mensaje específico de creación de demo
+      // Detectar si la respuesta contiene palabras clave relacionadas con demo
       const demoKeywords = [
-        "Perfecto Stephanie! 🎉",
-        "Estoy creando tu demo personalizado",
-        "Tu acceso incluirá:",
-        "Usuario único y contraseña estándar",
-        "Acceso completo por 3 días"
+        "demo",
+        "prueba",
+        "gratis", 
+        "credenciales",
+        "usuario",
+        "contraseña",
+        "acceso"
       ];
 
-      const containsDemoMessage = demoKeywords.some(keyword => 
-        response.includes(keyword)
+      // Contar cuántas palabras clave de demo contiene la respuesta
+      const keywordMatches = demoKeywords.filter(keyword => 
+        response.toLowerCase().includes(keyword.toLowerCase())
       );
+
+      // Si contiene al menos 3 palabras clave relacionadas con demo, activar creación
+      const containsDemoMessage = keywordMatches.length >= 3;
+      
+      if (containsDemoMessage) {
+        console.log(`🔍 Palabras clave detectadas: ${keywordMatches.join(', ')}`);
+      }
 
       if (containsDemoMessage) {
         console.log(`🎯 Detectado mensaje de creación de demo para chat: ${chatId}`);
@@ -235,6 +245,7 @@ class IndependentAutoResponseService {
   private async createDemoUser(clientName: string, chatId: string): Promise<any> {
     try {
       const { DatabaseAdapter } = await import('../databaseAdapter');
+      const bcrypt = await import('bcrypt');
       const db = new DatabaseAdapter();
       
       // Generar credenciales únicas
@@ -242,6 +253,7 @@ class IndependentAutoResponseService {
       const randomSuffix = Math.floor(Math.random() * 1000);
       const username = `demo_${clientName.toLowerCase().replace(/[^a-z0-9]/g, '')}_${randomSuffix}`;
       const password = 'demo123'; // Contraseña estándar para demos
+      const hashedPassword = await bcrypt.hash(password, 10);
       
       // Calcular fecha de expiración (3 días)
       const expirationDate = new Date();
@@ -280,7 +292,7 @@ class IndependentAutoResponseService {
           username,
           clientName,
           `${username}@demo.geminicrm.com`,
-          password, // Sin hash para simplicidad en demos
+          hashedPassword, // Hash con bcrypt para seguridad
           'demo',
           'active',
           'demo'
