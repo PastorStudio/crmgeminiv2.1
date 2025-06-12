@@ -55,6 +55,48 @@ export function DemoManagement() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // WebSocket connection for real-time notifications
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${window.location.host}/notifications`);
+
+    ws.onopen = () => {
+      console.log('🔔 Conectado al sistema de notificaciones');
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const notification = JSON.parse(event.data);
+        
+        if (notification.type === 'demo_created') {
+          // Show popup notification for new demo
+          toast({
+            title: notification.title,
+            description: notification.message,
+            duration: 5000,
+          });
+
+          // Refresh demo list to show new demo at the top
+          queryClient.invalidateQueries({ queryKey: ['/api/direct/demo/list'] });
+        }
+      } catch (error) {
+        console.error('Error procesando notificación:', error);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('🔔 Conexión de notificaciones cerrada, reintentando...');
+    };
+
+    ws.onerror = (error) => {
+      console.error('Error en WebSocket de notificaciones:', error);
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [toast, queryClient]);
+
   // Fetch demo users
   const { data: demos, isLoading: demosLoading } = useQuery({
     queryKey: ['/api/direct/demo/list'],
