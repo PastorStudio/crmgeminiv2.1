@@ -116,6 +116,17 @@ export class RealtimeDemoCreator {
   }
 
   /**
+   * Genera un número demo único secuencial
+   */
+  private async generateDemoNumber(): Promise<number> {
+    const result = await pool.query(`
+      SELECT COALESCE(MAX(demo_number), 0) + 1 as next_number 
+      FROM demo_users
+    `);
+    return result.rows[0].next_number;
+  }
+
+  /**
    * Crea automáticamente un usuario demo
    */
   private async createDemoUser(fullName: string, chatId: string): Promise<DemoCreationResult> {
@@ -126,17 +137,22 @@ export class RealtimeDemoCreator {
       const password = this.generatePassword();
       const hashedPassword = await bcrypt.hash(password, 10);
       const expiresAt = createDemoExpirationDate();
+      const demoNumber = await this.generateDemoNumber();
 
       // Crear usuario demo en la base de datos
       const result = await pool.query(`
-        INSERT INTO demo_users (username, password, full_name, email, status, created_at, expires_at)
-        VALUES ($1, $2, $3, $4, $5, NOW(), $6)
-        RETURNING id, username, full_name, created_at, expires_at
+        INSERT INTO demo_users (username, password, customer_name, full_name, email, phone_number, demo_number, chat_id, status, created_at, expires_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10)
+        RETURNING id, username, customer_name, full_name, demo_number, created_at, expires_at
       `, [
         username,
         hashedPassword,
-        fullName,
+        fullName, // customer_name
+        fullName, // full_name
         `${username}@demo.local`,
+        '', // phone_number (empty string as default)
+        demoNumber,
+        chatId,
         'active',
         expiresAt
       ]);
