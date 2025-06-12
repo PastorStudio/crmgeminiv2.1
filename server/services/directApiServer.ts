@@ -634,8 +634,9 @@ export function registerDirectAPIRoutes(app: Express): void {
       const password = 'demo123456';
       const hashedPassword = await bcrypt.hash(password, 10);
       
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 3); // 3 days from now
+      // Use centralized demo constants for exactly 72 hours
+      const { createDemoExpirationDate } = await import('../utils/demoConstants');
+      const expiresAt = createDemoExpirationDate();
 
       // Create demo user
       const [demoUser] = await db

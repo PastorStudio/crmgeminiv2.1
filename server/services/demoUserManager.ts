@@ -55,9 +55,9 @@ class DemoUserManager {
       // Encriptar contraseña
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Establecer expiración a 3 días (72 horas)
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 3);
+      // Use centralized demo constants for exactly 72 hours
+      const { createDemoExpirationDate } = await import('../utils/demoConstants');
+      const expiresAt = createDemoExpirationDate();
 
       // Crear registro en demo_users
       const [demoUser] = await db.insert(demoUsers).values({
@@ -123,8 +123,9 @@ class DemoUserManager {
         return null;
       }
 
-      // Verificar si ha expirado
-      if (new Date() > demoUser.expiresAt) {
+      // Verificar si ha expirado usando función centralizada
+      const { isDemoExpired } = await import('../utils/demoConstants');
+      if (isDemoExpired(demoUser.expiresAt)) {
         console.log(`⏰ Usuario demo expirado: ${username}`);
         await this.deactivateDemoUser(demoUser.id);
         return null;
@@ -297,10 +298,12 @@ class DemoUserManager {
       .from(demoUsers)
       .where(eq(demoUsers.status, 'active'));
 
+      const { isDemoExpired, getDemoRemainingTimeMs } = await import('../utils/demoConstants');
+      
       return activeUsers.map(user => ({
         ...user,
         timeRemaining: this.getTimeRemaining(user.expiresAt),
-        isExpired: new Date() > user.expiresAt
+        isExpired: isDemoExpired(user.expiresAt)
       }));
     } catch (error) {
       console.error('❌ Error obteniendo usuarios demo activos:', error);
