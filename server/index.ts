@@ -23,7 +23,7 @@ import { stableAutoResponseManager } from "./services/stableAutoResponse";
 import { deepSeekService } from "./services/deepseekService";
 import deepSeekAutoResponse from "./services/deepseekAutoResponse";
 import { directDeepSeekResponse } from "./services/directDeepSeekResponse";
-import { EnhancedAutoResponseService } from "./services/enhancedAutoResponseService";
+import { enhancedAutoResponseService } from "./services/enhancedAutoResponseService";
 import { MultimediaService } from "./services/multimediaService";
 import { AutomaticLeadGenerator } from "./services/automaticLeadGenerator";
 import { conversationHistory } from './services/conversationHistory';
@@ -45,6 +45,7 @@ import { aiResponseService } from './services/aiAutonomousResponse';
 import { conversationAnalysisService } from './services/conversationAnalysis';
 import { unifiedMessageProcessor } from './services/unifiedMessageProcessor';
 import { startDemoMaintenanceScheduler } from './utils/demoMaintenanceTools';
+import { enhancedAutoResponseService } from './services/enhancedAutoResponseService';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -629,6 +630,119 @@ app.post("/api/direct/auth/verify-admin", async (req: Request, res: Response) =>
     res.status(500).json({
       success: false,
       message: "Error interno del servidor"
+    });
+  }
+});
+
+// ===== ENHANCED AUTO RESPONSE API ENDPOINTS =====
+// Toggle translator for an account
+app.post("/api/auto-response/toggle-translator", async (req: Request, res: Response) => {
+  try {
+    const { accountId, enabled, targetLanguage } = req.body;
+    
+    if (!accountId) {
+      return res.status(400).json({
+        success: false,
+        message: "Account ID es requerido"
+      });
+    }
+    
+    await enhancedAutoResponseService.toggleTranslator(
+      accountId, 
+      enabled || false, 
+      targetLanguage || 'es'
+    );
+    
+    res.json({
+      success: true,
+      message: `Traductor ${enabled ? 'activado' : 'desactivado'} para cuenta ${accountId}`
+    });
+  } catch (error) {
+    console.error("❌ Error toggling translator:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al cambiar configuración del traductor"
+    });
+  }
+});
+
+// Pause auto responses for a specific chat
+app.post("/api/auto-response/pause-chat", async (req: Request, res: Response) => {
+  try {
+    const { chatId } = req.body;
+    
+    if (!chatId) {
+      return res.status(400).json({
+        success: false,
+        message: "Chat ID es requerido"
+      });
+    }
+    
+    enhancedAutoResponseService.pauseAutoResponsesForChat(chatId);
+    
+    res.json({
+      success: true,
+      message: `Respuestas automáticas pausadas para chat ${chatId}`
+    });
+  } catch (error) {
+    console.error("❌ Error pausing auto responses:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al pausar respuestas automáticas"
+    });
+  }
+});
+
+// Resume auto responses for a specific chat
+app.post("/api/auto-response/resume-chat", async (req: Request, res: Response) => {
+  try {
+    const { chatId } = req.body;
+    
+    if (!chatId) {
+      return res.status(400).json({
+        success: false,
+        message: "Chat ID es requerido"
+      });
+    }
+    
+    enhancedAutoResponseService.resumeAutoResponsesForChat(chatId);
+    
+    res.json({
+      success: true,
+      message: `Respuestas automáticas reanudadas para chat ${chatId}`
+    });
+  } catch (error) {
+    console.error("❌ Error resuming auto responses:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al reanudar respuestas automáticas"
+    });
+  }
+});
+
+// Detect manual intervention for a chat
+app.post("/api/auto-response/detect-intervention", async (req: Request, res: Response) => {
+  try {
+    const { chatId, accountId } = req.body;
+    
+    if (!chatId || !accountId) {
+      return res.status(400).json({
+        success: false,
+        message: "Chat ID y Account ID son requeridos"
+      });
+    }
+    
+    await enhancedAutoResponseService.detectManualIntervention(chatId, accountId);
+    
+    res.json({
+      success: true,
+      message: "Detección de intervención manual ejecutada"
+    });
+  } catch (error) {
+    console.error("❌ Error detecting manual intervention:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al detectar intervención manual"
     });
   }
 });
@@ -8030,7 +8144,13 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
   });
 
   // Inicializar el sistema de respuestas automáticas mejoradas
-  EnhancedAutoResponseService.initialize().catch(console.error);
+  try {
+    console.log('🚀 Iniciando sistema MEJORADO de respuestas automáticas...');
+    await enhancedAutoResponseService.initialize();
+    console.log('✅ Sistema MEJORADO de respuestas automáticas iniciado correctamente');
+  } catch (error) {
+    console.error('❌ Error al iniciar sistema mejorado de respuestas automáticas:', error);
+  }
 
   // ===== ACTIVADOR COMPLETO DEL SISTEMA - DIRECTO =====
   app.post('/api/direct/force-complete-system-activation', async (req: Request, res: Response) => {
