@@ -146,8 +146,8 @@ class NotificationService extends EventEmitter {
       type: 'demo_created',
       chatId,
       accountId,
-      title: '🎉 Nuevo Demo Creado',
-      message: `Demo creado para ${customerName}`,
+      title: '🎉🎊 ¡Nuevo Demo Creado! 🎊🎉',
+      message: `Demo creado para ${customerName}\n👤 Usuario: ${demoData.username}`,
       timestamp: Date.now(),
       urgent: true,
       data: {
@@ -155,7 +155,8 @@ class NotificationService extends EventEmitter {
         username: demoData.username,
         phoneNumber: demoData.phoneNumber,
         expiresAt: demoData.expiresAt,
-        loginUrl: demoData.loginUrl
+        loginUrl: demoData.loginUrl,
+        celebrationIcon: '🎉🎊🥳'
       }
     };
 
