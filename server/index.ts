@@ -6315,6 +6315,103 @@ app.use((req, res, next) => {
     }
   });
 
+  // ===== DEMO USER AUTHENTICATION =====
+  app.post('/api/direct/demo/login-auth', async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+      console.log('🔐 Demo user login attempt:', username);
+
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username and password are required'
+        });
+      }
+
+      // Verify it's a demo user
+      if (!username.startsWith('demo_')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid demo user format'
+        });
+      }
+
+      // Query demo user from database with bcrypt verification
+      const userQuery = `
+        SELECT u.id, u.username, u."fullName", u.email, u.password, u.role, u.status,
+               du.expires_at, du.demo_number, du.customer_name
+        FROM users u
+        JOIN demo_tracking dt ON u.id = dt.user_id
+        JOIN demo_users du ON dt.demo_user_id = du.id
+        WHERE u.username = $1 AND u.role = 'demo' AND u.status = 'active'
+      `;
+
+      const userResult = await pool.query(userQuery, [username]);
+
+      if (userResult.rows.length === 0) {
+        console.log('❌ Demo user not found:', username);
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid credentials'
+        });
+      }
+
+      const user = userResult.rows[0];
+
+      // Check if demo has expired
+      if (new Date() > new Date(user.expires_at)) {
+        console.log('❌ Demo user expired:', username);
+        return res.status(401).json({
+          success: false,
+          message: 'Demo access has expired'
+        });
+      }
+
+      // Verify password with bcrypt
+      const bcrypt = require('bcrypt');
+      const isValidPassword = await bcrypt.compare(password, user.password);
+
+      if (!isValidPassword) {
+        console.log('❌ Invalid password for demo user:', username);
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid credentials'
+        });
+      }
+
+      // Generate demo token
+      const token = `demo-token-${user.username}-${Date.now()}`;
+
+      // Prepare user object for frontend
+      const authUser = {
+        id: user.id,
+        username: user.username,
+        fullName: user.fullName || user.customer_name,
+        email: user.email,
+        role: user.role,
+        isDemoUser: true,
+        demoNumber: user.demo_number,
+        expiresAt: user.expires_at
+      };
+
+      console.log('✅ Demo user authenticated successfully:', username);
+
+      res.json({
+        success: true,
+        user: authUser,
+        token: token,
+        message: 'Demo login successful'
+      });
+
+    } catch (error) {
+      console.error('❌ Demo login error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error during demo authentication'
+      });
+    }
+  });
+
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
