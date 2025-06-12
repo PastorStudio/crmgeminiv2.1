@@ -236,9 +236,14 @@ export function DemoManagement() {
     }
   };
 
-  const activeDemos = demos?.demos?.filter((demo: DemoUser) => demo.status === 'active' && !demo.isExpired) || [];
-  const expiredDemos = demos?.demos?.filter((demo: DemoUser) => demo.isExpired || demo.status === 'expired') || [];
-  const convertedDemos = demos?.demos?.filter((demo: DemoUser) => demo.status === 'converted') || [];
+  // Sort demos by creation date (newest first) before filtering
+  const sortedDemos = demos?.demos?.sort((a: DemoUser, b: DemoUser) => {
+    return new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime();
+  }) || [];
+
+  const activeDemos = sortedDemos.filter((demo: DemoUser) => demo.status === 'active' && !demo.isExpired);
+  const expiredDemos = sortedDemos.filter((demo: DemoUser) => demo.isExpired || demo.status === 'expired');
+  const convertedDemos = sortedDemos.filter((demo: DemoUser) => demo.status === 'converted');
 
   if (demosLoading) {
     return (

@@ -426,6 +426,15 @@ export function registerDirectAPIRoutes(app: Express): void {
 
       console.log(`✅ Manual demo created successfully: ${username}`);
 
+      // Send notification for manual demo creation
+      const { notificationService } = await import('./notificationService');
+      notificationService.notifyDemoCreated(
+        customerName,
+        1, // Default account ID for manual creation
+        '', // No chat ID for manual creation
+        demoUser
+      );
+
       res.json({
         success: true,
         message: "Demo creado exitosamente",
