@@ -598,7 +598,14 @@ function DemoTable({ demos, onConvert, onLogin, showConvertedInfo }: DemoTablePr
                   </span>
                 )}
                 <div className="text-xs text-gray-500">
-                  {new Date(demo.expiresAt).toLocaleDateString('es-ES')}
+                  {new Date(demo.expiresAt).toLocaleDateString('es-ES', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                  })}
                 </div>
               </div>
             </TableCell>
@@ -607,7 +614,14 @@ function DemoTable({ demos, onConvert, onLogin, showConvertedInfo }: DemoTablePr
                 {demo.loginCount} veces
                 {demo.lastLoginAt && (
                   <div className="text-xs text-gray-500">
-                    Último: {new Date(demo.lastLoginAt).toLocaleDateString('es-ES')}
+                    Último: {new Date(demo.lastLoginAt).toLocaleDateString('es-ES', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}
                   </div>
                 )}
               </div>
@@ -616,7 +630,14 @@ function DemoTable({ demos, onConvert, onLogin, showConvertedInfo }: DemoTablePr
               <TableCell>
                 {demo.convertedAt && (
                   <div className="text-sm text-green-600">
-                    {new Date(demo.convertedAt).toLocaleDateString('es-ES')}
+                    {new Date(demo.convertedAt).toLocaleDateString('es-ES', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}
                   </div>
                 )}
               </TableCell>
