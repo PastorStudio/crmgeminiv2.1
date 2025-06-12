@@ -529,7 +529,7 @@ Un representante se pondrá en contacto contigo para configurar tu acceso manual
       
       const apiKey = result.rows[0].gemini_api_key;
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
       const prompt = `Eres ${agentName}, un asistente virtual profesional de atención al cliente en español.
 
