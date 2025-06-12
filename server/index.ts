@@ -6316,6 +6316,8 @@ app.use((req, res, next) => {
   });
 
   // ===== DEMO USER AUTHENTICATION (BEFORE VITE SETUP) =====
+  const { authenticateDemoUser } = await import('./demo-auth.js');
+  
   app.post('/api/direct/demo/login-auth', async (req: Request, res: Response) => {
     try {
       const { username, password } = req.body;
@@ -6328,7 +6330,6 @@ app.use((req, res, next) => {
         });
       }
 
-      // Verify it's a demo user
       if (!username.startsWith('demo_')) {
         return res.status(400).json({
           success: false,
@@ -6336,93 +6337,17 @@ app.use((req, res, next) => {
         });
       }
 
-      // First, get the user from users table
-      const userQuery = `
-        SELECT id, username, "fullName", email, password, role, status
-        FROM users 
-        WHERE username = $1 AND role = 'demo' AND status = 'active'
-      `;
-
-      const userResult = await pool.query(userQuery, [username]);
-      console.log('🔍 Database query result rows:', userResult.rows.length);
+      // Use standalone authentication service
+      const authResult = await authenticateDemoUser(username, password);
       
-      if (userResult.rows.length === 0) {
-        console.log('❌ Demo user not found:', username);
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials'
-        });
+      if (authResult.success) {
+        res.json(authResult);
+      } else {
+        res.status(401).json(authResult);
       }
-
-      const user = userResult.rows[0];
-      console.log('✅ Demo user found in database:', user.username);
-      console.log('🔐 Password hash from DB:', user.password.substring(0, 20) + '...');
-
-      // Get demo details
-      const demoQuery = `
-        SELECT du.expires_at, du.demo_number, du.customer_name
-        FROM demo_tracking dt
-        JOIN demo_users du ON dt.demo_user_id = du.id
-        WHERE dt.user_id = $1
-      `;
-
-      const demoResult = await pool.query(demoQuery, [user.id]);
-      const demoData = demoResult.rows[0] || {};
-      console.log('📋 Demo data found:', demoData.demo_number || 'none');
-
-      // Check if demo has expired (use demoData if available, otherwise allow login)
-      if (demoData.expires_at && new Date() > new Date(demoData.expires_at)) {
-        console.log('❌ Demo user expired:', username);
-        return res.status(401).json({
-          success: false,
-          message: 'Demo access has expired'
-        });
-      }
-
-      // Verify password with bcrypt
-      const bcrypt = require('bcrypt');
-      console.log('🔐 About to verify password for user:', username);
-      console.log('🔐 Provided password:', password);
-      console.log('🔐 Hash from database:', user.password);
-      
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      console.log('🔐 Password validation result:', isValidPassword);
-
-      if (!isValidPassword) {
-        console.log('❌ Invalid password for demo user:', username);
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials'
-        });
-      }
-
-      // Generate demo token
-      const token = `demo-token-${user.username}-${Date.now()}`;
-
-      // Prepare user object for frontend
-      const authUser = {
-        id: user.id,
-        username: user.username,
-        fullName: user.fullName || demoData.customer_name,
-        email: user.email,
-        role: user.role,
-        isDemoUser: true,
-        demoNumber: demoData.demo_number,
-        expiresAt: demoData.expires_at
-      };
-
-      console.log('✅ Demo user authenticated successfully:', username);
-
-      res.json({
-        success: true,
-        user: authUser,
-        token: token,
-        message: 'Demo login successful'
-      });
 
     } catch (error) {
       console.error('❌ Demo login error:', error);
-      console.error('❌ Error stack:', error.stack);
       res.status(401).json({
         success: false,
         message: 'Credenciales inválidas'

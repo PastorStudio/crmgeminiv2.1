@@ -3,8 +3,9 @@
  * This bypasses the complex routing issues in the main server
  */
 
-const bcrypt = require('bcrypt');
-const { Pool } = require('pg');
+import bcrypt from 'bcrypt';
+import pkg from 'pg';
+const { Pool } = pkg;
 
 // Database connection
 const pool = new Pool({
@@ -12,7 +13,7 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-async function authenticateDemoUser(username, password) {
+export async function authenticateDemoUser(username, password) {
   console.log('🔐 Demo auth service - Processing login for:', username);
   
   try {
@@ -65,5 +66,3 @@ async function authenticateDemoUser(username, password) {
     return { success: false, message: 'Credenciales inválidas' };
   }
 }
-
-module.exports = { authenticateDemoUser };
