@@ -696,6 +696,45 @@ app.get("/api/demo-maintenance/status", async (req: Request, res: Response) => {
   }
 });
 
+// API endpoint para probar creación automática de demo
+app.post("/api/demo-auto-create/test", async (req: Request, res: Response) => {
+  try {
+    const { message, chatId = "test_chat", accountId = 1 } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({
+        success: false,
+        error: 'Mensaje requerido'
+      });
+    }
+
+    console.log(`🧪 Probando creación automática de demo con mensaje: "${message}"`);
+    
+    const { realtimeDemoCreator } = await import('./services/realtimeDemoCreator');
+    const result = await realtimeDemoCreator.processMessage(
+      message,
+      chatId,
+      `test_${Date.now()}`,
+      accountId
+    );
+
+    res.json({
+      success: true,
+      processed: result.shouldRespond,
+      responseMessage: result.responseMessage,
+      chatId,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en prueba de creación automática:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error en prueba de creación automática'
+    });
+  }
+});
+
 // ===== HEALTH CHECK ENDPOINT =====
 app.get('/api/health', async (req: Request, res: Response) => {
   try {
