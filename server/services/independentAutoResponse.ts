@@ -141,25 +141,10 @@ class IndependentAutoResponseService {
 
       console.log(`🤖 Procesando mensaje independiente - Cuenta: ${accountId}, Chat: ${message.chatId}`);
 
-      // PRIMERO: Verificar si el mensaje contiene un nombre completo para crear demo automático
-      const demoResult = await realtimeDemoCreator.processMessage(
-        message.content, 
-        message.chatId, 
-        message.id || `msg_${Date.now()}`,
-        accountId
-      );
+      // NOTA: La detección de demo se maneja en unifiedMessageProcessor.ts con enhancedDemoDetector
+      // No procesamos demos aquí para evitar duplicación
 
-      if (demoResult.shouldRespond && demoResult.responseMessage) {
-        // Si se creó un demo, enviar las credenciales inmediatamente
-        console.log(`🎉 Demo creado automáticamente para chat: ${message.chatId}`);
-        console.log(`📤 Enviando credenciales: "${demoResult.responseMessage.substring(0, 50)}..."`);
-        
-        // Guardar respuesta de demo en la base de datos
-        await this.saveResponse(accountId, message.chatId, demoResult.responseMessage);
-        return; // No generar respuesta adicional con IA
-      }
-
-      // Si no se creó demo, continuar con respuesta normal de IA
+      // Generar respuesta normal de IA
       const response = await this.generateAIResponse(message.content, config.agentName);
       
       if (response) {
