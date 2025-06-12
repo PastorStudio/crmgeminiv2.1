@@ -69,11 +69,22 @@ export function DemoManagement() {
         const notification = JSON.parse(event.data);
         
         if (notification.type === 'demo_created') {
-          // Show popup notification for new demo
+          // Show enhanced popup notification for new demo
           toast({
             title: notification.title,
-            description: notification.message,
-            duration: 5000,
+            description: (
+              <div className="flex items-center space-x-2">
+                <span className="text-2xl">🎉</span>
+                <div>
+                  <div className="font-semibold">{notification.data?.customerName}</div>
+                  <div className="text-sm text-muted-foreground">
+                    👤 Usuario: <code className="bg-gray-100 px-1 rounded text-xs">{notification.data?.username}</code>
+                  </div>
+                </div>
+              </div>
+            ),
+            duration: 8000, // Longer duration for celebration
+            className: "border-l-4 border-l-green-500 bg-green-50",
           });
 
           // Refresh demo list to show new demo at the top
