@@ -38,7 +38,7 @@ export class AIProviderService {
         selectedProvider: dbConfig.selected_provider || 'gemini',
         geminiApiKey: dbConfig.gemini_api_key || '',
         openaiApiKey: dbConfig.openai_api_key || '',
-        qwenApiKey: dbConfig.qwen_api_key || '',
+        qwenApiKey: dbConfig.qwen_api_key || process.env.QWEN3_API_KEY || '',
         deepseekApiKey: dbConfig.deepseek_api_key || process.env.DEEPSEEK_API_KEY || '',
         customPrompt: dbConfig.custom_prompt || '',
         temperature: dbConfig.temperature || 0.7
