@@ -2843,7 +2843,46 @@ app.post("/api/system/reset-all", async (req: Request, res: Response) => {
   }
 });
 
-// RUTAS DE KEEP-ALIVE (ANTES DE VITE)
+// RUTAS DE KEEP-ALIVE AVANZADO (ANTES DE VITE)
+app.get("/api/whatsapp/keepalive-status", async (req: Request, res: Response) => {
+  try {
+    const status = whatsappKeepAlive.getStatus();
+    
+    res.json({
+      success: true,
+      keepAliveSystem: status,
+      message: "Estado del sistema KeepAlive obtenido correctamente"
+    });
+  } catch (error) {
+    console.error('❌ Error obteniendo estado KeepAlive:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error obteniendo estado del sistema KeepAlive'
+    });
+  }
+});
+
+app.post("/api/whatsapp/keepalive-restart", async (req: Request, res: Response) => {
+  try {
+    console.log("🔄 Reiniciando sistema KeepAlive...");
+    
+    await whatsappKeepAlive.stop();
+    await whatsappKeepAlive.initialize();
+    
+    res.json({
+      success: true,
+      message: "Sistema KeepAlive reiniciado correctamente",
+      status: whatsappKeepAlive.getStatus()
+    });
+  } catch (error) {
+    console.error('❌ Error reiniciando KeepAlive:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error reiniciando sistema KeepAlive'
+    });
+  }
+});
+
 app.get("/api/whatsapp/ping-status/all", async (req: Request, res: Response) => {
   try {
     const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
