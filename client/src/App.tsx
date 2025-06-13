@@ -51,6 +51,7 @@ import FlowTemplates from './pages/FlowTemplates';
 import SystemStatus from './pages/SystemStatus';
 import WhatsAppAuth from './pages/WhatsAppAuth';
 import { FunctionDocumentation } from './pages/FunctionDocumentation';
+import { WhatsAppKeepAlivePage } from './pages/WhatsAppKeepAlivePage';
 import NotificationSystem from './components/NotificationSystem';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SubscriptionManager } from './components/admin/SubscriptionManager';
@@ -489,6 +490,20 @@ const AppRoutes: React.FC = () => {
                 </svg>
                 Monitoreo Agentes
               </a>
+
+              <a href="/whatsapp-keepalive" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-keepalive' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="2" width="20" height="20" rx="3" fill="#25D366"/>
+                  <circle cx="12" cy="12" r="6" fill="white"/>
+                  <circle cx="12" cy="12" r="3" fill="#10B981"/>
+                  <circle cx="8" cy="8" r="1" fill="#25D366"/>
+                  <circle cx="16" cy="8" r="1" fill="#F59E0B"/>
+                  <circle cx="8" cy="16" r="1" fill="#3B82F6"/>
+                  <circle cx="16" cy="16" r="1" fill="#EF4444"/>
+                  <path d="M12 8v8M8 12h8" stroke="#25D366" strokeWidth="1" strokeLinecap="round"/>
+                </svg>
+                Monitor Conexiones
+              </a>
               
               {/* Menú oculto: Conexión, Código QR e Integraciones - Se mantiene en el código pero no se muestra */}
               {false && (
@@ -718,6 +733,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/whatsapp-auth" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppAuth /></ProtectedRoute>} path="/whatsapp-auth" />} />
                 <Route path="/whatsapp-connection" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppConnection /></ProtectedRoute>} path="/whatsapp-connection" />} />
                 <Route path="/agent-monitoring" component={() => <PrivateRoute component={AgentMonitoring} path="/agent-monitoring" />} />
+                <Route path="/whatsapp-keepalive" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppKeepAlivePage /></ProtectedRoute>} path="/whatsapp-keepalive" />} />
                 <Route path="/agent-security" component={() => <PrivateRoute component={AgentSecurity} path="/agent-security" />} />
                 <Route path="/flow-templates" component={() => <PrivateRoute component={FlowTemplates} path="/flow-templates" />} />
                 <Route path="/system-status" component={() => <PrivateRoute component={SystemStatus} path="/system-status" />} />
