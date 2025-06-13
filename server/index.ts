@@ -3010,14 +3010,23 @@ app.use((req, res, next) => {
     console.error("❌ Error al iniciar sistema de asignaciones invisible:", error);
   }
 
-  // Inicializar sistema completamente independiente de respuestas automáticas
+  // Inicializar sistema ESTABILIZADO de respuestas automáticas (reemplaza al problemático)
   try {
-    console.log("🤖 Iniciando sistema INDEPENDIENTE de respuestas automáticas...");
-    const { independentAutoResponseService } = await import('./services/independentAutoResponse');
-    await independentAutoResponseService.initialize();
-    console.log("✅ Sistema INDEPENDIENTE de respuestas automáticas iniciado correctamente");
+    console.log("🛑 Deteniendo sistema problemático...");
+    try {
+      const { independentAutoResponseService } = await import('./services/independentAutoResponse');
+      independentAutoResponseService.stop();
+      console.log("✅ Sistema problemático detenido");
+    } catch (stopError) {
+      console.log("ℹ️ Sistema problemático ya estaba detenido");
+    }
+    
+    console.log("🚀 Iniciando sistema ESTABILIZADO de respuestas automáticas...");
+    const { stabilizedAutoResponse } = await import('./services/stabilizedAutoResponse');
+    await stabilizedAutoResponse.initialize();
+    console.log("✅ Sistema ESTABILIZADO iniciado correctamente - resuelve desconexiones de cuota AI");
   } catch (error) {
-    console.error("❌ Error al iniciar sistema independiente de respuestas automáticas:", error);
+    console.error("❌ Error al iniciar sistema estabilizado:", error);
   }
 
   // Inicializar procesador unificado de mensajes (PRIORIDAD MÁXIMA)

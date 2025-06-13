@@ -158,7 +158,9 @@ class StabilizedAutoResponseService {
       // Generar respuesta AI con sistema estable
       const aiResponse = await this.generateStableAIResponse(message.body, config.agentName);
       
-      // Enviar respuesta
+      // Guardar respuesta en base de datos
+      await this.saveStableResponse(accountId, message.chatId, aiResponse);
+      
       console.log(`📤 Respuesta estable para ${message.chatId}: "${aiResponse.substring(0, 50)}..."`);
       
       return true;
@@ -331,6 +333,25 @@ Instrucciones:
       // Aquí iría la lógica de creación de demo
     } catch (error) {
       console.error('❌ Error manejando demo:', error);
+    }
+  }
+
+  private async saveStableResponse(accountId: number, chatId: string, response: string): Promise<void> {
+    try {
+      const { whatsappMessages } = await import('@shared/schema');
+      
+      await db.insert(whatsappMessages).values({
+        chatId,
+        messageId: `stable-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        from_me: true,
+        body: response,
+        timestamp: new Date(),
+        accountId
+      });
+      
+      console.log(`✅ Respuesta estable guardada en BD para chat ${chatId}`);
+    } catch (error) {
+      console.error('❌ Error guardando respuesta estable:', error);
     }
   }
 
