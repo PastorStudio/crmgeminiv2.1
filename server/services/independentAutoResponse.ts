@@ -22,6 +22,9 @@ class IndependentAutoResponseService {
   private processingInterval?: NodeJS.Timeout;
   private isRunning = false;
   private openai: OpenAI;
+  private processedMessages = new Set<string>();
+  private geminiQuotaExhausted = false;
+  private lastQuotaCheck = new Date();
 
   constructor() {
     // Initialize OpenAI client
@@ -84,14 +87,14 @@ class IndependentAutoResponseService {
   }
 
   /**
-   * Inicia procesamiento continuo cada 10 segundos
+   * Inicia procesamiento continuo cada 30 segundos para evitar spam
    */
   private startContinuousProcessing(): void {
-    console.log('⏰ Iniciando procesamiento continuo cada 10 segundos...');
+    console.log('⏰ Iniciando procesamiento continuo cada 30 segundos...');
     
     this.processingInterval = setInterval(async () => {
       await this.processNewMessages();
-    }, 10000); // Cada 10 segundos
+    }, 30000); // Cada 30 segundos para reducir carga
   }
 
   /**
@@ -106,21 +109,26 @@ class IndependentAutoResponseService {
       for (const [accountId, config] of this.configs) {
         if (!config.enabled) continue;
 
-        // Buscar mensajes nuevos desde la última vez procesada
+        // Buscar mensajes nuevos no procesados
         const newMessages = await db
           .select()
           .from(whatsappMessages)
           .where(
             and(
               eq(whatsappMessages.accountId, accountId),
-              eq(whatsappMessages.from_me, false)
+              eq(whatsappMessages.from_me, false),
+              gte(whatsappMessages.timestamp, new Date(Date.now() - 300000)) // Últimos 5 minutos
             )
           )
           .orderBy(desc(whatsappMessages.timestamp))
-          .limit(5);
+          .limit(3);
 
         for (const message of newMessages) {
-          await this.processMessage(accountId, message);
+          const messageKey = `${accountId}-${message.id}`;
+          if (!this.processedMessages.has(messageKey)) {
+            await this.processMessage(accountId, message);
+            this.processedMessages.add(messageKey);
+          }
         }
 
         // Actualizar última vez procesada
@@ -557,6 +565,15 @@ Instrucciones:
       
     } catch (error) {
       console.error('❌ Error generando respuesta con Gemini:', error);
+      
+      // Detectar error de cuota agotada
+      if (error.message && error.message.includes('429') || error.message.includes('quota')) {
+        this.geminiQuotaExhausted = true;
+        this.lastQuotaCheck = new Date();
+        console.log('🚨 Cuota de Gemini agotada, cambiando a OpenAI...');
+        return await this.generateAIResponseWithOpenAI(messageText, agentName);
+      }
+      
       return this.getFallbackResponse();
     }
   }
