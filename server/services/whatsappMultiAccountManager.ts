@@ -99,6 +99,119 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
+   * Método para refrescar conexión sin desconectar completamente
+   */
+  async refreshConnection(accountId: number): Promise<void> {
+    const instance = this.instances.get(accountId);
+    if (!instance) {
+      console.log(`❌ No existe instancia para cuenta ${accountId}`);
+      return;
+    }
+
+    try {
+      console.log(`🔄 Refrescando conexión para cuenta ${accountId}...`);
+      
+      // Limpiar timers existentes
+      if (instance.connectionTimers.keepAlive) {
+        clearInterval(instance.connectionTimers.keepAlive);
+        instance.connectionTimers.keepAlive = null;
+      }
+
+      // Verificar si el cliente sigue conectado
+      if (instance.client && instance.status.authenticated) {
+        // Refresh interno sin desconectar
+        try {
+          await instance.client.pupPage?.reload({ waitUntil: 'networkidle0' });
+          console.log(`✅ Página refrescada para cuenta ${accountId}`);
+        } catch (reloadError) {
+          console.log(`⚠️ Error refrescando página, continuando...`);
+        }
+      }
+
+      // Reiniciar keep-alive con intervalo optimizado
+      this.startKeepAlive(accountId);
+      
+      instance.status.error = undefined;
+      instance.lastReconnectAttempt = Date.now();
+      
+      console.log(`✅ Conexión refrescada exitosamente - Cuenta ${accountId}`);
+    } catch (error) {
+      console.error(`❌ Error refrescando conexión cuenta ${accountId}:`, error);
+    }
+  }
+
+  /**
+   * Método para reconectar una cuenta específica
+   */
+  async reconnectAccount(accountId: number): Promise<void> {
+    const instance = this.instances.get(accountId);
+    if (!instance) {
+      console.log(`❌ No existe instancia para cuenta ${accountId}`);
+      return;
+    }
+
+    try {
+      console.log(`🔄 Reconectando cuenta ${accountId}...`);
+      
+      // Verificar si ya está conectado
+      if (instance.status.authenticated && instance.status.ready) {
+        console.log(`✅ Cuenta ${accountId} ya está conectada`);
+        return;
+      }
+
+      // Limpiar estado anterior
+      this.clearConnectionTimers(accountId);
+      
+      // Intentar reconexión suave primero
+      if (instance.client) {
+        try {
+          const state = await instance.client.getState();
+          if (state === 'CONNECTED') {
+            instance.status.authenticated = true;
+            instance.status.ready = true;
+            instance.status.error = undefined;
+            this.startKeepAlive(accountId);
+            console.log(`✅ Reconexión suave exitosa - Cuenta ${accountId}`);
+            return;
+          }
+        } catch (stateError) {
+          console.log(`⚠️ Estado no disponible, continuando con reconexión completa...`);
+        }
+      }
+
+      // Si reconexión suave falla, reinicializar cliente
+      await this.initializeAccount(accountId, instance.name);
+      
+      console.log(`✅ Reconexión completa exitosa - Cuenta ${accountId}`);
+    } catch (error) {
+      console.error(`❌ Error reconectando cuenta ${accountId}:`, error);
+      
+      // Marcar como desconectado pero mantener instancia
+      instance.status.authenticated = false;
+      instance.status.ready = false;
+      instance.status.error = error.message;
+    }
+  }
+
+  /**
+   * Limpiar timers de conexión para una cuenta
+   */
+  private clearConnectionTimers(accountId: number): void {
+    const instance = this.instances.get(accountId);
+    if (!instance) return;
+
+    if (instance.connectionTimers.connectionCheck) {
+      clearInterval(instance.connectionTimers.connectionCheck);
+      instance.connectionTimers.connectionCheck = null;
+    }
+
+    if (instance.connectionTimers.keepAlive) {
+      clearInterval(instance.connectionTimers.keepAlive);
+      instance.connectionTimers.keepAlive = null;
+    }
+  }
+
+  /**
    * Genera una imagen optimizada del código QR para producción
    */
   private async generateQRImage(qrText: string): Promise<string> {

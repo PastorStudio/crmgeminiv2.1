@@ -45,7 +45,7 @@ import { aiResponseService } from './services/aiAutonomousResponse';
 import { conversationAnalysisService } from './services/conversationAnalysis';
 import { unifiedMessageProcessor } from './services/unifiedMessageProcessor';
 import { startDemoMaintenanceScheduler } from './utils/demoMaintenanceTools';
-import { enhancedAutoResponseService } from './services/enhancedAutoResponseService';
+import { whatsappKeepAlive } from './services/whatsappConnectionKeepAlive';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -3027,6 +3027,15 @@ app.use((req, res, next) => {
     console.log("✅ Sistema ESTABILIZADO iniciado correctamente - resuelve desconexiones de cuota AI");
   } catch (error) {
     console.error("❌ Error al iniciar sistema estabilizado:", error);
+  }
+
+  // Inicializar sistema avanzado de mantenimiento de conexiones WhatsApp
+  try {
+    console.log("🔗 Iniciando sistema avanzado de mantenimiento de conexiones WhatsApp...");
+    await whatsappKeepAlive.initialize();
+    console.log("✅ Sistema KeepAlive iniciado - previene desconexiones por inactividad");
+  } catch (error) {
+    console.error("❌ Error al iniciar sistema KeepAlive:", error);
   }
 
   // Inicializar procesador unificado de mensajes (PRIORIDAD MÁXIMA)
