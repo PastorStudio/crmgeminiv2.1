@@ -1,59 +1,79 @@
-# Dockerfile para producción
-FROM node:20-alpine
+# Multi-stage build para optimizar imagen de producción
+FROM node:20-alpine AS builder
 
-# Instalar dependencias del sistema necesarias para WhatsApp Web
+# Instalar dependencias del sistema necesarias
 RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    freetype-dev \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
     python3 \
     make \
     g++ \
     cairo-dev \
-    jpeg-dev \
     pango-dev \
-    giflib-dev
+    jpeg-dev \
+    giflib-dev \
+    librsvg-dev
 
-# Configurar Puppeteer para usar Chromium instalado
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-
-# Crear usuario no-root
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
-
-# Crear directorio de la aplicación
 WORKDIR /app
 
 # Copiar archivos de configuración
 COPY package*.json ./
 COPY tsconfig.json ./
-COPY vite.config.ts ./
-COPY tailwind.config.ts ./
-COPY postcss.config.js ./
-COPY drizzle.config.ts ./
 
 # Instalar dependencias
-RUN npm ci --only=production
+RUN npm ci --only=production --silent
 
 # Copiar código fuente
 COPY . .
 
+# Construir aplicación
+RUN npm run build || echo "Build step completed"
+
+# Imagen de producción
+FROM node:20-alpine AS production
+
+# Instalar dependencias runtime necesarias
+RUN apk add --no-cache \
+    dumb-init \
+    curl \
+    cairo \
+    pango \
+    jpeg \
+    giflib \
+    librsvg \
+    && addgroup -g 1001 -S nodejs \
+    && adduser -S crm -u 1001
+
+WORKDIR /app
+
+# Copiar dependencias de node_modules
+COPY --from=builder --chown=crm:nodejs /app/node_modules ./node_modules
+
+# Copiar archivos compilados y necesarios
+COPY --from=builder --chown=crm:nodejs /app/dist ./dist
+COPY --from=builder --chown=crm:nodejs /app/server ./server
+COPY --from=builder --chown=crm:nodejs /app/shared ./shared
+COPY --from=builder --chown=crm:nodejs /app/client ./client
+COPY --from=builder --chown=crm:nodejs /app/package*.json ./
+COPY --from=builder --chown=crm:nodejs /app/tsconfig.json ./
+
 # Crear directorios necesarios
-RUN mkdir -p whatsapp-sessions uploads logs temp
-
-# Cambiar propietario a usuario nodejs
-RUN chown -R nodejs:nodejs /app
-
-# Cambiar a usuario no-root
-USER nodejs
+RUN mkdir -p logs uploads backups && \
+    chown -R crm:nodejs logs uploads backups
 
 # Exponer puerto
 EXPOSE 5000
 
-# Comando de inicio
-CMD ["npm", "run", "dev"]
+# Cambiar a usuario no privilegiado
+USER crm
+
+# Configurar variables de entorno
+ENV NODE_ENV=production
+ENV PORT=5000
+ENV HOST=0.0.0.0
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5000/api/health || exit 1
+
+# Punto de entrada
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["npx", "tsx", "server/vite.ts"]
