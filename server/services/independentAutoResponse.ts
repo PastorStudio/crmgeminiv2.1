@@ -5,7 +5,7 @@
 
 import { db } from '../db';
 import { whatsappAccounts, whatsappMessages, externalAgents } from '@shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, gte } from 'drizzle-orm';
 import OpenAI from 'openai';
 import { chatgptPlusDirectService } from './chatgptPlusDirectService';
 import { realtimeDemoCreator } from './realtimeDemoCreator';
@@ -87,14 +87,21 @@ class IndependentAutoResponseService {
   }
 
   /**
-   * Inicia procesamiento continuo cada 30 segundos para evitar spam
+   * Inicia procesamiento inteligente con control de cuota
    */
   private startContinuousProcessing(): void {
-    console.log('⏰ Iniciando procesamiento continuo cada 30 segundos...');
+    console.log('⏰ Iniciando procesamiento inteligente cada 60 segundos...');
     
     this.processingInterval = setInterval(async () => {
+      // Verificar si Gemini sigue agotado (se resetea cada 24 horas)
+      const hoursAgo = (Date.now() - this.lastQuotaCheck.getTime()) / (1000 * 60 * 60);
+      if (this.geminiQuotaExhausted && hoursAgo > 24) {
+        this.geminiQuotaExhausted = false;
+        console.log('🔄 Cuota de Gemini reseteada después de 24 horas');
+      }
+      
       await this.processNewMessages();
-    }, 30000); // Cada 30 segundos para reducir carga
+    }, 60000); // Cada 60 segundos para evitar sobrecarga
   }
 
   /**
@@ -109,19 +116,19 @@ class IndependentAutoResponseService {
       for (const [accountId, config] of this.configs) {
         if (!config.enabled) continue;
 
-        // Buscar mensajes nuevos no procesados
+        // Buscar solo mensajes recientes no procesados
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
         const newMessages = await db
           .select()
           .from(whatsappMessages)
           .where(
             and(
               eq(whatsappMessages.accountId, accountId),
-              eq(whatsappMessages.from_me, false),
-              gte(whatsappMessages.timestamp, new Date(Date.now() - 300000)) // Últimos 5 minutos
+              eq(whatsappMessages.from_me, false)
             )
           )
           .orderBy(desc(whatsappMessages.timestamp))
-          .limit(3);
+          .limit(2);
 
         for (const message of newMessages) {
           const messageKey = `${accountId}-${message.id}`;
@@ -571,9 +578,93 @@ Instrucciones:
         this.geminiQuotaExhausted = true;
         this.lastQuotaCheck = new Date();
         console.log('🚨 Cuota de Gemini agotada, cambiando a OpenAI...');
-        return await this.generateAIResponseWithOpenAI(messageText, agentName);
+        return await this.generateAIResponseWithAlternativeProvider(messageText, agentName);
       }
       
+      return this.getFallbackResponse();
+    }
+  }
+
+  /**
+   * Genera respuesta usando proveedor alternativo cuando Gemini falla
+   */
+  private async generateAIResponseWithAlternativeProvider(messageText: string, agentName: string): Promise<string> {
+    try {
+      // Intentar con OpenAI primero
+      if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your_openai_api_key_here') {
+        console.log('🔄 Usando OpenAI como respaldo...');
+        
+        const completion = await this.openai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: `Eres ${agentName}, un asistente virtual profesional de atención al cliente en español. Responde de manera amable, profesional y útil.`
+            },
+            {
+              role: 'user',
+              content: messageText
+            }
+          ],
+          max_tokens: 150,
+          temperature: 0.7
+        });
+
+        const response = completion.choices[0]?.message?.content;
+        if (response && response.trim().length > 0) {
+          console.log('✅ Respuesta generada con OpenAI como respaldo');
+          return response.trim();
+        }
+      }
+
+      // Si OpenAI falla, usar proveedores con DEEPSEEK/QWEN3
+      if (process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY !== 'your_deepseek_api_key_here') {
+        console.log('🔄 Usando DeepSeek como respaldo...');
+        return await this.generateWithDeepSeek(messageText, agentName);
+      }
+
+      console.log('⚠️ Todos los proveedores AI fallaron, usando respuesta estática');
+      return this.getFallbackResponse();
+      
+    } catch (error) {
+      console.error('❌ Error en proveedor alternativo:', error);
+      return this.getFallbackResponse();
+    }
+  }
+
+  /**
+   * Genera respuesta con DeepSeek
+   */
+  private async generateWithDeepSeek(messageText: string, agentName: string): Promise<string> {
+    try {
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            {
+              role: 'system',
+              content: `Eres ${agentName}, un asistente virtual profesional de atención al cliente en español.`
+            },
+            {
+              role: 'user',
+              content: messageText
+            }
+          ],
+          max_tokens: 150,
+          temperature: 0.7
+        })
+      });
+
+      const data = await response.json();
+      return data.choices[0]?.message?.content || this.getFallbackResponse();
+      
+    } catch (error) {
+      console.error('❌ Error con DeepSeek:', error);
       return this.getFallbackResponse();
     }
   }
