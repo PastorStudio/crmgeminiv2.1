@@ -17,6 +17,7 @@ import { db } from "./db";
 import jwt from "jsonwebtoken";
 // Importar las rutas de WhatsApp
 import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
+import { stabilizedAutoResponse } from "./services/stabilizedAutoResponse";
 import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
 import { authService } from "./services/authService";
 import { eq, and, ne, not, isNull, sql } from "drizzle-orm";

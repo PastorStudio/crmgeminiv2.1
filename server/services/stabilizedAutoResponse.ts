@@ -55,7 +55,7 @@ class StabilizedAutoResponseService {
       const accounts = await db
         .select()
         .from(whatsappAccounts)
-        .where(eq(whatsappAccounts.isActive, true));
+        .where(eq(whatsappAccounts.status, 'connected'));
 
       this.configs.clear();
       
