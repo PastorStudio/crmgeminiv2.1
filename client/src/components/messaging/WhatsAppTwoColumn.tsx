@@ -2710,41 +2710,73 @@ export function WhatsAppTwoColumn() {
     { id: 'urgent', label: 'Urgente', icon: '⚡' }
   ];
 
-  const filteredChats = useMemo(() => {
-    return sortedChats.filter(chat => {
-      const chatName = (chat.name || '').toLowerCase();
-      const lastMessage = (chat.lastMessage || '').toLowerCase();
-      const unreadCount = chat.unreadCount || 0;
+  // Optimized filter function to avoid redundant processing
+  const getFilterCategory = useCallback((chat: any) => {
+    const chatName = (chat.name || '').toLowerCase();
+    const lastMessage = (chat.lastMessage || '').toLowerCase();
+    const unreadCount = chat.unreadCount || 0;
+    
+    // Pre-compile filter conditions for better performance
+    const isUnread = unreadCount > 0;
+    const isGroup = chat.isGroup === true;
+    const isIndividual = !isGroup;
+    
+    // Use regex for faster string matching
+    const salesPattern = /venta|ventas|precio|comprar|costo|vender/;
+    const supportPattern = /soporte|support|ayuda|problema|error|falla/;
+    const leadsPattern = /lead|prospecto|información|interesado|cotización|consulta/;
+    const urgentPattern = /urgente|emergencia|importante|rapido/;
+    
+    const isSales = salesPattern.test(chatName) || salesPattern.test(lastMessage);
+    const isSupport = supportPattern.test(chatName) || supportPattern.test(lastMessage);
+    const isLeads = leadsPattern.test(chatName) || leadsPattern.test(lastMessage);
+    const isUrgent = unreadCount > 5 || urgentPattern.test(lastMessage);
+    
+    return {
+      all: true,
+      unread: isUnread,
+      groups: isGroup,
+      individual: isIndividual,
+      sales: isSales,
+      support: isSupport,
+      leads: isLeads,
+      urgent: isUrgent
+    };
+  }, []);
 
-      switch (selectedFilter) {
-        case 'unread':
-          return unreadCount > 0;
-        case 'groups':
-          return chat.isGroup === true;
-        case 'individual':
-          return chat.isGroup !== true;
-        case 'sales':
-          return chatName.includes('venta') || chatName.includes('ventas') ||
-                 lastMessage.includes('precio') || lastMessage.includes('comprar') ||
-                 lastMessage.includes('costo') || lastMessage.includes('vender');
-        case 'support':
-          return chatName.includes('soporte') || chatName.includes('support') ||
-                 lastMessage.includes('ayuda') || lastMessage.includes('problema') ||
-                 lastMessage.includes('error') || lastMessage.includes('falla');
-        case 'leads':
-          return chatName.includes('lead') || chatName.includes('prospecto') ||
-                 lastMessage.includes('información') || lastMessage.includes('interesado') ||
-                 lastMessage.includes('cotización') || lastMessage.includes('consulta');
-        case 'urgent':
-          return unreadCount > 5 || 
-                 lastMessage.includes('urgente') || lastMessage.includes('emergencia') ||
-                 lastMessage.includes('importante') || lastMessage.includes('rapido');
-        case 'all':
-        default:
-          return true;
+  // Memoize category counts and filtered chats together
+  const { filteredChats, categoryCounts } = useMemo(() => {
+    const counts: Record<string, number> = {
+      all: sortedChats.length,
+      unread: 0,
+      groups: 0,
+      individual: 0,
+      sales: 0,
+      support: 0,
+      leads: 0,
+      urgent: 0
+    };
+    
+    const filtered = [];
+    
+    for (const chat of sortedChats) {
+      const categories = getFilterCategory(chat);
+      
+      // Count for each category
+      Object.entries(categories).forEach(([key, matches]) => {
+        if (matches && key !== 'all') {
+          counts[key]++;
+        }
+      });
+      
+      // Add to filtered list if matches current filter
+      if (categories[selectedFilter] || selectedFilter === 'all') {
+        filtered.push(chat);
       }
-    });
-  }, [sortedChats, selectedFilter]);
+    }
+    
+    return { filteredChats: filtered, categoryCounts: counts };
+  }, [sortedChats, selectedFilter, getFilterCategory]);
 
   if (loadingAccounts) {
     return (
@@ -2793,31 +2825,7 @@ export function WhatsAppTwoColumn() {
           </div>
           <div className="grid grid-cols-4 gap-1">
             {filterCategories.map(category => {
-              const categoryCount = sortedChats.filter(chat => {
-                const chatName = (chat.name || '').toLowerCase();
-                const lastMessage = (chat.lastMessage || '').toLowerCase();
-                const unreadCount = chat.unreadCount || 0;
-
-                switch (category.id) {
-                  case 'unread': return unreadCount > 0;
-                  case 'groups': return chat.isGroup === true;
-                  case 'individual': return chat.isGroup !== true;
-                  case 'sales': return chatName.includes('venta') || chatName.includes('ventas') ||
-                    lastMessage.includes('precio') || lastMessage.includes('comprar') ||
-                    lastMessage.includes('costo') || lastMessage.includes('vender');
-                  case 'support': return chatName.includes('soporte') || chatName.includes('support') ||
-                    lastMessage.includes('ayuda') || lastMessage.includes('problema') ||
-                    lastMessage.includes('error') || lastMessage.includes('falla');
-                  case 'leads': return chatName.includes('lead') || chatName.includes('prospecto') ||
-                    lastMessage.includes('información') || lastMessage.includes('interesado') ||
-                    lastMessage.includes('cotización') || lastMessage.includes('consulta');
-                  case 'urgent': return unreadCount > 5 || 
-                    lastMessage.includes('urgente') || lastMessage.includes('emergencia') ||
-                    lastMessage.includes('importante') || lastMessage.includes('rapido');
-                  case 'all': 
-                  default: return true;
-                }
-              }).length;
+              const categoryCount = categoryCounts[category.id] || 0;
 
               return (
                 <Button
