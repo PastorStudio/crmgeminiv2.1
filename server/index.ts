@@ -1258,7 +1258,7 @@ app.post("/bypass/deepseek-deactivate", (req: Request, res: Response) => {
   res.status(200).end(JSON.stringify(response));
 });
 
-app.get("/bypass/deepseek-status/:accountId", (req: Request, res: Response) => {
+app.get("/bypass/deepseek-status/:accountId", async (req: Request, res: Response) => {
   const accountId = req.params.accountId;
   console.log('📊 [BYPASS] Estado solicitado para cuenta:', accountId);
   
@@ -1266,15 +1266,34 @@ app.get("/bypass/deepseek-status/:accountId", (req: Request, res: Response) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-cache');
   
-  const response = {
-    success: true,
-    isActive: false,
-    accountId: parseInt(accountId),
-    timestamp: new Date().toISOString()
-  };
-  
-  console.log('✅ [BYPASS] Estado enviado:', response);
-  res.status(200).end(JSON.stringify(response));
+  try {
+    // Query the database for actual auto-response status
+    const result = await pool.query(
+      'SELECT enabled FROM auto_response_config WHERE account_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [parseInt(accountId)]
+    );
+    
+    const isActive = result.rows.length > 0 ? result.rows[0].enabled : false;
+    
+    const response = {
+      success: true,
+      isActive,
+      accountId: parseInt(accountId),
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('✅ [BYPASS] Estado real desde BD:', response);
+    res.status(200).end(JSON.stringify(response));
+  } catch (error) {
+    console.error('❌ [BYPASS] Error consultando estado:', error);
+    const response = {
+      success: true,
+      isActive: false,
+      accountId: parseInt(accountId),
+      timestamp: new Date().toISOString()
+    };
+    res.status(200).end(JSON.stringify(response));
+  }
 });
 
 // === ENDPOINTS DE NOTIFICACIONES (ANTES DE VITE) ===
