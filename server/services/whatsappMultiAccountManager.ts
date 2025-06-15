@@ -694,6 +694,12 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           chatId: message.from
         });
         
+        // DEBUGGING: Verificar si llegó un mensaje real
+        if (!message.fromMe) {
+          console.log(`🚨 MENSAJE REAL ENTRANTE DETECTADO - Cuenta ${id}`);
+          console.log(`📱 Chat: ${message.from}, Mensaje: "${message.body}"`);
+        }
+        
         // Almacenar conversación para análisis AI
         await this.storeConversationForAnalysis(id, message);
         
@@ -788,6 +794,10 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             
             const { WhatsAppAutoResponder } = await import('./whatsappAutoResponder');
             
+            // ACTIVAR AUTOMÁTICAMENTE PARA TODOS LOS CHATS ENTRANTES
+            console.log(`🔥 Auto-activando respuestas para chat ${message.from}`);
+            WhatsAppAutoResponder.activateForChat(message.from, "A.E AI Smartbots");
+            
             // Procesar mensaje con el sistema de respuestas automáticas multi-proveedor
             const processed = await WhatsAppAutoResponder.processIncomingMessage(
               {
@@ -807,7 +817,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
               console.log(`✅ Respuesta automática multi-proveedor enviada para cuenta ${id}`);
               return; // Salir aquí - ya se procesó con respuestas automáticas
             } else {
-              console.log(`⏭️ Sistema de respuestas automáticas no activado para cuenta ${id}`);
+              console.log(`⏭️ Sistema de respuestas automáticas no generó respuesta para cuenta ${id}`);
             }
           } catch (autoResponseError) {
             console.error(`❌ Error en respuestas automáticas multi-proveedor:`, autoResponseError);
