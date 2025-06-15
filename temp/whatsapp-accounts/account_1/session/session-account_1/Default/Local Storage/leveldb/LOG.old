@@ -1,2 +1,3 @@
-2025/06/15-00:24:18.091 413d Creating DB /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb since it was missing.
-2025/06/15-00:24:18.132 413d Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb/MANIFEST-000001
+2025/06/15-00:30:22.508 3f75 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb/MANIFEST-000001
+2025/06/15-00:30:22.528 3f75 Recovering log #3
+2025/06/15-00:30:22.529 3f75 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb/000003.log 

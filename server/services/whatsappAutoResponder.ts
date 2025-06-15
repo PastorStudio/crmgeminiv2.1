@@ -102,7 +102,7 @@ export class WhatsAppAutoResponder {
       let customPrompt = null;
       try {
         const { db } = await import('../drizzle');
-        const { whatsappAccounts, prompts } = await import('../../shared/schema');
+        const { whatsappAccounts, aiPrompts } = await import('../../shared/schema');
         const { eq } = await import('drizzle-orm');
         
         // Buscar la cuenta que maneja este chat
@@ -111,8 +111,8 @@ export class WhatsAppAutoResponder {
         
         for (const account of accounts) {
           if (account.assignedPromptId) {
-            const promptData = await db.select().from(prompts)
-              .where(eq(prompts.id, account.assignedPromptId))
+            const promptData = await db.select().from(aiPrompts)
+              .where(eq(aiPrompts.id, account.assignedPromptId))
               .limit(1);
             
             if (promptData[0]) {
