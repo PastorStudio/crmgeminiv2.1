@@ -975,21 +975,20 @@ export function WhatsAppTwoColumn() {
     loadAgentStatus();
   }, [selectedChat]);
 
-  // Cargar análisis en tiempo real del chat seleccionado
+  // Cargar análisis en tiempo real del chat seleccionado - OPTIMIZADO
   useEffect(() => {
+    if (!selectedChat?.id) {
+      setChatAnalysis(null);
+      return;
+    }
+
     const loadChatAnalysis = async () => {
-      if (!selectedChat) {
-        setChatAnalysis(null);
-        return;
-      }
-      
       try {
         const response = await fetch(`/api/analysis/conversations/${selectedChat.id}`);
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.conversation) {
             setChatAnalysis(data.conversation);
-            console.log('🔍 Análisis de conversación cargado:', data.conversation);
           } else {
             setChatAnalysis(null);
           }
@@ -1002,19 +1001,21 @@ export function WhatsAppTwoColumn() {
       }
     };
 
+    // Cargar una vez al cambiar de chat
     loadChatAnalysis();
     
-    // Recargar análisis cada 10 segundos para mantener datos actualizados
-    const analysisInterval = setInterval(loadChatAnalysis, 10000);
+    // Intervalo más conservador para evitar sobrecarga
+    const analysisInterval = setInterval(loadChatAnalysis, 30000); // 30 segundos
     
     return () => clearInterval(analysisInterval);
-  }, [selectedChat]);
+  }, [selectedChat?.id]); // Solo depender del ID del chat
 
-  // Obtener estado del análisis en tiempo real
+  // Obtener estado del análisis en tiempo real - OPTIMIZADO
   const { data: realtimeAnalysisStatus } = useQuery({
     queryKey: ['/api/analysis/status'],
-    refetchInterval: 5000, // Actualizar cada 5 segundos
-    staleTime: 4000
+    refetchInterval: 30000, // Reducido a 30 segundos para evitar sobrecarga
+    staleTime: 25000,
+    refetchOnWindowFocus: false // Evitar refetch innecesarios
   });
 
   // Función para alternar A.E AI (Agentes Externos)
