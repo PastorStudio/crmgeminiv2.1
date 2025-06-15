@@ -16,6 +16,7 @@ interface AutoResponseConfig {
   chatId: string;
   isActive: boolean;
   agentName: string;
+  accountId?: number;
   lastProcessedMessageId?: string;
 }
 
@@ -27,14 +28,15 @@ export class WhatsAppAutoResponder {
   /**
    * Activa A.E AI para un chat específico
    */
-  static activateForChat(chatId: string, agentName: string = "A.E AI Smartbots"): void {
+  static activateForChat(chatId: string, agentName: string = "A.E AI Smartbots", accountId?: number): void {
     activeConfigs.set(chatId, {
       chatId,
       isActive: true,
       agentName,
+      accountId,
       lastProcessedMessageId: undefined
     });
-    console.log(`🟢 A.E AI activado para chat ${chatId} con agente: ${agentName}`);
+    console.log(`🟢 A.E AI activado para chat ${chatId} con agente: ${agentName}${accountId ? ` (cuenta: ${accountId})` : ''}`);
   }
   
   /**
@@ -105,20 +107,20 @@ export class WhatsAppAutoResponder {
         const { whatsappAccounts, aiPrompts } = await import('../../shared/schema');
         const { eq } = await import('drizzle-orm');
         
-        // Buscar la cuenta que maneja este chat
-        const accounts = await db.select().from(whatsappAccounts)
-          .where(eq(whatsappAccounts.autoResponseEnabled, true));
-        
-        for (const account of accounts) {
-          if (account.assignedPromptId) {
+        // Buscar la cuenta específica por ID de configuración
+        if (config.accountId) {
+          const accountData = await db.select().from(whatsappAccounts)
+            .where(eq(whatsappAccounts.id, config.accountId))
+            .limit(1);
+          
+          if (accountData[0]?.assignedPromptId) {
             const promptData = await db.select().from(aiPrompts)
-              .where(eq(aiPrompts.id, account.assignedPromptId))
+              .where(eq(aiPrompts.id, accountData[0].assignedPromptId))
               .limit(1);
             
             if (promptData[0]) {
               customPrompt = promptData[0].content;
-              console.log(`✅ Usando prompt personalizado: ${promptData[0].name} para agente ${config.agentName}`);
-              break;
+              console.log(`✅ Usando prompt personalizado: ${promptData[0].name} para cuenta ${config.accountId}`);
             }
           }
         }
