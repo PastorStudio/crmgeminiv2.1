@@ -1156,22 +1156,47 @@ app.post('/api/intelligent-response/analyze', async (req: Request, res: Response
 });
 
 // === ENDPOINTS BYPASS COMPLETO PARA DEEPSEEK ===
-app.post("/bypass/deepseek-activate", (req: Request, res: Response) => {
+app.post("/bypass/deepseek-activate", async (req: Request, res: Response) => {
   console.log('🚀 [BYPASS] Activando DeepSeek para cuenta:', req.body.accountId);
   
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-cache');
   
-  const response = {
-    success: true,
-    message: 'DeepSeek activado correctamente',
-    accountId: req.body.accountId,
-    timestamp: new Date().toISOString()
-  };
-  
-  console.log('✅ [BYPASS] Respuesta enviada:', response);
-  res.status(200).end(JSON.stringify(response));
+  try {
+    const accountId = parseInt(req.body.accountId);
+    
+    // Insert or update auto-response configuration in database
+    await pool.query(`
+      INSERT INTO auto_response_config (account_id, enabled, "createdAt", "updatedAt")
+      VALUES ($1, $2, NOW(), NOW())
+      ON CONFLICT (account_id) 
+      DO UPDATE SET 
+        enabled = $2,
+        "updatedAt" = NOW()
+    `, [accountId, true]);
+    
+    console.log('✅ [BYPASS] Estado activado en BD para cuenta:', accountId);
+    
+    const response = {
+      success: true,
+      message: 'DeepSeek activado correctamente',
+      accountId,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('✅ [BYPASS] Respuesta enviada:', response);
+    res.status(200).end(JSON.stringify(response));
+  } catch (error) {
+    console.error('❌ [BYPASS] Error activando DeepSeek:', error);
+    const response = {
+      success: false,
+      message: 'Error al activar DeepSeek',
+      accountId: req.body.accountId,
+      timestamp: new Date().toISOString()
+    };
+    res.status(500).end(JSON.stringify(response));
+  }
 });
 
 // === BYPASS COMPLETO PARA ASIGNACIONES DE CHAT ===
@@ -1240,22 +1265,44 @@ app.post("/bypass/chat-assignment", async (req: Request, res: Response) => {
   }
 });
 
-app.post("/bypass/deepseek-deactivate", (req: Request, res: Response) => {
+app.post("/bypass/deepseek-deactivate", async (req: Request, res: Response) => {
   console.log('🛑 [BYPASS] Desactivando DeepSeek para cuenta:', req.body.accountId);
   
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-cache');
   
-  const response = {
-    success: true,
-    message: 'DeepSeek desactivado correctamente',
-    accountId: req.body.accountId,
-    timestamp: new Date().toISOString()
-  };
-  
-  console.log('✅ [BYPASS] Respuesta enviada:', response);
-  res.status(200).end(JSON.stringify(response));
+  try {
+    const accountId = parseInt(req.body.accountId);
+    
+    // Update auto-response configuration in database to disabled
+    await pool.query(`
+      UPDATE auto_response_config 
+      SET enabled = $1, "updatedAt" = NOW()
+      WHERE account_id = $2
+    `, [false, accountId]);
+    
+    console.log('✅ [BYPASS] Estado desactivado en BD para cuenta:', accountId);
+    
+    const response = {
+      success: true,
+      message: 'DeepSeek desactivado correctamente',
+      accountId,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('✅ [BYPASS] Respuesta enviada:', response);
+    res.status(200).end(JSON.stringify(response));
+  } catch (error) {
+    console.error('❌ [BYPASS] Error desactivando DeepSeek:', error);
+    const response = {
+      success: false,
+      message: 'Error al desactivar DeepSeek',
+      accountId: req.body.accountId,
+      timestamp: new Date().toISOString()
+    };
+    res.status(500).end(JSON.stringify(response));
+  }
 });
 
 app.get("/bypass/deepseek-status/:accountId", async (req: Request, res: Response) => {
@@ -1269,7 +1316,7 @@ app.get("/bypass/deepseek-status/:accountId", async (req: Request, res: Response
   try {
     // Query the database for actual auto-response status
     const result = await pool.query(
-      'SELECT enabled FROM auto_response_config WHERE account_id = $1 ORDER BY created_at DESC LIMIT 1',
+      'SELECT enabled FROM auto_response_config WHERE account_id = $1 ORDER BY "createdAt" DESC LIMIT 1',
       [parseInt(accountId)]
     );
     

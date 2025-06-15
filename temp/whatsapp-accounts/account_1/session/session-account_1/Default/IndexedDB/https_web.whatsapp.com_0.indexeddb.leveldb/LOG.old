@@ -1,3 +1,25 @@
-2025/06/15-11:26:57.859 1c75 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/06/15-11:26:57.859 1c75 Recovering log #177
-2025/06/15-11:26:57.860 1c75 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000177.log 
+2025/06/15-11:27:05.390 1cf3 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/15-11:27:05.390 1cf3 Recovering log #177
+2025/06/15-11:27:05.391 1cf3 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000177.log 
+2025/06/15-11:27:07.313 1cf8 Level-0 table #188: started
+2025/06/15-11:27:07.354 1cf8 Level-0 table #188: 34478 bytes OK
+2025/06/15-11:27:07.385 1cf8 Delete type=0 #177
+2025/06/15-11:27:07.386 1cf3 Manual compaction at level-0 from '\x00\x1b\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1c\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/15-11:27:10.573 1cf5 Compacting 1@1 + 7@2 files
+2025/06/15-11:27:11.086 1cf5 Generated table #189@1: 20523 keys, 2182081 bytes
+2025/06/15-11:27:11.272 1cf5 Generated table #190@1: 3129 keys, 2152650 bytes
+2025/06/15-11:27:11.381 1cf5 Generated table #191@1: 18413 keys, 2205484 bytes
+2025/06/15-11:27:11.487 1cf5 Generated table #192@1: 17920 keys, 2179662 bytes
+2025/06/15-11:27:11.605 1cf5 Generated table #193@1: 74230 keys, 2215743 bytes
+2025/06/15-11:27:11.762 1cf5 Generated table #194@1: 106620 keys, 2258279 bytes
+2025/06/15-11:27:11.883 1cf5 Generated table #195@1: 54797 keys, 1153020 bytes
+2025/06/15-11:27:11.884 1cf5 Compacted 1@1 + 7@2 files => 14346919 bytes
+2025/06/15-11:27:11.897 1cf5 compacted to: files[ 0 0 7 0 0 0 0 ]
+2025/06/15-11:27:11.899 1cf5 Delete type=2 #179
+2025/06/15-11:27:11.899 1cf5 Delete type=2 #180
+2025/06/15-11:27:11.900 1cf5 Delete type=2 #181
+2025/06/15-11:27:11.900 1cf5 Delete type=2 #182
+2025/06/15-11:27:11.900 1cf5 Delete type=2 #183
+2025/06/15-11:27:11.901 1cf5 Delete type=2 #184
+2025/06/15-11:27:11.901 1cf5 Delete type=2 #185
+2025/06/15-11:27:11.901 1cf5 Delete type=2 #188
