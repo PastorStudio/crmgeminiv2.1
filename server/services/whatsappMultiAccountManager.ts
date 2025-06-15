@@ -99,119 +99,6 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
-   * Método para refrescar conexión sin desconectar completamente
-   */
-  async refreshConnection(accountId: number): Promise<void> {
-    const instance = this.instances.get(accountId);
-    if (!instance) {
-      console.log(`❌ No existe instancia para cuenta ${accountId}`);
-      return;
-    }
-
-    try {
-      console.log(`🔄 Refrescando conexión para cuenta ${accountId}...`);
-      
-      // Limpiar timers existentes
-      if (instance.connectionTimers.keepAlive) {
-        clearInterval(instance.connectionTimers.keepAlive);
-        instance.connectionTimers.keepAlive = null;
-      }
-
-      // Verificar si el cliente sigue conectado
-      if (instance.client && instance.status.authenticated) {
-        // Refresh interno sin desconectar
-        try {
-          await instance.client.pupPage?.reload({ waitUntil: 'networkidle0' });
-          console.log(`✅ Página refrescada para cuenta ${accountId}`);
-        } catch (reloadError) {
-          console.log(`⚠️ Error refrescando página, continuando...`);
-        }
-      }
-
-      // Reiniciar keep-alive con intervalo optimizado
-      this.startKeepAlive(instance);
-      
-      instance.status.error = undefined;
-      instance.lastReconnectAttempt = Date.now();
-      
-      console.log(`✅ Conexión refrescada exitosamente - Cuenta ${accountId}`);
-    } catch (error) {
-      console.error(`❌ Error refrescando conexión cuenta ${accountId}:`, error);
-    }
-  }
-
-  /**
-   * Método para reconectar una cuenta específica
-   */
-  async reconnectAccount(accountId: number): Promise<void> {
-    const instance = this.instances.get(accountId);
-    if (!instance) {
-      console.log(`❌ No existe instancia para cuenta ${accountId}`);
-      return;
-    }
-
-    try {
-      console.log(`🔄 Reconectando cuenta ${accountId}...`);
-      
-      // Verificar si ya está conectado
-      if (instance.status.authenticated && instance.status.ready) {
-        console.log(`✅ Cuenta ${accountId} ya está conectada`);
-        return;
-      }
-
-      // Limpiar estado anterior
-      this.clearConnectionTimers(accountId);
-      
-      // Intentar reconexión suave primero
-      if (instance.client) {
-        try {
-          const state = await instance.client.getState();
-          if (state === 'CONNECTED') {
-            instance.status.authenticated = true;
-            instance.status.ready = true;
-            instance.status.error = undefined;
-            this.startKeepAlive(instance);
-            console.log(`✅ Reconexión suave exitosa - Cuenta ${accountId}`);
-            return;
-          }
-        } catch (stateError) {
-          console.log(`⚠️ Estado no disponible, continuando con reconexión completa...`);
-        }
-      }
-
-      // Si reconexión suave falla, reinicializar cliente
-      await this.initializeAccount(accountId);
-      
-      console.log(`✅ Reconexión completa exitosa - Cuenta ${accountId}`);
-    } catch (error) {
-      console.error(`❌ Error reconectando cuenta ${accountId}:`, error);
-      
-      // Marcar como desconectado pero mantener instancia
-      instance.status.authenticated = false;
-      instance.status.ready = false;
-      instance.status.error = error.message;
-    }
-  }
-
-  /**
-   * Limpiar timers de conexión para una cuenta
-   */
-  private clearConnectionTimers(accountId: number): void {
-    const instance = this.instances.get(accountId);
-    if (!instance) return;
-
-    if (instance.connectionTimers.connectionCheck) {
-      clearInterval(instance.connectionTimers.connectionCheck);
-      instance.connectionTimers.connectionCheck = null;
-    }
-
-    if (instance.connectionTimers.keepAlive) {
-      clearInterval(instance.connectionTimers.keepAlive);
-      instance.connectionTimers.keepAlive = null;
-    }
-  }
-
-  /**
    * Genera una imagen optimizada del código QR para producción
    */
   private async generateQRImage(qrText: string): Promise<string> {
@@ -694,12 +581,6 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           chatId: message.from
         });
         
-        // DEBUGGING: Verificar si llegó un mensaje real
-        if (!message.fromMe) {
-          console.log(`🚨 MENSAJE REAL ENTRANTE DETECTADO - Cuenta ${id}`);
-          console.log(`📱 Chat: ${message.from}, Mensaje: "${message.body}"`);
-        }
-        
         // Almacenar conversación para análisis AI
         await this.storeConversationForAnalysis(id, message);
         
@@ -787,46 +668,10 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             console.error(`❌ Error en web scraping automático:`, webScrapingError);
           }
 
-          // 🤖 ACTIVAR SISTEMA DE RESPUESTAS AUTOMÁTICAS MULTI-PROVEEDOR
+          // 🎯 USAR PROCESADOR UNIFICADO DE MENSAJES PRIMERO
           try {
-            console.log(`🤖 INICIANDO RESPUESTAS AUTOMÁTICAS MULTI-PROVEEDOR para cuenta ${id}`);
+            console.log(`🎯 INICIANDO PROCESADOR UNIFICADO para cuenta ${id}`);
             console.log(`📝 Mensaje: "${messageBody}" | fromMe: ${message.fromMe} | Chat: ${message.from}`);
-            
-            const { WhatsAppAutoResponder } = await import('./whatsappAutoResponder');
-            
-            // ACTIVAR AUTOMÁTICAMENTE PARA TODOS LOS CHATS ENTRANTES
-            console.log(`🔥 Auto-activando respuestas para chat ${message.from} en cuenta ${id}`);
-            WhatsAppAutoResponder.activateForChat(message.from, "A.E AI Smartbots", id);
-            
-            // Procesar mensaje con el sistema de respuestas automáticas multi-proveedor
-            const processed = await WhatsAppAutoResponder.processIncomingMessage(
-              {
-                id: message.id._serialized || String(message.id),
-                body: messageBody,
-                fromMe: message.fromMe,
-                timestamp: message.timestamp || Math.floor(Date.now() / 1000),
-                chatId: message.from,
-                type: message.type || 'text'
-              },
-              (to: string, responseMessage: string) => {
-                return client.sendMessage(to, responseMessage);
-              }
-            );
-
-            if (processed) {
-              console.log(`✅ Respuesta automática multi-proveedor enviada para cuenta ${id}`);
-              return; // Salir aquí - ya se procesó con respuestas automáticas
-            } else {
-              console.log(`⏭️ Sistema de respuestas automáticas no generó respuesta para cuenta ${id}`);
-            }
-          } catch (autoResponseError) {
-            console.error(`❌ Error en respuestas automáticas multi-proveedor:`, autoResponseError);
-            console.log(`🔄 Fallback a procesador unificado...`);
-          }
-
-          // FALLBACK 1: USAR PROCESADOR UNIFICADO DE MENSAJES
-          try {
-            console.log(`🎯 INICIANDO PROCESADOR UNIFICADO (fallback) para cuenta ${id}`);
             
             const { unifiedMessageProcessor } = await import('./unifiedMessageProcessor');
             
@@ -868,9 +713,9 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             console.log(`🔄 Fallback a sistema contextual...`);
           }
 
-          // FALLBACK 2: Procesar mensaje con sistema contextual de respuestas automáticas
+          // FALLBACK: Procesar mensaje con sistema contextual de respuestas automáticas
           try {
-            console.log(`🤖 INICIANDO RESPUESTA CONTEXTUAL (fallback final) para cuenta ${id}`);
+            console.log(`🤖 INICIANDO RESPUESTA CONTEXTUAL (fallback) para cuenta ${id}`);
             
             const { ContextAwareAutoResponder } = await import('./contextAwareAutoResponder');
             

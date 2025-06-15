@@ -426,15 +426,6 @@ export function registerDirectAPIRoutes(app: Express): void {
 
       console.log(`✅ Manual demo created successfully: ${username}`);
 
-      // Send notification for manual demo creation
-      const { notificationService } = await import('./notificationService');
-      notificationService.notifyDemoCreated(
-        customerName,
-        1, // Default account ID for manual creation
-        '', // No chat ID for manual creation
-        demoUser
-      );
-
       res.json({
         success: true,
         message: "Demo creado exitosamente",
@@ -468,7 +459,7 @@ export function registerDirectAPIRoutes(app: Express): void {
       const { demoUsers } = await import('@shared/schema');
       const { desc } = await import('drizzle-orm');
 
-      const demos = await db.select().from(demoUsers).orderBy(desc(demoUsers.createdAt));
+      const demos = await db.select().from(demoUsers).orderBy(desc(demoUsers.requestedAt));
       
       const enrichedDemos = demos.map(demo => {
         const now = new Date();
@@ -643,9 +634,8 @@ export function registerDirectAPIRoutes(app: Express): void {
       const password = 'demo123456';
       const hashedPassword = await bcrypt.hash(password, 10);
       
-      // Use centralized demo constants for exactly 72 hours
-      const { createDemoExpirationDate } = await import('../utils/demoConstants');
-      const expiresAt = createDemoExpirationDate();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 3); // 3 days from now
 
       // Create demo user
       const [demoUser] = await db
@@ -672,7 +662,8 @@ export function registerDirectAPIRoutes(app: Express): void {
           username,
           email: `${username}@demo.local`,
           password: hashedPassword,
-          fullName: customerName,
+          firstName: customerName.split(' ')[0] || customerName,
+          lastName: customerName.split(' ').slice(1).join(' ') || '',
           role: 'demo',
           isActive: true,
           createdAt: new Date(),

@@ -20,7 +20,6 @@ import NotFound from './pages/not-found';
 import Integrations from './pages/Integrations';
 import AutoResponseSettings from './pages/AutoResponseSettings';
 import AutoResponseSettingsFixed from './pages/AutoResponseSettingsFixed';
-import EnhancedAutoResponse from './pages/EnhancedAutoResponse';
 import Connection from './pages/Connection';
 import QRCode from './pages/QRCode';
 import QrViewer from './pages/QrViewer';
@@ -50,9 +49,7 @@ import SalesFlowDesigner from './pages/SalesFlowDesigner';
 import FlowTemplates from './pages/FlowTemplates';
 import SystemStatus from './pages/SystemStatus';
 import WhatsAppAuth from './pages/WhatsAppAuth';
-import WhatsApp from './pages/WhatsApp';
 import { FunctionDocumentation } from './pages/FunctionDocumentation';
-import { WhatsAppKeepAlivePage } from './pages/WhatsAppKeepAlivePage';
 import NotificationSystem from './components/NotificationSystem';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SubscriptionManager } from './components/admin/SubscriptionManager';
@@ -252,14 +249,6 @@ const AppRoutes: React.FC = () => {
                   <circle cx="17" cy="11" r="1" fill="white"/>
                 </svg>
                 Mensajes
-              </a>
-
-              <a href="/whatsapp" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <rect x="2" y="2" width="20" height="20" rx="4" fill="#25D366"/>
-                  <path d="M7 12l3 3 7-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                WhatsApp
               </a>
 
               {/* OCULTO: Mensajería Moderna */}
@@ -499,20 +488,6 @@ const AppRoutes: React.FC = () => {
                 </svg>
                 Monitoreo Agentes
               </a>
-
-              <a href="/whatsapp-keepalive" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-keepalive' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <rect x="2" y="2" width="20" height="20" rx="3" fill="#25D366"/>
-                  <circle cx="12" cy="12" r="6" fill="white"/>
-                  <circle cx="12" cy="12" r="3" fill="#10B981"/>
-                  <circle cx="8" cy="8" r="1" fill="#25D366"/>
-                  <circle cx="16" cy="8" r="1" fill="#F59E0B"/>
-                  <circle cx="8" cy="16" r="1" fill="#3B82F6"/>
-                  <circle cx="16" cy="16" r="1" fill="#EF4444"/>
-                  <path d="M12 8v8M8 12h8" stroke="#25D366" strokeWidth="1" strokeLinecap="round"/>
-                </svg>
-                Monitor Conexiones
-              </a>
               
               {/* Menú oculto: Conexión, Código QR e Integraciones - Se mantiene en el código pero no se muestra */}
               {false && (
@@ -586,24 +561,6 @@ const AppRoutes: React.FC = () => {
                   <circle cx="9" cy="15" r="1" fill="white"/>
                 </svg>
                 AI Integration
-              </a>
-              
-              <a href="/enhanced-auto-response" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/enhanced-auto-response' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="4" width="18" height="14" rx="3" fill="#10B981"/>
-                  <circle cx="8" cy="9" r="1.5" fill="white"/>
-                  <circle cx="16" cy="9" r="1.5" fill="white"/>
-                  <path d="M6 13h12v2H6z" fill="white"/>
-                  <rect x="18" y="6" width="3" height="3" rx="1" fill="#F59E0B"/>
-                  <path d="M19 7h1M19.5 6.5v1" stroke="white" strokeWidth="0.5"/>
-                </svg>
-                <span className="relative">
-                  Respuestas Avanzadas
-                  <span className="absolute top-0 right-0 -mt-2 -mr-2 flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                  </span>
-                </span>
               </a>
               
               <a href="/function-documentation" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/function-documentation' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
@@ -709,7 +666,6 @@ const AppRoutes: React.FC = () => {
                 <Route path="/leads" component={() => <PrivateRoute component={Leads} path="/leads" />} />
                 <Route path="/sales-pipeline" component={() => <PrivateRoute component={SalesPipeline} path="/sales-pipeline" />} />
                 <Route path="/messages" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="messaging"><Messages /></ProtectedRoute>} path="/messages" />} />
-                <Route path="/whatsapp" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsApp /></ProtectedRoute>} path="/whatsapp" />} />
                 <Route path="/modern-messaging" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="messaging"><ModernMessaging /></ProtectedRoute>} path="/modern-messaging" />} />
                 <Route path="/calendar" component={() => <PrivateRoute component={Calendar} path="/calendar" />} />
                 <Route path="/tasks" component={() => <PrivateRoute component={Tasks} path="/tasks" />} />
@@ -725,7 +681,6 @@ const AppRoutes: React.FC = () => {
                 <Route path="/mass-sender" component={() => <PrivateRoute component={MassSender} path="/mass-sender" />} />
                 <Route path="/integrations" component={() => <PrivateRoute component={Integrations} path="/integrations" />} />
                 <Route path="/auto-response-settings" component={() => <PrivateRoute component={AutoResponseSettings} path="/auto-response-settings" />} />
-                <Route path="/enhanced-auto-response" component={() => <PrivateRoute component={EnhancedAutoResponse} path="/enhanced-auto-response" />} />
                 <Route path="/external-agents" component={() => <PrivateRoute component={ExternalAgents} path="/external-agents" />} />
                 <Route path="/internal-agents" component={() => <PrivateRoute component={InternalAgents} path="/internal-agents" />} />
                 <Route path="/agent-analysis" component={() => <PrivateRoute component={AgentAnalysis} path="/agent-analysis" />} />
@@ -743,7 +698,6 @@ const AppRoutes: React.FC = () => {
                 <Route path="/whatsapp-auth" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppAuth /></ProtectedRoute>} path="/whatsapp-auth" />} />
                 <Route path="/whatsapp-connection" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppConnection /></ProtectedRoute>} path="/whatsapp-connection" />} />
                 <Route path="/agent-monitoring" component={() => <PrivateRoute component={AgentMonitoring} path="/agent-monitoring" />} />
-                <Route path="/whatsapp-keepalive" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsAppKeepAlivePage /></ProtectedRoute>} path="/whatsapp-keepalive" />} />
                 <Route path="/agent-security" component={() => <PrivateRoute component={AgentSecurity} path="/agent-security" />} />
                 <Route path="/flow-templates" component={() => <PrivateRoute component={FlowTemplates} path="/flow-templates" />} />
                 <Route path="/system-status" component={() => <PrivateRoute component={SystemStatus} path="/system-status" />} />

@@ -164,9 +164,10 @@ class AutomaticDemoCleanup {
         return { found: false };
       }
 
-      const { isDemoExpired, getDemoRemainingTimeMs, getDemoRemainingTimeHours } = await import('../utils/demoConstants');
-      const isExpired = isDemoExpired(demo.expiresAt);
-      const timeRemaining = getDemoRemainingTimeMs(demo.expiresAt);
+      const now = new Date();
+      const expiresAt = new Date(demo.expiresAt);
+      const isExpired = now > expiresAt;
+      const timeRemaining = isExpired ? 0 : expiresAt.getTime() - now.getTime();
       
       return {
         found: true,
@@ -179,7 +180,7 @@ class AutomaticDemoCleanup {
           expiresAt: demo.expiresAt,
           isExpired,
           timeRemainingMs: timeRemaining,
-          timeRemainingHours: getDemoRemainingTimeHours(demo.expiresAt)
+          timeRemainingHours: Math.ceil(timeRemaining / (1000 * 60 * 60))
         }
       };
     } catch (error) {

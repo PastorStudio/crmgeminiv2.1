@@ -50,25 +50,14 @@ class DemoUserManager {
       const timestamp = Date.now();
       const randomSuffix = Math.random().toString(36).substring(2, 6);
       const username = `demo_${config.customerName.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${randomSuffix}`;
-      
-      // Generar contraseña aleatoria de 8 caracteres
-      const generateRandomPassword = () => {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        let password = '';
-        for (let i = 0; i < 8; i++) {
-          password += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return password;
-      };
-      
-      const password = generateRandomPassword();
+      const password = 'demo123456'; // Contraseña estándar para todos los demos
       
       // Encriptar contraseña
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Use centralized demo constants for exactly 72 hours
-      const { createDemoExpirationDate } = await import('../utils/demoConstants');
-      const expiresAt = createDemoExpirationDate();
+      // Establecer expiración a 3 días (72 horas)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 3);
 
       // Crear registro en demo_users
       const [demoUser] = await db.insert(demoUsers).values({
@@ -134,9 +123,8 @@ class DemoUserManager {
         return null;
       }
 
-      // Verificar si ha expirado usando función centralizada
-      const { isDemoExpired } = await import('../utils/demoConstants');
-      if (isDemoExpired(demoUser.expiresAt)) {
+      // Verificar si ha expirado
+      if (new Date() > demoUser.expiresAt) {
         console.log(`⏰ Usuario demo expirado: ${username}`);
         await this.deactivateDemoUser(demoUser.id);
         return null;
@@ -309,12 +297,10 @@ class DemoUserManager {
       .from(demoUsers)
       .where(eq(demoUsers.status, 'active'));
 
-      const { isDemoExpired, getDemoRemainingTimeMs } = await import('../utils/demoConstants');
-      
       return activeUsers.map(user => ({
         ...user,
         timeRemaining: this.getTimeRemaining(user.expiresAt),
-        isExpired: isDemoExpired(user.expiresAt)
+        isExpired: new Date() > user.expiresAt
       }));
     } catch (error) {
       console.error('❌ Error obteniendo usuarios demo activos:', error);

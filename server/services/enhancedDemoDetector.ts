@@ -5,7 +5,6 @@
 
 import { demoUserManager } from "./demoUserManager";
 import { DemoAgentService } from "./demoAgentService";
-import { notificationService } from "./notificationService";
 
 interface DemoConversationState {
   chatId: string;
@@ -147,7 +146,9 @@ Puedes escribir: "Mi nombre es [tu nombre]"`;
         
         return `⚠️ Ya tienes un demo activo creado anteriormente.
 
-👤 **Usuario:** \`${existingDemo.username}\`
+🔐 **TUS CREDENCIALES EXISTENTES:**
+👤 Usuario: \`${existingDemo.username}\`
+🔑 Contraseña: \`demo123456\`
 
 ⏰ **Válido hasta:** ${new Date(existingDemo.expiresAt).toLocaleDateString('es-ES', {
           year: 'numeric',
@@ -157,7 +158,7 @@ Puedes escribir: "Mi nombre es [tu nombre]"`;
           minute: '2-digit'
         })}
 
-Si olvidaste tu contraseña, contacta al administrador para recuperarla.`;
+¡Puedes seguir usando tu demo existente! 🚀`;
       }
 
       // Create new demo user
@@ -174,14 +175,6 @@ Si olvidaste tu contraseña, contacta al administrador para recuperarla.`;
       this.conversationStates.set(conversationKey, state);
 
       console.log(`✅ Demo creado exitosamente para: ${state.customerName}`);
-
-      // Send notification for new demo creation
-      notificationService.notifyDemoCreated(
-        state.customerName,
-        state.accountId,
-        state.chatId,
-        demoUser
-      );
 
       return this.demoAgent.generateDemoCredentialsResponse(demoUser);
       
