@@ -1166,15 +1166,26 @@ app.post("/bypass/deepseek-activate", async (req: Request, res: Response) => {
   try {
     const accountId = parseInt(req.body.accountId);
     
-    // Insert or update auto-response configuration in database
-    await pool.query(`
-      INSERT INTO auto_response_config (account_id, enabled, "createdAt", "updatedAt")
-      VALUES ($1, $2, NOW(), NOW())
-      ON CONFLICT (account_id) 
-      DO UPDATE SET 
-        enabled = $2,
-        "updatedAt" = NOW()
-    `, [accountId, true]);
+    // Check if auto-response config exists, update or insert
+    const existingConfig = await pool.query(
+      'SELECT id FROM auto_response_config WHERE account_id = $1',
+      [accountId]
+    );
+    
+    if (existingConfig.rows.length > 0) {
+      // Update existing config
+      await pool.query(`
+        UPDATE auto_response_config 
+        SET enabled = $1, "updatedAt" = NOW()
+        WHERE account_id = $2
+      `, [true, accountId]);
+    } else {
+      // Insert new config
+      await pool.query(`
+        INSERT INTO auto_response_config (account_id, enabled, "createdAt", "updatedAt")
+        VALUES ($1, $2, NOW(), NOW())
+      `, [accountId, true]);
+    }
     
     console.log('✅ [BYPASS] Estado activado en BD para cuenta:', accountId);
     
