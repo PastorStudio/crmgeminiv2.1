@@ -1,3 +1,25 @@
-2025/06/14-23:59:56.780 1e81 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/06/14-23:59:56.780 1e81 Recovering log #185
-2025/06/14-23:59:56.793 1e81 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000185.log 
+2025/06/15-00:03:17.100 80b Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/15-00:03:17.100 80b Recovering log #195
+2025/06/15-00:03:17.109 80b Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000195.log 
+2025/06/15-00:03:19.588 810 Level-0 table #206: started
+2025/06/15-00:03:19.629 810 Level-0 table #206: 232235 bytes OK
+2025/06/15-00:03:19.639 810 Delete type=0 #195
+2025/06/15-00:03:19.639 810 Manual compaction at level-0 from '\x00\x1b\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1c\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/15-00:03:23.896 80f Compacting 1@1 + 7@2 files
+2025/06/15-00:03:24.151 80f Generated table #207@1: 26051 keys, 2187884 bytes
+2025/06/15-00:03:24.265 80f Generated table #208@1: 3104 keys, 2156102 bytes
+2025/06/15-00:03:24.347 80f Generated table #209@1: 16126 keys, 2196579 bytes
+2025/06/15-00:03:24.453 80f Generated table #210@1: 19640 keys, 2192218 bytes
+2025/06/15-00:03:24.546 80f Generated table #211@1: 67195 keys, 2206030 bytes
+2025/06/15-00:03:24.658 80f Generated table #212@1: 106484 keys, 2259228 bytes
+2025/06/15-00:03:24.746 80f Generated table #213@1: 62243 keys, 1321203 bytes
+2025/06/15-00:03:24.746 80f Compacted 1@1 + 7@2 files => 14519244 bytes
+2025/06/15-00:03:24.756 80f compacted to: files[ 0 0 7 0 0 0 0 ]
+2025/06/15-00:03:24.757 80f Delete type=2 #197
+2025/06/15-00:03:24.757 80f Delete type=2 #198
+2025/06/15-00:03:24.757 80f Delete type=2 #199
+2025/06/15-00:03:24.757 80f Delete type=2 #200
+2025/06/15-00:03:24.757 80f Delete type=2 #201
+2025/06/15-00:03:24.757 80f Delete type=2 #202
+2025/06/15-00:03:24.757 80f Delete type=2 #203
+2025/06/15-00:03:24.757 80f Delete type=2 #206
