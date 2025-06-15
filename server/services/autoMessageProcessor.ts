@@ -298,22 +298,18 @@ export class AutoMessageProcessor {
         type: 'text'
       };
 
-      const response = await this.processWithExternalAgent(messageForProcessing);
+      // Procesar mensaje con el sistema de respuestas automáticas multi-proveedor
+      const { WhatsAppAutoResponder } = await import('./whatsappAutoResponder');
+      const response = await WhatsAppAutoResponder.processIncomingMessage(
+        messageForProcessing,
+        (to: string, responseMessage: string) => {
+          console.log(`📤 Enviando respuesta a ${to}: ${responseMessage}`);
+          return Promise.resolve();
+        }
+      );
       
-      if (response.success && response.response) {
-        console.log(`✅ Respuesta generada: ${response.response.substring(0, 100)}...`);
-        
-        // Enviar respuesta usando el servicio de WhatsApp
-        const { SimplifiedWhatsAppService } = await import('./simplifiedWhatsApp');
-        const whatsappService = SimplifiedWhatsAppService.getInstance();
-        
-        await whatsappService.sendMessage(
-          messageData.accountId,
-          messageData.chatId,
-          response.response
-        );
-        
-        console.log(`✅ Respuesta automática enviada exitosamente`);
+      if (response) {
+        console.log(`✅ Respuesta generada y procesada correctamente`);
       } else {
         console.log('❌ No se pudo generar respuesta automática');
       }

@@ -129,7 +129,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       }
 
       // Reiniciar keep-alive con intervalo optimizado
-      this.startKeepAlive(accountId);
+      this.startKeepAlive(instance);
       
       instance.status.error = undefined;
       instance.lastReconnectAttempt = Date.now();
@@ -170,7 +170,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             instance.status.authenticated = true;
             instance.status.ready = true;
             instance.status.error = undefined;
-            this.startKeepAlive(accountId);
+            this.startKeepAlive(instance);
             console.log(`✅ Reconexión suave exitosa - Cuenta ${accountId}`);
             return;
           }
@@ -180,7 +180,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       }
 
       // Si reconexión suave falla, reinicializar cliente
-      await this.initializeAccount(accountId, instance.name);
+      await this.initializeAccount(accountId);
       
       console.log(`✅ Reconexión completa exitosa - Cuenta ${accountId}`);
     } catch (error) {
