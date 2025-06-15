@@ -183,7 +183,7 @@ export class WhatsAppAutoResponder {
    */
   private static async generateResponseWithGemini(messageText: string, agentName: string): Promise<string | null> {
     try {
-      const { GoogleGenerativeAI } = require('@google/generative-ai');
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
