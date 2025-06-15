@@ -781,10 +781,42 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             console.error(`❌ Error en web scraping automático:`, webScrapingError);
           }
 
-          // 🎯 USAR PROCESADOR UNIFICADO DE MENSAJES PRIMERO
+          // 🤖 ACTIVAR SISTEMA DE RESPUESTAS AUTOMÁTICAS MULTI-PROVEEDOR
           try {
-            console.log(`🎯 INICIANDO PROCESADOR UNIFICADO para cuenta ${id}`);
+            console.log(`🤖 INICIANDO RESPUESTAS AUTOMÁTICAS MULTI-PROVEEDOR para cuenta ${id}`);
             console.log(`📝 Mensaje: "${messageBody}" | fromMe: ${message.fromMe} | Chat: ${message.from}`);
+            
+            const { WhatsAppAutoResponder } = await import('./whatsappAutoResponder');
+            
+            // Procesar mensaje con el sistema de respuestas automáticas multi-proveedor
+            const processed = await WhatsAppAutoResponder.processIncomingMessage(
+              {
+                id: message.id._serialized || String(message.id),
+                body: messageBody,
+                fromMe: message.fromMe,
+                timestamp: message.timestamp || Math.floor(Date.now() / 1000),
+                chatId: message.from,
+                type: message.type || 'text'
+              },
+              (to: string, responseMessage: string) => {
+                return client.sendMessage(to, responseMessage);
+              }
+            );
+
+            if (processed) {
+              console.log(`✅ Respuesta automática multi-proveedor enviada para cuenta ${id}`);
+              return; // Salir aquí - ya se procesó con respuestas automáticas
+            } else {
+              console.log(`⏭️ Sistema de respuestas automáticas no activado para cuenta ${id}`);
+            }
+          } catch (autoResponseError) {
+            console.error(`❌ Error en respuestas automáticas multi-proveedor:`, autoResponseError);
+            console.log(`🔄 Fallback a procesador unificado...`);
+          }
+
+          // FALLBACK 1: USAR PROCESADOR UNIFICADO DE MENSAJES
+          try {
+            console.log(`🎯 INICIANDO PROCESADOR UNIFICADO (fallback) para cuenta ${id}`);
             
             const { unifiedMessageProcessor } = await import('./unifiedMessageProcessor');
             
@@ -826,9 +858,9 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             console.log(`🔄 Fallback a sistema contextual...`);
           }
 
-          // FALLBACK: Procesar mensaje con sistema contextual de respuestas automáticas
+          // FALLBACK 2: Procesar mensaje con sistema contextual de respuestas automáticas
           try {
-            console.log(`🤖 INICIANDO RESPUESTA CONTEXTUAL (fallback) para cuenta ${id}`);
+            console.log(`🤖 INICIANDO RESPUESTA CONTEXTUAL (fallback final) para cuenta ${id}`);
             
             const { ContextAwareAutoResponder } = await import('./contextAwareAutoResponder');
             
