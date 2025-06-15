@@ -260,65 +260,6 @@ export class AutoMessageProcessor {
   }
 
   /**
-   * Procesa un mensaje entrante y genera respuesta automática
-   */
-  async processIncomingMessage(messageData: {
-    id: string;
-    body: string;
-    fromMe: boolean;
-    timestamp: number;
-    chatId: string;
-    accountId: number;
-    contactName?: string;
-    contactPhone?: string;
-  }): Promise<void> {
-    try {
-      // Solo procesar mensajes que NO son nuestros
-      if (messageData.fromMe) {
-        console.log('🔄 Ignorando mensaje propio');
-        return;
-      }
-
-      console.log(`🔄 PROCESANDO MENSAJE ENTRANTE - Cuenta: ${messageData.accountId}, Chat: ${messageData.chatId}`);
-      console.log(`📝 Mensaje: "${messageData.body}"`);
-
-      // Verificar si la cuenta tiene respuestas automáticas activas
-      const hasAutoResponse = await this.hasActiveAutoResponse(messageData.accountId);
-      if (!hasAutoResponse) {
-        console.log('⏭️ Respuestas automáticas desactivadas para esta cuenta');
-        return;
-      }
-
-      // Procesar mensaje con agente externo
-      const messageForProcessing: MessageForProcessing = {
-        body: messageData.body,
-        accountId: messageData.accountId,
-        chatId: messageData.chatId,
-        fromMe: false,
-        type: 'text'
-      };
-
-      // Procesar mensaje con el sistema de respuestas automáticas multi-proveedor
-      const { WhatsAppAutoResponder } = await import('./whatsappAutoResponder');
-      const response = await WhatsAppAutoResponder.processIncomingMessage(
-        messageForProcessing,
-        (to: string, responseMessage: string) => {
-          console.log(`📤 Enviando respuesta a ${to}: ${responseMessage}`);
-          return Promise.resolve();
-        }
-      );
-      
-      if (response) {
-        console.log(`✅ Respuesta generada y procesada correctamente`);
-      } else {
-        console.log('❌ No se pudo generar respuesta automática');
-      }
-    } catch (error) {
-      console.error('❌ Error procesando mensaje entrante:', error);
-    }
-  }
-
-  /**
    * Verifica si una cuenta tiene respuestas automáticas activas
    */
   async hasActiveAutoResponse(accountId: number): Promise<boolean> {

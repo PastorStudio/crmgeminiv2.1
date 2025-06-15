@@ -23,7 +23,7 @@ import { stableAutoResponseManager } from "./services/stableAutoResponse";
 import { deepSeekService } from "./services/deepseekService";
 import deepSeekAutoResponse from "./services/deepseekAutoResponse";
 import { directDeepSeekResponse } from "./services/directDeepSeekResponse";
-import { enhancedAutoResponseService } from "./services/enhancedAutoResponseService";
+import { EnhancedAutoResponseService } from "./services/enhancedAutoResponseService";
 import { MultimediaService } from "./services/multimediaService";
 import { AutomaticLeadGenerator } from "./services/automaticLeadGenerator";
 import { conversationHistory } from './services/conversationHistory';
@@ -44,8 +44,6 @@ import { notificationService } from './services/notificationService';
 import { aiResponseService } from './services/aiAutonomousResponse';
 import { conversationAnalysisService } from './services/conversationAnalysis';
 import { unifiedMessageProcessor } from './services/unifiedMessageProcessor';
-import { startDemoMaintenanceScheduler } from './utils/demoMaintenanceTools';
-import { whatsappKeepAlive } from './services/whatsappConnectionKeepAlive';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -634,220 +632,9 @@ app.post("/api/direct/auth/verify-admin", async (req: Request, res: Response) =>
   }
 });
 
-// ===== ENHANCED AUTO RESPONSE API ENDPOINTS =====
-// Toggle translator for an account
-app.post("/api/auto-response/toggle-translator", async (req: Request, res: Response) => {
-  try {
-    const { accountId, enabled, targetLanguage } = req.body;
-    
-    if (!accountId) {
-      return res.status(400).json({
-        success: false,
-        message: "Account ID es requerido"
-      });
-    }
-    
-    await enhancedAutoResponseService.toggleTranslator(
-      accountId, 
-      enabled || false, 
-      targetLanguage || 'es'
-    );
-    
-    res.json({
-      success: true,
-      message: `Traductor ${enabled ? 'activado' : 'desactivado'} para cuenta ${accountId}`
-    });
-  } catch (error) {
-    console.error("❌ Error toggling translator:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al cambiar configuración del traductor"
-    });
-  }
-});
-
-// Pause auto responses for a specific chat
-app.post("/api/auto-response/pause-chat", async (req: Request, res: Response) => {
-  try {
-    const { chatId } = req.body;
-    
-    if (!chatId) {
-      return res.status(400).json({
-        success: false,
-        message: "Chat ID es requerido"
-      });
-    }
-    
-    enhancedAutoResponseService.pauseAutoResponsesForChat(chatId);
-    
-    res.json({
-      success: true,
-      message: `Respuestas automáticas pausadas para chat ${chatId}`
-    });
-  } catch (error) {
-    console.error("❌ Error pausing auto responses:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al pausar respuestas automáticas"
-    });
-  }
-});
-
-// Resume auto responses for a specific chat
-app.post("/api/auto-response/resume-chat", async (req: Request, res: Response) => {
-  try {
-    const { chatId } = req.body;
-    
-    if (!chatId) {
-      return res.status(400).json({
-        success: false,
-        message: "Chat ID es requerido"
-      });
-    }
-    
-    enhancedAutoResponseService.resumeAutoResponsesForChat(chatId);
-    
-    res.json({
-      success: true,
-      message: `Respuestas automáticas reanudadas para chat ${chatId}`
-    });
-  } catch (error) {
-    console.error("❌ Error resuming auto responses:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al reanudar respuestas automáticas"
-    });
-  }
-});
-
-// Detect manual intervention for a chat
-app.post("/api/auto-response/detect-intervention", async (req: Request, res: Response) => {
-  try {
-    const { chatId, accountId } = req.body;
-    
-    if (!chatId || !accountId) {
-      return res.status(400).json({
-        success: false,
-        message: "Chat ID y Account ID son requeridos"
-      });
-    }
-    
-    await enhancedAutoResponseService.detectManualIntervention(chatId, accountId);
-    
-    res.json({
-      success: true,
-      message: "Detección de intervención manual ejecutada"
-    });
-  } catch (error) {
-    console.error("❌ Error detecting manual intervention:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al detectar intervención manual"
-    });
-  }
-});
-
 // Registrar rutas optimizadas INMEDIATAMENTE después de middleware básico
 const server = registerOptimizedRoutes(app);
 console.log('🚀 Rutas optimizadas registradas ANTES de Vite middleware');
-
-// ===== DEMO MAINTENANCE API ENDPOINTS =====
-// API endpoint para mantenimiento manual de usuarios demo
-app.post("/api/demo-maintenance/run", async (req: Request, res: Response) => {
-  try {
-    console.log('🔧 Ejecutando mantenimiento manual de usuarios demo...');
-    
-    const { validateDemoDurations, fixAllDemoDurations } = await import('./utils/demoMaintenanceTools');
-    
-    // Validar estado actual
-    const validation = await validateDemoDurations();
-    console.log(`📊 Estado antes del mantenimiento: ${validation.correctDuration}/${validation.totalDemos} demos correctos`);
-    
-    let correctedCount = 0;
-    if (!validation.isValid) {
-      correctedCount = await fixAllDemoDurations();
-    }
-    
-    // Validar estado después del mantenimiento
-    const finalValidation = await validateDemoDurations();
-    
-    res.json({
-      success: true,
-      message: 'Mantenimiento de demos completado',
-      beforeMaintenance: validation,
-      afterMaintenance: finalValidation,
-      correctedCount,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ Error en mantenimiento manual de demos:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error ejecutando mantenimiento de demos'
-    });
-  }
-});
-
-// API endpoint para obtener estado de usuarios demo
-app.get("/api/demo-maintenance/status", async (req: Request, res: Response) => {
-  try {
-    const { validateDemoDurations } = await import('./utils/demoMaintenanceTools');
-    const validation = await validateDemoDurations();
-    
-    res.json({
-      success: true,
-      status: validation,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ Error obteniendo estado de demos:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error obteniendo estado de demos'
-    });
-  }
-});
-
-// API endpoint para probar creación automática de demo
-app.post("/api/demo-auto-create/test", async (req: Request, res: Response) => {
-  try {
-    const { message, chatId = "test_chat", accountId = 1 } = req.body;
-    
-    if (!message) {
-      return res.status(400).json({
-        success: false,
-        error: 'Mensaje requerido'
-      });
-    }
-
-    console.log(`🧪 Probando creación automática de demo con mensaje: "${message}"`);
-    
-    const { realtimeDemoCreator } = await import('./services/realtimeDemoCreator');
-    const result = await realtimeDemoCreator.processMessage(
-      message,
-      chatId,
-      `test_${Date.now()}`,
-      accountId
-    );
-
-    res.json({
-      success: true,
-      processed: result.shouldRespond,
-      responseMessage: result.responseMessage,
-      chatId,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ Error en prueba de creación automática:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error en prueba de creación automática'
-    });
-  }
-});
 
 // ===== HEALTH CHECK ENDPOINT =====
 app.get('/api/health', async (req: Request, res: Response) => {
@@ -2843,46 +2630,7 @@ app.post("/api/system/reset-all", async (req: Request, res: Response) => {
   }
 });
 
-// RUTAS DE KEEP-ALIVE AVANZADO (ANTES DE VITE)
-app.get("/api/whatsapp/keepalive-status", async (req: Request, res: Response) => {
-  try {
-    const status = whatsappKeepAlive.getStatus();
-    
-    res.json({
-      success: true,
-      keepAliveSystem: status,
-      message: "Estado del sistema KeepAlive obtenido correctamente"
-    });
-  } catch (error) {
-    console.error('❌ Error obteniendo estado KeepAlive:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error obteniendo estado del sistema KeepAlive'
-    });
-  }
-});
-
-app.post("/api/whatsapp/keepalive-restart", async (req: Request, res: Response) => {
-  try {
-    console.log("🔄 Reiniciando sistema KeepAlive...");
-    
-    await whatsappKeepAlive.stop();
-    await whatsappKeepAlive.initialize();
-    
-    res.json({
-      success: true,
-      message: "Sistema KeepAlive reiniciado correctamente",
-      status: whatsappKeepAlive.getStatus()
-    });
-  } catch (error) {
-    console.error('❌ Error reiniciando KeepAlive:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error reiniciando sistema KeepAlive'
-    });
-  }
-});
-
+// RUTAS DE KEEP-ALIVE (ANTES DE VITE)
 app.get("/api/whatsapp/ping-status/all", async (req: Request, res: Response) => {
   try {
     const { whatsappMultiAccountManager } = await import("./services/whatsappMultiAccountManager");
@@ -3049,32 +2797,14 @@ app.use((req, res, next) => {
     console.error("❌ Error al iniciar sistema de asignaciones invisible:", error);
   }
 
-  // Inicializar sistema ESTABILIZADO de respuestas automáticas (reemplaza al problemático)
+  // Inicializar sistema completamente independiente de respuestas automáticas
   try {
-    console.log("🛑 Deteniendo sistema problemático...");
-    try {
-      const { independentAutoResponseService } = await import('./services/independentAutoResponse');
-      independentAutoResponseService.stop();
-      console.log("✅ Sistema problemático detenido");
-    } catch (stopError) {
-      console.log("ℹ️ Sistema problemático ya estaba detenido");
-    }
-    
-    console.log("🚀 Iniciando sistema ESTABILIZADO de respuestas automáticas...");
-    const { stabilizedAutoResponse } = await import('./services/stabilizedAutoResponse');
-    await stabilizedAutoResponse.initialize();
-    console.log("✅ Sistema ESTABILIZADO iniciado correctamente - resuelve desconexiones de cuota AI");
+    console.log("🤖 Iniciando sistema INDEPENDIENTE de respuestas automáticas...");
+    const { independentAutoResponseService } = await import('./services/independentAutoResponse');
+    await independentAutoResponseService.initialize();
+    console.log("✅ Sistema INDEPENDIENTE de respuestas automáticas iniciado correctamente");
   } catch (error) {
-    console.error("❌ Error al iniciar sistema estabilizado:", error);
-  }
-
-  // Inicializar sistema avanzado de mantenimiento de conexiones WhatsApp
-  try {
-    console.log("🔗 Iniciando sistema avanzado de mantenimiento de conexiones WhatsApp...");
-    await whatsappKeepAlive.initialize();
-    console.log("✅ Sistema KeepAlive iniciado - previene desconexiones por inactividad");
-  } catch (error) {
-    console.error("❌ Error al iniciar sistema KeepAlive:", error);
+    console.error("❌ Error al iniciar sistema independiente de respuestas automáticas:", error);
   }
 
   // Inicializar procesador unificado de mensajes (PRIORIDAD MÁXIMA)
@@ -7961,16 +7691,6 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
         //   console.log('⚠️ Error en gestor autónomo de WhatsApp:', error.message);
         // }
         
-        // Inicializar sistema de mantenimiento automático de usuarios demo
-        console.log('🔧 Iniciando sistema de mantenimiento de usuarios demo...');
-        startDemoMaintenanceScheduler();
-        console.log('✅ Sistema de mantenimiento de demos iniciado - verificaciones cada 6 horas');
-        
-        // Inicializar sistema de análisis inteligente de conversaciones
-        console.log('🧠 Iniciando sistema de análisis de conversaciones...');
-        conversationAnalysisService.start();
-        console.log('✅ Sistema de análisis de conversaciones iniciado - análisis cada 5 segundos');
-        
       } catch (error) {
         console.error('❌ Error inicializando sistemas de respuestas automáticas:', error);
       }
@@ -8201,13 +7921,7 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
   });
 
   // Inicializar el sistema de respuestas automáticas mejoradas
-  try {
-    console.log('🚀 Iniciando sistema MEJORADO de respuestas automáticas...');
-    await enhancedAutoResponseService.initialize();
-    console.log('✅ Sistema MEJORADO de respuestas automáticas iniciado correctamente');
-  } catch (error) {
-    console.error('❌ Error al iniciar sistema mejorado de respuestas automáticas:', error);
-  }
+  EnhancedAutoResponseService.initialize().catch(console.error);
 
   // ===== ACTIVADOR COMPLETO DEL SISTEMA - DIRECTO =====
   app.post('/api/direct/force-complete-system-activation', async (req: Request, res: Response) => {

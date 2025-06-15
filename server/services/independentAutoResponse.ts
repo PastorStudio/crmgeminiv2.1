@@ -5,10 +5,9 @@
 
 import { db } from '../db';
 import { whatsappAccounts, whatsappMessages, externalAgents } from '@shared/schema';
-import { eq, and, desc, gte } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import OpenAI from 'openai';
 import { chatgptPlusDirectService } from './chatgptPlusDirectService';
-import { realtimeDemoCreator } from './realtimeDemoCreator';
 
 interface IndependentConfig {
   accountId: number;
@@ -22,9 +21,6 @@ class IndependentAutoResponseService {
   private processingInterval?: NodeJS.Timeout;
   private isRunning = false;
   private openai: OpenAI;
-  private processedMessages = new Set<string>();
-  private geminiQuotaExhausted = false;
-  private lastQuotaCheck = new Date();
 
   constructor() {
     // Initialize OpenAI client
@@ -87,21 +83,14 @@ class IndependentAutoResponseService {
   }
 
   /**
-   * Inicia procesamiento inteligente con control de cuota
+   * Inicia procesamiento continuo cada 10 segundos
    */
   private startContinuousProcessing(): void {
-    console.log('⏰ Iniciando procesamiento inteligente cada 60 segundos...');
+    console.log('⏰ Iniciando procesamiento continuo cada 10 segundos...');
     
     this.processingInterval = setInterval(async () => {
-      // Verificar si Gemini sigue agotado (se resetea cada 24 horas)
-      const hoursAgo = (Date.now() - this.lastQuotaCheck.getTime()) / (1000 * 60 * 60);
-      if (this.geminiQuotaExhausted && hoursAgo > 24) {
-        this.geminiQuotaExhausted = false;
-        console.log('🔄 Cuota de Gemini reseteada después de 24 horas');
-      }
-      
       await this.processNewMessages();
-    }, 60000); // Cada 60 segundos para evitar sobrecarga
+    }, 10000); // Cada 10 segundos
   }
 
   /**
@@ -116,8 +105,7 @@ class IndependentAutoResponseService {
       for (const [accountId, config] of this.configs) {
         if (!config.enabled) continue;
 
-        // Buscar solo mensajes recientes no procesados
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        // Buscar mensajes nuevos desde la última vez procesada
         const newMessages = await db
           .select()
           .from(whatsappMessages)
@@ -128,14 +116,10 @@ class IndependentAutoResponseService {
             )
           )
           .orderBy(desc(whatsappMessages.timestamp))
-          .limit(2);
+          .limit(5);
 
         for (const message of newMessages) {
-          const messageKey = `${accountId}-${message.id}`;
-          if (!this.processedMessages.has(messageKey)) {
-            await this.processMessage(accountId, message);
-            this.processedMessages.add(messageKey);
-          }
+          await this.processMessage(accountId, message);
         }
 
         // Actualizar última vez procesada
@@ -156,20 +140,17 @@ class IndependentAutoResponseService {
 
       console.log(`🤖 Procesando mensaje independiente - Cuenta: ${accountId}, Chat: ${message.chatId}`);
 
-      // Verificar si el mensaje solicita una demostración
-      const demoResponse = await this.checkForDemoRequest(message.content, message.chatId, accountId);
-      if (demoResponse) {
-        console.log(`🎭 Creando usuario demo para ${message.chatId}`);
-        console.log(`📤 Respuesta de demo para ${message.chatId}: "${demoResponse.substring(0, 50)}..."`);
-        await this.saveResponse(accountId, message.chatId, demoResponse);
-        return;
-      }
-
-      // Generar respuesta normal de IA usando Gemini como proveedor principal
-      const response = await this.generateAIResponseWithGemini(message.content, config.agentName);
+      // Generar respuesta usando IA
+      const response = await this.generateAIResponse(message.content, config.agentName);
       
       if (response) {
+        // Simular envío de respuesta (aquí se conectaría con WhatsApp real)
         console.log(`📤 Respuesta generada para ${message.chatId}: "${response.substring(0, 50)}..."`);
+        
+        // Detectar si la respuesta incluye creación de demo
+        await this.handleDemoCreation(response, message.chatId, accountId);
+        
+        // Guardar la respuesta en la base de datos
         await this.saveResponse(accountId, message.chatId, response);
       }
     } catch (error) {
@@ -423,270 +404,6 @@ class IndependentAutoResponseService {
       console.log(`🔄 Usando respuesta de respaldo: ${randomResponse}`);
       return randomResponse;
     }
-  }
-
-  /**
-   * Verifica si el mensaje solicita una demostración y crea usuario demo automáticamente
-   */
-  private async checkForDemoRequest(messageText: string, chatId: string, accountId: number): Promise<string | null> {
-    try {
-      const lowerText = messageText.toLowerCase();
-      
-      // Palabras clave que indican solicitud de demo
-      const demoKeywords = [
-        'demo', 'demostración', 'demonstración', 'prueba', 'gratis', 'free',
-        'test', 'trial', 'probar', 'acceso', 'usuario', 'contraseña',
-        'credenciales', 'login', 'ingresar', 'sistema', 'plataforma'
-      ];
-      
-      // Verificar si el mensaje contiene palabras clave de demo
-      const containsDemoKeywords = demoKeywords.some(keyword => lowerText.includes(keyword));
-      
-      if (containsDemoKeywords) {
-        console.log(`🎭 Solicitud de demo detectada en mensaje: ${messageText.substring(0, 50)}...`);
-        
-        // Extraer nombre del cliente del número de teléfono o usar un nombre por defecto
-        const phoneNumber = chatId.replace('@c.us', '');
-        const customerName = `Cliente_${phoneNumber.substring(-4)}`;
-        
-        try {
-          // Importar el gestor de usuarios demo
-          const { demoUserManager } = await import('./demoUserManager');
-          
-          // Crear usuario demo
-          const demoUser = await demoUserManager.createDemoUser({
-            customerName,
-            phoneNumber,
-            email: `${customerName.toLowerCase()}@demo.local`,
-            companyName: '',
-            chatId
-          });
-          
-          // Generar respuesta con credenciales
-          const demoResponse = `🎉 ¡Tu demo ha sido creado exitosamente!
-
-🔑 **CREDENCIALES DE ACCESO:**
-👤 **Usuario:** \`${demoUser.username}\`
-🔒 **Contraseña:** \`demo123456\`
-
-🌐 **Acceso al sistema:**
-${demoUser.loginUrl}
-
-⏰ **Válido por 3 días** (hasta ${new Date(demoUser.expiresAt).toLocaleDateString('es-ES', {
-            year: 'numeric',
-            month: 'long', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })})
-
-🚀 **¿Qué puedes hacer?**
-• Gestionar contactos y leads
-• Enviar mensajes automáticos  
-• Ver análisis en tiempo real
-• Gestionar múltiples cuentas de WhatsApp
-• Usar plantillas de mensajes
-• Panel de administración completo
-
-💡 **Para empezar:**
-1. Ve a la URL de arriba
-2. Ingresa tu usuario y contraseña
-3. ¡Explora todas las funciones!
-
-¿Tienes alguna pregunta sobre tu demo? ¡Estoy aquí para ayudarte! 🚀`;
-          
-          return demoResponse;
-          
-        } catch (demoError) {
-          console.error('❌ Error creando usuario demo:', demoError);
-          
-          // Verificar si ya existe un demo para este cliente
-          if (demoError.message && demoError.message.includes('Ya existe un demo activo')) {
-            return `⚠️ Ya tienes un demo activo creado anteriormente. 
-
-Si olvidaste tus credenciales, contacta al administrador para recuperarlas.
-
-¿Necesitas ayuda con algo más? ¡Estoy aquí para ayudarte! 😊`;
-          }
-          
-          return `❌ Disculpa, hubo un problema creando tu demo. 
-
-Un representante se pondrá en contacto contigo para configurar tu acceso manualmente.
-
-¡Gracias por tu interés en nuestro sistema! 🙏`;
-        }
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('❌ Error verificando solicitud de demo:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Genera respuesta usando Gemini como proveedor principal
-   */
-  private async generateAIResponseWithGemini(messageText: string, agentName: string): Promise<string | null> {
-    try {
-      console.log(`🤖 Generando respuesta con Gemini para agente: ${agentName}`);
-      
-      // Importar servicio de Gemini directamente
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      
-      // Obtener clave API de Gemini
-      const { pool } = await import('../db');
-      const result = await pool.query('SELECT gemini_api_key FROM ai_settings WHERE id = 1');
-      
-      if (result.rows.length === 0 || !result.rows[0].gemini_api_key) {
-        throw new Error('No Gemini API key found');
-      }
-      
-      const apiKey = result.rows[0].gemini_api_key;
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      
-      const prompt = `Eres ${agentName}, un asistente virtual profesional de atención al cliente en español.
-
-Responde de manera amable, profesional y útil al siguiente mensaje del cliente:
-
-"${messageText}"
-
-Instrucciones:
-- Responde en español
-- Sé amable y profesional
-- Ofrece ayuda adicional
-- Mantén la respuesta concisa pero completa
-- Si mencionan demo, prueba o acceso, indica que pueden solicitar una demostración`;
-
-      const result_ai = await model.generateContent(prompt);
-      const response = await result_ai.response;
-      const text = response.text();
-      
-      if (text && text.trim().length > 0) {
-        console.log(`✅ Respuesta generada exitosamente con Gemini: ${text.substring(0, 50)}...`);
-        return text.trim();
-      }
-      
-      throw new Error('Empty response from Gemini');
-      
-    } catch (error) {
-      console.error('❌ Error generando respuesta con Gemini:', error);
-      
-      // Detectar error de cuota agotada
-      if (error.message && error.message.includes('429') || error.message.includes('quota')) {
-        this.geminiQuotaExhausted = true;
-        this.lastQuotaCheck = new Date();
-        console.log('🚨 Cuota de Gemini agotada, cambiando a OpenAI...');
-        return await this.generateAIResponseWithAlternativeProvider(messageText, agentName);
-      }
-      
-      return this.getFallbackResponse();
-    }
-  }
-
-  /**
-   * Genera respuesta usando proveedor alternativo cuando Gemini falla
-   */
-  private async generateAIResponseWithAlternativeProvider(messageText: string, agentName: string): Promise<string> {
-    try {
-      // Intentar con OpenAI primero
-      if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your_openai_api_key_here') {
-        console.log('🔄 Usando OpenAI como respaldo...');
-        
-        const completion = await this.openai.chat.completions.create({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            {
-              role: 'system',
-              content: `Eres ${agentName}, un asistente virtual profesional de atención al cliente en español. Responde de manera amable, profesional y útil.`
-            },
-            {
-              role: 'user',
-              content: messageText
-            }
-          ],
-          max_tokens: 150,
-          temperature: 0.7
-        });
-
-        const response = completion.choices[0]?.message?.content;
-        if (response && response.trim().length > 0) {
-          console.log('✅ Respuesta generada con OpenAI como respaldo');
-          return response.trim();
-        }
-      }
-
-      // Si OpenAI falla, usar proveedores con DEEPSEEK/QWEN3
-      if (process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY !== 'your_deepseek_api_key_here') {
-        console.log('🔄 Usando DeepSeek como respaldo...');
-        return await this.generateWithDeepSeek(messageText, agentName);
-      }
-
-      console.log('⚠️ Todos los proveedores AI fallaron, usando respuesta estática');
-      return this.getFallbackResponse();
-      
-    } catch (error) {
-      console.error('❌ Error en proveedor alternativo:', error);
-      return this.getFallbackResponse();
-    }
-  }
-
-  /**
-   * Genera respuesta con DeepSeek
-   */
-  private async generateWithDeepSeek(messageText: string, agentName: string): Promise<string> {
-    try {
-      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [
-            {
-              role: 'system',
-              content: `Eres ${agentName}, un asistente virtual profesional de atención al cliente en español.`
-            },
-            {
-              role: 'user',
-              content: messageText
-            }
-          ],
-          max_tokens: 150,
-          temperature: 0.7
-        })
-      });
-
-      const data = await response.json();
-      return data.choices[0]?.message?.content || this.getFallbackResponse();
-      
-    } catch (error) {
-      console.error('❌ Error con DeepSeek:', error);
-      return this.getFallbackResponse();
-    }
-  }
-
-  /**
-   * Obtiene una respuesta de fallback cuando la IA falla
-   */
-  private getFallbackResponse(): string {
-    const fallbackResponses = [
-      'Gracias por contactarnos. Tu mensaje es importante para nosotros.',
-      'Hemos recibido tu mensaje y te responderemos pronto.',
-      'Estamos aquí para ayudarte. Un representante se pondrá en contacto contigo.',
-      'Tu consulta ha sido recibida. Te responderemos en breve.',
-      'Apreciamos tu contacto. Te responderemos lo antes posible.',
-      'Hemos recibido tu mensaje y te atenderemos a la brevedad.',
-      'Tu consulta es importante para nosotros. Te atenderemos pronto.',
-      'Tu mensaje es importante para nosotros. Te contactaremos pronto.',
-      'Estamos aquí para ayudarte. Un representante te responderá.'
-    ];
-    
-    const randomIndex = Math.floor(Math.random() * fallbackResponses.length);
-    return fallbackResponses[randomIndex];
   }
 
   /**

@@ -55,59 +55,6 @@ export function DemoManagement() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // WebSocket connection for real-time notifications
-  useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}/notifications`);
-
-    ws.onopen = () => {
-      console.log('🔔 Conectado al sistema de notificaciones');
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const notification = JSON.parse(event.data);
-        
-        if (notification.type === 'demo_created') {
-          // Show enhanced popup notification for new demo
-          toast({
-            title: notification.title,
-            description: (
-              <div className="flex items-center space-x-2">
-                <span className="text-2xl">🎉</span>
-                <div>
-                  <div className="font-semibold">{notification.data?.customerName}</div>
-                  <div className="text-sm text-muted-foreground">
-                    👤 Usuario: <code className="bg-gray-100 px-1 rounded text-xs">{notification.data?.username}</code>
-                  </div>
-                </div>
-              </div>
-            ),
-            duration: 8000, // Longer duration for celebration
-            className: "border-l-4 border-l-green-500 bg-green-50",
-          });
-
-          // Refresh demo list to show new demo at the top
-          queryClient.invalidateQueries({ queryKey: ['/api/direct/demo/list'] });
-        }
-      } catch (error) {
-        console.error('Error procesando notificación:', error);
-      }
-    };
-
-    ws.onclose = () => {
-      console.log('🔔 Conexión de notificaciones cerrada, reintentando...');
-    };
-
-    ws.onerror = (error) => {
-      console.error('Error en WebSocket de notificaciones:', error);
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [toast, queryClient]);
-
   // Fetch demo users
   const { data: demos, isLoading: demosLoading } = useQuery({
     queryKey: ['/api/direct/demo/list'],
@@ -247,14 +194,9 @@ export function DemoManagement() {
     }
   };
 
-  // Sort demos by creation date (newest first) before filtering
-  const sortedDemos = demos?.demos?.sort((a: DemoUser, b: DemoUser) => {
-    return new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime();
-  }) || [];
-
-  const activeDemos = sortedDemos.filter((demo: DemoUser) => demo.status === 'active' && !demo.isExpired);
-  const expiredDemos = sortedDemos.filter((demo: DemoUser) => demo.isExpired || demo.status === 'expired');
-  const convertedDemos = sortedDemos.filter((demo: DemoUser) => demo.status === 'converted');
+  const activeDemos = demos?.demos?.filter((demo: DemoUser) => demo.status === 'active' && !demo.isExpired) || [];
+  const expiredDemos = demos?.demos?.filter((demo: DemoUser) => demo.isExpired || demo.status === 'expired') || [];
+  const convertedDemos = demos?.demos?.filter((demo: DemoUser) => demo.status === 'converted') || [];
 
   if (demosLoading) {
     return (
@@ -598,14 +540,7 @@ function DemoTable({ demos, onConvert, onLogin, showConvertedInfo }: DemoTablePr
                   </span>
                 )}
                 <div className="text-xs text-gray-500">
-                  {new Date(demo.expiresAt).toLocaleDateString('es-ES', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                  })}
+                  {new Date(demo.expiresAt).toLocaleDateString('es-ES')}
                 </div>
               </div>
             </TableCell>
@@ -614,14 +549,7 @@ function DemoTable({ demos, onConvert, onLogin, showConvertedInfo }: DemoTablePr
                 {demo.loginCount} veces
                 {demo.lastLoginAt && (
                   <div className="text-xs text-gray-500">
-                    Último: {new Date(demo.lastLoginAt).toLocaleDateString('es-ES', {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit'
-                    })}
+                    Último: {new Date(demo.lastLoginAt).toLocaleDateString('es-ES')}
                   </div>
                 )}
               </div>
@@ -630,14 +558,7 @@ function DemoTable({ demos, onConvert, onLogin, showConvertedInfo }: DemoTablePr
               <TableCell>
                 {demo.convertedAt && (
                   <div className="text-sm text-green-600">
-                    {new Date(demo.convertedAt).toLocaleDateString('es-ES', {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit'
-                    })}
+                    {new Date(demo.convertedAt).toLocaleDateString('es-ES')}
                   </div>
                 )}
               </TableCell>

@@ -352,8 +352,8 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
     queryKey: ['/api/chat-assignments', chatId],
     queryFn: () => fetch(`/api/chat-assignments/${encodeURIComponent(chatId)}`).then(res => res.json()),
     enabled: !!chatId,
-    refetchInterval: 30000, // Reducido a 30 segundos
-    refetchOnWindowFocus: false
+    refetchInterval: 3000, // Refrescar cada 3 segundos
+    refetchOnWindowFocus: true
   });
 
   // Cargar lista de agentes para obtener el nombre
@@ -413,8 +413,8 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
     queryKey: ['/api/chat-assignments', chatId],
     queryFn: () => fetch(`/api/chat-assignments/${encodeURIComponent(chatId)}`).then(res => res.json()),
     enabled: !!chatId,
-    refetchInterval: 30000, // Reducido a 30 segundos
-    refetchOnWindowFocus: false
+    refetchInterval: 3000, // Refrescar cada 3 segundos
+    refetchOnWindowFocus: true
   });
 
   // Cargar lista de agentes para obtener el nombre
@@ -519,8 +519,8 @@ function TicketStatusBadge({ chatId }: { chatId: string }) {
   const { data: assignment } = useQuery({
     queryKey: ['/api/chat-assignments', chatId],
     enabled: !!chatId,
-    refetchInterval: 30000, // Reducido a 30 segundos
-    refetchOnWindowFocus: false
+    refetchInterval: 3000, // Refrescar cada 3 segundos
+    refetchOnWindowFocus: true
   });
 
   console.log('🎫 Debug Ticket Badge - chatId:', chatId, 'assignment:', assignment);
@@ -975,20 +975,21 @@ export function WhatsAppTwoColumn() {
     loadAgentStatus();
   }, [selectedChat]);
 
-  // Cargar análisis en tiempo real del chat seleccionado - OPTIMIZADO
+  // Cargar análisis en tiempo real del chat seleccionado
   useEffect(() => {
-    if (!selectedChat?.id) {
-      setChatAnalysis(null);
-      return;
-    }
-
     const loadChatAnalysis = async () => {
+      if (!selectedChat) {
+        setChatAnalysis(null);
+        return;
+      }
+      
       try {
         const response = await fetch(`/api/analysis/conversations/${selectedChat.id}`);
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.conversation) {
             setChatAnalysis(data.conversation);
+            console.log('🔍 Análisis de conversación cargado:', data.conversation);
           } else {
             setChatAnalysis(null);
           }
@@ -1001,21 +1002,19 @@ export function WhatsAppTwoColumn() {
       }
     };
 
-    // Cargar una vez al cambiar de chat
     loadChatAnalysis();
     
-    // Intervalo más conservador para evitar sobrecarga
-    const analysisInterval = setInterval(loadChatAnalysis, 30000); // 30 segundos
+    // Recargar análisis cada 10 segundos para mantener datos actualizados
+    const analysisInterval = setInterval(loadChatAnalysis, 10000);
     
     return () => clearInterval(analysisInterval);
-  }, [selectedChat?.id]); // Solo depender del ID del chat
+  }, [selectedChat]);
 
-  // Obtener estado del análisis en tiempo real - OPTIMIZADO
+  // Obtener estado del análisis en tiempo real
   const { data: realtimeAnalysisStatus } = useQuery({
     queryKey: ['/api/analysis/status'],
-    refetchInterval: 30000, // Reducido a 30 segundos para evitar sobrecarga
-    staleTime: 25000,
-    refetchOnWindowFocus: false // Evitar refetch innecesarios
+    refetchInterval: 5000, // Actualizar cada 5 segundos
+    staleTime: 4000
   });
 
   // Función para alternar A.E AI (Agentes Externos)
@@ -1465,8 +1464,7 @@ export function WhatsAppTwoColumn() {
   // Fetch WhatsApp accounts
   const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
     queryKey: ['/api/whatsapp/accounts'],
-    refetchInterval: 30000, // Reducido a 30 segundos
-    refetchOnWindowFocus: false
+    refetchInterval: 5000 // Refresh every 5 seconds to check status
   });
 
   // Fetch external agents for AI selection
@@ -1547,7 +1545,7 @@ export function WhatsAppTwoColumn() {
         return [];
       }
     },
-    refetchInterval: 30000 // Reducido a 30 segundos
+    refetchInterval: 5000 // Refresh messages every 5 seconds
   });
 
   // Fetch auto response config
@@ -2712,73 +2710,41 @@ export function WhatsAppTwoColumn() {
     { id: 'urgent', label: 'Urgente', icon: '⚡' }
   ];
 
-  // Optimized filter function to avoid redundant processing
-  const getFilterCategory = useCallback((chat: any) => {
-    const chatName = (chat.name || '').toLowerCase();
-    const lastMessage = (chat.lastMessage || '').toLowerCase();
-    const unreadCount = chat.unreadCount || 0;
-    
-    // Pre-compile filter conditions for better performance
-    const isUnread = unreadCount > 0;
-    const isGroup = chat.isGroup === true;
-    const isIndividual = !isGroup;
-    
-    // Use regex for faster string matching
-    const salesPattern = /venta|ventas|precio|comprar|costo|vender/;
-    const supportPattern = /soporte|support|ayuda|problema|error|falla/;
-    const leadsPattern = /lead|prospecto|información|interesado|cotización|consulta/;
-    const urgentPattern = /urgente|emergencia|importante|rapido/;
-    
-    const isSales = salesPattern.test(chatName) || salesPattern.test(lastMessage);
-    const isSupport = supportPattern.test(chatName) || supportPattern.test(lastMessage);
-    const isLeads = leadsPattern.test(chatName) || leadsPattern.test(lastMessage);
-    const isUrgent = unreadCount > 5 || urgentPattern.test(lastMessage);
-    
-    return {
-      all: true,
-      unread: isUnread,
-      groups: isGroup,
-      individual: isIndividual,
-      sales: isSales,
-      support: isSupport,
-      leads: isLeads,
-      urgent: isUrgent
-    };
-  }, []);
+  const filteredChats = useMemo(() => {
+    return sortedChats.filter(chat => {
+      const chatName = (chat.name || '').toLowerCase();
+      const lastMessage = (chat.lastMessage || '').toLowerCase();
+      const unreadCount = chat.unreadCount || 0;
 
-  // Memoize category counts and filtered chats together
-  const { filteredChats, categoryCounts } = useMemo(() => {
-    const counts: Record<string, number> = {
-      all: sortedChats.length,
-      unread: 0,
-      groups: 0,
-      individual: 0,
-      sales: 0,
-      support: 0,
-      leads: 0,
-      urgent: 0
-    };
-    
-    const filtered = [];
-    
-    for (const chat of sortedChats) {
-      const categories = getFilterCategory(chat);
-      
-      // Count for each category
-      Object.entries(categories).forEach(([key, matches]) => {
-        if (matches && key !== 'all') {
-          counts[key]++;
-        }
-      });
-      
-      // Add to filtered list if matches current filter
-      if (categories[selectedFilter] || selectedFilter === 'all') {
-        filtered.push(chat);
+      switch (selectedFilter) {
+        case 'unread':
+          return unreadCount > 0;
+        case 'groups':
+          return chat.isGroup === true;
+        case 'individual':
+          return chat.isGroup !== true;
+        case 'sales':
+          return chatName.includes('venta') || chatName.includes('ventas') ||
+                 lastMessage.includes('precio') || lastMessage.includes('comprar') ||
+                 lastMessage.includes('costo') || lastMessage.includes('vender');
+        case 'support':
+          return chatName.includes('soporte') || chatName.includes('support') ||
+                 lastMessage.includes('ayuda') || lastMessage.includes('problema') ||
+                 lastMessage.includes('error') || lastMessage.includes('falla');
+        case 'leads':
+          return chatName.includes('lead') || chatName.includes('prospecto') ||
+                 lastMessage.includes('información') || lastMessage.includes('interesado') ||
+                 lastMessage.includes('cotización') || lastMessage.includes('consulta');
+        case 'urgent':
+          return unreadCount > 5 || 
+                 lastMessage.includes('urgente') || lastMessage.includes('emergencia') ||
+                 lastMessage.includes('importante') || lastMessage.includes('rapido');
+        case 'all':
+        default:
+          return true;
       }
-    }
-    
-    return { filteredChats: filtered, categoryCounts: counts };
-  }, [sortedChats, selectedFilter, getFilterCategory]);
+    });
+  }, [sortedChats, selectedFilter]);
 
   if (loadingAccounts) {
     return (
@@ -2827,7 +2793,31 @@ export function WhatsAppTwoColumn() {
           </div>
           <div className="grid grid-cols-4 gap-1">
             {filterCategories.map(category => {
-              const categoryCount = categoryCounts[category.id] || 0;
+              const categoryCount = sortedChats.filter(chat => {
+                const chatName = (chat.name || '').toLowerCase();
+                const lastMessage = (chat.lastMessage || '').toLowerCase();
+                const unreadCount = chat.unreadCount || 0;
+
+                switch (category.id) {
+                  case 'unread': return unreadCount > 0;
+                  case 'groups': return chat.isGroup === true;
+                  case 'individual': return chat.isGroup !== true;
+                  case 'sales': return chatName.includes('venta') || chatName.includes('ventas') ||
+                    lastMessage.includes('precio') || lastMessage.includes('comprar') ||
+                    lastMessage.includes('costo') || lastMessage.includes('vender');
+                  case 'support': return chatName.includes('soporte') || chatName.includes('support') ||
+                    lastMessage.includes('ayuda') || lastMessage.includes('problema') ||
+                    lastMessage.includes('error') || lastMessage.includes('falla');
+                  case 'leads': return chatName.includes('lead') || chatName.includes('prospecto') ||
+                    lastMessage.includes('información') || lastMessage.includes('interesado') ||
+                    lastMessage.includes('cotización') || lastMessage.includes('consulta');
+                  case 'urgent': return unreadCount > 5 || 
+                    lastMessage.includes('urgente') || lastMessage.includes('emergencia') ||
+                    lastMessage.includes('importante') || lastMessage.includes('rapido');
+                  case 'all': 
+                  default: return true;
+                }
+              }).length;
 
               return (
                 <Button
