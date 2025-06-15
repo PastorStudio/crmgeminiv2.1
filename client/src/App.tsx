@@ -50,6 +50,7 @@ import SalesFlowDesigner from './pages/SalesFlowDesigner';
 import FlowTemplates from './pages/FlowTemplates';
 import SystemStatus from './pages/SystemStatus';
 import WhatsAppAuth from './pages/WhatsAppAuth';
+import WhatsApp from './pages/WhatsApp';
 import { FunctionDocumentation } from './pages/FunctionDocumentation';
 import { WhatsAppKeepAlivePage } from './pages/WhatsAppKeepAlivePage';
 import NotificationSystem from './components/NotificationSystem';
@@ -251,6 +252,14 @@ const AppRoutes: React.FC = () => {
                   <circle cx="17" cy="11" r="1" fill="white"/>
                 </svg>
                 Mensajes
+              </a>
+
+              <a href="/whatsapp" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="2" width="20" height="20" rx="4" fill="#25D366"/>
+                  <path d="M7 12l3 3 7-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                WhatsApp
               </a>
 
               {/* OCULTO: Mensajería Moderna */}
@@ -700,6 +709,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/leads" component={() => <PrivateRoute component={Leads} path="/leads" />} />
                 <Route path="/sales-pipeline" component={() => <PrivateRoute component={SalesPipeline} path="/sales-pipeline" />} />
                 <Route path="/messages" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="messaging"><Messages /></ProtectedRoute>} path="/messages" />} />
+                <Route path="/whatsapp" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="whatsapp"><WhatsApp /></ProtectedRoute>} path="/whatsapp" />} />
                 <Route path="/modern-messaging" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="messaging"><ModernMessaging /></ProtectedRoute>} path="/modern-messaging" />} />
                 <Route path="/calendar" component={() => <PrivateRoute component={Calendar} path="/calendar" />} />
                 <Route path="/tasks" component={() => <PrivateRoute component={Tasks} path="/tasks" />} />
