@@ -352,8 +352,8 @@ function ChatAssignmentBadge({ chatId, accountId }: { chatId: string; accountId:
     queryKey: ['/api/chat-assignments', chatId],
     queryFn: () => fetch(`/api/chat-assignments/${encodeURIComponent(chatId)}`).then(res => res.json()),
     enabled: !!chatId,
-    refetchInterval: 3000, // Refrescar cada 3 segundos
-    refetchOnWindowFocus: true
+    refetchInterval: 30000, // Reducido a 30 segundos
+    refetchOnWindowFocus: false
   });
 
   // Cargar lista de agentes para obtener el nombre
@@ -413,8 +413,8 @@ function AgentAssignmentDisplay({ chatId }: { chatId: string }) {
     queryKey: ['/api/chat-assignments', chatId],
     queryFn: () => fetch(`/api/chat-assignments/${encodeURIComponent(chatId)}`).then(res => res.json()),
     enabled: !!chatId,
-    refetchInterval: 3000, // Refrescar cada 3 segundos
-    refetchOnWindowFocus: true
+    refetchInterval: 30000, // Reducido a 30 segundos
+    refetchOnWindowFocus: false
   });
 
   // Cargar lista de agentes para obtener el nombre
@@ -519,8 +519,8 @@ function TicketStatusBadge({ chatId }: { chatId: string }) {
   const { data: assignment } = useQuery({
     queryKey: ['/api/chat-assignments', chatId],
     enabled: !!chatId,
-    refetchInterval: 3000, // Refrescar cada 3 segundos
-    refetchOnWindowFocus: true
+    refetchInterval: 30000, // Reducido a 30 segundos
+    refetchOnWindowFocus: false
   });
 
   console.log('🎫 Debug Ticket Badge - chatId:', chatId, 'assignment:', assignment);
@@ -1465,7 +1465,8 @@ export function WhatsAppTwoColumn() {
   // Fetch WhatsApp accounts
   const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
     queryKey: ['/api/whatsapp/accounts'],
-    refetchInterval: 5000 // Refresh every 5 seconds to check status
+    refetchInterval: 30000, // Reducido a 30 segundos
+    refetchOnWindowFocus: false
   });
 
   // Fetch external agents for AI selection
@@ -1546,7 +1547,7 @@ export function WhatsAppTwoColumn() {
         return [];
       }
     },
-    refetchInterval: 5000 // Refresh messages every 5 seconds
+    refetchInterval: 30000 // Reducido a 30 segundos
   });
 
   // Fetch auto response config
