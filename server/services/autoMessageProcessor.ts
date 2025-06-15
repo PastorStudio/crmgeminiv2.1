@@ -260,6 +260,69 @@ export class AutoMessageProcessor {
   }
 
   /**
+   * Procesa un mensaje entrante y genera respuesta automática
+   */
+  async processIncomingMessage(messageData: {
+    id: string;
+    body: string;
+    fromMe: boolean;
+    timestamp: number;
+    chatId: string;
+    accountId: number;
+    contactName?: string;
+    contactPhone?: string;
+  }): Promise<void> {
+    try {
+      // Solo procesar mensajes que NO son nuestros
+      if (messageData.fromMe) {
+        console.log('🔄 Ignorando mensaje propio');
+        return;
+      }
+
+      console.log(`🔄 PROCESANDO MENSAJE ENTRANTE - Cuenta: ${messageData.accountId}, Chat: ${messageData.chatId}`);
+      console.log(`📝 Mensaje: "${messageData.body}"`);
+
+      // Verificar si la cuenta tiene respuestas automáticas activas
+      const hasAutoResponse = await this.hasActiveAutoResponse(messageData.accountId);
+      if (!hasAutoResponse) {
+        console.log('⏭️ Respuestas automáticas desactivadas para esta cuenta');
+        return;
+      }
+
+      // Procesar mensaje con agente externo
+      const messageForProcessing: MessageForProcessing = {
+        body: messageData.body,
+        accountId: messageData.accountId,
+        chatId: messageData.chatId,
+        fromMe: false,
+        type: 'text'
+      };
+
+      const response = await this.processWithExternalAgent(messageForProcessing);
+      
+      if (response.success && response.response) {
+        console.log(`✅ Respuesta generada: ${response.response.substring(0, 100)}...`);
+        
+        // Enviar respuesta usando el servicio de WhatsApp
+        const { SimplifiedWhatsAppService } = await import('./simplifiedWhatsApp');
+        const whatsappService = SimplifiedWhatsAppService.getInstance();
+        
+        await whatsappService.sendMessage(
+          messageData.accountId,
+          messageData.chatId,
+          response.response
+        );
+        
+        console.log(`✅ Respuesta automática enviada exitosamente`);
+      } else {
+        console.log('❌ No se pudo generar respuesta automática');
+      }
+    } catch (error) {
+      console.error('❌ Error procesando mensaje entrante:', error);
+    }
+  }
+
+  /**
    * Verifica si una cuenta tiene respuestas automáticas activas
    */
   async hasActiveAutoResponse(accountId: number): Promise<boolean> {

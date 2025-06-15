@@ -150,21 +150,162 @@ export class WhatsAppAutoResponder {
   }
   
   /**
-   * Genera respuesta usando OpenAI (misma lógica que Probar Agente Intermediario)
+   * Genera respuesta usando múltiples proveedores de IA con sistema de respaldo
    */
   private static async generateResponse(messageText: string, agentName: string): Promise<string | null> {
+    const providers = [
+      { name: 'Gemini', method: 'generateResponseWithGemini' },
+      { name: 'Qwen3', method: 'generateResponseWithQwen3' },
+      { name: 'DeepSeek', method: 'generateResponseWithDeepSeek' },
+      { name: 'OpenAI', method: 'generateResponseWithOpenAI' }
+    ];
+
+    for (const provider of providers) {
+      try {
+        console.log(`🔗 Intentando con ${provider.name}...`);
+        const response = await this[provider.method](messageText, agentName);
+        if (response) {
+          console.log(`✅ Respuesta generada exitosamente por ${agentName} usando ${provider.name}`);
+          return response;
+        }
+      } catch (error) {
+        console.log(`❌ Error con ${provider.name}, probando siguiente proveedor...`);
+        continue;
+      }
+    }
+
+    console.error('❌ Todos los proveedores de IA fallaron');
+    return null;
+  }
+
+  /**
+   * Genera respuesta usando Gemini
+   */
+  private static async generateResponseWithGemini(messageText: string, agentName: string): Promise<string | null> {
     try {
-      // Verificar clave API (usar la misma variable que en frontend)
+      const { GoogleGenerativeAI } = require('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+
+      const prompt = `Eres ${agentName}, un asistente inteligente especializado en atención al cliente.
+
+Características:
+- Respondes de manera clara, útil y empática
+- Mantienes un tono conversacional pero profesional
+- Ofreces soluciones específicas y prácticas
+- Respondes en español de forma concisa (máximo 3 líneas)
+- Si no puedes resolver algo, ofreces derivar con un agente humano
+
+Mensaje del cliente: ${messageText}`;
+
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (error) {
+      console.error('Error con Gemini:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Genera respuesta usando Qwen3
+   */
+  private static async generateResponseWithQwen3(messageText: string, agentName: string): Promise<string | null> {
+    try {
+      const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.QWEN3_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'Qwen/Qwen2.5-72B-Instruct',
+          messages: [
+            {
+              role: 'system',
+              content: `Eres ${agentName}, un asistente inteligente especializado en atención al cliente.
+
+Características:
+- Respondes de manera clara, útil y empática
+- Mantienes un tono conversacional pero profesional
+- Ofreces soluciones específicas y prácticas
+- Respondes en español de forma concisa (máximo 3 líneas)
+- Si no puedes resolver algo, ofreces derivar con un agente humano`
+            },
+            {
+              role: 'user',
+              content: messageText
+            }
+          ],
+          max_tokens: 300,
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) throw new Error('Qwen3 API error');
+      
+      const data = await response.json();
+      return data.choices[0].message.content;
+    } catch (error) {
+      console.error('Error con Qwen3:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Genera respuesta usando DeepSeek
+   */
+  private static async generateResponseWithDeepSeek(messageText: string, agentName: string): Promise<string | null> {
+    try {
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            {
+              role: 'system',
+              content: `Eres ${agentName}, un asistente inteligente especializado en atención al cliente.
+
+Características:
+- Respondes de manera clara, útil y empática
+- Mantienes un tono conversacional pero profesional
+- Ofreces soluciones específicas y prácticas
+- Respondes en español de forma concisa (máximo 3 líneas)
+- Si no puedes resolver algo, ofreces derivar con un agente humano`
+            },
+            {
+              role: 'user',
+              content: messageText
+            }
+          ],
+          max_tokens: 300,
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) throw new Error('DeepSeek API error');
+      
+      const data = await response.json();
+      return data.choices[0].message.content;
+    } catch (error) {
+      console.error('Error con DeepSeek:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Genera respuesta usando OpenAI (método original como respaldo)
+   */
+  private static async generateResponseWithOpenAI(messageText: string, agentName: string): Promise<string | null> {
+    try {
       const openaiKey = process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
       if (!openaiKey) {
-        console.log(`❌ No hay clave API de OpenAI disponible`);
-        return null;
+        throw new Error('No hay clave API de OpenAI disponible');
       }
       
-      console.log(`🔗 Conectando directamente con OpenAI API`);
-      console.log(`🎯 Agente: ${agentName}`);
-      
-      // Hacer la misma llamada que en "Probar Agente Intermediario"
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -201,14 +342,11 @@ export class WhatsAppAutoResponder {
       }
       
       const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
-      
-      console.log(`✅ Respuesta generada exitosamente por ${agentName}`);
-      return aiResponse;
+      return data.choices[0].message.content;
       
     } catch (error) {
-      console.error(`❌ Error generando respuesta con OpenAI:`, error);
-      return null;
+      console.error('Error con OpenAI:', error);
+      throw error;
     }
   }
   
