@@ -1,3 +1,2 @@
-2025/06/15-00:20:39.176 68f0 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Session Storage/MANIFEST-000001
-2025/06/15-00:20:39.177 68f0 Recovering log #3
-2025/06/15-00:20:39.177 68f0 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Session Storage/000003.log 
+2025/06/15-00:24:18.791 413d Creating DB /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Session Storage since it was missing.
+2025/06/15-00:24:18.800 413d Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Session Storage/MANIFEST-000001
