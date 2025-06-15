@@ -98,8 +98,36 @@ export class WhatsAppAutoResponder {
       console.log(`🤖 Procesando mensaje para A.E AI en chat ${message.chatId}`);
       console.log(`💬 Mensaje: "${message.body}"`);
       
-      // Generar respuesta usando la misma lógica que "Probar Agente Intermediario"
-      const response = await this.generateResponse(message.body, config.agentName);
+      // Obtener prompt personalizado para la cuenta
+      let customPrompt = null;
+      try {
+        const { db } = await import('../drizzle');
+        const { whatsappAccounts, prompts } = await import('../../shared/schema');
+        const { eq } = await import('drizzle-orm');
+        
+        // Buscar la cuenta que maneja este chat
+        const accounts = await db.select().from(whatsappAccounts)
+          .where(eq(whatsappAccounts.autoResponseEnabled, true));
+        
+        for (const account of accounts) {
+          if (account.assignedPromptId) {
+            const promptData = await db.select().from(prompts)
+              .where(eq(prompts.id, account.assignedPromptId))
+              .limit(1);
+            
+            if (promptData[0]) {
+              customPrompt = promptData[0].content;
+              console.log(`✅ Usando prompt personalizado: ${promptData[0].name} para agente ${config.agentName}`);
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error obteniendo prompt personalizado:`, error);
+      }
+      
+      // Generar respuesta usando prompt personalizado o genérico
+      const response = await this.generateResponse(message.body, config.agentName, customPrompt);
       
       if (response) {
         // Marcar mensaje como procesado ANTES de enviar para evitar duplicados
@@ -152,7 +180,7 @@ export class WhatsAppAutoResponder {
   /**
    * Genera respuesta usando múltiples proveedores de IA con sistema de respaldo
    */
-  private static async generateResponse(messageText: string, agentName: string): Promise<string | null> {
+  private static async generateResponse(messageText: string, agentName: string, customPrompt?: string): Promise<string | null> {
     const providers = [
       { name: 'Gemini', method: 'generateResponseWithGemini' },
       { name: 'Qwen3', method: 'generateResponseWithQwen3' },
@@ -163,7 +191,7 @@ export class WhatsAppAutoResponder {
     for (const provider of providers) {
       try {
         console.log(`🔗 Intentando con ${provider.name}...`);
-        const response = await this[provider.method](messageText, agentName);
+        const response = await this[provider.method](messageText, agentName, customPrompt);
         if (response) {
           console.log(`✅ Respuesta generada exitosamente por ${agentName} usando ${provider.name}`);
           return response;
@@ -181,13 +209,13 @@ export class WhatsAppAutoResponder {
   /**
    * Genera respuesta usando Gemini
    */
-  private static async generateResponseWithGemini(messageText: string, agentName: string): Promise<string | null> {
+  private static async generateResponseWithGemini(messageText: string, agentName: string, customPrompt?: string): Promise<string | null> {
     try {
       const { GoogleGenerativeAI } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-      const prompt = `Eres ${agentName}, un asistente inteligente especializado en atención al cliente.
+      const prompt = customPrompt || `Eres ${agentName}, un asistente inteligente especializado en atención al cliente.
 
 Características:
 - Respondes de manera clara, útil y empática
@@ -209,8 +237,17 @@ Mensaje del cliente: ${messageText}`;
   /**
    * Genera respuesta usando Qwen3
    */
-  private static async generateResponseWithQwen3(messageText: string, agentName: string): Promise<string | null> {
+  private static async generateResponseWithQwen3(messageText: string, agentName: string, customPrompt?: string): Promise<string | null> {
     try {
+      const systemContent = customPrompt || `Eres ${agentName}, un asistente inteligente especializado en atención al cliente.
+
+Características:
+- Respondes de manera clara, útil y empática
+- Mantienes un tono conversacional pero profesional
+- Ofreces soluciones específicas y prácticas
+- Respondes en español de forma concisa (máximo 3 líneas)
+- Si no puedes resolver algo, ofreces derivar con un agente humano`;
+
       const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -222,14 +259,7 @@ Mensaje del cliente: ${messageText}`;
           messages: [
             {
               role: 'system',
-              content: `Eres ${agentName}, un asistente inteligente especializado en atención al cliente.
-
-Características:
-- Respondes de manera clara, útil y empática
-- Mantienes un tono conversacional pero profesional
-- Ofreces soluciones específicas y prácticas
-- Respondes en español de forma concisa (máximo 3 líneas)
-- Si no puedes resolver algo, ofreces derivar con un agente humano`
+              content: systemContent
             },
             {
               role: 'user',
@@ -254,8 +284,17 @@ Características:
   /**
    * Genera respuesta usando DeepSeek
    */
-  private static async generateResponseWithDeepSeek(messageText: string, agentName: string): Promise<string | null> {
+  private static async generateResponseWithDeepSeek(messageText: string, agentName: string, customPrompt?: string): Promise<string | null> {
     try {
+      const systemContent = customPrompt || `Eres ${agentName}, un asistente inteligente especializado en atención al cliente.
+
+Características:
+- Respondes de manera clara, útil y empática
+- Mantienes un tono conversacional pero profesional
+- Ofreces soluciones específicas y prácticas
+- Respondes en español de forma concisa (máximo 3 líneas)
+- Si no puedes resolver algo, ofreces derivar con un agente humano`;
+
       const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -267,14 +306,7 @@ Características:
           messages: [
             {
               role: 'system',
-              content: `Eres ${agentName}, un asistente inteligente especializado en atención al cliente.
-
-Características:
-- Respondes de manera clara, útil y empática
-- Mantienes un tono conversacional pero profesional
-- Ofreces soluciones específicas y prácticas
-- Respondes en español de forma concisa (máximo 3 líneas)
-- Si no puedes resolver algo, ofreces derivar con un agente humano`
+              content: systemContent
             },
             {
               role: 'user',
@@ -299,12 +331,21 @@ Características:
   /**
    * Genera respuesta usando OpenAI (método original como respaldo)
    */
-  private static async generateResponseWithOpenAI(messageText: string, agentName: string): Promise<string | null> {
+  private static async generateResponseWithOpenAI(messageText: string, agentName: string, customPrompt?: string): Promise<string | null> {
     try {
       const openaiKey = process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
       if (!openaiKey) {
         throw new Error('No hay clave API de OpenAI disponible');
       }
+      
+      const systemContent = customPrompt || `Eres ${agentName}, un asistente virtual inteligente y profesional de atención al cliente.
+              
+              Características:
+              - Respondes de manera clara, útil y empática
+              - Mantienes un tono conversacional pero profesional
+              - Ofreces soluciones específicas y prácticas
+              - Respondes en español de forma concisa (máximo 3 líneas)
+              - Si no puedes resolver algo, ofreces derivar con un agente humano`;
       
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -317,14 +358,7 @@ Características:
           messages: [
             {
               role: 'system',
-              content: `Eres ${agentName}, un asistente virtual inteligente y profesional de atención al cliente.
-              
-              Características:
-              - Respondes de manera clara, útil y empática
-              - Mantienes un tono conversacional pero profesional
-              - Ofreces soluciones específicas y prácticas
-              - Respondes en español de forma concisa (máximo 3 líneas)
-              - Si no puedes resolver algo, ofreces derivar con un agente humano`
+              content: systemContent
             },
             {
               role: 'user',
