@@ -25,24 +25,34 @@ export class AIProviderService {
 
   async initialize(): Promise<void> {
     try {
-      // Get AI configuration from database
-      const result = await pool.query('SELECT * FROM ai_settings LIMIT 1');
+      // Get AI configuration from auto_response_config table
+      const result = await pool.query('SELECT * FROM auto_response_config WHERE account_id = 1 LIMIT 1');
       
       if (result.rows.length === 0) {
-        console.log('⚠️ No AI configuration found in database');
-        return;
+        console.log('⚠️ No AI configuration found in database, using default DeepSeek');
+        this.config = {
+          selectedProvider: 'deepseek',
+          geminiApiKey: '',
+          openaiApiKey: '',
+          qwenApiKey: '',
+          deepseekApiKey: process.env.DEEPSEEK_API_KEY || '',
+          customPrompt: 'Eres un asistente virtual profesional de atención al cliente. Responde de manera amable y profesional en español.',
+          temperature: 0.7
+        };
+      } else {
+        const dbConfig = result.rows[0];
+        const settings = typeof dbConfig.settings === 'string' ? JSON.parse(dbConfig.settings) : dbConfig.settings || {};
+        
+        this.config = {
+          selectedProvider: settings.selectedProvider || 'deepseek',
+          geminiApiKey: dbConfig.gemini_api_key || '',
+          openaiApiKey: settings.openaiApiKey || '',
+          qwenApiKey: settings.qwenApiKey || '',
+          deepseekApiKey: settings.deepseekApiKey || process.env.DEEPSEEK_API_KEY || '',
+          customPrompt: settings.customPrompt || 'Eres un asistente virtual profesional de atención al cliente. Responde de manera amable y profesional en español.',
+          temperature: settings.temperature || 0.7
+        };
       }
-
-      const dbConfig = result.rows[0];
-      this.config = {
-        selectedProvider: dbConfig.selected_provider || 'gemini',
-        geminiApiKey: dbConfig.gemini_api_key || '',
-        openaiApiKey: dbConfig.openai_api_key || '',
-        qwenApiKey: dbConfig.qwen_api_key || '',
-        deepseekApiKey: dbConfig.deepseek_api_key || process.env.DEEPSEEK_API_KEY || '',
-        customPrompt: dbConfig.custom_prompt || '',
-        temperature: dbConfig.temperature || 0.7
-      };
 
       // Initialize providers based on configuration
       this.initializeProviders();
@@ -95,7 +105,17 @@ export class AIProviderService {
       
       switch (this.config.selectedProvider) {
         case 'openai':
-          return await this.generateOpenAIResponse(message, systemPrompt);
+          try {
+            return await this.generateOpenAIResponse(message, systemPrompt);
+          } catch (openaiError: any) {
+            if (openaiError.status === 429 || openaiError.code === 'insufficient_quota') {
+              console.log('🔄 OpenAI quota exceeded, falling back to DeepSeek...');
+              if (process.env.DEEPSEEK_API_KEY) {
+                return await this.generateDeepSeekResponse(message, systemPrompt);
+              }
+            }
+            throw openaiError;
+          }
         
         case 'gemini':
           return await this.generateGeminiResponse(message, systemPrompt);
@@ -107,11 +127,24 @@ export class AIProviderService {
           return await this.generateDeepSeekResponse(message, systemPrompt);
         
         default:
-          console.log(`⚠️ Provider ${this.config.selectedProvider} not supported, using fallback`);
+          console.log(`⚠️ Provider ${this.config.selectedProvider} not supported, using DeepSeek fallback`);
+          if (process.env.DEEPSEEK_API_KEY) {
+            return await this.generateDeepSeekResponse(message, systemPrompt);
+          }
           return this.getFallbackResponse();
       }
     } catch (error) {
       console.error(`❌ Error generating response with ${this.config.selectedProvider}:`, error);
+      // Try DeepSeek as final fallback if available
+      if (process.env.DEEPSEEK_API_KEY && this.config.selectedProvider !== 'deepseek') {
+        try {
+          console.log('🔄 Trying DeepSeek as final fallback...');
+          const systemPrompt = this.config.customPrompt || `Eres ${agentName}, un asistente virtual profesional.`;
+          return await this.generateDeepSeekResponse(message, systemPrompt);
+        } catch (deepseekError) {
+          console.error('❌ DeepSeek fallback also failed:', deepseekError);
+        }
+      }
       return this.getFallbackResponse();
     }
   }
@@ -187,7 +220,8 @@ export class AIProviderService {
   }
 
   private async generateDeepSeekResponse(message: string, systemPrompt: string): Promise<string> {
-    if (!this.config?.deepseekApiKey) {
+    const apiKey = this.config?.deepseekApiKey || process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) {
       throw new Error('DeepSeek API key not configured');
     }
 
@@ -197,7 +231,7 @@ export class AIProviderService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.deepseekApiKey}`
+          'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
           model: 'deepseek-chat',
