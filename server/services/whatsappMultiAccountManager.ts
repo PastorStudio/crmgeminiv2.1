@@ -795,8 +795,8 @@ class WhatsAppMultiAccountManager extends EventEmitter {
             const { WhatsAppAutoResponder } = await import('./whatsappAutoResponder');
             
             // ACTIVAR AUTOMÁTICAMENTE PARA TODOS LOS CHATS ENTRANTES
-            console.log(`🔥 Auto-activando respuestas para chat ${message.from}`);
-            WhatsAppAutoResponder.activateForChat(message.from, "A.E AI Smartbots");
+            console.log(`🔥 Auto-activando respuestas para chat ${message.from} en cuenta ${id}`);
+            WhatsAppAutoResponder.activateForChat(message.from, "A.E AI Smartbots", id);
             
             // Procesar mensaje con el sistema de respuestas automáticas multi-proveedor
             const processed = await WhatsAppAutoResponder.processIncomingMessage(
