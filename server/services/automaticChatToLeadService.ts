@@ -157,14 +157,14 @@ export class AutomaticChatToLeadService {
       const client = whatsappMultiAccountManager.getClient(accountId);
       if (!client) {
         console.log(`⚠️ Cliente WhatsApp no disponible para cuenta ${accountId}`);
-        return this.generateFallbackChats(accountId);
+        return [];
       }
 
       // Verificar si el cliente está listo y autenticado
       const isReady = client.info && client.info.wid;
       if (!isReady) {
         console.log(`⚠️ Cliente WhatsApp no está listo para cuenta ${accountId}`);
-        return this.generateFallbackChats(accountId);
+        return [];
       }
 
       // Obtener SOLO chats individuales, excluyendo grupos completamente
@@ -173,12 +173,12 @@ export class AutomaticChatToLeadService {
         chats = await client.getChats();
       } catch (error) {
         console.error(`❌ Error obteniendo chats de cuenta ${accountId}:`, error);
-        return this.generateFallbackChats(accountId);
+        return [];
       }
 
       if (!Array.isArray(chats) || chats.length === 0) {
-        console.log(`📱 No hay chats disponibles para cuenta ${accountId}, usando datos de demostración`);
-        return this.generateFallbackChats(accountId);
+        console.log(`📱 No hay chats disponibles para cuenta ${accountId}`);
+        return [];
       }
 
       const individualChats = chats.filter(chat => {
