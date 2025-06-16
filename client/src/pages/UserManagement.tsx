@@ -108,9 +108,9 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 
 const userFormSchema = z.object({
   username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres"),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  password: z.string().optional().or(z.string().min(8, "La contraseña debe tener al menos 8 caracteres")),
   fullName: z.string().min(3, "El nombre completo debe tener al menos 3 caracteres"),
-  email: z.string().email("Debe ser un correo electrónico válido"),
+  email: z.string().email("Debe ser un correo electrónico válido").optional(),
   role: z.string().refine(val => ['admin', 'agent', 'supervisor'].includes(val), {
     message: "El rol debe ser admin, agent o supervisor"
   }),

@@ -6741,6 +6741,162 @@ app.use((req, res, next) => {
     }
   });
 
+  // ===== USER MANAGEMENT API ENDPOINTS =====
+  
+  // Create new user
+  app.post("/api/users", async (req: Request, res: Response) => {
+    try {
+      const { username, password, fullName, email, role = 'agent', department = 'ventas' } = req.body;
+      
+      console.log(`🔄 Creating new user: ${username}`);
+      
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Username y password son requeridos"
+        });
+      }
+      
+      // Check if user already exists
+      const existingUser = await db.select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+        
+      if (existingUser.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: "El usuario ya existe"
+        });
+      }
+      
+      // Hash password
+      const bcrypt = await import('bcrypt');
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Create user
+      const [newUser] = await db.insert(users).values({
+        username,
+        password: hashedPassword,
+        fullName: fullName || username,
+        email,
+        role,
+        department,
+        status: 'active'
+      }).returning();
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = newUser;
+      
+      console.log(`✅ User created successfully: ${username}`);
+      
+      res.status(201).json({
+        success: true,
+        user: userWithoutPassword,
+        message: "Usuario creado exitosamente"
+      });
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+  
+  // Update existing user
+  app.patch("/api/users/:id", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const updateData = req.body;
+      
+      console.log(`🔄 Updating user: ${userId}`);
+      
+      // Remove password if empty or undefined
+      if (!updateData.password || updateData.password.trim() === '') {
+        delete updateData.password;
+      } else {
+        // Hash new password
+        const bcrypt = await import('bcrypt');
+        updateData.password = await bcrypt.hash(updateData.password, 10);
+      }
+      
+      // Remove subscription fields from user update
+      const { subscriptionPlanId, subscriptionDuration, subscriptionNotes, ...userUpdateData } = updateData;
+      
+      // Update user
+      const [updatedUser] = await db.update(users)
+        .set({
+          ...userUpdateData,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userId))
+        .returning();
+        
+      if (!updatedUser) {
+        return res.status(404).json({
+          success: false,
+          message: "Usuario no encontrado"
+        });
+      }
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      
+      console.log(`✅ User updated successfully: ${updatedUser.username}`);
+      
+      res.json({
+        success: true,
+        user: userWithoutPassword,
+        message: "Usuario actualizado exitosamente"
+      });
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+  
+  // Delete user
+  app.delete("/api/users/:id", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.id);
+      
+      console.log(`🔄 Deleting user: ${userId}`);
+      
+      // Check if user exists
+      const [existingUser] = await db.select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+        
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          message: "Usuario no encontrado"
+        });
+      }
+      
+      // Delete user
+      await db.delete(users).where(eq(users.id, userId));
+      
+      console.log(`✅ User deleted successfully: ${existingUser.username}`);
+      
+      res.json({
+        success: true,
+        message: "Usuario eliminado exitosamente"
+      });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+
   // 🤖 RUTAS DIRECTAS PARA RESPUESTAS AUTOMÁTICAS (SIN VITE)
   
   // Activar respuestas automáticas - Ruta directa que bypassa Vite
