@@ -199,9 +199,9 @@ export class RealDataIntegrationService {
         ? (leadsFromWhatsApp[0].count / totalMessages[0].count * 100).toFixed(2)
         : 0;
 
-      // Force current UTC timestamp - June 16, 2025
-      const currentTimestamp = new Date();
-      const utcTimestamp = currentTimestamp;
+      // Generate actual current timestamp
+      const now = new Date();
+      const utcTimestamp = now;
       
       return {
         success: true,
