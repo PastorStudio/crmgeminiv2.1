@@ -2967,6 +2967,126 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // ***** ENDPOINT PARA CONTACTOS DE WHATSAPP REALES *****
+  app.get("/api/whatsapp/contacts", async (_req: Request, res: Response) => {
+    try {
+      console.log('📞 Obteniendo contactos reales de WhatsApp...');
+      
+      // Importar el gestor de cuentas múltiples
+      let whatsappMultiAccountManager;
+      try {
+        const importedModule = await import('./services/whatsappMultiAccountManager');
+        whatsappMultiAccountManager = importedModule.whatsappMultiAccountManager;
+      } catch (importError) {
+        console.error('❌ Error importando whatsappMultiAccountManager:', importError);
+        return res.json([]);
+      }
+
+      const allContacts: any[] = [];
+      
+      // Obtener todas las cuentas de WhatsApp activas
+      const accounts = await storage.getAllWhatsAppAccounts();
+      console.log(`📊 Revisando ${accounts.length} cuentas de WhatsApp para contactos...`);
+
+      for (const account of accounts) {
+        try {
+          console.log(`🔍 Obteniendo contactos de cuenta ${account.id}...`);
+          
+          // Obtener cliente de WhatsApp para esta cuenta
+          const client = whatsappMultiAccountManager.getClient(account.id);
+          
+          if (!client || !client.info) {
+            console.log(`⚠️ Cliente WhatsApp no disponible para cuenta ${account.id}`);
+            continue;
+          }
+
+          // Intentar obtener contactos directamente del cliente
+          let contacts = [];
+          try {
+            contacts = await client.getContacts();
+          } catch (contactError) {
+            console.log(`⚠️ Error obteniendo contactos directamente de cuenta ${account.id}:`, contactError.message);
+            continue;
+          }
+
+          if (Array.isArray(contacts) && contacts.length > 0) {
+            // Filtrar solo contactos individuales (no grupos)
+            const individualContacts = contacts.filter(contact => 
+              contact && 
+              contact.id && 
+              contact.id._serialized &&
+              !contact.id._serialized.includes('@g.us') && // No grupos
+              !contact.isGroup &&
+              contact.id._serialized !== 'status@broadcast' && // No estados
+              contact.number // Debe tener número
+            );
+
+            const formattedContacts = individualContacts.map(contact => ({
+              id: contact.id._serialized,
+              name: contact.name || contact.pushname || contact.shortName || 'Sin nombre',
+              phone: contact.number,
+              pushname: contact.pushname || contact.name,
+              tags: [],
+              lastSeen: new Date().toISOString(),
+              profilePic: contact.profilePicUrl || null,
+              whatsappAccountId: account.id,
+              isGroup: false,
+              isUser: true
+            }));
+
+            allContacts.push(...formattedContacts);
+            console.log(`✅ ${formattedContacts.length} contactos individuales obtenidos de cuenta ${account.id}`);
+          } else {
+            console.log(`📱 No hay contactos disponibles en cuenta ${account.id}`);
+          }
+          
+        } catch (error) {
+          console.error(`❌ Error obteniendo contactos de cuenta ${account.id}:`, error);
+        }
+      }
+
+      // Eliminar duplicados basado en número de teléfono
+      const uniqueContacts = allContacts.filter((contact, index, self) =>
+        index === self.findIndex(c => c.phone === contact.phone)
+      );
+
+      console.log(`✅ Total de contactos únicos obtenidos: ${uniqueContacts.length}`);
+      res.json(uniqueContacts);
+      
+    } catch (error) {
+      console.error('❌ Error obteniendo contactos de WhatsApp:', error);
+      res.json([]);
+    }
+  });
+
+  // ***** ENDPOINT PARA ETIQUETAS DE CONTACTOS *****
+  app.get("/api/whatsapp/contact-tags", async (_req: Request, res: Response) => {
+    try {
+      // Return common tags for contacts
+      const tags = ["cliente", "prospecto", "vip", "nuevo", "seguimiento", "cerrado"];
+      res.json(tags);
+    } catch (error) {
+      console.error('Error getting contact tags:', error);
+      res.json([]);
+    }
+  });
+
+  // ***** ENDPOINT PARA GRUPOS DE CONTACTOS *****
+  app.get("/api/whatsapp/contact-groups", async (_req: Request, res: Response) => {
+    try {
+      // Return contact groups/categories
+      const groups = [
+        { id: "clientes", name: "Clientes", count: 0 },
+        { id: "prospectos", name: "Prospectos", count: 0 },
+        { id: "cerrados", name: "Cerrados", count: 0 }
+      ];
+      res.json(groups);
+    } catch (error) {
+      console.error('Error getting contact groups:', error);
+      res.json([]);
+    }
+  });
+
   console.log('🚀 Rutas optimizadas registradas correctamente');
   console.log('📡 WebSocket configurado en /ws');
   console.log('✅ Enhanced System API endpoints implemented - All 15 improvements active');
