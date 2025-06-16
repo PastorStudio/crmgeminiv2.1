@@ -51,9 +51,7 @@ export class DemoAgentService {
   generateDemoRequestResponse(): string {
     return `¡Hola! Me da mucho gusto saber que estás interesado en nuestro sistema CRM con IA. 
 
-¿Te gustaría que te dé acceso para una prueba del sistema por 3 días completamente GRATIS?
-
-Para crear tu demo personalizado, necesito conocer tu nombre. 
+Para crear tu demo personalizado de 1 día completamente GRATIS, necesito conocer tu nombre. 
 
 Por favor escríbeme: "Mi nombre es [tu nombre]" y te crearé tu acceso inmediatamente.
 
@@ -62,7 +60,7 @@ Con el demo podrás:
 ✅ Automatizar respuestas de WhatsApp
 ✅ Usar IA avanzada para ventas
 ✅ Ver reportes en tiempo real
-✅ Acceso completo por 3 días
+✅ Acceso completo por 24 horas
 
 ¿Cuál es tu nombre?`;
   }
@@ -76,8 +74,8 @@ Con el demo podrás:
 Estoy creando tu demo personalizado ahora mismo...
 
 Tu acceso incluirá:
-🔑 Usuario único y contraseña estándar
-⏰ Acceso completo por 3 días
+🔑 Usuario y contraseña únicos
+⏰ Acceso completo por 24 horas
 🚀 Todas las funciones premium
 📊 Panel de administración completo
 
@@ -92,7 +90,7 @@ En unos segundos te envío tus credenciales de acceso.`;
 
 🔐 **CREDENCIALES DE ACCESO:**
 👤 Usuario: \`${demo.username}\`
-🔑 Contraseña: \`demo123456\`
+🔑 Contraseña: \`${demo.password}\`
 
 🌐 **ENLACE DE ACCESO:**
 ${demo.loginUrl}
@@ -103,7 +101,7 @@ ${demo.loginUrl}
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    })} (3 días de acceso)
+    })}
 
 **¿Qué puedes hacer en tu demo?**
 ✅ Gestionar contactos y leads
@@ -111,8 +109,6 @@ ${demo.loginUrl}
 ✅ Usar IA para generar respuestas
 ✅ Ver estadísticas en tiempo real
 ✅ Probar integración con WhatsApp
-
-**IMPORTANTE:** El sistema se deshabilitará automáticamente al cumplirse exactamente 3 días desde la creación.
 
 **¿Te gusta el sistema?**
 Responde "QUIERO PLAN" y te ayudo a elegir el plan perfecto para tu negocio.

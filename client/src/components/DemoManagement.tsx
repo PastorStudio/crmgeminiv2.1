@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import { Clock, User, Calendar, CheckCircle, XCircle, ArrowRight, Plus, Eye, LogIn, UserPlus } from 'lucide-react';
+import { Clock, User, Calendar, CheckCircle, XCircle, ArrowRight, Plus, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface DemoUser {
@@ -46,12 +46,9 @@ interface SubscriptionPlan {
 export function DemoManagement() {
   const [selectedDemo, setSelectedDemo] = useState<DemoUser | null>(null);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
-  const [manualCreateDialogOpen, setManualCreateDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [newDemoName, setNewDemoName] = useState('');
-  const [newDemoPhone, setNewDemoPhone] = useState('');
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -102,70 +99,6 @@ export function DemoManagement() {
     }
   });
 
-  // Manual demo creation mutation
-  const createDemoMutation = useMutation({
-    mutationFn: async ({ customerName, phoneNumber }: {
-      customerName: string;
-      phoneNumber: string;
-    }) => {
-      return apiRequest('/api/direct/demo/create-manual', {
-        method: 'POST',
-        body: { customerName, phoneNumber }
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/direct/demo/list'] });
-      setManualCreateDialogOpen(false);
-      setNewDemoName('');
-      setNewDemoPhone('');
-      toast({
-        title: 'Demo creado',
-        description: 'El demo ha sido creado exitosamente',
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Error al crear el demo',
-        variant: 'destructive',
-      });
-    }
-  });
-
-  // Demo login function
-  const handleDemoLogin = async (demo: DemoUser) => {
-    try {
-      const response = await apiRequest('/api/demo/login', {
-        method: 'POST',
-        body: {
-          username: demo.username,
-          password: demo.password
-        }
-      });
-
-      if (response.success && response.token) {
-        // Store the demo token
-        localStorage.setItem('auth-token', response.token);
-        localStorage.setItem('user-role', 'demo');
-        localStorage.setItem('demo-user-id', demo.id.toString());
-        
-        // Redirect to dashboard
-        window.location.href = '/';
-        
-        toast({
-          title: 'Acceso iniciado',
-          description: `Sesión iniciada como ${demo.customerName}`,
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Error de acceso',
-        description: error.message || 'No se pudo iniciar sesión',
-        variant: 'destructive',
-      });
-    }
-  };
-
   const handleConvert = () => {
     if (!selectedDemo) return;
     
@@ -211,23 +144,6 @@ export function DemoManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Manual Create Button */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">Gestión de Demos</h2>
-          <p className="text-muted-foreground">
-            Administra las cuentas de demostración creadas automáticamente por el agente
-          </p>
-        </div>
-        <Button 
-          onClick={() => setManualCreateDialogOpen(true)}
-          className="flex items-center space-x-2"
-        >
-          <UserPlus className="h-4 w-4" />
-          <span>Crear Demo Manual</span>
-        </Button>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -300,7 +216,7 @@ export function DemoManagement() {
                 setSelectedDemo(demo);
                 setFullName(demo.customerName);
                 setConvertDialogOpen(true);
-              }} onLogin={handleDemoLogin} />
+              }} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -318,7 +234,7 @@ export function DemoManagement() {
                 setSelectedDemo(demo);
                 setFullName(demo.customerName);
                 setConvertDialogOpen(true);
-              }} onLogin={handleDemoLogin} />
+              }} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -410,68 +326,6 @@ export function DemoManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Manual Demo Creation Dialog */}
-      <Dialog open={manualCreateDialogOpen} onOpenChange={setManualCreateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Crear Demo Manual</DialogTitle>
-            <DialogDescription>
-              Crea una cuenta de demostración manual para un cliente específico
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="newDemoName">Nombre del Cliente</Label>
-              <Input
-                id="newDemoName"
-                value={newDemoName}
-                onChange={(e) => setNewDemoName(e.target.value)}
-                placeholder="Nombre completo del cliente"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="newDemoPhone">Número de Teléfono</Label>
-              <Input
-                id="newDemoPhone"
-                value={newDemoPhone}
-                onChange={(e) => setNewDemoPhone(e.target.value)}
-                placeholder="+1234567890"
-              />
-            </div>
-            
-            <div className="bg-blue-50 p-3 rounded-lg">
-              <p className="text-sm text-blue-700">
-                <strong>Información:</strong><br />
-                • Se creará un usuario demo con acceso de 3 días<br />
-                • Se generará automáticamente una cuenta de WhatsApp aislada<br />
-                • Las credenciales se mostrarán después de la creación
-              </p>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setManualCreateDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={() => {
-                if (newDemoName && newDemoPhone) {
-                  createDemoMutation.mutate({
-                    customerName: newDemoName,
-                    phoneNumber: newDemoPhone
-                  });
-                }
-              }}
-              disabled={createDemoMutation.isPending || !newDemoName || !newDemoPhone}
-            >
-              {createDemoMutation.isPending ? 'Creando...' : 'Crear Demo'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -479,11 +333,10 @@ export function DemoManagement() {
 interface DemoTableProps {
   demos: DemoUser[];
   onConvert?: (demo: DemoUser) => void;
-  onLogin?: (demo: DemoUser) => void;
   showConvertedInfo?: boolean;
 }
 
-function DemoTable({ demos, onConvert, onLogin, showConvertedInfo }: DemoTableProps) {
+function DemoTable({ demos, onConvert, showConvertedInfo }: DemoTableProps) {
   if (demos.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
@@ -504,7 +357,7 @@ function DemoTable({ demos, onConvert, onLogin, showConvertedInfo }: DemoTablePr
           <TableHead>Expira</TableHead>
           <TableHead>Logins</TableHead>
           {showConvertedInfo && <TableHead>Convertido</TableHead>}
-          {(onConvert || onLogin) && <TableHead>Acciones</TableHead>}
+          {onConvert && <TableHead>Acciones</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -563,32 +416,17 @@ function DemoTable({ demos, onConvert, onLogin, showConvertedInfo }: DemoTablePr
                 )}
               </TableCell>
             )}
-            {(onConvert || onLogin) && (
+            {onConvert && (
               <TableCell>
-                <div className="flex items-center space-x-2">
-                  {onLogin && !demo.isExpired && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => onLogin(demo)}
-                      className="flex items-center space-x-1"
-                    >
-                      <LogIn className="h-3 w-3" />
-                      <span>Iniciar Sesión</span>
-                    </Button>
-                  )}
-                  {onConvert && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onConvert(demo)}
-                      className="flex items-center space-x-1"
-                    >
-                      <ArrowRight className="h-3 w-3" />
-                      <span>Convertir</span>
-                    </Button>
-                  )}
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onConvert(demo)}
+                  className="flex items-center space-x-1"
+                >
+                  <ArrowRight className="h-3 w-3" />
+                  <span>Convertir</span>
+                </Button>
               </TableCell>
             )}
           </TableRow>

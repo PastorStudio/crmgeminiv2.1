@@ -22,12 +22,13 @@ export function AutoResponseToggle({ accountId, agentName = "Smart Assistant" }:
 
   const checkStatus = async () => {
     try {
-      const response = await fetch(`/bypass/deepseek-status/${accountId}`);
+      const response = await fetch('/api/auto-response/status');
       const data = await response.json();
       
       if (data.success) {
         setStatus(data);
-        setIsEnabled(data.isActive || false);
+        const accountConfig = data.configs?.find((config: any) => config.accountId === accountId);
+        setIsEnabled(accountConfig?.enabled || false);
       }
     } catch (error) {
       console.error('Error checking status:', error);
@@ -39,15 +40,15 @@ export function AutoResponseToggle({ accountId, agentName = "Smart Assistant" }:
     
     try {
       const endpoint = isEnabled 
-        ? `/bypass/deepseek-deactivate`
-        : `/bypass/deepseek-activate`;
+        ? `/api/auto-response/deactivate/${accountId}`
+        : `/api/auto-response/activate/${accountId}`;
       
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ accountId })
+        body: JSON.stringify({ agentName })
       });
 
       const data = await response.json();

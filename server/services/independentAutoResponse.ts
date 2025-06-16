@@ -7,7 +7,6 @@ import { db } from '../db';
 import { whatsappAccounts, whatsappMessages, externalAgents } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import OpenAI from 'openai';
-import { chatgptPlusDirectService } from './chatgptPlusDirectService';
 
 interface IndependentConfig {
   accountId: number;
@@ -147,9 +146,6 @@ class IndependentAutoResponseService {
         // Simular envío de respuesta (aquí se conectaría con WhatsApp real)
         console.log(`📤 Respuesta generada para ${message.chatId}: "${response.substring(0, 50)}..."`);
         
-        // Detectar si la respuesta incluye creación de demo
-        await this.handleDemoCreation(response, message.chatId, accountId);
-        
         // Guardar la respuesta en la base de datos
         await this.saveResponse(accountId, message.chatId, response);
       }
@@ -159,250 +155,37 @@ class IndependentAutoResponseService {
   }
 
   /**
-   * Maneja la creación automática de usuarios demo cuando se detecta el mensaje específico
-   */
-  private async handleDemoCreation(response: string, chatId: string, accountId: number): Promise<void> {
-    try {
-      // Detectar si la respuesta contiene palabras clave relacionadas con demo
-      const demoKeywords = [
-        "demo",
-        "prueba",
-        "gratis", 
-        "credenciales",
-        "usuario",
-        "contraseña",
-        "acceso"
-      ];
-
-      // Contar cuántas palabras clave de demo contiene la respuesta
-      const keywordMatches = demoKeywords.filter(keyword => 
-        response.toLowerCase().includes(keyword.toLowerCase())
-      );
-
-      // Si contiene al menos 3 palabras clave relacionadas con demo, activar creación
-      const containsDemoMessage = keywordMatches.length >= 3;
-      
-      if (containsDemoMessage) {
-        console.log(`🔍 Palabras clave detectadas: ${keywordMatches.join(', ')}`);
-      }
-
-      if (containsDemoMessage) {
-        console.log(`🎯 Detectado mensaje de creación de demo para chat: ${chatId}`);
-        
-        // Extraer nombre del cliente del chatId o usar datos del contacto
-        const clientName = await this.extractClientName(chatId);
-        const demoUser = await this.createDemoUser(clientName, chatId);
-        
-        if (demoUser) {
-          // Enviar mensaje de seguimiento con credenciales reales
-          const credentialsMessage = this.buildCredentialsMessage(demoUser, clientName);
-          
-          // Enviar el mensaje con las credenciales
-          console.log(`📧 Enviando credenciales de demo a ${chatId}: ${credentialsMessage.substring(0, 100)}...`);
-          
-          // Guardar el mensaje de credenciales
-          await this.saveResponse(accountId, chatId, credentialsMessage);
-          
-          console.log(`✅ Usuario demo creado exitosamente: ${demoUser.username}`);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error manejando creación de demo:', error);
-    }
-  }
-
-  /**
-   * Extrae el nombre del cliente desde el contacto o genera uno
-   */
-  private async extractClientName(chatId: string): Promise<string> {
-    try {
-      // Usar la conexión directa a la base de datos
-      const { db } = await import('../db');
-      const { contacts } = await import('@shared/schema');
-      const { eq } = await import('drizzle-orm');
-      
-      // Buscar en la tabla de contactos
-      const contact = await db.select().from(contacts)
-        .where(eq(contacts.phone, chatId.replace('@c.us', '')))
-        .limit(1);
-
-      if (contact.length > 0 && contact[0].name) {
-        return contact[0].name;
-      }
-
-      // Si no hay nombre guardado, generar uno basado en el número
-      const phoneNumber = chatId.replace('@c.us', '').replace('@g.us', '');
-      return `Cliente_${phoneNumber.slice(-4)}`;
-    } catch (error) {
-      console.error('Error extrayendo nombre del cliente:', error);
-      const phoneNumber = chatId.replace('@c.us', '').replace('@g.us', '');
-      return `Cliente_${phoneNumber.slice(-4)}`;
-    }
-  }
-
-  /**
-   * Crea un usuario demo en la base de datos
-   */
-  private async createDemoUser(clientName: string, chatId: string): Promise<any> {
-    try {
-      const { db } = await import('../db');
-      const { demoUsers, users, demoTracking } = await import('@shared/schema');
-      const { max } = await import('drizzle-orm');
-      const bcrypt = await import('bcrypt');
-      
-      // Generar credenciales únicas
-      const timestamp = Date.now();
-      const randomSuffix = Math.floor(Math.random() * 1000);
-      const username = `demo_${clientName.toLowerCase().replace(/[^a-z0-9]/g, '')}_${randomSuffix}`;
-      const password = 'demo123'; // Contraseña estándar para demos
-      const hashedPassword = await bcrypt.hash(password, 10);
-      
-      // Calcular fecha de expiración (3 días)
-      const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + 3);
-      
-      // Obtener el siguiente número de demo disponible
-      const demoNumberResult = await db.select({ 
-        nextDemoNumber: max(demoUsers.demoNumber) 
-      }).from(demoUsers);
-      const demoNumber = (demoNumberResult[0]?.nextDemoNumber || 0) + 1;
-      
-      // Crear el usuario demo en la tabla demo_users
-      const demoUserResult = await db.insert(demoUsers).values({
-        customerName: clientName,
-        phoneNumber: chatId.replace('@c.us', '').replace('@g.us', ''),
-        username: username,
-        password: password, // Contraseña sin hash en demo_users para referencia
-        demoNumber: demoNumber,
-        chatId: chatId,
-        expiresAt: expirationDate
-      }).returning();
-
-      if (demoUserResult.length > 0) {
-        const demoUser = demoUserResult[0];
-        
-        // También crear un usuario regular para el sistema con permisos demo
-        const userResult = await db.insert(users).values({
-          username: username,
-          fullName: clientName,
-          email: `${username}@demo.geminicrm.com`,
-          password: hashedPassword, // Hash con bcrypt para seguridad
-          role: 'demo',
-          status: 'active',
-          department: 'demo'
-        }).returning();
-
-        const user = userResult[0];
-        
-        // Registrar en demo_tracking la asociación
-        await db.insert(demoTracking).values({
-          userId: user.id,
-          demoUserId: demoUser.id,
-          chatId: chatId,
-          phoneNumber: chatId.replace('@c.us', '').replace('@g.us', ''),
-          clientName: clientName,
-          expiresAt: expirationDate
-        });
-
-        return {
-          id: user.id,
-          username: username,
-          fullName: clientName,
-          demo_expiration: expirationDate,
-          demo_number: demoNumber,
-          password: password // Solo para el mensaje de credenciales
-        };
-      }
-
-      return null;
-    } catch (error) {
-      console.error('❌ Error creando usuario demo:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Construye el mensaje con las credenciales del demo
-   */
-  private buildCredentialsMessage(demoUser: any, clientName: string): string {
-    const expirationDate = new Date(demoUser.demo_expiration);
-    const formattedDate = expirationDate.toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-
-    return `🎉 ¡Perfecto ${clientName}! Tu demo personalizado está listo
-
-🔑 **TUS CREDENCIALES DE ACCESO:**
-📧 Usuario: ${demoUser.username}
-🔒 Contraseña: demo123
-🌐 URL: https://geminicrm.com/login
-
-⏰ **DETALLES DE TU ACCESO:**
-✅ Duración: 3 días completos
-📅 Expira: ${formattedDate}
-🚀 Acceso total a todas las funciones premium
-
-🎯 **LO QUE PUEDES HACER:**
-• Configurar respuestas automáticas con IA
-• Gestionar múltiples cuentas de WhatsApp
-• Envío masivo de mensajes
-• Análisis avanzados y reportes
-• Panel de administración completo
-
-💡 **EMPEZAR AHORA:**
-1. Ve a la URL de arriba
-2. Ingresa tu usuario y contraseña
-3. ¡Explora todas las funciones!
-
-¿Alguna pregunta sobre tu demo? ¡Estoy aquí para ayudarte! 🚀`;
-  }
-
-  /**
-   * Genera respuesta usando el proveedor de IA configurado
+   * Genera respuesta usando IA
    */
   private async generateAIResponse(messageText: string, agentName: string): Promise<string | null> {
     try {
-      console.log(`🤖 Generando respuesta con proveedor de IA para agente: ${agentName}`);
-      
-      // Import AI provider service
-      const { aiProviderService } = await import('./aiProviderService');
-      
-      // Generate response using configured provider
-      const response = await aiProviderService.generateResponse(messageText, agentName);
-      
-      if (response && response.trim().length > 0) {
-        console.log(`✅ Respuesta generada exitosamente: ${response.substring(0, 50)}...`);
-        return response;
-      }
-      
-      console.log('⚠️ No se generó respuesta, usando respuesta por defecto');
-      return 'Gracias por tu mensaje. Te responderemos pronto.';
-      
+      const prompt = `Eres ${agentName}, un asistente de atención al cliente profesional y amigable.
+Responde al siguiente mensaje de manera útil y concisa:
+
+Mensaje: "${messageText}"
+
+Respuesta:`;
+
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          {
+            role: "system",
+            content: "Eres un asistente de atención al cliente profesional. Responde de manera útil, amigable y concisa."
+          },
+          {
+            role: "user",
+            content: messageText
+          }
+        ],
+        max_tokens: 150,
+        temperature: 0.7
+      });
+
+      return response.choices[0]?.message?.content || null;
     } catch (error) {
-      console.error('❌ Error generando respuesta con IA:', error);
-      
-      // Check if error is related to billing/quota
-      if (error.message && (error.message.includes('quota') || error.message.includes('billing'))) {
-        console.log('💳 Error de cuota/facturación detectado');
-      }
-      
-      // Fallback to simple response instead of failing
-      const fallbackResponses = [
-        'Gracias por contactarnos. Tu mensaje es importante para nosotros.',
-        'Hemos recibido tu mensaje y te responderemos pronto.',
-        'Estamos aquí para ayudarte. Un representante se pondrá en contacto contigo.',
-        'Tu consulta ha sido recibida. Te responderemos en breve.',
-        'Apreciamos tu contacto. Te responderemos lo antes posible.',
-        'Hemos recibido tu mensaje y te atenderemos a la brevedad.',
-        'Tu consulta es importante para nosotros. Te atenderemos pronto.',
-        'Gracias por contactarnos. Un representante se pondrá en contacto contigo.'
-      ];
-      
-      const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
-      console.log(`🔄 Usando respuesta de respaldo: ${randomResponse}`);
-      return randomResponse;
+      console.error('❌ Error generando respuesta IA:', error);
+      return null;
     }
   }
 
@@ -416,9 +199,10 @@ class IndependentAutoResponseService {
         chatId,
         messageId: `auto_${Date.now()}`,
         content: response,
-        from_me: true,
+        fromMe: true,
         timestamp: new Date(),
-        hasMedia: false
+        type: 'text',
+        status: 'sent'
       });
     } catch (error) {
       console.error('❌ Error guardando respuesta:', error);

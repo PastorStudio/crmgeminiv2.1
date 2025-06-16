@@ -574,32 +574,6 @@ export class DatabaseStorage implements IStorage {
     return account || undefined;
   }
 
-  async deleteAccountDependencies(id: number): Promise<void> {
-    console.log(`🗑️ Eliminando dependencias para cuenta WhatsApp ID: ${id}`);
-    
-    try {
-      // Eliminar intervenciones de chat
-      await db.execute(`DELETE FROM chat_interventions WHERE account_id = ${id}`);
-      console.log(`✅ Intervenciones de chat eliminadas para cuenta ${id}`);
-      
-      // Eliminar mensajes de WhatsApp
-      await db.execute(`DELETE FROM whatsapp_messages WHERE "whatsappAccountId" = ${id}`);
-      console.log(`✅ Mensajes de WhatsApp eliminados para cuenta ${id}`);
-      
-      // Eliminar leads asociados
-      await db.execute(`DELETE FROM leads WHERE "whatsappAccountId" = ${id}`);
-      console.log(`✅ Leads asociados eliminados para cuenta ${id}`);
-      
-      // Eliminar contactos asociados
-      await db.execute(`DELETE FROM contacts WHERE "whatsappAccountId" = ${id}`);
-      console.log(`✅ Contactos asociados eliminados para cuenta ${id}`);
-      
-    } catch (error) {
-      console.error(`❌ Error eliminando dependencias para cuenta ${id}:`, error);
-      throw error;
-    }
-  }
-
   async deleteWhatsappAccount(id: number): Promise<boolean> {
     const result = await db
       .delete(whatsappAccounts)
