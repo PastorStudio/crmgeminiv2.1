@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { 
@@ -31,7 +33,10 @@ import {
   ArrowRight,
   Plus,
   Filter,
-  Search
+  Search,
+  MessageCircle,
+  Send,
+  X
 } from "lucide-react";
 
 interface Lead {
@@ -55,6 +60,28 @@ interface Lead {
   interestLevel?: string;
   nextFollowUp?: string;
   priority?: string;
+  whatsappAccountId?: number;
+  leadScore?: number;
+  sentiment?: string;
+  intent?: string;
+  aiAnalysis?: any;
+}
+
+interface ConversationMessage {
+  id: number;
+  content: string;
+  timestamp: string;
+  isFromClient: boolean;
+  sender: string;
+  messageType?: string;
+}
+
+interface LeadComment {
+  id: number;
+  leadId: number;
+  comment: string;
+  author: string;
+  createdAt: string;
 }
 
 const LEAD_STAGES = [
@@ -78,10 +105,13 @@ export default function LeadsPipeline() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isConversationDialogOpen, setIsConversationDialogOpen] = useState(false);
+  const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [stageFilter, setStageFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("pipeline");
+  const [newComment, setNewComment] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -94,6 +124,18 @@ export default function LeadsPipeline() {
   // Obtener estadísticas del pipeline
   const { data: pipelineStats } = useQuery({
     queryKey: ['/api/leads/pipeline-stats']
+  });
+
+  // Obtener conversación del lead
+  const { data: conversationData = [] } = useQuery({
+    queryKey: ['/api/leads', selectedLead?.id, 'conversation'],
+    enabled: !!selectedLead?.id && isConversationDialogOpen
+  });
+
+  // Obtener comentarios del lead
+  const { data: commentsData = [] } = useQuery({
+    queryKey: ['/api/leads', selectedLead?.id, 'comments'],
+    enabled: !!selectedLead?.id && isCommentDialogOpen
   });
 
   // Mutación para actualizar lead
@@ -121,6 +163,46 @@ export default function LeadsPipeline() {
       });
     }
   });
+
+  // Mutación para añadir comentario
+  const addCommentMutation = useMutation({
+    mutationFn: async ({ leadId, comment }: { leadId: number; comment: string }) => {
+      return await apiRequest(`/api/leads/${leadId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ comment })
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Comentario añadido",
+        description: "El comentario ha sido añadido correctamente"
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/leads', selectedLead?.id, 'comments'] });
+      setNewComment("");
+      setIsCommentDialogOpen(false);
+    }
+  });
+
+  // Funciones auxiliares
+  const handleViewConversation = (lead: Lead) => {
+    setSelectedLead(lead);
+    setIsConversationDialogOpen(true);
+  };
+
+  const handleAddComment = (lead: Lead) => {
+    setSelectedLead(lead);
+    setIsCommentDialogOpen(true);
+  };
+
+  const handleEditLead = (lead: Lead) => {
+    setSelectedLead(lead);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSubmitComment = () => {
+    if (!selectedLead || !newComment.trim()) return;
+    addCommentMutation.mutate({ leadId: selectedLead.id, comment: newComment });
+  };
 
   // Filtrar leads
   const filteredLeads = leadsData.filter((lead: Lead) => {
@@ -192,20 +274,24 @@ export default function LeadsPipeline() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                setSelectedLead(lead);
-                setIsDetailDialogOpen(true);
-              }}
+              onClick={() => handleViewConversation(lead)}
+              title="Ver conversación de WhatsApp"
             >
               <Eye className="w-3 h-3" />
             </Button>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                setSelectedLead(lead);
-                setIsEditDialogOpen(true);
-              }}
+              onClick={() => handleAddComment(lead)}
+              title="Añadir comentario"
+            >
+              <MessageCircle className="w-3 h-3" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleEditLead(lead)}
+              title="Editar lead"
             >
               <Edit className="w-3 h-3" />
             </Button>
@@ -591,5 +677,161 @@ function EditLeadForm({ lead, onSave, onCancel }: {
         </Button>
       </div>
     </form>
+      {/* Dialog para ver conversación */}
+      <Dialog open={isConversationDialogOpen} onOpenChange={setIsConversationDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Conversación de WhatsApp - {selectedLead?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Información del lead */}
+            {selectedLead && (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Teléfono:</span> {selectedLead.phone}
+                  </div>
+                  <div>
+                    <span className="font-medium">Email:</span> {selectedLead.email}
+                  </div>
+                  <div>
+                    <span className="font-medium">Origen:</span> {selectedLead.source}
+                  </div>
+                  <div>
+                    <span className="font-medium">Puntuación:</span> {selectedLead.leadScore || 0}/100
+                  </div>
+                  {selectedLead.sentiment && (
+                    <div>
+                      <span className="font-medium">Sentimiento:</span> 
+                      <Badge className={`ml-2 ${
+                        selectedLead.sentiment === 'positive' ? 'bg-green-100 text-green-800' :
+                        selectedLead.sentiment === 'negative' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {selectedLead.sentiment}
+                      </Badge>
+                    </div>
+                  )}
+                  {selectedLead.intent && (
+                    <div>
+                      <span className="font-medium">Intención:</span> {selectedLead.intent}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Mensajes de conversación */}
+            <div className="border rounded-lg">
+              <div className="p-3 border-b bg-gray-50">
+                <h4 className="font-medium">Historial de Conversación</h4>
+              </div>
+              <ScrollArea className="h-96 p-4">
+                {conversationData.length > 0 ? (
+                  <div className="space-y-3">
+                    {conversationData.map((message: ConversationMessage) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${message.isFromClient ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-[70%] p-3 rounded-lg ${
+                            message.isFromClient
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 text-gray-900'
+                          }`}
+                        >
+                          <p className="text-sm">{message.content}</p>
+                          <div className="text-xs mt-1 opacity-70">
+                            {message.sender} • {new Date(message.timestamp).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No hay mensajes de conversación disponibles</p>
+                    <p className="text-sm">La conversación se mostrará aquí cuando esté disponible</p>
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+
+            {/* Análisis IA si está disponible */}
+            {selectedLead?.aiAnalysis && (
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="font-medium mb-2">Análisis de IA</h4>
+                <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(selectedLead.aiAnalysis, null, 2)}</pre>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para añadir comentario */}
+      <Dialog open={isCommentDialogOpen} onOpenChange={setIsCommentDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Añadir Comentario - {selectedLead?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Comentarios existentes */}
+            <div className="border rounded-lg max-h-60 overflow-y-auto">
+              <div className="p-3 border-b bg-gray-50">
+                <h4 className="font-medium">Comentarios Anteriores</h4>
+              </div>
+              {commentsData.length > 0 ? (
+                <div className="p-4 space-y-3">
+                  {commentsData.map((comment: LeadComment) => (
+                    <div key={comment.id} className="bg-gray-50 p-3 rounded">
+                      <p className="text-sm">{comment.comment}</p>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {comment.author} • {new Date(comment.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 text-center text-gray-500">
+                  <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>No hay comentarios anteriores</p>
+                </div>
+              )}
+            </div>
+
+            {/* Nuevo comentario */}
+            <div>
+              <Label htmlFor="newComment">Nuevo Comentario</Label>
+              <Textarea
+                id="newComment"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Escribe tu comentario aquí..."
+                rows={4}
+                className="mt-1"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsCommentDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleSubmitComment}
+                disabled={!newComment.trim() || addCommentMutation.isPending}
+              >
+                {addCommentMutation.isPending ? 'Guardando...' : 'Añadir Comentario'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
