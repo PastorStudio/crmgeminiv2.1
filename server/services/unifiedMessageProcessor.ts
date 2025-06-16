@@ -143,6 +143,11 @@ class UnifiedMessageProcessor {
 
       console.log(`📨 Procesando mensaje en cuenta ${context.accountId}: "${context.body.substring(0, 50)}..."`);
 
+      // Asignar chat automáticamente si es un mensaje entrante
+      if (!context.fromMe && context.chatId) {
+        await this.assignChatAutomatically(context.chatId, context.accountId, context.contactName);
+      }
+
       // PRIORIDAD 1: Verificar si hay prompt asignado
       if (this.promptConfigs.has(context.accountId)) {
         console.log(`🎯 PROMPT DETECTADO para cuenta ${context.accountId} - procesando con prompt`);
@@ -317,6 +322,25 @@ REGLAS CRÍTICAS:
     } catch (error) {
       console.error('❌ Error procesando con IA genérica:', error);
       return { success: false, source: 'ai' };
+    }
+  }
+
+  /**
+   * Asignar chat automáticamente usando el servicio de asignación
+   */
+  private async assignChatAutomatically(chatId: string, accountId: number, contactName?: string): Promise<void> {
+    try {
+      const { AutomaticAssignmentService } = await import('./automaticAssignmentService');
+      const assignmentService = AutomaticAssignmentService.getInstance();
+      
+      const success = await assignmentService.assignChat(chatId, accountId, contactName);
+      
+      if (success) {
+        console.log(`✅ Chat ${chatId} asignado automáticamente para cuenta ${accountId}`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en asignación automática:', error);
     }
   }
 
