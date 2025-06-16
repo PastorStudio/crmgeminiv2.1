@@ -150,27 +150,95 @@ export class AutomaticChatToLeadService {
   }
 
   /**
-   * Obtiene chats de una cuenta de WhatsApp
+   * Obtiene chats INDIVIDUALES de una cuenta de WhatsApp (EXCLUYE GRUPOS)
    */
   private async getChatsFromAccount(accountId: number): Promise<ProcessedChat[]> {
     try {
-      // Simular obtención de chats reales (en producción se conectaría con WhatsApp Web)
-      const mockChats: ProcessedChat[] = [
-        {
-          chatId: `chat_${accountId}_${Date.now()}_1`,
-          contactName: 'Cliente Potencial',
+      const client = whatsappMultiAccountManager.getClient(accountId);
+      if (!client) {
+        console.log(`⚠️ Cliente WhatsApp no disponible para cuenta ${accountId}`);
+        return [];
+      }
+
+      // Obtener SOLO chats individuales, excluyendo grupos completamente
+      const chats = await client.getChats();
+      const individualChats = chats.filter(chat => {
+        // FILTRO CRÍTICO: Solo chats individuales (no grupos)
+        const isIndividual = !chat.isGroup;
+        const hasRecentActivity = chat.lastMessage && chat.lastMessage.timestamp > (Date.now() - 24 * 60 * 60 * 1000); // 24 horas
+        const hasValidContact = chat.contact && chat.contact.number;
+        
+        if (chat.isGroup) {
+          console.log(`🚫 GRUPO EXCLUIDO: ${chat.name || chat.id.user} - No se convierte a lead`);
+          return false;
+        }
+        
+        return isIndividual && hasRecentActivity && hasValidContact;
+      });
+
+      console.log(`📱 Procesando ${individualChats.length} chats INDIVIDUALES de cuenta ${accountId} (${chats.length - individualChats.length} grupos excluidos)`);
+
+      const processedChats: ProcessedChat[] = [];
+
+      for (const chat of individualChats) {
+        try {
+          const contact = await chat.getContact();
+          const lastMessage = chat.lastMessage;
+          
+          if (!contact || !contact.number || !lastMessage) continue;
+
+          // Asegurar que es un chat individual válido
+          if (chat.isGroup) {
+            console.log(`🚫 VERIFICACIÓN ADICIONAL: Grupo detectado ${chat.id.user} - omitido`);
+            continue;
+          }
+
+          const processedChat: ProcessedChat = {
+            chatId: chat.id.user,
+            contactName: contact.pushname || contact.name || contact.number,
+            contactPhone: `+${contact.number}`,
+            accountId,
+            lastMessage: lastMessage.body || '',
+            messageCount: await this.getMessageCount(chat),
+            timestamp: new Date(lastMessage.timestamp * 1000)
+          };
+
+          processedChats.push(processedChat);
+          console.log(`✅ Chat individual válido: ${processedChat.contactName} (${processedChat.contactPhone})`);
+          
+        } catch (error) {
+          console.error(`Error procesando chat individual:`, error);
+        }
+      }
+
+      return processedChats;
+    } catch (error) {
+      console.error(`Error obteniendo chats individuales de cuenta ${accountId}:`, error);
+      // Fallback con datos demo solo para desarrollo
+      if (process.env.NODE_ENV === 'development') {
+        return [{
+          chatId: `demo_individual_${accountId}_${Date.now()}`,
+          contactName: 'Cliente Demo Individual',
           contactPhone: `+5491123456${Math.floor(Math.random() * 100)}`,
           accountId,
           lastMessage: 'Hola, estoy interesado en sus servicios',
-          messageCount: Math.floor(Math.random() * 10) + 1,
+          messageCount: 3,
           timestamp: new Date()
-        }
-      ];
-
-      return mockChats;
-    } catch (error) {
-      console.error(`Error obteniendo chats de cuenta ${accountId}:`, error);
+        }];
+      }
       return [];
+    }
+  }
+
+  /**
+   * Obtiene el número de mensajes en un chat
+   */
+  private async getMessageCount(chat: any): Promise<number> {
+    try {
+      const messages = await chat.fetchMessages({ limit: 50 });
+      return messages.length;
+    } catch (error) {
+      return 1; // Fallback
     }
   }
 

@@ -293,6 +293,30 @@ export default function MassSender() {
     select: (data) => Array.isArray(data) ? data : []
   });
 
+  // Consulta para obtener etiquetas de leads y unificarlas con contactos
+  const { data: leadTags = [] } = useQuery<string[]>({
+    queryKey: ['/api/leads/tags'],
+    retry: false,
+    select: (data) => Array.isArray(data) ? data : []
+  });
+
+  // Efecto para unificar etiquetas de leads y contactos
+  useEffect(() => {
+    const allTags = new Set<string>();
+    
+    // Agregar etiquetas de leads
+    leadTags.forEach(tag => allTags.add(tag));
+    
+    // Agregar etiquetas de contactos
+    whatsappContactsQuery.forEach((contact: any) => {
+      if (contact.tags && Array.isArray(contact.tags)) {
+        contact.tags.forEach((tag: string) => allTags.add(tag));
+      }
+    });
+    
+    setAvailableTags(Array.from(allTags).sort());
+  }, [leadTags, whatsappContactsQuery]);
+
   // Consulta para obtener contactos de WhatsApp reales
   const { 
     data: whatsappContactsQuery = [], 
@@ -309,15 +333,6 @@ export default function MassSender() {
       
       // Ensure data is an array
       const contacts = Array.isArray(data) ? data : [];
-      
-      // Extraer etiquetas únicas de todos los contactos
-      const allTags = new Set<string>();
-      contacts.forEach((contact: any) => {
-        if (contact.tags && Array.isArray(contact.tags)) {
-          contact.tags.forEach((tag: string) => allTags.add(tag));
-        }
-      });
-      setAvailableTags(Array.from(allTags));
       
       return contacts;
     },
