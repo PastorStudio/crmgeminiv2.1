@@ -1313,10 +1313,16 @@ export function registerOptimizedRoutes(app: Express): Server {
   // ***** RUTAS DE LEADS OPTIMIZADAS *****
   app.get("/api/leads", async (_req: Request, res: Response) => {
     try {
+      console.log('📋 Getting all leads from database...');
       const leads = await storage.getAllLeads();
+      console.log(`✅ Retrieved ${leads.length} leads successfully`);
       res.json(leads);
     } catch (error) {
-      res.status(500).json({ error: "Error al obtener leads" });
+      console.error('❌ Error getting leads:', error);
+      res.status(500).json({ 
+        error: "Error al obtener leads",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
