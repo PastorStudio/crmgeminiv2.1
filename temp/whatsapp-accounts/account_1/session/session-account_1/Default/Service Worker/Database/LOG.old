@@ -1,3 +1,3 @@
-2025/06/15-22:43:53.429 19ba Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Service Worker/Database/MANIFEST-000001
-2025/06/15-22:43:53.436 19ba Recovering log #3
-2025/06/15-22:43:53.437 19ba Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Service Worker/Database/000003.log 
+2025/06/15-22:59:53.244 1f38 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Service Worker/Database/MANIFEST-000001
+2025/06/15-22:59:53.253 1f38 Recovering log #3
+2025/06/15-22:59:53.254 1f38 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Service Worker/Database/000003.log 
