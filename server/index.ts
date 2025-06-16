@@ -8843,4 +8843,179 @@ Responde de manera conversacional, profesional y útil según tu especializació
     console.error('❌ Error iniciando sistema de asignación automática:', error);
   }
 
+  // ===== SISTEMA DE ASIGNACIÓN MEJORADO CON CONVERSIÓN A LEADS =====
+  console.log('🚀 Iniciando sistema de asignación mejorado...');
+  try {
+    enhancedAssignmentService.startEnhancedAutoMonitoring();
+    console.log('✅ Sistema de asignación mejorado iniciado correctamente');
+    console.log('⏰ Monitoreo con conversión a leads programado cada 2 minutos');
+  } catch (error) {
+    console.error('❌ Error iniciando sistema de asignación mejorado:', error);
+  }
+
+  // ENDPOINTS MEJORADOS PARA SISTEMA DE ASIGNACIONES Y AI
+  app.post('/api/enhanced-ai-response', async (req: Request, res: Response) => {
+    try {
+      const { message, chatId, accountId, agentId } = req.body;
+      
+      if (!message || !chatId || !accountId) {
+        return res.status(400).json({
+          success: false,
+          error: 'message, chatId y accountId son requeridos'
+        });
+      }
+
+      console.log(`🤖 Generando respuesta AI mejorada para chat ${chatId} en cuenta ${accountId}`);
+
+      const config = {
+        accountId: parseInt(accountId),
+        agentId: agentId ? parseInt(agentId) : undefined,
+        customPrompt: 'Eres un asistente profesional de servicio al cliente especializado en WhatsApp. Responde de manera amigable y útil.',
+        language: 'es',
+        enableTranslation: true,
+        maxHistoryMessages: 10
+      };
+
+      const aiResponse = await enhancedAIService.generateContextualResponse(message, chatId, config);
+
+      // Intentar asignación automática si no hay agente asignado
+      if (!agentId) {
+        const chatData = {
+          chatId,
+          accountId: parseInt(accountId),
+          contactName: `Contacto ${chatId.split('@')[0]}`,
+          lastMessage: message,
+          messageCount: 1
+        };
+        
+        await enhancedAssignmentService.assignChatWithLeadConversion(chatData);
+      }
+
+      res.json({
+        success: true,
+        response: aiResponse.response,
+        language: aiResponse.language,
+        translated: aiResponse.translated,
+        chatId,
+        accountId
+      });
+
+    } catch (error) {
+      console.error('❌ Error en respuesta AI mejorada:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error generando respuesta AI'
+      });
+    }
+  });
+
+  // ENDPOINT PARA ESTADÍSTICAS DE ASIGNACIONES MEJORADAS
+  app.get('/api/enhanced-assignment-stats', async (req: Request, res: Response) => {
+    try {
+      const stats = await enhancedAssignmentService.getEnhancedAssignmentStats();
+      const conversationStats = enhancedAIService.getConversationStats();
+      
+      res.json({
+        success: true,
+        assignmentStats: stats,
+        conversationStats,
+        lastUpdated: new Date()
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo estadísticas mejoradas:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error obteniendo estadísticas'
+      });
+    }
+  });
+
+  // ENDPOINT PARA FORZAR ASIGNACIÓN AUTOMÁTICA CON CONVERSIÓN A LEAD
+  app.post('/api/force-auto-assignment', async (req: Request, res: Response) => {
+    try {
+      const { chatId, accountId, contactName, lastMessage } = req.body;
+      
+      if (!chatId || !accountId) {
+        return res.status(400).json({
+          success: false,
+          error: 'chatId y accountId son requeridos'
+        });
+      }
+
+      const chatData = {
+        chatId,
+        accountId: parseInt(accountId),
+        contactName: contactName || `Contacto ${chatId.split('@')[0]}`,
+        lastMessage: lastMessage || 'Nueva conversación',
+        messageCount: 1
+      };
+
+      const success = await enhancedAssignmentService.assignChatWithLeadConversion(chatData);
+      
+      res.json({
+        success,
+        message: success ? 'Chat asignado correctamente con conversión a lead' : 'No se pudo asignar el chat',
+        chatId,
+        accountId
+      });
+    } catch (error) {
+      console.error('❌ Error en asignación forzada:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error en asignación'
+      });
+    }
+  });
+
+  // ENDPOINT PARA HISTORIAL DE CONVERSACIÓN
+  app.get('/api/conversation-history/:chatId', async (req: Request, res: Response) => {
+    try {
+      const { chatId } = req.params;
+      const maxMessages = req.query.maxMessages ? parseInt(req.query.maxMessages as string) : 20;
+      
+      const history = enhancedAIService.getConversationHistory(chatId, maxMessages);
+      
+      res.json({
+        success: true,
+        chatId,
+        history,
+        totalMessages: history.length
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo historial:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error obteniendo historial'
+      });
+    }
+  });
+
+  // ENDPOINT PARA DETECTAR IDIOMA DE MENSAJES
+  app.post('/api/detect-language', async (req: Request, res: Response) => {
+    try {
+      const { text } = req.body;
+      
+      if (!text) {
+        return res.status(400).json({
+          success: false,
+          error: 'text es requerido'
+        });
+      }
+
+      const detectedLanguage = await enhancedAIService.detectLanguage(text);
+      
+      res.json({
+        success: true,
+        text,
+        detectedLanguage
+      });
+    } catch (error) {
+      console.error('❌ Error detectando idioma:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error detectando idioma'
+      });
+    }
+  });
+
 })();
