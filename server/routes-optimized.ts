@@ -16,7 +16,7 @@ import {
   contacts,
   whatsappMessages,
   tickets,
-  tasks
+  automatedTasks
 } from "@shared/schema";
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { db } from './db';
@@ -26,6 +26,7 @@ import { authService } from "./services/authService";
 import { enhancedSystemService } from "./services/enhancedSystemService";
 // import { realTimeAnalyticsService } from "./services/realTimeAnalyticsService"; // Disabled due to schema issues
 import { realDashboardService } from "./services/realDashboardService";
+import { automaticTicketService } from "./services/automaticTicketGenerationService";
 import jwt from 'jsonwebtoken';
 
 // SISTEMA DE RUTAS OPTIMIZADO Y LIMPIO CON GEMINI AI
@@ -1887,9 +1888,9 @@ export function registerOptimizedRoutes(app: Express): Server {
       
       const tickets = await db
         .select()
-        .from(db.tickets)
-        .where(eq(db.tickets.userId, parseInt(userId as string)))
-        .orderBy(desc(db.tickets.createdAt));
+        .from(tickets)
+        .where(eq(tickets.assignedTo, parseInt(userId as string)))
+        .orderBy(desc(tickets.createdAt));
 
       res.json(tickets);
     } catch (error) {
@@ -2110,10 +2111,10 @@ export function registerOptimizedRoutes(app: Express): Server {
       const userId = req.headers['x-user-id'] || '3';
 
       const deletedTask = await db
-        .delete(db.tasks)
+        .delete(tasks)
         .where(and(
-          eq(db.tasks.id, taskId),
-          eq(db.tasks.userId, parseInt(userId as string))
+          eq(tasks.id, taskId),
+          eq(tasks.assignedTo, parseInt(userId as string))
         ))
         .returning();
 
@@ -2125,6 +2126,69 @@ export function registerOptimizedRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error deleting task:', error);
       res.status(500).json({ error: "Error al eliminar tarea" });
+    }
+  });
+
+  // ===== AUTOMATIC TICKET GENERATION ENDPOINTS =====
+  
+  // Force process new conversations for tickets
+  app.post("/api/tickets/process-conversations", async (req: Request, res: Response) => {
+    try {
+      console.log('🎫 Forzando procesamiento de conversaciones para tickets...');
+      await automaticTicketService.forceProcessNewConversations();
+      
+      res.json({
+        success: true,
+        message: "Procesamiento de conversaciones iniciado",
+        status: automaticTicketService.getStatus()
+      });
+    } catch (error) {
+      console.error('Error processing conversations:', error);
+      res.status(500).json({ error: "Error al procesar conversaciones" });
+    }
+  });
+
+  // Create ticket from specific chat
+  app.post("/api/tickets/from-chat", async (req: Request, res: Response) => {
+    try {
+      const { chatId } = req.body;
+      const userId = req.headers['x-user-id'] || '3';
+
+      if (!chatId) {
+        return res.status(400).json({ error: "chatId es requerido" });
+      }
+
+      const ticket = await automaticTicketService.createTicketFromChat(
+        chatId, 
+        parseInt(userId as string)
+      );
+
+      if (!ticket) {
+        return res.status(404).json({ error: "No se pudo crear ticket para este chat" });
+      }
+
+      res.json({
+        success: true,
+        ticket: ticket,
+        message: "Ticket creado exitosamente desde chat"
+      });
+    } catch (error) {
+      console.error('Error creating ticket from chat:', error);
+      res.status(500).json({ error: "Error al crear ticket desde chat" });
+    }
+  });
+
+  // Get automatic ticket generation status
+  app.get("/api/tickets/auto-status", async (req: Request, res: Response) => {
+    try {
+      const status = automaticTicketService.getStatus();
+      res.json({
+        success: true,
+        status: status
+      });
+    } catch (error) {
+      console.error('Error getting ticket generation status:', error);
+      res.status(500).json({ error: "Error al obtener estado de generación automática" });
     }
   });
 
