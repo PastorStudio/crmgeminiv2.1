@@ -54,6 +54,7 @@ import NotificationSystem from './components/NotificationSystem';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SubscriptionManager } from './components/admin/SubscriptionManager';
 import TagManagement from './pages/TagManagement';
+import Home from './pages/Home';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
@@ -176,6 +177,18 @@ const AppRoutes: React.FC = () => {
                   <rect x="14" y="14" width="7" height="7" rx="1" fill="#EF4444"/>
                 </svg>
                 Dashboard
+              </a>
+              
+              <a href="/home" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/home' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="8" fill="#10B981"/>
+                  <rect x="8" y="8" width="8" height="8" rx="2" fill="white"/>
+                  <circle cx="10" cy="10" r="1" fill="#10B981"/>
+                  <circle cx="14" cy="10" r="1" fill="#10B981"/>
+                  <rect x="9" y="13" width="6" height="1" fill="#10B981"/>
+                  <rect x="10" y="15" width="4" height="1" fill="#10B981"/>
+                </svg>
+                Real Data Hub
               </a>
               
               <a href="/leads" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/leads' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
@@ -671,6 +684,7 @@ const AppRoutes: React.FC = () => {
                 
                 {/* Rutas protegidas */}
                 <Route path="/" component={() => <PrivateRoute component={Dashboard} path="/" />} />
+                <Route path="/home" component={() => <PrivateRoute component={Home} path="/home" />} />
                 <Route path="/leads" component={() => <PrivateRoute component={Leads} path="/leads" />} />
                 <Route path="/sales-pipeline" component={() => <PrivateRoute component={SalesPipeline} path="/sales-pipeline" />} />
                 <Route path="/messages" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="messaging"><Messages /></ProtectedRoute>} path="/messages" />} />
