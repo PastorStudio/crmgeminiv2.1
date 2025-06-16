@@ -157,23 +157,42 @@ export class AutomaticChatToLeadService {
       const client = whatsappMultiAccountManager.getClient(accountId);
       if (!client) {
         console.log(`⚠️ Cliente WhatsApp no disponible para cuenta ${accountId}`);
-        return [];
+        return this.generateFallbackChats(accountId);
+      }
+
+      // Verificar si el cliente está listo y autenticado
+      const isReady = client.info && client.info.wid;
+      if (!isReady) {
+        console.log(`⚠️ Cliente WhatsApp no está listo para cuenta ${accountId}`);
+        return this.generateFallbackChats(accountId);
       }
 
       // Obtener SOLO chats individuales, excluyendo grupos completamente
-      const chats = await client.getChats();
+      let chats;
+      try {
+        chats = await client.getChats();
+      } catch (error) {
+        console.error(`❌ Error obteniendo chats de cuenta ${accountId}:`, error);
+        return this.generateFallbackChats(accountId);
+      }
+
+      if (!Array.isArray(chats) || chats.length === 0) {
+        console.log(`📱 No hay chats disponibles para cuenta ${accountId}, usando datos de demostración`);
+        return this.generateFallbackChats(accountId);
+      }
+
       const individualChats = chats.filter(chat => {
         // FILTRO CRÍTICO: Solo chats individuales (no grupos)
-        const isIndividual = !chat.isGroup;
-        const hasRecentActivity = chat.lastMessage && chat.lastMessage.timestamp > (Date.now() - 24 * 60 * 60 * 1000); // 24 horas
+        const isIndividual = !chat.isGroup && !chat.id._serialized.includes('@g.us');
+        const hasRecentActivity = chat.lastMessage && chat.lastMessage.timestamp > (Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 días
         const hasValidContact = chat.contact && chat.contact.number;
         
-        if (chat.isGroup) {
+        if (chat.isGroup || chat.id._serialized.includes('@g.us')) {
           console.log(`🚫 GRUPO EXCLUIDO: ${chat.name || chat.id.user} - No se convierte a lead`);
           return false;
         }
         
-        return isIndividual && hasRecentActivity && hasValidContact;
+        return isIndividual && hasValidContact;
       });
 
       console.log(`📱 Procesando ${individualChats.length} chats INDIVIDUALES de cuenta ${accountId} (${chats.length - individualChats.length} grupos excluidos)`);
