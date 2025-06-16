@@ -321,7 +321,110 @@ REGLAS CRÍTICAS:
   }
 
   /**
-   * Llamar a OpenAI para generar respuesta
+   * Llamar a IA con prioridad de servicios funcionales
+   */
+  private async callWorkingAI(systemPrompt: string, userMessage: string, temperature: number): Promise<string | null> {
+    // PRIORIDAD 1: Intentar Gemini (funcional)
+    try {
+      console.log('🤖 Intentando respuesta con Gemini...');
+      const response = await this.callGemini(systemPrompt, userMessage, temperature);
+      if (response) {
+        console.log('✅ Respuesta generada con Gemini');
+        return response;
+      }
+    } catch (error) {
+      console.log('❌ Gemini falló:', error.message);
+    }
+
+    // PRIORIDAD 2: Intentar DeepSeek (funcional)
+    try {
+      console.log('🤖 Intentando respuesta con DeepSeek...');
+      const response = await this.callDeepSeek(systemPrompt, userMessage, temperature);
+      if (response) {
+        console.log('✅ Respuesta generada con DeepSeek');
+        return response;
+      }
+    } catch (error) {
+      console.log('❌ DeepSeek falló:', error.message);
+    }
+
+    // PRIORIDAD 3: Intentar OpenAI (tiene problemas de cuota)
+    try {
+      console.log('🤖 Intentando respuesta con OpenAI...');
+      const response = await this.callOpenAI(systemPrompt, userMessage, temperature);
+      if (response) {
+        console.log('✅ Respuesta generada con OpenAI');
+        return response;
+      }
+    } catch (error) {
+      console.log('❌ OpenAI falló:', error.message);
+    }
+
+    console.log('❌ Todos los servicios de IA fallaron');
+    return null;
+  }
+
+  /**
+   * Llamar a Gemini para generar respuesta
+   */
+  private async callGemini(systemPrompt: string, userMessage: string, temperature: number): Promise<string | null> {
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      
+      if (!process.env.GEMINI_API_KEY) {
+        throw new Error('GEMINI_API_KEY no configurada');
+      }
+
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const prompt = `${systemPrompt}\n\nUsuario: ${userMessage}`;
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      
+      return response.text() || null;
+    } catch (error) {
+      console.error('❌ Error llamando a Gemini:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Llamar a DeepSeek para generar respuesta
+   */
+  private async callDeepSeek(systemPrompt: string, userMessage: string, temperature: number): Promise<string | null> {
+    try {
+      const axios = (await import('axios')).default;
+      
+      if (!process.env.DEEPSEEK_API_KEY) {
+        throw new Error('DEEPSEEK_API_KEY no configurada');
+      }
+
+      const response = await axios.post('https://api.deepseek.com/v1/chat/completions', {
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ],
+        max_tokens: 500,
+        temperature: temperature
+      }, {
+        headers: {
+          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000
+      });
+
+      return response.data.choices[0]?.message?.content || null;
+    } catch (error) {
+      console.error('❌ Error llamando a DeepSeek:', error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Llamar a OpenAI para generar respuesta (respaldo)
    */
   private async callOpenAI(systemPrompt: string, userMessage: string, temperature: number): Promise<string | null> {
     try {
@@ -332,7 +435,7 @@ REGLAS CRÍTICAS:
       });
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage }
