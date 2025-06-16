@@ -1300,77 +1300,67 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
-  // ***** RUTAS DE USUARIOS OPTIMIZADAS *****
+  // ***** RUTAS DE USUARIOS OPTIMIZADAS CON DATOS REALES *****
   app.get("/api/users", async (_req: Request, res: Response) => {
-    console.log("🔄 Routes-optimized users - Starting request...");
+    console.log("🔄 Fetching real users from database...");
     
     try {
-      console.log("🔄 Routes-optimized users - Inside try block...");
+      // Fetch real users from database instead of hardcoded data
+      const realUsers = await storage.getAllUsers();
       
-      // Return hardcoded users directly to bypass database issues
-      const users = [
-        {
-          id: 17,
-          username: 'admin',
-          fullName: 'admin',
-          email: 'admin@admin.com',
-          role: 'admin',
-          status: 'active',
-          department: 'administracion',
-          avatar: null,
-          lastLoginAt: '2025-05-15T13:24:51.020Z',
-          totalLogins: 0,
-          lastActivity: '2025-05-15T13:24:51.020Z',
-          currentPlan: 'Sin plan',
-          currentPlanId: null,
-          subscriptionEndDate: null,
-          subscriptionStatus: null,
-          daysRemaining: null
-        },
-        {
-          id: 22,
-          username: 'demo',
-          fullName: 'Usuario Demo',
-          email: 'demo@geminicrm.com',
-          role: 'supervisor',
-          status: 'inactive',
-          department: 'supervision',
-          avatar: null,
-          lastLoginAt: null,
-          totalLogins: 0,
-          lastActivity: null,
-          currentPlan: 'Sin plan',
-          currentPlanId: null,
-          subscriptionEndDate: null,
-          subscriptionStatus: null,
-          daysRemaining: null
-        },
-        {
-          id: 23,
-          username: 'mmoreno',
-          fullName: 'Misael Moreno Frias',
-          email: 'mmorenofrias06@gmail.com',
-          role: 'admin',
-          status: 'active',
-          department: 'administracion',
-          avatar: null,
-          lastLoginAt: null,
-          totalLogins: 0,
-          lastActivity: null,
-          currentPlan: 'Sin plan',
-          currentPlanId: null,
-          subscriptionEndDate: null,
-          subscriptionStatus: null,
-          daysRemaining: null
-        }
-      ];
+      // Add subscription and activity data for each user
+      const usersWithDetails = await Promise.all(
+        realUsers.map(async (user) => {
+          try {
+            // Get subscription info
+            const [subscription] = await db
+              .select({
+                planName: subscriptionPlans.name,
+                planId: userSubscriptions.planId,
+                endDate: userSubscriptions.endDate,
+                status: userSubscriptions.status
+              })
+              .from(userSubscriptions)
+              .leftJoin(subscriptionPlans, eq(userSubscriptions.planId, subscriptionPlans.id))
+              .where(eq(userSubscriptions.userId, user.id))
+              .limit(1);
 
-      console.log(`✅ Routes-optimized users - Returning ${users.length} users`);
-      res.json(users);
+            const currentTime = new Date();
+            const endDate = subscription?.endDate ? new Date(subscription.endDate) : null;
+            const daysRemaining = endDate ? Math.max(0, Math.ceil((endDate.getTime() - currentTime.getTime()) / (1000 * 60 * 60 * 24))) : null;
+
+            return {
+              ...user,
+              currentPlan: subscription?.planName || 'Sin plan',
+              currentPlanId: subscription?.planId || null,
+              subscriptionEndDate: subscription?.endDate || null,
+              subscriptionStatus: subscription?.status || null,
+              daysRemaining,
+              lastActivity: user.lastActivity || user.lastLoginAt || user.createdAt,
+              totalLogins: user.totalLogins || 0
+            };
+          } catch (error) {
+            console.error(`Error getting details for user ${user.id}:`, error);
+            return {
+              ...user,
+              currentPlan: 'Sin plan',
+              currentPlanId: null,
+              subscriptionEndDate: null,
+              subscriptionStatus: null,
+              daysRemaining: null,
+              lastActivity: user.lastActivity || user.lastLoginAt || user.createdAt,
+              totalLogins: user.totalLogins || 0
+            };
+          }
+        })
+      );
+
+      console.log(`✅ Retrieved ${usersWithDetails.length} real users with current timestamp: ${new Date().toISOString()}`);
+      res.json(usersWithDetails);
     } catch (error) {
-      console.error('❌ Routes-optimized users - Error:', error);
-      console.error('❌ Routes-optimized users - Stack:', error.stack);
-      res.status(500).json({ error: "Error al obtener usuarios" });
+      console.error('❌ Error fetching real users:', error);
+      console.error('❌ Stack trace:', error.stack);
+      res.status(500).json({ error: "Error al obtener usuarios reales" });
     }
   });
 
@@ -1644,25 +1634,31 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
-  // Real dashboard metrics endpoint - displays actual database data
+  // Real dashboard metrics endpoint - displays actual database data with current timestamps
   app.get("/api/dashboard-metrics", async (req: Request, res: Response) => {
     try {
-      console.log('📈 Getting real dashboard metrics from database...');
+      console.log('📈 Getting real dashboard metrics with current timestamps...');
       
-      const metrics = await realDashboardService.getDashboardMetrics();
+      const { realDataIntegrationService } = await import('./services/realDataIntegrationService');
+      const metrics = await realDataIntegrationService.getRealDashboardMetrics();
       
       if (!metrics.success) {
-        return res.status(500).json({ error: metrics.error });
+        return res.status(500).json({ error: 'Error al obtener métricas reales' });
       }
       
-      console.log('✅ Real metrics retrieved:', metrics.data.totals);
+      console.log('✅ Real metrics with current timestamp retrieved:', metrics.timestamp);
       
       res.setHeader('Content-Type', 'application/json');
-      res.json(metrics.data);
+      res.json({
+        ...metrics.metrics,
+        lastUpdated: metrics.timestamp,
+        serverTime: new Date().toISOString(),
+        fetchedAt: Date.now()
+      });
     } catch (error) {
-      console.error('❌ Error generando métricas:', error);
+      console.error('❌ Error getting real dashboard metrics:', error);
       res.status(500).json({ 
-        error: "Error al generar métricas del dashboard",
+        error: "Error al obtener métricas reales del dashboard",
         details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
@@ -3630,18 +3626,27 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
-  // Get real dashboard metrics
+  // Get real dashboard metrics with current timestamps
   app.get("/api/dashboard/real-metrics", async (req: Request, res: Response) => {
     try {
       const { realDataIntegrationService } = await import('./services/realDataIntegrationService');
       const result = await realDataIntegrationService.getRealDashboardMetrics();
       
-      res.json(result);
+      // Ensure we include current timestamp data
+      const enhancedResult = {
+        ...result,
+        fetchedAt: Date.now(),
+        currentTime: new Date().toISOString(),
+        realData: true
+      };
+      
+      res.json(enhancedResult);
     } catch (error) {
       console.error('Error getting real dashboard metrics:', error);
       res.status(500).json({ 
         success: false,
-        error: "Error fetching real dashboard metrics" 
+        error: "Error fetching real dashboard metrics",
+        timestamp: new Date().toISOString()
       });
     }
   });
