@@ -14,7 +14,9 @@ import {
   leads,
   whatsappAccounts,
   contacts,
-  whatsappMessages
+  whatsappMessages,
+  tickets,
+  tasks
 } from "@shared/schema";
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { db } from './db';
@@ -1873,6 +1875,256 @@ export function registerOptimizedRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error getting subscription status:', error);
       res.json({ hasActivePlan: false });
+    }
+  });
+
+  // ===== TICKETS API ENDPOINTS =====
+  
+  // Get all tickets for current user
+  app.get("/api/tickets", async (req: Request, res: Response) => {
+    try {
+      const userId = req.headers['x-user-id'] || '3'; // Default to demo user
+      
+      const tickets = await db
+        .select()
+        .from(db.tickets)
+        .where(eq(db.tickets.userId, parseInt(userId as string)))
+        .orderBy(desc(db.tickets.createdAt));
+
+      res.json(tickets);
+    } catch (error) {
+      console.error('Error getting tickets:', error);
+      res.status(500).json({ error: "Error al obtener tickets" });
+    }
+  });
+
+  // Get ticket statistics
+  app.get("/api/tickets/stats", async (req: Request, res: Response) => {
+    try {
+      const userId = req.headers['x-user-id'] || '3';
+      
+      const tickets = await db
+        .select()
+        .from(db.tickets)
+        .where(eq(db.tickets.userId, parseInt(userId as string)));
+
+      const stats = {
+        total: tickets.length,
+        open: tickets.filter(t => t.status === 'open').length,
+        urgent: tickets.filter(t => t.priority === 'urgent').length,
+        highInterest: tickets.filter(t => t.interestLevel === 'high' || t.interestLevel === 'very_high').length,
+        totalValue: tickets.reduce((sum, t) => sum + (t.estimatedValue || 0), 0)
+      };
+
+      res.json(stats);
+    } catch (error) {
+      console.error('Error getting ticket stats:', error);
+      res.status(500).json({ error: "Error al obtener estadísticas de tickets" });
+    }
+  });
+
+  // Create new ticket
+  app.post("/api/tickets", async (req: Request, res: Response) => {
+    try {
+      const userId = req.headers['x-user-id'] || '3';
+      const ticketData = req.body;
+
+      const newTicket = await db
+        .insert(db.tickets)
+        .values({
+          ...ticketData,
+          userId: parseInt(userId as string),
+          uuid: `ticket-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+
+      res.json(newTicket[0]);
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      res.status(500).json({ error: "Error al crear ticket" });
+    }
+  });
+
+  // Update ticket
+  app.put("/api/tickets/:id", async (req: Request, res: Response) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      const userId = req.headers['x-user-id'] || '3';
+      const updateData = req.body;
+
+      const updatedTicket = await db
+        .update(db.tickets)
+        .set({
+          ...updateData,
+          updatedAt: new Date(),
+          closedAt: updateData.status === 'closed' ? new Date() : undefined
+        })
+        .where(and(
+          eq(db.tickets.id, ticketId),
+          eq(db.tickets.userId, parseInt(userId as string))
+        ))
+        .returning();
+
+      if (updatedTicket.length === 0) {
+        return res.status(404).json({ error: "Ticket no encontrado" });
+      }
+
+      res.json(updatedTicket[0]);
+    } catch (error) {
+      console.error('Error updating ticket:', error);
+      res.status(500).json({ error: "Error al actualizar ticket" });
+    }
+  });
+
+  // Delete ticket
+  app.delete("/api/tickets/:id", async (req: Request, res: Response) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      const userId = req.headers['x-user-id'] || '3';
+
+      const deletedTicket = await db
+        .delete(db.tickets)
+        .where(and(
+          eq(db.tickets.id, ticketId),
+          eq(db.tickets.userId, parseInt(userId as string))
+        ))
+        .returning();
+
+      if (deletedTicket.length === 0) {
+        return res.status(404).json({ error: "Ticket no encontrado" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting ticket:', error);
+      res.status(500).json({ error: "Error al eliminar ticket" });
+    }
+  });
+
+  // ===== TASKS API ENDPOINTS =====
+  
+  // Get all tasks for current user
+  app.get("/api/tasks", async (req: Request, res: Response) => {
+    try {
+      const userId = req.headers['x-user-id'] || '3';
+      
+      const tasks = await db
+        .select()
+        .from(db.tasks)
+        .where(eq(db.tasks.userId, parseInt(userId as string)))
+        .orderBy(desc(db.tasks.createdAt));
+
+      res.json(tasks);
+    } catch (error) {
+      console.error('Error getting tasks:', error);
+      res.status(500).json({ error: "Error al obtener tareas" });
+    }
+  });
+
+  // Get task statistics
+  app.get("/api/tasks/stats", async (req: Request, res: Response) => {
+    try {
+      const userId = req.headers['x-user-id'] || '3';
+      
+      const tasks = await db
+        .select()
+        .from(db.tasks)
+        .where(eq(db.tasks.userId, parseInt(userId as string)));
+
+      const now = new Date();
+      const stats = {
+        total: tasks.length,
+        completed: tasks.filter(t => t.status === 'completed').length,
+        pending: tasks.filter(t => t.status === 'pending').length,
+        overdue: tasks.filter(t => new Date(t.dueDate) < now && t.status !== 'completed').length
+      };
+
+      res.json(stats);
+    } catch (error) {
+      console.error('Error getting task stats:', error);
+      res.status(500).json({ error: "Error al obtener estadísticas de tareas" });
+    }
+  });
+
+  // Create new task
+  app.post("/api/tasks", async (req: Request, res: Response) => {
+    try {
+      const userId = req.headers['x-user-id'] || '3';
+      const taskData = req.body;
+
+      const newTask = await db
+        .insert(db.tasks)
+        .values({
+          ...taskData,
+          userId: parseInt(userId as string),
+          assignedTo: taskData.assignedTo || parseInt(userId as string),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+
+      res.json(newTask[0]);
+    } catch (error) {
+      console.error('Error creating task:', error);
+      res.status(500).json({ error: "Error al crear tarea" });
+    }
+  });
+
+  // Update task
+  app.put("/api/tasks/:id", async (req: Request, res: Response) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const userId = req.headers['x-user-id'] || '3';
+      const updateData = req.body;
+
+      const updatedTask = await db
+        .update(db.tasks)
+        .set({
+          ...updateData,
+          updatedAt: new Date(),
+          completedAt: updateData.status === 'completed' ? new Date() : undefined
+        })
+        .where(and(
+          eq(db.tasks.id, taskId),
+          eq(db.tasks.userId, parseInt(userId as string))
+        ))
+        .returning();
+
+      if (updatedTask.length === 0) {
+        return res.status(404).json({ error: "Tarea no encontrada" });
+      }
+
+      res.json(updatedTask[0]);
+    } catch (error) {
+      console.error('Error updating task:', error);
+      res.status(500).json({ error: "Error al actualizar tarea" });
+    }
+  });
+
+  // Delete task
+  app.delete("/api/tasks/:id", async (req: Request, res: Response) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const userId = req.headers['x-user-id'] || '3';
+
+      const deletedTask = await db
+        .delete(db.tasks)
+        .where(and(
+          eq(db.tasks.id, taskId),
+          eq(db.tasks.userId, parseInt(userId as string))
+        ))
+        .returning();
+
+      if (deletedTask.length === 0) {
+        return res.status(404).json({ error: "Tarea no encontrada" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      res.status(500).json({ error: "Error al eliminar tarea" });
     }
   });
 
