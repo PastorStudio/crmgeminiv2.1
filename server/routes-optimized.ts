@@ -2013,9 +2013,9 @@ export function registerOptimizedRoutes(app: Express): Server {
       
       const tasks = await db
         .select()
-        .from(db.tasks)
-        .where(eq(db.tasks.userId, parseInt(userId as string)))
-        .orderBy(desc(db.tasks.createdAt));
+        .from(automatedTasks)
+        .where(eq(automatedTasks.createdBy, parseInt(userId as string)))
+        .orderBy(desc(automatedTasks.createdAt));
 
       res.json(tasks);
     } catch (error) {
