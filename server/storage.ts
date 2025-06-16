@@ -919,6 +919,49 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
   }
+
+  async getLeadComments(leadId: number): Promise<any[]> {
+    try {
+      // For now, return empty array as comments table is not in the schema
+      // In a real implementation, this would query a lead_comments table
+      return [];
+    } catch (error) {
+      console.error('Error getting lead comments:', error);
+      return [];
+    }
+  }
+
+  async addLeadComment(comment: { leadId: number; comment: string; author: string; createdAt: Date }): Promise<any> {
+    try {
+      // For now, return a mock comment object
+      // In a real implementation, this would insert into a lead_comments table
+      return {
+        id: Date.now(),
+        leadId: comment.leadId,
+        comment: comment.comment,
+        author: comment.author,
+        createdAt: comment.createdAt
+      };
+    } catch (error) {
+      console.error('Error adding lead comment:', error);
+      throw error;
+    }
+  }
+
+  async getMessagesByChat(chatId: string): Promise<any[]> {
+    try {
+      const messages = await db
+        .select()
+        .from(whatsappMessages)
+        .where(eq(whatsappMessages.chatId, chatId))
+        .orderBy(whatsappMessages.timestamp);
+      
+      return messages;
+    } catch (error) {
+      console.error('Error getting messages by chat:', error);
+      return [];
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();

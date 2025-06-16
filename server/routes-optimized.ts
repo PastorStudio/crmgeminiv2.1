@@ -1481,6 +1481,90 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // Endpoint para obtener conversación de un lead
+  app.get("/api/leads/:id/conversation", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      const lead = await storage.getLead(leadId);
+      
+      if (!lead) {
+        return res.status(404).json({ error: "Lead no encontrado" });
+      }
+
+      // Si el lead tiene chatId, obtener mensajes de WhatsApp
+      if (lead.chatId) {
+        const messages = await storage.getMessagesByChat(lead.chatId);
+        const formattedMessages = messages.map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          isFromClient: msg.isFromClient,
+          sender: msg.sender || (msg.isFromClient ? lead.name : 'Agente'),
+          messageType: msg.messageType
+        }));
+        res.json(formattedMessages);
+      } else {
+        res.json([]);
+      }
+    } catch (error) {
+      console.error('Error getting lead conversation:', error);
+      res.status(500).json({ error: "Error al obtener conversación" });
+    }
+  });
+
+  // Endpoint para obtener comentarios de un lead
+  app.get("/api/leads/:id/comments", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      const comments = await storage.getLeadComments(leadId);
+      res.json(comments);
+    } catch (error) {
+      console.error('Error getting lead comments:', error);
+      res.status(500).json({ error: "Error al obtener comentarios" });
+    }
+  });
+
+  // Endpoint para añadir comentario a un lead
+  app.post("/api/leads/:id/comments", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      const { comment } = req.body;
+      
+      if (!comment || !comment.trim()) {
+        return res.status(400).json({ error: "El comentario es requerido" });
+      }
+
+      const newComment = await storage.addLeadComment({
+        leadId,
+        comment: comment.trim(),
+        author: 'Usuario', // In a real app, this would come from authentication
+        createdAt: new Date()
+      });
+
+      res.status(201).json(newComment);
+    } catch (error) {
+      console.error('Error adding lead comment:', error);
+      res.status(500).json({ error: "Error al añadir comentario" });
+    }
+  });
+
+  // Endpoint para actualizar un lead
+  app.put("/api/leads/:id", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      const updatedLead = await storage.updateLead(leadId, req.body);
+      
+      if (!updatedLead) {
+        return res.status(404).json({ error: "Lead no encontrado" });
+      }
+
+      res.json(updatedLead);
+    } catch (error) {
+      console.error('Error updating lead:', error);
+      res.status(500).json({ error: "Error al actualizar lead" });
+    }
+  });
+
   // ***** RUTAS DE ACTIVIDADES OPTIMIZADAS *****
   app.get("/api/activities", async (_req: Request, res: Response) => {
     try {
