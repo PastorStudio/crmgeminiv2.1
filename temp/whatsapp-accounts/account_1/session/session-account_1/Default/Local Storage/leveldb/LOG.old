@@ -1,3 +1,3 @@
-2025/06/15-23:19:48.972 3805 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb/MANIFEST-000001
-2025/06/15-23:19:48.984 3805 Recovering log #11
-2025/06/15-23:19:48.984 3805 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb/000011.log 
+2025/06/15-23:31:04.335 3b96 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb/MANIFEST-000001
+2025/06/15-23:31:04.349 3b96 Recovering log #11
+2025/06/15-23:31:04.352 3b96 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb/000011.log 
