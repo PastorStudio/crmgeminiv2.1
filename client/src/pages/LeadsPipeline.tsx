@@ -25,6 +25,7 @@ import {
   Edit, 
   Eye,
   MessageSquare,
+  MessageCircle,
   TrendingUp,
   Star,
   Clock,

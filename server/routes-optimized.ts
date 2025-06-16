@@ -875,6 +875,111 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // ***** RUTAS DE CONVERSACIÓN Y COMENTARIOS PARA LEADS *****
+  
+  // Obtener conversación de un lead específico
+  app.get("/api/leads/:id/conversation", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      
+      // Obtener el lead para verificar que existe
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        return res.status(404).json({ error: "Lead no encontrado" });
+      }
+
+      // Buscar mensajes relacionados con el lead por teléfono o chatId
+      const messages = await db.select()
+        .from(whatsappMessages)
+        .where(eq(whatsappMessages.chatId, lead.phone))
+        .orderBy(desc(whatsappMessages.timestamp))
+        .limit(50);
+
+      // Formatear mensajes para la conversación
+      const conversation = messages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString(),
+        isFromClient: !msg.from_me,
+        sender: msg.from_me ? 'Sistema' : lead.name,
+        messageType: msg.mediaType || 'text'
+      }));
+
+      res.json(conversation);
+    } catch (error) {
+      console.error('Error obteniendo conversación del lead:', error);
+      res.status(500).json({ error: "Error al obtener conversación" });
+    }
+  });
+
+  // Obtener comentarios de un lead
+  app.get("/api/leads/:id/comments", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      
+      // Verificar que el lead existe
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        return res.status(404).json({ error: "Lead no encontrado" });
+      }
+
+      // Por ahora devolvemos comentarios simulados ya que no tenemos tabla de comentarios
+      // En una implementación completa, aquí consultaríamos la tabla lead_comments
+      const comments = [
+        {
+          id: 1,
+          leadId: leadId,
+          comment: "Lead generado automáticamente desde WhatsApp",
+          author: "Sistema",
+          createdAt: lead.createdAt
+        }
+      ];
+
+      res.json(comments);
+    } catch (error) {
+      console.error('Error obteniendo comentarios del lead:', error);
+      res.status(500).json({ error: "Error al obtener comentarios" });
+    }
+  });
+
+  // Añadir comentario a un lead
+  app.post("/api/leads/:id/comments", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      const { comment } = req.body;
+
+      if (!comment || comment.trim() === '') {
+        return res.status(400).json({ error: "El comentario no puede estar vacío" });
+      }
+
+      // Verificar que el lead existe
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        return res.status(404).json({ error: "Lead no encontrado" });
+      }
+
+      // Por ahora agregamos el comentario a las notas del lead
+      const updatedNotes = lead.notes ? 
+        `${lead.notes}\n\n[COMENTARIO - ${new Date().toLocaleString()}]\n${comment}` :
+        `[COMENTARIO - ${new Date().toLocaleString()}]\n${comment}`;
+
+      await storage.updateLead(leadId, { notes: updatedNotes });
+
+      const newComment = {
+        id: Date.now(), // ID temporal
+        leadId: leadId,
+        comment: comment,
+        author: "Usuario",
+        createdAt: new Date().toISOString()
+      };
+
+      res.status(201).json(newComment);
+    } catch (error) {
+      console.error('Error añadiendo comentario al lead:', error);
+      res.status(500).json({ error: "Error al añadir comentario" });
+    }
+  });
+
   // ***** GESTIÓN AUTOMÁTICA DE CLAVES GEMINI *****
   app.get("/api/settings/gemini-client-key", async (req: Request, res: Response) => {
     try {
