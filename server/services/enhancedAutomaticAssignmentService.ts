@@ -57,14 +57,14 @@ export class EnhancedAutomaticAssignmentService {
       const userAccounts = await db
         .select({
           userId: users.id,
-          userName: users.firstName,
+          userName: users.fullName,
           userRole: users.role,
           accountId: whatsappAccounts.id,
           accountName: whatsappAccounts.name
         })
         .from(users)
         .leftJoin(whatsappAccounts, eq(whatsappAccounts.userId, users.id))
-        .where(eq(users.isActive, true));
+        .where(eq(users.status, 'active'));
 
       // Crear reglas mejoradas para cada usuario
       const userRules = new Map<number, EnhancedAssignmentRule>();
@@ -142,19 +142,16 @@ export class EnhancedAutomaticAssignmentService {
         return false;
       }
 
-      // Crear la asignación
-      const [assignment] = await db.insert(chatAssignments).values({
-        chatId: chatData.chatId,
-        accountId: chatData.accountId,
-        assignedToId: bestUser.userId,
-        assignedById: 1, // Sistema automático
-        status: 'active',
-        priority: 'medium',
-        category: 'whatsapp',
-        notes: `Asignado automáticamente - Contacto: ${chatData.contactName || 'Desconocido'}`,
-        assignedAt: new Date(),
-        lastActivityAt: new Date()
-      }).returning();
+      // Crear la asignación usando raw SQL para evitar problemas de schema
+      const { sql } = await import('drizzle-orm');
+      const assignmentQuery = sql`
+        INSERT INTO chat_assignments ("chatId", "accountId", "assignedToId", "assignedById", "status", "priority", "category", "notes")
+        VALUES (${chatData.chatId}, ${chatData.accountId}, ${bestUser.userId}, 1, 'active', 'medium', 'whatsapp', ${`Asignado automáticamente - Contacto: ${chatData.contactName || 'Desconocido'}`})
+        RETURNING *
+      `;
+      
+      const result = await db.execute(assignmentQuery);
+      const assignment = result.rows[0];
 
       console.log(`✅ Chat ${chatData.chatId} asignado a usuario ${bestUser.userId}`);
 
@@ -339,8 +336,7 @@ export class EnhancedAutomaticAssignmentService {
           name: whatsappAccounts.name,
           userId: whatsappAccounts.userId
         })
-        .from(whatsappAccounts)
-        .where(eq(whatsappAccounts.ready, true));
+        .from(whatsappAccounts);
 
       let assignedCount = 0;
       
