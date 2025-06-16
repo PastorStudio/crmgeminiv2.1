@@ -37,37 +37,7 @@ export default function Home() {
     refetchInterval: 60000,
   });
 
-  // Automatic chat-to-lead conversion mutation
-  const convertChatsMutation = useMutation({
-    mutationFn: () => apiRequest("/api/auto-convert-chats", { method: "POST" }),
-    onSuccess: (data) => {
-      toast({
-        title: "Conversion Complete",
-        description: `${data.result.converted} new leads created from ${data.result.processed} conversations`,
-      });
-      
-      // Refresh all related data
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/real-metrics"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/leads/real-data"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/auto-convert-chats/stats"] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Conversion Failed",
-        description: "Failed to convert chats to leads. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleConvertChats = async () => {
-    setIsConverting(true);
-    try {
-      await convertChatsMutation.mutateAsync();
-    } finally {
-      setIsConverting(false);
-    }
-  };
+  // Automatic background conversion - no manual intervention needed
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
@@ -168,15 +138,15 @@ export default function Home() {
           <TabsContent value="automation" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               
-              {/* Automatic Chat Conversion */}
+              {/* Automatic Chat Conversion Status */}
               <Card className="bg-white shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Bot className="h-5 w-5 text-blue-600" />
-                    Automatic Chat-to-Lead Conversion
+                    <Bot className="h-5 w-5 text-green-600" />
+                    Auto Chat-to-Lead Conversion
                   </CardTitle>
                   <CardDescription>
-                    Convert WhatsApp conversations into leads automatically
+                    System automatically converts new WhatsApp chats to leads in real-time
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -195,24 +165,14 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <Button 
-                    onClick={handleConvertChats}
-                    disabled={isConverting || convertChatsMutation.isPending}
-                    className="w-full"
-                    size="lg"
-                  >
-                    {isConverting || convertChatsMutation.isPending ? (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                        Converting Chats...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="mr-2 h-4 w-4" />
-                        Start Auto Conversion
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex items-center justify-center p-3 bg-green-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm font-medium text-green-700">
+                        Auto-conversion Active
+                      </span>
+                    </div>
+                  </div>
 
                   <RealDataIndicator 
                     isRealData={conversionStats?.realData}
