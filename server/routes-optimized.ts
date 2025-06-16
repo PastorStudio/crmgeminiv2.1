@@ -3306,6 +3306,61 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // Eliminar lead completo
+  app.delete("/api/leads/:id", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      
+      if (isNaN(leadId)) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "ID de lead inválido" 
+        });
+      }
+
+      // Verificar que el lead existe
+      const [existingLead] = await db
+        .select()
+        .from(leads)
+        .where(and(eq(leads.id, leadId), eq(leads.isDeleted, false)));
+
+      if (!existingLead) {
+        return res.status(404).json({ 
+          success: false, 
+          error: "Lead no encontrado o ya fue eliminado" 
+        });
+      }
+
+      // Eliminar asociaciones de etiquetas primero
+      await db.delete(leadTags).where(eq(leadTags.leadId, leadId));
+
+      // Marcar como eliminado (soft delete)
+      const [updatedLead] = await db
+        .update(leads)
+        .set({ 
+          isDeleted: true,
+          deletedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(leads.id, leadId))
+        .returning();
+
+      console.log(`✅ Lead ${leadId} (${existingLead.name}) eliminado correctamente`);
+      res.json({ 
+        success: true, 
+        message: `Lead "${existingLead.name}" eliminado correctamente`,
+        lead: updatedLead
+      });
+      
+    } catch (error) {
+      console.error('❌ Error eliminando lead:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Error interno del servidor al eliminar lead" 
+      });
+    }
+  });
+
   // Remover etiqueta de lead
   app.delete("/api/leads/:id/tags/:tagId", async (req: Request, res: Response) => {
     try {
