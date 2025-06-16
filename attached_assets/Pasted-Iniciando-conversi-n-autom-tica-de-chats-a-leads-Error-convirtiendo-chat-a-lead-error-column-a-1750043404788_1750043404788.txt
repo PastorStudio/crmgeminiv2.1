@@ -1,0 +1,227 @@
+Iniciando conversión automática de chats a leads...
+Error convirtiendo chat a lead: error: column "assignedAt" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.getLeadsByPhone (/home/runner/workspace/server/storage.ts:289:23)
+    at async AutomaticChatToLeadService.convertChatToLead (/home/runner/workspace/server/services/automaticChatToLeadService.ts:183:29)
+    at async AutomaticChatToLeadService.processChatsFromAccount (/home/runner/workspace/server/services/automaticChatToLeadService.ts:119:26)
+    at async AutomaticChatToLeadService.processAllNewChats (/home/runner/workspace/server/services/automaticChatToLeadService.ts:78:26)
+    at async Timeout._onTimeout (/home/runner/workspace/server/services/automaticChatToLeadService.ts:52:9) {
+  length: 174,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "leads.assignedTo".',
+  position: '274',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3729',
+  routine: 'errorMissingColumn'
+}
+Error convirtiendo chat a lead: error: column "assignedAt" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.getLeadsByPhone (/home/runner/workspace/server/storage.ts:289:23)
+    at async AutomaticChatToLeadService.convertChatToLead (/home/runner/workspace/server/services/automaticChatToLeadService.ts:183:29)
+    at async AutomaticChatToLeadService.processChatsFromAccount (/home/runner/workspace/server/services/automaticChatToLeadService.ts:119:26)
+    at async AutomaticChatToLeadService.processAllNewChats (/home/runner/workspace/server/services/automaticChatToLeadService.ts:78:26)
+    at async Timeout._onTimeout (/home/runner/workspace/server/services/automaticChatToLeadService.ts:52:9) {
+  length: 174,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "leads.assignedTo".',
+  position: '274',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3729',
+  routine: 'errorMissingColumn'
+}
+🔄 API directa: Obteniendo chats desde WhatsApp...
+🔄 Intentando reconexión automática...
+Cuenta WhatsApp ID 1 ya está inicializada
+🔄 Activando keep-alive para mantener conexión persistente...
+📱 Estado de autenticación WhatsApp: {
+  authenticated: false,
+  ready: false,
+  initialized: true,
+  hasClient: true
+}
+🔄 Activando sistema de datos reales...
+🔄 Activating real WhatsApp connections...
+Cuenta WhatsApp ID 1 ya está inicializada
+✅ WhatsApp account 1 initialized for real data
+🔄 Forzando actualización de QR para cuenta 1
+🔄 Cliente destruido para cuenta 1
+Cuenta WhatsApp ID 1 ya está inicializada
+✅ QR forzado para cuenta 1
+✅ QR code generated for authentication
+✅ Persistent connection activated
+🚀 Real WhatsApp system activated - ready for authentic data
+📱 WhatsApp requiere autenticación - escanear código QR para datos reales
+11:37:49 PM [express] GET /api/direct/whatsapp/chats 304 in 1002ms :: []
+📊 Verificando estado estable - 1 cuentas configuradas
+✅ Cuenta 1 - Respuestas automáticas ACTIVAS con configuración AI personalizada
+💚 Heartbeat recibido del agente 22
+💚 Agente 22 marcado como activo
+💚 Heartbeat recibido del agente 22
+💚 Agente 22 marcado como activo
+🔄 API directa: Obteniendo chats desde WhatsApp...
+🔄 Intentando reconexión automática...
+Cuenta WhatsApp ID 1 ya está inicializada
+🔄 Activando keep-alive para mantener conexión persistente...
+📱 Estado de autenticación WhatsApp: {
+  authenticated: false,
+  ready: false,
+  initialized: true,
+  hasClient: true
+}
+🔄 Activando sistema de datos reales...
+🔄 Activating real WhatsApp connections...
+Cuenta WhatsApp ID 1 ya está inicializada
+✅ WhatsApp account 1 initialized for real data
+🔄 Forzando actualización de QR para cuenta 1
+🔄 Cliente destruido para cuenta 1
+📊 Verificando estado estable - 1 cuentas configuradas
+✅ Cuenta 1 - Respuestas automáticas ACTIVAS con configuración AI personalizada
+Cuenta WhatsApp ID 1 ya está inicializada
+✅ QR forzado para cuenta 1
+✅ QR code generated for authentication
+✅ Persistent connection activated
+🚀 Real WhatsApp system activated - ready for authentic data
+📱 WhatsApp requiere autenticación - escanear código QR para datos reales
+11:38:00 PM [express] GET /api/direct/whatsapp/chats 304 in 1001ms :: []
+📊 Verificando estado estable - 1 cuentas configuradas
+✅ Cuenta 1 - Respuestas automáticas ACTIVAS con configuración AI personalizada
+💚 Heartbeat recibido del agente 22
+💚 Agente 22 marcado como activo
+💚 Heartbeat recibido del agente 22
+💚 Agente 22 marcado como activo
+🔄 API directa: Obteniendo chats desde WhatsApp...
+🔄 Intentando reconexión automática...
+Cuenta WhatsApp ID 1 ya está inicializada
+🔄 Activando keep-alive para mantener conexión persistente...
+📱 Estado de autenticación WhatsApp: {
+  authenticated: false,
+  ready: false,
+  initialized: true,
+  hasClient: true
+}
+🔄 Activando sistema de datos reales...
+🔄 Activating real WhatsApp connections...
+Cuenta WhatsApp ID 1 ya está inicializada
+✅ WhatsApp account 1 initialized for real data
+🔄 Forzando actualización de QR para cuenta 1
+🔄 Cliente destruido para cuenta 1
+Cuenta WhatsApp ID 1 ya está inicializada
+✅ QR forzado para cuenta 1
+✅ QR code generated for authentication
+✅ Persistent connection activated
+🚀 Real WhatsApp system activated - ready for authentic data
+📱 WhatsApp requiere autenticación - escanear código QR para datos reales
+11:38:11 PM [express] GET /api/direct/whatsapp/chats 304 in 1001ms :: []
+🎫 Procesando conversaciones para generar tickets automáticamente...
+❌ Error obteniendo conversaciones: TypeError: Cannot convert undefined or null to object
+    at Function.entries (<anonymous>)
+    at orderSelectedFields (/home/runner/workspace/node_modules/src/utils.ts:77:16)
+    at <anonymous> (/home/runner/workspace/node_modules/src/utils.ts:88:19)
+    at Array.reduce (<anonymous>)
+    at orderSelectedFields (/home/runner/workspace/node_modules/src/utils.ts:77:32)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:979:23)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at PgSelectBase._prepare (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:978:17)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:1009:16)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at PgSelectBase.execute (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:1008:17)
+    at PgSelectBase.then (/home/runner/workspace/node_modules/src/query-promise.ts:31:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+📋 Encontradas 0 conversaciones candidatas para tickets
+🔄 Iniciando conversión automática de chats a leads...
+Error convirtiendo chat a lead: error: column "assignedAt" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.getLeadsByPhone (/home/runner/workspace/server/storage.ts:289:23)
+    at async AutomaticChatToLeadService.convertChatToLead (/home/runner/workspace/server/services/automaticChatToLeadService.ts:183:29)
+    at async AutomaticChatToLeadService.processChatsFromAccount (/home/runner/workspace/server/services/automaticChatToLeadService.ts:119:26)
+    at async AutomaticChatToLeadService.processAllNewChats (/home/runner/workspace/server/services/automaticChatToLeadService.ts:78:26)
+    at async Timeout._onTimeout (/home/runner/workspace/server/services/automaticChatToLeadService.ts:52:9) {
+  length: 174,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "leads.assignedTo".',
+  position: '274',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3729',
+  routine: 'errorMissingColumn'
+}
+Error convirtiendo chat a lead: error: column "assignedAt" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.getLeadsByPhone (/home/runner/workspace/server/storage.ts:289:23)
+    at async AutomaticChatToLeadService.convertChatToLead (/home/runner/workspace/server/services/automaticChatToLeadService.ts:183:29)
+    at async AutomaticChatToLeadService.processChatsFromAccount (/home/runner/workspace/server/services/automaticChatToLeadService.ts:119:26)
+    at async AutomaticChatToLeadService.processAllNewChats (/home/runner/workspace/server/services/automaticChatToLeadService.ts:78:26)
+    at async Timeout._onTimeout (/home/runner/workspace/server/services/automaticChatToLeadService.ts:52:9) {
+  length: 174,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "leads.assignedTo".',
+  position: '274',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3729',
+  routine: 'errorMissingColumn'
+}
+🔄 Procesando chats sin asignar...
+📊 Encontrados 0 chats sin asignar
+✅ 0 chats asignados automáticamente
+📊 Verificando estado estable - 1 cuentas configuradas
+✅ Cuenta 1 - Respuestas automáticas ACTIVAS con configuración AI personalizada
+🔄 API directa: Obteniendo chats desde WhatsApp...
+🔄 Intentando reconexión automática...
+Cuenta WhatsApp ID 1 ya está inicializada
+🔄 Activando keep-alive para mantener conexión persistente...
+📱 Estado de autenticación WhatsApp: {
+  authenticated: false,
+  ready: false,
+  initialized: true,
+  hasClient: true
+}
+🔄 Activando sistema de datos reales...
+🔄 Activating real WhatsApp connections...
+Cuenta WhatsApp ID 1 ya está inicializada
