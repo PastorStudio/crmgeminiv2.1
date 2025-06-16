@@ -46,6 +46,7 @@ import { conversationAnalysisService } from './services/conversationAnalysis';
 import { unifiedMessageProcessor } from './services/unifiedMessageProcessor';
 import { enhancedAssignmentService } from './services/enhancedAutomaticAssignmentService';
 import { enhancedAIService } from './services/enhancedAIResponseService';
+import { backgroundChatMonitor } from './services/backgroundChatMonitor';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
