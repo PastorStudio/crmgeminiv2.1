@@ -199,6 +199,10 @@ export class RealDataIntegrationService {
         ? (leadsFromWhatsApp[0].count / totalMessages[0].count * 100).toFixed(2)
         : 0;
 
+      // Force current UTC timestamp
+      const currentTimestamp = new Date();
+      const utcTimestamp = new Date(currentTimestamp.getTime() + (currentTimestamp.getTimezoneOffset() * 60000));
+      
       return {
         success: true,
         metrics: {
@@ -207,10 +211,14 @@ export class RealDataIntegrationService {
           contacts: totalContacts[0].count,
           accounts: totalAccounts[0].count,
           conversionRate: parseFloat(conversionRate.toString()),
-          revenue: 0 // Calculate from lead values if needed
+          revenue: 0,
+          lastUpdated: utcTimestamp.toISOString(),
+          generatedAt: Date.now()
         },
         realData: true,
-        timestamp: new Date().toISOString()
+        timestamp: utcTimestamp.toISOString(),
+        serverTime: utcTimestamp.toISOString(),
+        localTime: new Date().toISOString()
       };
     } catch (error) {
       console.error('Error fetching real dashboard metrics:', error);
