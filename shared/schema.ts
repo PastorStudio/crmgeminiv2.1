@@ -231,6 +231,7 @@ export const contacts = pgTable("contacts", {
   email: text("email"),
   company: text("company"),
   position: text("position"),
+  whatsappAccountId: integer("whatsapp_account_id").references(() => whatsappAccounts.id),
   whatsappProfile: jsonb("whatsappProfile"), // Foto, estado, etc.
   location: text("location"),
   tags: text("tags").array(),
