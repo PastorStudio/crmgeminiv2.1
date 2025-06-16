@@ -2292,42 +2292,43 @@ app.get('/api/agents/live-status', async (_req: Request, res: Response) => {
   }
 });
 
-// Test endpoint for unified message processor
-app.post('/direct/test-unified-processor', async (req: Request, res: Response) => {
+// Sistema de asignación automática de chats
+app.post('/api/assign-chat', async (req: Request, res: Response) => {
   try {
-    res.setHeader('Content-Type', 'application/json');
+    const { chatId, accountId, contactName } = req.body;
     
-    const { accountId, chatId, body, contactName, fromMe } = req.body;
+    const { AutomaticAssignmentService } = await import('./services/automaticAssignmentService');
+    const assignmentService = AutomaticAssignmentService.getInstance();
     
-    console.log(`🧪 Testing unified processor - Account ${accountId}, Message: "${body}"`);
+    const success = await assignmentService.assignChat(chatId, accountId, contactName);
     
-    // Import and test unified message processor
-    const { UnifiedMessageProcessor } = await import('./services/unifiedMessageProcessor');
-    const processor = UnifiedMessageProcessor.getInstance();
-    
-    // Process the message
-    const result = await processor.processMessage({
-      accountId,
-      chatId,
-      body,
-      contactName: contactName || 'Test User',
-      fromMe: fromMe || false
-    });
-    
-    console.log(`✅ Processor result:`, result);
-    
-    return res.json({
-      success: true,
-      result,
-      timestamp: new Date().toISOString()
+    res.json({
+      success,
+      message: success ? 'Chat asignado exitosamente' : 'No se pudo asignar el chat'
     });
     
   } catch (error) {
-    console.error('❌ Error testing unified processor:', error);
-    return res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+    console.error('Error asignando chat:', error);
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
+  }
+});
+
+// Estadísticas de asignaciones
+app.get('/api/assignment-stats', async (req: Request, res: Response) => {
+  try {
+    const { AutomaticAssignmentService } = await import('./services/automaticAssignmentService');
+    const assignmentService = AutomaticAssignmentService.getInstance();
+    
+    const stats = await assignmentService.getAssignmentStats();
+    
+    res.json({
+      success: true,
+      stats
     });
+    
+  } catch (error) {
+    console.error('Error obteniendo estadísticas:', error);
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
   }
 });
 
