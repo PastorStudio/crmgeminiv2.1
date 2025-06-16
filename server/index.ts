@@ -8829,4 +8829,16 @@ Responde de manera conversacional, profesional y útil según tu especializació
   // ===== SISTEMA DE NOTIFICACIONES INTEGRADO =====
   console.log('🔔 Sistema de notificaciones integrado en servidor principal');
 
+  // ===== SISTEMA DE ASIGNACIÓN AUTOMÁTICA DE CHATS =====
+  console.log('🎯 Iniciando sistema de asignación automática de chats...');
+  try {
+    const { AutomaticAssignmentService } = await import('./services/automaticAssignmentService');
+    const assignmentService = AutomaticAssignmentService.getInstance();
+    assignmentService.startAutoMonitoring();
+    console.log('✅ Sistema de asignación automática iniciado correctamente');
+    console.log('⏰ Monitoreo automático programado cada 2 minutos');
+  } catch (error) {
+    console.error('❌ Error iniciando sistema de asignación automática:', error);
+  }
+
 })();
