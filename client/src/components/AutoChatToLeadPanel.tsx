@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Play, BarChart3, Users, CheckCircle } from "lucide-react";
+import { Users, CheckCircle } from "lucide-react";
 
 interface ConversionStats {
   totalAutoLeads: number;
@@ -14,101 +13,26 @@ interface ConversionStats {
 
 export function AutoChatToLeadPanel() {
   const { toast } = useToast();
-  const [isActivating, setIsActivating] = useState(false);
-  const [isConverting, setIsConverting] = useState(false);
   const [stats, setStats] = useState<ConversionStats | null>(null);
   const [lastConversion, setLastConversion] = useState<any>(null);
 
   // Cargar estadísticas al montar el componente
   useEffect(() => {
     loadStats();
+    const interval = setInterval(loadStats, 30000); // Actualizar cada 30 segundos
+    return () => clearInterval(interval);
   }, []);
 
   const loadStats = async () => {
     try {
       const response = await fetch('/api/auto-convert-chats/stats');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setStats(data.stats);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading stats:', error);
-    }
-  };
-
-  const activateAutoConversion = async () => {
-    setIsActivating(true);
-    try {
-      const response = await fetch('/api/auto-convert-chats/activate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
       const data = await response.json();
       
       if (data.success) {
-        setLastConversion(data.data);
-        toast({
-          title: "Sistema Activado",
-          description: `Conversión automática activada. ${data.data?.created || 0} nuevos leads creados.`,
-        });
-        await loadStats();
-      } else {
-        toast({
-          title: "Error",
-          description: data.message || "Error activando el sistema",
-          variant: "destructive",
-        });
+        setStats(data.stats);
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Error de conexión al activar el sistema",
-        variant: "destructive",
-      });
-    } finally {
-      setIsActivating(false);
-    }
-  };
-
-  const convertNow = async () => {
-    setIsConverting(true);
-    try {
-      const response = await fetch('/api/auto-convert-chats/convert-now', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        setLastConversion(data.data);
-        toast({
-          title: "Conversión Completada",
-          description: `${data.data?.created || 0} nuevos leads creados, ${data.data?.updated || 0} actualizados.`,
-        });
-        await loadStats();
-      } else {
-        toast({
-          title: "Error",
-          description: data.message || "Error en la conversión",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Error de conexión durante la conversión",
-        variant: "destructive",
-      });
-    } finally {
-      setIsConverting(false);
+      console.error('Error cargando estadísticas:', error);
     }
   };
 
@@ -124,56 +48,25 @@ export function AutoChatToLeadPanel() {
                 Conversión Automática: Chats → Leads
               </CardTitle>
               <CardDescription>
-                Convierte automáticamente todos los chats de WhatsApp en leads para el pipeline de ventas
+                Sistema automático activo - convierte chats de WhatsApp en leads cada 30 segundos
               </CardDescription>
             </div>
-            {stats?.conversionActive && (
-              <Badge variant="default" className="bg-green-100 text-green-800">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Activo
-              </Badge>
-            )}
+            <Badge variant="default" className="bg-green-100 text-green-800">
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Activo
+            </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Botones de acción */}
-          <div className="flex gap-3">
-            <Button 
-              onClick={activateAutoConversion}
-              disabled={isActivating || isConverting}
-              className="flex-1"
-            >
-              {isActivating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Activando...
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4 mr-2" />
-                  Activar Sistema Automático
-                </>
-              )}
-            </Button>
-            
-            <Button 
-              onClick={convertNow}
-              disabled={isActivating || isConverting}
-              variant="outline"
-              className="flex-1"
-            >
-              {isConverting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Convirtiendo...
-                </>
-              ) : (
-                <>
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Convertir Ahora
-                </>
-              )}
-            </Button>
+          {/* Estado del sistema automático */}
+          <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+            <div className="flex items-center gap-2 text-green-800">
+              <CheckCircle className="h-5 w-5" />
+              <span className="font-medium">Sistema Automático Activo</span>
+            </div>
+            <p className="text-sm text-green-700 mt-1">
+              La conversión automática de chats a leads está funcionando en segundo plano cada 30 segundos
+            </p>
           </div>
 
           {/* Estadísticas */}
