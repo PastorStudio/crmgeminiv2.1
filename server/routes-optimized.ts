@@ -9,6 +9,11 @@ import {
   insertUserSchema, 
   insertLeadSchema, 
   insertTicketSchema,
+  insertTagSchema,
+  insertLeadTagSchema,
+  insertContactTagSchema,
+  insertTicketTagSchema,
+  insertMediaFileSchema,
   userSubscriptions,
   subscriptionPlans,
   users,
@@ -18,7 +23,12 @@ import {
   contacts,
   whatsappMessages,
   tickets,
-  automatedTasks
+  automatedTasks,
+  tags,
+  leadTags,
+  contactTags,
+  ticketTags,
+  mediaFiles
 } from "@shared/schema";
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { db } from './db';
@@ -3210,31 +3220,189 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
-  // ***** ENDPOINT PARA ETIQUETAS DE CONTACTOS *****
-  app.get("/api/whatsapp/contact-tags", async (_req: Request, res: Response) => {
+  // ***** SISTEMA DE ETIQUETAS UNIVERSAL *****
+
+  // Obtener todas las etiquetas
+  app.get("/api/tags", async (req: Request, res: Response) => {
     try {
-      // Return common tags for contacts
-      const tags = ["cliente", "prospecto", "vip", "nuevo", "seguimiento", "cerrado"];
-      res.json(tags);
+      const allTags = await db.select().from(tags).orderBy(tags.name);
+      res.json(allTags);
     } catch (error) {
-      console.error('Error getting contact tags:', error);
-      res.json([]);
+      console.error('Error obteniendo etiquetas:', error);
+      res.status(500).json({ error: "Error obteniendo etiquetas" });
     }
   });
 
-  // ***** ENDPOINT PARA GRUPOS DE CONTACTOS *****
-  app.get("/api/whatsapp/contact-groups", async (_req: Request, res: Response) => {
+  // Crear nueva etiqueta
+  app.post("/api/tags", async (req: Request, res: Response) => {
     try {
-      // Return contact groups/categories
-      const groups = [
-        { id: "clientes", name: "Clientes", count: 0 },
-        { id: "prospectos", name: "Prospectos", count: 0 },
-        { id: "cerrados", name: "Cerrados", count: 0 }
-      ];
-      res.json(groups);
+      const validatedData = insertTagSchema.parse(req.body);
+      const [newTag] = await db.insert(tags).values(validatedData).returning();
+      res.json(newTag);
     } catch (error) {
-      console.error('Error getting contact groups:', error);
-      res.json([]);
+      console.error('Error creando etiqueta:', error);
+      res.status(500).json({ error: "Error creando etiqueta" });
+    }
+  });
+
+  // Actualizar etiqueta
+  app.put("/api/tags/:id", async (req: Request, res: Response) => {
+    try {
+      const tagId = parseInt(req.params.id);
+      const validatedData = insertTagSchema.partial().parse(req.body);
+      const [updatedTag] = await db
+        .update(tags)
+        .set({ ...validatedData, updatedAt: new Date() })
+        .where(eq(tags.id, tagId))
+        .returning();
+      res.json(updatedTag);
+    } catch (error) {
+      console.error('Error actualizando etiqueta:', error);
+      res.status(500).json({ error: "Error actualizando etiqueta" });
+    }
+  });
+
+  // Eliminar etiqueta
+  app.delete("/api/tags/:id", async (req: Request, res: Response) => {
+    try {
+      const tagId = parseInt(req.params.id);
+      
+      // Verificar que no sea una etiqueta del sistema
+      const [tag] = await db.select().from(tags).where(eq(tags.id, tagId));
+      if (tag?.isSystem) {
+        return res.status(400).json({ error: "No se pueden eliminar etiquetas del sistema" });
+      }
+
+      // Eliminar asociaciones primero (cascada manual)
+      await db.delete(leadTags).where(eq(leadTags.tagId, tagId));
+      await db.delete(contactTags).where(eq(contactTags.tagId, tagId));
+      await db.delete(ticketTags).where(eq(ticketTags.tagId, tagId));
+      
+      // Eliminar la etiqueta
+      await db.delete(tags).where(eq(tags.id, tagId));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error eliminando etiqueta:', error);
+      res.status(500).json({ error: "Error eliminando etiqueta" });
+    }
+  });
+
+  // Asignar etiqueta a lead
+  app.post("/api/leads/:id/tags", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      const { tagId } = req.body;
+      
+      const [assignment] = await db
+        .insert(leadTags)
+        .values({ leadId, tagId })
+        .returning();
+      
+      res.json(assignment);
+    } catch (error) {
+      console.error('Error asignando etiqueta a lead:', error);
+      res.status(500).json({ error: "Error asignando etiqueta" });
+    }
+  });
+
+  // Remover etiqueta de lead
+  app.delete("/api/leads/:id/tags/:tagId", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      const tagId = parseInt(req.params.tagId);
+      
+      await db
+        .delete(leadTags)
+        .where(and(eq(leadTags.leadId, leadId), eq(leadTags.tagId, tagId)));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error removiendo etiqueta de lead:', error);
+      res.status(500).json({ error: "Error removiendo etiqueta" });
+    }
+  });
+
+  // Obtener etiquetas de un lead específico
+  app.get("/api/leads/:id/tags", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      
+      const leadTagsData = await db
+        .select({
+          id: tags.id,
+          name: tags.name,
+          color: tags.color,
+          category: tags.category
+        })
+        .from(tags)
+        .innerJoin(leadTags, eq(tags.id, leadTags.tagId))
+        .where(eq(leadTags.leadId, leadId));
+      
+      res.json(leadTagsData);
+    } catch (error) {
+      console.error('Error obteniendo etiquetas de lead:', error);
+      res.status(500).json({ error: "Error obteniendo etiquetas" });
+    }
+  });
+
+  // ***** ARCHIVOS MULTIMEDIA *****
+
+  // Obtener archivos multimedia de un mensaje
+  app.get("/api/messages/:messageId/media", async (req: Request, res: Response) => {
+    try {
+      const messageId = req.params.messageId;
+      
+      const mediaData = await db
+        .select()
+        .from(mediaFiles)
+        .where(eq(mediaFiles.messageId, messageId));
+      
+      res.json(mediaData);
+    } catch (error) {
+      console.error('Error obteniendo archivos multimedia:', error);
+      res.status(500).json({ error: "Error obteniendo archivos multimedia" });
+    }
+  });
+
+  // Subir archivo multimedia
+  app.post("/api/media/upload", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertMediaFileSchema.parse(req.body);
+      const [newMedia] = await db.insert(mediaFiles).values(validatedData).returning();
+      res.json(newMedia);
+    } catch (error) {
+      console.error('Error subiendo archivo multimedia:', error);
+      res.status(500).json({ error: "Error subiendo archivo" });
+    }
+  });
+
+  // Servir archivos multimedia
+  app.get("/api/media/:id/download", async (req: Request, res: Response) => {
+    try {
+      const mediaId = parseInt(req.params.id);
+      
+      const [mediaFile] = await db
+        .select()
+        .from(mediaFiles)
+        .where(eq(mediaFiles.id, mediaId));
+
+      if (!mediaFile) {
+        return res.status(404).json({ error: "Archivo no encontrado" });
+      }
+
+      // En un entorno real, esto serviría el archivo desde el sistema de archivos
+      res.json({
+        id: mediaFile.id,
+        fileName: mediaFile.fileName,
+        fileType: mediaFile.fileType,
+        mimeType: mediaFile.mimeType,
+        fileUrl: mediaFile.fileUrl || `/media/${mediaFile.fileName}`,
+        thumbnailPath: mediaFile.thumbnailPath
+      });
+    } catch (error) {
+      console.error('Error descargando archivo multimedia:', error);
+      res.status(500).json({ error: "Error descargando archivo" });
     }
   });
 

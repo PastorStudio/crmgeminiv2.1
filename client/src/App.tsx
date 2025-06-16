@@ -53,6 +53,7 @@ import { FunctionDocumentation } from './pages/FunctionDocumentation';
 import NotificationSystem from './components/NotificationSystem';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SubscriptionManager } from './components/admin/SubscriptionManager';
+import TagManagement from './pages/TagManagement';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
@@ -375,6 +376,17 @@ const AppRoutes: React.FC = () => {
                   <circle cx="18" cy="8" r="1" fill="white"/>
                 </svg>
                 Tickets
+              </a>
+
+              <a href="/tags" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/tags' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="18" height="18" rx="3" fill="#F59E0B"/>
+                  <circle cx="8" cy="8" r="1.5" fill="white"/>
+                  <rect x="11" y="7" width="8" height="2" rx="1" fill="white"/>
+                  <rect x="11" y="11" width="6" height="2" rx="1" fill="white"/>
+                  <rect x="11" y="15" width="7" height="2" rx="1" fill="white"/>
+                </svg>
+                Etiquetas
               </a>
               
               {/* Análisis y Recursos */}
