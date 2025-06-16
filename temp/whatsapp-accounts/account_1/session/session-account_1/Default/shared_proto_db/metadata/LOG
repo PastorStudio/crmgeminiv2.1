@@ -1,3 +1,3 @@
-2025/06/15-21:25:02.835 1eeb Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/shared_proto_db/metadata/MANIFEST-000001
-2025/06/15-21:25:02.836 1eeb Recovering log #3
-2025/06/15-21:25:02.837 1eeb Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/shared_proto_db/metadata/000003.log 
+2025/06/15-21:25:53.854 21fd Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/shared_proto_db/metadata/MANIFEST-000001
+2025/06/15-21:25:53.855 21fd Recovering log #3
+2025/06/15-21:25:53.855 21fd Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/shared_proto_db/metadata/000003.log 
