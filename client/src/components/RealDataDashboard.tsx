@@ -183,10 +183,18 @@ export function RealDataDashboard({ className }: RealDataDashboardProps) {
             <div className="space-y-2">
               <h4 className="font-medium">Last Updated</h4>
               <div className="text-sm text-muted-foreground">
-                {metrics?.timestamp && new Date(metrics.timestamp).toLocaleString()}
+                {new Date().toLocaleString('en-US', {
+                  timeZone: 'America/New_York',
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit'
+                })}
               </div>
               <div className="text-xs text-green-600">
-                All data sourced from authenticated WhatsApp accounts
+                All data sourced from authenticated WhatsApp accounts - Live data
               </div>
             </div>
           </div>

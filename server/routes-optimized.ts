@@ -1355,7 +1355,8 @@ export function registerOptimizedRoutes(app: Express): Server {
         })
       );
 
-      console.log(`✅ Retrieved ${usersWithDetails.length} real users with current timestamp: ${new Date().toISOString()}`);
+      const currentTimestamp = new Date();
+      console.log(`✅ Retrieved ${usersWithDetails.length} real users with current timestamp: ${currentTimestamp.toISOString()}`);
       res.json(usersWithDetails);
     } catch (error) {
       console.error('❌ Error fetching real users:', error);
