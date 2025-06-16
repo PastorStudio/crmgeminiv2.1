@@ -8846,9 +8846,9 @@ Responde de manera conversacional, profesional y útil según tu especializació
   // ===== SISTEMA DE ASIGNACIÓN MEJORADO CON CONVERSIÓN A LEADS =====
   console.log('🚀 Iniciando sistema de asignación mejorado...');
   try {
-    // Temporalmente deshabilitado para evitar errores SQL
-    // enhancedAssignmentService.startEnhancedAutoMonitoring();
-    console.log('⚠️ Sistema de asignación mejorado temporalmente deshabilitado por errores SQL');
+    enhancedAssignmentService.startEnhancedAutoMonitoring();
+    console.log('✅ Sistema de asignación mejorado iniciado correctamente');
+    console.log('⏰ Monitoreo con conversión a leads programado cada 2 minutos');
   } catch (error) {
     console.error('❌ Error iniciando sistema de asignación mejorado:', error);
   }
