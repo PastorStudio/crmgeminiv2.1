@@ -2292,6 +2292,45 @@ app.get('/api/agents/live-status', async (_req: Request, res: Response) => {
   }
 });
 
+// Test endpoint for unified message processor
+app.post('/direct/test-unified-processor', async (req: Request, res: Response) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    
+    const { accountId, chatId, body, contactName, fromMe } = req.body;
+    
+    console.log(`🧪 Testing unified processor - Account ${accountId}, Message: "${body}"`);
+    
+    // Import and test unified message processor
+    const { UnifiedMessageProcessor } = await import('./services/unifiedMessageProcessor');
+    const processor = UnifiedMessageProcessor.getInstance();
+    
+    // Process the message
+    const result = await processor.processMessage({
+      accountId,
+      chatId,
+      body,
+      contactName: contactName || 'Test User',
+      fromMe: fromMe || false
+    });
+    
+    console.log(`✅ Processor result:`, result);
+    
+    return res.json({
+      success: true,
+      result,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Error testing unified processor:', error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 app.get('/api/agents/:agentId/is-active', async (req: Request, res: Response) => {
   try {
     const agentId = parseInt(req.params.agentId);
