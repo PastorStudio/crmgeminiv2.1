@@ -275,7 +275,10 @@ export default function LeadsPipeline() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleViewConversation(lead)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewConversation(lead);
+              }}
               title="Ver conversación de WhatsApp"
             >
               <Eye className="w-3 h-3" />
@@ -283,7 +286,10 @@ export default function LeadsPipeline() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleAddComment(lead)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddComment(lead);
+              }}
               title="Añadir comentario"
             >
               <MessageCircle className="w-3 h-3" />
@@ -291,7 +297,10 @@ export default function LeadsPipeline() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleEditLead(lead)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditLead(lead);
+              }}
               title="Editar lead"
             >
               <Edit className="w-3 h-3" />
