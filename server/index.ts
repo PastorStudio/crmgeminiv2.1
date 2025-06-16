@@ -6741,6 +6741,87 @@ app.use((req, res, next) => {
     }
   });
 
+  // ===== AUTOMATIC CHAT TO LEAD CONVERSION =====
+  
+  // Importar el servicio automático
+  const { automaticChatToLeadService } = await import('./services/automaticChatToLeadService');
+  
+  // Endpoint para activar conversión automática
+  app.post("/api/auto-convert-chats/activate", async (req: Request, res: Response) => {
+    try {
+      console.log('🚀 Activando conversión automática de chats a leads...');
+      
+      // Forzar conversión inicial de todos los chats existentes
+      const result = await automaticChatToLeadService.forceConvertAllChats();
+      
+      res.json({
+        success: true,
+        message: "Conversión automática de chats a leads activada",
+        data: result
+      });
+    } catch (error) {
+      console.error("Error activando conversión automática:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+  
+  // Endpoint para conversión manual inmediata
+  app.post("/api/auto-convert-chats/convert-now", async (req: Request, res: Response) => {
+    try {
+      console.log('📝 Ejecutando conversión manual de chats a leads...');
+      
+      const result = await automaticChatToLeadService.forceConvertAllChats();
+      
+      res.json({
+        success: true,
+        message: "Conversión manual completada",
+        data: result
+      });
+    } catch (error) {
+      console.error("Error en conversión manual:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+  
+  // Endpoint para obtener estadísticas de conversión
+  app.get("/api/auto-convert-chats/stats", async (req: Request, res: Response) => {
+    try {
+      // Import leads table
+      const { leads } = await import('@shared/schema');
+      
+      // Obtener estadísticas básicas de leads generados automáticamente
+      const totalLeads = await db.select().from(leads).where(eq(leads.source, 'whatsapp_auto'));
+      const recentLeads = await db.select()
+        .from(leads)
+        .where(and(
+          eq(leads.source, 'whatsapp_auto'),
+          sql`${leads.createdAt} >= NOW() - INTERVAL '24 hours'`
+        ));
+      
+      res.json({
+        success: true,
+        stats: {
+          totalAutoLeads: totalLeads.length,
+          recentAutoLeads: recentLeads.length,
+          conversionActive: true,
+          lastUpdate: new Date()
+        }
+      });
+    } catch (error) {
+      console.error("Error obteniendo estadísticas:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor"
+      });
+    }
+  });
+
   // ===== USER MANAGEMENT API ENDPOINTS =====
   
   // Create new user
