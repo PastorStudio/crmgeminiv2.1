@@ -678,6 +678,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/calendar" component={() => <PrivateRoute component={Calendar} path="/calendar" />} />
                 <Route path="/tasks" component={() => <PrivateRoute component={Tasks} path="/tasks" />} />
                 <Route path="/tickets" component={() => <PrivateRoute component={TicketsSimple} path="/tickets" />} />
+                <Route path="/tags" component={() => <PrivateRoute component={TagManagement} path="/tags" />} />
                 <Route path="/analytics" component={() => <PrivateRoute component={Analytics} path="/analytics" />} />
                 <Route path="/gemini-ai" component={() => <PrivateRoute component={GeminiAI} path="/gemini-ai" />} />
                 <Route path="/function-documentation" component={() => <PrivateRoute component={FunctionDocumentation} path="/function-documentation" />} />
