@@ -3585,6 +3585,47 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // ===== BACKGROUND MONITOR CONTROL ENDPOINTS =====
+  
+  // Control del monitor automático de chat-to-lead
+  app.get("/api/background-monitor/status", async (req: Request, res: Response) => {
+    try {
+      const { backgroundChatMonitor } = await import('./services/backgroundChatMonitor');
+      const status = backgroundChatMonitor.getStatus();
+      
+      res.json({
+        success: true,
+        monitor: status,
+        message: status.isRunning ? 'Monitor activo - conversión automática funcionando' : 'Monitor detenido'
+      });
+    } catch (error) {
+      console.error('❌ Error obteniendo estado del monitor:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error obteniendo estado del monitor" 
+      });
+    }
+  });
+
+  // Forzar verificación inmediata de nuevos mensajes
+  app.post("/api/background-monitor/force-check", async (req: Request, res: Response) => {
+    try {
+      const { backgroundChatMonitor } = await import('./services/backgroundChatMonitor');
+      await backgroundChatMonitor.forceCheck();
+      
+      res.json({
+        success: true,
+        message: 'Verificación forzada ejecutada - nuevos chats procesados'
+      });
+    } catch (error) {
+      console.error('❌ Error en verificación forzada:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error en verificación forzada" 
+      });
+    }
+  });
+
   // ===== ADDITIONAL REAL DATA ENDPOINTS =====
   
   // Get real WhatsApp conversations

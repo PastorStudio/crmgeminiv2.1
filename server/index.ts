@@ -7866,6 +7866,11 @@ async function translateText(text: string, fromLang: string, toLang: string): Pr
         await aiResponseService.initialize();
         console.log('✅ Sistema de respuestas autónomas AI iniciado exitosamente');
         
+        // Inicializar monitor automático de chat-to-lead
+        console.log('🔄 Iniciando monitor automático de conversión chat-to-lead...');
+        backgroundChatMonitor.start();
+        console.log('✅ Monitor automático de chat-to-lead iniciado - conversión en tiempo real activa');
+        
         // Inicializar sistema VERDADERAMENTE INDEPENDIENTE
         console.log('🤖 Iniciando sistema VERDADERAMENTE INDEPENDIENTE...');
         await trulyIndependentAutoResponseSystem.initialize();
