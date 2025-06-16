@@ -22,10 +22,128 @@ export default function SalesPipelineKanban() {
     queryKey: ["/api/leads"],
   });
 
+  // Fetch real WhatsApp contacts for accurate phone numbers
+  const { data: contacts } = useQuery({
+    queryKey: ["/api/contacts"],
+  });
+
+  // Fetch active chats to get real phone numbers
+  const { data: activeChats } = useQuery({
+    queryKey: ["/api/direct/whatsapp/chats"],
+  });
+
   const [columns, setColumns] = useState<PipelineColumn[]>([]);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const queryClient = useQueryClient();
+
+  // Function to calculate probability based on customer interest
+  const calculateProbability = (lead: Lead) => {
+    let probability = 0;
+    
+    // Base probability based on stage
+    switch (lead.status) {
+      case 'nuevo': probability = 10; break;
+      case 'contactado': probability = 25; break;
+      case 'calificado': probability = 50; break;
+      case 'propuesta': probability = 70; break;
+      case 'negociacion': probability = 85; break;
+      case 'ganado': probability = 100; break;
+      case 'perdido': probability = 0; break;
+      default: probability = 5;
+    }
+
+    // Adjust based on interests
+    if (lead.interests && lead.interests.length > 0) {
+      probability += lead.interests.length * 5;
+    }
+
+    // Adjust based on lead score
+    if (lead.leadScore && lead.leadScore > 0) {
+      probability += Math.floor(lead.leadScore / 5);
+    }
+
+    // Adjust based on activity recency
+    if (lead.lastContactDate) {
+      const daysSinceContact = Math.floor((Date.now() - new Date(lead.lastContactDate).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSinceContact < 7) probability += 10;
+      else if (daysSinceContact > 30) probability -= 15;
+    }
+
+    // Adjust based on priority
+    switch (lead.priority) {
+      case 'urgente': probability += 15; break;
+      case 'alto': probability += 10; break;
+      case 'medio': probability += 5; break;
+      case 'bajo': probability -= 5; break;
+    }
+
+    return Math.min(Math.max(probability, 0), 100);
+  };
+
+  // Function to get real contact information
+  const getContactInfo = (lead: Lead) => {
+    // First try to find contact by phone in active chats
+    const chatsData = activeChats as any;
+    let activeChat = null;
+    
+    if (chatsData?.chats && Array.isArray(chatsData.chats)) {
+      activeChat = chatsData.chats.find((chat: any) => 
+        chat.id?.user && (
+          chat.id.user === lead.phone?.replace(/\D/g, '') ||
+          chat.id.user.includes(lead.phone?.replace(/\D/g, '')) ||
+          lead.phone?.includes(chat.id.user)
+        )
+      );
+    }
+
+    if (activeChat) {
+      const phoneNumber = activeChat.id.user.includes('@') 
+        ? activeChat.id.user.split('@')[0] 
+        : activeChat.id.user;
+      
+      return {
+        name: activeChat.name || activeChat.pushname || lead.name || 'Sin nombre',
+        phone: `+${phoneNumber}`,
+        isActive: true
+      };
+    }
+
+    // Then try contacts database
+    let contact = null;
+    if (contacts && Array.isArray(contacts)) {
+      contact = contacts.find((c: any) => 
+        c.phone === lead.phone || 
+        c.phone?.replace(/\D/g, '') === lead.phone?.replace(/\D/g, '') ||
+        lead.phone?.replace(/\D/g, '').includes(c.phone?.replace(/\D/g, ''))
+      );
+    }
+
+    if (contact) {
+      return {
+        name: contact.name || lead.name || 'Sin nombre',
+        phone: contact.phone,
+        isActive: contact.isActive
+      };
+    }
+
+    // Extract phone from WhatsApp email format if available
+    let extractedPhone = lead.phone;
+    if (lead.email?.includes('@whatsapp.contact')) {
+      extractedPhone = lead.email.split('@')[0].replace('whatsapp-', '+');
+    } else if (lead.notes?.match(/Phone: (.+)/)) {
+      extractedPhone = lead.notes.match(/Phone: (.+)/)?.[1];
+    } else if (lead.notes?.match(/WhatsApp: (.+)/)) {
+      extractedPhone = lead.notes.match(/WhatsApp: (.+)/)?.[1];
+    }
+
+    // Fall back to lead data
+    return {
+      name: lead.name || lead.fullName || 'Cliente Potencial',
+      phone: extractedPhone || lead.email || 'Sin teléfono',
+      isActive: false
+    };
+  };
 
   // Mutation for updating lead status
   const updateLeadMutation = useMutation({
@@ -256,7 +374,7 @@ export default function SalesPipelineKanban() {
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1">
                                     <h4 className="font-medium text-sm text-gray-900 line-clamp-1">
-                                      {lead.name || lead.fullName || 'Sin nombre'}
+                                      {getContactInfo(lead).name}
                                     </h4>
                                     {lead.company && (
                                       <p className="text-xs text-gray-500 mt-0.5">
@@ -268,14 +386,22 @@ export default function SalesPipelineKanban() {
                                         <span className="text-green-600 font-medium">📱</span>
                                       )}
                                       <span>
-                                        {/* Extract phone from email or notes for WhatsApp leads */}
-                                        {lead.email?.includes('@whatsapp.contact') 
-                                          ? lead.email.split('@')[0].replace('whatsapp-', '+507 ') 
-                                          : lead.notes?.match(/Phone: (.+)/)?.[1] || 
-                                            lead.notes?.match(/WhatsApp: (.+)/)?.[1] || 
-                                            lead.email || 'Sin teléfono'}
+                                        {getContactInfo(lead).phone}
                                       </span>
+                                      {getContactInfo(lead).isActive && (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                          Activo
+                                        </span>
+                                      )}
                                     </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-lg font-bold text-blue-600">
+                                      {calculateProbability(lead)}%
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      Probabilidad
+                                    </div>
                                   </div>
                                 </div>
                                 
@@ -324,9 +450,6 @@ export default function SalesPipelineKanban() {
                                     >
                                       <Trash2 className="h-3 w-3" />
                                     </Button>
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    {lead.probability}%
                                   </div>
                                 </div>
                               </div>

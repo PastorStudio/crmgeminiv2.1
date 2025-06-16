@@ -887,6 +887,48 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // ***** RUTAS DE CONTACTOS REALES *****
+  app.get("/api/contacts", async (req: Request, res: Response) => {
+    try {
+      const authResult = authService.authenticateToken(req, res);
+      if (!authResult.success) return;
+
+      const userId = authResult.user.id;
+      console.log('🔒 Getting contacts for user ID:', userId);
+
+      // Get real contacts from database with user isolation
+      const userContacts = await db
+        .select()
+        .from(contacts)
+        .leftJoin(whatsappAccounts, eq(contacts.whatsappAccountId, whatsappAccounts.id))
+        .where(eq(whatsappAccounts.userId, userId));
+
+      const formattedContacts = userContacts.map(item => ({
+        id: item.contacts.id,
+        name: item.contacts.name,
+        phone: item.contacts.phone,
+        email: item.contacts.email,
+        company: item.contacts.company,
+        position: item.contacts.position,
+        whatsappProfile: item.contacts.whatsappProfile,
+        location: item.contacts.location,
+        tags: item.contacts.tags,
+        customFields: item.contacts.customFields,
+        lastSeen: item.contacts.lastSeen,
+        source: item.contacts.source,
+        isActive: item.contacts.isActive,
+        createdAt: item.contacts.createdAt,
+        updatedAt: item.contacts.updatedAt
+      }));
+
+      console.log(`✅ Retrieved ${formattedContacts.length} contacts for user ${userId}`);
+      res.json(formattedContacts);
+    } catch (error) {
+      console.error('Error getting contacts:', error);
+      res.status(500).json({ error: "Error al obtener contactos" });
+    }
+  });
+
   // ***** RUTAS DE CONVERSACIÓN Y COMENTARIOS PARA LEADS *****
   
   // Obtener conversación de un lead específico

@@ -1,4 +1,14 @@
-2025/06/16-07:21:27.994 de1 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/06/16-07:21:27.995 de1 Recovering log #5955
-2025/06/16-07:21:28.000 de1 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/005955.log 
-2025/06/16-07:21:28.000 de1 Delete type=2 #5954
+2025/06/16-19:41:15.315 8c Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/16-19:41:15.317 8c Recovering log #5955
+2025/06/16-19:41:15.329 8c Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/005955.log 
+2025/06/16-19:41:16.731 98 Manual compaction at level-0 from ' \xc6\x07\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xc7\x07\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/16-19:41:17.021 98 Level-0 table #5960: started
+2025/06/16-19:41:17.064 98 Level-0 table #5960: 68622 bytes OK
+2025/06/16-19:41:17.893 98 Delete type=0 #5955
+2025/06/16-19:41:17.903 8c Manual compaction at level-0 from ' \xc4\x07\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xc5\x07\x00\x00\x00' @ 0 : 0; will stop at ' \xc8\x07\x00\x00\xc8\x0d\x00l\x00o\x00c\x00a\x00l\x00_\x00s\x00t\x00o\x00r\x00a\x00g\x00e' @ 2473709 : 1
+2025/06/16-19:41:17.904 8c Compacting 1@0 + 1@1 files
+2025/06/16-19:41:17.915 8c Generated table #5961@0: 2504 keys, 31688 bytes
+2025/06/16-19:41:17.916 8c Compacted 1@0 + 1@1 files => 31688 bytes
+2025/06/16-19:41:17.926 8c compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/06/16-19:41:17.926 8c Delete type=2 #5960
+2025/06/16-19:41:17.940 8c Manual compaction at level-0 from ' \xc8\x07\x00\x00\xc8\x0d\x00l\x00o\x00c\x00a\x00l\x00_\x00s\x00t\x00o\x00r\x00a\x00g\x00e' @ 2473709 : 1 .. ' \xc5\x07\x00\x00\x00' @ 0 : 0; will stop at (end)
