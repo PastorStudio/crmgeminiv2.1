@@ -3468,7 +3468,7 @@ export function registerOptimizedRoutes(app: Express): Server {
     try {
       console.log('🔄 Iniciando conversión automática de chats reales a leads...');
       
-      const { automaticChatToLeadService } = await import('../services/automaticChatToLeadService');
+      const { automaticChatToLeadService } = await import('./services/automaticChatToLeadService');
       const result = await automaticChatToLeadService.processAllChatsToLeads();
       
       console.log(`✅ Conversión completada: ${result.converted} leads creados de ${result.processed} conversaciones`);
@@ -3493,7 +3493,7 @@ export function registerOptimizedRoutes(app: Express): Server {
   // Estadísticas reales de conversión automática
   app.get("/api/auto-convert-chats/stats", async (_req: Request, res: Response) => {
     try {
-      const { automaticChatToLeadService } = await import('../services/automaticChatToLeadService');
+      const { automaticChatToLeadService } = await import('./services/automaticChatToLeadService');
       const stats = await automaticChatToLeadService.getConversionStats();
       
       res.json({
@@ -3514,7 +3514,7 @@ export function registerOptimizedRoutes(app: Express): Server {
   // Crear sistema de etiquetas inicial
   app.post("/api/system/initialize-tags", async (req: Request, res: Response) => {
     try {
-      const { createSystemTags } = await import('../scripts/createSystemTags');
+      const { createSystemTags } = await import('./scripts/createSystemTags');
       const result = await createSystemTags();
       
       res.json({
@@ -3588,10 +3588,105 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // ===== ADDITIONAL REAL DATA ENDPOINTS =====
+  
+  // Get real WhatsApp conversations
+  app.get("/api/whatsapp/real-conversations", async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.query;
+      const { realDataIntegrationService } = await import('./services/realDataIntegrationService');
+      
+      const result = await realDataIntegrationService.getRealWhatsAppConversations(
+        accountId ? parseInt(accountId as string) : undefined
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error getting real conversations:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error fetching real WhatsApp conversations" 
+      });
+    }
+  });
+
+  // Get real leads with source tracking
+  app.get("/api/leads/real-data", async (req: Request, res: Response) => {
+    try {
+      const { includeDeleted } = req.query;
+      const { realDataIntegrationService } = await import('./services/realDataIntegrationService');
+      
+      const result = await realDataIntegrationService.getRealLeadsWithSource(
+        includeDeleted === 'true'
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error getting real leads:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error fetching real leads data" 
+      });
+    }
+  });
+
+  // Get real dashboard metrics
+  app.get("/api/dashboard/real-metrics", async (req: Request, res: Response) => {
+    try {
+      const { realDataIntegrationService } = await import('./services/realDataIntegrationService');
+      const result = await realDataIntegrationService.getRealDashboardMetrics();
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error getting real dashboard metrics:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error fetching real dashboard metrics" 
+      });
+    }
+  });
+
+  // Get real sales pipeline
+  app.get("/api/sales/real-pipeline", async (req: Request, res: Response) => {
+    try {
+      const { realDataIntegrationService } = await import('./services/realDataIntegrationService');
+      const result = await realDataIntegrationService.getRealSalesPipeline();
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error getting real sales pipeline:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error fetching real sales pipeline data" 
+      });
+    }
+  });
+
+  // Get real media files
+  app.get("/api/media/real-files", async (req: Request, res: Response) => {
+    try {
+      const { messageId } = req.query;
+      const { realDataIntegrationService } = await import('./services/realDataIntegrationService');
+      
+      const result = await realDataIntegrationService.getRealMediaFiles(
+        messageId as string
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error getting real media files:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error fetching real media files" 
+      });
+    }
+  });
+
   console.log('🚀 Rutas optimizadas registradas correctamente');
   console.log('📡 WebSocket configurado en /ws');
   console.log('✅ Enhanced System API endpoints implemented - All 15 improvements active');
   console.log('🔄 Real WhatsApp Data Integration endpoints added');
+  console.log('📊 Real Data Integration Service implemented - No more mock data');
   
   return httpServer;
 }
