@@ -1,433 +1,358 @@
-import { storage } from '../storage';
-import { whatsappMultiAccountManager } from './whatsappMultiAccountManager';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { db } from '../db';
-import { leads, whatsappAccounts } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { leads, whatsappMessages, contacts, whatsappAccounts } from '../../shared/schema';
+import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 
-interface ProcessedChat {
-  chatId: string;
-  contactName: string;
-  contactPhone: string;
-  accountId: number;
-  lastMessage: string;
-  messageCount: number;
+interface ChatMessage {
+  id: string;
+  content: string;
+  from_me: boolean;
   timestamp: Date;
+  hasMedia: boolean;
+  mediaType?: string;
+  mediaUrl?: string;
+  contactId?: number;
+  accountId: number;
 }
 
-/**
- * Servicio automático para convertir todos los chats en leads
- * Se ejecuta automáticamente cuando llegan nuevos mensajes
- */
+interface ChatConversation {
+  contactId: number;
+  accountId: number;
+  contactName: string;
+  contactPhone: string;
+  messages: ChatMessage[];
+  lastMessageTime: Date;
+  messageCount: number;
+}
+
 export class AutomaticChatToLeadService {
-  private genAI: GoogleGenerativeAI | null = null;
-  private model: any = null;
-  private isProcessing = false;
-  private processedChats = new Set<string>();
-
-  constructor() {
-    this.initializeAI();
-    this.startPeriodicConversion();
-  }
-
-  private initializeAI() {
-    try {
-      const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-      if (apiKey) {
-        this.genAI = new GoogleGenerativeAI(apiKey);
-        this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        console.log('🤖 Sistema automático de conversión de chats a leads con IA inicializado');
-      }
-    } catch (error) {
-      console.log('⚠️ IA no disponible para análisis automático de chats');
+  private static instance: AutomaticChatToLeadService;
+  
+  public static getInstance(): AutomaticChatToLeadService {
+    if (!AutomaticChatToLeadService.instance) {
+      AutomaticChatToLeadService.instance = new AutomaticChatToLeadService();
     }
+    return AutomaticChatToLeadService.instance;
   }
 
-  /**
-   * Inicia la conversión periódica automática cada 30 segundos
-   */
-  private startPeriodicConversion() {
-    setInterval(async () => {
-      if (!this.isProcessing) {
-        await this.processAllNewChats();
-      }
-    }, 30000); // Cada 30 segundos
-
-    console.log('🔄 Conversión automática de chats a leads activada - cada 30 segundos');
-  }
-
-  /**
-   * Procesa todos los chats nuevos de todas las cuentas de WhatsApp
-   */
-  async processAllNewChats(): Promise<void> {
-    if (this.isProcessing) return;
-
-    this.isProcessing = true;
-    console.log('🔄 Iniciando conversión automática de chats a leads...');
-
+  async processAllChatsToLeads(): Promise<{
+    processed: number;
+    converted: number;
+    skipped: number;
+    details: Array<{
+      contactName: string;
+      phone: string;
+      status: 'converted' | 'exists' | 'skipped';
+      leadId?: number;
+    }>;
+  }> {
     try {
-      // Obtener todas las cuentas de WhatsApp activas
-      const accounts = await db.select().from(whatsappAccounts);
+      console.log('🔄 Iniciando procesamiento automático de chats a leads...');
       
-      let totalProcessed = 0;
-      let totalCreated = 0;
-      let totalUpdated = 0;
-
-      for (const account of accounts) {
-        try {
-          const result = await this.processChatsFromAccount(account.id);
-          totalProcessed += result.processed;
-          totalCreated += result.created;
-          totalUpdated += result.updated;
-        } catch (error) {
-          console.error(`Error procesando cuenta ${account.id}:`, error);
-        }
-      }
-
-      if (totalCreated > 0 || totalUpdated > 0) {
-        console.log(`✅ Conversión automática completada: ${totalCreated} nuevos leads, ${totalUpdated} actualizados de ${totalProcessed} chats`);
-      }
-
-    } catch (error) {
-      console.error('Error en conversión automática:', error);
-    } finally {
-      this.isProcessing = false;
-    }
-  }
-
-  /**
-   * Procesa chats de una cuenta específica
-   */
-  async processChatsFromAccount(accountId: number): Promise<{processed: number, created: number, updated: number}> {
-    let processed = 0;
-    let created = 0;
-    let updated = 0;
-
-    try {
-      // Obtener chats de la cuenta
-      const chats = await this.getChatsFromAccount(accountId);
+      // Get all conversations from WhatsApp messages
+      const conversations = await this.getChatConversations();
+      console.log(`📊 Encontradas ${conversations.length} conversaciones activas`);
       
-      for (const chat of chats) {
-        const chatKey = `${accountId}_${chat.chatId}`;
-        
-        // Saltar si ya fue procesado recientemente
-        if (this.processedChats.has(chatKey)) {
-          continue;
-        }
+      const results = {
+        processed: 0,
+        converted: 0,
+        skipped: 0,
+        details: [] as Array<{
+          contactName: string;
+          phone: string;
+          status: 'converted' | 'exists' | 'skipped';
+          leadId?: number;
+        }>
+      };
 
+      for (const conversation of conversations) {
         try {
-          const result = await this.convertChatToLead(chat);
-          processed++;
+          results.processed++;
           
-          if (result.created) {
-            created++;
-            console.log(`✅ Nuevo lead automático: ${chat.contactName} (${chat.contactPhone})`);
-          } else if (result.updated) {
-            updated++;
-            console.log(`🔄 Lead actualizado automáticamente: ${chat.contactName}`);
-          }
+          // Check if lead already exists for this contact
+          const existingLead = await db.query.leads.findFirst({
+            where: and(
+              eq(leads.phone, conversation.contactPhone),
+              eq(leads.isDeleted, false)
+            )
+          });
 
-          // Marcar como procesado
-          this.processedChats.add(chatKey);
-
-        } catch (error) {
-          console.error(`Error procesando chat ${chat.chatId}:`, error);
-        }
-      }
-
-      // Limpiar cache de chats procesados (mantener solo los últimos 1000)
-      if (this.processedChats.size > 1000) {
-        const entries = Array.from(this.processedChats);
-        this.processedChats.clear();
-        entries.slice(-500).forEach(entry => this.processedChats.add(entry));
-      }
-
-    } catch (error) {
-      console.error(`Error obteniendo chats de cuenta ${accountId}:`, error);
-    }
-
-    return { processed, created, updated };
-  }
-
-  /**
-   * Obtiene chats INDIVIDUALES de una cuenta de WhatsApp (EXCLUYE GRUPOS)
-   */
-  private async getChatsFromAccount(accountId: number): Promise<ProcessedChat[]> {
-    try {
-      const client = whatsappMultiAccountManager.getClient(accountId);
-      if (!client) {
-        console.log(`⚠️ Cliente WhatsApp no disponible para cuenta ${accountId}`);
-        return [];
-      }
-
-      // Verificar si el cliente está listo y autenticado
-      const isReady = client.info && client.info.wid;
-      if (!isReady) {
-        console.log(`⚠️ Cliente WhatsApp no está listo para cuenta ${accountId}`);
-        return [];
-      }
-
-      // Obtener SOLO chats individuales, excluyendo grupos completamente
-      let chats;
-      try {
-        chats = await client.getChats();
-      } catch (error) {
-        console.error(`❌ Error obteniendo chats de cuenta ${accountId}:`, error);
-        return [];
-      }
-
-      if (!Array.isArray(chats) || chats.length === 0) {
-        console.log(`📱 No hay chats disponibles para cuenta ${accountId}`);
-        return [];
-      }
-
-      const individualChats = chats.filter(chat => {
-        // FILTRO CRÍTICO: Solo chats individuales (no grupos)
-        const isIndividual = !chat.isGroup && !chat.id._serialized.includes('@g.us');
-        const hasRecentActivity = chat.lastMessage && chat.lastMessage.timestamp > (Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 días
-        const hasValidContact = chat.contact && chat.contact.number;
-        
-        if (chat.isGroup || chat.id._serialized.includes('@g.us')) {
-          console.log(`🚫 GRUPO EXCLUIDO: ${chat.name || chat.id.user} - No se convierte a lead`);
-          return false;
-        }
-        
-        return isIndividual && hasValidContact;
-      });
-
-      console.log(`📱 Procesando ${individualChats.length} chats INDIVIDUALES de cuenta ${accountId} (${chats.length - individualChats.length} grupos excluidos)`);
-
-      const processedChats: ProcessedChat[] = [];
-
-      for (const chat of individualChats) {
-        try {
-          const contact = await chat.getContact();
-          const lastMessage = chat.lastMessage;
-          
-          if (!contact || !contact.number || !lastMessage) continue;
-
-          // Asegurar que es un chat individual válido
-          if (chat.isGroup) {
-            console.log(`🚫 VERIFICACIÓN ADICIONAL: Grupo detectado ${chat.id.user} - omitido`);
+          if (existingLead) {
+            console.log(`⏭️ Lead ya existe para ${conversation.contactName} (${conversation.contactPhone})`);
+            results.skipped++;
+            results.details.push({
+              contactName: conversation.contactName,
+              phone: conversation.contactPhone,
+              status: 'exists'
+            });
             continue;
           }
 
-          const processedChat: ProcessedChat = {
-            chatId: chat.id.user,
-            contactName: contact.pushname || contact.name || contact.number,
-            contactPhone: `+${contact.number}`,
-            accountId,
-            lastMessage: lastMessage.body || '',
-            messageCount: await this.getMessageCount(chat),
-            timestamp: new Date(lastMessage.timestamp * 1000)
-          };
-
-          processedChats.push(processedChat);
-          console.log(`✅ Chat individual válido: ${processedChat.contactName} (${processedChat.contactPhone})`);
+          // Analyze conversation to determine if it should become a lead
+          const shouldConvert = await this.shouldConvertToLead(conversation);
+          
+          if (shouldConvert) {
+            const newLead = await this.createLeadFromChat(conversation);
+            results.converted++;
+            results.details.push({
+              contactName: conversation.contactName,
+              phone: conversation.contactPhone,
+              status: 'converted',
+              leadId: newLead.id
+            });
+            console.log(`✅ Lead creado: ${conversation.contactName} (ID: ${newLead.id})`);
+          } else {
+            results.skipped++;
+            results.details.push({
+              contactName: conversation.contactName,
+              phone: conversation.contactPhone,
+              status: 'skipped'
+            });
+            console.log(`⏭️ Conversación omitida: ${conversation.contactName} (no cumple criterios)`);
+          }
           
         } catch (error) {
-          console.error(`Error procesando chat individual:`, error);
+          console.error(`❌ Error procesando conversación ${conversation.contactName}:`, error);
+          results.skipped++;
         }
       }
 
-      return processedChats;
+      console.log(`🎉 Procesamiento completado: ${results.converted} leads creados de ${results.processed} conversaciones`);
+      return results;
+      
     } catch (error) {
-      console.error(`Error obteniendo chats individuales de cuenta ${accountId}:`, error);
-      // Fallback con datos demo solo para desarrollo
-      if (process.env.NODE_ENV === 'development') {
-        return [{
-          chatId: `demo_individual_${accountId}_${Date.now()}`,
-          contactName: 'Cliente Demo Individual',
-          contactPhone: `+5491123456${Math.floor(Math.random() * 100)}`,
-          accountId,
-          lastMessage: 'Hola, estoy interesado en sus servicios',
-          messageCount: 3,
-          timestamp: new Date()
-        }];
+      console.error('❌ Error en procesamiento automático:', error);
+      throw error;
+    }
+  }
+
+  private async getChatConversations(): Promise<ChatConversation[]> {
+    try {
+      // Get all recent conversations grouped by contact
+      const conversationsData = await db
+        .select({
+          contactId: contacts.id,
+          accountId: whatsappMessages.accountId,
+          contactName: contacts.name,
+          contactPhone: contacts.phone,
+          lastMessage: sql<Date>`MAX(${whatsappMessages.timestamp})`,
+          messageCount: sql<number>`COUNT(*)::int`
+        })
+        .from(whatsappMessages)
+        .innerJoin(contacts, eq(whatsappMessages.accountId, contacts.whatsappAccountId))
+        .where(
+          and(
+            eq(whatsappMessages.from_me, false), // Only incoming messages
+            sql`${whatsappMessages.timestamp} > NOW() - INTERVAL '30 days'` // Last 30 days
+          )
+        )
+        .groupBy(contacts.id, whatsappMessages.accountId, contacts.name, contacts.phone)
+        .having(sql`COUNT(*) >= 3`) // At least 3 messages
+        .orderBy(desc(sql`MAX(${whatsappMessages.timestamp})`));
+
+      const conversations: ChatConversation[] = [];
+
+      for (const conv of conversationsData) {
+        // Get recent messages for this conversation
+        const messages = await db
+          .select({
+            id: whatsappMessages.messageId,
+            content: whatsappMessages.content,
+            from_me: whatsappMessages.from_me,
+            timestamp: whatsappMessages.timestamp,
+            hasMedia: whatsappMessages.hasMedia,
+            mediaType: whatsappMessages.mediaType,
+            mediaUrl: whatsappMessages.mediaUrl,
+            contactId: conv.contactId,
+            accountId: whatsappMessages.accountId
+          })
+          .from(whatsappMessages)
+          .where(
+            and(
+              eq(whatsappMessages.accountId, conv.accountId),
+              sql`${whatsappMessages.timestamp} > NOW() - INTERVAL '30 days'`
+            )
+          )
+          .orderBy(desc(whatsappMessages.timestamp))
+          .limit(20);
+
+        conversations.push({
+          contactId: conv.contactId,
+          accountId: conv.accountId,
+          contactName: conv.contactName || 'Sin nombre',
+          contactPhone: conv.contactPhone || '',
+          messages: messages,
+          lastMessageTime: conv.lastMessage,
+          messageCount: conv.messageCount
+        });
       }
+
+      return conversations;
+    } catch (error) {
+      console.error('❌ Error obteniendo conversaciones:', error);
       return [];
     }
   }
 
-  /**
-   * Obtiene el número de mensajes en un chat
-   */
-  private async getMessageCount(chat: any): Promise<number> {
+  private async shouldConvertToLead(conversation: ChatConversation): Promise<boolean> {
     try {
-      const messages = await chat.fetchMessages({ limit: 50 });
-      return messages.length;
+      // Basic criteria for lead conversion
+      const criteria = {
+        minMessages: 3,
+        recentActivity: 7, // days
+        hasIncomingMessages: true,
+        excludeSystemMessages: true
+      };
+
+      // Check if conversation meets basic criteria
+      if (conversation.messageCount < criteria.minMessages) {
+        return false;
+      }
+
+      // Check for recent activity
+      const daysSinceLastMessage = Math.floor(
+        (Date.now() - conversation.lastMessageTime.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      
+      if (daysSinceLastMessage > criteria.recentActivity) {
+        return false;
+      }
+
+      // Check for business-related keywords in messages
+      const businessKeywords = [
+        'precio', 'costo', 'comprar', 'vender', 'producto', 'servicio',
+        'información', 'cotización', 'presupuesto', 'contacto', 'empresa',
+        'negocio', 'consulta', 'disponible', 'horario', 'ubicación'
+      ];
+
+      const hasBusinessIntent = conversation.messages.some(msg => 
+        !msg.from_me && businessKeywords.some(keyword => 
+          msg.content.toLowerCase().includes(keyword)
+        )
+      );
+
+      return hasBusinessIntent;
+      
     } catch (error) {
-      return 1; // Fallback
+      console.error('❌ Error evaluando criterios de conversión:', error);
+      return false;
     }
   }
 
-  /**
-   * Convierte un chat individual en lead
-   */
-  async convertChatToLead(chat: ProcessedChat): Promise<{created: boolean, updated: boolean}> {
+  private async createLeadFromChat(conversation: ChatConversation): Promise<any> {
     try {
-      // Verificar si ya existe un lead para este teléfono
-      const existingLeads = await storage.getLeadsByPhone(chat.contactPhone);
-      
-      if (existingLeads.length === 0) {
-        // Crear nuevo lead
-        const leadData = {
-          name: chat.contactName,
-          phone: chat.contactPhone,
-          email: this.generateEmailFromPhone(chat.contactPhone),
-          source: 'whatsapp_auto',
+      // Get WhatsApp account info
+      const [account] = await db
+        .select()
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.id, conversation.accountId));
+
+      // Create conversation summary
+      const recentMessages = conversation.messages
+        .slice(0, 5)
+        .map(msg => `${msg.from_me ? 'Yo' : conversation.contactName}: ${msg.content}`)
+        .join('\n');
+
+      const [newLead] = await db
+        .insert(leads)
+        .values({
+          name: conversation.contactName,
+          fullName: conversation.contactName,
+          phone: conversation.contactPhone,
+          email: '', // Will be updated if found in messages
+          company: '', // Will be updated if found in messages
+          source: 'WhatsApp',
           status: 'new',
-          priority: this.determinePriorityFromChat(chat),
-          notes: this.generateNotesFromChat(chat),
-          company: this.extractCompanyFromName(chat.contactName),
-          whatsappAccountId: chat.accountId,
-          assignedTo: await this.getDefaultAssignee(),
+          priority: 'medium',
+          notes: `Lead generado automáticamente desde WhatsApp.\n\nÚltimos mensajes:\n${recentMessages}`,
           value: '0',
-          tags: ['whatsapp', 'auto_converted'],
-          stage: 'lead',
-          lastContactDate: chat.timestamp,
-          nextFollowUpDate: this.calculateNextFollowUp(),
-          leadScore: this.calculateLeadScore(chat),
-          timezone: 'America/Argentina/Buenos_Aires'
-        };
+          assignedTo: account?.userId || 1,
+          whatsappAccountId: conversation.accountId,
+          contactId: conversation.contactId,
+          chatId: `chat_${conversation.contactId}_${conversation.accountId}`,
+          lastContactDate: conversation.lastMessageTime,
+          tags: ['WhatsApp', 'Automático'],
+          isDeleted: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
 
-        const newLead = await storage.createLead(leadData);
-        console.log(`📝 Lead automático creado: ${chat.contactName} (ID: ${newLead.id})`);
-        
-        return { created: true, updated: false };
-      } else {
-        // Actualizar lead existente
-        const existingLead = existingLeads[0];
-        const updatedNotes = `${existingLead.notes || ''}\n\n[${new Date().toLocaleString()}] Nueva actividad automática:\n${chat.lastMessage}`;
-        
-        await storage.updateLead(existingLead.id, {
-          lastContactDate: chat.timestamp,
-          notes: updatedNotes,
-          leadScore: Math.max(existingLead.leadScore || 0, this.calculateLeadScore(chat))
-        });
-
-        return { created: false, updated: true };
-      }
+      return newLead;
+      
     } catch (error) {
-      console.error(`Error convirtiendo chat a lead:`, error);
-      return { created: false, updated: false };
+      console.error('❌ Error creando lead desde chat:', error);
+      throw error;
     }
   }
 
-  /**
-   * Genera email temporal basado en teléfono
-   */
-  private generateEmailFromPhone(phone: string): string {
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
-    return `${cleanPhone}@whatsapp.auto`;
-  }
-
-  /**
-   * Determina prioridad basada en el chat
-   */
-  private determinePriorityFromChat(chat: ProcessedChat): 'high' | 'medium' | 'low' {
-    const message = chat.lastMessage.toLowerCase();
-    
-    // Palabras clave de alta prioridad
-    if (message.includes('urgente') || message.includes('comprar') || message.includes('precio') || message.includes('presupuesto')) {
-      return 'high';
-    }
-    
-    // Palabras clave de prioridad media
-    if (message.includes('interesado') || message.includes('información') || message.includes('consulta')) {
-      return 'medium';
-    }
-    
-    return 'low';
-  }
-
-  /**
-   * Genera notas automáticas del chat
-   */
-  private generateNotesFromChat(chat: ProcessedChat): string {
-    return `[CONVERSIÓN AUTOMÁTICA - ${new Date().toLocaleString()}]
-Origen: WhatsApp Cuenta ${chat.accountId}
-Chat ID: ${chat.chatId}
-Mensajes en conversación: ${chat.messageCount}
-Último mensaje: "${chat.lastMessage}"
-
-Estado: Lead creado automáticamente desde chat de WhatsApp`;
-  }
-
-  /**
-   * Extrae posible nombre de empresa
-   */
-  private extractCompanyFromName(name: string): string | null {
-    const companyKeywords = ['srl', 'sa', 'ltda', 'inc', 'corp', 'empresa', 'company'];
-    const lowerName = name.toLowerCase();
-    
-    for (const keyword of companyKeywords) {
-      if (lowerName.includes(keyword)) {
-        return name;
-      }
-    }
-    
-    return null;
-  }
-
-  /**
-   * Obtiene agente por defecto para asignación
-   */
-  private async getDefaultAssignee(): Promise<number> {
+  async getConversionStats(): Promise<{
+    totalChats: number;
+    eligibleChats: number;
+    convertedLeads: number;
+    conversionRate: number;
+    lastProcessed: Date | null;
+  }> {
     try {
-      // Buscar agentes disponibles, priorizar supervisores
-      const users = await storage.getAllUsers();
-      const supervisor = users.find(u => u.role === 'supervisor' && u.status === 'active');
-      if (supervisor) return supervisor.id;
+      // Get total chat conversations
+      const totalChatsResult = await db
+        .select({ count: sql<number>`COUNT(DISTINCT ${contacts.id})::int` })
+        .from(contacts)
+        .innerJoin(whatsappMessages, eq(whatsappMessages.accountId, contacts.whatsappAccountId));
+
+      // Get eligible conversations (those meeting conversion criteria)
+      const eligibleChatsResult = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(
+          db
+            .select({ contactId: contacts.id })
+            .from(whatsappMessages)
+            .innerJoin(contacts, eq(whatsappMessages.accountId, contacts.whatsappAccountId))
+            .where(
+              and(
+                eq(whatsappMessages.from_me, false),
+                sql`${whatsappMessages.timestamp} > NOW() - INTERVAL '30 days'`
+              )
+            )
+            .groupBy(contacts.id)
+            .having(sql`COUNT(*) >= 3`)
+            .as('eligible')
+        );
+
+      // Get converted leads from WhatsApp
+      const convertedLeadsResult = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(leads)
+        .where(
+          and(
+            eq(leads.source, 'WhatsApp'),
+            eq(leads.isDeleted, false)
+          )
+        );
+
+      const totalChats = totalChatsResult[0]?.count || 0;
+      const eligibleChats = eligibleChatsResult[0]?.count || 0;
+      const convertedLeads = convertedLeadsResult[0]?.count || 0;
+      const conversionRate = eligibleChats > 0 ? (convertedLeads / eligibleChats) * 100 : 0;
+
+      return {
+        totalChats,
+        eligibleChats,
+        convertedLeads,
+        conversionRate: Math.round(conversionRate * 100) / 100,
+        lastProcessed: new Date()
+      };
       
-      const agent = users.find(u => u.role === 'agent' && u.status === 'active');
-      if (agent) return agent.id;
-      
-      return 17; // Usuario admin por defecto
     } catch (error) {
-      return 17; // Usuario admin por defecto
+      console.error('❌ Error obteniendo estadísticas de conversión:', error);
+      return {
+        totalChats: 0,
+        eligibleChats: 0,
+        convertedLeads: 0,
+        conversionRate: 0,
+        lastProcessed: null
+      };
     }
-  }
-
-  /**
-   * Calcula fecha de siguiente seguimiento
-   */
-  private calculateNextFollowUp(): Date {
-    const nextDate = new Date();
-    nextDate.setDate(nextDate.getDate() + 1); // Seguimiento al día siguiente
-    return nextDate;
-  }
-
-  /**
-   * Calcula score del lead basado en el chat
-   */
-  private calculateLeadScore(chat: ProcessedChat): number {
-    let score = 50; // Base score
-    
-    const message = chat.lastMessage.toLowerCase();
-    
-    // Incrementar score por palabras clave positivas
-    if (message.includes('comprar')) score += 20;
-    if (message.includes('precio') || message.includes('costo')) score += 15;
-    if (message.includes('urgente')) score += 10;
-    if (message.includes('interesado')) score += 10;
-    if (message.includes('cuando')) score += 5;
-    
-    // Incrementar por número de mensajes (más engagement)
-    score += Math.min(chat.messageCount * 2, 20);
-    
-    return Math.min(score, 100);
-  }
-
-  /**
-   * Método manual para forzar conversión de todos los chats
-   */
-  async forceConvertAllChats(): Promise<{processed: number, created: number, updated: number}> {
-    console.log('🚀 Forzando conversión manual de todos los chats...');
-    this.processedChats.clear(); // Limpiar cache para procesar todos
-    return await this.processAllNewChats() as any;
   }
 }
 
-// Instancia singleton
-export const automaticChatToLeadService = new AutomaticChatToLeadService();
+export const automaticChatToLeadService = AutomaticChatToLeadService.getInstance();
