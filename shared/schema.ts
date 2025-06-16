@@ -48,6 +48,67 @@ export const chatInterventions = pgTable("chat_interventions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Universal tags system for all entities
+export const tags = pgTable("tags", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  color: text("color").default("#3B82F6"), // Hex color for visual identification
+  description: text("description"),
+  category: text("category").default("general"), // general, priority, status, custom
+  isSystem: boolean("is_system").default(false), // System tags cannot be deleted
+  userId: integer("user_id").references(() => users.id), // NULL for system tags
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Tag assignments for leads
+export const leadTags = pgTable("lead_tags", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+  tagId: integer("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  assignedBy: integer("assigned_by").references(() => users.id),
+});
+
+// Tag assignments for contacts
+export const contactTags = pgTable("contact_tags", {
+  id: serial("id").primaryKey(),
+  contactId: integer("contact_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
+  tagId: integer("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  assignedBy: integer("assigned_by").references(() => users.id),
+});
+
+// Tag assignments for tickets
+export const ticketTags = pgTable("ticket_tags", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").notNull().references(() => tickets.id, { onDelete: "cascade" }),
+  tagId: integer("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  assignedBy: integer("assigned_by").references(() => users.id),
+});
+
+// Enhanced media storage for WhatsApp multimedia
+export const mediaFiles = pgTable("media_files", {
+  id: serial("id").primaryKey(),
+  messageId: text("message_id").references(() => whatsappMessages.messageId),
+  fileName: text("file_name").notNull(),
+  originalName: text("original_name"),
+  fileType: text("file_type").notNull(), // image, video, audio, document
+  mimeType: text("mime_type").notNull(),
+  fileSize: integer("file_size"), // in bytes
+  filePath: text("file_path").notNull(), // Local storage path
+  fileUrl: text("file_url"), // Public access URL
+  thumbnailPath: text("thumbnail_path"), // For images/videos
+  duration: integer("duration"), // For audio/video in seconds
+  dimensions: jsonb("dimensions"), // {width, height} for images/videos
+  metadata: jsonb("metadata"), // Additional file metadata
+  isProcessed: boolean("is_processed").default(false),
+  accountId: integer("account_id").notNull().references(() => whatsappAccounts.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Demo users table for trial accounts created by the agent
 export const demoUsers = pgTable("demo_users", {
   id: serial("id").primaryKey(),
@@ -1163,6 +1224,13 @@ export const chatToLeadConversions = pgTable("chat_to_lead_conversions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Tag system schemas
+export const insertTagSchema = createInsertSchema(tags);
+export const insertLeadTagSchema = createInsertSchema(leadTags);
+export const insertContactTagSchema = createInsertSchema(contactTags);
+export const insertTicketTagSchema = createInsertSchema(ticketTags);
+export const insertMediaFileSchema = createInsertSchema(mediaFiles);
+
 // Additional validation schemas (avoiding duplicates)
 export const insertContactSchema = createInsertSchema(contacts);
 export const insertConversationSchema = createInsertSchema(conversations);
@@ -1174,3 +1242,15 @@ export const insertMassMessageCampaignSchema = createInsertSchema(massMessageCam
 export const insertAutomatedTaskSchema = createInsertSchema(automatedTasks);
 export const insertEventReminderSchema = createInsertSchema(eventReminders);
 export const insertChatToLeadConversionSchema = createInsertSchema(chatToLeadConversions);
+
+// Tag system types
+export type Tag = typeof tags.$inferSelect;
+export type InsertTag = typeof insertTagSchema._type;
+export type LeadTag = typeof leadTags.$inferSelect;
+export type InsertLeadTag = typeof insertLeadTagSchema._type;
+export type ContactTag = typeof contactTags.$inferSelect;
+export type InsertContactTag = typeof insertContactTagSchema._type;
+export type TicketTag = typeof ticketTags.$inferSelect;
+export type InsertTicketTag = typeof insertTicketTagSchema._type;
+export type MediaFile = typeof mediaFiles.$inferSelect;
+export type InsertMediaFile = typeof insertMediaFileSchema._type;
