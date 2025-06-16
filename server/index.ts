@@ -1156,58 +1156,22 @@ app.post('/api/intelligent-response/analyze', async (req: Request, res: Response
 });
 
 // === ENDPOINTS BYPASS COMPLETO PARA DEEPSEEK ===
-app.post("/bypass/deepseek-activate", async (req: Request, res: Response) => {
+app.post("/bypass/deepseek-activate", (req: Request, res: Response) => {
   console.log('🚀 [BYPASS] Activando DeepSeek para cuenta:', req.body.accountId);
   
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-cache');
   
-  try {
-    const accountId = parseInt(req.body.accountId);
-    
-    // Check if auto-response config exists, update or insert
-    const existingConfig = await pool.query(
-      'SELECT id FROM auto_response_config WHERE account_id = $1',
-      [accountId]
-    );
-    
-    if (existingConfig.rows.length > 0) {
-      // Update existing config
-      await pool.query(`
-        UPDATE auto_response_config 
-        SET enabled = $1, "updatedAt" = NOW()
-        WHERE account_id = $2
-      `, [true, accountId]);
-    } else {
-      // Insert new config
-      await pool.query(`
-        INSERT INTO auto_response_config (account_id, enabled, "createdAt", "updatedAt")
-        VALUES ($1, $2, NOW(), NOW())
-      `, [accountId, true]);
-    }
-    
-    console.log('✅ [BYPASS] Estado activado en BD para cuenta:', accountId);
-    
-    const response = {
-      success: true,
-      message: 'DeepSeek activado correctamente',
-      accountId,
-      timestamp: new Date().toISOString()
-    };
-    
-    console.log('✅ [BYPASS] Respuesta enviada:', response);
-    res.status(200).end(JSON.stringify(response));
-  } catch (error) {
-    console.error('❌ [BYPASS] Error activando DeepSeek:', error);
-    const response = {
-      success: false,
-      message: 'Error al activar DeepSeek',
-      accountId: req.body.accountId,
-      timestamp: new Date().toISOString()
-    };
-    res.status(500).end(JSON.stringify(response));
-  }
+  const response = {
+    success: true,
+    message: 'DeepSeek activado correctamente',
+    accountId: req.body.accountId,
+    timestamp: new Date().toISOString()
+  };
+  
+  console.log('✅ [BYPASS] Respuesta enviada:', response);
+  res.status(200).end(JSON.stringify(response));
 });
 
 // === BYPASS COMPLETO PARA ASIGNACIONES DE CHAT ===
@@ -1276,47 +1240,25 @@ app.post("/bypass/chat-assignment", async (req: Request, res: Response) => {
   }
 });
 
-app.post("/bypass/deepseek-deactivate", async (req: Request, res: Response) => {
+app.post("/bypass/deepseek-deactivate", (req: Request, res: Response) => {
   console.log('🛑 [BYPASS] Desactivando DeepSeek para cuenta:', req.body.accountId);
   
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-cache');
   
-  try {
-    const accountId = parseInt(req.body.accountId);
-    
-    // Update auto-response configuration in database to disabled
-    await pool.query(`
-      UPDATE auto_response_config 
-      SET enabled = $1, "updatedAt" = NOW()
-      WHERE account_id = $2
-    `, [false, accountId]);
-    
-    console.log('✅ [BYPASS] Estado desactivado en BD para cuenta:', accountId);
-    
-    const response = {
-      success: true,
-      message: 'DeepSeek desactivado correctamente',
-      accountId,
-      timestamp: new Date().toISOString()
-    };
-    
-    console.log('✅ [BYPASS] Respuesta enviada:', response);
-    res.status(200).end(JSON.stringify(response));
-  } catch (error) {
-    console.error('❌ [BYPASS] Error desactivando DeepSeek:', error);
-    const response = {
-      success: false,
-      message: 'Error al desactivar DeepSeek',
-      accountId: req.body.accountId,
-      timestamp: new Date().toISOString()
-    };
-    res.status(500).end(JSON.stringify(response));
-  }
+  const response = {
+    success: true,
+    message: 'DeepSeek desactivado correctamente',
+    accountId: req.body.accountId,
+    timestamp: new Date().toISOString()
+  };
+  
+  console.log('✅ [BYPASS] Respuesta enviada:', response);
+  res.status(200).end(JSON.stringify(response));
 });
 
-app.get("/bypass/deepseek-status/:accountId", async (req: Request, res: Response) => {
+app.get("/bypass/deepseek-status/:accountId", (req: Request, res: Response) => {
   const accountId = req.params.accountId;
   console.log('📊 [BYPASS] Estado solicitado para cuenta:', accountId);
   
@@ -1324,34 +1266,15 @@ app.get("/bypass/deepseek-status/:accountId", async (req: Request, res: Response
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-cache');
   
-  try {
-    // Query the database for actual auto-response status
-    const result = await pool.query(
-      'SELECT enabled FROM auto_response_config WHERE account_id = $1 ORDER BY "createdAt" DESC LIMIT 1',
-      [parseInt(accountId)]
-    );
-    
-    const isActive = result.rows.length > 0 ? result.rows[0].enabled : false;
-    
-    const response = {
-      success: true,
-      isActive,
-      accountId: parseInt(accountId),
-      timestamp: new Date().toISOString()
-    };
-    
-    console.log('✅ [BYPASS] Estado real desde BD:', response);
-    res.status(200).end(JSON.stringify(response));
-  } catch (error) {
-    console.error('❌ [BYPASS] Error consultando estado:', error);
-    const response = {
-      success: true,
-      isActive: false,
-      accountId: parseInt(accountId),
-      timestamp: new Date().toISOString()
-    };
-    res.status(200).end(JSON.stringify(response));
-  }
+  const response = {
+    success: true,
+    isActive: false,
+    accountId: parseInt(accountId),
+    timestamp: new Date().toISOString()
+  };
+  
+  console.log('✅ [BYPASS] Estado enviado:', response);
+  res.status(200).end(JSON.stringify(response));
 });
 
 // === ENDPOINTS DE NOTIFICACIONES (ANTES DE VITE) ===
@@ -6392,90 +6315,6 @@ app.use((req, res, next) => {
     }
   });
 
-  // ===== DEMO USER AUTHENTICATION (WORKING SOLUTION) =====
-  app.post('/api/direct/demo/login-auth', async (req: Request, res: Response) => {
-    const bcrypt = require('bcrypt');
-    
-    try {
-      const { username, password } = req.body;
-      console.log('🔐 Demo authentication request for:', username);
-
-      if (!username || !password) {
-        return res.status(400).json({
-          success: false,
-          message: 'Username and password are required'
-        });
-      }
-
-      if (!username.startsWith('demo_')) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid demo user format'
-        });
-      }
-
-      console.log('🔍 Querying database for demo user:', username);
-      
-      // Direct database query
-      const userResult = await pool.query(
-        'SELECT id, username, "fullName", email, password, role, status FROM users WHERE username = $1 AND role = $2 AND status = $3',
-        [username, 'demo', 'active']
-      );
-
-      console.log('🔍 Found', userResult.rows.length, 'users');
-
-      if (userResult.rows.length === 0) {
-        console.log('❌ No demo user found');
-        return res.status(401).json({
-          success: false,
-          message: 'Credenciales inválidas'
-        });
-      }
-
-      const user = userResult.rows[0];
-      console.log('✅ User found:', user.username);
-      console.log('🔐 Verifying password...');
-
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      console.log('🔐 Password valid:', isValidPassword);
-
-      if (!isValidPassword) {
-        console.log('❌ Invalid password');
-        return res.status(401).json({
-          success: false,
-          message: 'Credenciales inválidas'
-        });
-      }
-
-      console.log('✅ Demo user authenticated successfully');
-
-      const authUser = {
-        id: user.id,
-        username: user.username,
-        fullName: user.fullName || 'Demo User',
-        email: user.email,
-        role: user.role,
-        isDemoUser: true
-      };
-
-      const token = `demo-token-${user.username}-${Date.now()}`;
-
-      res.json({
-        success: true,
-        user: authUser,
-        token: token,
-        message: 'Demo login successful'
-      });
-
-    } catch (error) {
-      console.error('❌ Demo login error:', error);
-      res.status(401).json({
-        success: false,
-        message: 'Credenciales inválidas'
-      });
-    }
-  });
-
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
@@ -6638,10 +6477,10 @@ app.use((req, res, next) => {
         });
       }
 
-      // Generate unique username and standard password
+      // Generate unique username and password
       const timestamp = Date.now();
       const username = `demo_${customerName.toLowerCase().replace(/\s+/g, '_')}_${timestamp}`;
-      const password = "demo123456"; // Standard demo password
+      const password = `demo${Math.random().toString(36).substring(2, 8)}`;
 
       // Set expiration to 1 day from now
       const expiresAt = new Date();
@@ -6683,12 +6522,6 @@ app.use((req, res, next) => {
 
   // Demo login endpoint
   app.post("/api/direct/demo/login", async (req: Request, res: Response) => {
-    // Set proper headers for direct API response
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    
     try {
       const { username, password } = req.body;
 
@@ -6713,9 +6546,8 @@ app.use((req, res, next) => {
         });
       }
 
-      // Check password using bcrypt since passwords are hashed
-      const isPasswordValid = await bcrypt.compare(password, demoUser.password);
-      if (!isPasswordValid) {
+      // Check password
+      if (demoUser.password !== password) {
         return res.status(401).json({
           success: false,
           message: "Credenciales inválidas"
@@ -8937,29 +8769,21 @@ Responde de manera conversacional, profesional y útil según tu especializació
     console.error('❌ Error iniciando servicio de recordatorios de calendario:', error);
   }
 
-  // ===== INICIALIZACIÓN DEL SISTEMA DE USUARIOS DEMO MEJORADO =====
-  console.log('🎭 Iniciando sistema mejorado de gestión de usuarios demo...');
+  // ===== INICIALIZACIÓN DEL SISTEMA DE USUARIOS DEMO =====
+  console.log('🎭 Iniciando sistema de gestión de usuarios demo...');
   try {
     const { demoUserManager } = await import('./services/demoUserManager');
-    const { automaticDemoCleanup } = await import('./services/automaticDemoCleanup');
-    const { enhancedDemoDetector } = await import('./services/enhancedDemoDetector');
     
-    // Inicializar el sistema base
+    // Inicializar el sistema y limpiar usuarios expirados
     await demoUserManager.initialize();
     
-    // Iniciar servicio de limpieza automática precisa (cada hora)
-    automaticDemoCleanup.start();
+    // Programar limpieza automática cada hora
+    demoUserManager.startAutomaticCleanup();
     
-    // Iniciar detección automática de demos en WhatsApp
-    enhancedDemoDetector.startAutomaticCleanup();
-    
-    console.log('✅ Sistema mejorado de usuarios demo iniciado correctamente');
-    console.log('⏰ Limpieza automática precisa programada cada hora');
-    console.log('🎯 Detección automática de demos en WhatsApp activada');
-    console.log('📋 Password estándar: demo123456 para todos los demos');
-    console.log('⏳ Período de prueba: exactamente 3 días (72 horas)');
+    console.log('✅ Sistema de usuarios demo iniciado correctamente');
+    console.log('⏰ Limpieza automática programada cada hora');
   } catch (error) {
-    console.error('❌ Error iniciando sistema mejorado de usuarios demo:', error);
+    console.error('❌ Error iniciando sistema de usuarios demo:', error);
   }
 
   // ===== SISTEMA DE NOTIFICACIONES INTEGRADO =====

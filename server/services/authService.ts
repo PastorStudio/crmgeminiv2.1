@@ -171,23 +171,10 @@ class AuthService {
 
     // Verificar el token JWT normal solo si no es temporal
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string; role: string; isDemo?: boolean; demoUserId?: number };
+      const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string; role: string };
       
-      // Handle demo users with special properties
-      if (decoded.role === 'demo' || decoded.isDemo) {
-        console.log(`🎭 Autenticando usuario demo: ${decoded.username}`);
-        (req as any).user = {
-          id: decoded.userId,
-          userId: decoded.userId,
-          username: decoded.username,
-          role: 'demo',
-          isDemo: true,
-          demoUserId: decoded.demoUserId
-        };
-      } else {
-        // Regular user authentication
-        (req as any).user = decoded;
-      }
+      // Añadir información del usuario a la solicitud
+      (req as any).user = decoded;
       
       // Continuar con la siguiente middleware/ruta
       next();

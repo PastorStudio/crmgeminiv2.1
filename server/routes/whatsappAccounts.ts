@@ -269,47 +269,27 @@ router.delete('/delete-all', async (req, res) => {
     // Obtener todas las cuentas antes de eliminarlas
     const allAccounts = await storage.getAllWhatsappAccounts();
     
-    // 1. Detener todos los servicios automáticos que procesan mensajes
-    try {
-      const { independentAutoResponseService } = await import('../services/independentAutoResponse');
-      const { trulyIndependentAutoResponseSystem } = await import('../services/trulyIndependentAutoResponse');
-      
-      console.log('🛑 Deteniendo servicios de respuesta automática...');
-      independentAutoResponseService.stop();
-      trulyIndependentAutoResponseSystem.stop();
-    } catch (error) {
-      console.log('⚠️ Algunos servicios de respuesta automática no están disponibles');
-    }
-    
-    // 2. Desconectar todas las cuentas activas
+    // Desconectar todas las cuentas activas
     for (const account of allAccounts) {
       try {
         await whatsappMultiAccountManager.disconnectAccount(account.id);
         console.log(`✅ Cuenta ${account.id} (${account.name}) desconectada`);
       } catch (error) {
-        console.log(`⚠️ Cuenta ${account.id} no inicializada`);
+        console.error(`⚠️ Error desconectando cuenta ${account.id}:`, error);
       }
     }
     
-    // 3. Limpiar todas las dependencias en cascada
-    try {
-      await storage.cleanupAccountDependencies(allAccounts.map(acc => acc.id));
-      console.log('✅ Dependencias eliminadas en cascada');
-    } catch (error) {
-      console.log('⚠️ Error limpiando dependencias:', error.message);
-    }
-    
-    // 4. Eliminar todas las cuentas de la base de datos
+    // Eliminar todas las cuentas de la base de datos
     await storage.deleteAllWhatsappAccounts();
     
-    // 5. Limpiar carpetas de sesión
+    // Limpiar carpetas de sesión
     await cleanAllSessionFolders();
     
-    console.log('✅ Todas las cuentas eliminadas y secuencia de ID reiniciada desde 1');
+    console.log('✅ Todas las cuentas eliminadas y contador de IDs reiniciado');
     
     res.json({ 
       success: true, 
-      message: 'Todas las cuentas han sido eliminadas exitosamente',
+      message: 'Todas las cuentas han sido eliminadas y el contador de IDs reiniciado',
       deletedCount: allAccounts.length
     });
   } catch (error) {
@@ -326,35 +306,18 @@ router.delete('/:id', async (req, res) => {
       return res.status(400).json({ error: 'ID inválido' });
     }
     
-    console.log(`🗑️ Iniciando eliminación de cuenta WhatsApp ID: ${id}`);
-    
     // Primero desconectar la cuenta si está activa
-    try {
-      await whatsappMultiAccountManager.disconnectAccount(id);
-      console.log(`✅ Cuenta ${id} desconectada del manager`);
-    } catch (disconnectError) {
-      console.warn(`⚠️ Error desconectando cuenta ${id}:`, disconnectError);
-    }
-    
-    // Eliminar dependencias antes de eliminar la cuenta
-    await storage.deleteAccountDependencies(id);
-    console.log(`✅ Dependencias de cuenta ${id} eliminadas`);
+    await whatsappMultiAccountManager.disconnectAccount(id);
     
     // Luego eliminar de la base de datos
     await storage.deleteWhatsappAccount(id);
-    console.log(`✅ Cuenta ${id} eliminada de la base de datos`);
     
     // Sincronizar carpetas de sesión con los nuevos IDs
-    try {
-      await syncSessionFolders();
-      console.log(`✅ Carpetas de sesión sincronizadas`);
-    } catch (syncError) {
-      console.warn('⚠️ Error sincronizando carpetas:', syncError);
-    }
+    await syncSessionFolders();
     
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error al eliminar cuenta de WhatsApp:', error);
+    console.error('Error al eliminar cuenta de WhatsApp:', error);
     res.status(500).json({ error: 'Error al eliminar cuenta de WhatsApp' });
   }
 });
@@ -459,9 +422,9 @@ async function cleanAllSessionFolders() {
   try {
     console.log("🧹 Limpiando todas las carpetas de sesión...");
     
-    // Importar módulos necesarios usando import
-    const path = await import('path');
-    const fs = await import('fs');
+    // Importar módulos necesarios
+    const path = require('path');
+    const fs = require('fs');
     
     // Definir directorio de cuentas
     const TEMP_DIR = path.join(process.cwd(), 'temp');

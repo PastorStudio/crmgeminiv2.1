@@ -65,14 +65,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('Error parsing stored user data:', err);
         localStorage.removeItem(USER_KEY);
       }
+    } else {
+      // Create a temporary user for development bypass
+      const tempUser = {
+        id: 999,
+        username: 'demo',
+        fullName: 'Demo User',
+        role: 'admin',
+        status: 'active'
+      };
+      setUser(tempUser);
+      setToken('temp-token-dev');
     }
     
     setIsLoading(false);
   }, []);
 
-  // Verificar token con el servidor (skip para tokens demo)
+  // Verificar token con el servidor (deshabilitado temporalmente para bypass)
   useEffect(() => {
-    if (token && !token.startsWith('temp-token-') && !token.startsWith('demo-token-')) {
+    if (token && !token.startsWith('temp-token-')) {
       fetch('/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -102,11 +113,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       
-      // Detectar si es un usuario demo y usar el endpoint correspondiente
-      const isDemoUser = username.startsWith('demo_');
-      const endpoint = isDemoUser ? '/api/direct/demo/login-auth' : '/api/auth/login';
-      
-      const response = await fetch(endpoint, {
+      // Autenticación dinámca contra la base de datos
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

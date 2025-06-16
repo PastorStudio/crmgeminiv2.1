@@ -52,10 +52,9 @@ export const chatInterventions = pgTable("chat_interventions", {
 export const demoUsers = pgTable("demo_users", {
   id: serial("id").primaryKey(),
   customerName: text("customer_name").notNull(),
-  phoneNumber: text("phone_number").default(""),
+  phoneNumber: text("phone_number").notNull(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  demoNumber: integer("demo_number").notNull().unique(), // Sequential number 1-1000
   chatId: text("chat_id"), // WhatsApp chat where demo was requested
   requestedAt: timestamp("requested_at").defaultNow(),
   expiresAt: timestamp("expires_at").notNull(),
@@ -68,20 +67,6 @@ export const demoUsers = pgTable("demo_users", {
   loginCount: integer("login_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Demo tracking table for associating demo users with WhatsApp chats
-export const demoTracking = pgTable("demo_tracking", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
-  demoUserId: integer("demo_user_id").references(() => demoUsers.id),
-  chatId: text("chat_id").notNull(),
-  phoneNumber: text("phone_number").notNull(),
-  clientName: text("client_name"),
-  accountId: integer("account_id").references(() => whatsappAccounts.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  expiresAt: timestamp("expires_at").notNull(),
-  status: text("status").default("active"), // active, expired, converted
 });
 
 // Base user table with role-based access
@@ -580,7 +565,6 @@ export const aiSettings = pgTable('ai_settings', {
   geminiApiKey: text('gemini_api_key'),
   openaiApiKey: text('openai_api_key'),
   qwenApiKey: text('qwen_api_key'),
-  deepseekApiKey: text('deepseek_api_key'),
   customPrompt: text('custom_prompt').default('Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.'),
   temperature: real('temperature').default(0.7),
   enableAIResponses: boolean('enable_ai_responses').default(false),

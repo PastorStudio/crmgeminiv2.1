@@ -686,7 +686,7 @@ export function WhatsAppTwoColumn() {
   const [assignmentChatId, setAssignmentChatId] = useState<string>('');
   const [assignmentAccountId, setAssignmentAccountId] = useState<number>(1);
 
-  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [translatorEnabled, setTranslatorEnabled] = useState(false);
   const [smartBotsEnabled, setSmartBotsEnabled] = useState(false);
@@ -2698,53 +2698,10 @@ export function WhatsAppTwoColumn() {
     }
   }, [queryClient, selectedAccounts]);
 
-  // Define filter categories
-  const filterCategories = [
-    { id: 'all', label: 'Todos', icon: '💬' },
-    { id: 'unread', label: 'No leídos', icon: '🔴' },
-    { id: 'groups', label: 'Grupos', icon: '👥' },
-    { id: 'individual', label: 'Individuales', icon: '👤' },
-    { id: 'sales', label: 'Ventas', icon: '💰' },
-    { id: 'support', label: 'Soporte', icon: '🛠️' },
-    { id: 'leads', label: 'Leads', icon: '🎯' },
-    { id: 'urgent', label: 'Urgente', icon: '⚡' }
-  ];
-
-  const filteredChats = useMemo(() => {
-    return sortedChats.filter(chat => {
-      const chatName = (chat.name || '').toLowerCase();
-      const lastMessage = (chat.lastMessage || '').toLowerCase();
-      const unreadCount = chat.unreadCount || 0;
-
-      switch (selectedFilter) {
-        case 'unread':
-          return unreadCount > 0;
-        case 'groups':
-          return chat.isGroup === true;
-        case 'individual':
-          return chat.isGroup !== true;
-        case 'sales':
-          return chatName.includes('venta') || chatName.includes('ventas') ||
-                 lastMessage.includes('precio') || lastMessage.includes('comprar') ||
-                 lastMessage.includes('costo') || lastMessage.includes('vender');
-        case 'support':
-          return chatName.includes('soporte') || chatName.includes('support') ||
-                 lastMessage.includes('ayuda') || lastMessage.includes('problema') ||
-                 lastMessage.includes('error') || lastMessage.includes('falla');
-        case 'leads':
-          return chatName.includes('lead') || chatName.includes('prospecto') ||
-                 lastMessage.includes('información') || lastMessage.includes('interesado') ||
-                 lastMessage.includes('cotización') || lastMessage.includes('consulta');
-        case 'urgent':
-          return unreadCount > 5 || 
-                 lastMessage.includes('urgente') || lastMessage.includes('emergencia') ||
-                 lastMessage.includes('importante') || lastMessage.includes('rapido');
-        case 'all':
-        default:
-          return true;
-      }
-    });
-  }, [sortedChats, selectedFilter]);
+  const filteredChats = sortedChats.filter(chat => 
+    chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loadingAccounts) {
     return (
@@ -2783,63 +2740,14 @@ export function WhatsAppTwoColumn() {
           </div>
         </div>
 
-        {/* Category Filters */}
+        {/* Search */}
         <div className="p-3 border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-gray-600">Filtrar conversaciones</span>
-            <Badge variant="secondary" className="text-xs">
-              {filteredChats.length} chat{filteredChats.length !== 1 ? 's' : ''}
-            </Badge>
-          </div>
-          <div className="grid grid-cols-4 gap-1">
-            {filterCategories.map(category => {
-              const categoryCount = sortedChats.filter(chat => {
-                const chatName = (chat.name || '').toLowerCase();
-                const lastMessage = (chat.lastMessage || '').toLowerCase();
-                const unreadCount = chat.unreadCount || 0;
-
-                switch (category.id) {
-                  case 'unread': return unreadCount > 0;
-                  case 'groups': return chat.isGroup === true;
-                  case 'individual': return chat.isGroup !== true;
-                  case 'sales': return chatName.includes('venta') || chatName.includes('ventas') ||
-                    lastMessage.includes('precio') || lastMessage.includes('comprar') ||
-                    lastMessage.includes('costo') || lastMessage.includes('vender');
-                  case 'support': return chatName.includes('soporte') || chatName.includes('support') ||
-                    lastMessage.includes('ayuda') || lastMessage.includes('problema') ||
-                    lastMessage.includes('error') || lastMessage.includes('falla');
-                  case 'leads': return chatName.includes('lead') || chatName.includes('prospecto') ||
-                    lastMessage.includes('información') || lastMessage.includes('interesado') ||
-                    lastMessage.includes('cotización') || lastMessage.includes('consulta');
-                  case 'urgent': return unreadCount > 5 || 
-                    lastMessage.includes('urgente') || lastMessage.includes('emergencia') ||
-                    lastMessage.includes('importante') || lastMessage.includes('rapido');
-                  case 'all': 
-                  default: return true;
-                }
-              }).length;
-
-              return (
-                <Button
-                  key={category.id}
-                  size="sm"
-                  variant={selectedFilter === category.id ? "default" : "outline"}
-                  className={`text-xs h-8 px-2 relative ${
-                    selectedFilter === category.id 
-                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                      : 'hover:bg-gray-100'
-                  }`}
-                  onClick={() => setSelectedFilter(category.id)}
-                >
-                  <span className="mr-1">{category.icon}</span>
-                  {category.label}
-                  {categoryCount > 0 && category.id !== 'all' && (
-                    <span className="ml-1 text-xs opacity-75">({categoryCount})</span>
-                  )}
-                </Button>
-              );
-            })}
-          </div>
+          <Input
+            placeholder="Buscar conversaciones..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full"
+          />
         </div>
 
 

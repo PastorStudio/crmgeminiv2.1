@@ -53,7 +53,6 @@ import { FunctionDocumentation } from './pages/FunctionDocumentation';
 import NotificationSystem from './components/NotificationSystem';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SubscriptionManager } from './components/admin/SubscriptionManager';
-import AutoRedirect from './components/AutoRedirect';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
@@ -168,7 +167,7 @@ const AppRoutes: React.FC = () => {
                 <span className="text-xs uppercase font-semibold text-white/70">Principal</span>
               </div>
               
-              <a href="/dashboard" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/dashboard' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              <a href="/" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="3" width="7" height="7" rx="1" fill="#3B82F6"/>
                   <rect x="14" y="3" width="7" height="7" rx="1" fill="#10B981"/>
@@ -658,11 +657,8 @@ const AppRoutes: React.FC = () => {
                 {/* Ruta de login pública */}
                 <Route path="/login" component={Login} />
                 
-                {/* Auto-redirect root to login */}
-                <Route path="/" component={AutoRedirect} />
-                
-                {/* Dashboard route */}
-                <Route path="/dashboard" component={() => <PrivateRoute component={Dashboard} path="/dashboard" />} />
+                {/* Rutas protegidas */}
+                <Route path="/" component={() => <PrivateRoute component={Dashboard} path="/" />} />
                 <Route path="/leads" component={() => <PrivateRoute component={Leads} path="/leads" />} />
                 <Route path="/sales-pipeline" component={() => <PrivateRoute component={SalesPipeline} path="/sales-pipeline" />} />
                 <Route path="/messages" component={() => <PrivateRoute component={() => <ProtectedRoute requireFeature="messaging"><Messages /></ProtectedRoute>} path="/messages" />} />

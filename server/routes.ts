@@ -20,7 +20,7 @@ import { registerWhatsAppRoutes } from "./services/whatsappRoutes";
 import { registerAnalyticsRoutes } from "./services/analyticsRoutes";
 import { authService } from "./services/authService";
 import { eq, and, ne, not, isNull, sql } from "drizzle-orm";
-import { users, whatsappAccounts, userWhatsappAccounts, chatAssignments, chatCategories, leads, subscriptionPlans, userSubscriptions, demoUsers } from "@shared/schema";
+import { users, whatsappAccounts, userWhatsappAccounts, chatAssignments, chatCategories, leads, subscriptionPlans, userSubscriptions } from "@shared/schema";
 import { pool } from "./db";
 
 import { registerDirectAPIRoutes } from "./services/directApiServer";
@@ -48,9 +48,6 @@ import salesFlowRouter from "./routes/salesFlowRoutes";
 import flowExecutionRouter from "./routes/flowExecutionRoutes";
 import multiTenantRoutes from "./routes/multiTenantRoutes";
 import { multiTenantAuth, AuthenticatedRequest, getAccessibleAccountIds, canAccessAccount } from "./middleware/multiTenantAuth";
-import { ensureDemoDataIsolation, filterDataForDemoUser } from "./middleware/demoDataIsolation";
-import { optionalJWT } from "./middleware/jwtAuth";
-import demoRoutes from "./routes/demoRoutes";
 import { demoUserManager } from "./services/demoUserManager";
 import promptTestRoutes from "./routes/promptTestRoutes";
 
@@ -191,9 +188,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.use("/api/tickets", ticketsRouter);
   app.use("/api/web-scraping", webScrapingRouter);
-  
-  // Demo routes with complete data isolation
-  app.use("/api/demo", demoRoutes);
   
   // Registrar rutas de test de prompts
   app.use("/api", promptTestRoutes);
@@ -649,44 +643,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Check if it's a demo user first
-      if (username.startsWith('demo_')) {
-        console.log(`🎭 Intento de login de usuario demo: ${username}`);
-        
-        const demoUser = await demoUserManager.verifyDemoUser(username, password);
-        if (demoUser) {
-          console.log(`✅ Usuario demo autenticado: ${username}`);
-          
-          // Generate token for demo user
-          const token = jwt.sign(
-            { 
-              userId: demoUser.id, 
-              username: demoUser.username, 
-              role: 'demo',
-              isDemo: true,
-              demoUserId: demoUser.demoId
-            },
-            process.env.JWT_SECRET || 'crm-whatsapp-secret-key',
-            { expiresIn: "24h" }
-          );
-          
-          return res.json({
-            success: true,
-            message: "Login exitoso - Modo Demo",
-            token,
-            user: {
-              id: demoUser.id,
-              username: demoUser.username,
-              role: 'demo',
-              fullName: demoUser.fullName || demoUser.customerName,
-              avatar: null,
-              isDemo: true,
-              expiresAt: demoUser.expiresAt
-            }
-          });
-        }
-      }
-
       // Para usuarios normales, seguir el flujo habitual
       const user = await authService.verifyCredentials(username, password);
       
@@ -887,89 +843,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       success: true,
       message: "Sesión cerrada correctamente"
     });
-  });
-
-  // Demo login endpoint
-  app.post("/api/demo/login", async (req: Request, res: Response) => {
-    try {
-      const { username, password } = req.body;
-      
-      if (!username || !password) {
-        return res.status(400).json({
-          success: false,
-          message: "Usuario y contraseña son requeridos"
-        });
-      }
-
-      console.log(`🎯 Intento de login demo: ${username}`);
-
-      // Find demo user
-      const [demoUser] = await db
-        .select()
-        .from(demoUsers)
-        .where(and(
-          eq(demoUsers.username, username),
-          eq(demoUsers.password, password)
-        ));
-
-      if (!demoUser) {
-        return res.status(401).json({
-          success: false,
-          message: "Credenciales de demo inválidas"
-        });
-      }
-
-      // Check if demo is expired
-      const now = new Date();
-      if (new Date(demoUser.expiresAt) < now) {
-        return res.status(401).json({
-          success: false,
-          message: "Demo expirado"
-        });
-      }
-
-      // Update last login
-      await db
-        .update(demoUsers)
-        .set({
-          lastLoginAt: now,
-          loginCount: demoUser.loginCount + 1
-        })
-        .where(eq(demoUsers.id, demoUser.id));
-
-      // Generate JWT token for demo user
-      const token = jwt.sign(
-        { 
-          userId: demoUser.id,
-          username: demoUser.username,
-          role: 'demo',
-          customerName: demoUser.customerName
-        }, 
-        process.env.JWT_SECRET || 'crm-whatsapp-secret-key', 
-        { expiresIn: '72h' }
-      );
-
-      console.log(`✅ Demo login exitoso: ${demoUser.customerName}`);
-
-      res.json({
-        success: true,
-        message: `Acceso demo iniciado para ${demoUser.customerName}`,
-        token,
-        user: {
-          id: demoUser.id,
-          username: demoUser.username,
-          customerName: demoUser.customerName,
-          role: 'demo',
-          expiresAt: demoUser.expiresAt
-        }
-      });
-    } catch (error) {
-      console.error('Error en demo login:', error);
-      res.status(500).json({
-        success: false,
-        message: "Error interno del servidor"
-      });
-    }
   });
   
   // Database status endpoint
@@ -7295,68 +7168,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Enhanced WhatsApp Accounts Endpoint with Complete Data Isolation for Demo Users
-  app.get('/api/whatsapp/accounts', optionalJWT, ensureDemoDataIsolation, async (req: AuthenticatedRequest, res: Response) => {
+  // Enhanced WhatsApp Accounts Endpoint with Proper User Access Control
+  app.get('/api/whatsapp/accounts', async (req: Request, res: Response) => {
     try {
       console.log('🔄 Obteniendo cuentas de WhatsApp...');
       
-      let accounts;
-      
-      // Check if user is a demo user and apply data isolation
-      if (req.user && req.user.role === 'demo') {
-        console.log(`🔒 Usuario demo detectado: ${req.user.username} - aplicando aislamiento de datos`);
-        
-        // Get only accounts owned by or assigned to this demo user
-        const userAccounts = await db.select({
-          id: whatsappAccounts.id,
-          name: whatsappAccounts.name,
-          description: whatsappAccounts.description,
-          status: whatsappAccounts.status,
-          userId: whatsappAccounts.userId,
-          autoResponseEnabled: whatsappAccounts.autoResponseEnabled,
-          responseDelay: whatsappAccounts.responseDelay,
-          customPrompt: whatsappAccounts.customPrompt,
-          keepAliveEnabled: whatsappAccounts.keepAliveEnabled,
-          lastActivity: whatsappAccounts.lastActivity,
-          createdAt: whatsappAccounts.createdAt
-        })
-        .from(whatsappAccounts)
-        .where(eq(whatsappAccounts.userId, req.user.id));
-        
-        // Also get accounts assigned through user assignments
-        const assignedAccounts = await db.select({
-          id: whatsappAccounts.id,
-          name: whatsappAccounts.name,
-          description: whatsappAccounts.description,
-          status: whatsappAccounts.status,
-          userId: whatsappAccounts.userId,
-          autoResponseEnabled: whatsappAccounts.autoResponseEnabled,
-          responseDelay: whatsappAccounts.responseDelay,
-          customPrompt: whatsappAccounts.customPrompt,
-          keepAliveEnabled: whatsappAccounts.keepAliveEnabled,
-          lastActivity: whatsappAccounts.lastActivity,
-          createdAt: whatsappAccounts.createdAt
-        })
-        .from(whatsappAccounts)
-        .innerJoin(userAccountAssignments, eq(userAccountAssignments.whatsappAccountId, whatsappAccounts.id))
-        .where(and(
-          eq(userAccountAssignments.userId, req.user.id),
-          eq(userAccountAssignments.isActive, true)
-        ));
-        
-        // Combine and deduplicate accounts
-        const allUserAccounts = [...userAccounts, ...assignedAccounts];
-        const uniqueAccounts = allUserAccounts.filter((account, index, self) => 
-          index === self.findIndex(a => a.id === account.id)
-        );
-        
-        accounts = uniqueAccounts;
-        console.log(`🔒 Usuario demo ${req.user.username} tiene acceso a ${accounts.length} cuentas aisladas`);
-      } else {
-        // For non-demo users, get all accounts
-        accounts = await storage.getAllWhatsappAccounts();
-      }
-      
+      const accounts = await storage.getAllWhatsappAccounts();
       console.log(`✅ Cuentas obtenidas: ${accounts.length}`);
       
       const transformedAccounts = accounts.map(account => {
@@ -7381,16 +7198,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           keepAliveEnabled: account.keepAliveEnabled !== false,
           lastActivity: lastActivityDisplay,
           createdAt: account.createdAt,
-          isConnected: realTimeStatus === 'connected' || realTimeStatus === 'ready',
-          isDemoAccount: req.user?.role === 'demo'
+          isConnected: realTimeStatus === 'connected' || realTimeStatus === 'ready'
         };
       });
 
       res.json({
         success: true,
-        accounts: transformedAccounts,
-        totalAccounts: transformedAccounts.length,
-        isDemo: req.user?.role === 'demo' || false
+        accounts: transformedAccounts
       });
     } catch (error) {
       console.error('Error fetching WhatsApp accounts:', error);
@@ -8571,10 +8385,6 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
 
   // Multi-tenant routes for user-based data isolation
   app.use('/api/tenant', multiTenantRoutes);
-
-  // ChatGPT Plus test and monitoring routes
-  const chatgptPlusTestRoutes = await import('./routes/chatgptPlusTest');
-  app.use('/api/chatgpt-plus', chatgptPlusTestRoutes.default);
 
   return httpServer;
 }
