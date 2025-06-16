@@ -15,7 +15,7 @@ async function testGeminiAPI() {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = "Hola, soy Zoe del sistema CRM WhatsApp AI. ¿Cómo puedo ayudarte?";
     const result = await model.generateContent(prompt);

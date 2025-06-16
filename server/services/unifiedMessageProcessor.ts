@@ -228,8 +228,8 @@ REGLAS CRÍTICAS:
 4. Responde específicamente al último mensaje del usuario
 5. Mantén siempre el tono y personalidad definida en el prompt principal`;
 
-      // Llamar a OpenAI
-      const response = await this.callOpenAI(systemPrompt, context.body, config.temperature);
+      // Llamar a IA (prioridad: Gemini > DeepSeek > OpenAI)
+      const response = await this.callWorkingAI(systemPrompt, context.body, config.temperature);
 
       if (response) {
         // Guardar mensaje en historial
@@ -297,7 +297,7 @@ REGLAS CRÍTICAS:
 3. Responde específicamente al último mensaje del usuario
 4. Mantén coherencia con mensajes anteriores`;
 
-      const response = await this.callOpenAI(systemPrompt, context.body, 0.7);
+      const response = await this.callWorkingAI(systemPrompt, context.body, 0.7);
 
       if (response) {
         // Guardar mensaje en historial
