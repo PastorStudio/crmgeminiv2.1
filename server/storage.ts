@@ -38,6 +38,7 @@ export interface IStorage {
   // Lead methods
   getLeads(): Promise<Lead[]>;
   getAllLeads(): Promise<Lead[]>;
+  getLeadsByPhone(phone: string): Promise<Lead[]>;
   createLead(insertLead: InsertLead): Promise<Lead>;
   updateLead(id: number, updates: Partial<Lead>): Promise<Lead | undefined>;
   deleteLead(id: number): Promise<boolean>;
@@ -282,6 +283,14 @@ export class DatabaseStorage implements IStorage {
       console.error('Error getting recent messages:', error);
       return [];
     }
+  }
+
+  async getLeadsByPhone(phone: string): Promise<Lead[]> {
+    const leadsList = await db
+      .select()
+      .from(leads)
+      .where(eq(leads.phone, phone));
+    return leadsList;
   }
 
   async createLead(insertLead: InsertLead): Promise<Lead> {

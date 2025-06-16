@@ -14,6 +14,7 @@ import { Loader2, Sun, Moon, Coffee, Star, MessageCircle, Users, FileText, Phone
 import { getRealNow, formatNYTime } from "@/lib/timeSync";
 import { PageTranslationSelector, usePageTranslation } from "@/components/translation/PageTranslator";
 import { SystemRefreshButton } from "@/components/dashboard/SystemRefreshButton";
+import { AutoChatToLeadPanel } from "@/components/AutoChatToLeadPanel";
 import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
