@@ -3461,9 +3461,137 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // ===== REAL WHATSAPP DATA INTEGRATION ENDPOINTS =====
+  
+  // Endpoint para conversión automática de chats reales a leads
+  app.post("/api/auto-convert-chats", async (req: Request, res: Response) => {
+    try {
+      console.log('🔄 Iniciando conversión automática de chats reales a leads...');
+      
+      const { automaticChatToLeadService } = await import('../services/automaticChatToLeadService');
+      const result = await automaticChatToLeadService.processAllChatsToLeads();
+      
+      console.log(`✅ Conversión completada: ${result.converted} leads creados de ${result.processed} conversaciones`);
+      
+      res.json({
+        success: true,
+        result,
+        message: `Procesados ${result.processed} chats reales, convertidos ${result.converted} a leads`,
+        realData: true,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error en conversión automática:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error en conversión automática de chats reales",
+        message: error.message
+      });
+    }
+  });
+
+  // Estadísticas reales de conversión automática
+  app.get("/api/auto-convert-chats/stats", async (_req: Request, res: Response) => {
+    try {
+      const { automaticChatToLeadService } = await import('../services/automaticChatToLeadService');
+      const stats = await automaticChatToLeadService.getConversionStats();
+      
+      res.json({
+        success: true,
+        stats,
+        realData: true,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error obteniendo estadísticas reales:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error obteniendo estadísticas de conversión reales" 
+      });
+    }
+  });
+
+  // Crear sistema de etiquetas inicial
+  app.post("/api/system/initialize-tags", async (req: Request, res: Response) => {
+    try {
+      const { createSystemTags } = await import('../scripts/createSystemTags');
+      const result = await createSystemTags();
+      
+      res.json({
+        success: true,
+        result,
+        message: "Sistema de etiquetas inicializado exitosamente"
+      });
+    } catch (error) {
+      console.error('Error inicializando sistema de etiquetas:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error inicializando sistema de etiquetas" 
+      });
+    }
+  });
+
+  // Endpoint para obtener mensajes reales de WhatsApp por conversación
+  app.get("/api/whatsapp/conversations/:chatId/messages", async (req: Request, res: Response) => {
+    try {
+      const { chatId } = req.params;
+      const { limit = '50', offset = '0' } = req.query;
+      
+      const realMessages = await db
+        .select()
+        .from(whatsappMessages)
+        .where(eq(whatsappMessages.chatId, chatId))
+        .orderBy(desc(whatsappMessages.timestamp))
+        .limit(parseInt(limit as string))
+        .offset(parseInt(offset as string));
+      
+      res.json({
+        success: true,
+        messages: realMessages,
+        count: realMessages.length,
+        chatId,
+        realData: true
+      });
+    } catch (error) {
+      console.error('Error obteniendo mensajes reales:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error obteniendo mensajes reales de WhatsApp" 
+      });
+    }
+  });
+
+  // Endpoint para obtener contactos reales de WhatsApp
+  app.get("/api/whatsapp/real-contacts", async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.query;
+      
+      let query = db.select().from(contacts);
+      if (accountId) {
+        query = query.where(eq(contacts.whatsappAccountId, parseInt(accountId as string)));
+      }
+      
+      const realContacts = await query;
+      
+      res.json({
+        success: true,
+        contacts: realContacts,
+        count: realContacts.length,
+        realData: true
+      });
+    } catch (error) {
+      console.error('Error obteniendo contactos reales:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error obteniendo contactos reales de WhatsApp" 
+      });
+    }
+  });
+
   console.log('🚀 Rutas optimizadas registradas correctamente');
   console.log('📡 WebSocket configurado en /ws');
   console.log('✅ Enhanced System API endpoints implemented - All 15 improvements active');
+  console.log('🔄 Real WhatsApp Data Integration endpoints added');
   
   return httpServer;
 }
