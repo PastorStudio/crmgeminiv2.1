@@ -1022,17 +1022,29 @@ export function registerOptimizedRoutes(app: Express): Server {
         });
       }
       
-      // Verificar contraseña
-      if (user.password !== password) {
+      // Verificar contraseña (comparación directa para simplicidad)
+      const isValidPassword = user.password === password;
+      
+      if (!isValidPassword) {
         console.log(`❌ Contraseña incorrecta para usuario: ${username}`);
+        console.log(`Expected: ${user.password}, Got: ${password}`);
         return res.status(401).json({ 
           success: false, 
           message: "Credenciales inválidas" 
         });
       }
       
-      // Verificar que el usuario esté activo
-      if (user.status !== 'active') {
+      // Verificar que el usuario esté activo (permitir login para usuarios demo también)
+      if (user.status !== 'active' && user.status !== 'inactive') {
+        console.log(`❌ Usuario con estado no válido: ${username} - ${user.status}`);
+        return res.status(403).json({ 
+          success: false, 
+          message: "Usuario no autorizado" 
+        });
+      }
+      
+      // Permitir login para usuarios demo aunque estén marcados como inactivos
+      if (user.status === 'inactive' && username !== 'demo') {
         console.log(`❌ Usuario inactivo: ${username}`);
         return res.status(403).json({ 
           success: false, 
