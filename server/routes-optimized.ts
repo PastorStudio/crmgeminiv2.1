@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { databaseAdapter } from "./databaseAdapter";
+import { db } from "./db";
+import { and, sql } from "drizzle-orm";
 import { 
   insertUserSchema, 
   insertLeadSchema, 
@@ -2970,7 +2972,7 @@ export function registerOptimizedRoutes(app: Express): Server {
   // ***** ENDPOINT PARA CONTACTOS DE WHATSAPP REALES *****
   app.get("/api/whatsapp/contacts", async (_req: Request, res: Response) => {
     try {
-      console.log('📞 Obteniendo contactos reales de WhatsApp...');
+      console.log('📞 Obteniendo contactos de WhatsApp...');
       
       // Importar el gestor de cuentas múltiples
       let whatsappMultiAccountManager;
@@ -2983,6 +2985,7 @@ export function registerOptimizedRoutes(app: Express): Server {
       }
 
       const allContacts: any[] = [];
+      let hasAuthenticatedAccount = false;
       
       // Obtener todas las cuentas de WhatsApp activas
       const accounts = await storage.getAllWhatsAppAccounts();
@@ -2995,10 +2998,19 @@ export function registerOptimizedRoutes(app: Express): Server {
           // Obtener cliente de WhatsApp para esta cuenta
           const client = whatsappMultiAccountManager.getClient(account.id);
           
-          if (!client || !client.info) {
+          if (!client) {
             console.log(`⚠️ Cliente WhatsApp no disponible para cuenta ${account.id}`);
             continue;
           }
+
+          // Verificar si el cliente está autenticado y listo
+          const isReady = client.info && client.info.wid;
+          if (!isReady) {
+            console.log(`⚠️ Cliente WhatsApp no está autenticado para cuenta ${account.id}`);
+            continue;
+          }
+
+          hasAuthenticatedAccount = true;
 
           // Intentar obtener contactos directamente del cliente
           let contacts = [];
@@ -3042,6 +3054,50 @@ export function registerOptimizedRoutes(app: Express): Server {
           
         } catch (error) {
           console.error(`❌ Error obteniendo contactos de cuenta ${account.id}:`, error);
+        }
+      }
+
+      // Si no hay cuentas autenticadas, obtener contactos desde la base de datos de mensajes
+      if (!hasAuthenticatedAccount) {
+        console.log('🔄 No hay cuentas autenticadas, obteniendo contactos desde la base de datos...');
+        try {
+          // Obtener contactos únicos desde mensajes de WhatsApp
+          const messages = await db
+            .select({
+              chatId: whatsappMessages.chatId,
+              accountId: whatsappMessages.accountId
+            })
+            .from(whatsappMessages)
+            .where(and(
+              sql`${whatsappMessages.chatId} NOT LIKE '%@g.us'`, // No grupos
+              sql`${whatsappMessages.chatId} != 'status@broadcast'`, // No estados
+              sql`${whatsappMessages.from_me} = false` // Solo mensajes recibidos
+            ))
+            .groupBy(whatsappMessages.chatId, whatsappMessages.accountId);
+
+          const dbContacts = messages.map(msg => {
+            // Extraer número de teléfono del chatId
+            const phoneNumber = msg.chatId?.replace('@c.us', '') || '';
+            const formattedName = phoneNumber ? `Contacto ${phoneNumber}` : 'Sin nombre';
+            
+            return {
+              id: msg.chatId,
+              name: formattedName,
+              phone: phoneNumber,
+              pushname: formattedName,
+              tags: [],
+              lastSeen: new Date().toISOString(),
+              profilePic: null,
+              whatsappAccountId: msg.accountId,
+              isGroup: false,
+              isUser: true
+            };
+          });
+
+          allContacts.push(...dbContacts);
+          console.log(`✅ ${dbContacts.length} contactos obtenidos desde base de datos`);
+        } catch (dbError) {
+          console.error('❌ Error obteniendo contactos desde base de datos:', dbError);
         }
       }
 
