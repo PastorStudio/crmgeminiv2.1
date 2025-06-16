@@ -1440,6 +1440,35 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // Endpoint para obtener todas las etiquetas de leads únicas (debe ir antes de /:id)
+  app.get("/api/leads/tags", async (_req: Request, res: Response) => {
+    try {
+      console.log('🏷️ Getting all unique lead tags from database...');
+      
+      const leads = await storage.getAllLeads();
+      const allTags = new Set<string>();
+      
+      // Extraer todas las etiquetas únicas de todos los leads
+      leads.forEach(lead => {
+        if (lead.tags && Array.isArray(lead.tags)) {
+          lead.tags.forEach(tag => {
+            if (tag && tag.trim()) {
+              allTags.add(tag.trim());
+            }
+          });
+        }
+      });
+      
+      const uniqueTags = Array.from(allTags).sort();
+      console.log(`✅ Retrieved ${uniqueTags.length} unique lead tags: ${uniqueTags.join(', ')}`);
+      
+      res.json(uniqueTags);
+    } catch (error) {
+      console.error('❌ Error getting lead tags:', error);
+      res.status(500).json({ error: "Error al obtener etiquetas de leads" });
+    }
+  });
+
   app.get("/api/leads/:id", async (req: Request, res: Response) => {
     try {
       const lead = await storage.getLead(parseInt(req.params.id));

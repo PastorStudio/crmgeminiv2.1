@@ -1,6 +1,3 @@
-2025/06/15-23:34:10.655 404d Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/Local Storage/leveldb/MANIFEST-000001
-2025/06/15-23:34:10.655 404d Recovering log #3
-2025/06/15-23:34:10.656 404d Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/Local Storage/leveldb/000003.log 
-2025/06/15-23:37:53.301 4047 Level-0 table #5: started
-2025/06/15-23:37:53.344 4047 Level-0 table #5: 25252 bytes OK
-2025/06/15-23:37:53.348 4047 Delete type=0 #3
+2025/06/15-23:42:05.601 47e4 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/Local Storage/leveldb/MANIFEST-000001
+2025/06/15-23:42:05.616 47e4 Recovering log #4
+2025/06/15-23:42:05.616 47e4 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_2/session/session-account_2/Default/Local Storage/leveldb/000004.log 
