@@ -369,7 +369,16 @@ export default function ContactsDatabase() {
               const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
               const cell = worksheet[cellAddress];
               const headerKey = headers[col - range.s.c];
-              const cellValue = cell ? (cell.v !== undefined ? String(cell.v).trim() : '') : '';
+              // Preserve all text content exactly as it appears, including special characters
+              let cellValue = '';
+              if (cell && cell.v !== undefined && cell.v !== null) {
+                // Convert to string and preserve all characters without trimming
+                cellValue = String(cell.v);
+                // Only remove leading/trailing whitespace if it's actually empty
+                if (cellValue.trim() !== '') {
+                  cellValue = cellValue.trim();
+                }
+              }
               
               rowData[headerKey] = cellValue;
               
@@ -418,8 +427,47 @@ export default function ContactsDatabase() {
       setFileHeaders(headers);
       setColumnWidths(columnWidths);
       
+      // Map file data to fixed field structure
+      const mappedContacts = contacts.map((contact: any, index: number) => {
+        // Create a new contact object with fixed field names
+        const mappedContact: any = {
+          numero: index + 1,
+          nombre_pila: '',
+          apellido_paterno: '',
+          apellido_materno: '',
+          telefono: '',
+          genero: '',
+          grupo_edad: '',
+          militante: '',
+          nivel_socioeconomico: '',
+          lugar_trabajo: '',
+          escolaridad: '',
+          ano_nacimiento: '',
+          tipo_contratacion: ''
+        };
+
+        // Map file data to fixed fields based on column position
+        const fileKeys = Object.keys(contact);
+        const fixedFieldNames = [
+          'nombre_pila', 'apellido_paterno', 'apellido_materno', 'telefono', 
+          'genero', 'grupo_edad', 'militante', 'nivel_socioeconomico', 
+          'lugar_trabajo', 'escolaridad', 'ano_nacimiento', 'tipo_contratacion'
+        ];
+
+        fileKeys.forEach((key, keyIndex) => {
+          if (keyIndex < fixedFieldNames.length) {
+            const fieldName = fixedFieldNames[keyIndex];
+            // Preserve exact text content including special characters and numbers
+            const value = contact[key];
+            mappedContact[fieldName] = value !== null && value !== undefined ? String(value) : '';
+          }
+        });
+
+        return mappedContact;
+      });
+
       await uploadMutation.mutateAsync({
-        contacts,
+        contacts: mappedContacts,
         fileName: selectedFile.name,
         headers: headers,
         columnWidths: columnWidths
@@ -744,19 +792,29 @@ export default function ContactsDatabase() {
                             {contact.militante || '-'}
                           </td>
                           <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                            {contact.nivel_socioeconomico || '-'}
+                            <span style={{ fontFamily: 'inherit', fontSize: 'inherit' }}>
+                              {contact.nivel_socioeconomico !== null && contact.nivel_socioeconomico !== undefined && contact.nivel_socioeconomico !== '' ? contact.nivel_socioeconomico : ''}
+                            </span>
                           </td>
                           <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                            {contact.lugar_trabajo || '-'}
+                            <span style={{ fontFamily: 'inherit', fontSize: 'inherit' }}>
+                              {contact.lugar_trabajo !== null && contact.lugar_trabajo !== undefined && contact.lugar_trabajo !== '' ? contact.lugar_trabajo : ''}
+                            </span>
                           </td>
                           <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                            {contact.escolaridad || '-'}
+                            <span style={{ fontFamily: 'inherit', fontSize: 'inherit' }}>
+                              {contact.escolaridad !== null && contact.escolaridad !== undefined && contact.escolaridad !== '' ? contact.escolaridad : ''}
+                            </span>
                           </td>
                           <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                            {contact.ano_nacimiento || '-'}
+                            <span style={{ fontFamily: 'inherit', fontSize: 'inherit' }}>
+                              {contact.ano_nacimiento !== null && contact.ano_nacimiento !== undefined && contact.ano_nacimiento !== '' ? contact.ano_nacimiento : ''}
+                            </span>
                           </td>
                           <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                            {contact.tipo_contratacion || '-'}
+                            <span style={{ fontFamily: 'inherit', fontSize: 'inherit' }}>
+                              {contact.tipo_contratacion !== null && contact.tipo_contratacion !== undefined && contact.tipo_contratacion !== '' ? contact.tipo_contratacion : ''}
+                            </span>
                           </td>
                         </>
                       )}
