@@ -55,8 +55,8 @@ export default function ContactsDatabase() {
     refetchInterval: 30000,
   });
 
-  const contacts = contactsData?.contacts || [];
-  const totalContacts = contactsData?.total || 0;
+  const contacts: ContactData[] = Array.isArray(contactsData?.contacts) ? contactsData.contacts : [];
+  const totalContacts: number = contactsData?.total || 0;
 
   // Upload contacts mutation
   const uploadMutation = useMutation({
