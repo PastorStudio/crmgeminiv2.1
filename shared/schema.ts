@@ -470,6 +470,28 @@ export const enhancedMessagesTable = pgTable("enhanced_messages_table", {
   sentAt: timestamp("sentAt").defaultNow(),
 });
 
+// Contact management database table
+export const contactDatabase = pgTable("contact_database", {
+  id: serial("id").primaryKey(),
+  numero: integer("numero"), // #
+  nombrePila: text("nombre_pila"), // Nombre de Pila
+  apellidoPaterno: text("apellido_paterno"), // Ap. Paterno
+  apellidoMaterno: text("apellido_materno"), // Ap. Materno
+  telefono: text("telefono"), // Teléfono
+  genero: text("genero"), // Género
+  grupoEdad: text("grupo_edad"), // Grupo de edad
+  militante: text("militante"), // Militante
+  nivelSocioeconomico: text("nivel_socioeconomico"), // Nivel Socioeconómico
+  lugarTrabajo: text("lugar_trabajo"), // Lugar de trabajo
+  escolaridad: text("escolaridad"), // Escolaridad
+  anoNacimiento: integer("ano_nacimiento"), // Año de nacimiento
+  tipoContratacion: text("tipo_contratacion"), // Tipo de contratación
+  uploadedBy: integer("uploaded_by").references(() => users.id), // Usuario que subió el archivo
+  fileName: text("file_name"), // Nombre del archivo original
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Agent page visits tracking
 export const agentPageVisits = pgTable("agent_page_visits", {
   id: serial("id").primaryKey(),
@@ -888,6 +910,7 @@ export const insertLeadSchema = createInsertSchema(leads);
 export const insertWhatsAppAccountSchema = createInsertSchema(whatsappAccounts);
 export const insertCalendarEventSchema = createInsertSchema(calendarEvents);
 export const insertLocalEventSchema = createInsertSchema(localEvents);
+export const insertContactDatabaseSchema = createInsertSchema(contactDatabase);
 
 // Tipos de TypeScript
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
@@ -931,6 +954,8 @@ export type LocalEvent = typeof localEvents.$inferSelect;
 export type InsertLocalEvent = typeof insertLocalEventSchema._type;
 export type SalesFlow = typeof salesFlows.$inferSelect;
 export type InsertSalesFlow = typeof insertSalesFlowStageSchema._type;
+export type ContactDatabase = typeof contactDatabase.$inferSelect;
+export type InsertContactDatabase = typeof insertContactDatabaseSchema._type;
 
 // Sales Flow Tables
 export const salesFlowStages = pgTable("sales_flow_stages", {
