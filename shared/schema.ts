@@ -490,6 +490,49 @@ export const contactDatabase = pgTable("contact_database", {
   fileName: text("file_name"), // Nombre del archivo original
   uploadedAt: timestamp("uploaded_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
+  // Campos para mensajería masiva
+  massMessageStatus: text("mass_message_status").default("pending"), // pending, sent, failed, excluded
+  lastMessageSent: timestamp("last_message_sent"),
+  messageAttempts: integer("message_attempts").default(0),
+  isUsedForMassaging: boolean("is_used_for_massaging").default(false),
+  rawData: jsonb("raw_data"), // Para almacenar datos originales del Excel
+  excelHeaders: jsonb("excel_headers"), // Headers del Excel
+  columnWidths: jsonb("column_widths"), // Anchos de columnas
+});
+
+// Campañas de mensajería masiva
+export const massCampaigns = pgTable("mass_campaigns", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  message: text("message").notNull(),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+  whatsappAccountId: integer("whatsapp_account_id").references(() => whatsappAccounts.id),
+  targetCount: integer("target_count").notNull(), // Cantidad objetivo a enviar
+  actualCount: integer("actual_count").default(0), // Cantidad realmente enviada
+  successCount: integer("success_count").default(0), // Envíos exitosos
+  failedCount: integer("failed_count").default(0), // Envíos fallidos
+  status: text("status").default("pending"), // pending, running, completed, failed, paused
+  filterColumn: text("filter_column"), // Columna para filtrar (género, nivel_socioeconomico, etc.)
+  filterValue: text("filter_value"), // Valor del filtro
+  scheduledAt: timestamp("scheduled_at"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Historial de mensajes masivos enviados
+export const massMessageHistory = pgTable("mass_message_history", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => massCampaigns.id, { onDelete: "cascade" }),
+  contactId: integer("contact_id").notNull().references(() => contactDatabase.id, { onDelete: "cascade" }),
+  phoneNumber: text("phone_number").notNull(),
+  message: text("message").notNull(),
+  status: text("status").notNull(), // sent, failed, pending
+  whatsappAccountId: integer("whatsapp_account_id").references(() => whatsappAccounts.id),
+  sentAt: timestamp("sent_at"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Agent page visits tracking
@@ -893,6 +936,41 @@ export const enhancedMessagesRelations = relations(enhancedMessagesTable, ({ one
   })
 }));
 
+export const massCampaignsRelations = relations(massCampaigns, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [massCampaigns.createdBy],
+    references: [users.id]
+  }),
+  whatsappAccount: one(whatsappAccounts, {
+    fields: [massCampaigns.whatsappAccountId],
+    references: [whatsappAccounts.id]
+  }),
+  messageHistory: many(massMessageHistory)
+}));
+
+export const massMessageHistoryRelations = relations(massMessageHistory, ({ one }) => ({
+  campaign: one(massCampaigns, {
+    fields: [massMessageHistory.campaignId],
+    references: [massCampaigns.id]
+  }),
+  contact: one(contactDatabase, {
+    fields: [massMessageHistory.contactId],
+    references: [contactDatabase.id]
+  }),
+  whatsappAccount: one(whatsappAccounts, {
+    fields: [massMessageHistory.whatsappAccountId],
+    references: [whatsappAccounts.id]
+  })
+}));
+
+export const contactDatabaseRelations = relations(contactDatabase, ({ one, many }) => ({
+  uploadedByUser: one(users, {
+    fields: [contactDatabase.uploadedBy],
+    references: [users.id]
+  }),
+  messageHistory: many(massMessageHistory)
+}));
+
 // Esquemas de inserción
 export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans);
 export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions);
@@ -911,6 +989,8 @@ export const insertWhatsAppAccountSchema = createInsertSchema(whatsappAccounts);
 export const insertCalendarEventSchema = createInsertSchema(calendarEvents);
 export const insertLocalEventSchema = createInsertSchema(localEvents);
 export const insertContactDatabaseSchema = createInsertSchema(contactDatabase);
+export const insertMassCampaignSchema = createInsertSchema(massCampaigns);
+export const insertMassMessageHistorySchema = createInsertSchema(massMessageHistory);
 
 // Tipos de TypeScript
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
@@ -956,6 +1036,10 @@ export type SalesFlow = typeof salesFlows.$inferSelect;
 export type InsertSalesFlow = typeof insertSalesFlowStageSchema._type;
 export type ContactDatabase = typeof contactDatabase.$inferSelect;
 export type InsertContactDatabase = typeof insertContactDatabaseSchema._type;
+export type MassCampaign = typeof massCampaigns.$inferSelect;
+export type InsertMassCampaign = typeof insertMassCampaignSchema._type;
+export type MassMessageHistory = typeof massMessageHistory.$inferSelect;
+export type InsertMassMessageHistory = typeof insertMassMessageHistorySchema._type;
 
 // Sales Flow Tables
 export const salesFlowStages = pgTable("sales_flow_stages", {
