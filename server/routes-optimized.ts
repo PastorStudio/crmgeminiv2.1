@@ -3304,12 +3304,56 @@ export function registerOptimizedRoutes(app: Express): Server {
   // Crear nueva etiqueta
   app.post("/api/tags", async (req: Request, res: Response) => {
     try {
-      const validatedData = insertTagSchema.parse(req.body);
-      const [newTag] = await db.insert(tags).values(validatedData).returning();
-      res.json(newTag);
+      console.log('📝 Datos recibidos para crear etiqueta:', req.body);
+      
+      // Preparar datos con valores por defecto
+      const tagData = {
+        name: req.body.name,
+        color: req.body.color || "#3B82F6",
+        description: req.body.description || null,
+        category: req.body.category || "general",
+        isSystem: false,
+        userId: null, // Para etiquetas generales del sistema
+      };
+
+      console.log('🏷️ Datos preparados para insertar:', tagData);
+
+      // Validar datos básicos
+      if (!tagData.name || tagData.name.trim() === '') {
+        return res.status(400).json({ 
+          error: "El nombre de la etiqueta es obligatorio",
+          success: false 
+        });
+      }
+
+      // Insertar en la base de datos
+      const [newTag] = await db.insert(tags).values(tagData).returning();
+      
+      console.log('✅ Etiqueta creada exitosamente:', newTag);
+      
+      res.json({
+        success: true,
+        tag: newTag,
+        message: "Etiqueta creada correctamente"
+      });
     } catch (error) {
-      console.error('Error creando etiqueta:', error);
-      res.status(500).json({ error: "Error creando etiqueta" });
+      console.error('❌ Error creando etiqueta:', error);
+      
+      // Manejar errores específicos
+      if (error instanceof Error) {
+        if (error.message.includes('unique constraint')) {
+          return res.status(400).json({ 
+            error: "Ya existe una etiqueta con ese nombre",
+            success: false 
+          });
+        }
+      }
+      
+      res.status(500).json({ 
+        error: "Error creando etiqueta",
+        success: false,
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
     }
   });
 
@@ -3317,16 +3361,61 @@ export function registerOptimizedRoutes(app: Express): Server {
   app.put("/api/tags/:id", async (req: Request, res: Response) => {
     try {
       const tagId = parseInt(req.params.id);
-      const validatedData = insertTagSchema.partial().parse(req.body);
+      console.log('📝 Actualizando etiqueta ID:', tagId, 'con datos:', req.body);
+
+      if (isNaN(tagId)) {
+        return res.status(400).json({ 
+          error: "ID de etiqueta inválido",
+          success: false 
+        });
+      }
+
+      // Verificar que la etiqueta existe
+      const [existingTag] = await db.select().from(tags).where(eq(tags.id, tagId));
+      if (!existingTag) {
+        return res.status(404).json({ 
+          error: "Etiqueta no encontrada",
+          success: false 
+        });
+      }
+
+      // Verificar que no sea etiqueta del sistema
+      if (existingTag.isSystem) {
+        return res.status(400).json({ 
+          error: "No se pueden modificar etiquetas del sistema",
+          success: false 
+        });
+      }
+
+      // Preparar datos de actualización
+      const updateData = {
+        ...(req.body.name && { name: req.body.name }),
+        ...(req.body.color && { color: req.body.color }),
+        ...(req.body.description !== undefined && { description: req.body.description }),
+        ...(req.body.category && { category: req.body.category }),
+        updatedAt: new Date()
+      };
+
       const [updatedTag] = await db
         .update(tags)
-        .set({ ...validatedData, updatedAt: new Date() })
+        .set(updateData)
         .where(eq(tags.id, tagId))
         .returning();
-      res.json(updatedTag);
+
+      console.log('✅ Etiqueta actualizada:', updatedTag);
+      
+      res.json({
+        success: true,
+        tag: updatedTag,
+        message: "Etiqueta actualizada correctamente"
+      });
     } catch (error) {
-      console.error('Error actualizando etiqueta:', error);
-      res.status(500).json({ error: "Error actualizando etiqueta" });
+      console.error('❌ Error actualizando etiqueta:', error);
+      res.status(500).json({ 
+        error: "Error actualizando etiqueta",
+        success: false,
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
     }
   });
 
@@ -3334,12 +3423,33 @@ export function registerOptimizedRoutes(app: Express): Server {
   app.delete("/api/tags/:id", async (req: Request, res: Response) => {
     try {
       const tagId = parseInt(req.params.id);
-      
-      // Verificar que no sea una etiqueta del sistema
-      const [tag] = await db.select().from(tags).where(eq(tags.id, tagId));
-      if (tag?.isSystem) {
-        return res.status(400).json({ error: "No se pueden eliminar etiquetas del sistema" });
+      console.log('🗑️ Eliminando etiqueta ID:', tagId);
+
+      if (isNaN(tagId)) {
+        return res.status(400).json({ 
+          error: "ID de etiqueta inválido",
+          success: false 
+        });
       }
+      
+      // Verificar que la etiqueta existe
+      const [tag] = await db.select().from(tags).where(eq(tags.id, tagId));
+      if (!tag) {
+        return res.status(404).json({ 
+          error: "Etiqueta no encontrada",
+          success: false 
+        });
+      }
+
+      // Verificar que no sea una etiqueta del sistema
+      if (tag.isSystem) {
+        return res.status(400).json({ 
+          error: "No se pueden eliminar etiquetas del sistema",
+          success: false 
+        });
+      }
+
+      console.log('🔄 Eliminando asociaciones de etiqueta...');
 
       // Eliminar asociaciones primero (cascada manual)
       await db.delete(leadTags).where(eq(leadTags.tagId, tagId));
@@ -3349,10 +3459,19 @@ export function registerOptimizedRoutes(app: Express): Server {
       // Eliminar la etiqueta
       await db.delete(tags).where(eq(tags.id, tagId));
       
-      res.json({ success: true });
+      console.log('✅ Etiqueta eliminada correctamente');
+      
+      res.json({ 
+        success: true,
+        message: "Etiqueta eliminada correctamente"
+      });
     } catch (error) {
-      console.error('Error eliminando etiqueta:', error);
-      res.status(500).json({ error: "Error eliminando etiqueta" });
+      console.error('❌ Error eliminando etiqueta:', error);
+      res.status(500).json({ 
+        error: "Error eliminando etiqueta",
+        success: false,
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
     }
   });
 
