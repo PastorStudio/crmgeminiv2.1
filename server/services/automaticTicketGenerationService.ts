@@ -84,48 +84,50 @@ class AutomaticTicketGenerationService {
   private async getConversationsWithoutTickets() {
     try {
       // Obtener chats activos con mensajes recientes que no tienen tickets
-      const activeChats = await db
+      // Usar consulta más simple para evitar errores de groupBy
+      const recentMessages = await db
         .select({
           chatId: whatsappMessages.chatId,
           contactId: whatsappMessages.contactId,
           whatsappAccountId: whatsappMessages.whatsappAccountId,
           userId: whatsappMessages.userId,
           lastMessage: whatsappMessages.body,
-          contactName: contacts.name,
-          contactPhone: contacts.phone,
-          messageCount: whatsappMessages.id
+          createdAt: whatsappMessages.createdAt
         })
         .from(whatsappMessages)
-        .leftJoin(contacts, eq(whatsappMessages.contactId, contacts.id))
-        .leftJoin(tickets, eq(whatsappMessages.chatId, tickets.chatId || ''))
         .where(
-          and(
-            isNull(tickets.id), // Sin tickets existentes
-            gt(whatsappMessages.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000)) // Últimas 24 horas
-          )
-        )
-        .groupBy(
-          whatsappMessages.chatId,
-          whatsappMessages.contactId,
-          whatsappMessages.whatsappAccountId,
-          whatsappMessages.userId,
-          whatsappMessages.body,
-          contacts.name,
-          contacts.phone,
-          whatsappMessages.id
+          gt(whatsappMessages.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000))
         )
         .orderBy(desc(whatsappMessages.createdAt))
-        .limit(20);
+        .limit(50);
 
-      // Agrupar por chatId para obtener conversaciones únicas
+      // Verificar cuáles ya tienen tickets
+      const chatsWithTickets = await db
+        .select({ chatId: tickets.chatId })
+        .from(tickets)
+        .where(tickets.chatId !== null);
+
+      const ticketChatIds = new Set(chatsWithTickets.map(t => t.chatId).filter(Boolean));
+
+      // Filtrar chats únicos sin tickets
       const uniqueChats = new Map();
-      activeChats.forEach(chat => {
-        if (!uniqueChats.has(chat.chatId)) {
-          uniqueChats.set(chat.chatId, chat);
+      recentMessages.forEach(message => {
+        if (message.chatId && 
+            !ticketChatIds.has(message.chatId) && 
+            !uniqueChats.has(message.chatId)) {
+          uniqueChats.set(message.chatId, {
+            chatId: message.chatId,
+            contactId: message.contactId,
+            whatsappAccountId: message.whatsappAccountId,
+            userId: message.userId,
+            lastMessage: message.lastMessage,
+            contactName: null, // Se obtendrá después si es necesario
+            contactPhone: null
+          });
         }
       });
 
-      return Array.from(uniqueChats.values());
+      return Array.from(uniqueChats.values()).slice(0, 10); // Limitar a 10 para evitar sobrecarga
     } catch (error) {
       console.error('❌ Error obteniendo conversaciones:', error);
       return [];

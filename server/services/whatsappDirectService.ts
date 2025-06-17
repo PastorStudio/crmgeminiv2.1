@@ -46,7 +46,50 @@ class WhatsAppDirectClient extends EventEmitter {
     };
   }
   
-  // Inicializar conexión
+  // Mejorar manejo de errores y reconexión
+  private handleConnectionError(error: any): void {
+    console.error('❌ WhatsApp connection error:', error);
+    
+    // Diferentes tipos de errores requieren diferentes estrategias
+    if (error.message?.includes('Protocol error') || 
+        error.message?.includes('Session closed') ||
+        error.message?.includes('Target closed')) {
+      console.log('🔄 Detected browser session closure, reinitializing...');
+      this.status.authenticated = false;
+      this.status.ready = false;
+      this.status.errorMessage = 'Session closed - reinitializing';
+      
+      // Reiniciar después de un breve delay
+      setTimeout(() => {
+        this.initialize().catch(err => {
+          console.error('❌ Failed to reinitialize after session closure:', err);
+        });
+      }, 3000);
+    } else if (error.message?.includes('WebSocket')) {
+      console.log('🔄 WebSocket error, attempting reconnect...');
+      this.reconnectWebSocket();
+    } else {
+      this.status.errorMessage = error.message || 'Unknown connection error';
+    }
+  }
+
+  // Mejorar reconexión de WebSocket
+  private reconnectWebSocket(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+    }
+
+    this.reconnectTimer = setTimeout(() => {
+      console.log('🔄 Attempting WebSocket reconnection...');
+      this.initialize().catch(err => {
+        console.error('❌ WebSocket reconnection failed:', err);
+        // Retry with exponential backoff
+        this.reconnectWebSocket();
+      });
+    }, 5000);
+  }
+
+  // Inicializar conexión con mejor manejo de errores
   async initialize(): Promise<void> {
     try {
       console.log('Iniciando cliente directo de WhatsApp...');

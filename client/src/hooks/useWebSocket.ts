@@ -49,11 +49,11 @@ export function useWebSocket(options: WebSocketOptions = {}) {
       return;
     }
 
-    // Determinar el protocolo (ws o wss) basado en si estamos en HTTPS o HTTP
+    // Determinar el protocolo y la URL con mejor manejo de errores
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const wsUrl = `${protocol}//${window.location.host}/notifications`;
     
-    console.log('Conectando a WebSocket en:', wsUrl);
+    console.log('🔔 Conectando a WebSocket de notificaciones en:', wsUrl);
     
     try {
       const socket = new WebSocket(wsUrl);
