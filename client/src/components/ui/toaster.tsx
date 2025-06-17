@@ -51,12 +51,20 @@ export function Toaster() {
         if (!toast || !toast.id) return null;
         
         const { id, title, description, action, ...props } = toast;
+        
+        // Ensure description is safe to render
+        const safeDescription = description && typeof description === 'string' 
+          ? description 
+          : description && typeof description === 'object' && description.toString 
+            ? description.toString() 
+            : '';
+            
         return (
           <Toast key={id} {...props}>
             <div className="grid gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
+              {safeDescription && (
+                <ToastDescription>{safeDescription}</ToastDescription>
               )}
             </div>
             {action}
