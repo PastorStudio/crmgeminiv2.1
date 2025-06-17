@@ -181,7 +181,8 @@ const AppRoutes: React.FC = () => {
                 Dashboard
               </a>
               
-              <a href="/home" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/home' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Real Data Hub */}
+              {/*<a href="/home" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/home' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="8" fill="#10B981"/>
                   <rect x="8" y="8" width="8" height="8" rx="2" fill="white"/>
@@ -191,7 +192,7 @@ const AppRoutes: React.FC = () => {
                   <rect x="10" y="15" width="4" height="1" fill="#10B981"/>
                 </svg>
                 Real Data Hub
-              </a>
+              </a>*/}
               
               <a href="/leads" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/leads' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -203,7 +204,8 @@ const AppRoutes: React.FC = () => {
                 Leads
               </a>
               
-              <a href="/sales-pipeline" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/sales-pipeline' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Pipeline Ventas */}
+              {/*<a href="/sales-pipeline" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/sales-pipeline' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="2" y="4" width="4" height="16" rx="1" fill="#3B82F6"/>
                   <rect x="7" y="6" width="4" height="14" rx="1" fill="#8B5CF6"/>
@@ -215,9 +217,10 @@ const AppRoutes: React.FC = () => {
                   <circle cx="19" cy="8" r="1" fill="#EF4444"/>
                 </svg>
                 Pipeline Ventas
-              </a>
+              </a>*/}
               
-              <a href="/flow-templates" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/flow-templates' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Plantillas de Flujos */}
+              {/*<a href="/flow-templates" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/flow-templates' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="3" width="7" height="5" rx="1" fill="#8B5CF6"/>
                   <rect x="14" y="3" width="7" height="5" rx="1" fill="#06B6D4"/>
@@ -226,9 +229,10 @@ const AppRoutes: React.FC = () => {
                   <rect x="8" y="16" width="8" height="5" rx="1" fill="#EF4444"/>
                 </svg>
                 Plantillas de Flujos
-              </a>
+              </a>*/}
 
-              <a href="/system-status" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/system-status' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Estado del Sistema */}
+              {/*<a href="/system-status" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/system-status' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="8" stroke="#10B981" strokeWidth="2" fill="none"/>
                   <circle cx="12" cy="12" r="4" fill="#10B981"/>
@@ -238,7 +242,7 @@ const AppRoutes: React.FC = () => {
                   <circle cx="16" cy="16" r="1" fill="#8B5CF6"/>
                 </svg>
                 Estado del Sistema
-              </a>
+              </a>*/}
 
               <a href="/contacts-database" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/contacts-database' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -251,7 +255,8 @@ const AppRoutes: React.FC = () => {
                 Base de Contactos
               </a>
 
-              <a href="/sales-flow-designer" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/sales-flow-designer' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Flujos de Ventas */}
+              {/*<a href="/sales-flow-designer" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/sales-flow-designer' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <path d="M6 3v12M18 9v12M12 3v6M12 15v6" stroke="#6366F1" strokeWidth="2" strokeLinecap="round"/>
                   <circle cx="6" cy="9" r="2" fill="#6366F1"/>
@@ -260,7 +265,7 @@ const AppRoutes: React.FC = () => {
                   <path d="M8 9h2M14 9h2" stroke="#6366F1" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
                 Flujos de Ventas
-              </a>
+              </a>*/}
               
               {/* Comunicación */}
               <div className="px-3 pt-3 pb-1">
@@ -382,7 +387,8 @@ const AppRoutes: React.FC = () => {
                 Calendario
               </a>
               
-              <a href="/tasks" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/tasks' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Tareas */}
+              {/*<a href="/tasks" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/tasks' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="4" y="3" width="16" height="18" rx="2" fill="#10B981"/>
                   <path d="M8 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -390,7 +396,7 @@ const AppRoutes: React.FC = () => {
                   <rect x="8" y="16" width="6" height="1" fill="white" opacity="0.7"/>
                 </svg>
                 Tareas
-              </a>
+              </a>*/}
 
               <a href="/tickets" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/tickets' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -430,7 +436,8 @@ const AppRoutes: React.FC = () => {
                 Análisis
               </a>
 
-              <a href="/gemini-ai" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/gemini-ai' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Gemini AI */}
+              {/*<a href="/gemini-ai" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/gemini-ai' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="8" fill="#9333EA"/>
                   <path d="M8 12h8M12 8v8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
@@ -440,11 +447,12 @@ const AppRoutes: React.FC = () => {
                   <circle cx="9" cy="15" r="1" fill="white"/>
                 </svg>
                 Gemini AI
-              </a>
+              </a>*/}
 
 
               
-              <a href="/media-gallery" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/media-gallery' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Galería */}
+              {/*<a href="/media-gallery" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/media-gallery' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="3" width="18" height="18" rx="2" fill="#8B5CF6"/>
                   <rect x="6" y="6" width="5" height="5" rx="1" fill="#A855F7"/>
@@ -454,7 +462,7 @@ const AppRoutes: React.FC = () => {
                   <circle cx="8.5" cy="8.5" r="1" fill="white"/>
                 </svg>
                 Galería
-              </a>
+              </a>*/}
               
               {/* Conexiones e Integraciones */}
               <div className="px-3 pt-3 pb-1">
@@ -472,7 +480,8 @@ const AppRoutes: React.FC = () => {
                 Cuentas WhatsApp
               </a>
               
-              <a href="/whatsapp-auth" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-auth' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: QR Autenticación */}
+              {/*<a href="/whatsapp-auth" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-auth' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="3" width="18" height="18" rx="3" fill="#25D366"/>
                   <rect x="7" y="7" width="10" height="10" rx="2" fill="white"/>
@@ -483,7 +492,7 @@ const AppRoutes: React.FC = () => {
                   <rect x="11" y="11" width="2" height="2" fill="#25D366"/>
                 </svg>
                 QR Autenticación
-              </a>
+              </a>*/}
               
               {/* OCULTO: Gestor WhatsApp */}
               {/*<a href="/whatsapp-manager" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/whatsapp-manager' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
@@ -511,7 +520,8 @@ const AppRoutes: React.FC = () => {
                 Conectar WhatsApp
               </a>*/}
 
-              <a href="/agent-monitoring" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/agent-monitoring' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              {/* OCULTO: Monitoreo Agentes */}
+              {/*<a href="/agent-monitoring" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/agent-monitoring' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="2" y="2" width="20" height="20" rx="2" fill="#1F2937"/>
                   <circle cx="8" cy="8" r="2" fill="#10B981"/>
@@ -524,7 +534,7 @@ const AppRoutes: React.FC = () => {
                   <rect x="10" y="17" width="4" height="1" fill="#6B7280"/>
                 </svg>
                 Monitoreo Agentes
-              </a>
+              </a>*/}
               
               {/* Menú oculto: Conexión, Código QR e Integraciones - Se mantiene en el código pero no se muestra */}
               {false && (
