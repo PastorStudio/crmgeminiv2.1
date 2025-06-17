@@ -38,6 +38,7 @@ export class AutomaticChatToLeadService {
     processed: number;
     converted: number;
     skipped: number;
+    duplicatesRemoved: number;
     details: Array<{
       contactName: string;
       phone: string;
@@ -48,6 +49,10 @@ export class AutomaticChatToLeadService {
     try {
       console.log('🔄 Iniciando procesamiento automático de chats a leads...');
       
+      // First, remove duplicate leads
+      const duplicatesRemoved = await this.removeDuplicateLeads();
+      console.log(`🧹 Eliminados ${duplicatesRemoved} leads duplicados`);
+      
       // Get all conversations from WhatsApp messages
       const conversations = await this.getChatConversations();
       console.log(`📊 Encontradas ${conversations.length} conversaciones activas`);
@@ -56,6 +61,7 @@ export class AutomaticChatToLeadService {
         processed: 0,
         converted: 0,
         skipped: 0,
+        duplicatesRemoved,
         details: [] as Array<{
           contactName: string;
           phone: string;
@@ -68,10 +74,13 @@ export class AutomaticChatToLeadService {
         try {
           results.processed++;
           
-          // Check if lead already exists for this contact
+          // Normalize phone number for deduplication
+          const normalizedPhone = conversation.contactPhone.replace(/\D/g, '');
+          
+          // Check if lead already exists for this contact (multiple phone formats)
           const existingLead = await db.query.leads.findFirst({
             where: and(
-              eq(leads.phone, conversation.contactPhone),
+              sql`REGEXP_REPLACE(${leads.phone}, '[^0-9]', '', 'g') = ${normalizedPhone}`,
               eq(leads.isDeleted, false)
             )
           });
@@ -122,6 +131,60 @@ export class AutomaticChatToLeadService {
     } catch (error) {
       console.error('❌ Error en procesamiento automático:', error);
       throw error;
+    }
+  }
+
+  async removeDuplicateLeads(): Promise<number> {
+    try {
+      console.log('🧹 Iniciando eliminación de leads duplicados...');
+      
+      // Get all leads grouped by normalized phone number
+      const allLeads = await db.query.leads.findMany({
+        where: eq(leads.isDeleted, false),
+        orderBy: [leads.createdAt] // Keep oldest lead for each phone number
+      });
+
+      const phoneGroups = new Map<string, typeof allLeads>();
+      let duplicatesCount = 0;
+
+      // Group leads by normalized phone number
+      for (const lead of allLeads) {
+        if (!lead.phone) continue;
+        
+        const normalizedPhone = lead.phone.replace(/\D/g, '');
+        if (!normalizedPhone) continue;
+
+        if (!phoneGroups.has(normalizedPhone)) {
+          phoneGroups.set(normalizedPhone, []);
+        }
+        phoneGroups.get(normalizedPhone)!.push(lead);
+      }
+
+      // For each phone number group, keep only the first (oldest) lead
+      for (const [phone, leadGroup] of phoneGroups) {
+        if (leadGroup.length > 1) {
+          // Keep the first lead, mark others as deleted
+          const [keepLead, ...duplicates] = leadGroup;
+          
+          for (const duplicate of duplicates) {
+            await db.update(leads)
+              .set({ isDeleted: true })
+              .where(eq(leads.id, duplicate.id));
+            
+            duplicatesCount++;
+            console.log(`🗑️ Lead duplicado eliminado: ${duplicate.name || duplicate.phone} (ID: ${duplicate.id})`);
+          }
+          
+          console.log(`✅ Mantenido lead principal: ${keepLead.name || keepLead.phone} (ID: ${keepLead.id}) para teléfono ${phone}`);
+        }
+      }
+
+      console.log(`🧹 Eliminación completada: ${duplicatesCount} leads duplicados marcados como eliminados`);
+      return duplicatesCount;
+      
+    } catch (error) {
+      console.error('❌ Error eliminando duplicados:', error);
+      return 0;
     }
   }
 
