@@ -95,25 +95,35 @@ export function useWebSocket(options: WebSocketOptions = {}) {
         }
       });
 
-      // Evento de cierre
-      socket.addEventListener('close', () => {
-        console.log('WebSocket cerrado');
+      // Evento de cierre mejorado
+      socket.addEventListener('close', (event) => {
+        console.log('🔔 Conexión de notificaciones cerrada, reintentando...');
         setIsConnected(false);
         if (options.onDisconnect) options.onDisconnect();
         
-        // Reconectar después de un tiempo (con backoff exponencial)
-        const reconnectDelay = Math.min(1000 * (2 ** connectionAttempts), 30000);
-        setConnectionAttempts(prev => prev + 1);
-        
-        console.log(`Reconectando en ${reconnectDelay}ms (intento ${connectionAttempts + 1})`);
-        setTimeout(() => {
-          connect();
-        }, reconnectDelay);
+        // Reconectar con delay reducido y mejor estrategia
+        if (connectionAttempts < options.maxReconnectAttempts) {
+          const reconnectDelay = Math.min(3000 + (connectionAttempts * 1000), 10000);
+          setConnectionAttempts(prev => prev + 1);
+          
+          setTimeout(() => {
+            connect();
+          }, reconnectDelay);
+        }
       });
 
-      // Evento de error
+      // Evento de error mejorado
       socket.addEventListener('error', (error) => {
-        console.error('Error de WebSocket:', error);
+        console.error('Error en WebSocket de notificaciones:', error);
+        setIsConnected(false);
+        
+        // Reintentar después de error con delay
+        setTimeout(() => {
+          if (connectionAttempts < options.maxReconnectAttempts) {
+            connect();
+          }
+        }, 5000);
+        
         if (options.onError) options.onError(error);
       });
     } catch (error) {
