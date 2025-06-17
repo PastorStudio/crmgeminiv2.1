@@ -713,7 +713,7 @@ export default function MassMessaging() {
                         {campaign.status === 'pending' && (
                           <Button
                             size="sm"
-                            onClick={() => handleSendCampaign(parseInt(campaign.id))}
+                            onClick={() => handleSendCampaign(campaign.id)}
                             disabled={sendCampaignMutation.isPending}
                           >
                             <Send className="w-3 h-3 mr-1" />
