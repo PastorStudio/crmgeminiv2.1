@@ -11,11 +11,13 @@ import {
 export function Toaster() {
   const { toasts } = useToast()
 
-  // Filtrar toasts para mostrar mensajes importantes incluyendo configuraciones
+  // Filtrar toasts para mostrar mensajes importantes incluyendo importación
   const filteredToasts = toasts.filter(toast => {
-    // Mostrar toasts de error, éxito de configuración, y mensajes importantes
+    if (!toast || typeof toast !== 'object') return false;
+    
+    // Mostrar toasts de error, éxito de configuración, importación y mensajes importantes
     return toast.variant === 'destructive' || 
-           (toast.title && (
+           (toast.title && typeof toast.title === 'string' && (
              toast.title.toLowerCase().includes('error') ||
              toast.title.toLowerCase().includes('fallo') ||
              toast.title.toLowerCase().includes('problema') ||
@@ -24,15 +26,22 @@ export function Toaster() {
              toast.title.toLowerCase().includes('guardada') ||
              toast.title.toLowerCase().includes('creada') ||
              toast.title.toLowerCase().includes('actualizada') ||
-             toast.title.toLowerCase().includes('cargadas')
+             toast.title.toLowerCase().includes('cargadas') ||
+             toast.title.toLowerCase().includes('importación') ||
+             toast.title.toLowerCase().includes('importado') ||
+             toast.title.toLowerCase().includes('eliminado') ||
+             toast.title.toLowerCase().includes('eliminados')
            )) ||
-           (toast.description && (
+           (toast.description && typeof toast.description === 'string' && (
              toast.description.toLowerCase().includes('error') ||
              toast.description.toLowerCase().includes('fallo') ||
              toast.description.toLowerCase().includes('problema') ||
              toast.description.toLowerCase().includes('configuraciones') ||
              toast.description.toLowerCase().includes('guardadas') ||
-             toast.description.toLowerCase().includes('exitosamente')
+             toast.description.toLowerCase().includes('exitosamente') ||
+             toast.description.toLowerCase().includes('importaron') ||
+             toast.description.toLowerCase().includes('contactos') ||
+             toast.description.toLowerCase().includes('correctamente')
            ))
   })
 
