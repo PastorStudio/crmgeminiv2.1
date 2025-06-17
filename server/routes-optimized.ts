@@ -1507,6 +1507,47 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // Endpoint para eliminar todos los leads de WhatsApp (debe ir antes de /:id)
+  app.delete("/api/leads/clear-whatsapp", async (_req: Request, res: Response) => {
+    try {
+      console.log('🗑️ Iniciando eliminación de todos los leads de WhatsApp...');
+      
+      // Use direct SQL query to avoid schema issues
+      const result = await db.$client.query(
+        `SELECT id, name, phone FROM leads WHERE source = 'whatsapp' OR email LIKE '%@whatsapp.contact'`
+      );
+      
+      const whatsappLeads = result.rows;
+      let deletedCount = 0;
+      
+      for (const lead of whatsappLeads) {
+        try {
+          await db.$client.query('DELETE FROM leads WHERE id = $1', [lead.id]);
+          deletedCount++;
+          console.log(`🗑️ Lead de WhatsApp eliminado: ${lead.name || lead.phone} (ID: ${lead.id})`);
+        } catch (error) {
+          console.error(`❌ Error eliminando lead ${lead.id}:`, error);
+        }
+      }
+
+      console.log(`✅ Eliminación completada: ${deletedCount} leads de WhatsApp eliminados`);
+      
+      res.json({
+        success: true,
+        deleted: deletedCount,
+        message: `Se eliminaron ${deletedCount} leads de WhatsApp exitosamente`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error eliminando leads de WhatsApp:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error eliminando leads de WhatsApp",
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
   app.get("/api/leads/:id", async (req: Request, res: Response) => {
     try {
       const lead = await storage.getLead(parseInt(req.params.id));
@@ -3570,46 +3611,7 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
-  // Endpoint para eliminar todos los leads de WhatsApp
-  app.delete("/api/leads/clear-whatsapp", async (_req: Request, res: Response) => {
-    try {
-      console.log('🗑️ Iniciando eliminación de todos los leads de WhatsApp...');
-      
-      // Use direct SQL query to avoid schema issues
-      const result = await db.$client.query(
-        `SELECT id, name, phone FROM leads WHERE source = 'whatsapp' OR email LIKE '%@whatsapp.contact'`
-      );
-      
-      const whatsappLeads = result.rows;
-      let deletedCount = 0;
-      
-      for (const lead of whatsappLeads) {
-        try {
-          await db.$client.query('DELETE FROM leads WHERE id = $1', [lead.id]);
-          deletedCount++;
-          console.log(`🗑️ Lead de WhatsApp eliminado: ${lead.name || lead.phone} (ID: ${lead.id})`);
-        } catch (error) {
-          console.error(`❌ Error eliminando lead ${lead.id}:`, error);
-        }
-      }
 
-      console.log(`✅ Eliminación completada: ${deletedCount} leads de WhatsApp eliminados`);
-      
-      res.json({
-        success: true,
-        deleted: deletedCount,
-        message: `Se eliminaron ${deletedCount} leads de WhatsApp exitosamente`,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('❌ Error eliminando leads de WhatsApp:', error);
-      res.status(500).json({ 
-        success: false,
-        error: "Error eliminando leads de WhatsApp",
-        message: error instanceof Error ? error.message : 'Error desconocido'
-      });
-    }
-  });
 
   // Lead Comments API Endpoints
   // Get comments for a specific lead
