@@ -47,6 +47,7 @@ import { unifiedMessageProcessor } from './services/unifiedMessageProcessor';
 import { enhancedAssignmentService } from './services/enhancedAutomaticAssignmentService';
 import { enhancedAIService } from './services/enhancedAIResponseService';
 import { backgroundChatMonitor } from './services/backgroundChatMonitor';
+import { chatToLeadConverter } from './services/chatToLeadConverter';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -8949,6 +8950,15 @@ Responde de manera conversacional, profesional y útil según tu especializació
     console.error('❌ Error iniciando análisis de conversaciones:', error);
   }
 
+  // Inicializar sistema de conversión automática chat-to-lead
+  try {
+    console.log('🎯 Iniciando sistema de conversión automática chat-to-lead...');
+    await chatToLeadConverter.start();
+    console.log('✅ Sistema de conversión chat-to-lead iniciado - procesamiento cada 2 minutos');
+  } catch (error) {
+    console.error('❌ Error iniciando conversión chat-to-lead:', error);
+  }
+
   // API endpoints para análisis de conversaciones
   const { getAnalysisStatus, startAnalysis, stopAnalysis, getAccountInsights } = await import('./services/conversationAnalysisEndpoints');
   
@@ -8956,6 +8966,27 @@ Responde de manera conversacional, profesional y útil según tu especializació
   app.post('/api/conversation-analysis/start', startAnalysis);
   app.post('/api/conversation-analysis/stop', stopAnalysis);
   app.get('/api/conversation-analysis/account/:accountId/insights', getAccountInsights);
+
+  // API endpoints para conversión chat-to-lead
+  app.get('/api/chat-to-lead/status', (req: Request, res: Response) => {
+    try {
+      const stats = chatToLeadConverter.getStats();
+      res.json({ success: true, stats });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Error obteniendo estado' });
+    }
+  });
+
+  app.post('/api/chat-to-lead/process-now', async (req: Request, res: Response) => {
+    try {
+      console.log('🎯 Procesamiento manual de chat-to-lead solicitado');
+      await chatToLeadConverter.processNewChats();
+      res.json({ success: true, message: 'Procesamiento completado' });
+    } catch (error) {
+      console.error('Error en procesamiento manual:', error);
+      res.status(500).json({ success: false, error: 'Error en procesamiento' });
+    }
+  });
 
   // Endpoints para control de web scraping automático
   app.post('/api/web-scraping/activate/:accountId', async (req: Request, res: Response) => {
