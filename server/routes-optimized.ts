@@ -3882,10 +3882,31 @@ export function registerOptimizedRoutes(app: Express): Server {
         `SELECT * FROM contact_database ORDER BY numero ASC`
       );
       
+      // Extract Excel headers and column widths from the first contact that has them
+      let excelHeaders: string[] = [];
+      let columnWidths: number[] = [];
+      
+      if (contacts.rows.length > 0) {
+        const firstContactWithHeaders = contacts.rows.find(contact => 
+          contact.excel_headers && contact.column_widths
+        );
+        
+        if (firstContactWithHeaders) {
+          try {
+            excelHeaders = JSON.parse(firstContactWithHeaders.excel_headers);
+            columnWidths = JSON.parse(firstContactWithHeaders.column_widths);
+          } catch (parseError) {
+            console.warn('Error parsing Excel headers/widths:', parseError);
+          }
+        }
+      }
+      
       res.json({
         success: true,
         contacts: contacts.rows,
-        total: contacts.rows.length
+        total: contacts.rows.length,
+        excelHeaders,
+        columnWidths
       });
     } catch (error) {
       console.error('Error obteniendo contactos:', error);

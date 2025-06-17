@@ -1,3 +1,15 @@
-2025/06/16-22:43:27.238 4394 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb/MANIFEST-000001
-2025/06/16-22:43:27.250 4394 Recovering log #13
-2025/06/16-22:43:27.261 4394 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb/000013.log 
+2025/06/16-22:56:57.223 4e08 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb/MANIFEST-000001
+2025/06/16-22:56:57.281 4e08 Recovering log #13
+2025/06/16-22:56:57.285 4e08 Level-0 table #15: started
+2025/06/16-22:56:57.444 4e08 Level-0 table #15: 25436 bytes OK
+2025/06/16-22:56:57.444 4e08 Recovering log #15
+2025/06/16-22:56:57.444 4e08 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/Local Storage/leveldb/000015.log 
+2025/06/16-22:56:57.453 4e08 Delete type=0 #13
+2025/06/16-22:56:57.457 4e08 Compacting 4@0 + 0@1 files
+2025/06/16-22:56:57.491 4e08 Generated table #16@0: 495 keys, 8877 bytes
+2025/06/16-22:56:57.492 4e08 Compacted 4@0 + 0@1 files => 8877 bytes
+2025/06/16-22:56:57.502 4e08 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/06/16-22:56:57.503 4e08 Delete type=2 #7
+2025/06/16-22:56:57.503 4e08 Delete type=2 #10
+2025/06/16-22:56:57.503 4e08 Delete type=2 #13
+2025/06/16-22:56:57.503 4e08 Delete type=2 #15
