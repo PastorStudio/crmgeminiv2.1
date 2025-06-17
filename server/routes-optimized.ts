@@ -4341,7 +4341,7 @@ export function registerOptimizedRoutes(app: Express): Server {
       let query = db.select().from(contactDatabase);
       
       // Aplicar filtro si se especifica
-      if (filterColumn && filterValue) {
+      if (filterColumn && filterColumn !== "none" && filterValue) {
         const columnMap: Record<string, any> = {
           'genero': contactDatabase.genero,
           'nivel_socioeconomico': contactDatabase.nivelSocioeconomico,
@@ -4410,7 +4410,7 @@ export function registerOptimizedRoutes(app: Express): Server {
       // Obtener contactos filtrados
       let query = db.select().from(contactDatabase);
       
-      if (campaign.filterColumn && campaign.filterValue) {
+      if (campaign.filterColumn && campaign.filterColumn !== "none" && campaign.filterValue) {
         const columnMap: Record<string, any> = {
           'genero': contactDatabase.genero,
           'nivel_socioeconomico': contactDatabase.nivelSocioeconomico,

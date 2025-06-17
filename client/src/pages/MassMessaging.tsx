@@ -59,7 +59,7 @@ export default function MassMessaging() {
     name: "",
     message: "",
     targetCount: 10,
-    filterColumn: "",
+    filterColumn: "none",
     filterValue: "",
     whatsappAccountId: 1
   });
@@ -111,7 +111,7 @@ export default function MassMessaging() {
         name: "",
         message: "",
         targetCount: 10,
-        filterColumn: "",
+        filterColumn: "none",
         filterValue: "",
         whatsappAccountId: 1
       });
@@ -336,7 +336,7 @@ export default function MassMessaging() {
                       <SelectValue placeholder="Seleccionar filtro" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sin filtro</SelectItem>
+                      <SelectItem value="none">Sin filtro</SelectItem>
                       <SelectItem value="genero">Género</SelectItem>
                       <SelectItem value="nivel_socioeconomico">Nivel Socioeconómico</SelectItem>
                       <SelectItem value="grupo_edad">Grupo de Edad</SelectItem>
@@ -354,7 +354,7 @@ export default function MassMessaging() {
                     value={campaignForm.filterValue}
                     onChange={(e) => setCampaignForm(prev => ({...prev, filterValue: e.target.value}))}
                     placeholder="Ej: Femenino, Bajo, etc."
-                    disabled={!campaignForm.filterColumn}
+                    disabled={campaignForm.filterColumn === "none"}
                   />
                 </div>
               </div>
