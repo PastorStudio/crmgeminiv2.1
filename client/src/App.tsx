@@ -304,7 +304,7 @@ const AppRoutes: React.FC = () => {
                 Plantillas
               </a>
               
-              <a href="/mass-sender" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/mass-sender' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              <a href="/mass-messaging" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/mass-messaging' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="8" fill="#F59E0B"/>
                   <path d="M8 12h8M12 8v8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
@@ -313,7 +313,7 @@ const AppRoutes: React.FC = () => {
                   <circle cx="6" cy="18" r="2" fill="#3B82F6"/>
                   <circle cx="18" cy="18" r="2" fill="#8B5CF6"/>
                 </svg>
-                Envío Masivo
+                Mensajería Masiva
               </a>
               
               {/* OCULTO: Respuestas Auto */}
