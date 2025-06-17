@@ -3875,11 +3875,138 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // Contact Database Management Endpoints
+  app.get("/api/contacts-database", async (req: Request, res: Response) => {
+    try {
+      const contacts = await db.$client.query(
+        `SELECT * FROM contact_database ORDER BY created_at DESC`
+      );
+      
+      res.json({
+        success: true,
+        contacts: contacts.rows,
+        total: contacts.rows.length
+      });
+    } catch (error) {
+      console.error('Error obteniendo contactos:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error obteniendo contactos'
+      });
+    }
+  });
+
+  app.post("/api/contacts-database/upload", async (req: Request, res: Response) => {
+    try {
+      const { contacts, fileName } = req.body;
+      
+      if (!contacts || !Array.isArray(contacts)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Datos de contactos inválidos'
+        });
+      }
+      
+      const insertedContacts = [];
+      
+      for (const contact of contacts) {
+        const result = await db.$client.query(
+          `INSERT INTO contact_database (
+            numero, nombre_pila, apellido_paterno, apellido_materno, telefono,
+            genero, grupo_edad, militante, nivel_socioeconomico, lugar_trabajo,
+            escolaridad, ano_nacimiento, tipo_contratacion, uploaded_by, file_name
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          RETURNING *`,
+          [
+            contact.numero || contact['#'] || null,
+            contact.nombrePila || contact['Nombre de Pila'] || null,
+            contact.apellidoPaterno || contact['Ap. Paterno'] || null,
+            contact.apellidoMaterno || contact['Ap. Materno'] || null,
+            contact.telefono || contact['Telefono'] || null,
+            contact.genero || contact['Género'] || null,
+            contact.grupoEdad || contact['Grupo de edad'] || null,
+            contact.militante || contact['Militante'] || null,
+            contact.nivelSocioeconomico || contact['Nivel Socioeconómico'] || null,
+            contact.lugarTrabajo || contact['Lugar de trabajo'] || null,
+            contact.escolaridad || contact['Escolaridad'] || null,
+            contact.anoNacimiento || contact['Año de nacimiento'] || null,
+            contact.tipoContratacion || contact['Tipo de contratación'] || null,
+            3, // Current user ID - you may want to get this from session
+            fileName
+          ]
+        );
+        
+        insertedContacts.push(result.rows[0]);
+      }
+      
+      res.json({
+        success: true,
+        message: `Se importaron ${insertedContacts.length} contactos exitosamente`,
+        imported: insertedContacts.length,
+        contacts: insertedContacts
+      });
+    } catch (error) {
+      console.error('Error subiendo contactos:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error procesando archivo de contactos'
+      });
+    }
+  });
+
+  app.delete("/api/contacts-database/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      
+      const result = await db.$client.query(
+        `DELETE FROM contact_database WHERE id = $1 RETURNING *`,
+        [id]
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Contacto no encontrado'
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: 'Contacto eliminado exitosamente'
+      });
+    } catch (error) {
+      console.error('Error eliminando contacto:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error eliminando contacto'
+      });
+    }
+  });
+
+  app.delete("/api/contacts-database/clear-all", async (req: Request, res: Response) => {
+    try {
+      const result = await db.$client.query(`DELETE FROM contact_database RETURNING id`);
+      
+      res.json({
+        success: true,
+        message: `Se eliminaron ${result.rows.length} contactos exitosamente`,
+        deleted: result.rows.length
+      });
+    } catch (error) {
+      console.error('Error eliminando todos los contactos:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error eliminando contactos'
+      });
+    }
+  });
+
   console.log('🚀 Rutas optimizadas registradas correctamente');
   console.log('📡 WebSocket configurado en /ws');
   console.log('✅ Enhanced System API endpoints implemented - All 15 improvements active');
   console.log('🔄 Real WhatsApp Data Integration endpoints added');
   console.log('📊 Real Data Integration Service implemented - No more mock data');
+  console.log('📇 Contact Database API endpoints added');
   
   return httpServer;
 }
