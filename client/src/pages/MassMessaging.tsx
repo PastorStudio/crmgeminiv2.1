@@ -463,7 +463,7 @@ export default function MassMessaging() {
         </div>
       )}
 
-      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="create">Crear Campaña</TabsTrigger>
           <TabsTrigger value="campaigns">Campañas</TabsTrigger>
