@@ -88,12 +88,20 @@ export default function SalesPipelineKanban() {
   };
 
   // Function to get real contact information
-  const getContactInfo = (lead: Lead) => {
+  const getContactInfo = (lead: Lead | null) => {
+    if (!lead) {
+      return {
+        name: 'Sin nombre',
+        phone: 'Sin teléfono',
+        isActive: false
+      };
+    }
+
     // First try to find contact by phone in active chats
     const chatsData = activeChats as any;
     let activeChat = null;
     
-    if (chatsData?.chats && Array.isArray(chatsData.chats)) {
+    if (chatsData?.chats && Array.isArray(chatsData.chats) && lead.phone) {
       activeChat = chatsData.chats.find((chat: any) => 
         chat.id?.user && (
           chat.id.user === lead.phone?.replace(/\D/g, '') ||
@@ -493,7 +501,7 @@ export default function SalesPipelineKanban() {
       <Dialog open={!!previewLead} onOpenChange={() => setPreviewLead(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Vista Previa - {getContactInfo(previewLead!).name}</DialogTitle>
+            <DialogTitle>Vista Previa - {previewLead ? getContactInfo(previewLead).name : 'Lead'}</DialogTitle>
           </DialogHeader>
           {previewLead && (
             <div className="space-y-4">
@@ -542,7 +550,7 @@ export default function SalesPipelineKanban() {
       <Dialog open={!!commentsLead} onOpenChange={() => setCommentsLead(null)}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Comentarios - {commentsLead && getContactInfo(commentsLead).name}</DialogTitle>
+            <DialogTitle>Comentarios - {commentsLead ? getContactInfo(commentsLead).name : 'Lead'}</DialogTitle>
           </DialogHeader>
           {commentsLead && (
             <div className="space-y-4">
@@ -581,7 +589,7 @@ export default function SalesPipelineKanban() {
       <Dialog open={!!editingLead} onOpenChange={() => setEditingLead(null)}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Editar Lead - {editingLead && getContactInfo(editingLead).name}</DialogTitle>
+            <DialogTitle>Editar Lead - {editingLead ? getContactInfo(editingLead).name : 'Lead'}</DialogTitle>
           </DialogHeader>
           {editingLead && (
             <div className="space-y-4">
