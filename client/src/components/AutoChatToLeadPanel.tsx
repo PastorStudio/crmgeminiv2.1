@@ -16,6 +16,7 @@ export function AutoChatToLeadPanel() {
   const { toast } = useToast();
   const [stats, setStats] = useState<ConversionStats | null>(null);
   const [lastConversion, setLastConversion] = useState<any>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   // Cargar estadísticas al montar el componente
   useEffect(() => {
@@ -34,6 +35,47 @@ export function AutoChatToLeadPanel() {
       }
     } catch (error) {
       console.error('Error cargando estadísticas:', error);
+    }
+  };
+
+  const handleRemoveDuplicates = async () => {
+    if (isRemoving) return;
+    
+    setIsRemoving(true);
+    try {
+      const response = await fetch('/api/leads/remove-duplicates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: "Duplicados eliminados",
+          description: `Se eliminaron ${data.duplicatesRemoved} leads duplicados exitosamente`,
+        });
+        
+        // Recargar estadísticas después de eliminar duplicados
+        loadStats();
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Error eliminando duplicados",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error eliminando duplicados:', error);
+      toast({
+        title: "Error",
+        description: "Error de conexión al eliminar duplicados",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRemoving(false);
     }
   };
 
