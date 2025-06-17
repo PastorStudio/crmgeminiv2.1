@@ -41,6 +41,8 @@ export default function SalesPipelineKanban() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [previewLead, setPreviewLead] = useState<Lead | null>(null);
   const [commentsLead, setCommentsLead] = useState<Lead | null>(null);
+  const [newComment, setNewComment] = useState("");
+  const [leadComments, setLeadComments] = useState<any[]>([]);
   const queryClient = useQueryClient();
 
   // Function to calculate probability based on customer interest
@@ -232,6 +234,65 @@ export default function SalesPipelineKanban() {
       });
     },
   });
+
+  // Mutation for adding comments to leads
+  const addCommentMutation = useMutation({
+    mutationFn: async ({ leadId, comment }: { leadId: number; comment: string }) => {
+      return await apiRequest(`/api/leads/${leadId}/comments`, {
+        method: "POST",
+        body: JSON.stringify({ comment }),
+        headers: { "Content-Type": "application/json" }
+      });
+    },
+    onSuccess: () => {
+      setNewComment("");
+      loadLeadComments(commentsLead?.id || 0);
+      toast({
+        title: "Comentario agregado",
+        description: "El comentario se ha guardado correctamente.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "No se pudo guardar el comentario.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Function to load comments for a lead
+  const loadLeadComments = async (leadId: number) => {
+    try {
+      const response = await fetch(`/api/leads/${leadId}/comments`);
+      if (response.ok) {
+        const comments = await response.json();
+        setLeadComments(comments);
+      } else {
+        setLeadComments([]);
+      }
+    } catch (error) {
+      console.error('Error loading comments:', error);
+      setLeadComments([]);
+    }
+  };
+
+  // Handle saving comment
+  const handleSaveComment = () => {
+    if (!commentsLead || !newComment.trim()) return;
+    
+    addCommentMutation.mutate({
+      leadId: commentsLead.id,
+      comment: newComment.trim()
+    });
+  };
+
+  // Load comments when comments dialog opens
+  useEffect(() => {
+    if (commentsLead) {
+      loadLeadComments(commentsLead.id);
+    }
+  }, [commentsLead]);
 
   // Organize leads into columns by status - 5-step pipeline
   useEffect(() => {
@@ -564,20 +625,42 @@ export default function SalesPipelineKanban() {
               <div>
                 <Label className="text-sm font-medium">Agregar Comentario</Label>
                 <Textarea 
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Escribe un comentario sobre este lead..."
                   className="mt-1"
+                  disabled={addCommentMutation.isPending}
                 />
-                <Button className="mt-2" size="sm">
-                  Guardar Comentario
+                <Button 
+                  className="mt-2" 
+                  size="sm"
+                  onClick={handleSaveComment}
+                  disabled={!newComment.trim() || addCommentMutation.isPending}
+                >
+                  {addCommentMutation.isPending ? "Guardando..." : "Guardar Comentario"}
                 </Button>
               </div>
               
               <div>
                 <Label className="text-sm font-medium">Historial de Comentarios</Label>
-                <div className="space-y-2 mt-2">
-                  <div className="text-sm text-gray-500 italic">
-                    No hay comentarios disponibles para este lead.
-                  </div>
+                <div className="space-y-2 mt-2 max-h-40 overflow-y-auto">
+                  {leadComments.length > 0 ? (
+                    leadComments.map((comment, index) => (
+                      <div key={index} className="bg-gray-50 p-2 rounded text-sm">
+                        <div className="font-medium text-gray-700">
+                          {comment.authorName || 'Sistema'}
+                        </div>
+                        <div className="text-gray-600 mt-1">{comment.comment}</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          {new Date(comment.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-gray-500 italic">
+                      No hay comentarios disponibles para este lead.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
