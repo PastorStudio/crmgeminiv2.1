@@ -95,6 +95,11 @@ setTimeout(async () => {
     console.log('🎯 Inicializando procesador unificado de mensajes...');
     await unifiedMessageProcessor.initialize();
     console.log('✅ Procesador unificado inicializado correctamente');
+
+    // Reinicializar sistema de respuestas automáticas para limpiar configuraciones obsoletas
+    console.log('🔄 Reinicializando sistema de respuestas automáticas...');
+    await stableAutoResponseManager.reinitialize();
+    console.log('✅ Sistema de respuestas automáticas reinicializado');
   } catch (error) {
     console.error('❌ Error inicializando procesador unificado:', error);
   }

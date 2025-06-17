@@ -45,8 +45,8 @@ class AutoResponseMonitor {
         console.log(`📱 Monitoreando ${this.connectedAccounts.length} cuentas WhatsApp`);
       }
     } catch (error) {
-      console.log('⚠️ Error cargando cuentas, usando cuenta por defecto');
-      this.connectedAccounts = [{ id: 1, name: 'Default', status: 'connected' }];
+      console.log('⚠️ Error cargando cuentas, sin cuentas disponibles');
+      this.connectedAccounts = [];
     }
   }
   
