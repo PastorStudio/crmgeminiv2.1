@@ -1,4 +1,25 @@
-2025/06/17-16:21:55.482 7a84 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/06/17-16:21:55.484 7a84 Recovering log #9164
-2025/06/17-16:21:55.504 7a84 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/009164.log 
-2025/06/17-16:21:57.243 7a87 Manual compaction at level-0 from ' \xe6\x0b\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xe7\x0b\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/17-16:23:08.565 7e00 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/17-16:23:08.568 7e00 Recovering log #9164
+2025/06/17-16:23:08.614 7e00 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/009164.log 
+2025/06/17-16:23:10.410 7e00 Level-0 table #9171: started
+2025/06/17-16:23:10.435 7e00 Level-0 table #9171: 276046 bytes OK
+2025/06/17-16:23:10.445 7e00 Delete type=0 #9164
+2025/06/17-16:23:10.446 7e00 Manual compaction at level-0 from ' \xe7\x0b\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xe8\x0b\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/17-16:23:13.526 7e02 Compacting 1@1 + 7@2 files
+2025/06/17-16:23:13.769 7e02 Generated table #9172@1: 38756 keys, 2188014 bytes
+2025/06/17-16:23:13.974 7e02 Generated table #9173@1: 35615 keys, 2208066 bytes
+2025/06/17-16:23:14.124 7e02 Generated table #9174@1: 60419 keys, 2225444 bytes
+2025/06/17-16:23:14.184 7e02 Generated table #9175@1: 9369 keys, 2153990 bytes
+2025/06/17-16:23:14.292 7e02 Generated table #9176@1: 25434 keys, 2190183 bytes
+2025/06/17-16:23:14.397 7e02 Generated table #9177@1: 103767 keys, 2254600 bytes
+2025/06/17-16:23:14.441 7e02 Generated table #9178@1: 13725 keys, 288382 bytes
+2025/06/17-16:23:14.441 7e02 Compacted 1@1 + 7@2 files => 13508679 bytes
+2025/06/17-16:23:14.453 7e02 compacted to: files[ 0 0 7 0 0 0 0 ]
+2025/06/17-16:23:14.453 7e02 Delete type=2 #9159
+2025/06/17-16:23:14.453 7e02 Delete type=2 #9160
+2025/06/17-16:23:14.454 7e02 Delete type=2 #9161
+2025/06/17-16:23:14.454 7e02 Delete type=2 #9162
+2025/06/17-16:23:14.454 7e02 Delete type=2 #9163
+2025/06/17-16:23:14.454 7e02 Delete type=2 #9166
+2025/06/17-16:23:14.454 7e02 Delete type=2 #9168
+2025/06/17-16:23:14.455 7e02 Delete type=2 #9171

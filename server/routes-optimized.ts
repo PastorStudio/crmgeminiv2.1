@@ -4045,6 +4045,32 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // Chat-to-Lead Conversion Endpoints
+  app.get("/api/chat-to-lead/status", async (req: Request, res: Response) => {
+    try {
+      const { chatToLeadConverter } = await import('./services/chatToLeadConverter');
+      const stats = chatToLeadConverter.getStats();
+      res.json({ success: true, stats });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Error obteniendo estado' });
+    }
+  });
+
+  app.post("/api/chat-to-lead/process-now", async (req: Request, res: Response) => {
+    try {
+      console.log('🎯 Procesamiento manual de chat-to-lead solicitado desde optimized routes');
+      const { chatToLeadConverter } = await import('./services/chatToLeadConverter');
+      
+      // Forzar procesamiento inmediato de chats reales de WhatsApp
+      await chatToLeadConverter.processNewChats();
+      
+      res.json({ success: true, message: 'Procesamiento de chats reales completado' });
+    } catch (error) {
+      console.error('Error en procesamiento manual:', error);
+      res.status(500).json({ success: false, error: 'Error en procesamiento' });
+    }
+  });
+
   // Crear sistema de etiquetas inicial
   app.post("/api/system/initialize-tags", async (req: Request, res: Response) => {
     try {

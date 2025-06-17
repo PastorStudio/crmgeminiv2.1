@@ -109,11 +109,19 @@ export class ChatToLeadConverter {
    */
   private async processAccountChats(accountId: number, onlyRecent: boolean = false): Promise<void> {
     try {
-      // Simular obtención de chats desde WhatsApp
-      // En un entorno real, esto vendría de la API de WhatsApp
-      const mockChats = await this.getMockWhatsAppChats(accountId);
+      console.log(`🔄 Obteniendo chats REALES de WhatsApp para cuenta ${accountId}...`);
+      
+      // Obtener chats reales desde WhatsApp usando el servicio directo
+      const realChats = await this.getRealWhatsAppChats(accountId);
+      
+      if (realChats.length === 0) {
+        console.log(`📭 No hay chats disponibles para cuenta ${accountId}`);
+        return;
+      }
 
-      for (const chat of mockChats) {
+      console.log(`📨 Procesando ${realChats.length} chats reales de WhatsApp...`);
+
+      for (const chat of realChats) {
         await this.processChatForLead(accountId, chat);
       }
 
@@ -272,7 +280,50 @@ export class ChatToLeadConverter {
   }
 
   /**
-   * Obtiene chats simulados de WhatsApp para demostración
+   * Obtiene chats REALES de WhatsApp usando la API directa del sistema
+   */
+  private async getRealWhatsAppChats(accountId: number): Promise<any[]> {
+    try {
+      console.log(`🔍 Obteniendo chats reales desde WhatsApp API para cuenta ${accountId}...`);
+      
+      // Usar fetch interno para obtener chats reales desde la API directa
+      const response = await fetch(`http://localhost:5000/api/direct/whatsapp/chats?accountId=${accountId}`);
+      
+      if (!response.ok) {
+        console.log(`⚠️ API de WhatsApp no disponible para cuenta ${accountId}`);
+        return [];
+      }
+
+      const chats = await response.json();
+      
+      if (!chats || chats.length === 0) {
+        console.log(`📭 No hay chats reales disponibles para cuenta ${accountId}`);
+        return [];
+      }
+
+      console.log(`📨 ${chats.length} chats reales obtenidos desde WhatsApp`);
+
+      // Transformar los chats reales al formato necesario para el análisis
+      return chats.map(chat => ({
+        id: chat.id?.user || chat.id || `contact_${Date.now()}`,
+        name: chat.name || chat.pushname || 'Contacto sin nombre',
+        phone: chat.id?.user || chat.id || 'Sin teléfono',
+        lastMessage: chat.lastMessage?.body || 'Sin mensajes recientes',
+        timestamp: chat.lastMessage?.timestamp ? new Date(chat.lastMessage.timestamp * 1000) : new Date(),
+        messageCount: chat.unreadCount || 1,
+        isGroup: chat.isGroup || false,
+        messages: chat.messages || [],
+        whatsappData: chat // Datos originales de WhatsApp
+      }));
+
+    } catch (error) {
+      console.error(`❌ Error obteniendo chats reales de cuenta ${accountId}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtiene chats simulados de WhatsApp para demostración (MÉTODO OBSOLETO)
    */
   private async getMockWhatsAppChats(accountId: number): Promise<any[]> {
     // Datos simulados realistas para demostrar la funcionalidad
