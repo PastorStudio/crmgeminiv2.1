@@ -4104,6 +4104,11 @@ export function registerOptimizedRoutes(app: Express): Server {
           console.log(`   - Tipo Contratación: "${tipoContratacion}"`);
         }
         
+        // Validate and sanitize numeric fields
+        const safeAnoNacimiento = anoNacimiento && !isNaN(parseInt(anoNacimiento)) 
+          ? parseInt(anoNacimiento) 
+          : null;
+
         const result = await db.$client.query(
           `INSERT INTO contact_database (
             numero, nombre_pila, apellido_paterno, apellido_materno, telefono,
@@ -4124,7 +4129,7 @@ export function registerOptimizedRoutes(app: Express): Server {
             nivelSocioeconomico,
             lugarTrabajo,
             escolaridad,
-            anoNacimiento,
+            safeAnoNacimiento,
             tipoContratacion,
             3, // Current user ID
             fileName,

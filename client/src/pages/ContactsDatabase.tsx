@@ -462,22 +462,63 @@ export default function ContactsDatabase() {
           tipo_contratacion: ''
         };
 
-        // Map file data to fixed fields based on column position
-        const fileKeys = Object.keys(contact);
-        const fixedFieldNames = [
-          'nombre_pila', 'apellido_paterno', 'apellido_materno', 'telefono', 
-          'genero', 'grupo_edad', 'militante', 'nivel_socioeconomico', 
-          'lugar_trabajo', 'escolaridad', 'ano_nacimiento', 'tipo_contratacion'
-        ];
+        // Map file data using intelligent header-based mapping
+        if (headers && headers.length > 0) {
+          const headerMapping: { [key: string]: string } = {
+            '#': 'numero',
+            'Numero': 'numero',
+            'Número': 'numero',
+            'Nombre de Pila': 'nombre_pila',
+            'Ap. Paterno': 'apellido_paterno', 
+            'Apellido Paterno': 'apellido_paterno',
+            'Ap. Materno': 'apellido_materno',
+            'Apellido Materno': 'apellido_materno',
+            'Telefono': 'telefono',
+            'Teléfono': 'telefono',
+            'Género': 'genero',
+            'GÃ©nero': 'genero',
+            'Genero': 'genero',
+            'Grupo de edad': 'grupo_edad',
+            'Militante': 'militante',
+            'Nivel Socioeconómico': 'nivel_socioeconomico',
+            'Nivel SocioeconÃ³mico': 'nivel_socioeconomico',
+            'Lugar de trabajo': 'lugar_trabajo',
+            'Escolaridad': 'escolaridad',
+            'Año de nacimiento': 'ano_nacimiento',
+            'AÃ±o de nacimiento': 'ano_nacimiento',
+            'Tipo de contratación': 'tipo_contratacion',
+            'Tipo de contrataciÃ³n': 'tipo_contratacion'
+          };
 
-        fileKeys.forEach((key, keyIndex) => {
-          if (keyIndex < fixedFieldNames.length) {
-            const fieldName = fixedFieldNames[keyIndex];
-            // Preserve exact text content including special characters and numbers
-            const value = contact[key];
-            mappedContact[fieldName] = value !== null && value !== undefined ? String(value) : '';
-          }
-        });
+          // Map using headers for accuracy
+          headers.forEach((header: string, headerIndex: number) => {
+            const cleanHeader = header.trim();
+            const fieldName = headerMapping[cleanHeader];
+            if (fieldName) {
+              const fileKeys = Object.keys(contact);
+              if (fileKeys[headerIndex] !== undefined) {
+                const value = contact[fileKeys[headerIndex]];
+                mappedContact[fieldName] = value !== null && value !== undefined ? String(value) : '';
+              }
+            }
+          });
+        } else {
+          // Fallback to position-based mapping
+          const fileKeys = Object.keys(contact);
+          const fixedFieldNames = [
+            'numero', 'nombre_pila', 'apellido_paterno', 'apellido_materno', 'telefono', 
+            'genero', 'grupo_edad', 'militante', 'nivel_socioeconomico', 
+            'lugar_trabajo', 'escolaridad', 'ano_nacimiento', 'tipo_contratacion'
+          ];
+
+          fileKeys.forEach((key, keyIndex) => {
+            if (keyIndex < fixedFieldNames.length) {
+              const fieldName = fixedFieldNames[keyIndex];
+              const value = contact[key];
+              mappedContact[fieldName] = value !== null && value !== undefined ? String(value) : '';
+            }
+          });
+        }
 
         return mappedContact;
       });
