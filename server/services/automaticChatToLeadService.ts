@@ -349,70 +349,51 @@ export class AutomaticChatToLeadService {
   }
 
   async getConversionStats(): Promise<{
-    totalChats: number;
-    eligibleChats: number;
-    convertedLeads: number;
-    conversionRate: number;
-    lastProcessed: Date | null;
+    totalAutoLeads: number;
+    recentAutoLeads: number;
+    conversionActive: boolean;
+    lastUpdate: string;
   }> {
     try {
-      // Get total chat conversations
-      const totalChatsResult = await db
-        .select({ count: sql<number>`COUNT(DISTINCT ${contacts.id})::int` })
-        .from(contacts)
-        .innerJoin(whatsappMessages, eq(whatsappMessages.accountId, contacts.whatsappAccountId));
-
-      // Get eligible conversations (those meeting conversion criteria)
-      const eligibleChatsResult = await db
-        .select({ count: sql<number>`COUNT(*)::int` })
-        .from(
-          db
-            .select({ contactId: contacts.id })
-            .from(whatsappMessages)
-            .innerJoin(contacts, eq(whatsappMessages.accountId, contacts.whatsappAccountId))
-            .where(
-              and(
-                eq(whatsappMessages.from_me, false),
-                sql`${whatsappMessages.timestamp} > NOW() - INTERVAL '30 days'`
-              )
-            )
-            .groupBy(contacts.id)
-            .having(sql`COUNT(*) >= 3`)
-            .as('eligible')
-        );
-
-      // Get converted leads from WhatsApp
-      const convertedLeadsResult = await db
-        .select({ count: sql<number>`COUNT(*)::int` })
+      // Count total leads created through auto-conversion
+      const totalAutoLeads = await db.select({ count: sql`count(*)` })
         .from(leads)
-        .where(
-          and(
-            eq(leads.source, 'WhatsApp'),
-            eq(leads.isDeleted, false)
-          )
-        );
+        .where(and(
+          eq(leads.source, 'whatsapp'),
+          eq(leads.isDeleted, false)
+        ));
 
-      const totalChats = totalChatsResult[0]?.count || 0;
-      const eligibleChats = eligibleChatsResult[0]?.count || 0;
-      const convertedLeads = convertedLeadsResult[0]?.count || 0;
-      const conversionRate = eligibleChats > 0 ? (convertedLeads / eligibleChats) * 100 : 0;
-
-      return {
-        totalChats,
-        eligibleChats,
-        convertedLeads,
-        conversionRate: Math.round(conversionRate * 100) / 100,
-        lastProcessed: new Date()
-      };
+      // Count recent auto-leads (last 24 hours)
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
       
-    } catch (error) {
-      console.error('❌ Error obteniendo estadísticas de conversión:', error);
+      const recentAutoLeads = await db.select({ count: sql`count(*)` })
+        .from(leads)
+        .where(and(
+          eq(leads.source, 'whatsapp'),
+          eq(leads.isDeleted, false),
+          sql`${leads.createdAt} >= ${yesterday}`
+        ));
+
+      // Check if there are active WhatsApp accounts (indicating potential for conversion)
+      const activeAccounts = await db.select({ count: sql`count(*)` })
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.status, 'active'));
+
       return {
-        totalChats: 0,
-        eligibleChats: 0,
-        convertedLeads: 0,
-        conversionRate: 0,
-        lastProcessed: null
+        totalAutoLeads: Number(totalAutoLeads[0]?.count || 0),
+        recentAutoLeads: Number(recentAutoLeads[0]?.count || 0),
+        conversionActive: Number(activeAccounts[0]?.count || 0) > 0,
+        lastUpdate: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error('Error obteniendo estadísticas de conversión:', error);
+      return {
+        totalAutoLeads: 0,
+        recentAutoLeads: 0,
+        conversionActive: false,
+        lastUpdate: new Date().toISOString()
       };
     }
   }
