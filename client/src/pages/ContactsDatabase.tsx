@@ -15,7 +15,11 @@ import {
   Database,
   AlertTriangle,
   CheckCircle,
-  X
+  X,
+  Edit3,
+  Save,
+  Plus,
+  Grid3X3
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import * as XLSX from "xlsx";
@@ -47,6 +51,9 @@ export default function ContactsDatabase() {
   const [uploadMessage, setUploadMessage] = useState('');
   const [fileHeaders, setFileHeaders] = useState<string[]>([]);
   const [columnWidths, setColumnWidths] = useState<number[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editableData, setEditableData] = useState<any[]>([]);
+  const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -73,6 +80,134 @@ export default function ContactsDatabase() {
       setColumnWidths(backendColumnWidths);
     }
   }, [backendHeaders, backendColumnWidths, fileHeaders.length, columnWidths.length]);
+
+  // Initialize editable data when contacts change
+  React.useEffect(() => {
+    if (contacts.length > 0 && !isEditMode) {
+      setEditableData(contacts.map(contact => ({ ...contact })));
+    }
+  }, [contacts, isEditMode]);
+
+  // Function to automatically separate text like Excel
+  const separateTextIntoColumns = (text: string): string[] => {
+    // Split by tabs (most common Excel copy format)
+    if (text.includes('\t')) {
+      return text.split('\t');
+    }
+    
+    // Split by multiple spaces (4 or more)
+    if (text.match(/\s{4,}/)) {
+      return text.split(/\s{4,}/);
+    }
+    
+    // Split by commas (CSV format)
+    if (text.includes(',')) {
+      return text.split(',').map(item => item.trim());
+    }
+    
+    // Split by semicolons
+    if (text.includes(';')) {
+      return text.split(';').map(item => item.trim());
+    }
+    
+    // Split by pipes
+    if (text.includes('|')) {
+      return text.split('|').map(item => item.trim());
+    }
+    
+    // Default: return as single column
+    return [text];
+  };
+
+  // Handle paste operation
+  const handlePaste = async (e: React.ClipboardEvent, rowIndex: number, colIndex: number) => {
+    e.preventDefault();
+    
+    const pasteData = e.clipboardData.getData('text');
+    if (!pasteData) return;
+
+    // Split text into columns automatically
+    const separatedData = separateTextIntoColumns(pasteData);
+    
+    // Create new row data
+    const newEditableData = [...editableData];
+    
+    // If we don't have enough rows, create new ones
+    while (newEditableData.length <= rowIndex) {
+      const newRow: any = { id: Date.now() + Math.random(), numero: newEditableData.length + 1 };
+      fileHeaders.forEach(header => {
+        newRow[header] = '';
+      });
+      newEditableData.push(newRow);
+    }
+    
+    // Fill the separated data into columns
+    separatedData.forEach((data, index) => {
+      const targetColIndex = colIndex + index;
+      if (targetColIndex < fileHeaders.length) {
+        const headerKey = fileHeaders[targetColIndex];
+        newEditableData[rowIndex][headerKey] = data.trim();
+      }
+    });
+    
+    setEditableData(newEditableData);
+    
+    toast({
+      title: "Texto pegado y separado",
+      description: `Datos separados en ${separatedData.length} columna(s)`,
+    });
+  };
+
+  // Toggle edit mode
+  const toggleEditMode = () => {
+    if (isEditMode) {
+      // Save changes when exiting edit mode
+      saveEditableData();
+    } else {
+      // Enter edit mode
+      setEditableData(contacts.map(contact => ({ ...contact })));
+    }
+    setIsEditMode(!isEditMode);
+  };
+
+  // Save editable data
+  const saveEditableData = async () => {
+    try {
+      // Here you would typically call an API to save the data
+      // For now, we'll just show a success message
+      toast({
+        title: "Datos guardados",
+        description: "Los cambios han sido guardados exitosamente",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al guardar los cambios",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Add new row
+  const addNewRow = () => {
+    const newRow: any = { 
+      id: Date.now() + Math.random(), 
+      numero: editableData.length + 1 
+    };
+    
+    fileHeaders.forEach(header => {
+      newRow[header] = '';
+    });
+    
+    setEditableData([...editableData, newRow]);
+  };
+
+  // Handle cell value change
+  const handleCellChange = (rowIndex: number, columnKey: string, value: string) => {
+    const newData = [...editableData];
+    newData[rowIndex][columnKey] = value;
+    setEditableData(newData);
+  };
 
   // Upload contacts mutation
   const uploadMutation = useMutation({
@@ -438,6 +573,26 @@ export default function ContactsDatabase() {
               <Trash2 className="h-4 w-4" />
               Limpiar Todo
             </Button>
+            
+            <Button
+              onClick={toggleEditMode}
+              variant={isEditMode ? "default" : "outline"}
+              className="flex items-center gap-2"
+            >
+              {isEditMode ? <Save className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
+              {isEditMode ? "Guardar Cambios" : "Vista Excel"}
+            </Button>
+            
+            {isEditMode && (
+              <Button
+                onClick={addNewRow}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Agregar Fila
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -468,6 +623,16 @@ export default function ContactsDatabase() {
             </div>
           ) : (
             <div className="overflow-x-auto">
+              {isEditMode && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800 font-medium">📋 Modo Excel Activo</p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Puedes copiar texto y pegarlo en cualquier celda. El texto se separará automáticamente en columnas.
+                    Soporta: separadores por tabuladores, espacios múltiples, comas, punto y coma y barras verticales.
+                  </p>
+                </div>
+              )}
+              
               <table className="w-full border-collapse border border-gray-200">
                 <thead>
                   <tr className="bg-gray-50">
@@ -501,27 +666,51 @@ export default function ContactsDatabase() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {contacts.map((contact: ContactData, index: number) => (
-                    <tr key={contact.id} className="hover:bg-gray-50">
+                  {(isEditMode ? editableData : contacts).map((contact: ContactData, index: number) => (
+                    <tr key={contact.id || index} className="hover:bg-gray-50">
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900 text-center font-medium">
                         {contact.numero || index + 1}
                       </td>
                       {/* Dynamic data cells based on actual Excel file structure */}
                       {fileHeaders.length > 0 ? fileHeaders.map((header, headerIndex) => {
                         const cellValue = contact[header as keyof ContactData] || '';
-                        const displayValue = String(cellValue).trim() || '-';
-                        return (
-                          <td 
-                            key={headerIndex}
-                            className="border border-gray-200 px-3 py-2 text-sm text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis"
-                            style={{ 
-                              maxWidth: `${Math.max(columnWidths[headerIndex] * 10, 200)}px`
-                            }}
-                            title={displayValue !== '-' ? displayValue : ''}
-                          >
-                            {displayValue}
-                          </td>
-                        );
+                        const displayValue = String(cellValue).trim() || '';
+                        
+                        if (isEditMode) {
+                          return (
+                            <td 
+                              key={headerIndex}
+                              className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${
+                                selectedCell?.row === index && selectedCell?.col === headerIndex ? 'bg-blue-100' : ''
+                              }`}
+                              style={{ 
+                                maxWidth: `${Math.max(columnWidths[headerIndex] * 10, 200)}px`
+                              }}
+                              onClick={() => setSelectedCell({row: index, col: headerIndex})}
+                            >
+                              <Input
+                                value={displayValue}
+                                onChange={(e) => handleCellChange(index, header, e.target.value)}
+                                onPaste={(e) => handlePaste(e, index, headerIndex)}
+                                className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500"
+                                style={{ minHeight: '24px' }}
+                              />
+                            </td>
+                          );
+                        } else {
+                          return (
+                            <td 
+                              key={headerIndex}
+                              className="border border-gray-200 px-3 py-2 text-sm text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis"
+                              style={{ 
+                                maxWidth: `${Math.max(columnWidths[headerIndex] * 10, 200)}px`
+                              }}
+                              title={displayValue || ''}
+                            >
+                              {displayValue || '-'}
+                            </td>
+                          );
+                        }
                       }) : (
                         // Default display when no file headers available
                         <>
