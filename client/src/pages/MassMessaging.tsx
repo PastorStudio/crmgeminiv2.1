@@ -212,6 +212,15 @@ export default function MassMessaging() {
   const [selectedTagsToAdd, setSelectedTagsToAdd] = useState<string[]>([]);
   const [newTagName, setNewTagName] = useState<string>("");
   
+  // Estado para el formulario de campaña
+  const [campaignForm, setCampaignForm] = useState({
+    name: "",
+    message: "",
+    targetCount: 100,
+    filterColumn: "none",
+    filterValue: ""
+  });
+  
   // Estados para envío inmediato
   const [showImmediateMessaging, setShowImmediateMessaging] = useState<boolean>(false);
   const [messageText, setMessageText] = useState<string>("");
