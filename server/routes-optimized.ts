@@ -3893,34 +3893,47 @@ export function registerOptimizedRoutes(app: Express): Server {
         
         if (firstContactWithHeaders) {
           try {
-            // Handle case where headers might be stored as plain text
+            // Handle case where headers might be stored as plain text or JSON
             if (firstContactWithHeaders.excel_headers) {
-              if (firstContactWithHeaders.excel_headers.startsWith('[')) {
-                excelHeaders = JSON.parse(firstContactWithHeaders.excel_headers);
-              } else {
-                // If stored as comma-separated string, split it
-                excelHeaders = firstContactWithHeaders.excel_headers.split(',').map((h: string) => h.trim());
+              const headersData = firstContactWithHeaders.excel_headers;
+              if (typeof headersData === 'string') {
+                if (headersData.startsWith('[')) {
+                  excelHeaders = JSON.parse(headersData);
+                } else {
+                  // If stored as comma-separated string, split it
+                  excelHeaders = headersData.split(',').map((h: string) => h.trim());
+                }
+              } else if (Array.isArray(headersData)) {
+                excelHeaders = headersData;
               }
             }
             
             if (firstContactWithHeaders.column_widths) {
-              if (firstContactWithHeaders.column_widths.startsWith('[')) {
-                columnWidths = JSON.parse(firstContactWithHeaders.column_widths);
-              } else {
-                // Default column widths if not properly stored
-                columnWidths = excelHeaders.map(() => 120);
+              const widthsData = firstContactWithHeaders.column_widths;
+              if (typeof widthsData === 'string') {
+                if (widthsData.startsWith('[')) {
+                  columnWidths = JSON.parse(widthsData);
+                } else {
+                  // Default column widths if not properly stored
+                  columnWidths = excelHeaders.map(() => 120);
+                }
+              } else if (Array.isArray(widthsData)) {
+                columnWidths = widthsData;
               }
             }
           } catch (parseError) {
             console.warn('Error parsing Excel headers/widths:', parseError);
-            // Use default headers
-            excelHeaders = [
-              '#', 'Nombre de Pila', 'Ap. Paterno', 'Ap. Materno', 'Telefono', 
-              'Género', 'Grupo de edad', 'Militante', 'Nivel Socioeconómico', 
-              'Lugar de trabajo', 'Escolaridad', 'Año de nacimiento', 'Tipo de contratación'
-            ];
-            columnWidths = excelHeaders.map(() => 120);
           }
+        }
+        
+        // Use default headers if none found
+        if (!excelHeaders || excelHeaders.length === 0) {
+          excelHeaders = [
+            '#', 'Nombre de Pila', 'Ap. Paterno', 'Ap. Materno', 'Telefono', 
+            'Género', 'Grupo de edad', 'Militante', 'Nivel Socioeconómico', 
+            'Lugar de trabajo', 'Escolaridad', 'Año de nacimiento', 'Tipo de contratación'
+          ];
+          columnWidths = excelHeaders.map(() => 120);
         }
       }
       
@@ -4023,19 +4036,19 @@ export function registerOptimizedRoutes(app: Express): Server {
           RETURNING *`,
           [
             currentNumber,
-            // Extract data using flexible field mapping
-            extractValue(contact, ['nombre_pila', 'Nombre de Pila', 'nombrePila', 'Nombre']),
-            extractValue(contact, ['apellido_paterno', 'Ap. Paterno', 'apellidoPaterno', 'Apellido Paterno']),
-            extractValue(contact, ['apellido_materno', 'Ap. Materno', 'apellidoMaterno', 'Apellido Materno']),
-            extractValue(contact, ['telefono', 'Telefono', 'Teléfono', 'phone', 'Phone', 'Número']),
-            extractValue(contact, ['genero', 'Género', 'gender', 'Gender', 'Sexo']),
-            extractValue(contact, ['grupo_edad', 'Grupo de edad', 'grupoEdad', 'Edad', 'Age']),
-            extractValue(contact, ['militante', 'Militante', 'Afiliación']),
-            extractValue(contact, ['nivel_socioeconomico', 'Nivel Socioeconómico', 'nivelSocioeconomico', 'NSE']),
-            extractValue(contact, ['lugar_trabajo', 'Lugar de trabajo', 'lugarTrabajo', 'Trabajo', 'Empresa']),
-            extractValue(contact, ['escolaridad', 'Escolaridad', 'Educación', 'education']),
-            extractValue(contact, ['ano_nacimiento', 'Año de nacimiento', 'anoNacimiento', 'Año', 'Birth Year']),
-            extractValue(contact, ['tipo_contratacion', 'Tipo de contratación', 'tipoContratacion', 'Contrato']),
+            // Extract data using improved field mapping
+            getFieldValue(contact, 'nombre_pila', 'Nombre de Pila', 'nombrePila', 'Nombre'),
+            getFieldValue(contact, 'apellido_paterno', 'Ap. Paterno', 'apellidoPaterno', 'Apellido Paterno'),
+            getFieldValue(contact, 'apellido_materno', 'Ap. Materno', 'apellidoMaterno', 'Apellido Materno'),
+            getFieldValue(contact, 'telefono', 'Telefono', 'Teléfono', 'phone', 'Phone', 'Número'),
+            getFieldValue(contact, 'genero', 'Género', 'gender', 'Gender', 'Sexo'),
+            getFieldValue(contact, 'grupo_edad', 'Grupo de edad', 'grupoEdad', 'Edad', 'Age'),
+            getFieldValue(contact, 'militante', 'Militante', 'Afiliación'),
+            getFieldValue(contact, 'nivel_socioeconomico', 'Nivel Socioeconómico', 'nivelSocioeconomico', 'NSE'),
+            getFieldValue(contact, 'lugar_trabajo', 'Lugar de trabajo', 'lugarTrabajo', 'Trabajo', 'Empresa'),
+            getFieldValue(contact, 'escolaridad', 'Escolaridad', 'Educación', 'education'),
+            getFieldValue(contact, 'ano_nacimiento', 'Año de nacimiento', 'anoNacimiento', 'Año', 'Birth Year'),
+            getFieldValue(contact, 'tipo_contratacion', 'Tipo de contratación', 'tipoContratacion', 'Contrato'),
             3, // Current user ID
             fileName,
             JSON.stringify(contactData), // Store complete raw data
