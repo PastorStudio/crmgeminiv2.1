@@ -4145,9 +4145,20 @@ export function registerOptimizedRoutes(app: Express): Server {
       });
     } catch (error) {
       console.error('Error subiendo contactos:', error);
+      
+      // Log más detallado del error
+      if (error instanceof Error) {
+        console.error('Error detallado:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
+      
       res.status(500).json({
         success: false,
-        error: 'Error procesando archivo de contactos'
+        error: error instanceof Error ? error.message : 'Error procesando archivo de contactos',
+        details: error instanceof Error ? error.stack : undefined
       });
     }
   });
