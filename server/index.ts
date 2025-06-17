@@ -8955,6 +8955,18 @@ Responde de manera conversacional, profesional y útil según tu especializació
     console.log('🎯 Iniciando sistema de conversión automática chat-to-lead...');
     await chatToLeadConverter.start();
     console.log('✅ Sistema de conversión chat-to-lead iniciado - procesamiento cada 2 minutos');
+    
+    // Forzar procesamiento inmediato de chats reales
+    console.log('🔄 Ejecutando conversión inmediata de chats reales de WhatsApp...');
+    setTimeout(async () => {
+      try {
+        await chatToLeadConverter.processNewChats();
+        console.log('✅ Conversión inmediata de chats reales completada');
+      } catch (error) {
+        console.error('❌ Error en conversión inmediata:', error);
+      }
+    }, 5000); // Esperar 5 segundos para que el sistema esté completamente inicializado
+    
   } catch (error) {
     console.error('❌ Error iniciando conversión chat-to-lead:', error);
   }
