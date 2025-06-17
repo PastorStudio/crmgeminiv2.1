@@ -3542,6 +3542,33 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // Endpoint para eliminar leads duplicados
+  app.post("/api/leads/remove-duplicates", async (_req: Request, res: Response) => {
+    try {
+      console.log('🧹 Iniciando eliminación manual de leads duplicados...');
+      
+      const { AutomaticChatToLeadService } = await import('./services/automaticChatToLeadService');
+      const service = AutomaticChatToLeadService.getInstance();
+      const duplicatesRemoved = await service.removeDuplicateLeads();
+      
+      console.log(`✅ Eliminación completada: ${duplicatesRemoved} leads duplicados removidos`);
+      
+      res.json({
+        success: true,
+        duplicatesRemoved,
+        message: `Se eliminaron ${duplicatesRemoved} leads duplicados`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error eliminando duplicados:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error eliminando leads duplicados",
+        message: error.message
+      });
+    }
+  });
+
   // Crear sistema de etiquetas inicial
   app.post("/api/system/initialize-tags", async (req: Request, res: Response) => {
     try {

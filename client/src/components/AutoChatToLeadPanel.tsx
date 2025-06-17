@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Users, CheckCircle } from "lucide-react";
+import { Users, CheckCircle, Trash2 } from "lucide-react";
 
 interface ConversionStats {
   totalAutoLeads: number;
