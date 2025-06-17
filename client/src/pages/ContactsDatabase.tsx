@@ -43,7 +43,6 @@ interface ContactData {
   file_name?: string;
   uploaded_at?: string;
   created_at?: string;
-  mass_message_status?: string;
 }
 
 export default function ContactsDatabase() {
@@ -718,7 +717,6 @@ export default function ContactsDatabase() {
                     <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Escolaridad</th>
                     <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Año de nacimiento</th>
                     <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Tipo de contratación</th>
-                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Estado Mensaje</th>
                     <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider" style={{ minWidth: '80px', width: '80px' }}>Acciones</th>
                   </tr>
                 </thead>
@@ -817,11 +815,6 @@ export default function ContactsDatabase() {
                             <span style={{ fontFamily: 'inherit', fontSize: 'inherit' }}>
                               {contact.tipo_contratacion !== null && contact.tipo_contratacion !== undefined && contact.tipo_contratacion !== '' ? contact.tipo_contratacion : ''}
                             </span>
-                          </td>
-                          <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap text-center">
-                            {contact.mass_message_status === 'sent' && <CheckCircle className="w-4 h-4 text-green-500 inline" />}
-                            {contact.mass_message_status === 'failed' && <X className="w-4 h-4 text-red-500 inline" />}
-                            {(!contact.mass_message_status || contact.mass_message_status === 'pending') && <span className="text-gray-400">-</span>}
                           </td>
                         </>
                       )}
