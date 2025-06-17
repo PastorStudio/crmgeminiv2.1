@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,20 @@ export default function ContactsDatabase() {
 
   const contacts: ContactData[] = Array.isArray(contactsData?.contacts) ? contactsData.contacts : [];
   const totalContacts: number = contactsData?.total || 0;
+  
+  // Use Excel headers and column widths from backend if available
+  const backendHeaders = contactsData?.excelHeaders || [];
+  const backendColumnWidths = contactsData?.columnWidths || [];
+  
+  // Update local state with backend data if not already set
+  React.useEffect(() => {
+    if (backendHeaders.length > 0 && fileHeaders.length === 0) {
+      setFileHeaders(backendHeaders);
+    }
+    if (backendColumnWidths.length > 0 && columnWidths.length === 0) {
+      setColumnWidths(backendColumnWidths);
+    }
+  }, [backendHeaders, backendColumnWidths, fileHeaders.length, columnWidths.length]);
 
   // Upload contacts mutation
   const uploadMutation = useMutation({
