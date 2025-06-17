@@ -64,12 +64,12 @@ export default function ContactsDatabase() {
     refetchInterval: 30000,
   });
 
-  const contacts: ContactData[] = Array.isArray(contactsData?.contacts) ? contactsData.contacts : [];
-  const totalContacts: number = contactsData?.total || 0;
+  const contacts: ContactData[] = Array.isArray((contactsData as any)?.contacts) ? (contactsData as any).contacts : [];
+  const totalContacts: number = (contactsData as any)?.total || 0;
   
   // Use Excel headers and column widths from backend if available
-  const backendHeaders = contactsData?.excelHeaders || [];
-  const backendColumnWidths = contactsData?.columnWidths || [];
+  const backendHeaders = (contactsData as any)?.excelHeaders || [];
+  const backendColumnWidths = (contactsData as any)?.columnWidths || [];
   
   // Update local state with backend data if not already set
   React.useEffect(() => {
@@ -231,32 +231,48 @@ export default function ContactsDatabase() {
       headers?: string[], 
       columnWidths?: number[] 
     }) => {
-      return apiRequest("/api/contacts-database/upload", {
-        method: "POST",
-        body: { contacts, fileName, headers, columnWidths },
-      });
-    },
-    onSuccess: (data) => {
-      setUploadStatus('success');
-      setUploadMessage(`Se importaron ${data.imported} contactos exitosamente`);
-      queryClient.invalidateQueries({ queryKey: ["/api/contacts-database"] });
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+      try {
+        const response = await apiRequest("/api/contacts-database/upload", {
+          method: "POST",
+          body: { contacts, fileName, headers, columnWidths },
+        });
+        return response;
+      } catch (error) {
+        console.error('Error en uploadMutation:', error);
+        throw error;
       }
-      toast({
-        title: "Importación exitosa",
-        description: `Se importaron ${data.imported} contactos`,
-      });
+    },
+    onSuccess: (data: any) => {
+      if (data && data.success) {
+        setUploadStatus('success');
+        setUploadMessage(`Se importaron ${data.imported || 0} contactos exitosamente`);
+        queryClient.invalidateQueries({ queryKey: ["/api/contacts-database"] });
+        setSelectedFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        
+        setTimeout(() => {
+          toast({
+            title: "Importación exitosa",
+            description: `Se importaron ${data.imported || 0} contactos correctamente`,
+          });
+        }, 100);
+      }
     },
     onError: (error: any) => {
+      console.error('Error en onError uploadMutation:', error);
       setUploadStatus('error');
-      setUploadMessage(error.message || 'Error al procesar el archivo');
-      toast({
-        title: "Error en importación",
-        description: "Error al procesar el archivo de contactos",
-        variant: "destructive",
-      });
+      const errorMessage = error?.message || 'Error al procesar el archivo';
+      setUploadMessage(errorMessage);
+      
+      setTimeout(() => {
+        toast({
+          title: "Error en importación",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }, 100);
     },
   });
 
