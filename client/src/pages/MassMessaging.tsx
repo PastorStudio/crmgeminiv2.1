@@ -1,71 +1,218 @@
-import React, { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect, useRef } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { toast } from "@/hooks/use-toast";
+import { TemplateSelector } from "@/components/message-templates/TemplateSelector";
+import { TemplatePreview } from "@/components/message-templates/TemplatePreview";
+import { SendImmediateDialog } from "@/components/messaging/SendImmediateDialog";
+import { WhatsAppAuthStatus } from "@/components/whatsapp/WhatsAppAuthStatus";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
 import { 
-  MessageSquare, 
-  Send, 
-  Users, 
-  Filter, 
-  CheckCircle, 
-  XCircle, 
-  Clock,
-  BarChart3,
-  Settings,
-  Target
-} from "lucide-react";
-import type { MassCampaign, ContactDatabase } from "@shared/schema";
+  Select, 
+  SelectContent, 
+  SelectGroup, 
+  SelectItem, 
+  SelectLabel, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Table, 
+  TableBody, 
+  TableCaption, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle, Upload, Database, FileText, FileSpreadsheet, CheckCircle, Phone, Clock, AlertCircle, Check, Circle, Plus, RefreshCw, Tag } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ContactCategorySelector } from "@/components/contacts/ContactCategorySelector";
 
-interface CampaignForm {
+// Tipos para las campañas de envío masivo
+interface ContactGroup {
+  id: string;
   name: string;
-  message: string;
-  targetCount: number;
-  filterColumn: string;
-  filterValue: string;
-  whatsappAccountId?: number;
-}
-
-interface FilteredContacts {
-  contacts: ContactDatabase[];
   count: number;
 }
 
-interface CampaignStats {
-  campaignStats: {
-    totalCampaigns: number;
-    totalMessagesSent: number;
-    totalMessagesFailed: number;
-    activeCampaigns: number;
-  };
-  contactStats: {
-    totalContacts: number;
-    usedContacts: number;
-    pendingContacts: number;
-  };
+interface ContactStatus {
+  id: string;
+  phoneNumber: string;
+  name?: string;
+  status: 'pending' | 'processing' | 'sent' | 'failed' | 'verified';
+  sentAt?: string;
+  verifiedAt?: string;
+  errorMessage?: string;
+}
+
+interface MassSendConfig {
+  delayBetweenMessages: number;
+  pauseBetweenChunks: number;
+  chunkSize: number;
+  markAsRead: boolean;
+  simulateTyping: boolean;
+  typingTime: number;
+  randomFactor: number;
+  personalizeMessages: boolean;
+  useAIPersonalization: boolean;
+  messageVariations: boolean;
+  splitLongMessages: boolean;
+  restrictRepeatedRecipients: boolean;
+  restrictionPeriod: number;
+  maxMessagesPerPeriod: number;
+  respectBusinessHours: boolean;
+  businessHoursStart: number;
+  businessHoursEnd: number;
+  businessDays: number[];
+}
+
+interface SendingConfig {
+  minIntervalMs: number;
+  maxIntervalMs: number;
+  batchSize: number;
+  pauseBetweenBatchesMs: number;
+  simulateTyping: boolean;
+  typingDurationMs: number;
+  respectBusinessHours: boolean;
+  businessHoursStart: number;
+  businessHoursEnd: number;
+}
+
+interface Campaign {
+  id: string;
+  name: string;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed';
+  totalContacts: number;
+  processedContacts: number;
+  successfulSends: number;
+  failedSends: number;
+  messageTemplate: string;
+  config?: MassSendConfig;
+  sendingConfig?: SendingConfig;
+  targetGroups: string[] | [];
+  targetTags: string[] | [];
+  excludedContacts: string[] | [];
+  contacts?: ContactStatus[];
 }
 
 export default function MassMessaging() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  
-  const [campaignForm, setCampaignForm] = useState<CampaignForm>({
-    name: "",
-    message: "",
-    targetCount: 10,
-    filterColumn: "none",
-    filterValue: "",
-    whatsappAccountId: 1
+  const [tab, setTab] = useState("new-campaign");
+  const [campaignName, setCampaignName] = useState("");
+  const [messageTemplate, setMessageTemplate] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [currentConfig, setCurrentConfig] = useState<MassSendConfig>({
+    delayBetweenMessages: 8000,
+    pauseBetweenChunks: 180000,
+    chunkSize: 15,
+    markAsRead: true,
+    simulateTyping: true,
+    typingTime: 3000,
+    randomFactor: 0.3,
+    personalizeMessages: true,
+    useAIPersonalization: false,
+    messageVariations: true,
+    splitLongMessages: true,
+    restrictRepeatedRecipients: true,
+    restrictionPeriod: 24,
+    maxMessagesPerPeriod: 100,
+    respectBusinessHours: true,
+    businessHoursStart: 9,
+    businessHoursEnd: 18,
+    businessDays: [1, 2, 3, 4, 5]
+  });
+  const [previewContact, setPreviewContact] = useState<any>({
+    name: "Juan Pérez",
+    company: "Empresa Ejemplo S.A."
   });
   
-  const [previewContacts, setPreviewContacts] = useState<ContactDatabase[]>([]);
-  const [selectedTab, setSelectedTab] = useState("create");
+  // Estados para la importación de Excel
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isFieldMappingOpen, setIsFieldMappingOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<any>(null);
+  const [excelColumns, setExcelColumns] = useState<string[]>([]);
+  const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({
+    phoneNumber: 'none',
+    name: 'none',
+    company: 'none',
+    email: 'none',
+    tags: 'none'
+  });
+  const [importedData, setImportedData] = useState<any>(null);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
+  const [countryCode, setCountryCode] = useState<string>("507"); // Panamá por defecto
+  const [selectedWhatsAppAccountId, setSelectedWhatsAppAccountId] = useState<number | null>(null);
+  const [isTaggingDialogOpen, setIsTaggingDialogOpen] = useState<boolean>(false);
+  const [selectedTagsToAdd, setSelectedTagsToAdd] = useState<string[]>([]);
+  const [newTagName, setNewTagName] = useState<string>("");
+  
+  // Estados para envío inmediato
+  const [showImmediateMessaging, setShowImmediateMessaging] = useState<boolean>(false);
+  const [messageText, setMessageText] = useState<string>("");
+  const [isSendingMessages, setIsSendingMessages] = useState<boolean>(false);
+  const [selectedImportedContactIds, setSelectedImportedContactIds] = useState<string[]>([]);
+  const [selectAllImported, setSelectAllImported] = useState<boolean>(false);
+  
+  // Estados para contactos individuales de WhatsApp
+  const [showWhatsAppContacts, setShowWhatsAppContacts] = useState<boolean>(false);
+  const [selectedWhatsAppContactIds, setSelectedWhatsAppContactIds] = useState<string[]>([]);
+  const [selectAllWhatsAppContacts, setSelectAllWhatsAppContacts] = useState<boolean>(false);
+  const [whatsAppContacts, setWhatsAppContacts] = useState<any[]>([]);
+  
+  // Estados para asistente Gemini
+  const [isGeminiAssistantOpen, setIsGeminiAssistantOpen] = useState<boolean>(false);
+  const [geminiResult, setGeminiResult] = useState<string>("");
+  const [geminiPrompt, setGeminiPrompt] = useState<string>("");
+  const [isGeneratingWithGemini, setIsGeneratingWithGemini] = useState<boolean>(false);
+  
+  // Estados para manejo de contactos y etiquetas
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [selectedTagFilters, setSelectedTagFilters] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [selectedContactForTags, setSelectedContactForTags] = useState<any>(null);
+  const [contactTagsDialog, setContactTagsDialog] = useState<boolean>(false);
+  const [newContactTag, setNewContactTag] = useState<string>("");
+  const [isSyncingContacts, setIsSyncingContacts] = useState<boolean>(false);
+  
+  // Estados para el selector de contactos por categorías
+  const [showContactCategorySelector, setShowContactCategorySelector] = useState<boolean>(false);
+  const [selectedCategoryContacts, setSelectedCategoryContacts] = useState<any[]>([]);
+  const [categoryContactsSource, setCategoryContactsSource] = useState<'whatsapp' | 'database'>('database');
 
   // Obtener estadísticas
   const { data: stats } = useQuery<CampaignStats>({
