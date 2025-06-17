@@ -126,8 +126,15 @@ export default function ContactsDatabase() {
     const pasteData = e.clipboardData.getData('text');
     if (!pasteData) return;
 
-    // Split text into columns automatically
-    const separatedData = separateTextIntoColumns(pasteData);
+    // Split text into columns automatically using commas as primary separator
+    const separatedData = pasteData.split(',').map(item => item.trim()).filter(item => item !== '');
+    
+    // Fixed field names matching the column headers
+    const fieldNames = [
+      'nombre_pila', 'apellido_paterno', 'apellido_materno', 'telefono', 
+      'genero', 'grupo_edad', 'militante', 'nivel_socioeconomico', 
+      'lugar_trabajo', 'escolaridad', 'ano_nacimiento', 'tipo_contratacion'
+    ];
     
     // Create new row data
     const newEditableData = [...editableData];
@@ -135,8 +142,8 @@ export default function ContactsDatabase() {
     // If we don't have enough rows, create new ones
     while (newEditableData.length <= rowIndex) {
       const newRow: any = { id: Date.now() + Math.random(), numero: newEditableData.length + 1 };
-      fileHeaders.forEach(header => {
-        newRow[header] = '';
+      fieldNames.forEach(fieldName => {
+        newRow[fieldName] = '';
       });
       newEditableData.push(newRow);
     }
@@ -144,9 +151,9 @@ export default function ContactsDatabase() {
     // Fill the separated data into columns
     separatedData.forEach((data, index) => {
       const targetColIndex = colIndex + index;
-      if (targetColIndex < fileHeaders.length) {
-        const headerKey = fileHeaders[targetColIndex];
-        newEditableData[rowIndex][headerKey] = data.trim();
+      if (targetColIndex < fieldNames.length) {
+        const fieldName = fieldNames[targetColIndex];
+        newEditableData[rowIndex][fieldName] = data.trim();
       }
     });
     
@@ -195,8 +202,15 @@ export default function ContactsDatabase() {
       numero: editableData.length + 1 
     };
     
-    fileHeaders.forEach(header => {
-      newRow[header] = '';
+    // Fixed field names matching the column headers
+    const fieldNames = [
+      'nombre_pila', 'apellido_paterno', 'apellido_materno', 'telefono', 
+      'genero', 'grupo_edad', 'militante', 'nivel_socioeconomico', 
+      'lugar_trabajo', 'escolaridad', 'ano_nacimiento', 'tipo_contratacion'
+    ];
+    
+    fieldNames.forEach(fieldName => {
+      newRow[fieldName] = '';
     });
     
     setEditableData([...editableData, newRow]);
@@ -642,36 +656,19 @@ export default function ContactsDatabase() {
                     >
                       #
                     </th>
-                    {/* All available columns from imported data */}
-                    {fileHeaders.length > 0 ? fileHeaders.map((header, index) => (
-                      <th 
-                        key={index}
-                        className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap"
-                        style={{ 
-                          minWidth: `${Math.max(columnWidths[index] * 6, 80)}px`,
-                          width: 'auto'
-                        }}
-                      >
-                        {header}
-                      </th>
-                    )) : (
-                      // Show all available data fields when no Excel headers
-                      <>
-                        <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Nombre de Pila</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Ap. Paterno</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Ap. Materno</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Teléfono</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Género</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Grupo Edad</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Militante</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Nivel Socioecon.</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Lugar Trabajo</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Escolaridad</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Año Nacimiento</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Tipo Contratación</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Archivo</th>
-                      </>
-                    )}
+                    {/* Fixed headers as specified by user */}
+                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Nombre de Pila</th>
+                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Ap. Paterno</th>
+                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Ap. Materno</th>
+                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Telefono</th>
+                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Género</th>
+                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Grupo de edad</th>
+                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Militante</th>
+                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Nivel Socioeconómico</th>
+                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Lugar de trabajo</th>
+                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Escolaridad</th>
+                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Año de nacimiento</th>
+                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">Tipo de contratación</th>
                     <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider" style={{ minWidth: '80px', width: '80px' }}>Acciones</th>
                   </tr>
                 </thead>
@@ -681,137 +678,87 @@ export default function ContactsDatabase() {
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900 text-center font-medium">
                         {contact.numero || index + 1}
                       </td>
-                      {/* Dynamic data cells based on actual Excel file structure */}
-                      {fileHeaders.length > 0 ? fileHeaders.map((header, headerIndex) => {
-                        const cellValue = contact[header as keyof ContactData] || '';
-                        const displayValue = String(cellValue).trim() || '';
-                        
-                        if (isEditMode) {
-                          return (
-                            <td 
-                              key={headerIndex}
-                              className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${
-                                selectedCell?.row === index && selectedCell?.col === headerIndex ? 'bg-blue-100' : ''
-                              }`}
-                              style={{ 
-                                minWidth: `${Math.max(columnWidths[headerIndex] * 6, 80)}px`,
-                                width: 'auto'
-                              }}
-                              onClick={() => setSelectedCell({row: index, col: headerIndex})}
-                            >
-                              <Input
-                                value={displayValue}
-                                onChange={(e) => handleCellChange(index, header, e.target.value)}
-                                onPaste={(e) => handlePaste(e, index, headerIndex)}
-                                className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500"
-                                style={{ minHeight: '24px' }}
-                              />
-                            </td>
-                          );
-                        } else {
-                          return (
-                            <td 
-                              key={headerIndex}
-                              className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap"
-                              style={{ 
-                                minWidth: `${Math.max(columnWidths[headerIndex] * 6, 80)}px`,
-                                width: 'auto'
-                              }}
-                              title={displayValue || ''}
-                            >
-                              {displayValue || '-'}
-                            </td>
-                          );
-                        }
-                      }) : (
-                        // Show all available fields with edit mode support when no Excel headers
-                        isEditMode ? (
-                          // Edit mode for all fields
-                          <>
-                            <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 0 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 0})}>
-                              <Input value={contact.nombre_pila || ''} onChange={(e) => handleCellChange(index, 'nombre_pila', e.target.value)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
-                            </td>
-                            <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 1 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 1})}>
-                              <Input value={contact.apellido_paterno || ''} onChange={(e) => handleCellChange(index, 'apellido_paterno', e.target.value)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
-                            </td>
-                            <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 2 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 2})}>
-                              <Input value={contact.apellido_materno || ''} onChange={(e) => handleCellChange(index, 'apellido_materno', e.target.value)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
-                            </td>
-                            <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 3 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 3})}>
-                              <Input value={contact.telefono || ''} onChange={(e) => handleCellChange(index, 'telefono', e.target.value)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
-                            </td>
-                            <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 4 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 4})}>
-                              <Input value={contact.genero || ''} onChange={(e) => handleCellChange(index, 'genero', e.target.value)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
-                            </td>
-                            <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 5 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 5})}>
-                              <Input value={contact.grupo_edad || ''} onChange={(e) => handleCellChange(index, 'grupo_edad', e.target.value)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
-                            </td>
-                            <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 6 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 6})}>
-                              <Input value={contact.militante || ''} onChange={(e) => handleCellChange(index, 'militante', e.target.value)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
-                            </td>
-                            <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 7 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 7})}>
-                              <Input value={contact.nivel_socioeconomico || ''} onChange={(e) => handleCellChange(index, 'nivel_socioeconomico', e.target.value)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
-                            </td>
-                            <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 8 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 8})}>
-                              <Input value={contact.lugar_trabajo || ''} onChange={(e) => handleCellChange(index, 'lugar_trabajo', e.target.value)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
-                            </td>
-                            <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 9 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 9})}>
-                              <Input value={contact.escolaridad || ''} onChange={(e) => handleCellChange(index, 'escolaridad', e.target.value)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
-                            </td>
-                            <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 10 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 10})}>
-                              <Input value={contact.ano_nacimiento || ''} onChange={(e) => handleCellChange(index, 'ano_nacimiento', e.target.value)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
-                            </td>
-                            <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 11 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 11})}>
-                              <Input value={contact.tipo_contratacion || ''} onChange={(e) => handleCellChange(index, 'tipo_contratacion', e.target.value)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
-                            </td>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-500 whitespace-nowrap" title={contact.file_name}>
-                              {contact.file_name || '-'}
-                            </td>
-                          </>
-                        ) : (
-                          // View mode for all fields
-                          <>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                              {contact.nombre_pila || '-'}
-                            </td>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                              {contact.apellido_paterno || '-'}
-                            </td>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                              {contact.apellido_materno || '-'}
-                            </td>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                              {contact.telefono || '-'}
-                            </td>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                              {contact.genero || '-'}
-                            </td>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                              {contact.grupo_edad || '-'}
-                            </td>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                              {contact.militante || '-'}
-                            </td>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                              {contact.nivel_socioeconomico || '-'}
-                            </td>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                              {contact.lugar_trabajo || '-'}
-                            </td>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                              {contact.escolaridad || '-'}
-                            </td>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                              {contact.ano_nacimiento || '-'}
-                            </td>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
-                              {contact.tipo_contratacion || '-'}
-                            </td>
-                            <td className="border border-gray-200 px-2 py-2 text-sm text-gray-500 whitespace-nowrap" title={contact.file_name}>
-                              {contact.file_name || '-'}
-                            </td>
-                          </>
-                        )
+                      {/* Fixed data cells using exact format from file */}
+                      {isEditMode ? (
+                        // Edit mode for all fields
+                        <>
+                          <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 0 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 0})}>
+                            <Input value={contact.nombre_pila || ''} onChange={(e) => handleCellChange(index, 'nombre_pila', e.target.value)} onPaste={(e) => handlePaste(e, index, 0)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
+                          </td>
+                          <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 1 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 1})}>
+                            <Input value={contact.apellido_paterno || ''} onChange={(e) => handleCellChange(index, 'apellido_paterno', e.target.value)} onPaste={(e) => handlePaste(e, index, 1)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
+                          </td>
+                          <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 2 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 2})}>
+                            <Input value={contact.apellido_materno || ''} onChange={(e) => handleCellChange(index, 'apellido_materno', e.target.value)} onPaste={(e) => handlePaste(e, index, 2)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
+                          </td>
+                          <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 3 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 3})}>
+                            <Input value={contact.telefono || ''} onChange={(e) => handleCellChange(index, 'telefono', e.target.value)} onPaste={(e) => handlePaste(e, index, 3)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
+                          </td>
+                          <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 4 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 4})}>
+                            <Input value={contact.genero || ''} onChange={(e) => handleCellChange(index, 'genero', e.target.value)} onPaste={(e) => handlePaste(e, index, 4)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
+                          </td>
+                          <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 5 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 5})}>
+                            <Input value={contact.grupo_edad || ''} onChange={(e) => handleCellChange(index, 'grupo_edad', e.target.value)} onPaste={(e) => handlePaste(e, index, 5)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
+                          </td>
+                          <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 6 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 6})}>
+                            <Input value={contact.militante || ''} onChange={(e) => handleCellChange(index, 'militante', e.target.value)} onPaste={(e) => handlePaste(e, index, 6)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
+                          </td>
+                          <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 7 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 7})}>
+                            <Input value={contact.nivel_socioeconomico || ''} onChange={(e) => handleCellChange(index, 'nivel_socioeconomico', e.target.value)} onPaste={(e) => handlePaste(e, index, 7)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
+                          </td>
+                          <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 8 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 8})}>
+                            <Input value={contact.lugar_trabajo || ''} onChange={(e) => handleCellChange(index, 'lugar_trabajo', e.target.value)} onPaste={(e) => handlePaste(e, index, 8)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
+                          </td>
+                          <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 9 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 9})}>
+                            <Input value={contact.escolaridad || ''} onChange={(e) => handleCellChange(index, 'escolaridad', e.target.value)} onPaste={(e) => handlePaste(e, index, 9)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
+                          </td>
+                          <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 10 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 10})}>
+                            <Input value={contact.ano_nacimiento || ''} onChange={(e) => handleCellChange(index, 'ano_nacimiento', e.target.value)} onPaste={(e) => handlePaste(e, index, 10)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
+                          </td>
+                          <td className={`border border-gray-200 px-1 py-1 text-sm text-gray-900 ${selectedCell?.row === index && selectedCell?.col === 11 ? 'bg-blue-100' : ''}`} onClick={() => setSelectedCell({row: index, col: 11})}>
+                            <Input value={contact.tipo_contratacion || ''} onChange={(e) => handleCellChange(index, 'tipo_contratacion', e.target.value)} onPaste={(e) => handlePaste(e, index, 11)} className="border-0 p-1 h-auto text-sm focus:ring-1 focus:ring-blue-500" style={{ minHeight: '24px' }} />
+                          </td>
+                        </>
+                      ) : (
+                        // View mode - show data exactly as it appears in file
+                        <>
+                          <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
+                            {contact.nombre_pila || '-'}
+                          </td>
+                          <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
+                            {contact.apellido_paterno || '-'}
+                          </td>
+                          <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
+                            {contact.apellido_materno || '-'}
+                          </td>
+                          <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
+                            {contact.telefono || '-'}
+                          </td>
+                          <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
+                            {contact.genero || '-'}
+                          </td>
+                          <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
+                            {contact.grupo_edad || '-'}
+                          </td>
+                          <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
+                            {contact.militante || '-'}
+                          </td>
+                          <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
+                            {contact.nivel_socioeconomico || '-'}
+                          </td>
+                          <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
+                            {contact.lugar_trabajo || '-'}
+                          </td>
+                          <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
+                            {contact.escolaridad || '-'}
+                          </td>
+                          <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
+                            {contact.ano_nacimiento || '-'}
+                          </td>
+                          <td className="border border-gray-200 px-2 py-2 text-sm text-gray-900 whitespace-nowrap">
+                            {contact.tipo_contratacion || '-'}
+                          </td>
+                        </>
                       )}
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
                         <Button
