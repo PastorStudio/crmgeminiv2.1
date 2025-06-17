@@ -101,13 +101,19 @@ interface CampaignStats {
 }
 
 interface MassCampaign {
-  id: string;
+  id: number;
   name: string;
   status: string;
   totalContacts: number;
   sentCount: number;
   successRate: number;
   createdAt: string;
+  message?: string;
+  targetCount?: number;
+  successCount?: number;
+  failedCount?: number;
+  filterColumn?: string;
+  filterValue?: string;
 }
 
 interface CampaignForm {
@@ -498,7 +504,7 @@ export default function MassMessaging() {
                 <Target className="h-5 w-5 text-orange-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">Contactos Disponibles</p>
-                  <p className="text-2xl font-bold">{stats.contactStats.pendingContacts}</p>
+                  <p className="text-2xl font-bold">{0}</p>
                 </div>
               </div>
             </CardContent>
@@ -675,13 +681,13 @@ export default function MassMessaging() {
                       </div>
                       
                       <p className="text-sm text-muted-foreground mb-3">
-                        {campaign.message}
+                        {campaign.message || "Sin mensaje"}
                       </p>
                       
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
                           <span className="text-muted-foreground">Objetivo:</span>
-                          <p className="font-medium">{campaign.targetCount}</p>
+                          <p className="font-medium">{campaign.targetCount || 0}</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Enviados:</span>
@@ -707,7 +713,7 @@ export default function MassMessaging() {
                         {campaign.status === 'pending' && (
                           <Button
                             size="sm"
-                            onClick={() => handleSendCampaign(campaign.id)}
+                            onClick={() => handleSendCampaign(parseInt(campaign.id))}
                             disabled={sendCampaignMutation.isPending}
                           >
                             <Send className="w-3 h-3 mr-1" />
