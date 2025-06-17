@@ -30,7 +30,7 @@ import {
   ticketTags,
   mediaFiles
 } from "@shared/schema";
-import { eq, and, gte, desc } from 'drizzle-orm';
+import { eq, and, gte, desc, or, like } from 'drizzle-orm';
 import { db } from './db';
 import { z } from "zod";
 import { geminiLeadOrganizer } from "./services/geminiLeadOrganizer";
@@ -3565,6 +3565,46 @@ export function registerOptimizedRoutes(app: Express): Server {
         success: false,
         error: "Error eliminando leads duplicados",
         message: error.message
+      });
+    }
+  });
+
+  // Endpoint para eliminar todos los leads de WhatsApp
+  app.delete("/api/leads/clear-whatsapp", async (_req: Request, res: Response) => {
+    try {
+      console.log('🗑️ Iniciando eliminación de todos los leads de WhatsApp...');
+      
+      // Get all leads with WhatsApp source
+      const whatsappLeads = await db.query.leads.findMany({
+        where: eq(leads.source, 'whatsapp')
+      });
+
+      let deletedCount = 0;
+      
+      for (const lead of whatsappLeads) {
+        try {
+          await db.delete(leads).where(eq(leads.id, lead.id));
+          deletedCount++;
+          console.log(`🗑️ Lead de WhatsApp eliminado: ${lead.name || lead.phone} (ID: ${lead.id})`);
+        } catch (error) {
+          console.error(`❌ Error eliminando lead ${lead.id}:`, error);
+        }
+      }
+
+      console.log(`✅ Eliminación completada: ${deletedCount} leads de WhatsApp eliminados`);
+      
+      res.json({
+        success: true,
+        deleted: deletedCount,
+        message: `Se eliminaron ${deletedCount} leads de WhatsApp exitosamente`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error eliminando leads de WhatsApp:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Error eliminando leads de WhatsApp",
+        message: error instanceof Error ? error.message : 'Error desconocido'
       });
     }
   });
