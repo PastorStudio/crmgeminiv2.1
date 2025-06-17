@@ -403,49 +403,79 @@ export default function ContactsDatabase() {
               <p className="text-sm">Importa un archivo para comenzar</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {contacts.map((contact: ContactData) => (
-                  <div key={contact.id} className="border rounded-lg p-4 space-y-2">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <h4 className="font-medium">{formatDisplayName(contact)}</h4>
-                        {contact.telefono && (
-                          <p className="text-sm text-muted-foreground">📞 {contact.telefono}</p>
-                        )}
-                        {contact.genero && (
-                          <Badge variant="outline" className="text-xs">
-                            {contact.genero}
-                          </Badge>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteContact(contact.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    <div className="space-y-1 text-xs text-muted-foreground">
-                      {contact.lugar_trabajo && (
-                        <p>🏢 {contact.lugar_trabajo}</p>
-                      )}
-                      {contact.escolaridad && (
-                        <p>🎓 {contact.escolaridad}</p>
-                      )}
-                      {contact.ano_nacimiento && (
-                        <p>📅 {contact.ano_nacimiento}</p>
-                      )}
-                      {contact.file_name && (
-                        <p className="italic">📁 {contact.file_name}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse border border-gray-200">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">#</th>
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Nombre Completo</th>
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Teléfono</th>
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Género</th>
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Edad</th>
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Militante</th>
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Nivel Socioeconómico</th>
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Trabajo</th>
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Escolaridad</th>
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Año Nac.</th>
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Tipo Contrato</th>
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Archivo</th>
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {contacts.map((contact: ContactData, index: number) => (
+                    <tr key={contact.id} className="hover:bg-gray-50">
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                        {contact.numero || index + 1}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900 font-medium">
+                        {formatDisplayName(contact)}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                        {contact.telefono || '-'}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                        {contact.genero || '-'}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                        {contact.grupo_edad || '-'}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                        {contact.militante || '-'}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                        {contact.nivel_socioeconomico || '-'}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                        {contact.lugar_trabajo || '-'}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                        {contact.escolaridad || '-'}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                        {contact.ano_nacimiento || '-'}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                        {contact.tipo_contratacion || '-'}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-500 truncate max-w-32" title={contact.file_name}>
+                        {contact.file_name || '-'}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteContact(contact.id)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                          title="Eliminar contacto"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
