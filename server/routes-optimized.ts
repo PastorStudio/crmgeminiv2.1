@@ -3893,10 +3893,33 @@ export function registerOptimizedRoutes(app: Express): Server {
         
         if (firstContactWithHeaders) {
           try {
-            excelHeaders = JSON.parse(firstContactWithHeaders.excel_headers);
-            columnWidths = JSON.parse(firstContactWithHeaders.column_widths);
+            // Handle case where headers might be stored as plain text
+            if (firstContactWithHeaders.excel_headers) {
+              if (firstContactWithHeaders.excel_headers.startsWith('[')) {
+                excelHeaders = JSON.parse(firstContactWithHeaders.excel_headers);
+              } else {
+                // If stored as comma-separated string, split it
+                excelHeaders = firstContactWithHeaders.excel_headers.split(',').map((h: string) => h.trim());
+              }
+            }
+            
+            if (firstContactWithHeaders.column_widths) {
+              if (firstContactWithHeaders.column_widths.startsWith('[')) {
+                columnWidths = JSON.parse(firstContactWithHeaders.column_widths);
+              } else {
+                // Default column widths if not properly stored
+                columnWidths = excelHeaders.map(() => 120);
+              }
+            }
           } catch (parseError) {
             console.warn('Error parsing Excel headers/widths:', parseError);
+            // Use default headers
+            excelHeaders = [
+              '#', 'Nombre de Pila', 'Ap. Paterno', 'Ap. Materno', 'Telefono', 
+              'Género', 'Grupo de edad', 'Militante', 'Nivel Socioeconómico', 
+              'Lugar de trabajo', 'Escolaridad', 'Año de nacimiento', 'Tipo de contratación'
+            ];
+            columnWidths = excelHeaders.map(() => 120);
           }
         }
       }
@@ -3940,8 +3963,34 @@ export function registerOptimizedRoutes(app: Express): Server {
       // Helper function to extract values with flexible field mapping
       const extractValue = (obj: any, fieldNames: string[]): string | null => {
         for (const field of fieldNames) {
-          if (obj[field] !== undefined && obj[field] !== null && obj[field] !== '') {
-            return String(obj[field]).trim();
+          if (obj[field] !== undefined && obj[field] !== null && obj[field] !== '' && obj[field] !== '-') {
+            const value = String(obj[field]).trim();
+            // Skip empty values, dashes, and placeholder text
+            if (value && value !== '-' && value !== 'N/A' && value !== 'null') {
+              return value;
+            }
+          }
+        }
+        return null;
+      };
+      
+      // Function to get value from any object property that contains the data
+      const getFieldValue = (obj: any, ...possibleKeys: string[]): string | null => {
+        // First try direct field mapping
+        const directValue = extractValue(obj, possibleKeys);
+        if (directValue) return directValue;
+        
+        // Then try all object properties to find matching content
+        for (const [key, value] of Object.entries(obj)) {
+          if (value && typeof value === 'string' && value.trim() && value !== '-') {
+            const cleanValue = value.trim();
+            // Skip clearly empty or placeholder values
+            if (cleanValue && cleanValue !== 'N/A' && cleanValue !== 'null' && cleanValue !== '-') {
+              // Check if this might be the field we're looking for based on context
+              if (possibleKeys.some(k => key.toLowerCase().includes(k.toLowerCase().replace(/[^a-z]/g, '')))) {
+                return cleanValue;
+              }
+            }
           }
         }
         return null;
