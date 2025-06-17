@@ -19,6 +19,7 @@ import {
   users,
   demoUsers,
   leads,
+  leadComments,
   whatsappAccounts,
   contacts,
   whatsappMessages,
@@ -3605,6 +3606,54 @@ export function registerOptimizedRoutes(app: Express): Server {
         success: false,
         error: "Error eliminando leads de WhatsApp",
         message: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  // Lead Comments API Endpoints
+  // Get comments for a specific lead
+  app.get("/api/leads/:leadId/comments", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.leadId);
+      
+      const comments = await db.query.leadComments.findMany({
+        where: eq(leadComments.leadId, leadId),
+        orderBy: desc(leadComments.createdAt)
+      });
+
+      res.json(comments);
+    } catch (error) {
+      console.error('Error fetching lead comments:', error);
+      res.status(500).json({ 
+        error: "Error fetching comments",
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Add a comment to a lead
+  app.post("/api/leads/:leadId/comments", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.leadId);
+      const { comment } = req.body;
+
+      if (!comment || !comment.trim()) {
+        return res.status(400).json({ error: "Comment content is required" });
+      }
+
+      const [newComment] = await db.insert(leadComments).values({
+        leadId,
+        comment: comment.trim(),
+        authorName: 'Sistema',
+        userId: null // For now, no user authentication
+      }).returning();
+
+      res.json({ success: true, comment: newComment });
+    } catch (error) {
+      console.error('Error adding lead comment:', error);
+      res.status(500).json({ 
+        error: "Error adding comment",
+        message: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
