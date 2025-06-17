@@ -526,6 +526,18 @@ export const chatComments = pgTable('chat_comments', {
   updatedAt: timestamp('updatedAt'),
 });
 
+// Lead Comments
+export const leadComments = pgTable('lead_comments', {
+  id: serial('id').primaryKey(),
+  leadId: integer('leadId').notNull().references(() => leads.id),
+  userId: integer('userId').references(() => users.id),
+  comment: text('comment').notNull(),
+  authorName: text('authorName').default('Sistema'),
+  isPrivate: boolean('isPrivate').default(true),
+  createdAt: timestamp('createdAt').defaultNow(),
+  updatedAt: timestamp('updatedAt'),
+});
+
 // Conversations table already exists above (line 130), using the existing one
 
 // Analysis Reports - reportes de análisis de IA
@@ -866,6 +878,7 @@ export const insertAiPromptSchema = createInsertSchema(aiPrompts);
 export const insertAiSettingsSchema = createInsertSchema(aiSettings);
 export const insertChatAssignmentSchema = createInsertSchema(chatAssignments);
 export const insertChatCommentSchema = createInsertSchema(chatComments);
+export const insertLeadCommentSchema = createInsertSchema(leadComments);
 export const insertModernTicketSchema = createInsertSchema(modernTickets);
 export const insertAutoResponseConfigSchema = createInsertSchema(autoResponseConfigs);
 export const insertConversationAnalyticsSchema = createInsertSchema(conversationAnalytics);
