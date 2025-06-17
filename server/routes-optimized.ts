@@ -3879,7 +3879,7 @@ export function registerOptimizedRoutes(app: Express): Server {
   app.get("/api/contacts-database", async (req: Request, res: Response) => {
     try {
       const contacts = await db.$client.query(
-        `SELECT * FROM contact_database ORDER BY created_at DESC`
+        `SELECT * FROM contact_database ORDER BY numero ASC`
       );
       
       res.json({
@@ -3907,9 +3907,18 @@ export function registerOptimizedRoutes(app: Express): Server {
         });
       }
       
+      // Get the current maximum number to continue the sequence
+      const maxNumberResult = await db.$client.query(
+        `SELECT COALESCE(MAX(numero), 0) as max_number FROM contact_database`
+      );
+      let currentNumber = parseInt(maxNumberResult.rows[0].max_number) || 0;
+      
       const insertedContacts = [];
       
-      for (const contact of contacts) {
+      for (let i = 0; i < contacts.length; i++) {
+        const contact = contacts[i];
+        currentNumber++;
+        
         const result = await db.$client.query(
           `INSERT INTO contact_database (
             numero, nombre_pila, apellido_paterno, apellido_materno, telefono,
@@ -3918,20 +3927,20 @@ export function registerOptimizedRoutes(app: Express): Server {
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
           RETURNING *`,
           [
-            contact.numero || contact['#'] || null,
-            contact.nombrePila || contact['Nombre de Pila'] || null,
-            contact.apellidoPaterno || contact['Ap. Paterno'] || null,
-            contact.apellidoMaterno || contact['Ap. Materno'] || null,
-            contact.telefono || contact['Telefono'] || null,
-            contact.genero || contact['Género'] || null,
-            contact.grupoEdad || contact['Grupo de edad'] || null,
+            currentNumber,
+            contact.nombrePila || contact['Nombre de Pila'] || contact.nombre_pila || null,
+            contact.apellidoPaterno || contact['Ap. Paterno'] || contact.apellido_paterno || null,
+            contact.apellidoMaterno || contact['Ap. Materno'] || contact.apellido_materno || null,
+            contact.telefono || contact['Telefono'] || contact.phone || null,
+            contact.genero || contact['Género'] || contact.gender || null,
+            contact.grupoEdad || contact['Grupo de edad'] || contact.grupo_edad || null,
             contact.militante || contact['Militante'] || null,
-            contact.nivelSocioeconomico || contact['Nivel Socioeconómico'] || null,
-            contact.lugarTrabajo || contact['Lugar de trabajo'] || null,
+            contact.nivelSocioeconomico || contact['Nivel Socioeconómico'] || contact.nivel_socioeconomico || null,
+            contact.lugarTrabajo || contact['Lugar de trabajo'] || contact.lugar_trabajo || null,
             contact.escolaridad || contact['Escolaridad'] || null,
-            contact.anoNacimiento || contact['Año de nacimiento'] || null,
-            contact.tipoContratacion || contact['Tipo de contratación'] || null,
-            3, // Current user ID - you may want to get this from session
+            contact.anoNacimiento || contact['Año de nacimiento'] || contact.ano_nacimiento || null,
+            contact.tipoContratacion || contact['Tipo de contratación'] || contact.tipo_contratacion || null,
+            3, // Current user ID
             fileName
           ]
         );
@@ -3950,6 +3959,24 @@ export function registerOptimizedRoutes(app: Express): Server {
       res.status(500).json({
         success: false,
         error: 'Error procesando archivo de contactos'
+      });
+    }
+  });
+
+  app.delete("/api/contacts-database/clear-all", async (req: Request, res: Response) => {
+    try {
+      const result = await db.$client.query(`DELETE FROM contact_database RETURNING id`);
+      
+      res.json({
+        success: true,
+        message: `Se eliminaron ${result.rows.length} contactos exitosamente`,
+        deleted: result.rows.length
+      });
+    } catch (error) {
+      console.error('Error eliminando todos los contactos:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error eliminando contactos'
       });
     }
   });
@@ -3979,24 +4006,6 @@ export function registerOptimizedRoutes(app: Express): Server {
       res.status(500).json({
         success: false,
         error: 'Error eliminando contacto'
-      });
-    }
-  });
-
-  app.delete("/api/contacts-database/clear-all", async (req: Request, res: Response) => {
-    try {
-      const result = await db.$client.query(`DELETE FROM contact_database RETURNING id`);
-      
-      res.json({
-        success: true,
-        message: `Se eliminaron ${result.rows.length} contactos exitosamente`,
-        deleted: result.rows.length
-      });
-    } catch (error) {
-      console.error('Error eliminando todos los contactos:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error eliminando contactos'
       });
     }
   });
