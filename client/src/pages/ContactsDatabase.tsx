@@ -62,10 +62,15 @@ export default function ContactsDatabase() {
 
   // Upload contacts mutation
   const uploadMutation = useMutation({
-    mutationFn: async ({ contacts, fileName }: { contacts: any[], fileName: string }) => {
+    mutationFn: async ({ contacts, fileName, headers, columnWidths }: { 
+      contacts: any[], 
+      fileName: string, 
+      headers?: string[], 
+      columnWidths?: number[] 
+    }) => {
       return apiRequest("/api/contacts-database/upload", {
         method: "POST",
-        body: { contacts, fileName },
+        body: { contacts, fileName, headers, columnWidths },
       });
     },
     onSuccess: (data) => {
@@ -452,60 +457,71 @@ export default function ContactsDatabase() {
               <table className="w-full border-collapse border border-gray-200">
                 <thead>
                   <tr className="bg-gray-50">
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">#</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Nombre Completo</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Teléfono</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Género</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Edad</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Militante</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Nivel Socioeconómico</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Trabajo</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Escolaridad</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Año Nac.</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Tipo Contrato</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Archivo</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Acciones</th>
+                    <th 
+                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+                      style={{ minWidth: '50px', width: '50px' }}
+                    >
+                      #
+                    </th>
+                    {/* Dynamic headers based on actual Excel file structure */}
+                    {fileHeaders.length > 0 ? fileHeaders.map((header, index) => (
+                      <th 
+                        key={index}
+                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap"
+                        style={{ 
+                          minWidth: `${Math.max(columnWidths[index] * 8, 100)}px`,
+                          maxWidth: `${Math.max(columnWidths[index] * 10, 200)}px`
+                        }}
+                      >
+                        {header}
+                      </th>
+                    )) : (
+                      // Default headers when no file is processed yet
+                      <>
+                        <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Nombre</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Teléfono</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Archivo</th>
+                      </>
+                    )}
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider" style={{ minWidth: '80px', width: '80px' }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {contacts.map((contact: ContactData, index: number) => (
                     <tr key={contact.id} className="hover:bg-gray-50">
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900 text-center font-medium">
                         {contact.numero || index + 1}
                       </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900 font-medium">
-                        {formatDisplayName(contact)}
-                      </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        {contact.telefono || '-'}
-                      </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        {contact.genero || '-'}
-                      </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        {contact.grupo_edad || '-'}
-                      </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        {contact.militante || '-'}
-                      </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        {contact.nivel_socioeconomico || '-'}
-                      </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        {contact.lugar_trabajo || '-'}
-                      </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        {contact.escolaridad || '-'}
-                      </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        {contact.ano_nacimiento || '-'}
-                      </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        {contact.tipo_contratacion || '-'}
-                      </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-500 truncate max-w-32" title={contact.file_name}>
-                        {contact.file_name || '-'}
-                      </td>
+                      {/* Dynamic data cells based on actual Excel file structure */}
+                      {fileHeaders.length > 0 ? fileHeaders.map((header, headerIndex) => {
+                        const cellValue = contact[header as keyof ContactData] || '';
+                        const displayValue = String(cellValue).trim() || '-';
+                        return (
+                          <td 
+                            key={headerIndex}
+                            className="border border-gray-200 px-3 py-2 text-sm text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis"
+                            style={{ 
+                              maxWidth: `${Math.max(columnWidths[headerIndex] * 10, 200)}px`
+                            }}
+                            title={displayValue !== '-' ? displayValue : ''}
+                          >
+                            {displayValue}
+                          </td>
+                        );
+                      }) : (
+                        // Default display when no file headers available
+                        <>
+                          <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900 font-medium">
+                            {formatDisplayName(contact)}
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                            {contact.telefono || '-'}
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2 text-sm text-gray-500 truncate max-w-32" title={contact.file_name}>
+                            {contact.file_name || '-'}
+                          </td>
+                        </>
+                      )}
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
                         <Button
                           variant="ghost"

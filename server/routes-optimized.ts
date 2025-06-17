@@ -3898,7 +3898,7 @@ export function registerOptimizedRoutes(app: Express): Server {
 
   app.post("/api/contacts-database/upload", async (req: Request, res: Response) => {
     try {
-      const { contacts, fileName } = req.body;
+      const { contacts, fileName, headers, columnWidths } = req.body;
       
       if (!contacts || !Array.isArray(contacts)) {
         return res.status(400).json({
@@ -3913,35 +3913,64 @@ export function registerOptimizedRoutes(app: Express): Server {
       );
       let currentNumber = parseInt(maxNumberResult.rows[0].max_number) || 0;
       
+      console.log('📊 Processing Excel data with headers:', headers);
+      console.log('📐 Column widths:', columnWidths);
+      
+      // Helper function to extract values with flexible field mapping
+      const extractValue = (obj: any, fieldNames: string[]): string | null => {
+        for (const field of fieldNames) {
+          if (obj[field] !== undefined && obj[field] !== null && obj[field] !== '') {
+            return String(obj[field]).trim();
+          }
+        }
+        return null;
+      };
+      
       const insertedContacts = [];
       
       for (let i = 0; i < contacts.length; i++) {
         const contact = contacts[i];
         currentNumber++;
         
+        // Store the complete contact data as JSON to preserve all Excel fields
+        const contactData = {
+          ...contact,
+          numero: currentNumber,
+          uploaded_by: 3,
+          file_name: fileName,
+          uploaded_at: new Date(),
+          excel_headers: headers,
+          column_widths: columnWidths
+        };
+        
         const result = await db.$client.query(
           `INSERT INTO contact_database (
             numero, nombre_pila, apellido_paterno, apellido_materno, telefono,
             genero, grupo_edad, militante, nivel_socioeconomico, lugar_trabajo,
-            escolaridad, ano_nacimiento, tipo_contratacion, uploaded_by, file_name
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            escolaridad, ano_nacimiento, tipo_contratacion, uploaded_by, file_name,
+            raw_data, excel_headers, column_widths
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
           RETURNING *`,
           [
             currentNumber,
-            contact.nombrePila || contact['Nombre de Pila'] || contact.nombre_pila || null,
-            contact.apellidoPaterno || contact['Ap. Paterno'] || contact.apellido_paterno || null,
-            contact.apellidoMaterno || contact['Ap. Materno'] || contact.apellido_materno || null,
-            contact.telefono || contact['Telefono'] || contact.phone || null,
-            contact.genero || contact['Género'] || contact.gender || null,
-            contact.grupoEdad || contact['Grupo de edad'] || contact.grupo_edad || null,
-            contact.militante || contact['Militante'] || null,
-            contact.nivelSocioeconomico || contact['Nivel Socioeconómico'] || contact.nivel_socioeconomico || null,
-            contact.lugarTrabajo || contact['Lugar de trabajo'] || contact.lugar_trabajo || null,
-            contact.escolaridad || contact['Escolaridad'] || null,
-            contact.anoNacimiento || contact['Año de nacimiento'] || contact.ano_nacimiento || null,
-            contact.tipoContratacion || contact['Tipo de contratación'] || contact.tipo_contratacion || null,
+            // Extract data using flexible field mapping
+            extractValue(contact, ['nombre_pila', 'Nombre de Pila', 'nombrePila', 'Nombre']),
+            extractValue(contact, ['apellido_paterno', 'Ap. Paterno', 'apellidoPaterno', 'Apellido Paterno']),
+            extractValue(contact, ['apellido_materno', 'Ap. Materno', 'apellidoMaterno', 'Apellido Materno']),
+            extractValue(contact, ['telefono', 'Telefono', 'Teléfono', 'phone', 'Phone', 'Número']),
+            extractValue(contact, ['genero', 'Género', 'gender', 'Gender', 'Sexo']),
+            extractValue(contact, ['grupo_edad', 'Grupo de edad', 'grupoEdad', 'Edad', 'Age']),
+            extractValue(contact, ['militante', 'Militante', 'Afiliación']),
+            extractValue(contact, ['nivel_socioeconomico', 'Nivel Socioeconómico', 'nivelSocioeconomico', 'NSE']),
+            extractValue(contact, ['lugar_trabajo', 'Lugar de trabajo', 'lugarTrabajo', 'Trabajo', 'Empresa']),
+            extractValue(contact, ['escolaridad', 'Escolaridad', 'Educación', 'education']),
+            extractValue(contact, ['ano_nacimiento', 'Año de nacimiento', 'anoNacimiento', 'Año', 'Birth Year']),
+            extractValue(contact, ['tipo_contratacion', 'Tipo de contratación', 'tipoContratacion', 'Contrato']),
             3, // Current user ID
-            fileName
+            fileName,
+            JSON.stringify(contactData), // Store complete raw data
+            JSON.stringify(headers || []), // Store Excel headers
+            JSON.stringify(columnWidths || []) // Store column widths
           ]
         );
         
