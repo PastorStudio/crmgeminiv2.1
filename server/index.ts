@@ -8960,12 +8960,23 @@ Responde de manera conversacional, profesional y útil según tu especializació
     console.log('🔄 Ejecutando conversión inmediata de chats reales de WhatsApp...');
     setTimeout(async () => {
       try {
+        console.log('🎯 INICIANDO CONVERSIÓN FORZADA DE TODAS LAS CUENTAS DE WHATSAPP...');
         await chatToLeadConverter.processNewChats();
         console.log('✅ Conversión inmediata de chats reales completada');
+        
+        // Ejecutar cada 30 segundos para asegurar conversión continua
+        setInterval(async () => {
+          try {
+            await chatToLeadConverter.processNewChats();
+          } catch (error) {
+            console.error('❌ Error en conversión automática:', error);
+          }
+        }, 30000);
+        
       } catch (error) {
         console.error('❌ Error en conversión inmediata:', error);
       }
-    }, 5000); // Esperar 5 segundos para que el sistema esté completamente inicializado
+    }, 3000); // Reducir tiempo de espera a 3 segundos
     
   } catch (error) {
     console.error('❌ Error iniciando conversión chat-to-lead:', error);
