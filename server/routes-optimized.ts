@@ -1512,23 +1512,18 @@ export function registerOptimizedRoutes(app: Express): Server {
     try {
       console.log('🗑️ Iniciando eliminación de todos los leads de WhatsApp...');
       
-      // Use direct SQL query to avoid schema issues
-      const result = await db.$client.query(
-        `SELECT id, name, phone FROM leads WHERE source = 'whatsapp' OR email LIKE '%@whatsapp.contact'`
+      // Use direct SQL query to delete WhatsApp leads
+      const deleteResult = await db.$client.query(
+        `DELETE FROM leads WHERE source LIKE '%whatsapp%' OR email LIKE '%@whatsapp.%' RETURNING id, name, phone`
       );
       
-      const whatsappLeads = result.rows;
-      let deletedCount = 0;
+      const deletedLeads = deleteResult.rows;
+      const deletedCount = deletedLeads.length;
       
-      for (const lead of whatsappLeads) {
-        try {
-          await db.$client.query('DELETE FROM leads WHERE id = $1', [lead.id]);
-          deletedCount++;
-          console.log(`🗑️ Lead de WhatsApp eliminado: ${lead.name || lead.phone} (ID: ${lead.id})`);
-        } catch (error) {
-          console.error(`❌ Error eliminando lead ${lead.id}:`, error);
-        }
-      }
+      // Log deleted leads
+      deletedLeads.forEach(lead => {
+        console.log(`🗑️ Lead de WhatsApp eliminado: ${lead.name || lead.phone} (ID: ${lead.id})`);
+      });
 
       console.log(`✅ Eliminación completada: ${deletedCount} leads de WhatsApp eliminados`);
       
