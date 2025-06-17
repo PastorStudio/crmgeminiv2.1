@@ -443,6 +443,25 @@ ${languageConfig.translateToSpanish && languageConfig.targetLanguage !== 'es' ? 
       configs: Array.from(this.configs.values())
     };
   }
+
+  /**
+   * Reinicia el sistema limpiando configuraciones obsoletas
+   */
+  async reinitialize(): Promise<void> {
+    console.log('🔄 Reiniciando sistema de respuestas automáticas...');
+    
+    // Detener monitoreo actual
+    this.stopStableMonitoring();
+    
+    // Limpiar configuraciones en memoria
+    this.configs.clear();
+    this.initialized = false;
+    
+    // Reinicializar desde la base de datos
+    await this.initialize();
+    
+    console.log('✅ Sistema de respuestas automáticas reiniciado');
+  }
 }
 
 // Instancia global del sistema estable
