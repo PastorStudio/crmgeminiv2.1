@@ -57,8 +57,6 @@ import TagManagement from './pages/TagManagement';
 import ContactsDatabase from './pages/ContactsDatabase';
 import UserGuide from './pages/UserGuide';
 import Home from './pages/Home';
-import MassMessaging from './pages/MassMessaging';
-import ContactCategorySelector from './pages/ContactCategorySelector';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
@@ -253,21 +251,6 @@ const AppRoutes: React.FC = () => {
                 Base de Contactos
               </a>
 
-              <a href="/contact-category-selector" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/contact-category-selector' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <rect x="2" y="3" width="20" height="18" rx="2" stroke="#F59E0B" strokeWidth="2" fill="none"/>
-                  <rect x="4" y="6" width="6" height="12" rx="1" fill="#F59E0B"/>
-                  <rect x="12" y="6" width="8" height="12" rx="1" fill="#25D366"/>
-                  <circle cx="7" cy="9" r="1" fill="white"/>
-                  <rect x="5" y="11" width="4" height="1" fill="white"/>
-                  <rect x="5" y="13" width="3" height="1" fill="white"/>
-                  <circle cx="16" cy="9" r="1" fill="white"/>
-                  <rect x="14" y="11" width="4" height="1" fill="white"/>
-                  <rect x="14" y="13" width="3" height="1" fill="white"/>
-                </svg>
-                Selector por Categorías
-              </a>
-
               <a href="/sales-flow-designer" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/sales-flow-designer' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <path d="M6 3v12M18 9v12M12 3v6M12 15v6" stroke="#6366F1" strokeWidth="2" strokeLinecap="round"/>
@@ -320,7 +303,7 @@ const AppRoutes: React.FC = () => {
                 Plantillas
               </a>
               
-              <a href="/mass-messaging" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/mass-messaging' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              <a href="/mass-sender" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/mass-sender' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="8" fill="#F59E0B"/>
                   <path d="M8 12h8M12 8v8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
@@ -329,7 +312,7 @@ const AppRoutes: React.FC = () => {
                   <circle cx="6" cy="18" r="2" fill="#3B82F6"/>
                   <circle cx="18" cy="18" r="2" fill="#8B5CF6"/>
                 </svg>
-                Mensajería Masiva
+                Envío Masivo
               </a>
               
               {/* OCULTO: Respuestas Auto */}
@@ -737,8 +720,6 @@ const AppRoutes: React.FC = () => {
                 <Route path="/tickets" component={() => <PrivateRoute component={TicketsSimple} path="/tickets" />} />
                 <Route path="/tags" component={() => <PrivateRoute component={TagManagement} path="/tags" />} />
                 <Route path="/contacts-database" component={() => <PrivateRoute component={ContactsDatabase} path="/contacts-database" />} />
-                <Route path="/contact-category-selector" component={() => <PrivateRoute component={ContactCategorySelector} path="/contact-category-selector" />} />
-                <Route path="/mass-messaging" component={() => <PrivateRoute component={MassMessaging} path="/mass-messaging" />} />
                 <Route path="/analytics" component={() => <PrivateRoute component={Analytics} path="/analytics" />} />
                 <Route path="/gemini-ai" component={() => <PrivateRoute component={GeminiAI} path="/gemini-ai" />} />
                 <Route path="/function-documentation" component={() => <PrivateRoute component={FunctionDocumentation} path="/function-documentation" />} />
