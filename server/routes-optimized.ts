@@ -1512,9 +1512,9 @@ export function registerOptimizedRoutes(app: Express): Server {
     try {
       console.log('🗑️ Iniciando eliminación de todos los leads de WhatsApp...');
       
-      // Use direct SQL query to delete WhatsApp leads
+      // Use direct SQL query to delete WhatsApp leads (all variations)
       const deleteResult = await db.$client.query(
-        `DELETE FROM leads WHERE source LIKE '%whatsapp%' OR email LIKE '%@whatsapp.%' RETURNING id, name, phone`
+        `DELETE FROM leads WHERE source LIKE '%whatsapp%' OR email LIKE '%@whatsapp%' RETURNING id, name, phone`
       );
       
       const deletedLeads = deleteResult.rows;
