@@ -41,7 +41,38 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Loader2, Send, Pause, Play, PlusCircle, Settings, AlertTriangle, Info, Calendar, User, Users, CheckCheck, XCircle, Upload, Database, FileText, FileSpreadsheet, CheckCircle, Phone, Clock, AlertCircle, Check, Circle, Plus, RefreshCw, Tag } from "lucide-react";
+import { 
+  Loader2, 
+  Send, 
+  Pause, 
+  Play, 
+  PlusCircle, 
+  Settings, 
+  AlertTriangle, 
+  Info, 
+  Calendar, 
+  User, 
+  Users, 
+  CheckCheck, 
+  XCircle, 
+  Upload, 
+  Database, 
+  FileText, 
+  FileSpreadsheet, 
+  CheckCircle, 
+  Phone, 
+  Clock, 
+  AlertCircle, 
+  Check, 
+  Circle, 
+  Plus, 
+  RefreshCw, 
+  Tag,
+  MessageSquare,
+  BarChart3,
+  Target,
+  Filter
+} from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { 
