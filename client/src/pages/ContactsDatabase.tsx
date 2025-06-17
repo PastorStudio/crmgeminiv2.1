@@ -45,6 +45,8 @@ export default function ContactsDatabase() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const [uploadMessage, setUploadMessage] = useState('');
+  const [fileHeaders, setFileHeaders] = useState<string[]>([]);
+  const [columnWidths, setColumnWidths] = useState<number[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -159,7 +161,7 @@ export default function ContactsDatabase() {
     }
   };
 
-  const processFile = async (file: File): Promise<any[]> => {
+  const processFile = async (file: File): Promise<{ headers: string[], data: any[], columnWidths: number[] }> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       
@@ -169,16 +171,53 @@ export default function ContactsDatabase() {
           let workbook: XLSX.WorkBook;
           
           if (file.name.endsWith('.csv')) {
-            workbook = XLSX.read(data, { type: 'binary' });
+            workbook = XLSX.read(data, { type: 'binary', cellStyles: true, cellDates: true });
           } else {
-            workbook = XLSX.read(data, { type: 'array' });
+            workbook = XLSX.read(data, { type: 'array', cellStyles: true, cellDates: true });
           }
           
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
           
-          resolve(jsonData);
+          // Get the range of the worksheet
+          const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
+          
+          // Extract headers from first row
+          const headers: string[] = [];
+          for (let col = range.s.c; col <= range.e.c; col++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+            const cell = worksheet[cellAddress];
+            headers.push(cell ? String(cell.v) : `Columna ${col + 1}`);
+          }
+          
+          // Calculate column widths based on content
+          const columnWidths: number[] = headers.map(header => header.length);
+          
+          // Extract all data rows (starting from row 1, skipping header)
+          const jsonData: any[] = [];
+          for (let row = range.s.r + 1; row <= range.e.r; row++) {
+            const rowData: any = {};
+            for (let col = range.s.c; col <= range.e.c; col++) {
+              const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+              const cell = worksheet[cellAddress];
+              const headerKey = headers[col - range.s.c];
+              const cellValue = cell ? (cell.v !== undefined ? String(cell.v).trim() : '') : '';
+              
+              rowData[headerKey] = cellValue;
+              
+              // Update column width based on content length
+              if (cellValue.length > columnWidths[col - range.s.c]) {
+                columnWidths[col - range.s.c] = cellValue.length;
+              }
+            }
+            
+            // Only add rows that have at least one non-empty cell
+            if (Object.values(rowData).some(value => value !== '')) {
+              jsonData.push(rowData);
+            }
+          }
+          
+          resolve({ headers, data: jsonData, columnWidths });
         } catch (error) {
           reject(error);
         }
@@ -201,15 +240,21 @@ export default function ContactsDatabase() {
     setUploadMessage('Procesando archivo...');
     
     try {
-      const contacts = await processFile(selectedFile);
+      const { headers, data: contacts, columnWidths } = await processFile(selectedFile);
       
       if (contacts.length === 0) {
         throw new Error('El archivo está vacío o no contiene datos válidos');
       }
+
+      // Store headers and column widths for display
+      setFileHeaders(headers);
+      setColumnWidths(columnWidths);
       
       await uploadMutation.mutateAsync({
         contacts,
-        fileName: selectedFile.name
+        fileName: selectedFile.name,
+        headers: headers,
+        columnWidths: columnWidths
       });
     } catch (error: any) {
       setUploadStatus('error');
