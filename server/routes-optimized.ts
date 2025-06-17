@@ -4,7 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { databaseAdapter } from "./databaseAdapter";
 import { db } from "./db";
-import { and, sql } from "drizzle-orm";
+import { and, sql, eq, gte, desc, or, like } from "drizzle-orm";
 import { 
   insertUserSchema, 
   insertLeadSchema, 
@@ -14,6 +14,8 @@ import {
   insertContactTagSchema,
   insertTicketTagSchema,
   insertMediaFileSchema,
+  insertMassCampaignSchema,
+  insertMassMessageHistorySchema,
   userSubscriptions,
   subscriptionPlans,
   users,
@@ -29,9 +31,11 @@ import {
   leadTags,
   contactTags,
   ticketTags,
-  mediaFiles
+  mediaFiles,
+  massCampaigns,
+  massMessageHistory,
+  contactDatabase
 } from "@shared/schema";
-import { eq, and, gte, desc, or, like } from 'drizzle-orm';
 import { db } from './db';
 import { z } from "zod";
 import { geminiLeadOrganizer } from "./services/geminiLeadOrganizer";
@@ -4279,6 +4283,305 @@ export function registerOptimizedRoutes(app: Express): Server {
       res.status(500).json({
         success: false,
         error: 'Error eliminando contacto'
+      });
+    }
+  });
+
+  // ===== MASS MESSAGING SYSTEM ROUTES =====
+  
+  // Crear nueva campaña de mensajería masiva
+  app.post("/api/mass-campaigns", async (req: Request, res: Response) => {
+    try {
+      const campaignData = insertMassCampaignSchema.parse(req.body);
+      
+      const [campaign] = await db
+        .insert(massCampaigns)
+        .values(campaignData)
+        .returning();
+
+      res.json({
+        success: true,
+        campaign
+      });
+    } catch (error) {
+      console.error('Error creando campaña:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error creando campaña de mensajería masiva'
+      });
+    }
+  });
+
+  // Obtener lista de campañas
+  app.get("/api/mass-campaigns", async (req: Request, res: Response) => {
+    try {
+      const campaigns = await db
+        .select()
+        .from(massCampaigns)
+        .orderBy(desc(massCampaigns.createdAt));
+
+      res.json({
+        success: true,
+        campaigns
+      });
+    } catch (error) {
+      console.error('Error obteniendo campañas:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error obteniendo campañas'
+      });
+    }
+  });
+
+  // Obtener contactos filtrados para mensajería masiva
+  app.post("/api/mass-campaigns/filter-contacts", async (req: Request, res: Response) => {
+    try {
+      const { filterColumn, filterValue, limit } = req.body;
+      
+      let query = db.select().from(contactDatabase);
+      
+      // Aplicar filtro si se especifica
+      if (filterColumn && filterValue) {
+        const columnMap: Record<string, any> = {
+          'genero': contactDatabase.genero,
+          'nivel_socioeconomico': contactDatabase.nivelSocioeconomico,
+          'ano_nacimiento': contactDatabase.anoNacimiento,
+          'tipo_contratacion': contactDatabase.tipoContratacion,
+          'grupo_edad': contactDatabase.grupoEdad,
+          'militante': contactDatabase.militante,
+          'escolaridad': contactDatabase.escolaridad
+        };
+        
+        if (columnMap[filterColumn]) {
+          query = query.where(eq(columnMap[filterColumn], filterValue));
+        }
+      }
+      
+      // Filtrar solo contactos con teléfono válido y que no hayan sido excluidos
+      query = query.where(
+        and(
+          sql`${contactDatabase.telefono} IS NOT NULL`,
+          or(
+            sql`${contactDatabase.massMessageStatus} IS NULL`,
+            eq(contactDatabase.massMessageStatus, 'pending')
+          )
+        )
+      );
+      
+      // Aplicar límite
+      if (limit) {
+        query = query.limit(parseInt(limit));
+      }
+      
+      const contacts = await query;
+      
+      res.json({
+        success: true,
+        contacts,
+        count: contacts.length
+      });
+    } catch (error) {
+      console.error('Error filtrando contactos:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error filtrando contactos'
+      });
+    }
+  });
+
+  // Iniciar envío de campaña de mensajería masiva
+  app.post("/api/mass-campaigns/:id/send", async (req: Request, res: Response) => {
+    try {
+      const campaignId = parseInt(req.params.id);
+      
+      // Obtener la campaña
+      const [campaign] = await db
+        .select()
+        .from(massCampaigns)
+        .where(eq(massCampaigns.id, campaignId));
+      
+      if (!campaign) {
+        return res.status(404).json({
+          success: false,
+          error: 'Campaña no encontrada'
+        });
+      }
+      
+      // Obtener contactos filtrados
+      let query = db.select().from(contactDatabase);
+      
+      if (campaign.filterColumn && campaign.filterValue) {
+        const columnMap: Record<string, any> = {
+          'genero': contactDatabase.genero,
+          'nivel_socioeconomico': contactDatabase.nivelSocioeconomico,
+          'ano_nacimiento': contactDatabase.anoNacimiento,
+          'tipo_contratacion': contactDatabase.tipoContratacion,
+          'grupo_edad': contactDatabase.grupoEdad,
+          'militante': contactDatabase.militante,
+          'escolaridad': contactDatabase.escolaridad
+        };
+        
+        if (columnMap[campaign.filterColumn]) {
+          query = query.where(eq(columnMap[campaign.filterColumn], campaign.filterValue));
+        }
+      }
+      
+      query = query.where(
+        and(
+          contactDatabase.telefono.isNotNull(),
+          or(
+            contactDatabase.massMessageStatus.isNull(),
+            eq(contactDatabase.massMessageStatus, 'pending')
+          )
+        )
+      ).limit(campaign.targetCount);
+      
+      const contacts = await query;
+      
+      // Actualizar estado de la campaña
+      await db
+        .update(massCampaigns)
+        .set({
+          status: 'running',
+          startedAt: new Date(),
+          actualCount: contacts.length
+        })
+        .where(eq(massCampaigns.id, campaignId));
+      
+      // Procesar envío de mensajes (simulado por ahora)
+      let successCount = 0;
+      let failedCount = 0;
+      
+      for (const contact of contacts) {
+        try {
+          // Aquí se integraría con el sistema de WhatsApp real
+          // Por ahora, simulamos el envío
+          const success = Math.random() > 0.1; // 90% de éxito
+          
+          const status = success ? 'sent' : 'failed';
+          
+          // Registrar en historial
+          await db.insert(massMessageHistory).values({
+            campaignId,
+            contactId: contact.id,
+            phoneNumber: contact.telefono || '',
+            message: campaign.message,
+            status,
+            whatsappAccountId: campaign.whatsappAccountId,
+            sentAt: success ? new Date() : null,
+            errorMessage: success ? null : 'Error simulado de envío'
+          });
+          
+          // Actualizar estado del contacto
+          await db
+            .update(contactDatabase)
+            .set({
+              massMessageStatus: status,
+              lastMessageSent: success ? new Date() : null,
+              messageAttempts: contact.messageAttempts + 1,
+              isUsedForMassaging: true
+            })
+            .where(eq(contactDatabase.id, contact.id));
+          
+          if (success) {
+            successCount++;
+          } else {
+            failedCount++;
+          }
+          
+          // Pequeña pausa entre mensajes
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+        } catch (error) {
+          console.error(`Error enviando mensaje a ${contact.telefono}:`, error);
+          failedCount++;
+        }
+      }
+      
+      // Actualizar estadísticas finales de la campaña
+      await db
+        .update(massCampaigns)
+        .set({
+          status: 'completed',
+          completedAt: new Date(),
+          successCount,
+          failedCount
+        })
+        .where(eq(massCampaigns.id, campaignId));
+      
+      res.json({
+        success: true,
+        message: `Campaña completada. ${successCount} mensajes enviados, ${failedCount} fallidos`,
+        stats: {
+          total: contacts.length,
+          success: successCount,
+          failed: failedCount
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error enviando campaña:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error enviando campaña de mensajería masiva'
+      });
+    }
+  });
+
+  // Obtener historial de mensajes de una campaña
+  app.get("/api/mass-campaigns/:id/history", async (req: Request, res: Response) => {
+    try {
+      const campaignId = parseInt(req.params.id);
+      
+      const history = await db
+        .select()
+        .from(massMessageHistory)
+        .where(eq(massMessageHistory.campaignId, campaignId))
+        .orderBy(desc(massMessageHistory.createdAt));
+      
+      res.json({
+        success: true,
+        history
+      });
+    } catch (error) {
+      console.error('Error obteniendo historial:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error obteniendo historial de mensajes'
+      });
+    }
+  });
+
+  // Obtener estadísticas de mensajería masiva
+  app.get("/api/mass-campaigns/stats", async (req: Request, res: Response) => {
+    try {
+      const stats = await db
+        .select({
+          totalCampaigns: sql<number>`count(*)`,
+          totalMessagesSent: sql<number>`sum(${massCampaigns.successCount})`,
+          totalMessagesFailed: sql<number>`sum(${massCampaigns.failedCount})`,
+          activeCampaigns: sql<number>`count(case when ${massCampaigns.status} = 'running' then 1 end)`
+        })
+        .from(massCampaigns);
+      
+      const contactStats = await db
+        .select({
+          totalContacts: sql<number>`count(*)`,
+          usedContacts: sql<number>`count(case when ${contactDatabase.isUsedForMassaging} = true then 1 end)`,
+          pendingContacts: sql<number>`count(case when ${contactDatabase.massMessageStatus} = 'pending' or ${contactDatabase.massMessageStatus} is null then 1 end)`
+        })
+        .from(contactDatabase);
+      
+      res.json({
+        success: true,
+        campaignStats: stats[0],
+        contactStats: contactStats[0]
+      });
+    } catch (error) {
+      console.error('Error obteniendo estadísticas:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error obteniendo estadísticas'
       });
     }
   });
