@@ -146,6 +146,22 @@ export function AutoChatToLeadPanel() {
               </div>
             </div>
           )}
+
+          {/* Botón para eliminar duplicados */}
+          <div className="pt-4 border-t">
+            <Button 
+              onClick={handleRemoveDuplicates}
+              disabled={isRemoving}
+              variant="outline"
+              className="w-full flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              {isRemoving ? "Eliminando duplicados..." : "Eliminar Leads Duplicados"}
+            </Button>
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              Elimina leads duplicados basándose en números de teléfono para garantizar que cada chat tenga un único lead
+            </p>
+          </div>
         </CardContent>
       </Card>
 
