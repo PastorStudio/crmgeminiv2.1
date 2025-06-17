@@ -85,13 +85,43 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ContactCategorySelector } from "@/components/contacts/ContactCategorySelector";
 
 // Tipos para las campañas de envío masivo
 interface ContactGroup {
   id: string;
   name: string;
   count: number;
+}
+
+interface CampaignStats {
+  totalCampaigns: number;
+  activeCampaigns: number;
+  totalMessagesSent: number;
+  averageSuccessRate: number;
+}
+
+interface MassCampaign {
+  id: string;
+  name: string;
+  status: string;
+  totalContacts: number;
+  sentCount: number;
+  successRate: number;
+  createdAt: string;
+}
+
+interface CampaignForm {
+  name: string;
+  message: string;
+  targetCount: number;
+  filterColumn: string;
+  filterValue: string;
+  whatsappAccountId?: number;
+}
+
+interface FilteredContacts {
+  contacts: any[];
+  total: number;
 }
 
 interface ContactStatus {
@@ -213,13 +243,17 @@ export default function MassMessaging() {
   const [newTagName, setNewTagName] = useState<string>("");
   
   // Estado para el formulario de campaña
-  const [campaignForm, setCampaignForm] = useState({
+  const [campaignForm, setCampaignForm] = useState<CampaignForm>({
     name: "",
     message: "",
     targetCount: 100,
     filterColumn: "none",
-    filterValue: ""
+    filterValue: "",
+    whatsappAccountId: undefined
   });
+  
+  // Estado para vista previa de contactos
+  const [previewContacts, setPreviewContacts] = useState<any[]>([]);
   
   // Estados para envío inmediato
   const [showImmediateMessaging, setShowImmediateMessaging] = useState<boolean>(false);
@@ -428,7 +462,7 @@ export default function MassMessaging() {
                 <BarChart3 className="h-5 w-5 text-blue-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">Total Campañas</p>
-                  <p className="text-2xl font-bold">{stats.campaignStats.totalCampaigns}</p>
+                  <p className="text-2xl font-bold">{stats.totalCampaigns}</p>
                 </div>
               </div>
             </CardContent>
@@ -440,7 +474,7 @@ export default function MassMessaging() {
                 <CheckCircle className="h-5 w-5 text-green-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">Mensajes Enviados</p>
-                  <p className="text-2xl font-bold">{stats.campaignStats.totalMessagesSent || 0}</p>
+                  <p className="text-2xl font-bold">{stats.totalMessagesSent || 0}</p>
                 </div>
               </div>
             </CardContent>
@@ -452,7 +486,7 @@ export default function MassMessaging() {
                 <Users className="h-5 w-5 text-purple-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">Total Contactos</p>
-                  <p className="text-2xl font-bold">{stats.contactStats.totalContacts}</p>
+                  <p className="text-2xl font-bold">{0}</p>
                 </div>
               </div>
             </CardContent>
