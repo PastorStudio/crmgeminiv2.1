@@ -1,2 +1,3 @@
-2025/06/09-17:31:31.778 935 Creating DB /home/runner/workspace/temp/whatsapp-accounts/account_3/session/session-account_3/Default/shared_proto_db since it was missing.
-2025/06/09-17:31:31.792 935 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_3/session/session-account_3/Default/shared_proto_db/MANIFEST-000001
+2025/06/17-18:36:15.345 156b Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_3/session/session-account_3/Default/shared_proto_db/MANIFEST-000001
+2025/06/17-18:36:15.345 156b Recovering log #3
+2025/06/17-18:36:15.345 156b Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_3/session/session-account_3/Default/shared_proto_db/000003.log 
