@@ -3987,25 +3987,75 @@ export function registerOptimizedRoutes(app: Express): Server {
         return null;
       };
       
-      // Function to get value from any object property that contains the data
+      // Enhanced function to get field values with encoding-aware search
       const getFieldValue = (obj: any, ...possibleKeys: string[]): string | null => {
+        // Helper to normalize strings for comparison (handle special characters)
+        const normalizeString = (str: string) => {
+          return str.toLowerCase()
+            .replace(/á/g, 'a').replace(/é/g, 'e').replace(/í/g, 'i').replace(/ó/g, 'o').replace(/ú/g, 'u')
+            .replace(/ñ/g, 'n').replace(/ü/g, 'u')
+            .replace(/[^a-z0-9]/g, '');
+        };
+
         // First try direct field mapping
         const directValue = extractValue(obj, possibleKeys);
         if (directValue) return directValue;
         
-        // Then try all object properties to find matching content
-        for (const [key, value] of Object.entries(obj)) {
-          if (value && typeof value === 'string' && value.trim() && value !== '-') {
-            const cleanValue = value.trim();
-            // Skip clearly empty or placeholder values
-            if (cleanValue && cleanValue !== 'N/A' && cleanValue !== 'null' && cleanValue !== '-') {
-              // Check if this might be the field we're looking for based on context
-              if (possibleKeys.some(k => key.toLowerCase().includes(k.toLowerCase().replace(/[^a-z]/g, '')))) {
+        // Get all object entries including nested properties
+        const getAllEntries = (data: any, prefix = ''): Array<[string, any]> => {
+          const entries: Array<[string, any]> = [];
+          if (data && typeof data === 'object') {
+            for (const [key, value] of Object.entries(data)) {
+              const fullKey = prefix ? `${prefix}.${key}` : key;
+              entries.push([fullKey, value]);
+              if (value && typeof value === 'object' && !Array.isArray(value)) {
+                entries.push(...getAllEntries(value, fullKey));
+              }
+            }
+          }
+          return entries;
+        };
+
+        const allEntries = getAllEntries(obj);
+        
+        // Try exact matches including encoding variations
+        for (const searchKey of possibleKeys) {
+          const normalizedSearchKey = normalizeString(searchKey);
+          
+          for (const [objKey, value] of allEntries) {
+            const normalizedObjKey = normalizeString(objKey);
+            
+            // Check for exact match or close encoding match
+            if (normalizedObjKey === normalizedSearchKey || 
+                objKey === searchKey ||
+                objKey.includes(searchKey) ||
+                searchKey.includes(objKey)) {
+              
+              if (value && String(value).trim() && String(value).trim() !== '-') {
+                const cleanValue = String(value).trim();
                 return cleanValue;
               }
             }
           }
         }
+        
+        // Try partial matches for field names
+        for (const searchKey of possibleKeys) {
+          const keyWords = normalizeString(searchKey).split(/\s+/);
+          
+          for (const [objKey, value] of allEntries) {
+            const normalizedObjKey = normalizeString(objKey);
+            
+            // Check if any key word matches
+            if (keyWords.some(word => word.length > 2 && normalizedObjKey.includes(word))) {
+              if (value && String(value).trim() && String(value).trim() !== '-') {
+                const cleanValue = String(value).trim();
+                return cleanValue;
+              }
+            }
+          }
+        }
+        
         return null;
       };
       
@@ -4014,6 +4064,11 @@ export function registerOptimizedRoutes(app: Express): Server {
       for (let i = 0; i < contacts.length; i++) {
         const contact = contacts[i];
         currentNumber++;
+        
+        // Log the raw contact data for the first few contacts to understand structure
+        if (i < 3) {
+          console.log(`📋 CONTACTO ${i + 1} - Estructura completa:`, JSON.stringify(contact, null, 2));
+        }
         
         // Store the complete contact data as JSON to preserve all Excel fields
         const contactData = {
@@ -4026,6 +4081,29 @@ export function registerOptimizedRoutes(app: Express): Server {
           column_widths: columnWidths
         };
         
+        // Extract each field with specific logging
+        const nombre = getFieldValue(contact, 'nombre_pila', 'Nombre de Pila', 'nombrePila', 'Nombre');
+        const apellidoPaterno = getFieldValue(contact, 'apellido_paterno', 'Ap. Paterno', 'apellidoPaterno', 'Apellido Paterno');
+        const apellidoMaterno = getFieldValue(contact, 'apellido_materno', 'Ap. Materno', 'apellidoMaterno', 'Apellido Materno');
+        const telefono = getFieldValue(contact, 'telefono', 'Telefono', 'Teléfono', 'phone', 'Phone', 'Número');
+        const genero = getFieldValue(contact, 'genero', 'Género', 'gender', 'Gender', 'Sexo');
+        const grupoEdad = getFieldValue(contact, 'grupo_edad', 'Grupo de edad', 'grupoEdad', 'Edad', 'Age');
+        const militante = getFieldValue(contact, 'militante', 'Militante', 'Afiliación');
+        const nivelSocioeconomico = getFieldValue(contact, 'nivel_socioeconomico', 'Nivel Socioeconómico', 'nivelSocioeconomico', 'NSE');
+        const lugarTrabajo = getFieldValue(contact, 'lugar_trabajo', 'Lugar de trabajo', 'lugarTrabajo', 'Trabajo', 'Empresa');
+        const escolaridad = getFieldValue(contact, 'escolaridad', 'Escolaridad', 'Educación', 'education');
+        const anoNacimiento = getFieldValue(contact, 'ano_nacimiento', 'Año de nacimiento', 'anoNacimiento', 'Año', 'Birth Year');
+        const tipoContratacion = getFieldValue(contact, 'tipo_contratacion', 'Tipo de contratación', 'tipoContratacion', 'Contrato');
+        
+        // Log problematic fields specifically
+        if (i < 3) {
+          console.log(`🎯 VALORES EXTRAÍDOS CONTACTO ${i + 1}:`);
+          console.log(`   - Género: "${genero}"`);
+          console.log(`   - Nivel Socioeconómico: "${nivelSocioeconomico}"`);
+          console.log(`   - Año Nacimiento: "${anoNacimiento}"`);
+          console.log(`   - Tipo Contratación: "${tipoContratacion}"`);
+        }
+        
         const result = await db.$client.query(
           `INSERT INTO contact_database (
             numero, nombre_pila, apellido_paterno, apellido_materno, telefono,
@@ -4036,19 +4114,18 @@ export function registerOptimizedRoutes(app: Express): Server {
           RETURNING *`,
           [
             currentNumber,
-            // Extract data using improved field mapping
-            getFieldValue(contact, 'nombre_pila', 'Nombre de Pila', 'nombrePila', 'Nombre'),
-            getFieldValue(contact, 'apellido_paterno', 'Ap. Paterno', 'apellidoPaterno', 'Apellido Paterno'),
-            getFieldValue(contact, 'apellido_materno', 'Ap. Materno', 'apellidoMaterno', 'Apellido Materno'),
-            getFieldValue(contact, 'telefono', 'Telefono', 'Teléfono', 'phone', 'Phone', 'Número'),
-            getFieldValue(contact, 'genero', 'Género', 'gender', 'Gender', 'Sexo'),
-            getFieldValue(contact, 'grupo_edad', 'Grupo de edad', 'grupoEdad', 'Edad', 'Age'),
-            getFieldValue(contact, 'militante', 'Militante', 'Afiliación'),
-            getFieldValue(contact, 'nivel_socioeconomico', 'Nivel Socioeconómico', 'nivelSocioeconomico', 'NSE'),
-            getFieldValue(contact, 'lugar_trabajo', 'Lugar de trabajo', 'lugarTrabajo', 'Trabajo', 'Empresa'),
-            getFieldValue(contact, 'escolaridad', 'Escolaridad', 'Educación', 'education'),
-            getFieldValue(contact, 'ano_nacimiento', 'Año de nacimiento', 'anoNacimiento', 'Año', 'Birth Year'),
-            getFieldValue(contact, 'tipo_contratacion', 'Tipo de contratación', 'tipoContratacion', 'Contrato'),
+            nombre,
+            apellidoPaterno,
+            apellidoMaterno,
+            telefono,
+            genero,
+            grupoEdad,
+            militante,
+            nivelSocioeconomico,
+            lugarTrabajo,
+            escolaridad,
+            anoNacimiento,
+            tipoContratacion,
             3, // Current user ID
             fileName,
             JSON.stringify(contactData), // Store complete raw data
@@ -4071,6 +4148,90 @@ export function registerOptimizedRoutes(app: Express): Server {
       res.status(500).json({
         success: false,
         error: 'Error procesando archivo de contactos'
+      });
+    }
+  });
+
+  // Endpoint to fix existing data by extracting from raw_data
+  app.post("/api/contacts-database/fix-data", async (req: Request, res: Response) => {
+    try {
+      console.log('🔧 Iniciando corrección de datos de contactos...');
+      
+      // Get all contacts with raw_data
+      const contactsResult = await db.$client.query(`
+        SELECT id, raw_data FROM contact_database 
+        WHERE raw_data IS NOT NULL 
+        ORDER BY id
+      `);
+      
+      let updatedCount = 0;
+      
+      for (const contact of contactsResult.rows) {
+        try {
+          const rawData = typeof contact.raw_data === 'string' 
+            ? JSON.parse(contact.raw_data) 
+            : contact.raw_data;
+          
+          if (!rawData) continue;
+          
+          // Extract values from raw_data with encoding handling
+          const extractFromRaw = (keys: string[]) => {
+            for (const key of keys) {
+              // Try direct key
+              if (rawData[key] && String(rawData[key]).trim() && String(rawData[key]).trim() !== '-') {
+                return String(rawData[key]).trim();
+              }
+              
+              // Try encoded variations
+              const encodedVariations = [
+                key.replace(/é/g, 'Ã©').replace(/í/g, 'Ã­').replace(/ó/g, 'Ã³').replace(/ñ/g, 'Ã±'),
+                key.replace(/é/g, 'e').replace(/í/g, 'i').replace(/ó/g, 'o').replace(/ñ/g, 'n')
+              ];
+              
+              for (const variation of encodedVariations) {
+                if (rawData[variation] && String(rawData[variation]).trim() && String(rawData[variation]).trim() !== '-') {
+                  return String(rawData[variation]).trim();
+                }
+              }
+            }
+            return null;
+          };
+          
+          const genero = extractFromRaw(['Género', 'GÃ©nero', 'genero', 'Gender', 'Sexo']);
+          const nivelSocioeconomico = extractFromRaw(['Nivel Socioeconómico', 'Nivel SocioeconÃ³mico', 'nivelSocioeconomico', 'NSE']);
+          const anoNacimiento = extractFromRaw(['Año de nacimiento', 'AÃ±o de nacimiento', 'anoNacimiento', 'Año']);
+          const tipoContratacion = extractFromRaw(['Tipo de contratación', 'Tipo de contrataciÃ³n', 'tipoContratacion']);
+          
+          // Update only if we found new values
+          if (genero || nivelSocioeconomico || anoNacimiento || tipoContratacion) {
+            await db.$client.query(`
+              UPDATE contact_database 
+              SET genero = COALESCE($1, genero),
+                  nivel_socioeconomico = COALESCE($2, nivel_socioeconomico),
+                  ano_nacimiento = COALESCE($3, ano_nacimiento),
+                  tipo_contratacion = COALESCE($4, tipo_contratacion)
+              WHERE id = $5
+            `, [genero, nivelSocioeconomico, anoNacimiento, tipoContratacion, contact.id]);
+            
+            updatedCount++;
+          }
+        } catch (parseError) {
+          console.warn(`Error procesando contacto ${contact.id}:`, parseError);
+        }
+      }
+      
+      console.log(`✅ Corrección completada: ${updatedCount} contactos actualizados`);
+      
+      res.json({
+        success: true,
+        message: `Se corrigieron ${updatedCount} contactos`,
+        updated: updatedCount
+      });
+    } catch (error) {
+      console.error('Error corrigiendo datos:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error corrigiendo datos de contactos'
       });
     }
   });
