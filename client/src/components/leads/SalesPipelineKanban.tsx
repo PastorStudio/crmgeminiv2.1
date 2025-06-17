@@ -238,11 +238,18 @@ export default function SalesPipelineKanban() {
   // Mutation for adding comments to leads
   const addCommentMutation = useMutation({
     mutationFn: async ({ leadId, comment }: { leadId: number; comment: string }) => {
-      return await apiRequest(`/api/leads/${leadId}/comments`, {
+      const response = await fetch(`/api/leads/${leadId}/comments`, {
         method: "POST",
-        body: JSON.stringify({ comment }),
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comment })
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to save comment');
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       setNewComment("");
