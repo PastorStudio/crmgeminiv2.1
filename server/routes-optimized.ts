@@ -3575,16 +3575,17 @@ export function registerOptimizedRoutes(app: Express): Server {
     try {
       console.log('🗑️ Iniciando eliminación de todos los leads de WhatsApp...');
       
-      // Get all leads with WhatsApp source
-      const whatsappLeads = await db.query.leads.findMany({
-        where: eq(leads.source, 'whatsapp')
-      });
-
+      // Use direct SQL query to avoid schema issues
+      const result = await db.$client.query(
+        `SELECT id, name, phone FROM leads WHERE source = 'whatsapp' OR email LIKE '%@whatsapp.contact'`
+      );
+      
+      const whatsappLeads = result.rows;
       let deletedCount = 0;
       
       for (const lead of whatsappLeads) {
         try {
-          await db.delete(leads).where(eq(leads.id, lead.id));
+          await db.$client.query('DELETE FROM leads WHERE id = $1', [lead.id]);
           deletedCount++;
           console.log(`🗑️ Lead de WhatsApp eliminado: ${lead.name || lead.phone} (ID: ${lead.id})`);
         } catch (error) {
@@ -3616,12 +3617,12 @@ export function registerOptimizedRoutes(app: Express): Server {
     try {
       const leadId = parseInt(req.params.leadId);
       
-      const comments = await db.query.leadComments.findMany({
-        where: eq(leadComments.leadId, leadId),
-        orderBy: desc(leadComments.createdAt)
-      });
+      const result = await db.$client.query(
+        'SELECT * FROM lead_comments WHERE "leadId" = $1 ORDER BY "createdAt" DESC',
+        [leadId]
+      );
 
-      res.json(comments);
+      res.json(result.rows);
     } catch (error) {
       console.error('Error fetching lead comments:', error);
       res.status(500).json({ 
@@ -3641,14 +3642,12 @@ export function registerOptimizedRoutes(app: Express): Server {
         return res.status(400).json({ error: "Comment content is required" });
       }
 
-      const [newComment] = await db.insert(leadComments).values({
-        leadId,
-        comment: comment.trim(),
-        authorName: 'Sistema',
-        userId: null // For now, no user authentication
-      }).returning();
+      const result = await db.$client.query(
+        'INSERT INTO lead_comments ("leadId", comment, "authorName", "createdAt") VALUES ($1, $2, $3, NOW()) RETURNING *',
+        [leadId, comment.trim(), 'Sistema']
+      );
 
-      res.json({ success: true, comment: newComment });
+      res.json({ success: true, comment: result.rows[0] });
     } catch (error) {
       console.error('Error adding lead comment:', error);
       res.status(500).json({ 
