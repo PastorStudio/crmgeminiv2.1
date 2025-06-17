@@ -57,6 +57,7 @@ import TagManagement from './pages/TagManagement';
 import ContactsDatabase from './pages/ContactsDatabase';
 import UserGuide from './pages/UserGuide';
 import Home from './pages/Home';
+import MassMessaging from './pages/MassMessaging';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
 import { useQuery } from '@tanstack/react-query';
@@ -720,6 +721,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/tickets" component={() => <PrivateRoute component={TicketsSimple} path="/tickets" />} />
                 <Route path="/tags" component={() => <PrivateRoute component={TagManagement} path="/tags" />} />
                 <Route path="/contacts-database" component={() => <PrivateRoute component={ContactsDatabase} path="/contacts-database" />} />
+                <Route path="/mass-messaging" component={() => <PrivateRoute component={MassMessaging} path="/mass-messaging" />} />
                 <Route path="/analytics" component={() => <PrivateRoute component={Analytics} path="/analytics" />} />
                 <Route path="/gemini-ai" component={() => <PrivateRoute component={GeminiAI} path="/gemini-ai" />} />
                 <Route path="/function-documentation" component={() => <PrivateRoute component={FunctionDocumentation} path="/function-documentation" />} />
