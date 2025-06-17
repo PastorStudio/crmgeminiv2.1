@@ -54,6 +54,7 @@ import NotificationSystem from './components/NotificationSystem';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SubscriptionManager } from './components/admin/SubscriptionManager';
 import TagManagement from './pages/TagManagement';
+import ContactsDatabase from './pages/ContactsDatabase';
 import Home from './pages/Home';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
@@ -236,6 +237,17 @@ const AppRoutes: React.FC = () => {
                   <circle cx="16" cy="16" r="1" fill="#8B5CF6"/>
                 </svg>
                 Estado del Sistema
+              </a>
+
+              <a href="/contacts-database" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/contacts-database' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="4" width="18" height="16" rx="2" stroke="#10B981" strokeWidth="2" fill="none"/>
+                  <rect x="6" y="7" width="12" height="2" fill="#10B981"/>
+                  <rect x="6" y="11" width="8" height="1" fill="#8B5CF6"/>
+                  <rect x="6" y="14" width="10" height="1" fill="#F59E0B"/>
+                  <rect x="6" y="17" width="6" height="1" fill="#06B6D4"/>
+                </svg>
+                Base de Contactos
               </a>
 
               <a href="/sales-flow-designer" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/sales-flow-designer' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
@@ -693,6 +705,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/tasks" component={() => <PrivateRoute component={Tasks} path="/tasks" />} />
                 <Route path="/tickets" component={() => <PrivateRoute component={TicketsSimple} path="/tickets" />} />
                 <Route path="/tags" component={() => <PrivateRoute component={TagManagement} path="/tags" />} />
+                <Route path="/contacts-database" component={() => <PrivateRoute component={ContactsDatabase} path="/contacts-database" />} />
                 <Route path="/analytics" component={() => <PrivateRoute component={Analytics} path="/analytics" />} />
                 <Route path="/gemini-ai" component={() => <PrivateRoute component={GeminiAI} path="/gemini-ai" />} />
                 <Route path="/function-documentation" component={() => <PrivateRoute component={FunctionDocumentation} path="/function-documentation" />} />
