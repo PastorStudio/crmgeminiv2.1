@@ -55,6 +55,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { SubscriptionManager } from './components/admin/SubscriptionManager';
 import TagManagement from './pages/TagManagement';
 import ContactsDatabase from './pages/ContactsDatabase';
+import UserGuide from './pages/UserGuide';
 import Home from './pages/Home';
 
 // import SimpleWhatsAppDemo from './pages/SimpleWhatsAppDemo';
@@ -610,6 +611,19 @@ const AppRoutes: React.FC = () => {
                 </svg>
                 Documentación
               </a>
+
+              <a href="/user-guide" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/user-guide' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="4" y="3" width="16" height="18" rx="2" fill="#10B981"/>
+                  <rect x="7" y="7" width="10" height="1" rx="0.5" fill="white"/>
+                  <rect x="7" y="10" width="8" height="1" rx="0.5" fill="white"/>
+                  <rect x="7" y="13" width="9" height="1" rx="0.5" fill="white"/>
+                  <rect x="7" y="16" width="6" height="1" rx="0.5" fill="white"/>
+                  <circle cx="18" cy="6" r="2" fill="#F59E0B"/>
+                  <path d="M17 5.5L17.5 6L19 4.5" stroke="white" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Guía de Usuario
+              </a>
               
               <a href="/agent-security" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/agent-security' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -709,6 +723,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/analytics" component={() => <PrivateRoute component={Analytics} path="/analytics" />} />
                 <Route path="/gemini-ai" component={() => <PrivateRoute component={GeminiAI} path="/gemini-ai" />} />
                 <Route path="/function-documentation" component={() => <PrivateRoute component={FunctionDocumentation} path="/function-documentation" />} />
+                <Route path="/user-guide" component={() => <PrivateRoute component={UserGuide} path="/user-guide" />} />
                 <Route path="/settings" component={() => <PrivateRoute component={Settings} path="/settings" />} />
                 <Route path="/ai-settings" component={() => <PrivateRoute component={AISettings} path="/ai-settings" />} />
 
