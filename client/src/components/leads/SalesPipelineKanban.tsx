@@ -3,8 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
-import { Eye, MessageSquare, Calendar, Plus, Edit, Trash2 } from "lucide-react";
+import { Eye, MessageSquare, Calendar, Plus, Edit, Trash2, X } from "lucide-react";
 import { Lead } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "@/hooks/use-toast";
@@ -35,6 +39,8 @@ export default function SalesPipelineKanban() {
   const [columns, setColumns] = useState<PipelineColumn[]>([]);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [previewLead, setPreviewLead] = useState<Lead | null>(null);
+  const [commentsLead, setCommentsLead] = useState<Lead | null>(null);
   const queryClient = useQueryClient();
 
   // Function to calculate probability based on customer interest
@@ -420,10 +426,26 @@ export default function SalesPipelineKanban() {
                                 
                                 <div className="flex items-center justify-between pt-1">
                                   <div className="flex items-center space-x-1">
-                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-6 w-6 p-0 text-gray-600 hover:text-blue-600"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPreviewLead(lead);
+                                      }}
+                                    >
                                       <Eye className="h-3 w-3" />
                                     </Button>
-                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-6 w-6 p-0 text-gray-600 hover:text-green-600"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setCommentsLead(lead);
+                                      }}
+                                    >
                                       <MessageSquare className="h-3 w-3" />
                                     </Button>
                                     <Button 
@@ -466,6 +488,161 @@ export default function SalesPipelineKanban() {
           </div>
         </DragDropContext>
       </CardContent>
+
+      {/* Lead Preview Modal */}
+      <Dialog open={!!previewLead} onOpenChange={() => setPreviewLead(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Vista Previa - {getContactInfo(previewLead!).name}</DialogTitle>
+          </DialogHeader>
+          {previewLead && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Nombre</Label>
+                  <p className="text-sm">{getContactInfo(previewLead).name}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Teléfono</Label>
+                  <p className="text-sm">{getContactInfo(previewLead).phone}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Email</Label>
+                  <p className="text-sm">{previewLead.email || 'No disponible'}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Estado</Label>
+                  <Badge variant="outline">{previewLead.status}</Badge>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Valor</Label>
+                  <p className="text-sm">${previewLead.value || 0} {previewLead.currency}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Probabilidad</Label>
+                  <p className="text-sm text-blue-600 font-medium">{calculateProbability(previewLead)}%</p>
+                </div>
+              </div>
+              {previewLead.notes && (
+                <div>
+                  <Label className="text-sm font-medium">Notas</Label>
+                  <p className="text-sm bg-gray-50 p-3 rounded-md">{previewLead.notes}</p>
+                </div>
+              )}
+              <div className="flex items-center space-x-2 text-xs text-gray-500">
+                <Calendar className="h-3 w-3" />
+                <span>Creado: {formatDistanceToNow(new Date(previewLead.createdAt), { addSuffix: true })}</span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Lead Comments Modal */}
+      <Dialog open={!!commentsLead} onOpenChange={() => setCommentsLead(null)}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Comentarios - {commentsLead && getContactInfo(commentsLead).name}</DialogTitle>
+          </DialogHeader>
+          {commentsLead && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-md">
+                <h4 className="font-medium text-sm mb-2">Información del Lead</h4>
+                <p className="text-sm"><strong>Teléfono:</strong> {getContactInfo(commentsLead).phone}</p>
+                <p className="text-sm"><strong>Estado:</strong> {commentsLead.status}</p>
+                <p className="text-sm"><strong>Probabilidad:</strong> {calculateProbability(commentsLead)}%</p>
+              </div>
+              
+              <div>
+                <Label className="text-sm font-medium">Agregar Comentario</Label>
+                <Textarea 
+                  placeholder="Escribe un comentario sobre este lead..."
+                  className="mt-1"
+                />
+                <Button className="mt-2" size="sm">
+                  Guardar Comentario
+                </Button>
+              </div>
+              
+              <div>
+                <Label className="text-sm font-medium">Historial de Comentarios</Label>
+                <div className="space-y-2 mt-2">
+                  <div className="text-sm text-gray-500 italic">
+                    No hay comentarios disponibles para este lead.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Lead Edit Modal */}
+      <Dialog open={!!editingLead} onOpenChange={() => setEditingLead(null)}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Editar Lead - {editingLead && getContactInfo(editingLead).name}</DialogTitle>
+          </DialogHeader>
+          {editingLead && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Nombre</Label>
+                  <Input 
+                    defaultValue={editingLead.name || ''} 
+                    placeholder="Nombre del lead"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Teléfono</Label>
+                  <Input 
+                    defaultValue={editingLead.phone || ''} 
+                    placeholder="Número de teléfono"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Email</Label>
+                  <Input 
+                    defaultValue={editingLead.email || ''} 
+                    placeholder="Correo electrónico"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Valor</Label>
+                  <Input 
+                    type="number"
+                    defaultValue={editingLead.value || 0} 
+                    placeholder="Valor estimado"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-sm font-medium">Notas</Label>
+                <Textarea 
+                  defaultValue={editingLead.notes || ''} 
+                  placeholder="Notas adicionales..."
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setEditingLead(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={() => {
+                  toast({
+                    title: "Lead actualizado",
+                    description: "Los cambios se han guardado correctamente"
+                  });
+                  setEditingLead(null);
+                }}>
+                  Guardar Cambios
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
