@@ -64,19 +64,20 @@ export default function TagManagement() {
         headers: { "Content-Type": "application/json" }
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tags"] });
       setIsCreateDialogOpen(false);
       resetForm();
       toast({
         title: "Etiqueta creada",
-        description: "La etiqueta se ha creado correctamente",
+        description: data?.message || "La etiqueta se ha creado correctamente",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      const errorMessage = error?.message || "No se pudo crear la etiqueta";
       toast({
         title: "Error",
-        description: "No se pudo crear la etiqueta",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -91,20 +92,21 @@ export default function TagManagement() {
         headers: { "Content-Type": "application/json" }
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tags"] });
       setIsEditDialogOpen(false);
       setEditingTag(null);
       resetForm();
       toast({
         title: "Etiqueta actualizada",
-        description: "La etiqueta se ha actualizado correctamente",
+        description: data?.message || "La etiqueta se ha actualizado correctamente",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      const errorMessage = error?.message || "No se pudo actualizar la etiqueta";
       toast({
         title: "Error",
-        description: "No se pudo actualizar la etiqueta",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -117,17 +119,43 @@ export default function TagManagement() {
         method: "DELETE"
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tags"] });
       toast({
         title: "Etiqueta eliminada",
-        description: "La etiqueta se ha eliminado correctamente",
+        description: data?.message || "La etiqueta se ha eliminado correctamente",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      const errorMessage = error?.message || "No se pudo eliminar la etiqueta";
       toast({
         title: "Error",
-        description: "No se pudo eliminar la etiqueta",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Mutación para inicializar etiquetas del sistema
+  const initializeSystemTagsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("/api/tags/initialize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tags"] });
+      toast({
+        title: "Etiquetas inicializadas",
+        description: data?.message || "Las etiquetas del sistema se han inicializado correctamente",
+      });
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.message || "No se pudieron inicializar las etiquetas del sistema";
+      toast({
+        title: "Error",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -209,13 +237,22 @@ export default function TagManagement() {
           </p>
         </div>
         
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nueva Etiqueta
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => initializeSystemTagsMutation.mutate()}
+            disabled={initializeSystemTagsMutation.isPending}
+          >
+            {initializeSystemTagsMutation.isPending ? "Inicializando..." : "Inicializar Sistema"}
+          </Button>
+          
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nueva Etiqueta
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Crear Nueva Etiqueta</DialogTitle>
@@ -290,7 +327,8 @@ export default function TagManagement() {
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Estadísticas */}

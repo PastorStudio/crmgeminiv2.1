@@ -3290,14 +3290,72 @@ export function registerOptimizedRoutes(app: Express): Server {
 
   // ***** SISTEMA DE ETIQUETAS UNIVERSAL *****
 
+  // Inicializar etiquetas del sistema
+  app.post("/api/tags/initialize", async (req: Request, res: Response) => {
+    try {
+      console.log('🏷️ Inicializando etiquetas del sistema...');
+      
+      const systemTags = [
+        { name: "VIP", color: "#9333EA", category: "priority", description: "Cliente VIP prioritario", isSystem: true },
+        { name: "Nuevo Lead", color: "#10B981", category: "status", description: "Lead recién generado", isSystem: true },
+        { name: "En Seguimiento", color: "#F59E0B", category: "status", description: "Lead en proceso de seguimiento", isSystem: true },
+        { name: "Interesado", color: "#3B82F6", category: "status", description: "Cliente con interés confirmado", isSystem: true },
+        { name: "No Interesado", color: "#EF4444", category: "status", description: "Cliente sin interés", isSystem: true },
+        { name: "Cotización Enviada", color: "#8B5CF6", category: "status", description: "Cotización enviada al cliente", isSystem: true },
+        { name: "Cliente Potencial", color: "#06B6D4", category: "general", description: "Cliente con potencial de compra", isSystem: true },
+        { name: "Envío Masivo", color: "#EC4899", category: "custom", description: "Para campañas de marketing", isSystem: true },
+        { name: "Soporte", color: "#84CC16", category: "custom", description: "Consultas de soporte técnico", isSystem: true },
+        { name: "Urgente", color: "#DC2626", category: "priority", description: "Requiere atención inmediata", isSystem: true }
+      ];
+
+      let createdCount = 0;
+      
+      for (const tag of systemTags) {
+        try {
+          // Verificar si ya existe
+          const [existing] = await db.select().from(tags).where(eq(tags.name, tag.name));
+          
+          if (!existing) {
+            await db.insert(tags).values(tag);
+            createdCount++;
+            console.log(`✅ Etiqueta creada: ${tag.name}`);
+          } else {
+            console.log(`⚠️ Etiqueta ya existe: ${tag.name}`);
+          }
+        } catch (error) {
+          console.log(`❌ Error creando etiqueta ${tag.name}:`, error);
+        }
+      }
+
+      console.log(`🏷️ Proceso completado: ${createdCount} etiquetas nuevas creadas`);
+
+      res.json({
+        success: true,
+        message: `${createdCount} etiquetas del sistema inicializadas`,
+        created: createdCount,
+        total: systemTags.length
+      });
+    } catch (error) {
+      console.error('❌ Error inicializando etiquetas del sistema:', error);
+      res.status(500).json({ 
+        error: "Error inicializando etiquetas",
+        success: false 
+      });
+    }
+  });
+
   // Obtener todas las etiquetas
   app.get("/api/tags", async (req: Request, res: Response) => {
     try {
       const allTags = await db.select().from(tags).orderBy(tags.name);
+      console.log(`📋 Obtenidas ${allTags.length} etiquetas`);
       res.json(allTags);
     } catch (error) {
-      console.error('Error obteniendo etiquetas:', error);
-      res.status(500).json({ error: "Error obteniendo etiquetas" });
+      console.error('❌ Error obteniendo etiquetas:', error);
+      res.status(500).json({ 
+        error: "Error obteniendo etiquetas",
+        success: false 
+      });
     }
   });
 
@@ -3475,21 +3533,235 @@ export function registerOptimizedRoutes(app: Express): Server {
     }
   });
 
+  // ***** RUTAS DE ASIGNACIÓN DE ETIQUETAS *****
+
   // Asignar etiqueta a lead
   app.post("/api/leads/:id/tags", async (req: Request, res: Response) => {
     try {
       const leadId = parseInt(req.params.id);
-      const { tagId } = req.body;
+      const { tagId, tagIds } = req.body;
+      console.log('🏷️ Asignando etiquetas a lead:', leadId, 'etiquetas:', tagId || tagIds);
+
+      if (isNaN(leadId)) {
+        return res.status(400).json({ 
+          error: "ID de lead inválido",
+          success: false 
+        });
+      }
+
+      // Verificar que el lead existe
+      const [lead] = await db.select().from(leads).where(eq(leads.id, leadId));
+      if (!lead) {
+        return res.status(404).json({ 
+          error: "Lead no encontrado",
+          success: false 
+        });
+      }
+
+      let assignments = [];
       
-      const [assignment] = await db
-        .insert(leadTags)
-        .values({ leadId, tagId })
-        .returning();
+      if (tagIds && Array.isArray(tagIds)) {
+        // Asignar múltiples etiquetas
+        for (const id of tagIds) {
+          try {
+            const [assignment] = await db
+              .insert(leadTags)
+              .values({ leadId, tagId: id, assignedBy: 3 }) // Usuario DJP
+              .onConflictDoNothing()
+              .returning();
+            if (assignment) assignments.push(assignment);
+          } catch (error) {
+            console.log(`⚠️ Etiqueta ${id} ya asignada al lead ${leadId}`);
+          }
+        }
+      } else if (tagId) {
+        // Asignar una sola etiqueta
+        try {
+          const [assignment] = await db
+            .insert(leadTags)
+            .values({ leadId, tagId, assignedBy: 3 })
+            .onConflictDoNothing()
+            .returning();
+          if (assignment) assignments.push(assignment);
+        } catch (error) {
+          console.log(`⚠️ Etiqueta ${tagId} ya asignada al lead ${leadId}`);
+        }
+      }
+
+      console.log('✅ Etiquetas asignadas al lead:', assignments.length);
       
-      res.json(assignment);
+      res.json({
+        success: true,
+        assignments,
+        message: `${assignments.length} etiquetas asignadas correctamente`
+      });
     } catch (error) {
-      console.error('Error asignando etiqueta a lead:', error);
+      console.error('❌ Error asignando etiqueta a lead:', error);
+      res.status(500).json({ 
+        error: "Error asignando etiqueta",
+        success: false,
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  // Obtener etiquetas de un lead
+  app.get("/api/leads/:id/tags", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      
+      const leadTagsWithDetails = await db
+        .select({
+          id: leadTags.id,
+          tagId: leadTags.tagId,
+          assignedAt: leadTags.assignedAt,
+          tagName: tags.name,
+          tagColor: tags.color,
+          tagCategory: tags.category
+        })
+        .from(leadTags)
+        .innerJoin(tags, eq(leadTags.tagId, tags.id))
+        .where(eq(leadTags.leadId, leadId));
+
+      res.json(leadTagsWithDetails);
+    } catch (error) {
+      console.error('Error obteniendo etiquetas del lead:', error);
+      res.status(500).json({ error: "Error obteniendo etiquetas" });
+    }
+  });
+
+  // Quitar etiqueta de lead
+  app.delete("/api/leads/:id/tags/:tagId", async (req: Request, res: Response) => {
+    try {
+      const leadId = parseInt(req.params.id);
+      const tagId = parseInt(req.params.tagId);
+
+      await db
+        .delete(leadTags)
+        .where(and(eq(leadTags.leadId, leadId), eq(leadTags.tagId, tagId)));
+
+      res.json({ 
+        success: true,
+        message: "Etiqueta removida del lead"
+      });
+    } catch (error) {
+      console.error('Error removiendo etiqueta del lead:', error);
+      res.status(500).json({ error: "Error removiendo etiqueta" });
+    }
+  });
+
+  // Asignar etiqueta a contacto
+  app.post("/api/contacts/:id/tags", async (req: Request, res: Response) => {
+    try {
+      const contactId = parseInt(req.params.id);
+      const { tagId, tagIds } = req.body;
+
+      let assignments = [];
+      
+      if (tagIds && Array.isArray(tagIds)) {
+        for (const id of tagIds) {
+          try {
+            const [assignment] = await db
+              .insert(contactTags)
+              .values({ contactId, tagId: id, assignedBy: 3 })
+              .onConflictDoNothing()
+              .returning();
+            if (assignment) assignments.push(assignment);
+          } catch (error) {
+            console.log(`⚠️ Etiqueta ${id} ya asignada al contacto ${contactId}`);
+          }
+        }
+      } else if (tagId) {
+        const [assignment] = await db
+          .insert(contactTags)
+          .values({ contactId, tagId, assignedBy: 3 })
+          .onConflictDoNothing()
+          .returning();
+        if (assignment) assignments.push(assignment);
+      }
+
+      res.json({
+        success: true,
+        assignments,
+        message: `${assignments.length} etiquetas asignadas al contacto`
+      });
+    } catch (error) {
+      console.error('Error asignando etiqueta a contacto:', error);
       res.status(500).json({ error: "Error asignando etiqueta" });
+    }
+  });
+
+  // Obtener contactos por etiqueta (para envíos masivos)
+  app.get("/api/tags/:tagId/contacts", async (req: Request, res: Response) => {
+    try {
+      const tagId = parseInt(req.params.tagId);
+      console.log('📋 Obteniendo contactos con etiqueta:', tagId);
+
+      const contactsWithTag = await db
+        .select({
+          id: contacts.id,
+          name: contacts.name,
+          phone: contacts.phone,
+          email: contacts.email,
+          company: contacts.company,
+          whatsappAccountId: contacts.whatsappAccountId,
+          assignedAt: contactTags.assignedAt
+        })
+        .from(contactTags)
+        .innerJoin(contacts, eq(contactTags.contactId, contacts.id))
+        .where(and(
+          eq(contactTags.tagId, tagId),
+          eq(contacts.isActive, true)
+        ));
+
+      console.log(`✅ Encontrados ${contactsWithTag.length} contactos con etiqueta ${tagId}`);
+
+      res.json({
+        success: true,
+        contacts: contactsWithTag,
+        count: contactsWithTag.length
+      });
+    } catch (error) {
+      console.error('Error obteniendo contactos por etiqueta:', error);
+      res.status(500).json({ error: "Error obteniendo contactos" });
+    }
+  });
+
+  // Obtener leads por etiqueta (para envíos masivos)
+  app.get("/api/tags/:tagId/leads", async (req: Request, res: Response) => {
+    try {
+      const tagId = parseInt(req.params.tagId);
+      console.log('📋 Obteniendo leads con etiqueta:', tagId);
+
+      const leadsWithTag = await db
+        .select({
+          id: leads.id,
+          name: leads.name,
+          phone: leads.phone,
+          email: leads.email,
+          company: leads.company,
+          status: leads.status,
+          whatsappAccountId: leads.whatsappAccountId,
+          assignedAt: leadTags.assignedAt
+        })
+        .from(leadTags)
+        .innerJoin(leads, eq(leadTags.leadId, leads.id))
+        .where(and(
+          eq(leadTags.tagId, tagId),
+          eq(leads.isActive, true),
+          eq(leads.isDeleted, false)
+        ));
+
+      console.log(`✅ Encontrados ${leadsWithTag.length} leads con etiqueta ${tagId}`);
+
+      res.json({
+        success: true,
+        leads: leadsWithTag,
+        count: leadsWithTag.length
+      });
+    } catch (error) {
+      console.error('Error obteniendo leads por etiqueta:', error);
+      res.status(500).json({ error: "Error obteniendo leads" });
     }
   });
 
