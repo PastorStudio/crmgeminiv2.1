@@ -1,8 +1,13 @@
-2025/06/18-09:49:31.128 745d Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/06/18-09:49:31.129 745d Recovering log #595
-2025/06/18-09:49:31.129 745d Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000595.log 
-2025/06/18-09:49:31.129 745d Delete type=2 #593
-2025/06/18-09:49:31.148 7463 Level-0 table #600: started
-2025/06/18-09:49:31.154 7463 Level-0 table #600: 11521 bytes OK
-2025/06/18-09:49:31.172 7463 Delete type=0 #595
-2025/06/18-09:49:31.172 745d Manual compaction at level-0 from '\x00\xcf\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xd0\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/18-09:50:46.113 7663 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/18-09:50:46.113 7663 Recovering log #599
+2025/06/18-09:50:46.114 7663 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000599.log 
+2025/06/18-09:50:46.140 7661 Level-0 table #603: started
+2025/06/18-09:50:46.153 7661 Level-0 table #603: 20015 bytes OK
+2025/06/18-09:50:46.158 7661 Delete type=0 #599
+2025/06/18-09:50:46.159 7661 Manual compaction at level-0 from '\x00\xd0\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xd1\x00\x00\x00' @ 0 : 0; will stop at '\x00\xd0\x06 \x03\x00\x00\x00\x00\x00\x80V@\x00\x01\x0b\x00I\x00d\x00T\x00t\x00l\x009\x000\x00D\x00a\x00y\x00s' @ 86769 : 1
+2025/06/18-09:50:46.159 7661 Compacting 1@0 + 1@1 files
+2025/06/18-09:50:46.163 7661 Generated table #604@0: 360 keys, 3303 bytes
+2025/06/18-09:50:46.163 7661 Compacted 1@0 + 1@1 files => 3303 bytes
+2025/06/18-09:50:46.167 7661 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/06/18-09:50:46.167 7661 Delete type=2 #603
+2025/06/18-09:50:46.167 7661 Manual compaction at level-0 from '\x00\xd0\x06 \x03\x00\x00\x00\x00\x00\x80V@\x00\x01\x0b\x00I\x00d\x00T\x00t\x00l\x009\x000\x00D\x00a\x00y\x00s' @ 86769 : 1 .. '\x00\xd1\x00\x00\x00' @ 0 : 0; will stop at (end)
