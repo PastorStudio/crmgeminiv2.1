@@ -3,8 +3,8 @@
  * Procesa conversaciones de WhatsApp y las convierte automáticamente en leads
  */
 
-import { db } from '../db';
-import { leads, whatsappAccounts } from '@shared/schema';
+import { db } from '../db.js';
+import { leads, whatsappAccounts, whatsappMessages } from '../../shared/schema';
 import { eq, and, isNull, desc, gt } from 'drizzle-orm';
 
 interface ChatAnalysis {
@@ -355,27 +355,47 @@ export class ChatToLeadConverter {
   }
 
   /**
-   * Obtiene chats desde la base de datos de mensajes de WhatsApp
+   * Obtiene chats desde base de datos de mensajes WhatsApp
    */
   private async getChatsFromDatabase(accountId: number): Promise<any[]> {
     try {
-      // Obtener mensajes únicos por contacto desde la base de datos
-      const messagesQuery = `
-        SELECT DISTINCT 
-          wm."from" as phone,
-          wm."contactName" as name,
-          wm.message as "lastMessage",
-          wm."createdAt" as timestamp,
-          COUNT(*) OVER (PARTITION BY wm."from") as "messageCount"
-        FROM whatsapp_messages wm 
-        WHERE wm."accountId" = $1 
-        AND wm."from" IS NOT NULL
-        ORDER BY wm."createdAt" DESC
-        LIMIT 100
-      `;
+      // Consulta usando Drizzle ORM con las columnas correctas
+      const messages = await db
+        .select({
+          chatId: whatsappMessages.chatId,
+          content: whatsappMessages.content,
+          timestamp: whatsappMessages.timestamp,
+          fromMe: whatsappMessages.from_me
+        })
+        .from(whatsappMessages)
+        .where(eq(whatsappMessages.accountId, accountId))
+        .orderBy(desc(whatsappMessages.timestamp))
+        .limit(50);
+
+      // Agrupar por chatId
+      const chatGroups = new Map();
+      messages.forEach(msg => {
+        if (!chatGroups.has(msg.chatId)) {
+          chatGroups.set(msg.chatId, []);
+        }
+        chatGroups.get(msg.chatId).push(msg);
+      });
+
+      // Convertir a formato de chat
+      return Array.from(chatGroups.entries()).map(([chatId, msgs]: [string, any[]]) => ({
+        chatId,
+        phone: chatId,
+        name: `Contacto ${chatId.slice(-4)}`,
+        lastMessage: msgs[0]?.content || '',
+        timestamp: msgs[0]?.timestamp || new Date(),
+        messageCount: msgs.length,
+        messages: msgs.map(msg => ({
+          body: msg.content,
+          timestamp: msg.timestamp,
+          fromMe: msg.fromMe
+        }))
+      }));
       
-      const result = await db.$client.query(messagesQuery, [accountId]);
-      return result.rows || [];
     } catch (error) {
       console.error('Error obteniendo chats desde base de datos:', error);
       return [];

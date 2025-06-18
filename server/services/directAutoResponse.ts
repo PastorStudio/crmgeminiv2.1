@@ -1,17 +1,12 @@
 /**
- * DESHABILITADO - Usar unifiedAutoResponseSystem en su lugar
- * Este archivo está deshabilitado para evitar conflictos
+ * Sistema de respuestas automáticas DIRECTO
+ * Sin complicaciones, sin interceptaciones, solo funciona
  */
-
-console.log('⚠️ directAutoResponse.ts está deshabilitado - usar unifiedAutoResponseSystem');
-
-// Sistema deshabilitado
 
 import OpenAI from 'openai';
 import { db } from '../db';
 import { whatsappAccounts, externalAgents } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
-import { ResponseCleanerService } from './responseCleanerService';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -29,60 +24,60 @@ export class DirectAutoResponse {
   static async processMessage(message: DirectMessage): Promise<boolean> {
     try {
       console.log(`🚀 RESPUESTA DIRECTA - Mensaje: "${message.messageText}"`);
-
+      
       // Si el mensaje es nuestro, ignorar
       if (message.fromMe) {
         console.log('⏭️ Mensaje propio, ignorando');
         return false;
       }
-
+      
       // Buscar configuración de la cuenta directamente
       const accountConfig = await db.select()
         .from(whatsappAccounts)
         .where(eq(whatsappAccounts.id, message.accountId))
         .limit(1);
-
+      
       if (accountConfig.length === 0) {
         console.log('❌ Cuenta no encontrada');
         return false;
       }
-
+      
       const account = accountConfig[0];
-
+      
       // Verificar si tiene respuestas automáticas activadas
       if (!account.autoResponseEnabled) {
         console.log('⏭️ Respuestas automáticas no activadas');
         return false;
       }
-
+      
       // Verificar si tiene un prompt asignado antes de intentar responder
       if (!account.assignedPromptId) {
         console.log(`❌ Cuenta ${message.accountId} no tiene prompt asignado - NO SE GENERARÁ RESPUESTA AUTOMÁTICA`);
         return false;
       }
-
+      
       // USAR CONFIGURACIÓN AI PERSONALIZADA con prompt asignado
       console.log(`🤖 Generando respuesta con prompt asignado ${account.assignedPromptId} para cuenta ${message.accountId}...`);
-
+      
       // Generar respuesta usando la configuración AI personalizada
       const responseText = await this.generateAIResponse(message.messageText, message.accountId);
-
+      
       if (!responseText) {
         console.log('❌ No se pudo generar respuesta con configuración AI');
         return false;
       }
-
+      
       console.log(`✅ Respuesta AI personalizada generada: "${responseText}"`);
       console.log(`📤 RESPUESTA LISTA PARA ENVÍO al chat ${message.chatId}`);
-
+      
       return true;
-
+      
     } catch (error) {
       console.error('❌ Error en respuesta directa:', error);
       return false;
     }
   }
-
+  
   /**
    * Genera respuesta usando el prompt específico asignado a la cuenta
    */
@@ -104,7 +99,7 @@ export class DirectAutoResponse {
       }
 
       const account = accountWithPrompt[0];
-
+      
       if (!account.assignedPromptId) {
         console.log(`❌ Cuenta ${accountId} no tiene prompt asignado - NO SE GENERARÁ RESPUESTA AUTOMÁTICA`);
         return null;
@@ -123,7 +118,7 @@ export class DirectAutoResponse {
       }
 
       const prompt = promptResult[0];
-
+      
       if (!prompt.isActive) {
         console.log(`⚠️ Prompt ${prompt.id} no está activo`);
         return "Gracias por tu mensaje. Te responderemos a la brevedad.";
@@ -132,44 +127,13 @@ export class DirectAutoResponse {
       console.log(`🤖 Usando prompt "${prompt.name}" (${prompt.provider}) para cuenta ${accountId}`);
       console.log(`📝 Mensaje del usuario: "${messageBody}"`);
       
-      const systemPrompt = `Eres un asistente conversacional natural y empático. 
-
-      INSTRUCCIONES IMPORTANTES:
-      - Responde de forma casual y humana, como una conversación real
-      - NO uses saludos formales repetitivos ni frases institucionales
-      - NO menciones departamentos, agentes específicos o estructuras organizacionales
-      - Sé directo, amigable y útil
-      - Varía tus respuestas para evitar repetición
-      - Usa un tono conversacional como si fueras una persona real ayudando
-      - Haz preguntas de seguimiento relevantes cuando sea apropiado
-      - Mantén las respuestas cortas y al punto (máximo 2-3 líneas)
-
-      FRASES COMPLETAMENTE PROHIBIDAS (NUNCA las uses):
-      - "Gracias por escribirnos"
-      - "Le saluda [cualquier nombre], agente del"
-      - "Departamento de Servicio al Ciudadano"
-      - "Sistema Municipal"
-      - "Estoy aquí para apoyarle en canalizar su necesidad"
-      - "Misael Moreno Frias"
-      - "Enrique"
-      - Cualquier mención de departamentos gubernamentales
-      - Cualquier estructura formal de saludo institucional
-
-      Ejemplos de BUENOS inicios:
-      - "¡Hola! ¿En qué te puedo ayudar?"
-      - "¿Qué tal? ¿Cómo puedo asistirte?"
-      - "¡Hey! Cuéntame, ¿qué necesitas?"
-      - "¿En qué te puedo echar una mano?"
-
-      Responde de forma natural y conversacional.`;
-
       // Generar respuesta con OpenAI usando el prompt específico
       const completion = await openai.chat.completions.create({
         model: prompt.model || "gpt-4o",
         messages: [
           {
             role: "system",
-            content: systemPrompt
+            content: prompt.content
           },
           {
             role: "user",
@@ -181,26 +145,15 @@ export class DirectAutoResponse {
       });
 
       const response = completion.choices[0]?.message?.content?.trim();
-
+      
       if (response) {
-        // Limpiar la respuesta de patrones formales no deseados
-        const cleanedResponse = ResponseCleanerService.cleanResponse(response);
-        
-        // Verificar si aún contiene contenido prohibido
-        if (ResponseCleanerService.hasProhibitedContent(cleanedResponse)) {
-          console.log(`⚠️ Respuesta contenía patrones prohibidos, usando alternativa`);
-          const alternativeResponse = ResponseCleanerService.generateAlternativeResponse();
-          console.log(`✅ Respuesta alternativa generada: "${alternativeResponse}"`);
-          return alternativeResponse;
-        }
-        
-        console.log(`✅ Respuesta generada y limpiada con prompt "${prompt.name}": "${cleanedResponse}"`);
-        return cleanedResponse;
+        console.log(`✅ Respuesta generada con prompt "${prompt.name}": "${response}"`);
+        return response;
       }
 
       console.log(`⚠️ No se pudo generar respuesta, usando fallback`);
       return "Gracias por tu mensaje. Te responderemos a la brevedad.";
-
+      
     } catch (error) {
       console.error(`❌ Error generando respuesta con prompt asignado:`, error);
       return "Gracias por tu mensaje. Te responderemos a la brevedad.";
@@ -216,9 +169,9 @@ export class DirectAutoResponse {
         .from(whatsappAccounts)
         .where(eq(whatsappAccounts.id, accountId))
         .limit(1);
-
+      
       if (account.length === 0) return false;
-
+      
       const acc = account[0];
       return acc.autoResponseEnabled === true;
     } catch (error) {

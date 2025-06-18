@@ -3,7 +3,7 @@
  * Detecta automáticamente mensajes nuevos y genera respuestas usando agentes externos reales
  */
 
-import { pool } from '../db';
+import { db } from '../db';
 
 interface ExternalAgent {
   id: string;

@@ -1,11 +1,7 @@
 /**
- * DESHABILITADO - Usar unifiedAutoResponseSystem en su lugar
- * Este archivo está deshabilitado para evitar conflictos
+ * Sistema de respuestas automáticas mejorado que usa prompts asignados
+ * Reemplaza el sistema normal de agentes con configuración basada en prompts
  */
-
-console.log('⚠️ enhancedPromptAutoResponse.ts está deshabilitado - usar unifiedAutoResponseSystem');
-
-// Sistema deshabilitado
 
 import OpenAI from 'openai';
 import { db } from '../db';
@@ -39,9 +35,9 @@ class EnhancedPromptAutoResponseManager {
   async initialize(): Promise<void> {
     try {
       console.log('🚀 Inicializando sistema de respuestas automáticas basado en prompts...');
-
+      
       await this.loadActivePromptConfigurations();
-
+      
       this.isInitialized = true;
       console.log(`✅ Sistema iniciado con ${this.activeConfigs.size} cuentas configuradas con prompts`);
     } catch (error) {
@@ -55,10 +51,10 @@ class EnhancedPromptAutoResponseManager {
   async loadActivePromptConfigurations(): Promise<void> {
     try {
       console.log('🔄 Cargando configuraciones de prompts activas...');
-
+      
       // Usar consulta SQL directa para evitar problemas de esquema
       const { pool } = await import('../db');
-      const result = await pool.query(`
+      const result = await db.execute(`
         SELECT wa.id, wa.name, wa.autoresponseenabled, wa.assigned_prompt_id, wa.customprompt, wa.target_language,
                ap.name as prompt_name, ap.content as prompt_content, ap.provider, ap.temperature
         FROM whatsapp_accounts wa
@@ -101,10 +97,10 @@ class EnhancedPromptAutoResponseManager {
   async activatePromptForAccount(accountId: number, promptId: number): Promise<boolean> {
     try {
       console.log(`🚀 Activando prompt ${promptId} para cuenta ${accountId}...`);
-
+      
       // Actualizar base de datos usando consulta SQL directa
       const { pool } = await import('../db');
-      await pool.query(`
+      await db.execute(`
         UPDATE whatsapp_accounts 
         SET autoresponseenabled = true, assigned_prompt_id = $1 
         WHERE id = $2
@@ -145,7 +141,7 @@ class EnhancedPromptAutoResponseManager {
 
       // Construir prompt completo con contexto
       let fullPrompt = config.promptContent;
-
+      
       if (config.customPrompt) {
         fullPrompt = `${config.promptContent}\n\nInstrucciones adicionales: ${config.customPrompt}`;
       }
@@ -157,21 +153,11 @@ Contexto de la conversación:
 - Idioma preferido: ${config.targetLanguage}
 - Mensaje recibido: "${messageContent}"
 
-INSTRUCCIONES CRÍTICAS:
+Instrucciones:
 - Responde de manera profesional y útil
 - Mantén el tono y estilo definido en el prompt
 - Responde en ${config.targetLanguage}
-- Sé conciso pero completo
-
-FRASES PROHIBIDAS (NUNCA las uses):
-- "Gracias por escribirnos"
-- "Le saluda [nombre], agente del"
-- "Departamento de Servicio al Ciudadano"
-- "Sistema Municipal"
-- "Estoy aquí para apoyarle en canalizar"
-- Cualquier saludo formal institucional
-
-Responde de forma natural y conversacional.`;
+- Sé conciso pero completo`;
 
       const completion = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
@@ -190,7 +176,7 @@ Responde de forma natural y conversacional.`;
       });
 
       const response = completion.choices[0]?.message?.content;
-
+      
       if (response) {
         console.log(`✅ Respuesta generada exitosamente con prompt "${config.promptName}"`);
         return response.trim();
