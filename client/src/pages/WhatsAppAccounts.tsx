@@ -228,22 +228,33 @@ const WhatsAppAccounts = () => {
     refetchInterval: 15000, // Reduced from 5 to 15 seconds to prevent conflicts
   });
   
-  // Consulta para obtener código QR
+  // Consulta para obtener código QR usando el endpoint directo
   const { data: qrData, isLoading: isQrLoading, refetch: refetchQr } = useQuery({
-    queryKey: ['/api/whatsapp-accounts', selectedAccount?.id, 'qrcode'],
+    queryKey: ['/api/qr', selectedAccount?.id],
     queryFn: async () => {
       if (!selectedAccount) return null;
       try {
-        const data = await apiRequest(`/api/whatsapp-accounts/${selectedAccount.id}/qrcode`);
-        return data.success ? data : null;
+        const response = await fetch(`/api/qr/${selectedAccount.id}`);
+        const data = await response.json();
+        
+        if (data.success && data.qrCode) {
+          return { 
+            success: true, 
+            qrcode: data.qrCode,
+            dataUrl: data.dataUrl,
+            generatedAt: data.generatedAt,
+            expiresAt: data.expiresAt
+          };
+        }
+        return null;
       } catch (error) {
         console.error('Error fetching QR code:', error);
         return null;
       }
     },
-    enabled: !!selectedAccount && qrDialogOpen && 
-             ['inactive', 'pending_auth'].includes(selectedAccount.status || ''),
-    refetchInterval: qrDialogOpen ? 120000 : false // Refrescar cada 2 minutos si el diálogo está abierto
+    enabled: !!selectedAccount && qrDialogOpen,
+    refetchInterval: qrDialogOpen ? 30000 : false, // Refresh every 30 seconds when dialog is open
+    retry: 3
   });
   
   // Mutation para crear cuenta
