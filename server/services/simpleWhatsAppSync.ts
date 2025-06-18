@@ -2,7 +2,7 @@
  * Simplified WhatsApp Data Synchronization
  * Works with existing database schema to automatically update leads when WhatsApp accounts connect
  */
-import { db } from '../db';
+import { pool } from '../db';
 
 export class SimpleWhatsAppSync {
   

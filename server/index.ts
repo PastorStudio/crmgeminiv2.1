@@ -6,7 +6,7 @@ import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import modernMessagingRouter from "./routes/modern-messaging";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { users, whatsappAccounts, autoResponseConfigs, agentPageVisits, demoUsers, subscriptionPlans, userSubscriptions } from "@shared/schema";
 import { eq, gte, desc, and, sql } from "drizzle-orm";
 import * as agentAssignmentRoutes from "./routes/agentAssignments";
@@ -48,8 +48,6 @@ import { enhancedAssignmentService } from './services/enhancedAutomaticAssignmen
 import { enhancedAIService } from './services/enhancedAIResponseService';
 import { backgroundChatMonitor } from './services/backgroundChatMonitor';
 import { chatToLeadConverter } from './services/chatToLeadConverter';
-import { messageSystemActivator } from './services/messageSystemActivator';
-import intelligentMessagesRouter from './routes/intelligentMessages.js';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -152,10 +150,6 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-// Register intelligent messaging routes early
-import intelligentMessagesRouter from './routes/intelligentMessages.js';
-app.use('/api/intelligent', intelligentMessagesRouter);
 
 // ===== SUBSCRIPTION PLAN API ENDPOINTS (EARLY REGISTRATION) =====
 
@@ -9325,24 +9319,5 @@ Responde de manera conversacional, profesional y útil según tu especializació
       });
     }
   });
-
-  // Mount intelligent messages API routes
-  app.use("/api/intelligent", intelligentMessagesRouter);
-
-  // ===== SISTEMA INTELIGENTE DE RESPUESTAS AUTOMÁTICAS =====
-  setTimeout(async () => {
-    try {
-      console.log('🚀 Activando sistema inteligente de respuestas automáticas...');
-      await messageSystemActivator.activate();
-      
-      // Prueba del sistema con mensaje de ejemplo
-      console.log('🧪 Ejecutando prueba del sistema inteligente...');
-      await messageSystemActivator.testSystem(1, "Hola, necesito información sobre sus servicios");
-      
-      console.log('✅ Sistema inteligente de respuestas automáticas activado completamente');
-    } catch (error) {
-      console.error('❌ Error en activación del sistema inteligente:', error);
-    }
-  }, 8000);
 
 })();

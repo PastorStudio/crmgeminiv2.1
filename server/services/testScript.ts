@@ -3,7 +3,7 @@
  * Este módulo expone una función que puede ser llamada directamente por otras partes del código
  */
 
-import { db } from '../db';
+import { pool } from '../db';
 import { createAppointmentFromConversation } from './appointmentDetector';
 
 /**
@@ -20,7 +20,7 @@ export async function createTestAppointment(leadId: number): Promise<boolean> {
       values: [leadId]
     };
     
-    const checkResult = await db.execute(checkQuery);
+    const checkResult = await pool.query(checkQuery);
     if (checkResult.rows.length === 0) {
       console.error(`⚠️ No existe un lead con ID: ${leadId}`);
       return false;

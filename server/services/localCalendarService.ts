@@ -4,6 +4,7 @@
  */
 
 import { db } from '../db';
+import { pool } from '../db';
 import { calendarEvents } from '@shared/schema';
 import cron from 'node-cron';
 
