@@ -1,7 +1,11 @@
 /**
- * Sistema de respuestas automáticas mejorado que usa prompts asignados
- * Reemplaza el sistema normal de agentes con configuración basada en prompts
+ * DESHABILITADO - Usar unifiedAutoResponseSystem en su lugar
+ * Este archivo está deshabilitado para evitar conflictos
  */
+
+console.log('⚠️ enhancedPromptAutoResponse.ts está deshabilitado - usar unifiedAutoResponseSystem');
+
+// Sistema deshabilitado
 
 import OpenAI from 'openai';
 import { db } from '../db';

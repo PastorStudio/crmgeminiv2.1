@@ -1,7 +1,11 @@
 /**
- * Sistema de respuestas automáticas DIRECTO
- * Sin complicaciones, sin interceptaciones, solo funciona
+ * DESHABILITADO - Usar unifiedAutoResponseSystem en su lugar
+ * Este archivo está deshabilitado para evitar conflictos
  */
+
+console.log('⚠️ directAutoResponse.ts está deshabilitado - usar unifiedAutoResponseSystem');
+
+// Sistema deshabilitado
 
 import OpenAI from 'openai';
 import { db } from '../db';
