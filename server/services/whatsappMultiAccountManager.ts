@@ -617,42 +617,78 @@ class WhatsAppMultiAccountManager extends EventEmitter {
               });
               
               if (isVoiceMessage) {
-                console.log(`🎤 NOTA DE VOZ DETECTADA (tipo: ${message.type}), iniciando transcripción automática...`);
+                console.log(`🎤 NOTA DE VOZ DETECTADA (tipo: ${message.type}), procesando multimedia y transcripción...`);
                 
                 const media = await message.downloadMedia();
                 if (media) {
-                  // Importar el servicio de almacenamiento de notas de voz
-                  const { voiceNoteStorage } = await import('./voiceNoteStorage');
-                  
-                  // Convertir el archivo de audio a buffer
-                  const audioBuffer = Buffer.from(media.data, 'base64');
-                  
-                  // Guardar la nota de voz con transcripción automática
-                  const voiceNote = await voiceNoteStorage.saveVoiceNote(
+                  // Procesar archivo de voz usando MultimediaService
+                  const processedMedia = await MultimediaService.processMultimediaFile(
+                    media.data,
+                    media.mimetype,
                     message.id._serialized,
-                    message.from,
-                    id,
-                    audioBuffer,
-                    message.timestamp * 1000
+                    'audio'
                   );
                   
-                  if (voiceNote && voiceNote.transcription) {
-                    console.log(`✅ Nota de voz guardada y transcrita: "${voiceNote.transcription}"`);
-                    messageBody = voiceNote.transcription;
+                  if (processedMedia) {
+                    // Guardar en base de datos como archivo multimedia
+                    await MultimediaService.storeMediaFile({
+                      messageId: message.id._serialized,
+                      chatId: message.from,
+                      accountId: id,
+                      fileName: processedMedia.filename,
+                      fileType: 'audio',
+                      mimeType: media.mimetype,
+                      fileSize: processedMedia.size,
+                      filePath: processedMedia.filePath,
+                      fileData: media.data
+                    });
                     
-                    // Emitir evento de transcripción para la interfaz
-                    setTimeout(() => {
-                      this.emit('transcription_complete', {
-                        chatId: message.from,
-                        accountId: id,
-                        originalMessageId: message.id._serialized,
-                        transcription: voiceNote.transcription,
-                        timestamp: Date.now()
-                      });
-                    }, 1000);
+                    console.log(`✅ Nota de voz guardada como archivo multimedia: ${processedMedia.filename}`);
+                    
+                    // Intentar transcripción automática
+                    try {
+                      const { VoiceNoteTranscriptionService } = await import('./voiceNoteTranscriptionService');
+                      const transcriptionService = new VoiceNoteTranscriptionService();
+                      const audioBuffer = Buffer.from(media.data, 'base64');
+                      
+                      const transcriptionText = await transcriptionService.transcribeAudio(audioBuffer, message.id._serialized);
+                      
+                      if (transcriptionText) {
+                        // Guardar transcripción en base de datos
+                        const { voiceNoteTranscriptions } = await import('@shared/schema');
+                        await db.insert(voiceNoteTranscriptions).values({
+                          messageId: message.id._serialized,
+                          chatId: message.from,
+                          accountId: id,
+                          transcription: transcriptionText,
+                          confidence: 0.9,
+                          language: 'es',
+                          createdAt: new Date()
+                        });
+                        
+                        console.log(`✅ Transcripción automática completada: "${transcriptionText}"`);
+                        messageBody = `[Nota de voz transcrita: "${transcriptionText}"]`;
+                        
+                        // Emitir evento de transcripción
+                        setTimeout(() => {
+                          this.emit('transcription_complete', {
+                            chatId: message.from,
+                            accountId: id,
+                            originalMessageId: message.id._serialized,
+                            transcription: transcriptionText,
+                            timestamp: Date.now()
+                          });
+                        }, 1000);
+                      } else {
+                        messageBody = `[Nota de voz guardada: ${processedMedia.filename}]`;
+                      }
+                    } catch (transcriptionError) {
+                      console.error('❌ Error en transcripción automática:', transcriptionError);
+                      messageBody = `[Nota de voz guardada: ${processedMedia.filename}]`;
+                    }
                   } else {
-                    console.log(`💾 Nota de voz guardada sin transcripción automática`);
-                    messageBody = '[Nota de voz guardada - transcripción pendiente]';
+                    console.log(`⚠️ No se pudo procesar la nota de voz`);
+                    messageBody = '[Nota de voz recibida - error en procesamiento]';
                   }
                 } else {
                   console.log('⚠️ Error descargando nota de voz');

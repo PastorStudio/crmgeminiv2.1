@@ -51,6 +51,8 @@ import { chatToLeadConverter } from './services/chatToLeadConverter';
 import { messageSystemActivator } from './services/messageSystemActivator';
 import intelligentMessagesRouter from './routes/intelligentMessages.js';
 import multimediaRouter from './routes/multimedia';
+import voiceTranscriptionsRouter from './routes/voiceTranscriptions';
+import autoResponseToggleRouter from './routes/autoResponseToggle';
 import path from 'path';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
@@ -2416,6 +2418,8 @@ app.get("/api/tickets/stats", async (_req: Request, res: Response) => {
 
 // Registrar rutas de multimedia
 app.use('/api/multimedia', multimediaRouter);
+app.use('/api/voice-transcriptions', voiceTranscriptionsRouter);
+app.use('/api/auto-response', autoResponseToggleRouter);
 
 // Servir archivos estáticos desde uploads
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
