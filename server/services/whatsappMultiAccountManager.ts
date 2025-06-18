@@ -662,47 +662,72 @@ class WhatsAppMultiAccountManager extends EventEmitter {
                 // Procesar otros tipos de multimedia (imágenes, videos, documentos, stickers)
                 console.log(`📁 Procesando archivo multimedia: ${message.type}`);
                 
-                const processedMedia = await MultimediaService.processMultimediaMessage(
-                  id,
-                  message.from,
-                  message.id._serialized
-                );
-                
-                if (processedMedia) {
-                  console.log(`✅ Archivo multimedia procesado: ${processedMedia.type} - ${processedMedia.filename}`);
+                const media = await message.downloadMedia();
+                if (media) {
+                  // Determinar tipo de archivo
+                  const fileType = MultimediaService.identifyFileType(message.type, media.mimetype);
+                  const fileName = `${message.id._serialized}.${MultimediaService.getExtensionFromMimeType(media.mimetype)}`;
                   
-                  // Establecer mensaje descriptivo según el tipo
-                  switch (processedMedia.type) {
-                    case 'image':
-                      messageBody = message.body || `[Imagen recibida: ${processedMedia.filename}]`;
-                      break;
-                    case 'video':
-                      messageBody = message.body || `[Video recibido: ${processedMedia.filename}]`;
-                      break;
-                    case 'document':
-                      messageBody = message.body || `[Documento recibido: ${processedMedia.filename}]`;
-                      break;
-                    case 'sticker':
-                      messageBody = message.body || '[Sticker recibido]';
-                      break;
-                    default:
-                      messageBody = message.body || `[Archivo multimedia recibido: ${processedMedia.filename}]`;
-                  }
+                  // Procesar archivo multimedia usando el método mejorado
+                  const processedMedia = await MultimediaService.processMultimediaFile(
+                    media.data,
+                    media.mimetype,
+                    message.id._serialized,
+                    fileType
+                  );
                   
-                  // Emitir evento de multimedia procesado
-                  setTimeout(() => {
-                    this.emit('multimedia_processed', {
+                  if (processedMedia) {
+                    // Guardar en base de datos
+                    await MultimediaService.storeMediaFile({
+                      messageId: message.id._serialized,
                       chatId: message.from,
                       accountId: id,
-                      messageId: message.id._serialized,
-                      mediaType: processedMedia.type,
-                      filename: processedMedia.filename,
-                      timestamp: Date.now()
+                      fileName: processedMedia.filename,
+                      fileType: fileType,
+                      mimeType: media.mimetype,
+                      fileSize: processedMedia.size,
+                      filePath: processedMedia.filePath,
+                      fileData: media.data
                     });
-                  }, 500);
+                    
+                    console.log(`✅ Archivo multimedia procesado: ${fileType} - ${processedMedia.filename}`);
+                    
+                    // Establecer mensaje descriptivo según el tipo
+                    switch (fileType) {
+                      case 'image':
+                        messageBody = message.body || `[Imagen recibida: ${processedMedia.filename}]`;
+                        break;
+                      case 'video':
+                        messageBody = message.body || `[Video recibido: ${processedMedia.filename}]`;
+                        break;
+                      case 'document':
+                        messageBody = message.body || `[Documento recibido: ${processedMedia.filename}]`;
+                        break;
+                      case 'sticker':
+                        messageBody = message.body || '[Sticker recibido]';
+                        break;
+                      default:
+                        messageBody = message.body || `[Archivo multimedia recibido: ${processedMedia.filename}]`;
+                    }
+                    
+                    // Emitir evento de multimedia procesado
+                    setTimeout(() => {
+                      this.emit('multimedia_processed', {
+                        chatId: message.from,
+                        accountId: id,
+                        messageId: message.id._serialized,
+                        mediaType: fileType,
+                        filename: processedMedia.filename,
+                        timestamp: Date.now()
+                      });
+                    }, 500);
+                  } else {
+                    console.log(`⚠️ No se pudo procesar el archivo multimedia`);
+                    messageBody = message.body || '[Archivo multimedia recibido - error en procesamiento]';
+                  }
                 } else {
-                  console.log(`⚠️ No se pudo procesar el archivo multimedia`);
-                  messageBody = message.body || '[Archivo multimedia recibido - error en procesamiento]';
+                  console.log(`⚠️ Error descargando archivo multimedia`);
+                  messageBody = message.body || '[Archivo multimedia recibido - error en descarga]';
                 }
               }
             } catch (error) {
