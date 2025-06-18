@@ -153,11 +153,21 @@ Contexto de la conversación:
 - Idioma preferido: ${config.targetLanguage}
 - Mensaje recibido: "${messageContent}"
 
-Instrucciones:
+INSTRUCCIONES CRÍTICAS:
 - Responde de manera profesional y útil
 - Mantén el tono y estilo definido en el prompt
 - Responde en ${config.targetLanguage}
-- Sé conciso pero completo`;
+- Sé conciso pero completo
+
+FRASES PROHIBIDAS (NUNCA las uses):
+- "Gracias por escribirnos"
+- "Le saluda [nombre], agente del"
+- "Departamento de Servicio al Ciudadano"
+- "Sistema Municipal"
+- "Estoy aquí para apoyarle en canalizar"
+- Cualquier saludo formal institucional
+
+Responde de forma natural y conversacional.`;
 
       const completion = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',

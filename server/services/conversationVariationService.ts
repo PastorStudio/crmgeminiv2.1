@@ -90,7 +90,12 @@ export class ConversationVariationService {
       /Gracias por escribirnos,?\s*[^.]*\./gi,
       /Le saluda\s+[^,]+,\s*agente\s+del\s+[^.]*\./gi,
       /Estoy aquí para apoyarle en canalizar su necesidad\.?/gi,
-      /Departamento de [^.]*\./gi
+      /Departamento de [^.]*\./gi,
+      /Sistema Municipal/gi,
+      /Misael Moreno Frias/gi,
+      /Enrique,?\s*agente/gi,
+      /Departamento de Servicio al Ciudadano/gi,
+      /para apoyarle en canalizar/gi
     ];
     
     let improvedResponse = response;
