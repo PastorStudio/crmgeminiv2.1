@@ -35,9 +35,9 @@ class EnhancedPromptAutoResponseManager {
   async initialize(): Promise<void> {
     try {
       console.log('🚀 Inicializando sistema de respuestas automáticas basado en prompts...');
-      
+
       await this.loadActivePromptConfigurations();
-      
+
       this.isInitialized = true;
       console.log(`✅ Sistema iniciado con ${this.activeConfigs.size} cuentas configuradas con prompts`);
     } catch (error) {
@@ -51,7 +51,7 @@ class EnhancedPromptAutoResponseManager {
   async loadActivePromptConfigurations(): Promise<void> {
     try {
       console.log('🔄 Cargando configuraciones de prompts activas...');
-      
+
       // Usar consulta SQL directa para evitar problemas de esquema
       const { pool } = await import('../db');
       const result = await pool.query(`
@@ -97,7 +97,7 @@ class EnhancedPromptAutoResponseManager {
   async activatePromptForAccount(accountId: number, promptId: number): Promise<boolean> {
     try {
       console.log(`🚀 Activando prompt ${promptId} para cuenta ${accountId}...`);
-      
+
       // Actualizar base de datos usando consulta SQL directa
       const { pool } = await import('../db');
       await pool.query(`
@@ -141,7 +141,7 @@ class EnhancedPromptAutoResponseManager {
 
       // Construir prompt completo con contexto
       let fullPrompt = config.promptContent;
-      
+
       if (config.customPrompt) {
         fullPrompt = `${config.promptContent}\n\nInstrucciones adicionales: ${config.customPrompt}`;
       }
@@ -176,7 +176,7 @@ Instrucciones:
       });
 
       const response = completion.choices[0]?.message?.content;
-      
+
       if (response) {
         console.log(`✅ Respuesta generada exitosamente con prompt "${config.promptName}"`);
         return response.trim();
