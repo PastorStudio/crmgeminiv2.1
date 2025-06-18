@@ -123,6 +123,10 @@ export class IntelligentAutoResponseService {
       const conversationState = 'ongoing';
       const recentMessages: any[] = [];
 
+      // Get conversation context
+      const context = await this.getConversationContext(accountId, chatId, fromNumber);
+      if (!context) return null;
+
       // Generate response using unified AI provider with fallback
       const aiResponse = await unifiedAIProvider.generateWithFallback(
         messageContent,
@@ -137,7 +141,7 @@ export class IntelligentAutoResponseService {
       return {
         message: aiResponse.message,
         confidence: aiResponse.confidence,
-        nextState: conversationState,
+        nextState: context.currentState,
         shouldSendFarewell: false,
         needsHumanIntervention: aiResponse.confidence < 70
       };
