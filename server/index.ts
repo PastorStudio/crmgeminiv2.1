@@ -9322,4 +9322,23 @@ Responde de manera conversacional, profesional y útil según tu especializació
     }
   });
 
+  // Mount intelligent messages API routes
+  app.use("/api/intelligent", intelligentMessagesRouter);
+
+  // ===== SISTEMA INTELIGENTE DE RESPUESTAS AUTOMÁTICAS =====
+  setTimeout(async () => {
+    try {
+      console.log('🚀 Activando sistema inteligente de respuestas automáticas...');
+      await messageSystemActivator.activate();
+      
+      // Prueba del sistema con mensaje de ejemplo
+      console.log('🧪 Ejecutando prueba del sistema inteligente...');
+      await messageSystemActivator.testSystem(1, "Hola, necesito información sobre sus servicios");
+      
+      console.log('✅ Sistema inteligente de respuestas automáticas activado completamente');
+    } catch (error) {
+      console.error('❌ Error en activación del sistema inteligente:', error);
+    }
+  }, 8000);
+
 })();

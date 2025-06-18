@@ -64,9 +64,6 @@ export class RealTimeMessageProcessor {
         content: messageData.body || '',
         from_me: messageData.fromMe || false,
         timestamp: new Date(messageData.timestamp * 1000)
-        metadata: {
-          originalData: messageData
-        }
       }).onConflictDoNothing();
     } catch (error) {
       console.error('Error guardando mensaje:', error);
