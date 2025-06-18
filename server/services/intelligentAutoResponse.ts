@@ -123,14 +123,14 @@ export class IntelligentAutoResponseService {
       const conversationState = 'ongoing';
       const recentMessages: any[] = [];
 
-      // Generate response using unified AI provider with DeepSeek as primary
+      // Generate response using unified AI provider with fallback
       const aiResponse = await unifiedAIProvider.generateWithFallback(
-        message,
+        messageContent,
         'deepseek'
       );
 
       if (!aiResponse.success || !aiResponse.message) {
-        console.log('⚠️ No se pudo generar respuesta con proveedores AI');
+        console.log('⚠️ Could not generate AI response');
         return null;
       }
 

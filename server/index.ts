@@ -153,6 +153,10 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Register intelligent messaging routes early
+import intelligentMessagesRouter from './routes/intelligentMessages.js';
+app.use('/api/intelligent', intelligentMessagesRouter);
+
 // ===== SUBSCRIPTION PLAN API ENDPOINTS (EARLY REGISTRATION) =====
 
 // CORS preflight handler for subscription endpoints

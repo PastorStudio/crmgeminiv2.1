@@ -145,7 +145,7 @@ Genera UNA respuesta natural y específica (máximo 120 caracteres):`;
   private async callGeminiWithVariation(prompt: string): Promise<string | null> {
     try {
       const model = this.geminiAPI.getGenerativeModel({
-        model: 'gemini-pro',
+        model: 'gemini-1.5-flash',
         generationConfig: {
           temperature: 0.9, // Máxima creatividad
           topP: 0.95,
