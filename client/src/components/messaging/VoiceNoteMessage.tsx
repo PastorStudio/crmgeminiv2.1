@@ -27,6 +27,11 @@ export const VoiceNoteMessage: React.FC<VoiceNoteMessageProps> = ({ messageId, c
         
         const url = `/api/voice-transcriptions/${messageId}?${queryParams.toString()}`;
         const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
         
         if (data.success && data.transcription) {
