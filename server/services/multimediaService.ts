@@ -5,7 +5,7 @@
 
 import { whatsappMultiAccountManager } from './whatsappMultiAccountManager';
 import { db } from '../db';
-import { users } from '@shared/schema';
+import { mediaFiles } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -94,11 +94,10 @@ export class MultimediaService {
       
       // Verificar si ya existe en la base de datos
       const existingFiles = await db.select()
-        .from(multimediaFiles)
+        .from(mediaFiles)
         .where(and(
-          eq(multimediaFiles.messageId, messageId),
-          eq(multimediaFiles.chatId, chatId),
-          eq(multimediaFiles.accountId, accountId)
+          eq(mediaFiles.messageId, messageId),
+          eq(mediaFiles.accountId, accountId)
         ));
 
       if (existingFiles.length > 0) {
@@ -108,9 +107,9 @@ export class MultimediaService {
           type: existingFiles[0].fileType,
           mimetype: existingFiles[0].mimeType,
           filename: existingFiles[0].fileName,
-          data: existingFiles[0].fileData,
+          data: existingFiles[0].filePath, // Store path instead of data
           size: existingFiles[0].fileSize,
-          timestamp: new Date(existingFiles[0].originalDate || new Date())
+          timestamp: new Date(existingFiles[0].createdAt || new Date())
         };
       }
       
@@ -143,26 +142,36 @@ export class MultimediaService {
       
       console.log(`🔍 Tipo identificado: ${fileType} para mensaje tipo ${multimediaMessage.type}`);
 
+      // Crear directorio si no existe
+      const uploadDir = path.join(process.cwd(), 'uploads', 'multimedia');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      // Guardar archivo físicamente
+      const filePath = path.join(uploadDir, filename);
+      fs.writeFileSync(filePath, Buffer.from(media.data, 'base64'));
+
       // Guardar en la base de datos
       const multimediaRecord = {
         messageId,
-        chatId,
-        accountId,
         fileName: filename,
+        originalName: media.filename || filename,
+        fileType,
         mimeType: media.mimetype,
         fileSize: media.data.length,
-        fileType,
-        fileData: media.data,
-        metadata: JSON.stringify({
+        filePath: filePath,
+        fileUrl: `/uploads/multimedia/${filename}`,
+        metadata: {
           whatsappType: multimediaMessage.type,
           originalFilename: media.filename,
           timestamp: multimediaMessage.timestamp
-        }),
-        originalDate: new Date(multimediaMessage.timestamp * 1000),
-        processingStatus: 'completed'
+        },
+        isProcessed: true,
+        accountId
       };
 
-      await db.insert(multimediaFiles).values(multimediaRecord);
+      await db.insert(mediaFiles).values(multimediaRecord);
 
       // Convertir a formato para el frontend
       const mediaData = {
