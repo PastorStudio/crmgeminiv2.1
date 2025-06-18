@@ -966,6 +966,48 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
   }
+
+  // Auto-response configuration methods
+  async getAutoResponseConfig(accountId: number): Promise<any | undefined> {
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM auto_response_configs WHERE account_id = ${accountId} LIMIT 1
+      `);
+      return result.rows[0] || undefined;
+    } catch (error) {
+      console.error('Error getting auto-response config:', error);
+      return undefined;
+    }
+  }
+
+  async updateAutoResponseConfig(accountId: number, updates: any): Promise<any> {
+    try {
+      // Check if config exists
+      const existing = await this.getAutoResponseConfig(accountId);
+      
+      if (existing) {
+        // Update existing config
+        const result = await db.execute(sql`
+          UPDATE auto_response_configs 
+          SET enabled = ${updates.enabled}, updated_at = NOW()
+          WHERE account_id = ${accountId}
+          RETURNING *
+        `);
+        return result.rows[0];
+      } else {
+        // Create new config
+        const result = await db.execute(sql`
+          INSERT INTO auto_response_configs (account_id, enabled, ai_provider, created_at, updated_at)
+          VALUES (${accountId}, ${updates.enabled}, 'gemini', NOW(), NOW())
+          RETURNING *
+        `);
+        return result.rows[0];
+      }
+    } catch (error) {
+      console.error('Error updating auto-response config:', error);
+      throw error;
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();
