@@ -52,7 +52,7 @@ import { messageSystemActivator } from './services/messageSystemActivator';
 import intelligentMessagesRouter from './routes/intelligentMessages.js';
 import multimediaRouter from './routes/multimedia';
 import voiceTranscriptionsRouter from './routes/voiceTranscriptions';
-import autoResponseToggleRouter from './routes/autoResponseToggle';
+import autoResponseToggleRouter from './routes/autoResponseToggleFixed';
 import path from 'path';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
