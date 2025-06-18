@@ -16,6 +16,7 @@ const openai = new OpenAI({
 
 interface ChatContext {
   chatId: string;
+  accountId: number;
   contactName: string;
   recentMessages: Array<{
     content: string;
@@ -115,18 +116,10 @@ CONTEXTO DE NEGOCIO: ${businessName} - Empresa comprometida con brindar excelent
       return false;
     }
 
-    // Verificar configuración de respuestas en grupos
-    try {
-      const { aiSettings } = await import('../../shared/schema.js');
-      const [settings] = await db.select().from(aiSettings).limit(1);
-      
-      // Si está habilitado "deshabilitar respuestas en grupos" y es un grupo, no responder
-      if (settings?.disableGroupResponses && message.isGroup) {
-        console.log(`🚫 Respuesta automática bloqueada en grupo ${message.chatId} (configuración activa)`);
-        return false;
-      }
-    } catch (error) {
-      console.error('Error verificando configuración de grupos:', error);
+    // Verificar si es un grupo (evitar respuestas automáticas en grupos por defecto)
+    if (message.isGroup) {
+      console.log(`🚫 Respuesta automática bloqueada en grupo ${message.chatId}`);
+      return false;
     }
 
     try {
@@ -218,6 +211,36 @@ CONTEXTO DE NEGOCIO: ${businessName} - Empresa comprometida con brindar excelent
 
   private async generateAIResponse(userMessage: string, context: ChatContext, config: AIResponseConfig): Promise<string | null> {
     try {
+      // Usar el gestor inteligente de conversaciones para respuestas contextuales
+      console.log(`🧠 Generando respuesta inteligente para ${context.contactName}`);
+      
+      const intelligentResponse = await intelligentConversationManager.processIntelligentMessage(
+        userMessage,
+        context.chatId,
+        context.accountId,
+        context.contactName,
+        context.contactInfo?.phone || '',
+        config.prompt
+      );
+
+      if (intelligentResponse) {
+        console.log(`✅ Respuesta inteligente generada para ${context.contactName}: ${intelligentResponse.substring(0, 50)}...`);
+        return intelligentResponse;
+      }
+
+      // Fallback al sistema original si el inteligente falla
+      console.log(`⚠️ Fallback al sistema original para ${context.contactName}`);
+      return await this.generateLegacyAIResponse(userMessage, context, config);
+
+    } catch (error) {
+      console.error('❌ Error generando respuesta inteligente:', error);
+      // Fallback al sistema original
+      return await this.generateLegacyAIResponse(userMessage, context, config);
+    }
+  }
+
+  private async generateLegacyAIResponse(userMessage: string, context: ChatContext, config: AIResponseConfig): Promise<string | null> {
+    try {
       // Construir historial de conversación para contexto
       const conversationHistory = context.recentMessages
         .slice(-5) // Últimos 5 mensajes
@@ -245,7 +268,7 @@ INSTRUCCIONES:
 5. Si el cliente necesita soporte técnico específico, deriva a un asesor humano`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -256,7 +279,7 @@ INSTRUCCIONES:
             content: userMessage
           }
         ],
-        max_tokens: Math.floor(config.maxResponseLength / 2), // Aproximadamente 2 chars por token
+        max_tokens: Math.floor(config.maxResponseLength / 2),
         temperature: 0.7,
         presence_penalty: 0.1,
         frequency_penalty: 0.1
@@ -265,14 +288,14 @@ INSTRUCCIONES:
       const aiResponse = response.choices[0]?.message?.content?.trim();
       
       if (aiResponse && aiResponse.length > 10) {
-        console.log(`🤖 Respuesta AI generada para ${context.contactName}: ${aiResponse.substring(0, 50)}...`);
+        console.log(`🤖 Respuesta legacy generada para ${context.contactName}: ${aiResponse.substring(0, 50)}...`);
         return aiResponse;
       }
 
       return null;
 
     } catch (error) {
-      console.error('❌ Error generando respuesta AI:', error);
+      console.error('❌ Error generando respuesta legacy:', error);
       return null;
     }
   }
