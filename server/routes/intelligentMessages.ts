@@ -19,7 +19,7 @@ router.post('/process-message', async (req, res) => {
       });
     }
 
-    const response = await intelligentAutoResponse.processIntelligentMessage(
+    const response = await intelligentAutoResponse.processIncomingMessage(
       parseInt(accountId),
       chatId,
       message,
