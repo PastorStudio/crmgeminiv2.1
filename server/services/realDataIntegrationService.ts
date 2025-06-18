@@ -13,7 +13,7 @@ import {
   tags,
   massMessages,
   salesActivities,
-  userActivities
+  activities
 } from '@shared/schema';
 import { eq, desc, and, or, gt, count, sql, isNull } from 'drizzle-orm';
 
@@ -172,15 +172,15 @@ export class RealDataIntegrationService {
       // Recent activities
       const recentActivities = await db
         .select({
-          id: userActivities.id,
-          type: userActivities.activityType,
-          description: userActivities.description,
-          createdAt: userActivities.createdAt,
-          userId: userActivities.userId
+          id: activities.id,
+          type: activities.type,
+          description: activities.description,
+          createdAt: activities.createdAt,
+          userId: activities.userId
         })
-        .from(userActivities)
-        .where(userId ? eq(userActivities.userId, userId) : undefined)
-        .orderBy(desc(userActivities.createdAt))
+        .from(activities)
+        .where(userId ? eq(activities.userId, userId) : undefined)
+        .orderBy(desc(activities.createdAt))
         .limit(10);
 
       return {
