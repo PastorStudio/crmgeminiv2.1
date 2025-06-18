@@ -1709,4 +1709,74 @@ app.post("/bypass/whatsapp/sync-all-contacts", async (req: Request, res: Respons
         let accountContactCount = 0;
 
         try {
-          // Import the WhatsApp multi
+          // Import the WhatsApp sync utilities
+          const syncResults = await pool.query(`
+            SELECT COUNT(*) as contact_count 
+            FROM whatsapp_contacts 
+            WHERE account_id = $1
+          `, [account.id]);
+
+          accountContactCount = parseInt(syncResults.rows[0]?.contact_count || '0');
+          console.log(`📊 Cuenta ${account.id}: ${accountContactCount} contactos existentes`);
+
+        } catch (syncError) {
+          console.error(`❌ Error sincronizando cuenta ${account.id}:`, syncError);
+          accountContactCount = 0;
+        }
+
+        syncResults.push({
+          accountId: account.id,
+          accountName: account.name,
+          contactsSynced: accountContactCount,
+          status: accountContactCount > 0 ? 'success' : 'no_contacts'
+        });
+
+        totalSyncedContacts += accountContactCount;
+      }
+
+      console.log(`✅ SINCRONIZACIÓN COMPLETADA: ${totalSyncedContacts} contactos totales`);
+
+      return res.json({
+        success: true,
+        totalContactsSynced: totalSyncedContacts,
+        accountResults: syncResults,
+        message: `Sincronización masiva completada: ${totalSyncedContacts} contactos procesados`
+      });
+
+    } catch (error) {
+        console.error('❌ Error en sincronización masiva:', error);
+        return res.status(500).json({
+          success: false,
+          error: error instanceof Error ? error.message : 'Error desconocido',
+          message: 'Error en la sincronización masiva de contactos'
+        });
+      }
+    }
+
+    console.log(`✅ SINCRONIZACIÓN COMPLETADA: ${totalSyncedContacts} contactos totales`);
+
+    return res.json({
+      success: true,
+      totalContactsSynced: totalSyncedContacts,
+      accountResults: syncResults,
+      message: `Sincronización masiva completada: ${totalSyncedContacts} contactos procesados`
+    });
+
+  } catch (error) {
+    console.error('❌ Error en sincronización masiva:', error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+      message: 'Error en la sincronización masiva de contactos'
+    });
+  }
+});
+
+// Configurar Vite después de todas las rutas API críticas
+setupVite(app, server);
+
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Servidor iniciado en puerto ${PORT}`);
+  console.log(`🌐 Acceso: http://localhost:${PORT}`);
+});
