@@ -48,6 +48,10 @@ export interface IStorage {
   getActivitiesByLead(leadId: number): Promise<any[]>;
   getUpcomingActivities(userId: number, limit?: number): Promise<any[]>;
   getActivity(id: number): Promise<any | undefined>;
+  
+  // Auto-response methods
+  getAutoResponseConfig(accountId: number): Promise<any | undefined>;
+  updateAutoResponseConfig(accountId: number, updates: any): Promise<any>;
   createActivity(activity: any): Promise<any>;
   updateActivity(id: number, updates: any): Promise<any | undefined>;
   completeActivity(id: number): Promise<any | undefined>;

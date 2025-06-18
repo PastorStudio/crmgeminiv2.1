@@ -81,6 +81,74 @@ app.get('/api/qr/:accountId', async (req, res) => {
   }
 });
 
+// Auto-response toggle endpoint
+app.post('/api/whatsapp-accounts/:accountId/auto-response/toggle', async (req, res) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    const { enabled } = req.body;
+    
+    console.log(`🔄 Toggling auto-response for account ${accountId}: ${enabled}`);
+    
+    res.setHeader('Content-Type', 'application/json');
+    
+    if (isNaN(accountId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'ID de cuenta inválido' 
+      });
+    }
+    
+    // Update auto-response configuration
+    await storage.updateAutoResponseConfig(accountId, { enabled });
+    
+    console.log(`✅ Auto-response ${enabled ? 'enabled' : 'disabled'} for account ${accountId}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Auto-response ${enabled ? 'activado' : 'desactivado'} exitosamente`,
+      enabled 
+    });
+    
+  } catch (error) {
+    console.error('❌ Error toggling auto-response:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error interno del servidor' 
+    });
+  }
+});
+
+// Auto-response status endpoint
+app.get('/api/whatsapp-accounts/:accountId/auto-response-status', async (req, res) => {
+  try {
+    const accountId = parseInt(req.params.accountId);
+    
+    res.setHeader('Content-Type', 'application/json');
+    
+    if (isNaN(accountId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'ID de cuenta inválido' 
+      });
+    }
+    
+    const config = await storage.getAutoResponseConfig(accountId);
+    
+    res.json({ 
+      success: true, 
+      enabled: config?.enabled || false,
+      config: config || null
+    });
+    
+  } catch (error) {
+    console.error('❌ Error getting auto-response status:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error interno del servidor' 
+    });
+  }
+});
+
 // Rutas básicas
 app.use('/api/whatsapp-accounts', whatsappAccountsRouter);
 
