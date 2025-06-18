@@ -1,0 +1,33 @@
+services:
+  - type: app
+    data:
+      serviceName: whatsapp-crm-system
+      source:
+        type: github
+        repo: tu-usuario/tu-repositorio
+        branch: main
+      build:
+        type: nixpacks
+        command: npm run build
+      deploy:
+        command: npm start
+        ports:
+          - port: 3000
+            protocol: http
+      env:
+        - name: NODE_ENV
+          value: production
+        - name: PORT
+          value: "3000"
+        - name: DATABASE_URL
+          value: "postgresql://username:password@hostname:5432/database"
+        - name: GEMINI_API_KEY
+          value: "your_gemini_api_key"
+      resources:
+        cpuLimit: 1000
+        memoryLimit: 512
+      healthCheck:
+        path: /api/health
+        interval: 30
+        timeout: 10
+        retries: 3

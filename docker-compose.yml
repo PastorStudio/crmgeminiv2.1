@@ -1,127 +1,25 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: crm_whatsapp_ai
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_2024}
-      PGDATA: /var/lib/postgresql/data/pgdata
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d crm_whatsapp_ai"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - crm_network
-
-  # Redis for session management and caching
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - crm_network
-
-  # Main Application
-  crm-whatsapp-ai:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
+  whatsapp-crm:
+    build: .
     ports:
       - "3000:3000"
     environment:
-      NODE_ENV: production
-      PORT: 3000
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-secure_password_2024}@postgres:5432/crm_whatsapp_ai
-      REDIS_URL: redis://redis:6379
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_here}
-      SESSION_SECRET: ${SESSION_SECRET:-your_session_secret_here}
-      # WhatsApp Configuration
-      WHATSAPP_SESSION_PATH: /app/whatsapp-sessions
-      WHATSAPP_WEBHOOK_URL: ${WHATSAPP_WEBHOOK_URL:-}
-      # Email Configuration
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
-      # Telegram Bot (optional)
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      # Application URLs
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      API_BASE_URL: ${API_BASE_URL:-http://localhost:3000}
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - PORT=3000
     volumes:
       - whatsapp_sessions:/app/whatsapp-sessions
-      - app_uploads:/app/uploads
-      - app_logs:/app/logs
-      - app_temp:/app/temp
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
-    networks:
-      - crm_network
-
-  # Nginx Reverse Proxy (optional)
-  nginx:
-    image: nginx:alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-      - nginx_logs:/var/log/nginx
-    depends_on:
-      - crm-whatsapp-ai
-    networks:
-      - crm_network
 
 volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
   whatsapp_sessions:
-    driver: local
-  app_uploads:
-    driver: local
-  app_logs:
-    driver: local
-  app_temp:
-    driver: local
-  nginx_logs:
-    driver: local
-
-networks:
-  crm_network:
-    driver: bridge
