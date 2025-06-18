@@ -191,6 +191,10 @@ app.use('/api/whatsapp-accounts', whatsappAccountsRouter);
 // Registrar rutas de API directa
 registerDirectAPIRoutes(app);
 
+// Registrar rutas de configuración AI
+import { registerAISettingsRoutes } from './ai-settings-middleware';
+registerAISettingsRoutes(app);
+
 // Inicializar datos
 storage.initializeData().catch(console.error);
 

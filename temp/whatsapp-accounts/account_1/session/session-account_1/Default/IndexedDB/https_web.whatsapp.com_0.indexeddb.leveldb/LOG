@@ -1,17 +1,34 @@
-2025/06/18-16:23:16.743 923 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/06/18-16:23:16.744 923 Recovering log #1566
-2025/06/18-16:23:16.745 923 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001566.log 
-2025/06/18-16:23:18.291 929 Level-0 table #1576: started
-2025/06/18-16:23:18.298 929 Level-0 table #1576: 44387 bytes OK
-2025/06/18-16:23:18.307 929 Delete type=0 #1566
-2025/06/18-16:23:18.308 923 Manual compaction at level-0 from ' \xe1\x01\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xe2\x01\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/06/18-16:23:21.294 925 Compacting 1@1 + 8@2 files
-2025/06/18-16:23:21.425 925 Generated table #1577@1: 37583 keys, 2188403 bytes
-2025/06/18-16:23:21.863 925 Generated table #1578@1: 33074 keys, 2203055 bytes
-2025/06/18-16:23:22.072 925 Generated table #1579@1: 60148 keys, 2226823 bytes
-2025/06/18-16:23:22.188 925 Generated table #1580@1: 7624 keys, 2154767 bytes
-2025/06/18-16:23:22.252 925 Generated table #1581@1: 22568 keys, 2181124 bytes
-2025/06/18-16:23:22.396 925 Generated table #1582@1: 101861 keys, 2254163 bytes
-2025/06/18-16:23:22.461 925 Generated table #1583@1: 33957 keys, 703710 bytes
-2025/06/18-16:23:22.461 925 Compacted 1@1 + 8@2 files => 13912045 bytes
-2025/06/18-16:23:22.484 925 compacted to: files[ 0 0 7 0 0 0 0 ]
+2025/06/18-16:26:26.723 10f7 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/18-16:26:26.724 10f7 Recovering log #1575
+2025/06/18-16:26:26.725 10f7 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001575.log 
+2025/06/18-16:26:26.726 10f7 Delete type=2 #1552
+2025/06/18-16:26:26.726 10f7 Delete type=2 #1553
+2025/06/18-16:26:26.726 10f7 Delete type=2 #1561
+2025/06/18-16:26:26.726 10f7 Delete type=2 #1569
+2025/06/18-16:26:26.726 10f7 Delete type=2 #1570
+2025/06/18-16:26:26.726 10f7 Delete type=2 #1571
+2025/06/18-16:26:26.727 10f7 Delete type=2 #1572
+2025/06/18-16:26:26.727 10f7 Delete type=2 #1573
+2025/06/18-16:26:26.727 10f7 Delete type=2 #1576
+2025/06/18-16:26:28.849 10f7 Level-0 table #1586: started
+2025/06/18-16:26:29.049 10f7 Level-0 table #1586: 42123 bytes OK
+2025/06/18-16:26:29.062 10f7 Delete type=0 #1575
+2025/06/18-16:26:29.062 10f7 Manual compaction at level-0 from ' \xe2\x01\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xe3\x01\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/18-16:26:31.542 10f9 Compacting 1@1 + 7@2 files
+2025/06/18-16:26:31.721 10f9 Generated table #1587@1: 37587 keys, 2187658 bytes
+2025/06/18-16:26:31.857 10f9 Generated table #1588@1: 33201 keys, 2204321 bytes
+2025/06/18-16:26:31.985 10f9 Generated table #1589@1: 60121 keys, 2226609 bytes
+2025/06/18-16:26:32.039 10f9 Generated table #1590@1: 7629 keys, 2154175 bytes
+2025/06/18-16:26:32.142 10f9 Generated table #1591@1: 22601 keys, 2181124 bytes
+2025/06/18-16:26:32.249 10f9 Generated table #1592@1: 101728 keys, 2254106 bytes
+2025/06/18-16:26:32.513 10f9 Generated table #1593@1: 34094 keys, 706552 bytes
+2025/06/18-16:26:32.513 10f9 Compacted 1@1 + 7@2 files => 13914545 bytes
+2025/06/18-16:26:32.521 10f9 compacted to: files[ 0 0 7 0 0 0 0 ]
+2025/06/18-16:26:32.521 10f9 Delete type=2 #1577
+2025/06/18-16:26:32.521 10f9 Delete type=2 #1578
+2025/06/18-16:26:32.521 10f9 Delete type=2 #1579
+2025/06/18-16:26:32.522 10f9 Delete type=2 #1580
+2025/06/18-16:26:32.522 10f9 Delete type=2 #1581
+2025/06/18-16:26:32.522 10f9 Delete type=2 #1582
+2025/06/18-16:26:32.522 10f9 Delete type=2 #1583
+2025/06/18-16:26:32.522 10f9 Delete type=2 #1586
