@@ -397,13 +397,11 @@ Responde en formato JSON:
       
       // Guardar mensaje enviado en base de datos
       await db.insert(whatsappMessages).values({
-        accountId: accountId,
         chatId: chatId,
         messageId: `auto_${Date.now()}`,
         content: message,
         from_me: true,
-        timestamp: new Date(),
-        hasMedia: false
+        timestamp: new Date()
       });
 
       console.log(`✅ Respuesta automática enviada a ${chatId}: ${message.substring(0, 50)}...`);
