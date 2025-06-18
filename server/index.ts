@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import fs from "fs";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 import { setupVite } from "./vite";
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
@@ -10,7 +12,7 @@ import whatsappAccountsRouter from "./routes/whatsappAccounts";
 console.log('🚀 Iniciando CRM WhatsApp...');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000');
 
 // Middleware básico
 app.use(cors());
@@ -98,8 +100,32 @@ app.post('/api/whatsapp-accounts/:accountId/auto-response/toggle', async (req, r
       });
     }
     
-    // Update auto-response configuration
-    await storage.updateAutoResponseConfig(accountId, { enabled });
+    // Update auto-response configuration directly in database
+    if (enabled) {
+      await db.execute(sql`
+        UPDATE auto_response_configs 
+        SET enabled = true, updated_at = NOW()
+        WHERE account_id = ${accountId}
+      `);
+      
+      await db.execute(sql`
+        UPDATE whatsapp_accounts 
+        SET autoresponseenabled = true
+        WHERE id = ${accountId}
+      `);
+    } else {
+      await db.execute(sql`
+        UPDATE auto_response_configs 
+        SET enabled = false, updated_at = NOW()
+        WHERE account_id = ${accountId}
+      `);
+      
+      await db.execute(sql`
+        UPDATE whatsapp_accounts 
+        SET autoresponseenabled = false
+        WHERE id = ${accountId}
+      `);
+    }
     
     console.log(`✅ Auto-response ${enabled ? 'enabled' : 'disabled'} for account ${accountId}`);
     
@@ -132,12 +158,21 @@ app.get('/api/whatsapp-accounts/:accountId/auto-response-status', async (req, re
       });
     }
     
-    const config = await storage.getAutoResponseConfig(accountId);
+    // Get auto-response configuration directly from database
+    const configResult = await db.execute(sql`
+      SELECT enabled FROM auto_response_configs WHERE account_id = ${accountId} LIMIT 1
+    `);
+    
+    const accountResult = await db.execute(sql`
+      SELECT autoresponseenabled FROM whatsapp_accounts WHERE id = ${accountId} LIMIT 1
+    `);
+    
+    const enabled = configResult.rows[0]?.enabled || accountResult.rows[0]?.autoresponseenabled || false;
     
     res.json({ 
       success: true, 
-      enabled: config?.enabled || false,
-      config: config || null
+      enabled: enabled,
+      config: { enabled, accountId }
     });
     
   } catch (error) {
