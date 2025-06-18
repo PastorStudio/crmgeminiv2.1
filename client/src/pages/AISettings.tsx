@@ -750,6 +750,36 @@ export default function AISettings() {
                       </FormItem>
                     )}
                   />
+
+                  {/* DeepSeek API Key */}
+                  <FormField
+                    control={aiForm.control}
+                    name="deepseekApiKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>DeepSeek API Key</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="Enter your DeepSeek API key"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Get your API key from{" "}
+                          <a
+                            href="https://platform.deepseek.com/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            DeepSeek Platform
+                          </a>
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <Separator />
@@ -1040,6 +1070,7 @@ export default function AISettings() {
                           <SelectItem value="openai">OpenAI</SelectItem>
                           <SelectItem value="gemini">Gemini</SelectItem>
                           <SelectItem value="qwen3">Qwen3</SelectItem>
+                          <SelectItem value="deepseek">DeepSeek</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
