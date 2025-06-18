@@ -3,7 +3,7 @@
  * Este módulo expone una función que puede ser llamada directamente por otras partes del código
  */
 
-import { pool } from '../db';
+import { db } from '../db';
 import { createAppointmentFromConversation } from './appointmentDetector';
 
 /**

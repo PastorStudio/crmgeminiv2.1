@@ -3,7 +3,7 @@
  * Integra eventos del calendario con envío automático de mensajes WhatsApp
  */
 
-import { db, pool } from '../db';
+import { db } from '../db';
 import { calendarEvents, whatsappAccounts, leads, contacts } from '@shared/schema';
 import { eq, and, gte, lte, isNull, sql } from 'drizzle-orm';
 import cron from 'node-cron';
