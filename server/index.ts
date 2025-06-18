@@ -50,6 +50,8 @@ import { backgroundChatMonitor } from './services/backgroundChatMonitor';
 import { chatToLeadConverter } from './services/chatToLeadConverter';
 import { messageSystemActivator } from './services/messageSystemActivator';
 import intelligentMessagesRouter from './routes/intelligentMessages.js';
+import multimediaRouter from './routes/multimedia';
+import path from 'path';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';
@@ -2411,6 +2413,12 @@ app.get("/api/tickets/stats", async (_req: Request, res: Response) => {
     res.status(500).json({ error: "Error al obtener estadísticas" });
   }
 });
+
+// Registrar rutas de multimedia
+app.use('/api/multimedia', multimediaRouter);
+
+// Servir archivos estáticos desde uploads
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 app.get("/api/media-gallery/list", async (_req: Request, res: Response) => {
   try {
