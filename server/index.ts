@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import { whatsappAccounts, autoResponseConfigs } from "../shared/schema";
 import { setupVite } from "./vite";
 import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
@@ -101,30 +102,34 @@ app.post('/api/whatsapp-accounts/:accountId/auto-response/toggle', async (req, r
     }
     
     // Update auto-response configuration directly in database
-    if (enabled) {
-      await db.execute(sql`
-        UPDATE auto_response_configs 
-        SET enabled = true, updated_at = NOW()
-        WHERE account_id = ${accountId}
-      `);
-      
+    try {
+      // Update whatsapp_accounts table
       await db.execute(sql`
         UPDATE whatsapp_accounts 
-        SET autoresponseenabled = true
+        SET autoresponseenabled = ${enabled}
         WHERE id = ${accountId}
-      `);
-    } else {
-      await db.execute(sql`
-        UPDATE auto_response_configs 
-        SET enabled = false, updated_at = NOW()
-        WHERE account_id = ${accountId}
       `);
       
-      await db.execute(sql`
-        UPDATE whatsapp_accounts 
-        SET autoresponseenabled = false
-        WHERE id = ${accountId}
+      // Try to update auto_response_configs if it exists
+      const configExists = await db.execute(sql`
+        SELECT id FROM auto_response_configs WHERE account_id = ${accountId} LIMIT 1
       `);
+      
+      if (configExists.rows.length > 0) {
+        await db.execute(sql`
+          UPDATE auto_response_configs 
+          SET enabled = ${enabled}, updated_at = NOW()
+          WHERE account_id = ${accountId}
+        `);
+      } else {
+        await db.execute(sql`
+          INSERT INTO auto_response_configs (account_id, enabled, created_at, updated_at)
+          VALUES (${accountId}, ${enabled}, NOW(), NOW())
+        `);
+      }
+    } catch (dbError) {
+      console.log('Database update warning:', dbError);
+      // Continue even if config table update fails
     }
     
     console.log(`✅ Auto-response ${enabled ? 'enabled' : 'disabled'} for account ${accountId}`);
@@ -159,15 +164,11 @@ app.get('/api/whatsapp-accounts/:accountId/auto-response-status', async (req, re
     }
     
     // Get auto-response configuration directly from database
-    const configResult = await db.execute(sql`
-      SELECT enabled FROM auto_response_configs WHERE account_id = ${accountId} LIMIT 1
-    `);
-    
     const accountResult = await db.execute(sql`
       SELECT autoresponseenabled FROM whatsapp_accounts WHERE id = ${accountId} LIMIT 1
     `);
     
-    const enabled = configResult.rows[0]?.enabled || accountResult.rows[0]?.autoresponseenabled || false;
+    const enabled = accountResult.rows[0]?.autoresponseenabled || false;
     
     res.json({ 
       success: true, 
