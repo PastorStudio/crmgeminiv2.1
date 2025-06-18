@@ -82,10 +82,10 @@ export class IntelligentAutoResponseService {
 
       console.log(`🎯 Using AI provider: ${selectedProvider}`);
 
-      // Generate response using unified AI provider
+      // Generate response using unified AI provider with DeepSeek as primary
       const aiResponse = await unifiedAIProvider.generateWithFallback(
         message,
-        selectedProvider
+        'deepseek' // Use DeepSeek as primary since it's working
       );
 
       if (!aiResponse.success || !aiResponse.message) {
@@ -119,21 +119,28 @@ export class IntelligentAutoResponseService {
     fromNumber: string
   ): Promise<ConversationContext | null> {
     try {
-      // Obtener contexto de la conversación
-      const context = await this.getConversationContext(accountId, chatId, fromNumber);
-      if (!context) return null;
+      // Get basic context for response generation
+      const conversationState = 'ongoing';
+      const recentMessages: any[] = [];
 
-      // Determinar si necesita respuesta automática
-      const shouldRespond = await this.shouldGenerateResponse(context, messageContent);
-      if (!shouldRespond) return null;
+      // Generate response using unified AI provider with DeepSeek as primary
+      const aiResponse = await unifiedAIProvider.generateWithFallback(
+        message,
+        'deepseek'
+      );
 
-      // Generar respuesta usando IA
-      const response = await this.generateIntelligentResponse(context, messageContent);
-      
-      // Actualizar estado de conversación
-      await this.updateConversationState(context, response);
+      if (!aiResponse.success || !aiResponse.message) {
+        console.log('⚠️ No se pudo generar respuesta con proveedores AI');
+        return null;
+      }
 
-      return response;
+      return {
+        message: aiResponse.message,
+        confidence: aiResponse.confidence,
+        nextState: conversationState,
+        shouldSendFarewell: false,
+        needsHumanIntervention: aiResponse.confidence < 70
+      };
     } catch (error) {
       console.error('Error procesando mensaje inteligente:', error);
       return null;
@@ -273,7 +280,7 @@ export class IntelligentAutoResponseService {
     currentMessage: string
   ): Promise<AIResponse> {
     try {
-      const model = this.geminiAPI.getGenerativeModel({ model: 'gemini-pro' });
+      const model = this.geminiAPI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
       // Construir historial de conversación
       const conversationHistory = context.recentMessages
