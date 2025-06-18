@@ -7,6 +7,7 @@ import OpenAI from 'openai';
 import { db } from '../db';
 import { whatsappAccounts, externalAgents } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
+import { ResponseCleanerService } from './responseCleanerService';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -139,16 +140,22 @@ export class DirectAutoResponse {
       - Haz preguntas de seguimiento relevantes cuando sea apropiado
       - Mantén las respuestas cortas y al punto (máximo 2-3 líneas)
 
+      FRASES COMPLETAMENTE PROHIBIDAS (NUNCA las uses):
+      - "Gracias por escribirnos"
+      - "Le saluda [cualquier nombre], agente del"
+      - "Departamento de Servicio al Ciudadano"
+      - "Sistema Municipal"
+      - "Estoy aquí para apoyarle en canalizar su necesidad"
+      - "Misael Moreno Frias"
+      - "Enrique"
+      - Cualquier mención de departamentos gubernamentales
+      - Cualquier estructura formal de saludo institucional
+
       Ejemplos de BUENOS inicios:
       - "¡Hola! ¿En qué te puedo ayudar?"
       - "¿Qué tal? ¿Cómo puedo asistirte?"
       - "¡Hey! Cuéntame, ¿qué necesitas?"
       - "¿En qué te puedo echar una mano?"
-
-      Ejemplos de MALOS inicios (NUNCA usar):
-      - "Gracias por escribirnos, [nombre]..."
-      - "Le saluda [nombre], agente del..."
-      - "Estoy aquí para apoyarle en canalizar..."
 
       Responde de forma natural y conversacional.`;
 
@@ -172,8 +179,19 @@ export class DirectAutoResponse {
       const response = completion.choices[0]?.message?.content?.trim();
 
       if (response) {
-        console.log(`✅ Respuesta generada con prompt "${prompt.name}": "${response}"`);
-        return response;
+        // Limpiar la respuesta de patrones formales no deseados
+        const cleanedResponse = ResponseCleanerService.cleanResponse(response);
+        
+        // Verificar si aún contiene contenido prohibido
+        if (ResponseCleanerService.hasProhibitedContent(cleanedResponse)) {
+          console.log(`⚠️ Respuesta contenía patrones prohibidos, usando alternativa`);
+          const alternativeResponse = ResponseCleanerService.generateAlternativeResponse();
+          console.log(`✅ Respuesta alternativa generada: "${alternativeResponse}"`);
+          return alternativeResponse;
+        }
+        
+        console.log(`✅ Respuesta generada y limpiada con prompt "${prompt.name}": "${cleanedResponse}"`);
+        return cleanedResponse;
       }
 
       console.log(`⚠️ No se pudo generar respuesta, usando fallback`);
