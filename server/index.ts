@@ -1744,22 +1744,36 @@ app.post("/bypass/whatsapp/sync-all-contacts", async (req: Request, res: Respons
       });
 
     } catch (error) {
-      console.error('❌ Error en sincronización masiva:', error);
-      return res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Error desconocido',
-        message: 'Error en la sincronización masiva de contactos'
-      });
+        console.error('❌ Error en sincronización masiva:', error);
+        return res.status(500).json({
+          success: false,
+          error: error instanceof Error ? error.message : 'Error desconocido',
+          message: 'Error en la sincronización masiva de contactos'
+        });
+      }
     }
-  });
 
-  // Configurar Vite después de todas las rutas API críticas
-  setupVite(app, server);
+    console.log(`✅ SINCRONIZACIÓN COMPLETADA: ${totalSyncedContacts} contactos totales`);
 
-} catch (error) {
-  console.error('❌ Error crítico en la configuración del servidor:', error);
-  process.exit(1);
-}
+    return res.json({
+      success: true,
+      totalContactsSynced: totalSyncedContacts,
+      accountResults: syncResults,
+      message: `Sincronización masiva completada: ${totalSyncedContacts} contactos procesados`
+    });
+
+  } catch (error) {
+    console.error('❌ Error en sincronización masiva:', error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+      message: 'Error en la sincronización masiva de contactos'
+    });
+  }
+});
+
+// Configurar Vite después de todas las rutas API críticas
+setupVite(app, server);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
