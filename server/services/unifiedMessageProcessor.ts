@@ -4,7 +4,7 @@
  * sobre cualquier otro sistema de respuestas automáticas
  */
 
-import { pool } from '../db';
+import { db } from '../db';
 import { interventionManager } from './interventionManager';
 
 interface MessageContext {

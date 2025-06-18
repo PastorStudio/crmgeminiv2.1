@@ -97,7 +97,7 @@ export class CalendarReminderService {
       const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
       // Obtener eventos de la próxima semana usando consulta SQL directa
-      const result = await pool.query(`
+      const result = await db.execute(`
         SELECT * FROM local_events 
         WHERE event_date >= $1 AND event_date <= $2
       `, [now, nextWeek]);

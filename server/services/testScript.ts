@@ -20,7 +20,7 @@ export async function createTestAppointment(leadId: number): Promise<boolean> {
       values: [leadId]
     };
     
-    const checkResult = await pool.query(checkQuery);
+    const checkResult = await db.execute(checkQuery);
     if (checkResult.rows.length === 0) {
       console.error(`⚠️ No existe un lead con ID: ${leadId}`);
       return false;
