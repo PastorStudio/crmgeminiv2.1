@@ -216,78 +216,128 @@ export class IntelligentAutoResponseService {
         .map(msg => `${msg.fromMe ? 'Asistente' : 'Cliente'}: ${msg.content}`)
         .join('\n');
 
-      // Crear prompt inteligente
-      const systemPrompt = `
-Eres un asistente de atención al cliente inteligente para WhatsApp. Tu objetivo es mantener conversaciones genuinas y naturales.
+      // Crear prompt optimizado para respuestas naturales
+      const systemPrompt = `Eres un asistente de WhatsApp natural y auténtico.
 
-INFORMACIÓN DEL CONTACTO:
-- Nombre: ${context.contactName}
-- Estado de conversación: ${context.conversationState}
+REGLAS ESTRICTAS - NUNCA uses:
+❌ "Gracias por escribirnos"
+❌ "Le saluda [nombre]"
+❌ "Departamento de"
+❌ "Sistema Municipal"
+❌ "Servicio al Cliente"
+❌ "Estoy aquí para apoyarle"
+❌ "¿en qué puedo ayudarle?"
 
-PROMPT PERSONALIZADO ASIGNADO:
-${context.assignedPrompt || 'Proporciona atención al cliente profesional y amigable'}
+PERSONALIDAD:
+- Habla como una persona real del equipo
+- Usa lenguaje cotidiano de WhatsApp
+- Sé específico según el mensaje
+- Varía tus respuestas
 
-HISTORIAL DE CONVERSACIÓN:
+CONTEXTO:
+Cliente: ${context.contactName}
+Estado: ${context.conversationState}
+Conversación:
 ${conversationHistory}
 
-MENSAJE ACTUAL DEL CLIENTE:
-${currentMessage}
+MENSAJE: "${currentMessage}"
 
 INSTRUCCIONES:
-1. Responde de manera natural y conversacional
-2. Adapta tu tono según el contexto de la conversación
-3. Si es el primer mensaje, saluda cordialmente
-4. Si la conversación está avanzada, da seguimiento apropiado
-5. Si parece ser una despedida, responde con agradecimiento
-6. Mantén respuestas concisas (máximo 2-3 oraciones)
-7. Usa el prompt personalizado como guía de comportamiento
+1. Responde de forma directa y específica
+2. Usa 1-2 emojis máximo si es natural
+3. Habla en primera persona
+4. Sé conversacional, no corporativo
+5. Máximo 100 caracteres
 
-ESTADO DE CONVERSACIÓN:
-- greeting: Primera interacción, saluda y presenta el servicio
-- ongoing: Conversación en progreso, proporciona información útil
-- support: Cliente necesita ayuda específica
-- sales: Oportunidad de venta
-- farewell: Cliente se despide
-
-Responde en formato JSON:
-{
-  "message": "tu respuesta natural",
-  "confidence": 0.85,
-  "nextState": "ongoing",
-  "shouldSendFarewell": false,
-  "needsHumanIntervention": false
-}
-`;
+Responde SOLO el mensaje natural (sin JSON, sin formato):`;
 
       const result = await model.generateContent(systemPrompt);
       const response = await result.response;
       const text = response.text();
 
-      try {
-        const parsed = JSON.parse(text);
-        return {
-          message: parsed.message || 'Gracias por tu mensaje. ¿En qué puedo ayudarte?',
-          confidence: parsed.confidence || 0.7,
-          nextState: parsed.nextState || 'ongoing',
-          shouldSendFarewell: parsed.shouldSendFarewell || false,
-          needsHumanIntervention: parsed.needsHumanIntervention || false
-        };
-      } catch (parseError) {
-        // Si no puede parsear JSON, usar respuesta de fallback natural
-        return {
-          message: text.trim() || 'Gracias por tu mensaje. ¿En qué puedo ayudarte?',
-          confidence: 0.6,
-          nextState: 'ongoing',
-          shouldSendFarewell: false,
-          needsHumanIntervention: false
-        };
+      // Limpiar respuesta de la IA
+      let cleanedResponse = text.trim();
+      
+      // Remover frases genéricas si aparecen
+      const genericPhrases = [
+        /gracias por escribir(nos|te)/gi,
+        /le saluda \w+/gi,
+        /departamento de \w+/gi,
+        /sistema municipal/gi,
+        /servicio al (cliente|ciudadano)/gi,
+        /estoy aquí para apoyar(le|te)/gi
+      ];
+      
+      genericPhrases.forEach(phrase => {
+        cleanedResponse = cleanedResponse.replace(phrase, '');
+      });
+      
+      cleanedResponse = cleanedResponse.replace(/\s+/g, ' ').trim();
+      
+      // Si quedó muy corto o vacío, usar fallback natural
+      if (cleanedResponse.length < 10) {
+        const fallbacks = [
+          "¡Hola! ¿En qué te ayudo?",
+          "¡Hey! ¿Qué necesitas?",
+          "¡Buenas! ¿Cómo puedo ayudarte?",
+          "¡Hola! ¿Qué tal?"
+        ];
+        cleanedResponse = fallbacks[Math.floor(Math.random() * fallbacks.length)];
       }
+
+      return {
+        message: cleanedResponse,
+        confidence: this.calculateResponseConfidence(cleanedResponse, currentMessage),
+        nextState: this.determineNextState(currentMessage),
+        shouldSendFarewell: this.shouldSendFarewell(currentMessage),
+        needsHumanIntervention: this.needsHumanIntervention(currentMessage)
+      };
     } catch (error) {
       console.error('Error generando respuesta IA:', error);
       
       // Respuesta de fallback basada en contexto
       return this.generateFallbackResponse(context, currentMessage);
     }
+  }
+
+  /**
+   * Calcula confianza de la respuesta
+   */
+  private calculateResponseConfidence(response: string, message: string): number {
+    let confidence = 75;
+    
+    if (response.length > 15 && response.length < 120) confidence += 10;
+    if (response.toLowerCase().includes('gracias por escribirnos')) confidence -= 30;
+    if (response.toLowerCase().includes('departamento de')) confidence -= 25;
+    
+    return Math.min(95, Math.max(40, confidence));
+  }
+
+  /**
+   * Determina próximo estado
+   */
+  private determineNextState(message: string): string {
+    const lower = message.toLowerCase();
+    if (lower.includes('precio') || lower.includes('costo')) return 'sales';
+    if (lower.includes('problema') || lower.includes('ayuda')) return 'support';
+    if (lower.includes('gracias') || lower.includes('chao')) return 'farewell';
+    return 'ongoing';
+  }
+
+  /**
+   * Verifica si debe enviar despedida
+   */
+  private shouldSendFarewell(message: string): boolean {
+    const farewells = ['gracias', 'chao', 'bye', 'hasta luego'];
+    return farewells.some(f => message.toLowerCase().includes(f));
+  }
+
+  /**
+   * Verifica si necesita intervención humana
+   */
+  private needsHumanIntervention(message: string): boolean {
+    const escalation = ['supervisor', 'gerente', 'queja', 'reclamo'];
+    return escalation.some(e => message.toLowerCase().includes(e));
   }
 
   /**
