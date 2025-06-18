@@ -104,10 +104,9 @@ class IntelligentResponseService {
           response = await this.generateGeminiResponse(fullContext, aiConfig);
           break;
         case 'qwen3':
-          response = await this.generateQwenResponse(fullContext, aiConfig);
-          break;
-        case 'deepseek':
-          response = await this.generateDeepSeekResponse(fullContext, aiConfig);
+          // Temporalmente usar Gemini hasta arreglar Qwen3
+          console.log('⚠️ Qwen3 solicitado pero usando Gemini temporalmente');
+          response = await this.generateGeminiResponse(fullContext, aiConfig);
           break;
         default:
           response = await this.generateGeminiResponse(fullContext, aiConfig);
@@ -352,7 +351,7 @@ class IntelligentResponseService {
   }
 
   /**
-   * Genera respuesta usando Qwen
+   * Genera respuesta usando Qwen3
    */
   private async generateQwenResponse(context: string, aiConfig: any): Promise<AIResponse> {
     try {
@@ -360,46 +359,42 @@ class IntelligentResponseService {
         throw new Error('API Key de Qwen no configurada');
       }
 
-      const axios = (await import('axios')).default;
-      
-      const response = await axios.post(
-        'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
-        {
-          model: 'qwen-max',
+      // Implementación de Qwen3 - ajustar según la API específica
+      const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${aiConfig.qwenApiKey || process.env.QWEN_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'qwen-plus',
           input: {
             messages: [
-              { role: 'system', content: context }
+              {
+                role: 'system',
+                content: context
+              }
             ]
           },
           parameters: {
             temperature: aiConfig.temperature || 0.7,
-            max_tokens: 500,
-            top_p: 0.8,
-            result_format: 'message'
+            max_tokens: 500
           }
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${aiConfig.qwenApiKey || process.env.QWEN_API_KEY}`,
-            'Content-Type': 'application/json',
-            'X-DashScope-SSE': 'disable'
-          },
-          timeout: 15000
-        }
-      );
+        })
+      });
 
-      const message = response.data?.output?.choices?.[0]?.message?.content ||
-                     response.data?.output?.text || '';
-
-      if (!message) {
-        throw new Error('No response from Qwen');
+      if (!response.ok) {
+        throw new Error(`Qwen API error: ${response.statusText}`);
       }
+
+      const data = await response.json();
+      const message = data.output?.text || '';
 
       return {
         message: message.trim(),
-        confidence: 0.82,
-        provider: 'qwen',
-        reasoning: 'Respuesta generada con Qwen Max'
+        confidence: 0.75,
+        provider: 'qwen3',
+        reasoning: 'Respuesta generada con Qwen-Plus'
       };
       
     } catch (error) {
@@ -407,58 +402,6 @@ class IntelligentResponseService {
       throw error;
     }
   }
-
-  /**
-   * Genera respuesta usando DeepSeek
-   */
-  private async generateDeepSeekResponse(context: string, aiConfig: any): Promise<AIResponse> {
-    try {
-      if (!process.env.DEEPSEEK_API_KEY && !aiConfig.deepseekApiKey) {
-        throw new Error('API Key de DeepSeek no configurada');
-      }
-
-      const axios = (await import('axios')).default;
-      
-      const response = await axios.post(
-        'https://api.deepseek.com/v1/chat/completions',
-        {
-          model: 'deepseek-chat',
-          messages: [
-            { role: 'system', content: context }
-          ],
-          temperature: aiConfig.temperature || 0.7,
-          max_tokens: 500,
-          top_p: 0.95
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${aiConfig.deepseekApiKey || process.env.DEEPSEEK_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 15000
-        }
-      );
-
-      const message = response.data?.choices?.[0]?.message?.content || '';
-
-      if (!message) {
-        throw new Error('No response from DeepSeek');
-      }
-
-      return {
-        message: message.trim(),
-        confidence: 0.83,
-        provider: 'deepseek',
-        reasoning: 'Respuesta generada con DeepSeek Chat'
-      };
-      
-    } catch (error) {
-      console.error('❌ Error con DeepSeek:', error);
-      throw error;
-    }
-  }
-
-
 
   /**
    * Analiza el sentimiento y contexto del mensaje

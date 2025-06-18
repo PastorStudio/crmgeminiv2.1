@@ -171,7 +171,7 @@ const AppRoutes: React.FC = () => {
                 <span className="text-xs uppercase font-semibold text-white/70">Principal</span>
               </div>
               
-              <a href="/dashboard" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/dashboard' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
+              <a href="/" className={`flex items-center px-3 py-2 text-xs font-medium rounded-md ${location === '/' ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'} transition-all duration-200`}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="3" width="7" height="7" rx="1" fill="#3B82F6"/>
                   <rect x="14" y="3" width="7" height="7" rx="1" fill="#10B981"/>
@@ -718,9 +718,8 @@ const AppRoutes: React.FC = () => {
                 {/* Ruta de login pública */}
                 <Route path="/login" component={Login} />
                 
-                {/* Ruta raíz redirige a login */}
-                <Route path="/" component={Login} />
-                <Route path="/dashboard" component={() => <PrivateRoute component={Dashboard} path="/dashboard" />} />
+                {/* Rutas protegidas */}
+                <Route path="/" component={() => <PrivateRoute component={Dashboard} path="/" />} />
                 <Route path="/home" component={() => <PrivateRoute component={Home} path="/home" />} />
                 <Route path="/leads" component={() => <PrivateRoute component={Leads} path="/leads" />} />
                 <Route path="/sales-pipeline" component={() => <PrivateRoute component={SalesPipeline} path="/sales-pipeline" />} />

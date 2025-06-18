@@ -661,7 +661,6 @@ export const aiSettings = pgTable('ai_settings', {
   geminiApiKey: text('gemini_api_key'),
   openaiApiKey: text('openai_api_key'),
   qwenApiKey: text('qwen_api_key'),
-  deepseekApiKey: text('deepseek_api_key'),
   customPrompt: text('custom_prompt').default('Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.'),
   temperature: real('temperature').default(0.7),
   enableAIResponses: boolean('enable_ai_responses').default(false),
@@ -1070,6 +1069,7 @@ export const insertFlowConnectionSchema = createInsertSchema(flowConnections);
 export const insertConversationFlowSessionSchema = createInsertSchema(conversationFlowSessions);
 export const insertFlowExecutionLogSchema = createInsertSchema(flowExecutionLog);
 export const insertSalesMetricsSchema = createInsertSchema(salesMetrics);
+
 // Sales flow types
 export type SalesFlowStage = typeof salesFlowStages.$inferSelect;
 export type FlowNode = typeof flowNodes.$inferSelect;
@@ -1084,28 +1084,7 @@ export type InsertConversationFlowSession = typeof insertConversationFlowSession
 export type InsertFlowExecutionLog = typeof insertFlowExecutionLogSchema._type;
 export type InsertSalesMetrics = typeof insertSalesMetricsSchema._type;
 
-// Voice note transcriptions table  
-export const voiceNoteTranscriptions = pgTable("voice_note_transcriptions", {
-  id: serial("id").primaryKey(),
-  messageId: text("message_id").notNull(),
-  chatId: text("chat_id").notNull(),
-  accountId: integer("account_id").notNull(),
-  transcription: text("transcription").notNull(),
-  confidence: real("confidence").default(0.0),
-  language: text("language").default("es"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
-});
 
-// Voice note and media file schemas
-export const insertVoiceNoteTranscriptionSchema = createInsertSchema(voiceNoteTranscriptions);
-export const insertMediaFileSchemaNew = createInsertSchema(mediaFiles);
-
-// Voice note types
-export type VoiceNoteTranscription = typeof voiceNoteTranscriptions.$inferSelect;
-export type InsertVoiceNoteTranscription = typeof insertVoiceNoteTranscriptionSchema._type;
-export type MediaFileNew = typeof mediaFiles.$inferSelect;
-export type InsertMediaFileNew = typeof insertMediaFileSchemaNew._type;
 
 // Message Templates for mass messaging
 export const messageTemplates = pgTable("message_templates", {
@@ -1291,6 +1270,7 @@ export const insertTagSchema = createInsertSchema(tags);
 export const insertLeadTagSchema = createInsertSchema(leadTags);
 export const insertContactTagSchema = createInsertSchema(contactTags);
 export const insertTicketTagSchema = createInsertSchema(ticketTags);
+export const insertMediaFileSchema = createInsertSchema(mediaFiles);
 
 // Additional validation schemas (avoiding duplicates)
 export const insertContactSchema = createInsertSchema(contacts);
@@ -1314,4 +1294,4 @@ export type InsertContactTag = typeof insertContactTagSchema._type;
 export type TicketTag = typeof ticketTags.$inferSelect;
 export type InsertTicketTag = typeof insertTicketTagSchema._type;
 export type MediaFile = typeof mediaFiles.$inferSelect;
-export type InsertMediaFile = typeof insertMediaFileSchemaNew._type;
+export type InsertMediaFile = typeof insertMediaFileSchema._type;

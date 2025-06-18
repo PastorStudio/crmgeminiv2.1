@@ -13,7 +13,7 @@ import {
   insertLeadTagSchema,
   insertContactTagSchema,
   insertTicketTagSchema,
-  insertMediaFileSchemaNew,
+  insertMediaFileSchema,
   userSubscriptions,
   subscriptionPlans,
   users,
@@ -3882,7 +3882,7 @@ export function registerOptimizedRoutes(app: Express): Server {
   // Subir archivo multimedia
   app.post("/api/media/upload", async (req: Request, res: Response) => {
     try {
-      const validatedData = insertMediaFileSchemaNew.parse(req.body);
+      const validatedData = insertMediaFileSchema.parse(req.body);
       const [newMedia] = await db.insert(mediaFiles).values(validatedData).returning();
       res.json(newMedia);
     } catch (error) {

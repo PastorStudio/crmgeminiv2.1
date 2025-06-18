@@ -74,17 +74,14 @@ export function AutoResponseConfig({ accountId, accountName }: AutoResponseConfi
 
   // Obtener configuración actual desde la base de datos persistente
   const { data: configData, isLoading: configLoading } = useQuery({
-    queryKey: [`/api/whatsapp-accounts/${accountId}/auto-response-status`],
-    queryFn: () => apiRequest(`/api/whatsapp-accounts/${accountId}/auto-response-status`)
+    queryKey: [`/api/whatsapp-accounts/${accountId}/agent-config`],
+    queryFn: () => apiRequest(`/api/whatsapp-accounts/${accountId}/agent-config`)
   });
 
   // Actualizar configuración local cuando se carga la configuración del servidor
   useEffect(() => {
-    if (configData?.success) {
-      setConfig(prev => ({
-        ...prev,
-        autoResponseEnabled: configData.enabled || false
-      }));
+    if (configData?.success && configData.config) {
+      setConfig(configData.config);
     }
   }, [configData]);
 
@@ -168,59 +165,26 @@ export function AutoResponseConfig({ accountId, accountName }: AutoResponseConfi
     }
   });
 
-  const handleToggleAutoResponse = async () => {
+  const handleToggleAutoResponse = () => {
     if (config.autoResponseEnabled) {
-      // Deshabilitar usando el endpoint simplificado
-      try {
-        const response = await fetch(`/api/whatsapp-accounts/${accountId}/auto-response/toggle`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled: false })
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-          setConfig(prev => ({ ...prev, autoResponseEnabled: false }));
-          toast({
-            title: 'Respuestas automáticas desactivadas',
-            description: data.message
-          });
-        } else {
-          throw new Error(data.error);
-        }
-      } catch (error: any) {
-        toast({
-          title: 'Error',
-          description: error.message || 'Error desactivando respuestas automáticas',
-          variant: 'destructive'
-        });
-      }
+      // Deshabilitar
+      disableMutation.mutate({ accountId });
     } else {
-      // Habilitar usando el endpoint simplificado - NO requiere agente externo
-      try {
-        const response = await fetch(`/api/whatsapp-accounts/${accountId}/auto-response/toggle`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled: true })
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-          setConfig(prev => ({ ...prev, autoResponseEnabled: true }));
-          toast({
-            title: 'Respuestas automáticas activadas',
-            description: data.message
-          });
-        } else {
-          throw new Error(data.error);
-        }
-      } catch (error: any) {
+      // Habilitar - requiere agente seleccionado
+      if (!config.assignedExternalAgentId) {
         toast({
-          title: 'Error',
-          description: error.message || 'Error activando respuestas automáticas',
+          title: 'Agente requerido',
+          description: 'Selecciona un agente externo antes de habilitar respuestas automáticas',
           variant: 'destructive'
         });
+        return;
       }
+      
+      enableMutation.mutate({
+        accountId,
+        agentId: config.assignedExternalAgentId,
+        delay: config.responseDelay
+      });
     }
   };
 
@@ -280,7 +244,7 @@ export function AutoResponseConfig({ accountId, accountName }: AutoResponseConfi
           Respuestas Automáticas
         </CardTitle>
         <CardDescription>
-          Configura respuestas automáticas para {accountName}. Los agentes externos son opcionales - el sistema incluye IA integrada.
+          Configura respuestas automáticas con agentes externos para {accountName}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -309,10 +273,10 @@ export function AutoResponseConfig({ accountId, accountName }: AutoResponseConfi
 
         {/* Selección de agente */}
         <div className="space-y-2">
-          <Label htmlFor="agent-select">Agente Externo (Opcional)</Label>
+          <Label htmlFor="agent-select">Agente Externo</Label>
           <Select value={config.assignedExternalAgentId || ''} onValueChange={handleAgentChange}>
             <SelectTrigger>
-              <SelectValue placeholder="IA integrada (o selecciona agente externo)" />
+              <SelectValue placeholder="Selecciona un agente externo" />
             </SelectTrigger>
             <SelectContent>
               {agents.map((agent: ExternalAgent) => (

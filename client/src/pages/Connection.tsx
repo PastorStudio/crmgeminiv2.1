@@ -27,31 +27,12 @@ export default function Connection() {
   // Para obtener el código QR de WhatsApp
   const getWhatsAppQR = async () => {
     try {
-      const response = await fetch('/api/qr/1');
+      const response = await fetch('/api/direct/whatsapp/qrcode');
       if (!response.ok) throw new Error('Error al obtener código QR');
       const data = await response.json();
       
-      if (data && data.success && data.qrCode) {
-        // Generate QR image from text using canvas
-        const canvas = document.createElement('canvas');
-        const QRCode = await import('qrcode');
-        
-        await QRCode.toCanvas(canvas, data.qrCode, {
-          width: 256,
-          margin: 1,
-          color: {
-            dark: '#000000',
-            light: '#ffffff'
-          }
-        });
-        
-        const qrDataUrl = canvas.toDataURL();
-        setQrCodeSrc(qrDataUrl);
-        
-        toast({
-          title: "Código QR actualizado",
-          description: "Escanea el código QR con WhatsApp para conectar tu cuenta.",
-        });
+      if (data && data.qrcode) {
+        setQrCodeSrc(`data:image/png;base64,${data.qrcode}`);
       } else {
         console.error('No se recibió código QR válido');
         toast({

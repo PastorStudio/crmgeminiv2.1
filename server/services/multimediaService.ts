@@ -5,7 +5,7 @@
 
 import { whatsappMultiAccountManager } from './whatsappMultiAccountManager';
 import { db } from '../db';
-import { mediaFiles } from '@shared/schema';
+import { users } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -86,47 +86,6 @@ export class MultimediaService {
   }
   
   /**
-   * Almacena archivo multimedia en la base de datos
-   */
-  static async storeMediaFile(mediaData: {
-    messageId: string;
-    chatId: string;
-    accountId: number;
-    fileName: string;
-    fileType: string;
-    mimeType: string;
-    fileSize: number;
-    filePath: string;
-    fileData: string;
-  }) {
-    try {
-      const { db } = await import('../db');
-      const { mediaFiles } = await import('@shared/schema');
-      
-      const [newMedia] = await db.insert(mediaFiles).values({
-        messageId: mediaData.messageId,
-        chatId: mediaData.chatId,
-        accountId: mediaData.accountId,
-        fileName: mediaData.fileName,
-        fileType: mediaData.fileType,
-        mimeType: mediaData.mimeType,
-        fileSize: mediaData.fileSize,
-        filePath: mediaData.filePath,
-        thumbnailPath: null,
-        duration: null,
-        dimensions: null,
-        metadata: JSON.stringify({ originalData: mediaData.fileData.substring(0, 100) + '...' })
-      }).returning();
-      
-      console.log(`✅ Archivo multimedia guardado en BD: ${newMedia.fileName} (${newMedia.fileType})`);
-      return newMedia;
-    } catch (error) {
-      console.error('❌ Error guardando archivo multimedia:', error);
-      return null;
-    }
-  }
-
-  /**
    * Procesa mensajes multimedia y los convierte a formato base64 para mostrar en frontend
    */
   static async processMultimediaMessage(accountId: number, chatId: string, messageId: string) {
@@ -135,10 +94,11 @@ export class MultimediaService {
       
       // Verificar si ya existe en la base de datos
       const existingFiles = await db.select()
-        .from(mediaFiles)
+        .from(multimediaFiles)
         .where(and(
-          eq(mediaFiles.messageId, messageId),
-          eq(mediaFiles.accountId, accountId)
+          eq(multimediaFiles.messageId, messageId),
+          eq(multimediaFiles.chatId, chatId),
+          eq(multimediaFiles.accountId, accountId)
         ));
 
       if (existingFiles.length > 0) {
@@ -148,9 +108,9 @@ export class MultimediaService {
           type: existingFiles[0].fileType,
           mimetype: existingFiles[0].mimeType,
           filename: existingFiles[0].fileName,
-          data: existingFiles[0].filePath, // Store path instead of data
+          data: existingFiles[0].fileData,
           size: existingFiles[0].fileSize,
-          timestamp: new Date(existingFiles[0].createdAt || new Date())
+          timestamp: new Date(existingFiles[0].originalDate || new Date())
         };
       }
       
@@ -183,36 +143,26 @@ export class MultimediaService {
       
       console.log(`🔍 Tipo identificado: ${fileType} para mensaje tipo ${multimediaMessage.type}`);
 
-      // Crear directorio si no existe
-      const uploadDir = path.join(process.cwd(), 'uploads', 'multimedia');
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
-      // Guardar archivo físicamente
-      const filePath = path.join(uploadDir, filename);
-      fs.writeFileSync(filePath, Buffer.from(media.data, 'base64'));
-
       // Guardar en la base de datos
       const multimediaRecord = {
         messageId,
+        chatId,
+        accountId,
         fileName: filename,
-        originalName: media.filename || filename,
-        fileType,
         mimeType: media.mimetype,
         fileSize: media.data.length,
-        filePath: filePath,
-        fileUrl: `/uploads/multimedia/${filename}`,
-        metadata: {
+        fileType,
+        fileData: media.data,
+        metadata: JSON.stringify({
           whatsappType: multimediaMessage.type,
           originalFilename: media.filename,
           timestamp: multimediaMessage.timestamp
-        },
-        isProcessed: true,
-        accountId
+        }),
+        originalDate: new Date(multimediaMessage.timestamp * 1000),
+        processingStatus: 'completed'
       };
 
-      await db.insert(mediaFiles).values(multimediaRecord);
+      await db.insert(multimediaFiles).values(multimediaRecord);
 
       // Convertir a formato para el frontend
       const mediaData = {
@@ -340,7 +290,7 @@ export class MultimediaService {
   /**
    * Obtiene la extensión de archivo apropiada según el tipo MIME
    */
-  static getExtensionFromMimeType(mimetype: string): string {
+  private static getExtensionFromMimeType(mimetype: string): string {
     const mimeMap: { [key: string]: string } = {
       'image/jpeg': 'jpg',
       'image/png': 'png',
@@ -357,27 +307,6 @@ export class MultimediaService {
     };
     
     return mimeMap[mimetype] || 'bin';
-  }
-
-  /**
-   * Obtiene nombre de carpeta según el tipo de archivo
-   */
-  static getTypeFolderName(fileType: string): string {
-    switch (fileType) {
-      case 'image':
-        return 'images';
-      case 'video':
-        return 'videos';
-      case 'document':
-        return 'documents';
-      case 'audio':
-      case 'voice':
-        return 'audio';
-      case 'sticker':
-        return 'stickers';
-      default:
-        return 'others';
-    }
   }
 
   /**
