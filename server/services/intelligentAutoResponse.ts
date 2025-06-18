@@ -7,6 +7,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { db } from '../db.js';
 import { whatsappMessages, contacts, aiPrompts, whatsappAccounts } from '../../shared/schema';
 import { eq, and, desc, gt } from 'drizzle-orm';
+import { naturalConversationAI } from './naturalConversationAI.js';
 
 interface ConversationContext {
   contactId: number;
