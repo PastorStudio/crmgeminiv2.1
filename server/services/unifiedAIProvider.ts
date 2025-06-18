@@ -108,9 +108,9 @@ export class UnifiedAIProviderService {
    */
   async generateWithFallback(
     userMessage: string,
-    preferredProvider: string = 'gemini'
+    preferredProvider: string = 'deepseek'
   ): Promise<AIResponse> {
-    const providers = ['gemini', 'openai', 'deepseek', 'qwen'];
+    const providers = ['deepseek', 'gemini', 'openai', 'qwen'];
     
     // Try preferred provider first
     if (providers.includes(preferredProvider)) {
@@ -200,7 +200,7 @@ Genera UNA respuesta natural y específica:`;
     }
 
     const model = this.geminiClient.getGenerativeModel({
-      model: 'gemini-pro',
+      model: 'gemini-1.5-flash',
       generationConfig: {
         temperature,
         maxOutputTokens: maxTokens,
