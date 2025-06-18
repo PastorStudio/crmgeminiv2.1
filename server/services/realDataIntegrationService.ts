@@ -333,7 +333,7 @@ export class RealDataIntegrationService {
         conditions.push(eq(tickets.status, status));
       }
 
-      // Build query with conditional where clause
+      // Build and execute query
       let query = db
         .select({
           id: tickets.id,
