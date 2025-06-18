@@ -86,6 +86,47 @@ export class MultimediaService {
   }
   
   /**
+   * Almacena archivo multimedia en la base de datos
+   */
+  static async storeMediaFile(mediaData: {
+    messageId: string;
+    chatId: string;
+    accountId: number;
+    fileName: string;
+    fileType: string;
+    mimeType: string;
+    fileSize: number;
+    filePath: string;
+    fileData: string;
+  }) {
+    try {
+      const { db } = await import('../db');
+      const { mediaFiles } = await import('@shared/schema');
+      
+      const [newMedia] = await db.insert(mediaFiles).values({
+        messageId: mediaData.messageId,
+        chatId: mediaData.chatId,
+        accountId: mediaData.accountId,
+        fileName: mediaData.fileName,
+        fileType: mediaData.fileType,
+        mimeType: mediaData.mimeType,
+        fileSize: mediaData.fileSize,
+        filePath: mediaData.filePath,
+        thumbnailPath: null,
+        duration: null,
+        dimensions: null,
+        metadata: JSON.stringify({ originalData: mediaData.fileData.substring(0, 100) + '...' })
+      }).returning();
+      
+      console.log(`✅ Archivo multimedia guardado en BD: ${newMedia.fileName} (${newMedia.fileType})`);
+      return newMedia;
+    } catch (error) {
+      console.error('❌ Error guardando archivo multimedia:', error);
+      return null;
+    }
+  }
+
+  /**
    * Procesa mensajes multimedia y los convierte a formato base64 para mostrar en frontend
    */
   static async processMultimediaMessage(accountId: number, chatId: string, messageId: string) {
