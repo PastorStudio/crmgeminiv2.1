@@ -211,10 +211,12 @@ CONTEXTO DE NEGOCIO: ${businessName} - Empresa comprometida con brindar excelent
 
   private async generateAIResponse(userMessage: string, context: ChatContext, config: AIResponseConfig): Promise<string | null> {
     try {
-      // Usar el gestor inteligente de conversaciones para respuestas contextuales
-      console.log(`🧠 Generando respuesta inteligente para ${context.contactName}`);
+      // Usar el servicio mejorado de conversación con geolocalización
+      console.log(`🌍 Generando respuesta con geolocalización para ${context.contactName}`);
       
-      const intelligentResponse = await intelligentConversationManager.processIntelligentMessage(
+      const { enhancedGeolocationConversationService } = await import('./enhancedGeolocationConversationService');
+      
+      const locationAwareResponse = await enhancedGeolocationConversationService.processLocationAwareMessage(
         userMessage,
         context.chatId,
         context.accountId,
@@ -223,17 +225,17 @@ CONTEXTO DE NEGOCIO: ${businessName} - Empresa comprometida con brindar excelent
         config.prompt
       );
 
-      if (intelligentResponse) {
-        console.log(`✅ Respuesta inteligente generada para ${context.contactName}: ${intelligentResponse.substring(0, 50)}...`);
-        return intelligentResponse;
+      if (locationAwareResponse) {
+        console.log(`✅ Respuesta con geolocalización generada para ${context.contactName}: ${locationAwareResponse.substring(0, 50)}...`);
+        return locationAwareResponse;
       }
 
-      // Fallback al sistema original si el inteligente falla
+      // Fallback al sistema original si el nuevo servicio falla
       console.log(`⚠️ Fallback al sistema original para ${context.contactName}`);
       return await this.generateLegacyAIResponse(userMessage, context, config);
 
     } catch (error) {
-      console.error('❌ Error generando respuesta inteligente:', error);
+      console.error('❌ Error generando respuesta con geolocalización:', error);
       // Fallback al sistema original
       return await this.generateLegacyAIResponse(userMessage, context, config);
     }
