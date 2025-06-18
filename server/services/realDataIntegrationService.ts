@@ -12,7 +12,7 @@ import {
   tickets,
   tags,
   activities
-} from '@shared/schema';
+} from '../../shared/schema';
 import { eq, desc, and, or, gt, count, sql, isNull, ne } from 'drizzle-orm';
 
 export class RealDataIntegrationService {
@@ -324,6 +324,16 @@ export class RealDataIntegrationService {
    */
   async getRealTickets(userId?: number, status?: string, limit = 50) {
     try {
+      // Build conditions array
+      const conditions = [];
+      if (userId) {
+        conditions.push(eq(tickets.whatsappAccountId, userId));
+      }
+      if (status) {
+        conditions.push(eq(tickets.status, status));
+      }
+
+      // Build query with conditional where clause
       let query = db
         .select({
           id: tickets.id,
@@ -339,24 +349,15 @@ export class RealDataIntegrationService {
           updatedAt: tickets.updatedAt,
           tags: tickets.tags
         })
-        .from(tickets)
+        .from(tickets);
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      const results = await query
         .orderBy(desc(tickets.createdAt))
         .limit(limit);
-
-      const conditions = [];
-      if (userId) {
-        conditions.push(eq(tickets.assignedTo, userId));
-      }
-      if (status) {
-        conditions.push(eq(tickets.status, status));
-      }
-
-      let finalQuery = query;
-      if (conditions.length > 0) {
-        finalQuery = query.where(and(...conditions));
-      }
-
-      const results = await query;
 
       return {
         success: true,
