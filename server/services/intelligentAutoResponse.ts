@@ -8,6 +8,7 @@ import { db } from '../db.js';
 import { whatsappMessages, contacts, aiPrompts, whatsappAccounts } from '../../shared/schema';
 import { eq, and, desc, gt } from 'drizzle-orm';
 import { naturalConversationAI } from './naturalConversationAI.js';
+import { unifiedAIProvider } from './unifiedAIProvider.js';
 
 interface ConversationContext {
   contactId: number;
@@ -46,14 +47,77 @@ export class IntelligentAutoResponseService {
   }
 
   /**
-   * Procesa mensaje entrante y genera respuesta inteligente
+   * Procesa mensaje entrante y genera respuesta inteligente usando múltiples proveedores AI
    */
   async processIncomingMessage(
     accountId: number,
     chatId: string,
-    messageContent: string,
+    message: string,
     fromNumber: string
   ): Promise<AIResponse | null> {
+    try {
+      console.log(`🧠 Procesando mensaje con IA múltiple: "${message}"`);
+
+      // Get conversation context
+      const context = await this.getConversationContext(accountId, chatId, fromNumber);
+      
+      if (!context) {
+        console.log('⚠️ No se pudo obtener contexto de conversación');
+        return null;
+      }
+
+      // Determine which AI provider to use based on prompt assignment
+      let selectedProvider = 'gemini'; // default
+      
+      if (context.assignedPrompt) {
+        // Extract provider from prompt if specified
+        if (context.assignedPrompt.toLowerCase().includes('openai')) {
+          selectedProvider = 'openai';
+        } else if (context.assignedPrompt.toLowerCase().includes('qwen')) {
+          selectedProvider = 'qwen';
+        } else if (context.assignedPrompt.toLowerCase().includes('deepseek')) {
+          selectedProvider = 'deepseek';
+        }
+      }
+
+      console.log(`🎯 Using AI provider: ${selectedProvider}`);
+
+      // Generate response using unified AI provider
+      const aiResponse = await unifiedAIProvider.generateWithFallback(
+        message,
+        selectedProvider
+      );
+
+      if (!aiResponse.success || !aiResponse.message) {
+        console.log('⚠️ No se pudo generar respuesta con proveedores AI');
+        return null;
+      }
+
+      // Update conversation state
+      const nextState = this.determineNextState(message, context);
+      
+      return {
+        message: aiResponse.message,
+        confidence: aiResponse.confidence,
+        nextState,
+        shouldSendFarewell: false,
+        needsHumanIntervention: aiResponse.confidence < 70
+      };
+
+    } catch (error) {
+      console.error('❌ Error procesando mensaje inteligente:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get conversation context from database
+   */
+  private async getConversationContext(
+    accountId: number,
+    chatId: string,
+    fromNumber: string
+  ): Promise<ConversationContext | null> {
     try {
       // Obtener contexto de la conversación
       const context = await this.getConversationContext(accountId, chatId, fromNumber);
