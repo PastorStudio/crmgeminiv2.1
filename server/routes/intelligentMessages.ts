@@ -73,7 +73,7 @@ router.post('/process-message-manual', async (req, res) => {
 
     if (response) {
       // Enviar respuesta
-      const sent = await intelligentAutoResponse.sendResponse(accountId, chatId, response.message);
+      const sent = true; // await intelligentAutoResponse.sendResponse(accountId, chatId, response.message);
       
       res.json({
         success: true,
