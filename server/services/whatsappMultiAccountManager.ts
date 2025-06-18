@@ -228,6 +228,67 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
+   * Obtiene la configuración de respuestas automáticas para una cuenta
+   */
+  private async getAccountAutoResponseConfig(accountId: number): Promise<any> {
+    try {
+      const account = await storage.getWhatsappAccount(accountId);
+      if (!account) return null;
+
+      return {
+        autoResponseEnabled: account.autoResponseEnabled || false,
+        responseDelay: account.responseDelay || 3,
+        disableGroupResponses: account.disableGroupResponses || false,
+        assignedPromptId: account.assignedPromptId || null
+      };
+    } catch (error) {
+      console.error(`Error obteniendo configuración de cuenta ${accountId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Procesa y envía respuesta automática
+   */
+  private async processAutoResponse(accountId: number, message: any): Promise<void> {
+    try {
+      console.log(`🤖 Generando respuesta automática para cuenta ${accountId}`);
+
+      // Importar el servicio de respuestas inteligentes
+      const { intelligentResponseService } = await import('./intelligentResponseService');
+
+      // Preparar contexto para la respuesta
+      const context = {
+        chatId: message.from,
+        accountId: accountId,
+        userMessage: message.body || '',
+        customerName: message._data?.notifyName || null,
+        customerLocation: null
+      };
+
+      // Generar respuesta inteligente
+      const aiResponse = await intelligentResponseService.generateResponse(context);
+
+      if (aiResponse && aiResponse.message && aiResponse.message.trim()) {
+        // Obtener la instancia del cliente
+        const instance = this.instances.get(accountId);
+        if (instance && instance.client) {
+          // Enviar respuesta
+          await instance.client.sendMessage(message.from, aiResponse.message);
+          console.log(`✅ Respuesta automática enviada para cuenta ${accountId}: "${aiResponse.message.substring(0, 50)}..."`);
+        } else {
+          console.log(`⚠️ No se pudo enviar respuesta - cliente no disponible para cuenta ${accountId}`);
+        }
+      } else {
+        console.log(`⚠️ No se generó respuesta válida para cuenta ${accountId}`);
+      }
+
+    } catch (error) {
+      console.error(`❌ Error procesando respuesta automática para cuenta ${accountId}:`, error);
+    }
+  }
+
+  /**
    * Limpia códigos QR expirados del cache
    */
   private cleanExpiredQRCache(): number {
@@ -521,6 +582,38 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       console.log(`Cliente WhatsApp ${id} (${name}) listo para usar`);
       instance.status.ready = true;
       this.activatePermanentConnection(instance);
+    });
+
+    // Evento de mensajes entrantes - RESPUESTAS AUTOMÁTICAS
+    client.on('message', async (message) => {
+      try {
+        // Solo procesar mensajes que no son nuestros
+        if (message.fromMe) return;
+
+        console.log(`📩 Mensaje recibido en cuenta ${id}: "${message.body?.substring(0, 50)}..."`);
+
+        // Verificar si las respuestas automáticas están habilitadas para esta cuenta
+        const accountConfig = await this.getAccountAutoResponseConfig(id);
+        if (!accountConfig || !accountConfig.autoResponseEnabled) {
+          console.log(`⏸️ Respuestas automáticas deshabilitadas para cuenta ${id}`);
+          return;
+        }
+
+        // Evitar responder a grupos si está configurado
+        if (message.from.includes('@g.us') && accountConfig.disableGroupResponses) {
+          console.log(`🚫 Mensaje de grupo ignorado para cuenta ${id}`);
+          return;
+        }
+
+        // Aplicar delay de respuesta
+        const delay = accountConfig.responseDelay * 1000 || 3000;
+        setTimeout(async () => {
+          await this.processAutoResponse(id, message);
+        }, delay);
+
+      } catch (error) {
+        console.error(`❌ Error procesando mensaje en cuenta ${id}:`, error);
+      }
     });
 
     // Evento de desconexión con sistema de recuperación de sesión

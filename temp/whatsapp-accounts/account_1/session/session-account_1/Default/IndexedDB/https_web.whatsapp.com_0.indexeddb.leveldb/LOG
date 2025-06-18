@@ -1,12 +1,25 @@
-2025/06/18-16:52:32.617 18c6 Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/06/18-16:52:32.618 18c6 Recovering log #1605
-2025/06/18-16:52:32.620 18c6 Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001605.log 
-2025/06/18-16:52:35.683 18cb Level-0 table #1616: started
-2025/06/18-16:52:35.716 18cb Level-0 table #1616: 78245 bytes OK
-2025/06/18-16:52:36.091 18cb Delete type=0 #1605
-2025/06/18-16:52:36.092 18c6 Manual compaction at level-0 from ' \xe5\x01\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xe6\x01\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/06/18-16:52:38.480 18c8 Compacting 1@1 + 7@2 files
-2025/06/18-16:52:39.328 18c8 Generated table #1617@1: 38711 keys, 2189493 bytes
-2025/06/18-16:52:39.442 18c8 Generated table #1618@1: 33258 keys, 2204350 bytes
-2025/06/18-16:52:39.822 18c8 Generated table #1619@1: 60095 keys, 2226378 bytes
-2025/06/18-16:52:39.822 18c8 compacted to: files[ 0 1 7 0 0 0 0 ]
+2025/06/18-17:32:32.451 3ca Reusing MANIFEST /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/06/18-17:32:32.452 3ca Recovering log #1621
+2025/06/18-17:32:32.453 3ca Reusing old log /home/runner/workspace/temp/whatsapp-accounts/account_1/session/session-account_1/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001621.log 
+2025/06/18-17:32:37.505 3cd Level-0 table #1635: started
+2025/06/18-17:32:37.518 3cd Level-0 table #1635: 43008 bytes OK
+2025/06/18-17:32:37.543 3cd Delete type=0 #1621
+2025/06/18-17:32:37.544 3c8 Manual compaction at level-0 from ' \xe7\x01\x00\x00\x00' @ 72057594037927935 : 1 .. ' \xe8\x01\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/06/18-17:32:41.215 3ca Compacting 1@1 + 7@2 files
+2025/06/18-17:32:41.561 3ca Generated table #1636@1: 38927 keys, 2189469 bytes
+2025/06/18-17:32:41.800 3ca Generated table #1637@1: 33369 keys, 2203878 bytes
+2025/06/18-17:32:42.000 3ca Generated table #1638@1: 60042 keys, 2225859 bytes
+2025/06/18-17:32:42.127 3ca Generated table #1639@1: 7645 keys, 2154422 bytes
+2025/06/18-17:32:42.267 3ca Generated table #1640@1: 22712 keys, 2181053 bytes
+2025/06/18-17:32:42.421 3ca Generated table #1641@1: 101202 keys, 2252587 bytes
+2025/06/18-17:32:42.475 3ca Generated table #1642@1: 34638 keys, 720557 bytes
+2025/06/18-17:32:42.475 3ca Compacted 1@1 + 7@2 files => 13927825 bytes
+2025/06/18-17:32:42.483 3ca compacted to: files[ 0 0 7 0 0 0 0 ]
+2025/06/18-17:32:42.483 3ca Delete type=2 #1625
+2025/06/18-17:32:42.483 3ca Delete type=2 #1626
+2025/06/18-17:32:42.483 3ca Delete type=2 #1628
+2025/06/18-17:32:42.483 3ca Delete type=2 #1629
+2025/06/18-17:32:42.484 3ca Delete type=2 #1630
+2025/06/18-17:32:42.484 3ca Delete type=2 #1631
+2025/06/18-17:32:42.484 3ca Delete type=2 #1632
+2025/06/18-17:32:42.484 3ca Delete type=2 #1635
