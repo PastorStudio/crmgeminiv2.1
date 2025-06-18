@@ -3,7 +3,7 @@
  * Incluye análisis de contenido con IA y detección de interés
  */
 
-import { db } from '../db';
+import { pool } from '../db';
 
 export interface WhatsAppChat {
   id: string;

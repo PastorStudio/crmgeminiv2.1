@@ -4,7 +4,7 @@
  */
 
 import OpenAI from 'openai';
-import { db } from '../db';
+import { pool } from '../db';
 
 interface TrulyIndependentConfig {
   accountId: number;

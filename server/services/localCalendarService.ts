@@ -3,7 +3,8 @@
  * Gestiona eventos, recordatorios y notificaciones automáticas
  */
 
-import { db, pool } from '../db';
+import { db } from '../db';
+import { pool } from '../db';
 import { calendarEvents } from '@shared/schema';
 import cron from 'node-cron';
 

@@ -228,67 +228,6 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
-   * Obtiene la configuración de respuestas automáticas para una cuenta
-   */
-  private async getAccountAutoResponseConfig(accountId: number): Promise<any> {
-    try {
-      const account = await storage.getWhatsappAccount(accountId);
-      if (!account) return null;
-
-      return {
-        autoResponseEnabled: account.autoResponseEnabled || false,
-        responseDelay: account.responseDelay || 3,
-        disableGroupResponses: account.disableGroupResponses || false,
-        assignedPromptId: account.assignedPromptId || null
-      };
-    } catch (error) {
-      console.error(`Error obteniendo configuración de cuenta ${accountId}:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Procesa y envía respuesta automática
-   */
-  private async processAutoResponse(accountId: number, message: any): Promise<void> {
-    try {
-      console.log(`🤖 Generando respuesta automática para cuenta ${accountId}`);
-
-      // Importar el servicio de respuestas inteligentes
-      const { intelligentResponseService } = await import('./intelligentResponseService');
-
-      // Preparar contexto para la respuesta
-      const context = {
-        chatId: message.from,
-        accountId: accountId,
-        userMessage: message.body || '',
-        customerName: message._data?.notifyName || null,
-        customerLocation: null
-      };
-
-      // Generar respuesta inteligente
-      const aiResponse = await intelligentResponseService.generateResponse(context);
-
-      if (aiResponse && aiResponse.message && aiResponse.message.trim()) {
-        // Obtener la instancia del cliente
-        const instance = this.instances.get(accountId);
-        if (instance && instance.client) {
-          // Enviar respuesta
-          await instance.client.sendMessage(message.from, aiResponse.message);
-          console.log(`✅ Respuesta automática enviada para cuenta ${accountId}: "${aiResponse.message.substring(0, 50)}..."`);
-        } else {
-          console.log(`⚠️ No se pudo enviar respuesta - cliente no disponible para cuenta ${accountId}`);
-        }
-      } else {
-        console.log(`⚠️ No se generó respuesta válida para cuenta ${accountId}`);
-      }
-
-    } catch (error) {
-      console.error(`❌ Error procesando respuesta automática para cuenta ${accountId}:`, error);
-    }
-  }
-
-  /**
    * Limpia códigos QR expirados del cache
    */
   private cleanExpiredQRCache(): number {
@@ -584,38 +523,6 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       this.activatePermanentConnection(instance);
     });
 
-    // Evento de mensajes entrantes - RESPUESTAS AUTOMÁTICAS
-    client.on('message', async (message) => {
-      try {
-        // Solo procesar mensajes que no son nuestros
-        if (message.fromMe) return;
-
-        console.log(`📩 Mensaje recibido en cuenta ${id}: "${message.body?.substring(0, 50)}..."`);
-
-        // Verificar si las respuestas automáticas están habilitadas para esta cuenta
-        const accountConfig = await this.getAccountAutoResponseConfig(id);
-        if (!accountConfig || !accountConfig.autoResponseEnabled) {
-          console.log(`⏸️ Respuestas automáticas deshabilitadas para cuenta ${id}`);
-          return;
-        }
-
-        // Evitar responder a grupos si está configurado
-        if (message.from.includes('@g.us') && accountConfig.disableGroupResponses) {
-          console.log(`🚫 Mensaje de grupo ignorado para cuenta ${id}`);
-          return;
-        }
-
-        // Aplicar delay de respuesta
-        const delay = accountConfig.responseDelay * 1000 || 3000;
-        setTimeout(async () => {
-          await this.processAutoResponse(id, message);
-        }, delay);
-
-      } catch (error) {
-        console.error(`❌ Error procesando mensaje en cuenta ${id}:`, error);
-      }
-    });
-
     // Evento de desconexión con sistema de recuperación de sesión
     client.on('disconnected', async (reason) => {
       console.log(`🚨 Cliente WhatsApp ${id} (${name}) desconectado: ${reason}`);
@@ -685,183 +592,59 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           
           let messageBody = message.body || '';
           
-          // PROCESAMIENTO COMPLETO DE MULTIMEDIA
-          if (message.hasMedia) {
-            console.log(`🖼️ MENSAJE MULTIMEDIA DETECTADO (tipo: ${message.type})`);
+          // Transcripción automática de notas de voz
+          // Detectar múltiples tipos de audio de WhatsApp
+          const isVoiceMessage = message.type === 'ptt' || 
+                                 message.type === 'audio';
+          
+          console.log(`🎵 ¿Es mensaje de voz? ${isVoiceMessage} (tipo: ${message.type}, hasMedia: ${message.hasMedia})`);
+          
+          if (isVoiceMessage) {
+            console.log(`🎤 NOTA DE VOZ DETECTADA (tipo: ${message.type}), iniciando transcripción automática...`);
             
             try {
-              // Importar el servicio de multimedia mejorado
-              const { MultimediaService } = await import('./multimediaService');
-              
-              // Procesar según el tipo de multimedia
-              const isVoiceMessage = message.type === 'ptt' || message.type === 'audio';
-              const isImageMessage = message.type === 'image';
-              const isVideoMessage = message.type === 'video';
-              const isDocumentMessage = message.type === 'document';
-              const isStickerMessage = message.type === 'sticker';
-              
-              console.log(`🔍 Tipo de multimedia detectado:`, {
-                voice: isVoiceMessage,
-                image: isImageMessage,
-                video: isVideoMessage,
-                document: isDocumentMessage,
-                sticker: isStickerMessage,
-                type: message.type
-              });
-              
-              if (isVoiceMessage) {
-                console.log(`🎤 NOTA DE VOZ DETECTADA (tipo: ${message.type}), procesando multimedia y transcripción...`);
+              const media = await message.downloadMedia();
+              if (media) {
+                // Importar el servicio de almacenamiento de notas de voz
+                const { voiceNoteStorage } = await import('./voiceNoteStorage');
                 
-                const media = await message.downloadMedia();
-                if (media) {
-                  // Procesar archivo de voz usando MultimediaService
-                  const processedMedia = await MultimediaService.processMultimediaFile(
-                    media.data,
-                    media.mimetype,
-                    message.id._serialized,
-                    'audio'
-                  );
+                // Convertir el archivo de audio a buffer
+                const audioBuffer = Buffer.from(media.data, 'base64');
+                
+                // Guardar la nota de voz con transcripción automática
+                const voiceNote = await voiceNoteStorage.saveVoiceNote(
+                  message.id._serialized,
+                  message.from,
+                  id,
+                  audioBuffer,
+                  message.timestamp * 1000
+                );
+                
+                if (voiceNote && voiceNote.transcription) {
+                  console.log(`✅ Nota de voz guardada y transcrita: "${voiceNote.transcription}"`);
+                  messageBody = voiceNote.transcription;
                   
-                  if (processedMedia) {
-                    // Guardar en base de datos como archivo multimedia
-                    await MultimediaService.storeMediaFile({
-                      messageId: message.id._serialized,
+                  // Emitir evento de transcripción para la interfaz
+                  setTimeout(() => {
+                    this.emit('transcription_complete', {
                       chatId: message.from,
                       accountId: id,
-                      fileName: processedMedia.filename,
-                      fileType: 'audio',
-                      mimeType: media.mimetype,
-                      fileSize: processedMedia.size,
-                      filePath: processedMedia.filePath,
-                      fileData: media.data
+                      originalMessageId: message.id._serialized,
+                      transcription: voiceNote.transcription,
+                      timestamp: Date.now()
                     });
-                    
-                    console.log(`✅ Nota de voz guardada como archivo multimedia: ${processedMedia.filename}`);
-                    
-                    // Intentar transcripción automática
-                    try {
-                      const { VoiceNoteTranscriptionService } = await import('./voiceNoteTranscriptionService');
-                      const transcriptionService = new VoiceNoteTranscriptionService();
-                      const audioBuffer = Buffer.from(media.data, 'base64');
-                      
-                      const transcriptionText = await transcriptionService.transcribeAudio(audioBuffer, message.id._serialized);
-                      
-                      if (transcriptionText) {
-                        // Guardar transcripción en base de datos
-                        const { voiceNoteTranscriptions } = await import('@shared/schema');
-                        await db.insert(voiceNoteTranscriptions).values({
-                          messageId: message.id._serialized,
-                          chatId: message.from,
-                          accountId: id,
-                          transcription: transcriptionText,
-                          confidence: 0.9,
-                          language: 'es',
-                          createdAt: new Date()
-                        });
-                        
-                        console.log(`✅ Transcripción automática completada: "${transcriptionText}"`);
-                        messageBody = `[Nota de voz transcrita: "${transcriptionText}"]`;
-                        
-                        // Emitir evento de transcripción
-                        setTimeout(() => {
-                          this.emit('transcription_complete', {
-                            chatId: message.from,
-                            accountId: id,
-                            originalMessageId: message.id._serialized,
-                            transcription: transcriptionText,
-                            timestamp: Date.now()
-                          });
-                        }, 1000);
-                      } else {
-                        messageBody = `[Nota de voz guardada: ${processedMedia.filename}]`;
-                      }
-                    } catch (transcriptionError) {
-                      console.error('❌ Error en transcripción automática:', transcriptionError);
-                      messageBody = `[Nota de voz guardada: ${processedMedia.filename}]`;
-                    }
-                  } else {
-                    console.log(`⚠️ No se pudo procesar la nota de voz`);
-                    messageBody = '[Nota de voz recibida - error en procesamiento]';
-                  }
+                  }, 1000);
                 } else {
-                  console.log('⚠️ Error descargando nota de voz');
-                  messageBody = '[Nota de voz recibida - error en descarga]';
+                  console.log(`💾 Nota de voz guardada sin transcripción automática`);
+                  messageBody = '[Nota de voz guardada - transcripción pendiente]';
                 }
               } else {
-                // Procesar otros tipos de multimedia (imágenes, videos, documentos, stickers)
-                console.log(`📁 Procesando archivo multimedia: ${message.type}`);
-                
-                const media = await message.downloadMedia();
-                if (media) {
-                  // Determinar tipo de archivo
-                  const fileType = MultimediaService.identifyFileType(message.type, media.mimetype);
-                  const fileName = `${message.id._serialized}.${MultimediaService.getExtensionFromMimeType(media.mimetype)}`;
-                  
-                  // Procesar archivo multimedia usando el método mejorado
-                  const processedMedia = await MultimediaService.processMultimediaFile(
-                    media.data,
-                    media.mimetype,
-                    message.id._serialized,
-                    fileType
-                  );
-                  
-                  if (processedMedia) {
-                    // Guardar en base de datos
-                    await MultimediaService.storeMediaFile({
-                      messageId: message.id._serialized,
-                      chatId: message.from,
-                      accountId: id,
-                      fileName: processedMedia.filename,
-                      fileType: fileType,
-                      mimeType: media.mimetype,
-                      fileSize: processedMedia.size,
-                      filePath: processedMedia.filePath,
-                      fileData: media.data
-                    });
-                    
-                    console.log(`✅ Archivo multimedia procesado: ${fileType} - ${processedMedia.filename}`);
-                    
-                    // Establecer mensaje descriptivo según el tipo
-                    switch (fileType) {
-                      case 'image':
-                        messageBody = message.body || `[Imagen recibida: ${processedMedia.filename}]`;
-                        break;
-                      case 'video':
-                        messageBody = message.body || `[Video recibido: ${processedMedia.filename}]`;
-                        break;
-                      case 'document':
-                        messageBody = message.body || `[Documento recibido: ${processedMedia.filename}]`;
-                        break;
-                      case 'sticker':
-                        messageBody = message.body || '[Sticker recibido]';
-                        break;
-                      default:
-                        messageBody = message.body || `[Archivo multimedia recibido: ${processedMedia.filename}]`;
-                    }
-                    
-                    // Emitir evento de multimedia procesado
-                    setTimeout(() => {
-                      this.emit('multimedia_processed', {
-                        chatId: message.from,
-                        accountId: id,
-                        messageId: message.id._serialized,
-                        mediaType: fileType,
-                        filename: processedMedia.filename,
-                        timestamp: Date.now()
-                      });
-                    }, 500);
-                  } else {
-                    console.log(`⚠️ No se pudo procesar el archivo multimedia`);
-                    messageBody = message.body || '[Archivo multimedia recibido - error en procesamiento]';
-                  }
-                } else {
-                  console.log(`⚠️ Error descargando archivo multimedia`);
-                  messageBody = message.body || '[Archivo multimedia recibido - error en descarga]';
-                }
+                console.log('⚠️ OpenAI API key no disponible para transcripción');
+                messageBody = '[Nota de voz recibida - transcripción no disponible]';
               }
             } catch (error) {
-              console.error('❌ Error procesando multimedia:', error);
-              messageBody = message.body || '[Archivo multimedia recibido - error en procesamiento]';
+              console.error('❌ Error transcribiendo nota de voz:', error);
+              messageBody = '[Nota de voz recibida - error en transcripción]';
             }
           }
           

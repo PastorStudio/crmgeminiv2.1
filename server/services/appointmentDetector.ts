@@ -3,7 +3,7 @@
  * Este servicio analiza conversaciones de WhatsApp para detectar y programar citas automáticamente
  */
 
-import { db, pool } from '../db';
+import { pool } from '../db';
 
 /**
  * Crea una nueva cita en el calendario basada en la información detectada

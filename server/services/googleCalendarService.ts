@@ -5,7 +5,8 @@
 
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
-import { db, pool } from '../db';
+import { db } from '../db';
+import { pool } from '../db';
 
 interface CalendarEvent {
   leadId: number;

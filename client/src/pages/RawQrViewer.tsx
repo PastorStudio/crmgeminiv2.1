@@ -18,7 +18,7 @@ export default function RawQrViewer() {
     setError(null);
     
     try {
-      const response = await fetch('/api/qr/1');
+      const response = await fetch('/api/direct/whatsapp/qr-text');
       
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -26,8 +26,8 @@ export default function RawQrViewer() {
       
       const data = await response.json();
       
-      if (data.success && data.qrCode) {
-        setQrText(data.qrCode);
+      if (data.success && data.qrText) {
+        setQrText(data.qrText);
       } else {
         setError(data.error || 'No se pudo obtener el texto del código QR');
       }
