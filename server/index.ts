@@ -6,7 +6,7 @@ import { registerDirectAPIRoutes } from "./services/directApiServer";
 import { storage } from "./storage";
 import whatsappAccountsRouter from "./routes/whatsappAccounts";
 import modernMessagingRouter from "./routes/modern-messaging";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { users, whatsappAccounts, autoResponseConfigs, agentPageVisits, demoUsers, subscriptionPlans, userSubscriptions } from "@shared/schema";
 import { eq, gte, desc, and, sql } from "drizzle-orm";
 import * as agentAssignmentRoutes from "./routes/agentAssignments";

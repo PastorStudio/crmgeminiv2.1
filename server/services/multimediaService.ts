@@ -340,7 +340,7 @@ export class MultimediaService {
   /**
    * Obtiene la extensión de archivo apropiada según el tipo MIME
    */
-  private static getExtensionFromMimeType(mimetype: string): string {
+  static getExtensionFromMimeType(mimetype: string): string {
     const mimeMap: { [key: string]: string } = {
       'image/jpeg': 'jpg',
       'image/png': 'png',
@@ -357,6 +357,27 @@ export class MultimediaService {
     };
     
     return mimeMap[mimetype] || 'bin';
+  }
+
+  /**
+   * Obtiene nombre de carpeta según el tipo de archivo
+   */
+  private static getTypeFolderName(fileType: string): string {
+    switch (fileType) {
+      case 'image':
+        return 'images';
+      case 'video':
+        return 'videos';
+      case 'document':
+        return 'documents';
+      case 'audio':
+      case 'voice':
+        return 'audio';
+      case 'sticker':
+        return 'stickers';
+      default:
+        return 'others';
+    }
   }
 
   /**
