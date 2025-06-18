@@ -1,7 +1,11 @@
 /**
- * Procesador de respuestas automáticas A.E AI
- * Detecta mensajes nuevos y genera respuestas usando agentes externos
+ * DESHABILITADO - Usar unifiedAutoResponseSystem en su lugar
+ * Este archivo está deshabilitado para evitar conflictos
  */
+
+console.log('⚠️ autoResponseProcessor.ts está deshabilitado - usar unifiedAutoResponseSystem');
+
+// Sistema deshabilitado - no exportar funciones
 
 import OpenAI from 'openai';
 
