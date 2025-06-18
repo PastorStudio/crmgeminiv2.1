@@ -3,7 +3,9 @@ import { drizzle } from 'drizzle-orm/neon-serverless';
 import * as ws from "ws";
 import * as schema from "../shared/schema";
 
+// Configure WebSocket for Neon serverless
 neonConfig.webSocketConstructor = ws;
+neonConfig.poolQueryViaFetch = true;
 
 // Siempre usamos la base de datos PostgreSQL para datos reales
 if (!process.env.DATABASE_URL) {
@@ -11,5 +13,9 @@ if (!process.env.DATABASE_URL) {
 }
 
 console.log("Conectando a la base de datos PostgreSQL...");
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000
+});
 export const db = drizzle({ client: pool, schema });
