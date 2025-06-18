@@ -4,7 +4,7 @@
  * y actualiza leads, tickets y estadísticas usando IA
  */
 
-import { db } from '../db';
+import { pool } from '../db';
 import { storage } from '../storage';
 
 interface WhatsAppMessage {

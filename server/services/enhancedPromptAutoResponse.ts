@@ -54,7 +54,7 @@ class EnhancedPromptAutoResponseManager {
       
       // Usar consulta SQL directa para evitar problemas de esquema
       const { pool } = await import('../db');
-      const result = await db.execute(`
+      const result = await pool.query(`
         SELECT wa.id, wa.name, wa.autoresponseenabled, wa.assigned_prompt_id, wa.customprompt, wa.target_language,
                ap.name as prompt_name, ap.content as prompt_content, ap.provider, ap.temperature
         FROM whatsapp_accounts wa
@@ -100,7 +100,7 @@ class EnhancedPromptAutoResponseManager {
       
       // Actualizar base de datos usando consulta SQL directa
       const { pool } = await import('../db');
-      await db.execute(`
+      await pool.query(`
         UPDATE whatsapp_accounts 
         SET autoresponseenabled = true, assigned_prompt_id = $1 
         WHERE id = $2

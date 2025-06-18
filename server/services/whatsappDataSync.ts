@@ -2,7 +2,7 @@
  * WhatsApp Data Synchronization Service
  * Automatically updates database with real WhatsApp data when accounts connect
  */
-import { db } from '../db';
+import { pool } from '../db';
 
 export class WhatsAppDataSyncService {
   private static instance: WhatsAppDataSyncService;

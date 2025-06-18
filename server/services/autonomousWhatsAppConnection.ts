@@ -5,7 +5,7 @@
 
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth, MessageMedia } = pkg;
-import { db } from '../db';
+import { pool } from '../db';
 import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
