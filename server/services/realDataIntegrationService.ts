@@ -252,7 +252,7 @@ export class RealDataIntegrationService {
       return {
         success: true,
         pipeline,
-        totalValue: pipelineData.reduce((sum, lead) => sum + (lead.estimatedValue || 0), 0),
+        totalValue: pipelineData.reduce((sum, lead) => sum + (Number(lead.estimatedValue) || 0), 0),
         totalLeads: pipelineData.length,
         realData: true,
         timestamp: new Date().toISOString()
@@ -279,14 +279,14 @@ export class RealDataIntegrationService {
       const latestMessages = await db
         .select({
           chatId: whatsappMessages.chatId,
-          lastMessage: whatsappMessages.body,
+          lastMessage: whatsappMessages.content,
           lastMessageAt: whatsappMessages.createdAt,
-          contactId: whatsappMessages.contactId,
-          whatsappAccountId: whatsappMessages.whatsappAccountId,
-          isFromMe: whatsappMessages.isFromMe
+          contactId: whatsappMessages.chatId,
+          whatsappAccountId: whatsappMessages.accountId,
+          isFromMe: whatsappMessages.from_me
         })
         .from(whatsappMessages)
-        .where(userId ? eq(whatsappMessages.userId, userId) : undefined)
+        .where(userId ? eq(whatsappMessages.accountId, userId) : undefined)
         .orderBy(desc(whatsappMessages.createdAt))
         .limit(limit * 2); // Get more to ensure unique chats
 
@@ -351,8 +351,9 @@ export class RealDataIntegrationService {
         conditions.push(eq(tickets.status, status));
       }
 
+      let finalQuery = query;
       if (conditions.length > 0) {
-        query = query.where(and(...conditions));
+        finalQuery = query.where(and(...conditions));
       }
 
       const results = await query;
