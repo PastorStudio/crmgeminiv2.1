@@ -40,7 +40,7 @@ export class RealDataIntegrationService {
           priority: leads.priority,
           source: leads.source,
           assignedTo: leads.assignedTo,
-          estimatedValue: leads.estimatedValue,
+          estimatedValue: leads.value,
           createdAt: leads.createdAt,
           updatedAt: leads.updatedAt,
           tags: leads.tags,
@@ -94,11 +94,11 @@ export class RealDataIntegrationService {
           isActive: contacts.isActive,
           lastInteraction: contacts.lastSeen,
           createdAt: contacts.createdAt,
-          userId: contacts.userId
+          userId: contacts.whatsappAccountId
         })
         .from(contacts)
-        .where(userId ? eq(contacts.userId, userId) : undefined)
-        .orderBy(desc(contacts.lastInteraction))
+        .where(userId ? eq(contacts.whatsappAccountId, userId) : undefined)
+        .orderBy(desc(contacts.lastSeen))
         .limit(limit);
 
       return {
@@ -152,7 +152,7 @@ export class RealDataIntegrationService {
         .where(
           and(
             gt(whatsappMessages.createdAt, startOfDay),
-            userId ? eq(whatsappMessages.userId, userId) : undefined
+            userId ? eq(whatsappMessages.accountId, userId) : undefined
           )
         );
 
@@ -163,7 +163,7 @@ export class RealDataIntegrationService {
         .where(
           and(
             eq(tickets.status, 'open'),
-            userId ? eq(tickets.userId, userId) : undefined
+            userId ? eq(tickets.whatsappAccountId, userId) : undefined
           )
         );
 
@@ -227,7 +227,7 @@ export class RealDataIntegrationService {
           phone: leads.phone,
           status: leads.status,
           priority: leads.priority,
-          estimatedValue: leads.estimatedValue,
+          estimatedValue: leads.value,
           createdAt: leads.createdAt,
           assignedTo: leads.assignedTo
         })
@@ -334,7 +334,7 @@ export class RealDataIntegrationService {
           category: tickets.category,
           assignedTo: tickets.assignedTo,
           contactId: tickets.contactId,
-          chatId: tickets.chatId,
+          chatId: tickets.contactId,
           createdAt: tickets.createdAt,
           updatedAt: tickets.updatedAt,
           tags: tickets.tags
