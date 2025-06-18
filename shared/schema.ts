@@ -1069,9 +1069,6 @@ export const insertFlowConnectionSchema = createInsertSchema(flowConnections);
 export const insertConversationFlowSessionSchema = createInsertSchema(conversationFlowSessions);
 export const insertFlowExecutionLogSchema = createInsertSchema(flowExecutionLog);
 export const insertSalesMetricsSchema = createInsertSchema(salesMetrics);
-export const insertVoiceNoteTranscriptionSchema = createInsertSchema(voiceNoteTranscriptions);
-export const insertMediaFileSchema = createInsertSchema(mediaFiles);
-
 // Sales flow types
 export type SalesFlowStage = typeof salesFlowStages.$inferSelect;
 export type FlowNode = typeof flowNodes.$inferSelect;
@@ -1085,14 +1082,8 @@ export type InsertFlowConnection = typeof insertFlowConnectionSchema._type;
 export type InsertConversationFlowSession = typeof insertConversationFlowSessionSchema._type;
 export type InsertFlowExecutionLog = typeof insertFlowExecutionLogSchema._type;
 export type InsertSalesMetrics = typeof insertSalesMetricsSchema._type;
-export type VoiceNoteTranscription = typeof voiceNoteTranscriptions.$inferSelect;
-export type MediaFile = typeof mediaFiles.$inferSelect;
-export type InsertVoiceNoteTranscription = typeof insertVoiceNoteTranscriptionSchema._type;
-export type InsertMediaFile = typeof insertMediaFileSchema._type;
 
-
-
-// Voice note transcriptions table
+// Voice note transcriptions table  
 export const voiceNoteTranscriptions = pgTable("voice_note_transcriptions", {
   id: serial("id").primaryKey(),
   messageId: text("message_id").notNull(),
@@ -1105,22 +1096,15 @@ export const voiceNoteTranscriptions = pgTable("voice_note_transcriptions", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Media files table for multimedia handling
-export const mediaFiles = pgTable("media_files", {
-  id: serial("id").primaryKey(),
-  messageId: text("message_id").notNull(),
-  chatId: text("chat_id").notNull(),
-  accountId: integer("account_id").notNull(),
-  fileName: text("file_name").notNull(),
-  fileType: text("file_type").notNull(), // image, video, audio, document, sticker
-  mimeType: text("mime_type"),
-  fileSize: integer("file_size"),
-  filePath: text("file_path"),
-  fileData: text("file_data"), // base64 encoded data
-  thumbnailPath: text("thumbnail_path"),
-  metadata: jsonb("metadata"),
-  createdAt: timestamp("created_at").defaultNow()
-});
+// Voice note and media file schemas
+export const insertVoiceNoteTranscriptionSchema = createInsertSchema(voiceNoteTranscriptions);
+export const insertMediaFileSchemaNew = createInsertSchema(mediaFiles);
+
+// Voice note types
+export type VoiceNoteTranscription = typeof voiceNoteTranscriptions.$inferSelect;
+export type InsertVoiceNoteTranscription = typeof insertVoiceNoteTranscriptionSchema._type;
+export type MediaFileNew = typeof mediaFiles.$inferSelect;
+export type InsertMediaFileNew = typeof insertMediaFileSchemaNew._type;
 
 // Message Templates for mass messaging
 export const messageTemplates = pgTable("message_templates", {
@@ -1306,7 +1290,6 @@ export const insertTagSchema = createInsertSchema(tags);
 export const insertLeadTagSchema = createInsertSchema(leadTags);
 export const insertContactTagSchema = createInsertSchema(contactTags);
 export const insertTicketTagSchema = createInsertSchema(ticketTags);
-export const insertMediaFileSchema = createInsertSchema(mediaFiles);
 
 // Additional validation schemas (avoiding duplicates)
 export const insertContactSchema = createInsertSchema(contacts);
@@ -1330,4 +1313,4 @@ export type InsertContactTag = typeof insertContactTagSchema._type;
 export type TicketTag = typeof ticketTags.$inferSelect;
 export type InsertTicketTag = typeof insertTicketTagSchema._type;
 export type MediaFile = typeof mediaFiles.$inferSelect;
-export type InsertMediaFile = typeof insertMediaFileSchema._type;
+export type InsertMediaFile = typeof insertMediaFileSchemaNew._type;

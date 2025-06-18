@@ -48,18 +48,12 @@ export function SimpleAutoToggle({ accountId }: SimpleAutoToggleProps) {
     setIsLoading(true);
     
     try {
-      const endpoint = isEnabled 
-        ? `/api/auto-response/deactivate/${accountId}`
-        : `/api/auto-response/activate/${accountId}`;
-      
-      const response = await fetch(endpoint, {
+      const response = await fetch(`/api/auto-response/${accountId}/toggle`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          agentName: "Smart Assistant"
-        })
+        body: JSON.stringify({ enabled: !isEnabled })
       });
 
       const result = await response.json();
