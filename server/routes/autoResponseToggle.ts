@@ -36,17 +36,18 @@ router.post('/:accountId/toggle', async (req, res) => {
     // Obtener o crear configuración de respuesta automática
     let config = await db.select()
       .from(autoResponseConfigs)
-      .where(eq(autoResponseConfigs.whatsappAccountId, accountId))
+      .where(eq(autoResponseConfigs.accountId, accountId))
       .limit(1);
     
     if (config.length === 0) {
       // Crear nueva configuración
       const newConfig = await db.insert(autoResponseConfigs).values({
-        whatsappAccountId: accountId,
-        isEnabled: enabled,
-        prompt: enabled ? 'Responde de manera amigable y profesional a los mensajes de WhatsApp.' : null,
+        accountId: accountId,
+        enabled: enabled,
+        aiProvider: 'gemini',
         responseDelay: 3000,
         maxResponsesPerDay: 100,
+        personalityPrompt: enabled ? 'Responde de manera amigable y profesional a los mensajes de WhatsApp.' : null,
         createdAt: new Date(),
         updatedAt: new Date()
       }).returning();
@@ -63,10 +64,10 @@ router.post('/:accountId/toggle', async (req, res) => {
       // Actualizar configuración existente
       const updatedConfig = await db.update(autoResponseConfigs)
         .set({ 
-          isEnabled: enabled,
+          enabled: enabled,
           updatedAt: new Date()
         })
-        .where(eq(autoResponseConfigs.whatsappAccountId, accountId))
+        .where(eq(autoResponseConfigs.accountId, accountId))
         .returning();
       
       console.log(`✅ Configuración actualizada para cuenta ${accountId}: enabled=${enabled}`);
@@ -120,7 +121,7 @@ router.get('/:accountId/status', async (req, res) => {
     // Buscar configuración
     const config = await db.select()
       .from(autoResponseConfigs)
-      .where(eq(autoResponseConfigs.whatsappAccountId, accountId))
+      .where(eq(autoResponseConfigs.accountId, accountId))
       .limit(1);
     
     if (config.length === 0) {
