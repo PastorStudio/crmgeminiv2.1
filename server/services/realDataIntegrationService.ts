@@ -11,11 +11,9 @@ import {
   whatsappAccounts, 
   tickets,
   tags,
-  massMessages,
-  salesActivities,
   activities
 } from '@shared/schema';
-import { eq, desc, and, or, gt, count, sql, isNull } from 'drizzle-orm';
+import { eq, desc, and, or, gt, count, sql, isNull, ne } from 'drizzle-orm';
 
 export class RealDataIntegrationService {
   private static instance: RealDataIntegrationService;
@@ -91,10 +89,10 @@ export class RealDataIntegrationService {
           name: contacts.name,
           email: contacts.email,
           phone: contacts.phone,
-          whatsappNumber: contacts.whatsappNumber,
+          whatsappNumber: contacts.phone,
           tags: contacts.tags,
           isActive: contacts.isActive,
-          lastInteraction: contacts.lastInteraction,
+          lastInteraction: contacts.lastSeen,
           createdAt: contacts.createdAt,
           userId: contacts.userId
         })
@@ -236,11 +234,11 @@ export class RealDataIntegrationService {
         .from(leads)
         .where(
           and(
-            leads.status !== 'lost',
+            ne(leads.status, 'lost'),
             userId ? eq(leads.assignedTo, userId) : undefined
           )
         )
-        .orderBy(desc(leads.estimatedValue));
+        .orderBy(desc(leads.value));
 
       // Group by status for pipeline visualization
       const pipeline = pipelineData.reduce((acc, lead) => {
