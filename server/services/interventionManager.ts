@@ -4,9 +4,8 @@
  * Asegura privacidad total por usuario mediante filtrado automático
  */
 
-import { pool } from "../db";
-import { eq, and } from "drizzle-orm";
 import { db } from "../db";
+import { eq, and } from "drizzle-orm";
 
 interface InterventionRecord {
   id: string;

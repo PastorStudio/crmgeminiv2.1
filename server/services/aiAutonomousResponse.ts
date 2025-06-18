@@ -174,10 +174,7 @@ CONTEXTO DE NEGOCIO: ${businessName} - Empresa comprometida con brindar excelent
       const contact = await db
         .select()
         .from(contacts)
-        .where(and(
-          eq(contacts.chatId, chatId),
-          eq(contacts.whatsappAccountId, accountId)
-        ))
+        .where(eq(contacts.phone, chatId))
         .limit(1);
 
       // Obtener información de lead si existe
