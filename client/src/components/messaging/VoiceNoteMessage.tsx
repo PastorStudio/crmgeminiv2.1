@@ -69,6 +69,32 @@ export const VoiceNoteMessage: React.FC<VoiceNoteMessageProps> = ({ messageId, c
           <div className="text-red-600 text-sm flex items-center gap-2">
             <FileText className="w-4 h-4" />
             <span>{error}</span>
+            <button 
+              onClick={async () => {
+                try {
+                  setLoading(true);
+                  setError(null);
+                  const response = await fetch(`/api/voice-transcriptions/${messageId}/transcribe`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chatId, accountId })
+                  });
+                  const data = await response.json();
+                  if (data.success && data.transcription) {
+                    setTranscription(data.transcription);
+                  } else {
+                    setError('Error en transcripción');
+                  }
+                } catch (err) {
+                  setError('Error transcribiendo');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="ml-2 text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
+            >
+              Reintentar
+            </button>
           </div>
         ) : transcription ? (
           <div className="bg-white p-2 rounded border">
@@ -82,6 +108,31 @@ export const VoiceNoteMessage: React.FC<VoiceNoteMessageProps> = ({ messageId, c
         ) : (
           <div className="text-gray-500 text-sm">
             Transcripción no disponible
+            <button 
+              onClick={async () => {
+                try {
+                  setLoading(true);
+                  const response = await fetch(`/api/voice-transcriptions/${messageId}/transcribe`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chatId, accountId })
+                  });
+                  const data = await response.json();
+                  if (data.success && data.transcription) {
+                    setTranscription(data.transcription);
+                  } else {
+                    setError('Error en transcripción');
+                  }
+                } catch (err) {
+                  setError('Error transcribiendo');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="ml-2 text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600"
+            >
+              Transcribir
+            </button>
           </div>
         )}
       </div>

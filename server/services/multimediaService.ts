@@ -362,7 +362,7 @@ export class MultimediaService {
   /**
    * Obtiene nombre de carpeta según el tipo de archivo
    */
-  private static getTypeFolderName(fileType: string): string {
+  static getTypeFolderName(fileType: string): string {
     switch (fileType) {
       case 'image':
         return 'images';
