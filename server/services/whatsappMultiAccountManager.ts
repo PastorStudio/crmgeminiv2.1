@@ -592,59 +592,122 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           
           let messageBody = message.body || '';
           
-          // Transcripción automática de notas de voz
-          // Detectar múltiples tipos de audio de WhatsApp
-          const isVoiceMessage = message.type === 'ptt' || 
-                                 message.type === 'audio';
-          
-          console.log(`🎵 ¿Es mensaje de voz? ${isVoiceMessage} (tipo: ${message.type}, hasMedia: ${message.hasMedia})`);
-          
-          if (isVoiceMessage) {
-            console.log(`🎤 NOTA DE VOZ DETECTADA (tipo: ${message.type}), iniciando transcripción automática...`);
+          // PROCESAMIENTO COMPLETO DE MULTIMEDIA
+          if (message.hasMedia) {
+            console.log(`🖼️ MENSAJE MULTIMEDIA DETECTADO (tipo: ${message.type})`);
             
             try {
-              const media = await message.downloadMedia();
-              if (media) {
-                // Importar el servicio de almacenamiento de notas de voz
-                const { voiceNoteStorage } = await import('./voiceNoteStorage');
+              // Importar el servicio de multimedia mejorado
+              const { MultimediaService } = await import('./multimediaService');
+              
+              // Procesar según el tipo de multimedia
+              const isVoiceMessage = message.type === 'ptt' || message.type === 'audio';
+              const isImageMessage = message.type === 'image';
+              const isVideoMessage = message.type === 'video';
+              const isDocumentMessage = message.type === 'document';
+              const isStickerMessage = message.type === 'sticker';
+              
+              console.log(`🔍 Tipo de multimedia detectado:`, {
+                voice: isVoiceMessage,
+                image: isImageMessage,
+                video: isVideoMessage,
+                document: isDocumentMessage,
+                sticker: isStickerMessage,
+                type: message.type
+              });
+              
+              if (isVoiceMessage) {
+                console.log(`🎤 NOTA DE VOZ DETECTADA (tipo: ${message.type}), iniciando transcripción automática...`);
                 
-                // Convertir el archivo de audio a buffer
-                const audioBuffer = Buffer.from(media.data, 'base64');
-                
-                // Guardar la nota de voz con transcripción automática
-                const voiceNote = await voiceNoteStorage.saveVoiceNote(
-                  message.id._serialized,
-                  message.from,
-                  id,
-                  audioBuffer,
-                  message.timestamp * 1000
-                );
-                
-                if (voiceNote && voiceNote.transcription) {
-                  console.log(`✅ Nota de voz guardada y transcrita: "${voiceNote.transcription}"`);
-                  messageBody = voiceNote.transcription;
+                const media = await message.downloadMedia();
+                if (media) {
+                  // Importar el servicio de almacenamiento de notas de voz
+                  const { voiceNoteStorage } = await import('./voiceNoteStorage');
                   
-                  // Emitir evento de transcripción para la interfaz
-                  setTimeout(() => {
-                    this.emit('transcription_complete', {
-                      chatId: message.from,
-                      accountId: id,
-                      originalMessageId: message.id._serialized,
-                      transcription: voiceNote.transcription,
-                      timestamp: Date.now()
-                    });
-                  }, 1000);
+                  // Convertir el archivo de audio a buffer
+                  const audioBuffer = Buffer.from(media.data, 'base64');
+                  
+                  // Guardar la nota de voz con transcripción automática
+                  const voiceNote = await voiceNoteStorage.saveVoiceNote(
+                    message.id._serialized,
+                    message.from,
+                    id,
+                    audioBuffer,
+                    message.timestamp * 1000
+                  );
+                  
+                  if (voiceNote && voiceNote.transcription) {
+                    console.log(`✅ Nota de voz guardada y transcrita: "${voiceNote.transcription}"`);
+                    messageBody = voiceNote.transcription;
+                    
+                    // Emitir evento de transcripción para la interfaz
+                    setTimeout(() => {
+                      this.emit('transcription_complete', {
+                        chatId: message.from,
+                        accountId: id,
+                        originalMessageId: message.id._serialized,
+                        transcription: voiceNote.transcription,
+                        timestamp: Date.now()
+                      });
+                    }, 1000);
+                  } else {
+                    console.log(`💾 Nota de voz guardada sin transcripción automática`);
+                    messageBody = '[Nota de voz guardada - transcripción pendiente]';
+                  }
                 } else {
-                  console.log(`💾 Nota de voz guardada sin transcripción automática`);
-                  messageBody = '[Nota de voz guardada - transcripción pendiente]';
+                  console.log('⚠️ Error descargando nota de voz');
+                  messageBody = '[Nota de voz recibida - error en descarga]';
                 }
               } else {
-                console.log('⚠️ OpenAI API key no disponible para transcripción');
-                messageBody = '[Nota de voz recibida - transcripción no disponible]';
+                // Procesar otros tipos de multimedia (imágenes, videos, documentos, stickers)
+                console.log(`📁 Procesando archivo multimedia: ${message.type}`);
+                
+                const processedMedia = await MultimediaService.processMultimediaMessage(
+                  id,
+                  message.from,
+                  message.id._serialized
+                );
+                
+                if (processedMedia) {
+                  console.log(`✅ Archivo multimedia procesado: ${processedMedia.type} - ${processedMedia.filename}`);
+                  
+                  // Establecer mensaje descriptivo según el tipo
+                  switch (processedMedia.type) {
+                    case 'image':
+                      messageBody = message.body || `[Imagen recibida: ${processedMedia.filename}]`;
+                      break;
+                    case 'video':
+                      messageBody = message.body || `[Video recibido: ${processedMedia.filename}]`;
+                      break;
+                    case 'document':
+                      messageBody = message.body || `[Documento recibido: ${processedMedia.filename}]`;
+                      break;
+                    case 'sticker':
+                      messageBody = message.body || '[Sticker recibido]';
+                      break;
+                    default:
+                      messageBody = message.body || `[Archivo multimedia recibido: ${processedMedia.filename}]`;
+                  }
+                  
+                  // Emitir evento de multimedia procesado
+                  setTimeout(() => {
+                    this.emit('multimedia_processed', {
+                      chatId: message.from,
+                      accountId: id,
+                      messageId: message.id._serialized,
+                      mediaType: processedMedia.type,
+                      filename: processedMedia.filename,
+                      timestamp: Date.now()
+                    });
+                  }, 500);
+                } else {
+                  console.log(`⚠️ No se pudo procesar el archivo multimedia`);
+                  messageBody = message.body || '[Archivo multimedia recibido - error en procesamiento]';
+                }
               }
             } catch (error) {
-              console.error('❌ Error transcribiendo nota de voz:', error);
-              messageBody = '[Nota de voz recibida - error en transcripción]';
+              console.error('❌ Error procesando multimedia:', error);
+              messageBody = message.body || '[Archivo multimedia recibido - error en procesamiento]';
             }
           }
           
