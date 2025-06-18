@@ -49,6 +49,7 @@ import { enhancedAIService } from './services/enhancedAIResponseService';
 import { backgroundChatMonitor } from './services/backgroundChatMonitor';
 import { chatToLeadConverter } from './services/chatToLeadConverter';
 import { messageSystemActivator } from './services/messageSystemActivator';
+import intelligentMessagesRouter from './routes/intelligentMessages.js';
 
 // ⏰ SINCRONIZACIÓN COMPLETA DE TIEMPO - NUEVA YORK (REAL)
 process.env.TZ = 'America/New_York';

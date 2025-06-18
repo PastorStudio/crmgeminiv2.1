@@ -59,15 +59,11 @@ export class RealTimeMessageProcessor {
   ): Promise<void> {
     try {
       await db.insert(whatsappMessages).values({
-        accountId,
         chatId,
         messageId: messageData.id,
         content: messageData.body || '',
         from_me: messageData.fromMe || false,
-        timestamp: new Date(messageData.timestamp * 1000),
-        hasMedia: messageData.hasMedia || false,
-        mediaType: messageData.mediaType,
-        mediaUrl: messageData.mediaUrl,
+        timestamp: new Date(messageData.timestamp * 1000)
         metadata: {
           originalData: messageData
         }
