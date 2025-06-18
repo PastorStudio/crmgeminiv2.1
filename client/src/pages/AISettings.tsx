@@ -69,10 +69,11 @@ import { Plus, Edit, Trash2, Settings, Bot, MessageSquare } from "lucide-react";
 
 // AI Integration settings schema
 const aiIntegrationSchema = z.object({
-  selectedProvider: z.enum(["gemini", "openai", "qwen3"]).default("gemini"),
+  selectedProvider: z.enum(["gemini", "openai", "qwen3", "deepseek"]).default("gemini"),
   geminiApiKey: z.string().optional(),
   openaiApiKey: z.string().optional(),
   qwenApiKey: z.string().optional(),
+  deepseekApiKey: z.string().optional(),
   customPrompt: z.string().optional(),
   temperature: z.number().min(0).max(2).default(0.7),
   enableAIResponses: z.boolean().default(true),
@@ -85,7 +86,7 @@ const aiPromptSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
   description: z.string().optional(),
   content: z.string().min(10, "El contenido debe tener al menos 10 caracteres"),
-  provider: z.enum(["openai", "gemini", "qwen3"]).default("openai"),
+  provider: z.enum(["openai", "gemini", "qwen3", "deepseek"]).default("openai"),
   temperature: z.number().min(0).max(2).default(0.7),
   maxTokens: z.number().min(100).max(4000).default(1000),
   model: z.string().default("gpt-4o"),
@@ -178,6 +179,7 @@ export default function AISettings() {
       geminiApiKey: "",
       openaiApiKey: "",
       qwenApiKey: "",
+      deepseekApiKey: "",
       customPrompt: "Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.",
       temperature: 0.7,
       enableAIResponses: true,
@@ -188,13 +190,14 @@ export default function AISettings() {
   // Actualizar formulario cuando se cargan las configuraciones
   useEffect(() => {
     if (aiSettings) {
-      const hasExistingConfig = aiSettings.selectedProvider || aiSettings.geminiApiKey || aiSettings.openaiApiKey || aiSettings.qwenApiKey;
+      const hasExistingConfig = aiSettings.selectedProvider || aiSettings.geminiApiKey || aiSettings.openaiApiKey || aiSettings.qwenApiKey || aiSettings.deepseekApiKey;
       
       aiForm.reset({
         selectedProvider: aiSettings.selectedProvider || "gemini",
         geminiApiKey: aiSettings.geminiApiKey || "",
         openaiApiKey: aiSettings.openaiApiKey || "",
         qwenApiKey: aiSettings.qwenApiKey || "",
+        deepseekApiKey: aiSettings.deepseekApiKey || "",
         customPrompt: aiSettings.customPrompt || "Eres un asistente virtual útil y amigable. Responde de manera profesional y concisa.",
         temperature: aiSettings.temperature || 0.7,
         enableAIResponses: aiSettings.enableAIResponses || false,
@@ -402,7 +405,7 @@ export default function AISettings() {
       name: prompt.name,
       description: prompt.description || "",
       content: prompt.content,
-      provider: prompt.provider as "openai" | "gemini" | "qwen3",
+      provider: prompt.provider as "openai" | "gemini" | "qwen3" | "deepseek",
       temperature: prompt.temperature,
       maxTokens: prompt.maxTokens,
       model: prompt.model,
@@ -639,6 +642,7 @@ export default function AISettings() {
                               <SelectItem value="gemini">🤖 Google Gemini AI</SelectItem>
                               <SelectItem value="openai">🧠 OpenAI GPT</SelectItem>
                               <SelectItem value="qwen3">🚀 Qwen3 AI</SelectItem>
+                              <SelectItem value="deepseek">🔥 DeepSeek AI</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>
