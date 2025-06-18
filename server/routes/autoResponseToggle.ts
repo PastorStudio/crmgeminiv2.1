@@ -1,5 +1,6 @@
 /**
- * Endpoint dedicado para activar/desactivar respuestas automáticas
+ * DEPRECATED: Use autoResponseToggleFixed.ts instead
+ * This file has been replaced due to SQL syntax errors
  */
 import { Router } from 'express';
 import { db } from '../db';
