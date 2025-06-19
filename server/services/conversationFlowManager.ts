@@ -3,7 +3,7 @@
  * Manages natural conversation flow with greeting, development, and farewell phases
  */
 
-import { storage } from '../storage';
+// Dynamic import to avoid circular dependencies
 
 interface ConversationState {
   chatId: string;
@@ -42,25 +42,27 @@ class ConversationFlowManager {
   constructor() {
     this.conversationFlow = {
       greeting: {
-        triggers: ['hola', 'hello', 'buenos días', 'buenas tardes', 'buenas noches', 'hi', 'hey'],
+        triggers: ['hola', 'hello', 'buenos días', 'buenas tardes', 'buenas noches', 'hi', 'hey', 'saludos'],
         responses: [
-          '¡Hola! Me da mucho gusto saludarte. ¿En qué puedo ayudarte hoy?',
-          '¡Buenos días! Soy tu asistente virtual. ¿Cómo puedo ser de utilidad?',
-          '¡Hola! Espero que tengas un excelente día. ¿Qué información necesitas?'
+          'Hola! Me da mucho gusto saludarte. ¿En qué puedo ayudarte hoy?',
+          'Buenos días! Soy tu asistente. ¿Cómo puedo ser de utilidad?',
+          'Hola! Espero que tengas un excelente día. ¿Qué información necesitas?',
+          'Hola, bienvenido. Estoy aquí para ayudarte con lo que necesites.'
         ],
         nextPhase: 'development'
       },
       development: {
-        maxMessages: 8,
+        maxMessages: 6,
         contextAware: true,
         nextPhase: 'farewell'
       },
       farewell: {
-        triggers: ['gracias', 'thank you', 'adiós', 'goodbye', 'bye', 'hasta luego', 'nos vemos'],
+        triggers: ['gracias', 'thank you', 'adiós', 'goodbye', 'bye', 'hasta luego', 'nos vemos', 'chao'],
         responses: [
-          '¡Ha sido un placer ayudarte! Si necesitas algo más, no dudes en escribirme.',
-          '¡Excelente! Me alegra haber podido ayudarte. ¡Que tengas un gran día!',
-          'Gracias por contactarnos. Estaré aquí cuando me necesites. ¡Hasta pronto!'
+          'Ha sido un placer ayudarte! Si necesitas algo más, no dudes en escribirme.',
+          'Excelente! Me alegra haber podido ayudarte. Que tengas un gran día!',
+          'Gracias por contactarnos. Estaré aquí cuando me necesites. Hasta pronto!',
+          'Fue un gusto atenderte. No dudes en contactarme si necesitas más ayuda.'
         ],
         nextPhase: 'completed'
       }
@@ -220,19 +222,7 @@ class ConversationFlowManager {
     const greetingResponses = this.conversationFlow.greeting.responses;
     const baseResponse = greetingResponses[Math.floor(Math.random() * greetingResponses.length)];
     
-    // Enhance with AI if active prompt exists
-    if (activePrompt) {
-      const enhancedResponse = await this.enhanceWithAI(
-        `${baseResponse} Contexto: ${activePrompt}`,
-        message,
-        'greeting'
-      );
-      return {
-        text: enhancedResponse,
-        confidence: 90
-      };
-    }
-    
+    // Return base greeting response
     return {
       text: baseResponse,
       confidence: 85
@@ -247,25 +237,19 @@ class ConversationFlowManager {
     message: string, 
     activePrompt: string
   ): Promise<{ text: string; confidence: number }> {
-    if (!activePrompt) {
-      return {
-        text: 'Entiendo tu consulta. ¿Puedes darme más detalles sobre lo que necesitas?',
-        confidence: 70
-      };
-    }
-
-    // Create context from conversation history
-    const conversationContext = state.context.join(' ');
+    // Generate contextual response for development phase
+    const developmentResponses = [
+      'Entiendo tu consulta. ¿Puedes darme más detalles sobre lo que necesitas?',
+      'Perfecto, puedo ayudarte con eso. ¿Qué información específica buscas?',
+      'Claro, estoy aquí para asistirte. ¿Podrías ser más específico?',
+      'Excelente pregunta. Déjame ayudarte con esa información.'
+    ];
     
-    const aiResponse = await this.enhanceWithAI(
-      `Contexto de conversación: ${conversationContext}\nPrompt activo: ${activePrompt}`,
-      message,
-      'development'
-    );
-
+    const response = developmentResponses[Math.floor(Math.random() * developmentResponses.length)];
+    
     return {
-      text: aiResponse,
-      confidence: 95
+      text: response,
+      confidence: 80
     };
   }
 
@@ -280,19 +264,7 @@ class ConversationFlowManager {
     const farewellResponses = this.conversationFlow.farewell.responses;
     const baseResponse = farewellResponses[Math.floor(Math.random() * farewellResponses.length)];
     
-    // Enhance with AI if active prompt exists
-    if (activePrompt) {
-      const enhancedResponse = await this.enhanceWithAI(
-        `${baseResponse} Contexto: ${activePrompt}`,
-        message,
-        'farewell'
-      );
-      return {
-        text: enhancedResponse,
-        confidence: 88
-      };
-    }
-    
+    // Return base farewell response
     return {
       text: baseResponse,
       confidence: 85
@@ -304,6 +276,8 @@ class ConversationFlowManager {
    */
   private async getActivePrompt(accountId: number): Promise<string> {
     try {
+      // Import storage dynamically to avoid circular dependencies
+      const { storage } = await import('../storage');
       const accounts = await storage.getWhatsAppAccounts();
       const account = accounts.find(acc => acc.id === accountId);
       return account?.autoResponsePrompt || '';
@@ -314,35 +288,15 @@ class ConversationFlowManager {
   }
 
   /**
-   * Enhance response with AI
+   * Enhance response with AI (simplified version)
    */
   private async enhanceWithAI(
     context: string, 
     message: string, 
     phase: string
   ): Promise<string> {
-    try {
-      // Importar servicios de IA disponibles
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      
-      const aiPrompt = this.buildAIPrompt(context, message, phase);
-      
-      // Usar Gemini para generar respuesta mejorada
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-      
-      const result = await model.generateContent(aiPrompt);
-      const response = result.response;
-      let text = response.text();
-      
-      // Limpiar respuesta
-      text = this.cleanResponse(text);
-      
-      return text || this.getFallbackResponse(phase);
-    } catch (error) {
-      console.error('Error enhancing with AI:', error);
-      return this.getFallbackResponse(phase);
-    }
+    // For now, return fallback responses to ensure system stability
+    return this.getFallbackResponse(phase);
   }
 
   /**
