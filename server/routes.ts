@@ -48,6 +48,7 @@ import salesFlowRouter from "./routes/salesFlowRoutes";
 import flowExecutionRouter from "./routes/flowExecutionRoutes";
 import multiTenantRoutes from "./routes/multiTenantRoutes";
 import { multiTenantAuth, AuthenticatedRequest, getAccessibleAccountIds, canAccessAccount } from "./middleware/multiTenantAuth";
+import { whatsappRecoveryRouter } from "./routes/whatsappRecovery";
 import { demoUserManager } from "./services/demoUserManager";
 import promptTestRoutes from "./routes/promptTestRoutes";
 
