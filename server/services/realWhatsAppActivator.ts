@@ -10,27 +10,37 @@ export class RealWhatsAppActivator {
     console.log('🔄 Activating real WhatsApp connections...');
     
     try {
-      // Force initialization of account 1 with real authentication
-      const success = await whatsappMultiAccountManager.initializeAccount(1);
+      // Add timeout to prevent hanging
+      const initPromise = whatsappMultiAccountManager.initializeAccount(1);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('WhatsApp initialization timeout')), 60000)
+      );
+      
+      const success = await Promise.race([initPromise, timeoutPromise]);
       
       if (success) {
         console.log('✅ WhatsApp account 1 initialized for real data');
         
-        // Force QR generation for authentication
-        await whatsappMultiAccountManager.forceRefreshQR(1);
-        console.log('✅ QR code generated for authentication');
-        
-        // Activate persistent connection
-        whatsappMultiAccountManager.activateKeepAlive(1);
-        console.log('✅ Persistent connection activated');
-        
-        // Mark system as ready for real data
-        console.log('🚀 Real WhatsApp system activated - ready for authentic data');
+        try {
+          // Force QR generation for authentication
+          await whatsappMultiAccountManager.forceRefreshQR(1);
+          console.log('✅ QR code generated for authentication');
+          
+          // Activate persistent connection
+          whatsappMultiAccountManager.activateKeepAlive(1);
+          console.log('✅ Persistent connection activated');
+          
+          // Mark system as ready for real data
+          console.log('🚀 Real WhatsApp system activated - ready for authentic data');
+        } catch (qrError) {
+          console.log('⚠️ QR generation failed, but WhatsApp client is running');
+        }
       } else {
         console.log('⚠️ Failed to initialize WhatsApp account 1');
       }
     } catch (error) {
       console.error('❌ Error activating real WhatsApp connections:', error);
+      console.log('🔄 App will continue running without WhatsApp connection');
     }
   }
   
