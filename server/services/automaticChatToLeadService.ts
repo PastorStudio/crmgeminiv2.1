@@ -194,22 +194,22 @@ export class AutomaticChatToLeadService {
       const conversationsData = await db
         .select({
           contactId: contacts.id,
-          accountId: whatsappMessages.accountId,
+          accountId: contacts.whatsappAccountId,
           contactName: contacts.name,
           contactPhone: contacts.phone,
           lastMessage: sql<Date>`MAX(${whatsappMessages.timestamp})`,
           messageCount: sql<number>`COUNT(*)::int`
         })
-        .from(whatsappMessages)
-        .innerJoin(contacts, eq(whatsappMessages.accountId, contacts.whatsappAccountId))
+        .from(contacts)
+        .leftJoin(whatsappMessages, eq(contacts.id, whatsappMessages.contactId))
         .where(
           and(
-            eq(whatsappMessages.from_me, false), // Only incoming messages
-            sql`${whatsappMessages.timestamp} > NOW() - INTERVAL '30 days'` // Last 30 days
+            sql`${contacts.phone} IS NOT NULL`,
+            sql`${contacts.phone} != ''`
           )
         )
-        .groupBy(contacts.id, whatsappMessages.accountId, contacts.name, contacts.phone)
-        .having(sql`COUNT(*) >= 3`) // At least 3 messages
+        .groupBy(contacts.id, contacts.whatsappAccountId, contacts.name, contacts.phone)
+        .having(sql`COUNT(${whatsappMessages.id}) >= 1`) // At least 1 message or contact
         .orderBy(desc(sql`MAX(${whatsappMessages.timestamp})`));
 
       const conversations: ChatConversation[] = [];
@@ -258,46 +258,35 @@ export class AutomaticChatToLeadService {
 
   private async shouldConvertToLead(conversation: ChatConversation): Promise<boolean> {
     try {
-      // Basic criteria for lead conversion
-      const criteria = {
-        minMessages: 3,
-        recentActivity: 7, // days
-        hasIncomingMessages: true,
-        excludeSystemMessages: true
-      };
-
-      // Check if conversation meets basic criteria
-      if (conversation.messageCount < criteria.minMessages) {
-        return false;
-      }
-
-      // Check for recent activity
-      const daysSinceLastMessage = Math.floor(
-        (Date.now() - conversation.lastMessageTime.getTime()) / (1000 * 60 * 60 * 24)
-      );
+      // Criterios más permisivos para conversión automática
       
-      if (daysSinceLastMessage > criteria.recentActivity) {
+      // Si no hay contacto válido, no convertir
+      if (!conversation.contactPhone || conversation.contactPhone.trim() === '') {
         return false;
       }
 
-      // Check for business-related keywords in messages
-      const businessKeywords = [
-        'precio', 'costo', 'comprar', 'vender', 'producto', 'servicio',
-        'información', 'cotización', 'presupuesto', 'contacto', 'empresa',
-        'negocio', 'consulta', 'disponible', 'horario', 'ubicación'
-      ];
+      // Si no hay mensajes, convertir el contacto igual (es un contacto válido)
+      if (conversation.messageCount === 0) {
+        return true;
+      }
 
-      const hasBusinessIntent = conversation.messages.some(msg => 
-        !msg.from_me && businessKeywords.some(keyword => 
-          msg.content.toLowerCase().includes(keyword)
-        )
-      );
+      // Check for recent activity - muy permisivo (90 días)
+      if (conversation.lastMessageTime) {
+        const daysSinceLastMessage = Math.floor(
+          (Date.now() - conversation.lastMessageTime.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        
+        if (daysSinceLastMessage > 90) {
+          return false;
+        }
+      }
 
-      return hasBusinessIntent;
+      // Convertir todos los contactos que tengan al menos 1 mensaje o sean contactos válidos
+      return true;
       
     } catch (error) {
       console.error('❌ Error evaluando criterios de conversión:', error);
-      return false;
+      return true; // En caso de error, convertir por defecto
     }
   }
 
@@ -323,7 +312,7 @@ export class AutomaticChatToLeadService {
           phone: conversation.contactPhone,
           email: '', // Will be updated if found in messages
           company: '', // Will be updated if found in messages
-          source: 'WhatsApp',
+          source: 'whatsapp',
           status: 'new',
           priority: 'medium',
           notes: `Lead generado automáticamente desde WhatsApp.\n\nÚltimos mensajes:\n${recentMessages}`,
