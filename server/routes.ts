@@ -8384,6 +8384,9 @@ Responde solo con las 3 sugerencias separadas por líneas, sin numeración ni ex
   // Use flow execution router
   app.use('/api/flow-execution', flowExecutionRouter);
 
+  // WhatsApp Recovery routes
+  app.use('/api/whatsapp-recovery', whatsappRecoveryRouter);
+
   // Multi-tenant routes for user-based data isolation
   app.use('/api/tenant', multiTenantRoutes);
 
