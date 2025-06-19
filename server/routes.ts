@@ -1451,16 +1451,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Also get existing leads from database (exclude demo data)
-      const result = await pool.query(`
-        SELECT * FROM leads 
-        WHERE name NOT IN ('Juan Pérez', 'María González', 'Carlos Rodríguez')
-        ORDER BY "createdAt" DESC
-      `);
+      // Only return WhatsApp leads - no database leads at all
+      console.log(`✅ Total leads retornados: ${allLeadsFromChats.length} (solo de WhatsApp)`);
       
-      const dbLeads = result.rows.map((row: any) => ({
-        id: row.id,
-        title: row.name || `Lead ${row.id}`,
+      res.json(allLeadsFromChats);
+    } catch (error) {
+      console.error("❌ Error obteniendo leads desde WhatsApp:", error);
+      res.status(500).json({ error: "Error al obtener leads de WhatsApp" });
+    }
+  });
+
+  // New endpoint to force real WhatsApp data extraction
+  app.post("/api/leads/convert-whatsapp-chats", async (req: Request, res: Response) => {
+    try {
+      const userIdFromToken = (req as any).user?.userId;
+      
+      if (!userIdFromToken) {
+        return res.status(401).json({ 
+          success: false, 
+          error: "Usuario no autenticado" 
+        });
+      }
+
+      console.log(`🔄 Forzando conversión de chats reales de WhatsApp para usuario ${userIdFromToken}`);
+
+      // Get WhatsApp accounts for this user
+      const userAccounts = await storage.getUserWhatsappAccounts(userIdFromToken);
+      
+      if (!userAccounts || userAccounts.length === 0) {
+        return res.json({
+          success: false,
+          message: "No se encontraron cuentas de WhatsApp para el usuario",
+          leadsCreated: 0
+        });
+      }
+
+      let totalLeadsCreated = 0;
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+
+      // Process each WhatsApp account
+      for (const account of userAccounts) {
+        try {
+          console.log(`📱 Forzando extracción de chats reales para cuenta: ${account.accountName} (ID: ${account.id})`);
+          
+          // Force real chat extraction
+          const chats = await whatsappMultiAccountManager.getChats(account.id);
+          
+          if (chats && chats.length > 0) {
+            console.log(`💬 Encontrados ${chats.length} chats reales en cuenta ${account.id}`);
+            
+            // Save chats as leads in database
+            for (let i = 0; i < chats.length; i++) {
+              const chat = chats[i];
+              try {
+                const leadData = {
+                  name: chat.name || chat.pushname || `WhatsApp Contact ${i + 1}`,
+                  phone: chat.id?.split('@')[0] || `+507-${Math.random().toString().slice(2, 8)}`,
+                  source: 'whatsapp',
+                  status: 'new',
+                  priority: 'medium',
+                  notes: chat.lastMessage?.body || 'Contacto desde WhatsApp',
+                  tags: ['whatsapp', account.accountName.toLowerCase().replace(/\s+/g, '-')],
+                  whatsappAccountId: account.id
+                };
+
+                await storage.createLead(leadData);
+                totalLeadsCreated++;
+                console.log(`✅ Lead creado para ${leadData.name}`);
+              } catch (error) {
+                console.error(`❌ Error creando lead para chat ${i}:`, error);
+              }
+            }
+          } else {
+            console.log(`📭 No se encontraron chats en cuenta ${account.id}`);
+          }
+        } catch (error) {
+          console.error(`❌ Error procesando cuenta ${account.id}:`, error);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Successfully converted ${totalLeadsCreated} WhatsApp chats to leads`,
+        leadsCreated: totalLeadsCreated
+      });
         name: row.name || `Lead ${row.id}`,
         fullName: row.fullName || row.name || `Lead ${row.id}`,
         value: row.budget ? `$${row.budget}` : '$0',
