@@ -413,8 +413,15 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           '--disable-default-apps',
           '--disable-background-networking',
           '--disable-features=AudioServiceOutOfProcess',
-          '--disable-gl-drawing-for-tests'
-        ]
+          '--disable-gl-drawing-for-tests',
+          '--disable-software-rasterizer',
+          '--single-process',
+          '--disable-blink-features=AutomationControlled'
+        ],
+        defaultViewport: null,
+        ignoreDefaultArgs: ['--enable-automation'],
+        ignoreHTTPSErrors: true,
+        timeout: 0
       };
 
       // Crear cliente WhatsApp con configuración de persistencia mejorada
@@ -423,16 +430,12 @@ class WhatsAppMultiAccountManager extends EventEmitter {
           clientId: `account_${accountId}`,
           dataPath: sessionPath
         }),
-        puppeteer: {
-          ...puppeteerOptions,
-          timeout: 180000, // Increased timeout
-          ignoreHTTPSErrors: true,
-        },
-        qrMaxRetries: 999, // Maximum retries to prevent disconnection
-        restartOnAuthFail: true,
-        takeoverOnConflict: true,
-        authTimeoutMs: 0, // No timeout to maintain connection
-        takeoverTimeoutMs: 30000, // 30 segundos para takeover más rápido
+        puppeteer: puppeteerOptions,
+        qrMaxRetries: 3, // Reduce retries to prevent infinite loops
+        restartOnAuthFail: false, // Prevent automatic restart loops
+        takeoverOnConflict: false, // Prevent conflicts
+        authTimeoutMs: 60000, // 60 second timeout
+        takeoverTimeoutMs: 0, // Disable takeover
         webVersionCache: {
           type: 'remote',
           remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
@@ -469,14 +472,41 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       // Almacenar instancia
       this.instances.set(accountId, instance);
 
-      // Inicializar cliente
+      // Inicializar cliente con timeout y error handling
       console.log(`Iniciando cliente WhatsApp para cuenta ID ${accountId} (${account.name})`);
-      await client.initialize();
       
-      instance.status.initialized = true;
-      console.log(`Cliente WhatsApp inicializado para cuenta ID ${accountId}`);
-
-      return true;
+      try {
+        // Initialize with shorter timeout and better error handling
+        const initPromise = client.initialize();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Client initialization timeout')), 30000)
+        );
+        
+        await Promise.race([initPromise, timeoutPromise]);
+        instance.status.initialized = true;
+        console.log(`Cliente WhatsApp inicializado para cuenta ID ${accountId}`);
+        return true;
+      } catch (initError) {
+        console.error(`Error durante inicialización de cuenta ${accountId}:`, initError);
+        
+        // Clean up the client safely
+        try {
+          if (client && typeof client.destroy === 'function') {
+            await Promise.race([
+              client.destroy(),
+              new Promise(resolve => setTimeout(resolve, 5000)) // 5 second cleanup timeout
+            ]);
+          }
+        } catch (destroyError) {
+          console.error(`Error destroying client for account ${accountId}:`, destroyError);
+        }
+        
+        // Remove failed instance
+        this.instances.delete(accountId);
+        
+        // Don't throw error, just return false to allow app to continue
+        return false;
+      }
     } catch (error) {
       console.error(`Error inicializando cuenta WhatsApp ID ${accountId}:`, error);
       return false;
