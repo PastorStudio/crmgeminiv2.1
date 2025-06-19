@@ -1368,14 +1368,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Leads endpoint using direct database connection like dashboard-stats
   app.get("/api/leads", async (req: Request, res: Response) => {
     try {
-      console.log('📋 Obteniendo leads desde la base de datos...');
+      const userIdFromToken = (req as any).user?.userId;
       
-      // Direct query like working dashboard endpoint
-      const result = await pool.query('SELECT * FROM leads ORDER BY "createdAt" DESC');
-      console.log(`✅ Encontrados ${result.rows.length} leads`);
+      if (!userIdFromToken) {
+        return res.status(401).json({ 
+          success: false, 
+          error: "Usuario no autenticado" 
+        });
+      }
+
+      console.log(`📋 Obteniendo leads reales de WhatsApp para usuario ${userIdFromToken}`);
+
+      // Get WhatsApp accounts for this user
+      const userAccounts = await storage.getUserWhatsappAccounts(userIdFromToken);
       
-      // Transform for Kanban with phone support and fixed schema
-      const leadsData = result.rows.map((row: any) => ({
+      if (!userAccounts || userAccounts.length === 0) {
+        console.log(`⚠️ No WhatsApp accounts found for user ${userIdFromToken}, returning empty array`);
+        return res.json([]);
+      }
+
+      let allLeadsFromChats: any[] = [];
+
+      // Import WhatsApp manager
+      const { whatsappMultiAccountManager } = await import('./services/whatsappMultiAccountManager');
+
+      // Process each WhatsApp account to get real chats
+      for (const account of userAccounts) {
+        try {
+          console.log(`📱 Procesando cuenta WhatsApp: ${account.accountName} (ID: ${account.id})`);
+          
+          // Get real chats from WhatsApp
+          const chats = await whatsappMultiAccountManager.getChats(account.id);
+          
+          if (chats && chats.length > 0) {
+            console.log(`💬 Encontrados ${chats.length} chats reales en cuenta ${account.id}`);
+            
+            // Convert chats to lead format
+            const leadsFromChats = chats.map((chat: any, index: number) => ({
+              id: `whatsapp-${account.id}-${index}`,
+              title: chat.name || chat.pushname || `WhatsApp Contact ${index + 1}`,
+              name: chat.name || chat.pushname || `WhatsApp Contact ${index + 1}`,
+              fullName: chat.name || chat.pushname || `WhatsApp Contact ${index + 1}`,
+              value: '$0',
+              status: 'new',
+              notes: chat.lastMessage?.body || 'Contacto desde WhatsApp',
+              tags: ['whatsapp', account.accountName.toLowerCase().replace(/\s+/g, '-')],
+              probability: 50,
+              source: 'WhatsApp',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              contactId: null,
+              assignedTo: null,
+              email: '',
+              phone: chat.id?.split('@')[0] || `+507-${Math.random().toString().slice(2, 8)}`,
+              company: '',
+              priority: 'medium',
+              stage: 'new',
+              currency: 'USD',
+              expectedCloseDate: null,
+              actualCloseDate: null,
+              lastContactDate: chat.lastMessage?.timestamp ? new Date(chat.lastMessage.timestamp * 1000) : new Date(),
+              nextFollowUpDate: null,
+              customFields: {
+                isWhatsAppLead: true,
+                whatsAppAccountId: account.id,
+                whatsAppChatId: chat.id,
+                lastMessage: chat.lastMessage?.body,
+                unreadCount: chat.unreadCount || 0,
+                isGroup: chat.isGroup || false,
+                firstMessage: chat.lastMessage?.body
+              },
+              whatsappAccountId: account.id,
+              matchPercentage: null
+            }));
+            
+            allLeadsFromChats.push(...leadsFromChats);
+          } else {
+            console.log(`📭 No se encontraron chats en cuenta ${account.id}`);
+          }
+        } catch (error) {
+          console.error(`❌ Error procesando cuenta ${account.id}:`, error);
+        }
+      }
+
+      // Also get existing leads from database (exclude demo data)
+      const result = await pool.query(`
+        SELECT * FROM leads 
+        WHERE name NOT IN ('Juan Pérez', 'María González', 'Carlos Rodríguez')
+        ORDER BY "createdAt" DESC
+      `);
+      
+      const dbLeads = result.rows.map((row: any) => ({
         id: row.id,
         title: row.name || `Lead ${row.id}`,
         name: row.name || `Lead ${row.id}`,
@@ -1385,7 +1468,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: row.notes || '',
         tags: Array.isArray(row.tags) ? row.tags : [],
         probability: row.probability || 50,
-        source: row.source || 'WhatsApp',
+        source: row.source || 'Manual',
         createdAt: row.createdAt,
         updatedAt: row.updatedAt || row.createdAt,
         contactId: row.contactId || null,
@@ -1404,11 +1487,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         whatsappAccountId: row.whatsappAccountId,
         matchPercentage: row.matchPercentage || null
       }));
+
+      // Combine WhatsApp leads with regular leads
+      const allLeads = [...allLeadsFromChats, ...dbLeads];
+
+      console.log(`✅ Total leads retornados: ${allLeads.length} (${allLeadsFromChats.length} de WhatsApp, ${dbLeads.length} regulares)`);
       
-      res.json(leadsData);
+      res.json(allLeads);
     } catch (error) {
-      console.error("❌ Error obteniendo leads:", error);
-      res.status(500).json({ error: "Error al obtener leads" });
+      console.error("❌ Error obteniendo leads desde WhatsApp:", error);
+      res.status(500).json({ error: "Error al obtener leads de WhatsApp" });
     }
   });
 

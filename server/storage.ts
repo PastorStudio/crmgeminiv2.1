@@ -321,6 +321,19 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(whatsappAccounts);
   }
 
+  async getUserWhatsappAccounts(userId: number): Promise<WhatsAppAccount[]> {
+    try {
+      return await db
+        .select()
+        .from(whatsappAccounts)
+        .where(eq(whatsappAccounts.userId, userId))
+        .orderBy(desc(whatsappAccounts.createdAt));
+    } catch (error) {
+      console.error('Error getting user WhatsApp accounts:', error);
+      return [];
+    }
+  }
+
   async createWhatsAppAccount(account: InsertWhatsAppAccount): Promise<WhatsAppAccount> {
     // Buscar el primer ID disponible
     const existingAccounts = await db.select({ id: whatsappAccounts.id }).from(whatsappAccounts).orderBy(whatsappAccounts.id);
