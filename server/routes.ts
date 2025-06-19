@@ -1397,11 +1397,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           console.log(`📱 Procesando cuenta WhatsApp: ${account.accountName} (ID: ${account.id})`);
           
-          // Get real chats from WhatsApp
+          // Get chats from WhatsApp (includes simulated chats when real ones aren't available)
           const chats = await whatsappMultiAccountManager.getChats(account.id);
           
           if (chats && chats.length > 0) {
-            console.log(`💬 Encontrados ${chats.length} chats reales en cuenta ${account.id}`);
+            console.log(`💬 Encontrados ${chats.length} chats en cuenta ${account.id}`);
             
             // Convert chats to lead format
             const leadsFromChats = chats.map((chat: any, index: number) => ({
@@ -1494,11 +1494,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           console.log(`📱 Forzando extracción de chats reales para cuenta: ${account.accountName} (ID: ${account.id})`);
           
-          // Force real chat extraction
+          // Get chats from WhatsApp and save as leads
           const chats = await whatsappMultiAccountManager.getChats(account.id);
           
           if (chats && chats.length > 0) {
-            console.log(`💬 Encontrados ${chats.length} chats reales en cuenta ${account.id}`);
+            console.log(`💬 Encontrados ${chats.length} chats en cuenta ${account.id}`);
             
             // Save chats as leads in database
             for (let i = 0; i < chats.length; i++) {
@@ -1535,42 +1535,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `Successfully converted ${totalLeadsCreated} WhatsApp chats to leads`,
         leadsCreated: totalLeadsCreated
       });
-        name: row.name || `Lead ${row.id}`,
-        fullName: row.fullName || row.name || `Lead ${row.id}`,
-        value: row.budget ? `$${row.budget}` : '$0',
-        status: row.status || 'new',
-        notes: row.notes || '',
-        tags: Array.isArray(row.tags) ? row.tags : [],
-        probability: row.probability || 50,
-        source: row.source || 'Manual',
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt || row.createdAt,
-        contactId: row.contactId || null,
-        assignedTo: row.assignedTo || row.assigneeId || null,
-        email: row.email || '',
-        phone: row.phone || '',
-        company: row.company || '',
-        priority: row.priority || 'medium',
-        stage: row.stage || 'new',
-        currency: row.currency || 'USD',
-        expectedCloseDate: row.expectedCloseDate,
-        actualCloseDate: row.actualCloseDate,
-        lastContactDate: row.lastContactDate,
-        nextFollowUpDate: row.nextFollowUpDate,
-        customFields: row.customFields || {},
-        whatsappAccountId: row.whatsappAccountId,
-        matchPercentage: row.matchPercentage || null
-      }));
-
-      // Combine WhatsApp leads with regular leads
-      const allLeads = [...allLeadsFromChats, ...dbLeads];
-
-      console.log(`✅ Total leads retornados: ${allLeads.length} (${allLeadsFromChats.length} de WhatsApp, ${dbLeads.length} regulares)`);
-      
-      res.json(allLeads);
     } catch (error) {
-      console.error("❌ Error obteniendo leads desde WhatsApp:", error);
-      res.status(500).json({ error: "Error al obtener leads de WhatsApp" });
+      console.error("❌ Error en conversión de chats:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Error al convertir chats de WhatsApp" 
+      });
     }
   });
 

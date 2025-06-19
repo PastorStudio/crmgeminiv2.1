@@ -326,7 +326,7 @@ export class DatabaseStorage implements IStorage {
       return await db
         .select()
         .from(whatsappAccounts)
-        .where(eq(whatsappAccounts.userId, userId))
+        .where(eq(whatsappAccounts.user_id, userId))
         .orderBy(desc(whatsappAccounts.createdAt));
     } catch (error) {
       console.error('Error getting user WhatsApp accounts:', error);
