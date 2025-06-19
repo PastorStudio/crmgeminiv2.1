@@ -61,9 +61,9 @@ class AutomaticTicketGenerationService {
 
       // Obtener conversaciones activas sin tickets
       const conversations = await this.getConversationsWithoutTickets();
-      console.log(`📋 Encontradas ${conversations.length} conversaciones candidatas para tickets`);
+      console.log(`📋 Encontradas ${conversationsList.length} conversaciones candidatas para tickets`);
 
-      for (const conversation of conversations) {
+      for (const conversation of conversationsList) {
         try {
           const ticket = await this.analyzeAndCreateTicket(conversation);
           if (ticket) {
