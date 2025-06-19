@@ -90,7 +90,30 @@ class IntelligentResponseService {
       // Agregar mensaje actual del usuario al historial
       conversationHistory.addUserMessage(context.chatId, 'ai-agent', context.userMessage);
 
-      // Construir contexto completo para el AI
+      // Procesar con sistema de flujo conversacional
+      const { conversationFlowManager } = await import('./conversationFlowManager');
+      const flowResult = await conversationFlowManager.processMessage(
+        context.chatId,
+        context.userMessage,
+        context.accountId
+      );
+
+      // Si el flujo conversacional genera una respuesta válida, usarla
+      if (flowResult.response && flowResult.confidence > 70) {
+        console.log(`✅ Respuesta generada por flujo conversacional (${flowResult.phase}): ${flowResult.response}`);
+        
+        // Agregar respuesta al historial
+        conversationHistory.addAssistantMessage(context.chatId, 'ai-agent', flowResult.response);
+        
+        return {
+          message: flowResult.response,
+          confidence: flowResult.confidence,
+          provider: 'conversation-flow',
+          reasoning: `Respuesta generada en fase: ${flowResult.phase}`
+        };
+      }
+
+      // Fallback a generación AI tradicional si el flujo no produce una respuesta satisfactoria
       const fullContext = await this.buildAIContext(aiConfig, history, context);
       
       // Generar respuesta según el proveedor configurado
