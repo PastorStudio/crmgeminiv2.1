@@ -196,7 +196,9 @@ export async function testNaturalConversation(): Promise<void> {
     await tester.runAllTests();
     await tester.runLanguageTest();
     await tester.runStressTest();
+    console.log('Todas las pruebas de conversación natural completadas exitosamente');
   } catch (error) {
-    console.error('❌ Error en las pruebas:', error);
+    console.error('Error en las pruebas:', error);
+    throw error;
   }
 }
