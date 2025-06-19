@@ -268,6 +268,13 @@ export default function LeadsPipeline() {
               <span className="text-green-600">Chat activo</span>
             </div>
           )}
+          {lead.whatsappAccountId && (
+            <div className="flex items-center gap-1">
+              <Badge variant="outline" className="text-xs">
+                Cuenta WA-{lead.whatsappAccountId}
+              </Badge>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-between items-center mt-3">

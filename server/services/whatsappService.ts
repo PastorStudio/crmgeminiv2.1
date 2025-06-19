@@ -66,6 +66,21 @@ export default {
       } else {
         console.log('Servicio de respuestas automáticas no disponible');
       }
+
+      // Disparar conversión automática si es un nuevo contacto
+      try {
+        const { whatsappConnectionHandler } = await import('./whatsappConnectionHandler');
+        // No bloqueamos el flujo principal con la conversión
+        setTimeout(async () => {
+          try {
+            await whatsappConnectionHandler.forceConversionForAccount(message.accountId || 1);
+          } catch (conversionError) {
+            console.log('Conversión automática no ejecutada:', conversionError.message);
+          }
+        }, 2000);
+      } catch (error) {
+        console.log('Handler de conversión no disponible');
+      }
     } catch (error) {
       console.error('Error procesando mensaje entrante:', error);
     }
