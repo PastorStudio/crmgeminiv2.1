@@ -1451,10 +1451,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Only return WhatsApp leads - no database leads at all
-      console.log(`✅ Total leads retornados: ${allLeadsFromChats.length} (solo de WhatsApp)`);
+      // Get existing leads from database as backup when WhatsApp isn't working
+      const dbResult = await pool.query(`
+        SELECT * FROM leads 
+        ORDER BY "createdAt" DESC 
+        LIMIT 50
+      `);
       
-      res.json(allLeadsFromChats);
+      const dbLeads = dbResult.rows.map((row: any) => ({
+        id: row.id,
+        title: row.name || `Lead ${row.id}`,
+        name: row.name || `Lead ${row.id}`,
+        fullName: row.fullName || row.name || `Lead ${row.id}`,
+        value: row.budget ? `$${row.budget}` : '$0',
+        status: row.status || 'new',
+        notes: row.notes || '',
+        tags: Array.isArray(row.tags) ? row.tags : [],
+        probability: row.probability || 50,
+        source: row.source || 'Manual',
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt || row.createdAt,
+        contactId: row.contactId || null,
+        assignedTo: row.assignedTo || row.assigneeId || null,
+        email: row.email || '',
+        phone: row.phone || '',
+        company: row.company || '',
+        priority: row.priority || 'medium',
+        stage: row.stage || 'new',
+        currency: row.currency || 'USD',
+        expectedCloseDate: row.expectedCloseDate,
+        actualCloseDate: row.actualCloseDate,
+        lastContactDate: row.lastContactDate,
+        nextFollowUpDate: row.nextFollowUpDate,
+        customFields: row.customFields || {},
+        whatsappAccountId: row.whatsappAccountId,
+        matchPercentage: row.matchPercentage || null
+      }));
+
+      // Combine WhatsApp leads with database leads
+      const allLeads = [...allLeadsFromChats, ...dbLeads];
+      
+      console.log(`✅ Total leads retornados: ${allLeads.length} (${allLeadsFromChats.length} de WhatsApp, ${dbLeads.length} de base de datos)`);
+      
+      res.json(allLeads);
     } catch (error) {
       console.error("❌ Error obteniendo leads desde WhatsApp:", error);
       res.status(500).json({ error: "Error al obtener leads de WhatsApp" });
