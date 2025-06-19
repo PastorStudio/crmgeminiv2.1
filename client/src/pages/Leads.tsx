@@ -201,33 +201,28 @@ export default function Leads() {
     }
   };
 
-  // Handle convert real WhatsApp conversations to leads
+  // Handle convert all WhatsApp chats to leads
   const handleConvertWhatsAppChats = async () => {
     try {
-      const response = await fetch('/bypass/generate-real-leads', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      const response = await apiRequest('/api/convert-all-chats', {
+        method: 'POST'
       });
-      
-      const data = await response.json();
 
-      if (data.success) {
+      if (response.success) {
         toast({
-          title: "Conversión completada",
-          description: `${data.leadsCreated} leads reales creados desde conversaciones de WhatsApp`,
+          title: "Conversión automática completada",
+          description: `${response.converted} leads creados de ${response.processed} chats procesados`,
         });
         
         // Refresh leads list
         queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       } else {
-        throw new Error(data.message || 'Error en la conversión');
+        throw new Error(response.error || 'Error en la conversión');
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "No se pudieron convertir las conversaciones reales a leads",
+        description: "No se pudieron convertir los chats a leads",
         variant: "destructive",
       });
     }
@@ -398,6 +393,16 @@ export default function Leads() {
             </Button>
             
             <Button
+              onClick={handleConvertWhatsAppChats}
+              variant="default"
+              className="bg-green-600 hover:bg-green-700 text-white"
+              title="Convertir TODOS los chats de WhatsApp a leads automáticamente"
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Convert All</span>
+            </Button>
+            
+            <Button
               onClick={handleRefreshRealData}
               variant="outline"
               disabled={!connectionStatus.connected}
@@ -477,6 +482,7 @@ export default function Leads() {
                     <TableHead className="hidden md:table-cell">Company</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="hidden lg:table-cell">Source</TableHead>
+                    <TableHead className="hidden lg:table-cell">Account</TableHead>
                     <TableHead className="hidden lg:table-cell">Match</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -493,6 +499,13 @@ export default function Leads() {
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">{lead.source || "—"}</TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {lead.whatsappAccountId && (
+                          <Badge variant="outline" className="text-xs">
+                            WA-{lead.whatsappAccountId}
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         {lead.matchPercentage ? (
                           <span className="text-xs font-medium text-green-600">
