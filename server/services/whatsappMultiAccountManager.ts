@@ -10,6 +10,7 @@ import path from 'path';
 import qrcode from 'qrcode';
 import { storage } from '../storage';
 import { improvedQRManager } from '../utils/improvedQRManager';
+import { WhatsAppConnectionStabilizer } from './whatsappConnectionStabilizer';
 
 interface WhatsAppStatus {
   initialized: boolean;
@@ -346,9 +347,31 @@ class WhatsAppMultiAccountManager extends EventEmitter {
    */
   async initializeAccount(accountId: number): Promise<boolean> {
     try {
-      if (this.instances.has(accountId)) {
-        console.log(`Cuenta WhatsApp ID ${accountId} ya está inicializada`);
+      // Verificar estabilizador de conexiones
+      if (!WhatsAppConnectionStabilizer.canInitialize(accountId)) {
+        console.log(`🚫 Inicialización bloqueada por estabilizador para cuenta ${accountId}`);
+        return false;
+      }
+      
+      // Verificar si ya existe una instancia válida
+      const existingInstance = this.instances.get(accountId);
+      if (existingInstance && existingInstance.status.initialized && existingInstance.client) {
+        console.log(`Cuenta WhatsApp ID ${accountId} ya está inicializada y funcional`);
+        WhatsAppConnectionStabilizer.markAsStable(accountId);
         return true;
+      }
+      
+      // Si existe pero no está funcional, limpiar primero
+      if (existingInstance) {
+        console.log(`🧹 Limpiando instancia anterior para cuenta ${accountId}`);
+        this.instances.delete(accountId);
+        if (existingInstance.client) {
+          try {
+            await existingInstance.client.destroy();
+          } catch (e) {
+            console.log(`⚠️ Error limpiando cliente anterior: ${e.message}`);
+          }
+        }
       }
 
       const account = await storage.getWhatsappAccount(accountId);
@@ -744,38 +767,42 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
-   * Fuerza la generación de un nuevo código QR limpiando el cache
+   * Fuerza la generación de un nuevo código QR sin destruir el cliente existente
    */
   async forceRefreshQR(accountId: number): Promise<boolean> {
     try {
-      console.log(`🔄 Forzando actualización de QR para cuenta ${accountId}`);
-      
-      // Limpiar cache completamente
-      this.qrCodeCache.delete(accountId);
+      console.log(`🔄 Solicitando nuevo QR para cuenta ${accountId}`);
       
       const instance = this.instances.get(accountId);
-      if (!instance || !instance.client) {
+      if (!instance) {
         console.log(`❌ Instancia no encontrada para cuenta ${accountId}`);
-        return false;
+        // Solo inicializar si no existe
+        return await this.initializeAccount(accountId);
       }
 
-      // Reinicializar cliente para generar nuevo QR - SINCRONO
-      try {
-        await instance.client.destroy();
-        console.log(`🔄 Cliente destruido para cuenta ${accountId}`);
+      // Si ya hay un cliente funcionando, no lo destruyas
+      if (instance.client && instance.status.initialized) {
+        console.log(`✅ Cliente ya inicializado para cuenta ${accountId}, conservando conexión`);
         
-        // Esperar un momento y luego reinicializar sincrónicamente
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Solo limpiar cache para forzar nueva lectura
+        this.qrCodeCache.delete(accountId);
         
-        // Reinicializar inmediatamente de forma síncrona
-        await this.initializeAccount(accountId);
-        console.log(`✅ QR forzado para cuenta ${accountId}`);
+        // Si no está autenticado, el QR debería estar disponible
+        if (!instance.status.authenticated) {
+          console.log(`📱 QR disponible para autenticación de cuenta ${accountId}`);
+          return true;
+        }
         
         return true;
-      } catch (error) {
-        console.error(`❌ Error forzando refresh QR:`, error);
-        return false;
       }
+
+      // Solo crear nuevo cliente si no existe o no está inicializado
+      if (!instance.client || !instance.status.initialized) {
+        console.log(`🆕 Inicializando cliente para cuenta ${accountId}`);
+        return await this.initializeAccount(accountId);
+      }
+
+      return true;
     } catch (error) {
       console.error(`❌ Error en forceRefreshQR:`, error);
       return false;
@@ -924,7 +951,7 @@ class WhatsAppMultiAccountManager extends EventEmitter {
   }
 
   /**
-   * Intenta recuperar conexión perdida
+   * Intenta recuperar conexión perdida de forma conservadora
    */
   private async attemptConnectionRecovery(accountId: number): Promise<boolean> {
     try {
@@ -932,35 +959,45 @@ class WhatsAppMultiAccountManager extends EventEmitter {
       if (!instance) return false;
 
       const now = Date.now();
-      if (now - instance.lastReconnectAttempt < 60000) {
-        return false; // Evitar reconexiones muy frecuentes
+      if (now - instance.lastReconnectAttempt < 300000) { // 5 minutos entre intentos
+        console.log(`⏳ Evitando reconexión frecuente para cuenta ${accountId}`);
+        return false;
       }
 
       instance.lastReconnectAttempt = now;
-      console.log(`Iniciando reconexión automática para cuenta ID ${accountId}...`);
+      console.log(`🔄 Intentando reconexión conservadora para cuenta ID ${accountId}...`);
 
-      // Destruir cliente actual
+      // Solo verificar estado sin destruir
       if (instance.client) {
         try {
-          await instance.client.destroy();
-        } catch (destroyError) {
-          console.warn(`Error destruyendo cliente para cuenta ${accountId}:`, destroyError);
+          const state = await instance.client.getState();
+          console.log(`📊 Estado actual de cuenta ${accountId}: ${state}`);
+          
+          // Si está conectado, no hacer nada más
+          if (state === 'CONNECTED') {
+            console.log(`✅ Cuenta ${accountId} ya está conectada`);
+            return true;
+          }
+          
+          // Solo reinicializar si está completamente desconectado
+          if (state === 'UNPAIRED' || state === 'UNLAUNCHED') {
+            console.log(`🔄 Reinicializando cuenta ${accountId} por estado: ${state}`);
+            
+            // Marcar como no autenticado para generar nuevo QR
+            instance.status.authenticated = false;
+            instance.status.ready = false;
+            
+            return true;
+          }
+          
+        } catch (stateError) {
+          console.warn(`⚠️ Error verificando estado para cuenta ${accountId}:`, stateError);
         }
       }
 
-      // Recrear instancia
-      this.instances.delete(accountId);
-      const success = await this.initializeAccount(accountId);
-      
-      if (success) {
-        console.log(`Reconexión exitosa para cuenta ID ${accountId}`);
-        return true;
-      } else {
-        console.error(`Falló la reconexión para cuenta ID ${accountId}`);
-        return false;
-      }
+      return false;
     } catch (error) {
-      console.error(`Error en recuperación de conexión para cuenta ${accountId}:`, error);
+      console.error(`Error en recuperación conservadora de conexión para cuenta ${accountId}:`, error);
       return false;
     }
   }
